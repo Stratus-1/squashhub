@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 import { GroupEntryCard } from "@/components/tournaments/GroupEntryCard";
+import { isAdminEnteredRegistration } from "@/lib/tournaments/admin-entry";
 import { entrantStatusLabel } from "@/lib/tournaments/entrant-status";
 
 import {
@@ -364,6 +365,16 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   if (champ?.registration_mode === "invite" && !myReg && !allowSelfSignup) return null;
 
+  // Organiser already entered this player (and paired them): this card is the
+  // existing entry, never a self-entry form — no group entry, no partner picker.
+  const adminEntered = isAdminEnteredRegistration(myReg);
+  const myCategory = (() => {
+    const g = Array.isArray(myReg?.division_choices) ? Number(myReg.division_choices[0]) : NaN;
+    if (!Number.isFinite(g)) return null;
+    const labels = (champ?.group_labels || {}) as Record<string, string>;
+    return labels[String(g)] || null;
+  })();
+
   return (
     <Card className="p-3 mb-2 border-primary/30 bg-primary/5">
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -487,7 +498,20 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {myReg && isDoubles && partnerByPlayers && (
+      {adminEntered && (
+        <div className="mt-1 mb-2 space-y-0.5 text-xs" data-testid="admin-entry-details">
+          <p className="text-muted-foreground">Entered by the organiser — no need to enter again.</p>
+          {myCategory && <p>Category: <span className="font-medium">{myCategory}</span></p>}
+          {isDoubles && myReg.partner && (
+            <p className="flex items-center gap-1">
+              <Check className="w-3 h-3 text-primary" />
+              Your doubles partner: <span className="font-medium">{getName(myReg.partner)}</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {myReg && !adminEntered && isDoubles && partnerByPlayers && (
         <div className="mt-2">
           {myReg.partner ? (
             <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -500,7 +524,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {!notYetOpen && !isClosed && (
+      {!notYetOpen && !isClosed && !adminEntered && (
         <div className="mt-2 pt-2 border-t border-border/60">
           <GroupEntryCard champ={champ} clubId={clubId} memberId={memberId} paymentGateway={paymentGateway} />
         </div>

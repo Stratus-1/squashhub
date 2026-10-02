@@ -239,13 +239,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {a.kind === "once_off" && (
             <>
               {entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => setStep(1)} />}
+              {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => setStep(2)} />}
               {cats.length > 0 && (
-                <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => setStep(2)}>
+                <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => setStep(3)}>
                   {cats.map((c, i) => <TreeLeaf key={i}>{c}</TreeLeaf>)}
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (
-                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => setStep(3)}>
+                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => setStep(4)}>
                   {a.days.map((d, i) => (
                     <TreeLeaf key={i}>
                       {fmtDay(d.date)}

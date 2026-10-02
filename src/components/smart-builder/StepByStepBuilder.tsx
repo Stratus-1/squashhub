@@ -201,13 +201,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
               <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries" onEdit={() => setStep(1)}>About {a.entries}</SummaryRow>
-              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => setStep(2)}>{cats.join(", ")}</SummaryRow>
-              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(3)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
-              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(4)}>
+              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => setStep(2)}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
+              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => setStep(3)}>{cats.join(", ")}</SummaryRow>
+              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(4)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
+              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(5)}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
                   <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}{courtNames(d) && ` (${courtNames(d)})`}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
                 ))}</ul>
@@ -222,7 +223,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step < 5 && (
+          {step < 6 && (
             <div className="flex justify-between pt-2">
               <Button variant="ghost" size="sm" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
               <Button size="sm" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>

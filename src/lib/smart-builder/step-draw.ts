@@ -31,7 +31,7 @@ export type DivFormat = {
 };
 export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null };
 export type DrawUnit = { member: string; partner: string | null };
-export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; blockers?: string[];
+export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; blockers?: string[];
   /** Organiser-adjusted pools (unit ids per pool). When set, this IS what Generate saves. */
   manualPools?: string[][] | null };
 
@@ -113,7 +113,44 @@ export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|
 /** Parent category of a division label ("Mens › A · Doubles" → "Mens"). */
 export const unitParentOf = (label: string) => unitKeyOf(label).split("::")[0];
 
-export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; crossKeys: string[]; crossPairKeys: string[][] | null; crossByParent: boolean } {
+/** Play-off phase stages from the saved stage timeline that apply to this unit, in play order. */
+export function plannedPlayoffStages(plan: Plan | null, key: string): Array<{ name: string; plan: PlannedPlayoff }> {
+  const rows: any[] = (plan?.stages ?? []).filter((s: any) => s?.phase === "playoff" && s.name && (!s.unit || s.unit === key || s.unit === key.split("::")[0]));
+  const when = (s: any) => `${s.date || s.deadline || "9999"} ${s.from || ""}`;
+  return rows.map((s, i) => ({ s, i })).sort((x, y) => when(x.s).localeCompare(when(y.s)) || x.i - y.i).map(({ s }) => ({
+    name: String(s.name),
+    plan: { pairing: s.pairing ?? null, mode: s.mode ?? null, date: s.date || null, deadline: s.deadline || null, from: s.from || null, to: s.to || null, courtIds: (s.courtIds ?? []).map(Number).filter((n: number) => Number.isFinite(n)) },
+  }));
+}
+
+/** Deferred (Define later) play-off stages for a division, carrying the builder's plan for each. */
+export function deferredFor(version: string, names: string[], plans?: Array<PlannedPlayoff | null>) {
+  return names.map((name, i) => {
+    const plan = plans?.[i] ?? null;
+    return { stageKey: `${version}-po${i + 1}`, name, plannedDate: plan?.date || plan?.deadline || null, ...(plan ? { plan } : {}) };
+  });
+}
+
+/**
+ * Repair for draws generated before play-offs were bridged: attach the planned play-offs as deferred stages to
+ * every division that has none and no later stage yet. Never touches existing stages, games or results.
+ */
+export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null): TournamentSpec | null {
+  if (!plan || !spec?.divisions?.length) return null;
+  let changed = false;
+  const divisions = spec.divisions.map((d: any) => {
+    if ((d.deferredStages ?? []).length || d.stages.length > 1) return d;
+    const label = (d.poolLabels?.[0] as string | undefined) ?? d.label;
+    const p = proposeFormat(plan, label);
+    if (!p.playoffs.length) return d;
+    const version = String(d.stages[0]?.id ?? "s").replace(/-main$/, "");
+    changed = true;
+    return { ...d, deferredStages: deferredFor(version, p.playoffs, p.playoffPlans) };
+  });
+  return changed ? { ...spec, divisions } : null;
+}
+
+export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans: Array<PlannedPlayoff | null>; crossKeys: string[]; crossPairKeys: string[][] | null; crossByParent: boolean } {
   const key = unitKeyOf(label);
   const pick = <T,>(o: Record<string, T> | undefined, d: T): T => o?.[key] ?? o?.[key.split("::")[0]] ?? d;
   const notes: string[] = [];
@@ -146,9 +183,13 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
     schedule = { rule: "fixed", deadlines: [], upto: [], dates: [...new Set<string>(plan.days.map((d: any) => d.date).filter(Boolean))].sort() };
   } else if (stages.length) notes.push("Some stages are still \"Decide later\" — choose play-by or fixed dates now.");
   const po = pick(plan?.playoffOverrides, plan?.playoff) ?? {};
-  const playoffs = kind && kind !== "knockout" && po.choice === "playoffs"
-    ? (po.rounds === 1 ? ["Final"] : po.rounds === 2 ? ["Semi-final", "Final"] : ["Quarter-final", "Semi-final", "Final"]) : [];
-  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null }, notes, playoffs, crossKeys, crossPairKeys, crossByParent };
+  // Play-off stages the organiser already put in the stage timeline win over the generic playoff answer.
+  const planned = kind && kind !== "knockout" && po.choice !== "none" ? plannedPlayoffStages(plan, key) : [];
+  const playoffs = planned.length ? planned.map((s) => s.name)
+    : kind && kind !== "knockout" && po.choice === "playoffs"
+      ? (po.rounds === 1 ? ["Final"] : po.rounds === 2 ? ["Semi-final", "Final"] : ["Quarter-final", "Semi-final", "Final"]) : [];
+  const playoffPlans = planned.length ? planned.map((s) => s.plan) : playoffs.map(() => null);
+  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
 }
 
 /* ── pools preview (source of truth for Generate) ── */
@@ -350,7 +391,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
           },
           schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id)),
         }] as any,
-        deferredStages: d.playoffs.map((p, i) => ({ stageKey: `${version}-po${i + 1}`, name: p, plannedDate: null })),
+        deferredStages: deferredFor(version, d.playoffs, d.playoffPlans),
       } as any);
       continue;
     }
@@ -370,7 +411,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
         discipline: d.doubles ? "doubles" : "singles",
         schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id)),
       }],
-      deferredStages: d.playoffs.map((p, i) => ({ stageKey: `${version}-po${i + 1}`, name: p, plannedDate: null })),
+      deferredStages: deferredFor(version, d.playoffs, d.playoffPlans),
     } as any);
   }
   return { version: 1, architecture: "structured", name, divisions: out };

@@ -26,7 +26,7 @@ export interface SpecDivision extends DivisionContract {
    * targets only: never generated, never advanced into, kept so the admin can configure
    * them once the stage before them has finished.
    */
-  deferredStages?: Array<{ stageKey: string; name: string; plannedDate: string | null }>;
+  deferredStages?: Array<{ stageKey: string; name: string; plannedDate: string | null; plan?: PlannedPlayoff }>;
   /**
    * Tournament group (club_champs group_number) this division's games are stored under. Absent = division order + 1.
    * Cross-league divisions combine several groups: `entryGroups` lists every group whose entries play in it,
@@ -456,3 +456,6 @@ export function finalStandings(d: SpecDivision, rows: FixtureRow[]): Array<{ id:
   const seed = d.entrants.flatMap((e) => unitPlayers(e.id));
   return [...pts.entries()].sort((x, y) => y[1] - x[1] || seed.indexOf(x[0]) - seed.indexOf(y[0])).map(([id, points], i) => ({ id, points, position: i + 1 }));
 }
+
+/** What the builder captured for a later play-off stage (planning only — never generated from on its own). */
+export interface PlannedPlayoff { pairing?: string | null; mode?: string | null; date?: string | null; deadline?: string | null; from?: string | null; to?: string | null; courtIds?: number[] }

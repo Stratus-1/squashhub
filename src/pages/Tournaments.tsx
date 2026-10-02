@@ -780,6 +780,8 @@ export default function Tournaments() {
   const matchPlayBy = (m: any): string | null => {
     const mine = m?.play_by;
     if (mine) return String(mine).slice(0, 10);
+    // A game with a fixed date + time is centrally scheduled: no booking deadline.
+    if (m?.scheduled_date && m?.scheduled_time) return null;
     const own = matchRoundRow(m)?.play_by;
     if (own) return String(own).slice(0, 10);
     const champ = champs.find((c: any) => c.id === m.champ_id);

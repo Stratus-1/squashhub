@@ -144,7 +144,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   if (i.divisions?.length) {
     // league_match_types lives only on the base table (not the club_champs view).
     const serving = Object.fromEntries(i.divisions.flatMap((d, n) => d.matchType === "doubles" && d.serving ? [[String(n + 1), d.serving]] : []));
-    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), league_doubles_serving_methods: Object.keys(serving).length ? serving : null }).eq("id", tid);
+    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), ...(i.divisions.some((d) => d.serving !== undefined) ? { league_doubles_serving_methods: Object.keys(serving).length ? serving : null } : {}) }).eq("id", tid);
     if (error) throw error;
   }
   if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);

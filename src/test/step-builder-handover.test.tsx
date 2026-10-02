@@ -107,7 +107,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     fireEvent.click(screen.getByRole("button", { name: "Send now" }));
     expect(await screen.findByText(/2 of 2 reached/)).toBeInTheDocument();
     const camp = calls.find((c) => c.table === "comms_campaigns" && c.op === "insert")!;
-    expect(camp.arg).toMatchObject({ audience_type: "selected", audience_member_ids: ["m1", "m2"], channels: ["in_app", "email"] });
+    expect(camp.arg).toMatchObject({ audience_type: "selected", audience_member_ids: ["m1", "m2"], channels: ["in_app"] });
     expect(camp.arg.action).toMatchObject({ key: "tournament_view", params: { tournament_id: "t-new" } });
     expect(camp.arg.audience_filter.member_vars.m1.personal_message).toMatch(/Your doubles partner: Ben Jones/);
     expect(calls.some((c) => c.table === "fn:send-comms-campaign" && c.arg.campaign_id === "camp1")).toBe(true);

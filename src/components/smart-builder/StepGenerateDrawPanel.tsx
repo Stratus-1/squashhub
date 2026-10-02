@@ -119,6 +119,73 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       toast.info(`${divs[i].label}: format/seeding changed, so your manual seed and pool changes were reset.`);
     } setConfirmed(false); setDivs((ds) => ds.map((d, k) => k === i ? { ...d, format: { ...d.format, ...patch } } : d)); };
   const nm = (id: string | null) => (id ? names.get(id) ?? "Unknown" : "");
+  const unitName = (id: string) => id.split("+").map(nm).join(" & ");
+  /** The seeding data actually used for this unit, shown next to its seed. */
+  const seedData = (d: DrawDivision, id: string, idx: number): string => {
+    const ps = id.split("+");
+    if (manual[d.group]?.order) return `manual order (#${idx + 1})`;
+    if (d.format.seeding === "ranking") { const v = ps.map((x) => points.get(x) ?? 0); return `ranking pts ${v.join(" + ")} = ${v.reduce((a, b) => a + b, 0)}`; }
+    if (d.format.seeding === "ladder") { const v = ps.map((x) => ladder.get(x)); return `ladder ${v.map((x) => (x == null ? "—" : `#${x}`)).join(" / ")}`; }
+    if (d.format.seeding === "random") return "random draw";
+    return `entry #${(baseUnits[d.group - 1] ?? []).findIndex((u) => unitId(u) === id) + 1}`;
+  };
+  const moveSeed = (d: DrawDivision, id: string, dir: -1 | 1) => {
+    const order = d.units.map(unitId); const k = order.indexOf(id), j = k + dir;
+    if (j < 0 || j >= order.length) return;
+    [order[k], order[j]] = [order[j], order[k]];
+    setConfirmed(false);
+    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], order } }));
+  };
+  const movePool = (d: DrawDivision, id: string, to: number) => {
+    const cur = poolsFor(d); if (!cur) return;
+    setConfirmed(false);
+    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], pools: moveUnit(cur, id, to) } }));
+  };
+  const resetManual = (g: number) => { setConfirmed(false); setManual((m) => { const n = { ...m }; delete n[g]; return n; }); };
+  const poolEditor = (d: DrawDivision) => {
+    const pools = poolsFor(d);
+    const seedOf = new Map(d.units.map((u, k) => [unitId(u), k]));
+    const groups = pools ?? [d.units.map(unitId)];
+    const isPools = d.format.kind === "pools";
+    const title = (pi: number) => isPools ? `Pool ${String.fromCharCode(65 + pi)}` : d.format.kind === "cross" ? `${d.label} (plays the other selected groups)` : d.format.kind === "round_robin" ? "Round robin (one group)" : "Seed order";
+    return (
+      <div className="space-y-2" aria-label={`Pools and seeds for ${d.label}`}>
+        <div className={isPools ? "grid gap-2 sm:grid-cols-2" : ""}>
+          {groups.map((pool, pi) => (
+            <div key={pi} className={`rounded border p-1.5 ${dragId && isPools ? "border-dashed border-primary" : "border-border"}`}
+              onDragOver={(e) => { if (isPools) e.preventDefault(); }}
+              onDrop={(e) => { e.preventDefault(); if (isPools && dragId) movePool(d, dragId, pi); setDragId(null); }}>
+              <div className="mb-1 font-medium">{title(pi)} · {pool.length} {d.doubles ? "pairs" : "players"}</div>
+              <ol className="space-y-0.5">
+                {pool.map((id) => {
+                  const k = seedOf.get(id) ?? 0;
+                  return (
+                    <li key={id} draggable={isPools} onDragStart={() => setDragId(id)} onDragEnd={() => setDragId(null)}
+                      className="flex flex-wrap items-center gap-1 rounded bg-muted/40 px-1 py-0.5">
+                      <span className="w-12 font-semibold">Seed {k + 1}</span>
+                      <span className="flex-1 min-w-[10rem]">{unitName(id)}</span>
+                      <span className="text-muted-foreground">{seedData(d, id, k)}</span>
+                      <button type="button" className="px-1 underline disabled:opacity-40" disabled={k === 0} aria-label={`Move ${unitName(id)} up one seed`} onClick={() => moveSeed(d, id, -1)}>↑</button>
+                      <button type="button" className="px-1 underline disabled:opacity-40" disabled={k === d.units.length - 1} aria-label={`Move ${unitName(id)} down one seed`} onClick={() => moveSeed(d, id, 1)}>↓</button>
+                      {isPools && (
+                        <select aria-label={`Move ${unitName(id)} to pool`} className="rounded border border-input bg-background p-0.5" value={pi} onChange={(e) => movePool(d, id, Number(e.target.value))}>
+                          {groups.map((_, j) => <option key={j} value={j}>Pool {String.fromCharCode(65 + j)}</option>)}
+                        </select>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ))}
+        </div>
+        {isPools && <p className="text-muted-foreground">Drag a {d.doubles ? "pair" : "player"} onto another pool, or use "Move to pool". {d.doubles ? "Pairs always move together." : ""}</p>}
+        {d.format.kind === "cross" && <p className="text-muted-foreground">Groups are the categories players entered, so pairs can't be moved between them here — change a category in Finalise Entries. You can change the seed order within this group.</p>}
+        {poolWarnings(d).map((w) => <p key={w} className="text-amber-600 dark:text-amber-400">⚠ {w}</p>)}
+        {manual[d.group] && <p>Your changes are used exactly as shown when you generate. <button type="button" className="text-primary underline" onClick={() => resetManual(d.group)}>Reset to the calculated {isPools ? "pools and seeds" : "seeds"}</button></p>}
+      </div>
+    );
+  };
 
   const errors = [...pairErrors, ...(preview?.errors ?? [])];
   const hasDraw = existing.games > 0;
@@ -178,9 +245,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div key={d.group} className="rounded border border-border p-2 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold">{d.label}</span>
-              <button type="button" className="text-primary underline" onClick={() => setShowPairs(showPairs === i ? null : i)}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "hide" : "show seeds"}</button>
+              <button type="button" className="text-primary underline" onClick={() => setShowPairs(showPairs === i ? null : i)} aria-expanded={showPairs !== i}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "show pools & seeds" : "hide pools & seeds"}</button>
             </div>
-            {showPairs === i && <ol className="list-decimal pl-5">{d.units.map((u) => <li key={u.member}>{nm(u.member)}{u.partner ? ` & ${nm(u.partner)}` : ""}</li>)}</ol>}
+            {showPairs !== i && d.units.length > 0 && poolEditor(d)}
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="space-y-0.5"><span className="text-muted-foreground">Format</span>
                 <select className="w-full rounded border border-input bg-background p-1" value={f.kind ?? ""} onChange={(e) => setFmt(i, { kind: (e.target.value || null) as DrawKind | null })}>

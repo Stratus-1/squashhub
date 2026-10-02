@@ -6,6 +6,7 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
+import { POOL_MODE_LABEL, recommendPools, type PoolMode, type PoolPlan } from "@/lib/smart-builder/pool-plan";
 import { inferCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
@@ -129,6 +130,8 @@ export type StepAnswers = {
   formatOverrides: Record<string, FormatPlan>;
   /** Doubles serving method per doubles category/subcategory (unit key); saved to league_doubles_serving_methods. */
   serving?: Record<string, DoublesServingMethod>;
+  /** Optional pools INSIDE each category/subcategory (unit key). A rule only — real pools are made from actual entrants at Generate draw. */
+  poolPlan?: Record<string, PoolPlan>;
   /** Provisional seeding with category/subcategory exceptions. */
   seeding: SeedMethod | null;
   seedingOverrides: Record<string, SeedMethod>;
@@ -1308,6 +1311,30 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       </div>
                       {a.formatOverrides?.[u.key] && <FormatFields value={a.formatOverrides[u.key]} onChange={(patch) => setFormatOverride(u.key, patch)} units={units} compact entries={a.unitEntries ?? {}} scope={[u.key]} />}
                     </div>)}
+                  </div>;
+                })}
+              </div>}
+              {units.some((u) => ["pools", "cross"].includes(formatFor(u.key).kind ?? "")) && <div className="space-y-3 border-t border-border pt-4">
+                <div className="text-sm font-semibold">Pool structure</div>
+                <p className="text-xs text-muted-foreground">Pools are an optional split <em>inside</em> a {cats.some((c) => (a.subcats[c] ?? []).some((x) => x.trim())) ? "subcategory" : "category"} — never a new subcategory. Only the rule is saved now; the actual pools are proposed from real entries and you review them before fixtures are made.</p>
+                {units.filter((u) => ["pools", "cross"].includes(formatFor(u.key).kind ?? "")).map((u) => {
+                  const pp: PoolPlan = a.poolPlan?.[u.key] ?? { mode: "none" };
+                  const setPP = (patch: Partial<PoolPlan>) => setA((prev) => ({ ...prev, poolPlan: { ...(prev.poolPlan ?? {}), [u.key]: { ...pp, ...(prev.poolPlan?.[u.key] ?? {}), ...patch } } }));
+                  const exp = Number(a.unitEntries?.[u.key]) || 0;
+                  const rec = pp.mode === "auto" && exp ? recommendPools(exp, Number(pp.target) || 5) : [];
+                  return <div key={u.key} className="space-y-2 rounded-lg border border-border p-3 text-xs">
+                    <div className="font-medium">{u.base}</div>
+                    <div className="flex flex-wrap gap-2">{(["none", "auto", "later"] as PoolMode[]).map((m) => (
+                      <button key={m} type="button" aria-pressed={pp.mode === m} onClick={() => setPP({ mode: m })} className={cn("rounded-full border px-2.5 py-1 text-xs", pp.mode === m ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{POOL_MODE_LABEL[m]}</button>))}</div>
+                    {pp.mode === "auto" && <label className="flex items-center gap-2"><span>Preferred pool size</span><Input type="number" min={2} className="h-7 w-20" aria-label={`Preferred pool size for ${u.base}`} value={pp.target ?? "5"} onChange={(e) => setPP({ target: e.target.value })} />
+                      <span className="text-muted-foreground">a preference — pools are balanced from the real entries{rec.length ? ` (with ${exp} expected: ${rec.length > 1 ? `${rec.length} pools — ${rec.join(", ")}` : "one group"})` : ""}</span></label>}
+                    {pp.mode === "later" && <p className="text-muted-foreground">You'll be asked to set the pools after entries close — fixtures can't be generated until you do.</p>}
+                    {formatFor(u.key).kind === "cross" && pp.mode !== "none" && <p className="text-amber-600 dark:text-amber-400">This group plays between subcategories. With pools, SquashHub won't guess which pools meet — you'll need to choose "No pools" here before generating (pool-to-pool cross play isn't supported yet).</p>}
+                    {pp.mode !== "none" && <div className="flex flex-wrap items-center gap-2">
+                      <span>Play-offs: qualifiers from each pool</span><Input type="number" min={1} className="h-7 w-16" aria-label={`Qualifiers per pool for ${u.base}`} placeholder="auto" value={pp.perPool ?? ""} onChange={(e) => setPP({ perPool: e.target.value })} />
+                      <span>plus best runners-up</span><Input type="number" min={0} className="h-7 w-16" aria-label={`Best runners-up for ${u.base}`} placeholder="0" value={pp.runnersUp ?? ""} onChange={(e) => setPP({ runnersUp: e.target.value })} />
+                      <span className="text-muted-foreground">Who meets whom follows the first play-off stage's pairing (crossover = pool winner v another pool's runner-up; seeded = highest qualifier v lowest).</span>
+                    </div>}
                   </div>;
                 })}
               </div>}

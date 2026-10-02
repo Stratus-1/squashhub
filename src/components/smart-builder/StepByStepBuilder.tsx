@@ -447,7 +447,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
-  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0);
+  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0) && (!pairMode || pickIds.every((id) => !!a.picks[id]));
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";

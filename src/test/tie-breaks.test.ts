@@ -15,8 +15,10 @@ describe("tie-break engine", () => {
   });
 
   it("2. still level after game difference/games/points → head-to-head decides", () => {
-    // Symmetric scores, b beat a.
-    const games = [g("a", "c", "a", [[11, 5], [11, 5], [11, 5]]), g("b", "c", "b", [[11, 5], [11, 5], [11, 5]]), g("a", "b", "b", [[11, 5], [5, 11], [11, 5], [5, 11], [5, 11]]), g("c", "d", "c", [[11, 5], [11, 5], [11, 5]]), g("a", "d", "d", [[5, 11], [5, 11], [11, 5], [11, 5], [5, 11]]), g("b", "d", "d", [[5, 11], [5, 11], [11, 5], [11, 5], [5, 11]])];
+    const w31: Array<[number, number]> = [[11, 5], [11, 5], [11, 5], [5, 11]];
+    // a beat c 3-1, b beat a 3-1, d beat b 3-1 → a, b, d all on 1 win; d ahead on game difference;
+    // a and b then level on game difference, games won and points → head-to-head (b beat a).
+    const games = [g("a", "c", "a", w31), g("b", "a", "b", w31), g("d", "b", "d", w31)];
     const r = rankUnits(["a", "b", "c", "d"], games);
     const sa = r.stats.get("a")!, sb = r.stats.get("b")!;
     expect([sa.wins, sa.gamesWon - sa.gamesLost, sa.pointsFor - sa.pointsAgainst]).toEqual([sb.wins, sb.gamesWon - sb.gamesLost, sb.pointsFor - sb.pointsAgainst]);
@@ -91,7 +93,8 @@ describe("tie-breaks in qualification", () => {
   });
 
   it("6. doubles pairs are ranked as one unit", () => {
-    const rows = [row("a1+a2", "c1+c2", "a1", "11-5, 11-5, 11-5"), row("b1+b2", "c1+c2", "b2", "11-5, 9-11, 11-5, 11-9"), row("a1+a2", "b1+b2", "b1", "5-11, 11-5, 5-11, 11-5, 5-11")];
+    // Cycle on wins: a beat b 3-0, b beat c 3-0 (partner b2 recorded as winner), c beat a 3-2 → game difference a +2, b 0, c -2.
+    const rows = [row("a1+a2", "b1+b2", "a1", "11-5, 11-5, 11-5"), row("b1+b2", "c1+c2", "b2", "11-5, 11-5, 11-5"), row("c1+c2", "a1+a2", "c1", "11-5, 5-11, 11-5, 5-11, 11-5")];
     // b2 (partner) won one game — credited to the b pair.
     const out = sourcePositions({ ...div(["a1+a2", "b1+b2", "c1+c2"]), unit: "pairs" }, src, rows, null, new Set(["0:1", "0:2"]));
     expect(out[0]).toEqual(["a1+a2", "b1+b2", "c1+c2"]);

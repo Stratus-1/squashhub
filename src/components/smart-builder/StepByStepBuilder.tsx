@@ -89,6 +89,10 @@ export type StepAnswers = {
   periodEnd: string;
   unitEntries: Record<string, string>;
   stages: ClubStage[];
+  split: Record<string, ChampsSplit>;
+  /** Club Champs: common playoff dates across categories (true) or per category (false); null = not chosen. */
+  playoffSync: boolean | null;
+  syncCutoff: string;
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
@@ -118,13 +122,19 @@ const SEED_DESC: Record<SeedMethod, string> = {
 };
 /** Club Champs stage scheduling (planning only): play by a deadline, or a scheduled session with its own courts. */
 type StageMode = "play_by" | "scheduled" | "later";
-type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[] };
-const newStage = (name: string, mode: StageMode, unit = ""): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [] });
+type StagePhase = "main" | "playoff";
+type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; phase?: StagePhase };
+const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = "main"): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [], phase });
 const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0));
+/** Per category/subcategory: where main (qualifying) rounds end and the stage playoffs begin. Planning only. */
+type PlayoffStart = "qf" | "sf" | "final" | "custom" | "none" | "later";
+const START_LABEL: Record<PlayoffStart, string> = { qf: "Quarterfinals", sf: "Semifinals", final: "Final only", custom: "Custom stage", none: "No playoffs (finish on main rounds)", later: "Decide later" };
+type ChampsSplit = { mainEnd: string; start: PlayoffStart; custom: string };
+const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [] };
-type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Schedule" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [], split: {}, playoffSync: null, syncCutoff: "" };
+type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -283,10 +293,55 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
   const stageWhen = (s: ClubStage) => s.mode === "later" ? "Decide later" : s.mode === "play_by" ? `Play by ${s.deadline ? fmtDay(s.deadline) : "(deadline not set)"}` : `Scheduled ${s.date ? fmtDay(s.date) : "(date not set)"} ${s.from || "?"}–${s.to || "?"} · ${clubCourts.filter((c) => s.courtIds.includes(c.id)).map((c) => c.name).join(", ") || "no courts"}`;
+  const splitOf = (k: string): ChampsSplit => ({ ...DEFAULT_SPLIT, ...(a.split?.[k] ?? {}) });
+  const setSplit = (k: string, p: Partial<ChampsSplit>) => setA({ ...a, split: { ...(a.split ?? {}), [k]: { ...splitOf(k), ...p } } });
+  const splitText = (k: string) => { const sp = splitOf(k); return `Main rounds end: ${sp.mainEnd.trim() || "not set"} · Playoffs begin: ${sp.start === "custom" ? sp.custom || "custom (not named)" : START_LABEL[sp.start]}`; };
+  const mainStages = stages.filter((s) => (s.phase ?? "main") === "main");
+  const playoffStages = stages.filter((s) => s.phase === "playoff");
+  const suggestStages = () => {
+    const main = [newStage("Round 1", "play_by", "", "main"), newStage("Round 2", "play_by", "", "main")];
+    const starts = units.map((u) => splitOf(u.key).start);
+    const names = [...(starts.includes("qf") ? ["Quarterfinals"] : []), ...(starts.some((s) => s === "qf" || s === "sf") ? ["Semifinals"] : []), ...(starts.some((s) => s !== "none") ? ["Final"] : [])];
+    const po = a.playoffSync
+      ? names.map((n) => newStage(n, "later", "", "playoff"))
+      : units.flatMap((u) => { const s = splitOf(u.key).start; const own = s === "qf" ? ["Quarterfinals", "Semifinals", "Final"] : s === "sf" ? ["Semifinals", "Final"] : s === "final" ? ["Final"] : s === "custom" || s === "later" ? ["Playoffs"] : []; return own.map((n) => newStage(n, "later", u.key, "playoff")); });
+    setStages([...main, ...po]);
+  };
+  const renderStage = (s: ClubStage) => (
+    <div key={s.id} className={cn("space-y-2 rounded-lg border p-3", s.phase === "playoff" ? "border-primary/50" : "border-border")}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", s.phase === "playoff" ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.phase === "playoff" ? "Playoff" : "Main round"}</span>
+        <select aria-label="Stage applies to" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.unit} onChange={(e) => updStage(s.id, { unit: e.target.value })}>
+          <option value="">{s.phase === "playoff" && a.playoffSync ? "All categories (common date)" : "All categories"}</option>
+          {units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
+        </select>
+        <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
+        <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {(["play_by", "scheduled", "later"] as const).map((m) => <Button key={m} type="button" size="sm" variant={s.mode === m ? "default" : "outline"} aria-pressed={s.mode === m} onClick={() => updStage(s.id, { mode: m })}>{m === "play_by" ? "Play by a date" : m === "scheduled" ? "Play on scheduled date/time" : "Decide later"}</Button>)}
+      </div>
+      {s.mode === "play_by" && <div className="max-w-[220px] space-y-1"><Label>Deadline</Label><Input type="date" aria-label="Play-by deadline" value={s.deadline} onChange={(e) => updStage(s.id, { deadline: e.target.value })} /></div>}
+      {s.mode === "scheduled" && <div className="space-y-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1"><Label>Date</Label><Input type="date" aria-label="Scheduled date" value={s.date} onChange={(e) => updStage(s.id, { date: e.target.value })} /></div>
+          <div className="space-y-1"><Label>From</Label><Input type="time" aria-label="Session from" value={s.from} onChange={(e) => updStage(s.id, { from: e.target.value })} /></div>
+          <div className="space-y-1"><Label>To</Label><Input type="time" aria-label="Session to" value={s.to} onChange={(e) => updStage(s.id, { to: e.target.value })} /></div>
+        </div>
+        <Label>{s.phase === "playoff" && a.playoffSync && !s.unit ? "Courts reserved centrally for this date" : "Courts for this stage"}</Label>
+        {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
+          const on = s.courtIds.includes(c.id);
+          return <button key={c.id} type="button" aria-pressed={on} onClick={() => updStage(s.id, { courtIds: on ? s.courtIds.filter((x) => x !== c.id) : [...s.courtIds, c.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>{c.name}</button>;
+        })}</div>}
+      </div>}
+      {(a.periodStart && ((s.mode === "play_by" && s.deadline && (s.deadline < a.periodStart || s.deadline > a.periodEnd)) || (s.mode === "scheduled" && s.date && (s.date < a.periodStart || s.date > a.periodEnd)))) && <p className="text-xs text-muted-foreground">Note: this date is outside the championship period.</p>}
+      {s.phase === "playoff" && a.playoffSync && a.syncCutoff && ((s.mode === "scheduled" && s.date && s.date < a.syncCutoff) || (s.mode === "play_by" && s.deadline && s.deadline < a.syncCutoff)) && <p className="text-xs text-muted-foreground">Note: this playoff date is before the common qualifying cutoff.</p>}
+    </div>
+  );
   const unitEntriesOk = units.length > 0 && units.every((u) => Number(a.unitEntries?.[u.key]) > 0);
   const steps: StepKey[] = isChamps
     ? ["Type", "Basics", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Schedule", "Summary"]
+      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Split", "Schedule", "Summary"]
     : ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
       ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
@@ -300,7 +355,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
   const basicsOk = !!a.name?.trim() && !!a.periodStart && !!a.periodEnd && a.periodStart <= a.periodEnd;
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Schedule: stages.length > 0 && stages.every(stageOk), Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Split: units.every((u) => splitOf(u.key).start !== "custom" || !!splitOf(u.key).custom.trim()) && a.playoffSync !== null && a.playoffSync !== undefined && (!a.playoffSync || !!a.syncCutoff), Schedule: stages.length > 0 && stages.every(stageOk), Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -849,41 +904,57 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
+          {cur === "Split" && (
+            <>
+              <Q t="Where do main rounds end and playoffs begin?" h="Set this for each category or subcategory. Main (qualifying) rounds decide who goes through; playoffs decide the title." />
+              <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Provisional — revisited at the Final Format Review with actual entries. Different categories can start playoffs at different stages (e.g. a big league at quarterfinals, a small one at semifinals).</div>
+              <div className="space-y-3">{units.map((u) => {
+                const sp = splitOf(u.key);
+                return <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
+                  <div className="text-sm font-semibold">{u.label} <span className="font-normal text-muted-foreground">· {formatDetail(formatFor(u.key))}</span></div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1"><Label>Main rounds end</Label><Input aria-label={`Main rounds end for ${u.base}`} value={sp.mainEnd} onChange={(e) => setSplit(u.key, { mainEnd: e.target.value })} placeholder={formatFor(u.key).kind === "knockout" ? "e.g. After Round of 16" : "e.g. When pool play finishes"} /></div>
+                    <div className="space-y-1"><Label>Playoffs begin at</Label>
+                      <select aria-label={`Playoffs begin for ${u.base}`} className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={sp.start} onChange={(e) => setSplit(u.key, { start: e.target.value as PlayoffStart })}>
+                        {(Object.keys(START_LABEL) as PlayoffStart[]).map((k) => <option key={k} value={k}>{START_LABEL[k]}</option>)}
+                      </select></div>
+                  </div>
+                  {sp.start === "custom" && <Input aria-label={`Custom playoff start for ${u.base}`} className="max-w-[260px]" value={sp.custom} onChange={(e) => setSplit(u.key, { custom: e.target.value })} placeholder="e.g. Last 6 (top two get byes)" />}
+                </div>;
+              })}</div>
+              <div className="space-y-2 border-t border-border pt-4">
+                <div className="text-sm font-semibold">Should playoff stages be synchronised across the Club Championships?</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Choice active={a.playoffSync === true} onClick={() => setA({ ...a, playoffSync: true })} title="Yes — common playoff dates" desc="Categories play earlier rounds at their own pace but finish qualifying by a common cutoff, so all semifinals share one Semifinals Night and all finals one Finals Day, with courts reserved centrally." />
+                  <Choice active={a.playoffSync === false} onClick={() => setA({ ...a, playoffSync: false })} title="No — separately per category" desc="Each category gets its own playoff dates, deadlines, times and courts." />
+                </div>
+                {a.playoffSync && <div className="space-y-1">
+                  <div className="max-w-[240px] space-y-1"><Label>Qualifying rounds complete by (common cutoff)</Label><Input type="date" aria-label="Common qualifying cutoff" value={a.syncCutoff ?? ""} onChange={(e) => setA({ ...a, syncCutoff: e.target.value })} /></div>
+                  <p className="text-xs text-muted-foreground">Synchronised dates don't mean identical structures: a category starting at quarterfinals plays them before the common Semifinals Night. Categories that finish early simply wait for the common date.</p>
+                </div>}
+              </div>
+            </>
+          )}
+
           {cur === "Schedule" && (
             <>
-              <Q t="How will each stage be scheduled?" h="Add the stages for each category. Each stage can be played by a deadline or on a scheduled date — mix them as you like." />
-              <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Play by a date: players arrange and book their own match before the deadline — no courts are blocked. Scheduled: a set date, time window and courts for that category/stage. Categories progress independently, so one league can be in its semifinals while another is still in Round 1. Stage names are a plan; the real rounds come from the format you confirm after registrations close.</div>
-              {stages.length === 0 && <Button variant="outline" size="sm" onClick={() => setStages([newStage("Round 1", "play_by"), newStage("Round 2", "play_by"), newStage("Semifinals", "scheduled"), newStage("Final", "scheduled")])}>Suggest a starting plan (early rounds play-by, semis/final scheduled)</Button>}
-              <div className="space-y-3">{stages.map((s) => (
-                <div key={s.id} className="space-y-2 rounded-lg border border-border p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select aria-label="Stage applies to" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.unit} onChange={(e) => updStage(s.id, { unit: e.target.value })}>
-                      <option value="">All categories</option>
-                      {units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
-                    </select>
-                    <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
-                    <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(["play_by", "scheduled", "later"] as const).map((m) => <Button key={m} type="button" size="sm" variant={s.mode === m ? "default" : "outline"} aria-pressed={s.mode === m} onClick={() => updStage(s.id, { mode: m })}>{m === "play_by" ? "Play by a date" : m === "scheduled" ? "Play on a scheduled date/time" : "Decide later"}</Button>)}
-                  </div>
-                  {s.mode === "play_by" && <div className="max-w-[220px] space-y-1"><Label>Deadline</Label><Input type="date" aria-label="Play-by deadline" value={s.deadline} onChange={(e) => updStage(s.id, { deadline: e.target.value })} /></div>}
-                  {s.mode === "scheduled" && <div className="space-y-2">
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="space-y-1"><Label>Date</Label><Input type="date" aria-label="Scheduled date" value={s.date} onChange={(e) => updStage(s.id, { date: e.target.value })} /></div>
-                      <div className="space-y-1"><Label>From</Label><Input type="time" aria-label="Session from" value={s.from} onChange={(e) => updStage(s.id, { from: e.target.value })} /></div>
-                      <div className="space-y-1"><Label>To</Label><Input type="time" aria-label="Session to" value={s.to} onChange={(e) => updStage(s.id, { to: e.target.value })} /></div>
-                    </div>
-                    <Label>Courts for this stage</Label>
-                    {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
-                      const on = s.courtIds.includes(c.id);
-                      return <button key={c.id} type="button" aria-pressed={on} onClick={() => updStage(s.id, { courtIds: on ? s.courtIds.filter((x) => x !== c.id) : [...s.courtIds, c.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>{c.name}</button>;
-                    })}</div>}
-                  </div>}
-                  {(a.periodStart && ((s.mode === "play_by" && s.deadline && (s.deadline < a.periodStart || s.deadline > a.periodEnd)) || (s.mode === "scheduled" && s.date && (s.date < a.periodStart || s.date > a.periodEnd)))) && <p className="text-xs text-muted-foreground">Note: this date is outside the championship period.</p>}
-                </div>
-              ))}</div>
-              <Button variant="outline" size="sm" onClick={() => setStages([...stages, newStage(`Stage ${stages.length + 1}`, "play_by")])}><Plus className="mr-1 h-4 w-4" />Add stage</Button>
+              <Q t="How will each stage be scheduled?" h="Main rounds and playoffs are scheduled separately — choose each on its own." />
+              <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Play by a date: players arrange and book their own match before the deadline — no courts are blocked. Scheduled: a set date, time window and courts. Categories progress independently through main rounds. Stage names are a plan; the real rounds come from the format you confirm after registrations close.</div>
+              {stages.length === 0 && <Button variant="outline" size="sm" onClick={suggestStages}>Suggest a starting plan from your choices</Button>}
+              <div className="space-y-3">
+                <div className="text-sm font-semibold">Main rounds</div>
+                {mainStages.length === 0 && <p className="text-xs text-muted-foreground">No main rounds yet.</p>}
+                {mainStages.map(renderStage)}
+                <Button variant="outline" size="sm" onClick={() => setStages([...stages, newStage(`Round ${mainStages.length + 1}`, "play_by", "", "main")])}><Plus className="mr-1 h-4 w-4" />Add main round</Button>
+              </div>
+              <div className="rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">▼ Playoffs begin{a.playoffSync && a.syncCutoff ? ` · qualifying complete by ${fmtDay(a.syncCutoff)}` : ""}</div>
+              <div className="space-y-3">
+                <div className="text-sm font-semibold">Playoffs <span className="font-normal text-muted-foreground">· {a.playoffSync ? "common dates for all categories" : a.playoffSync === false ? "per category" : "synchronisation not chosen"}</span></div>
+                <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
+                {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
+                {playoffStages.map(renderStage)}
+                <Button variant="outline" size="sm" onClick={() => setStages([...stages, newStage("Playoff stage", "later", "", "playoff")])}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
+              </div>
               {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
             </>
           )}
@@ -984,6 +1055,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may enter the pair: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></li><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>
+              {isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Main rounds → playoffs (provisional)" onEdit={() => go("Split")}>
+                <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{splitText(u.key)}</span></li>)}</ul>
+                <div>Playoff dates: <span className="text-muted-foreground">{a.playoffSync === null || a.playoffSync === undefined ? "Not chosen" : a.playoffSync ? `Synchronised across the championships${a.syncCutoff ? ` · qualifying rounds complete by ${fmtDay(a.syncCutoff)}` : ""}` : "Scheduled separately per category"}</span></div>
+              </SummaryRow>}
               {isChamps && <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Stage plan (provisional)" onEdit={() => go("Schedule")}>
                 <StageTable stages={stages} unitName={stageUnit} when={stageWhen} />
                 <span className="text-xs text-muted-foreground">Deadlines and sessions attach to real fixtures only after the Final Format Review. Each category progresses on its own.</span>
@@ -1222,6 +1297,11 @@ function DiscPick({ value, onChange }: { value?: Disc; onChange: (d: Disc) => vo
 }
 function StageTable({ stages, unitName, when }: { stages: ClubStage[]; unitName: (k: string) => string; when: (s: ClubStage) => string }) {
   if (!stages.length) return <p className="text-xs text-muted-foreground">No stages yet.</p>;
-  return <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Stage</th><th className="py-1">Method · deadline or session</th></tr></thead>
-    <tbody>{stages.map((s) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1">{when(s)}</td></tr>)}</tbody></table>;
+  const main = stages.filter((s) => (s.phase ?? "main") === "main");
+  const po = stages.filter((s) => s.phase === "playoff");
+  const row = (s: ClubStage) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{s.phase === "playoff" ? "Playoff" : "Main round"}</td><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1">{when(s)}</td></tr>;
+  return <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Phase</th><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Stage</th><th className="py-1">Method · deadline or date/time · courts</th></tr></thead>
+    <tbody>{main.map(row)}
+      {po.length > 0 && <tr><td colSpan={4} className="py-1.5"><div className="rounded bg-primary/10 px-2 py-1 text-center font-semibold text-primary">▼ Playoffs begin</div></td></tr>}
+      {po.map(row)}</tbody></table>;
 }

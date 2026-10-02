@@ -114,7 +114,15 @@ describe("Step-by-Step generate draw", () => {
     expect(previewDraw("T", d, { start: null, end: null }).total).toBe(0);
   });
   it("two play-by rounds stay separate: rounds split across both dates, never collapsed to the last", () => {
-    const two = { ...fmt.schedule, deadlines: ["2026-10-12", "2026-10-19"], upto: [null] };
+    const strict = { ...fmt.schedule, deadlines: ["2026-10-12", "2026-10-19"], upto: [null] };
+    // Fewer play-by rounds than the structure needs blocks unless the organiser explicitly allows sharing.
+    expect(roundDeadlines(strict, 5).error).toMatch(/requires 5 rounds, but only 2 .*Add at least 3 more/);
+    const blocked = previewDraw("T", divs().map((x) => ({ ...x, format: { ...fmt, schedule: strict } })), { start: "2026-10-08", end: null });
+    expect(blocked.total).toBe(0);
+    expect(blocked.errors.join()).toMatch(/requires 5 rounds/);
+    expect(blocked.roundsByGroup[1]).toBe(5);
+    expect(roundDeadlines({ ...strict, deadlines: ["a", "b", "c", "d", "e"], upto: [null, null, null, null] }, 5).dates).toEqual(["a", "b", "c", "d", "e"]);
+    const two = { ...strict, share: true };
     expect(roundDeadlines(two, 5).dates).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
     expect(roundDeadlines({ ...two, upto: [2] }, 5).dates).toEqual(["2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19", "2026-10-19"]);
     expect(roundDeadlines({ ...two, deadlines: ["a", "b", "c"], upto: [null, null] }, 2).error).toMatch(/only 2 rounds/);

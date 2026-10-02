@@ -214,7 +214,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const seedOf = new Map(d.units.map((u, k) => [unitId(u), k]));
     const groups = pools ?? [d.units.map(unitId)];
     const isPools = d.format.kind === "pools";
-    const title = (pi: number) => isPools ? `Pool ${String.fromCharCode(65 + pi)}` : d.format.kind === "cross" ? `${d.label} (plays the other selected groups)` : d.format.kind === "round_robin" ? "Round robin (one group)" : "Seed order";
+    const title = (pi: number) => isPools ? `Pool ${String.fromCharCode(65 + pi)}` : d.format.kind === "cross" ? (rrScope(d) === "between" ? "Seed order" : `${d.label} (plays the other selected groups)`) : d.format.kind === "round_robin" ? "Round robin (one group)" : "Seed order";
     return (
       <div className="space-y-2" aria-label={`Pools and seeds for ${d.label}`}>
         <div className={isPools ? "grid gap-2 sm:grid-cols-2" : ""}>
@@ -306,28 +306,29 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       <p className="text-muted-foreground">Only current active entries are used; replaced or withdrawn players are left out. Outstanding fees don't exclude anyone because entries here are confirmed without payment. Doubles pairs are kept exactly as you paired them.</p>
 
       {seeded.map((d, i) => {
-        const issues = divisionIssues(d);
+        const fam = rrScope(d) === "between" ? [d, ...seeded.filter((o) => siblings(d).includes(o.group))] : [d];
+        const block = fam.length > 1 && fam.every((o) => rrScope(o) === "between");
+        if (block && fam.some((o) => seeded.indexOf(o) < i)) return null; // rendered with the first subcategory
+        const targets = fam.map((o) => seeded.indexOf(o));
+        const apply = (patch: Partial<DivFormat>) => (block ? targets : [i]).forEach((j) => setFmt(j, patch));
+        const applySch = (patch: Partial<DivSchedule>) => apply({ schedule: { ...d.format.schedule, ...patch } });
+        const issues = block ? [...new Set(fam.flatMap((o) => divisionIssues(o)))] : divisionIssues(d);
         const f = d.format;
-        return (
-          <div key={d.group} className="rounded border border-border p-2 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold">{d.label}</span>
-              <button type="button" className="text-primary underline" onClick={() => setShowPairs(showPairs === i ? null : i)} aria-expanded={showPairs !== i}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "show pools & seeds" : "hide pools & seeds"}</button>
-            </div>
-            {showPairs !== i && d.units.length > 0 && poolEditor(d)}
+        const controls = (
+          <>
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="space-y-0.5"><span className="text-muted-foreground">Format</span>
-                <select className="w-full rounded border border-input bg-background p-1" value={f.kind ?? ""} onChange={(e) => setFmt(i, { kind: (e.target.value || null) as DrawKind | null })}>
+                <select className="w-full rounded border border-input bg-background p-1" value={f.kind ?? ""} onChange={(e) => apply({ kind: (e.target.value || null) as DrawKind | null })}>
                   <option value="">Choose…</option>{(Object.keys(KIND_LABEL) as DrawKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
                 </select></label>
-              {f.kind === "pools" && <label className="space-y-0.5"><span className="text-muted-foreground">Number of pools</span><Input type="number" min={2} className="h-7" value={f.pools} onChange={(e) => setFmt(i, { pools: Number(e.target.value) || 1 })} /></label>}
-              {f.kind === "swiss" && <label className="space-y-0.5"><span className="text-muted-foreground">Swiss rounds</span><Input type="number" min={1} className="h-7" value={f.swissRounds} onChange={(e) => setFmt(i, { swissRounds: Number(e.target.value) || 0 })} /></label>}
+              {f.kind === "pools" && <label className="space-y-0.5"><span className="text-muted-foreground">Number of pools</span><Input type="number" min={2} className="h-7" value={f.pools} onChange={(e) => apply({ pools: Number(e.target.value) || 1 })} /></label>}
+              {f.kind === "swiss" && <label className="space-y-0.5"><span className="text-muted-foreground">Swiss rounds</span><Input type="number" min={1} className="h-7" value={f.swissRounds} onChange={(e) => apply({ swissRounds: Number(e.target.value) || 0 })} /></label>}
               <label className="space-y-0.5"><span className="text-muted-foreground">Seeding</span>
-                <select className="w-full rounded border border-input bg-background p-1" value={f.seeding} onChange={(e) => setFmt(i, { seeding: e.target.value as DrawSeeding })}>
+                <select className="w-full rounded border border-input bg-background p-1" value={f.seeding} onChange={(e) => apply({ seeding: e.target.value as DrawSeeding })}>
                   {(Object.keys(SEED_LABEL) as DrawSeeding[]).map((k) => <option key={k} value={k}>{SEED_LABEL[k]}</option>)}
                 </select></label>
               <label className="space-y-0.5"><span className="text-muted-foreground">When games are played</span>
-                <select className="w-full rounded border border-input bg-background p-1" value={f.schedule.rule ?? ""} onChange={(e) => setFmt(i, { schedule: { ...f.schedule, rule: (e.target.value || null) as any } })}>
+                <select className="w-full rounded border border-input bg-background p-1" value={f.schedule.rule ?? ""} onChange={(e) => apply({ schedule: { ...f.schedule, rule: (e.target.value || null) as any } })}>
                   <option value="">Choose…</option><option value="play_by">Play by a date (players arrange)</option><option value="fixed">Fixed match date(s)</option>
                 </select></label>
               {f.schedule.rule === "play_by" && (
@@ -335,15 +336,25 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                   <span className="text-muted-foreground">Play-by rounds{f.schedule.deadlines.length > 1 ? " — later dates cover the later rounds" : ""}</span>
                   {(f.schedule.deadlines.length ? f.schedule.deadlines : [""]).map((dl, k, arr) => (
                     <div key={k} className="flex flex-wrap items-center gap-2">
-                      <Input type="date" aria-label={`Play-by date ${k + 1}`} className="h-7 w-40" value={dl} onChange={(e) => { const ds = [...arr]; ds[k] = e.target.value; setSch(i, { deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }} />
-                      {k < arr.length - 1 && <label className="flex items-center gap-1">games up to round <Input type="number" min={1} aria-label={`Last round due by date ${k + 1}`} className="h-7 w-16" placeholder="auto" value={f.schedule.upto[k] ?? ""} onChange={(e) => { const up = [...f.schedule.upto]; up[k] = e.target.value ? Number(e.target.value) : null; setSch(i, { upto: up }); }} /></label>}
-                      {arr.length > 1 && <button type="button" className="text-destructive underline" onClick={() => { const ds = arr.filter((_, j) => j !== k); setSch(i, { deadlines: ds, upto: ds.slice(1).map(() => null) }); }}>remove</button>}
+                      <Input type="date" aria-label={`Play-by date ${k + 1}`} className="h-7 w-40" value={dl} onChange={(e) => { const ds = [...arr]; ds[k] = e.target.value; applySch({ deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }} />
+                      {k < arr.length - 1 && <label className="flex items-center gap-1">games up to round <Input type="number" min={1} aria-label={`Last round due by date ${k + 1}`} className="h-7 w-16" placeholder="auto" value={f.schedule.upto[k] ?? ""} onChange={(e) => { const up = [...f.schedule.upto]; up[k] = e.target.value ? Number(e.target.value) : null; applySch({ upto: up }); }} /></label>}
+                      {arr.length > 1 && <button type="button" className="text-destructive underline" onClick={() => { const ds = arr.filter((_, j) => j !== k); applySch({ deadlines: ds, upto: ds.slice(1).map(() => null) }); }}>remove</button>}
                     </div>
                   ))}
-                  <button type="button" className="text-primary underline" onClick={() => { const ds = [...f.schedule.deadlines, ""]; setSch(i, { deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }}>+ add a play-by round</button>
+                  <button type="button" className="text-primary underline" onClick={() => { const ds = [...f.schedule.deadlines, ""]; applySch({ deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }}>+ add a play-by round</button>
                 </div>
               )}
-              {f.schedule.rule === "fixed" && <label className="space-y-0.5"><span className="text-muted-foreground">Round dates (comma-separated)</span><Input className="h-7" placeholder="2026-10-10, 2026-10-17" value={f.schedule.dates.join(", ")} onChange={(e) => setFmt(i, { schedule: { ...f.schedule, dates: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })} /></label>}
+              {f.schedule.rule === "play_by" && (() => {
+                const need = preview?.roundsByGroup[d.group];
+                const have = f.schedule.deadlines.filter(Boolean).length;
+                return (
+                  <div className="space-y-1 sm:col-span-3">
+                    {need != null && <span className={have > 1 && have < need && !f.schedule.share ? "font-medium text-destructive" : "text-muted-foreground"}>This structure needs {need} round{need === 1 ? "" : "s"}; {have} play-by date{have === 1 ? "" : "s"} set{have === 1 ? " (one date for all games)" : ""}.</span>}
+                    {have > 1 && <label className="flex items-center gap-2"><Checkbox checked={!!f.schedule.share} onCheckedChange={(v) => applySch({ share: !!v })} /><span>Let several rounds share a play-by date (choose "games up to round" for each date)</span></label>}
+                  </div>
+                );
+              })()}
+              {f.schedule.rule === "fixed" && <label className="space-y-0.5"><span className="text-muted-foreground">Round dates (comma-separated)</span><Input className="h-7" placeholder="2026-10-10, 2026-10-17" value={f.schedule.dates.join(", ")} onChange={(e) => apply({ schedule: { ...f.schedule, dates: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })} /></label>}
             </div>
             {(f.kind === "cross" || f.kind === "round_robin") && (
               <div className="space-y-1" role="radiogroup" aria-label={`${d.label} round robin matchups`}>
@@ -368,7 +379,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                   return <Button key={o.group} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => {
                     if (f.crossVs) { togglePairing(i, o.group, !on); return; }
                     const next = on ? f.crossGroups.filter((g) => g !== o.group) : [...new Set([...f.crossGroups, d.group, o.group])];
-                    setFmt(i, { crossGroups: next.length < 2 ? [] : next.sort((a, b) => a - b) });
+                    apply({ crossGroups: next.length < 2 ? [] : next.sort((a, b) => a - b) });
                   }}>{f.crossVs ? `v ${o.label}` : o.label}</Button>;
                 })}</div>
               </div>
@@ -376,6 +387,44 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             {d.playoffs.length > 0 && <p className="text-muted-foreground">Planned play-offs: {d.playoffs.join(" → ")} — kept as "Define later", created after this stage finishes.</p>}
             {d.notes.map((n) => <p key={n} className="text-muted-foreground">• {n}</p>)}
             {issues.length > 0 && <p className="text-destructive">Fix: {issues.join(" · ")}</p>}
+          </>
+        );
+        const shared = block ? preview?.divisions.find((p) => p.groups.includes(d.group)) : null;
+        if (block) return (
+          <div key={d.group} className="rounded border border-primary/40 p-2 space-y-2" aria-label={`${unitParentOf(d.label)} between subcategories`}>
+            <div className="font-semibold">{unitParentOf(d.label).toUpperCase()} — Between subcategories</div>
+            <div className="flex flex-col gap-2 md:flex-row md:items-stretch">
+              {fam.map((o, k) => (
+                <div key={o.group} className="contents">
+                  {k > 0 && <div className="flex items-center justify-center font-bold text-primary md:px-1" aria-hidden="true">VS</div>}
+                  <div className="flex-1 min-w-0 rounded border border-border p-1.5 space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-semibold">{o.label}</span>
+                      <span className="text-muted-foreground">{o.units.length} {o.doubles ? "pairs" : "players"}{k > 0 ? ` · plays ${fam[0].label}` : ""}</span>
+                    </div>
+                    {o.units.length > 0 && poolEditor(o)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {shared && (
+              <div className="rounded bg-muted/40 p-1.5">
+                <div className="font-medium">Shared rounds — {shared.games} games over {shared.rounds} round{shared.rounds === 1 ? "" : "s"}</div>
+                <ul className="grid gap-0.5 sm:grid-cols-2 lg:grid-cols-3">{shared.perRound.map((r) => <li key={r.round}>Round {r.round}: {r.games} games{r.date ? ` · play by ${r.date}` : ""}</li>)}</ul>
+              </div>
+            )}
+            <p className="text-muted-foreground">Settings below apply to {fam.map((o) => o.label).join(" and ")} together.</p>
+            {controls}
+          </div>
+        );
+        return (
+          <div key={d.group} className="rounded border border-border p-2 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold">{d.label}</span>
+              <button type="button" className="text-primary underline" onClick={() => setShowPairs(showPairs === i ? null : i)} aria-expanded={showPairs !== i}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "show pools & seeds" : "hide pools & seeds"}</button>
+            </div>
+            {showPairs !== i && d.units.length > 0 && poolEditor(d)}
+            {controls}
           </div>
         );
       })}

@@ -72,7 +72,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(top.textContent).toMatch(/Must be decided before players are contacted \(0\)/);
     expect(top.textContent).toMatch(/Can stay "Decide later" for now \(2\)/);
     expect(screen.getByTestId("handover-bottom")).toBeInTheDocument();
-    expect(screen.getByText(/WhatsApp group: configured · join link included in messages/)).toBeInTheDocument();
+    expect(screen.getByText(/WhatsApp group: group link configured · join link included in messages/)).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: /Complete setup & continue/ })[0]);
 

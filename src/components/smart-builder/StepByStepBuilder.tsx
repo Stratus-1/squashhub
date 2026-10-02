@@ -1,4 +1,11 @@
-import { normaliseGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
+/** Lenient WhatsApp group invite check: chat.whatsapp.com/<code> or /invite/<code>, with or without https/www, any query string. */
+const normaliseGroupInviteUrl = (raw: string) => {
+  let v = raw.trim().replace(/[.,;)\]]+$/, "");
+  if (!v) return null;
+  if (!/^https?:\/\//i.test(v)) v = `https://${v}`;
+  v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
+  return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
+};
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1018,7 +1025,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                   </div>
                   <div className="space-y-2 rounded-md border p-3">
                     <Label className="text-sm">Tournament WhatsApp group</Label>
-                    <p className="text-[11px] text-muted-foreground">Optional. Create the group on your phone and paste its invite link — SquashHub doesn't create groups. This is a link inside your messages, not a way of sending them.</p>
+                    <p className="text-[11px] text-muted-foreground">Optional. Entrants can use the link to join the tournament's WhatsApp group for updates. Create the group on your phone and paste its invite link — SquashHub doesn't create groups, and the link goes inside your messages; it isn't a way of sending them.</p>
                     <div className="flex flex-wrap gap-1">{([[false, "No WhatsApp group"], [true, "Use a WhatsApp group"]] as const).map(([v, l]) => (
                       <button key={l} type="button" aria-pressed={wa.use === v} onClick={() => setWa({ use: v })}
                         className={cn("rounded-full border px-3 py-1 text-xs", wa.use === v ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border")}>{l}</button>))}</div>
@@ -1027,7 +1034,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                       <Input id="sbs-wa" placeholder="https://chat.whatsapp.com/…" value={wa.url} onChange={(e) => setWa({ url: e.target.value })} />
                       {wa.url.trim() && !waUrl && <p className="text-xs text-destructive">That doesn't look like a WhatsApp group invite link. In WhatsApp open the group, tap "Invite via link", copy it and paste it here — it starts with https://chat.whatsapp.com/</p>}
                       {!wa.url.trim() && <p className="text-xs text-destructive">Paste the group's invite link, or choose "No WhatsApp group".</p>}
-                      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={wa.include} onChange={(e) => setWa({ include: e.target.checked })} />Include the WhatsApp group link in player {notifyOnly ? "participation notifications" : "invitations"}</label>
+                      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={wa.include} onChange={(e) => setWa({ include: e.target.checked })} />Include group link in player {notifyOnly ? "participation notification" : "invitation"}</label>
                     </div>}
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setMsg({ later: true })}>Configure later</Button>
@@ -1421,7 +1428,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                 ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
-              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div></SummaryRow>}
+              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `group link configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div></SummaryRow>}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}

@@ -4,9 +4,7 @@ Multi-tenant squash operations platform (clubs, associations, federation, member
 
 - Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
 - Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/AGENTS.md` (Help Center feed).
-- Step-by-Step Beta match scoring is device-local, with tournament default and category/subcategory overrides resolved only for planning; why: guided choices must not alter live competition rules before creation is supported.
-- Step-by-Step Beta planned competition format (pools/knockout/swiss/cross-league/later) is device-local and provisional with category/subcategory overrides; playoffs derive from it and a "Confirm final format" checkpoint is required before any generation; why: format must never be fixed before real entries are known.
-- Step-by-Step Beta seeding plan and the Club Champs branch (basics, per-group expected entries, start date only (end = last planned stage), a single Stages & scheduling timeline holding the playoff synchronisation choice and per-stage play-by/scheduled plan, with the rounds-to-playoffs transition inferred from stage order) reuse the same answers object and shared steps, never a separate engine; seeds, stages and fixtures are only attached after the post-registration Final Format Review; why: one source of truth, and categories progress independently.
+- Step-by-Step Beta rules: see `src/components/smart-builder/AGENTS.md`.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
 - Commands: `npm run dev|test|lint|build|cap:sync`. Don't open native IDEs unless needed; review `cap:sync` output before committing.
 
@@ -31,5 +29,3 @@ Multi-tenant squash operations platform (clubs, associations, federation, member
 
 ## Done checklist
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
-- Step-by-Step Beta accepted payment methods derive from the host club's Banking settings via `src/lib/smart-builder/payment-options.ts` (map 1:1 to `tournaments.payment_methods`), and its "Book courts now" writes idempotent `bookings` rows (`external_id` `sbs:<planId>:…`, clashes skipped) via `src/lib/smart-builder/stage-bookings.ts`; why: never offer a method the club can't accept, never double-book.
-- Step-by-Step Beta handover: Summary's "Complete setup & continue" creates/updates the tournament via the `club_champs` insert (`src/lib/smart-builder/step-handover.ts`), enters admin-picked players as `club_champs_registrations` (never paid by selection), and stores lifecycle stage + deferred "Decide later" items device-local for `StepTournamentManagement`; why: no schema change while the Beta is on trial, and re-saving must never duplicate the tournament.

@@ -92,6 +92,8 @@ export type StepAnswers = {
   partner: Record<string, Partner>;
   /** Whether one player may register their partner (where players choose partners). */
   doublesEntry: boolean | null;
+  /** Admin-formed pairs per doubles unit key (only where the admin selects players and assigns partners). */
+  pairs?: Record<string, [string, string][]>;
   fee: FeeCfg;
   /** Default and category/subcategory exceptions; guidance only, not a generated bracket. */
   playoff: PlayoffPlan;
@@ -214,6 +216,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
+  /** First player tapped while forming a pair, per doubles unit (UI-only). */
+  const [pairDraft, setPairDraft] = useState<Record<string, string>>({});
   useEffect(() => {
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;
@@ -328,6 +332,16 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const anyManual = units.some((u) => eligOf(u.key).mode === "manual");
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
+  /** Admin selects AND assigns partners: pairing happens on the Pick step itself. */
+  const adminPairUnits = showPick ? dblUnits.filter((u) => partnerOf(u.key) === "admin") : [];
+  const adminPairKeys = new Set(adminPairUnits.map((u) => u.key));
+  const pairMode = adminPairUnits.length > 0;
+  /** Only pairs whose both players are still picked into that group count. */
+  const pairsFor = (k: string): [string, string][] => (a.pairs?.[k] ?? []).filter(([x, y]) => a.picks[x] === k && a.picks[y] === k);
+  const unpairedIn = (k: string) => { const used = new Set(pairsFor(k).flat()); return pickIds.filter((id) => a.picks[id] === k && !used.has(id)); };
+  const setPairs = (k: string, p: [string, string][]) => setA({ ...a, pairs: { ...(a.pairs ?? {}), [k]: p } });
+  /** Competitive entries: a pair counts once in admin-paired doubles groups. */
+  const entryCount = pickIds.filter((id) => !adminPairKeys.has(a.picks[id])).length + adminPairUnits.reduce((n, u) => n + pairsFor(u.key).length + unpairedIn(u.key).length, 0);
 
   const defaultMsg = [
     "Hi {{first_name}},",
@@ -433,7 +447,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
-  const pickOk = a.source === "select" ? pickIds.length > 0 : true;
+  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0);
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
@@ -448,7 +462,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   /** Exact field when the organiser picked everyone; otherwise the estimate (provisional). */
   const knownField = a.source === "select" && pickIds.length > 0;
   const champsEstimate = units.reduce((n, u) => n + (Number(a.unitEntries?.[u.key]) || 0), 0);
-  const fieldCount = knownField ? pickIds.length : isChamps ? champsEstimate : Number(a.entries) || 0;
+  const fieldCount = knownField ? entryCount : isChamps ? champsEstimate : Number(a.entries) || 0;
   const courtHours = a.days.reduce((t, d) => t + (Number(d.courts) || 0) * d.windows.reduce((h, w) => {
     if (!w.from || !w.to || w.from >= w.to) return h;
     const [fh, fm] = w.from.split(":").map(Number); const [th, tm] = w.to.split(":").map(Number);
@@ -505,7 +519,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   i > reached && "opacity-50",
                 )}
               >
-                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {STEP_LABEL[s]}
+                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {s === "Pick" && pairMode ? "Select & pair players" : STEP_LABEL[s]}
               </button>
             </li>
           ))}
@@ -690,10 +704,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
           {cur === "Pick" && (
             <>
-              <Q t="Pick your players" h="Tap a member to add them, then choose where each one plays." />
-              {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
+              <Q t={pairMode ? "Select & pair your players" : "Pick your players"} h={pairMode ? "Tap a member to add them and choose where they play. In doubles groups where you assign partners, pair them up right here." : "Tap a member to add them, then choose where each one plays."} />
+              {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}{pairMode ? ` (${entryCount} entr${entryCount === 1 ? "y" : "ies"} — each pair counts as one)` : ""}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
               {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible members can still enter themselves, so the total stays provisional until entries close.</div>}
-              {units.some((u) => u.disc === "doubles") && <div className="text-xs text-muted-foreground">Doubles groups take players who will be paired up — partners are matched later. A player placed in a Singles group is not counted as a doubles entry.</div>}
+              {units.some((u) => u.disc === "doubles" && !adminPairKeys.has(u.key)) && <div className="text-xs text-muted-foreground">{pairMode ? "In doubles groups where players choose their own partner, picked players are paired by the players themselves." : "Doubles groups take players who will be paired up — partners are matched later."} A player placed in a Singles group is not counted as a doubles entry.</div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
               {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).length;
                 return <div className="text-xs text-muted-foreground">{n} of {members.length} members available{q ? " matching your search" : ""}</div>; })()}
@@ -722,6 +736,32 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   ))}
                 </div>
               )}
+              {adminPairUnits.map((u) => {
+                const unpaired = unpairedIn(u.key); const prs = pairsFor(u.key); const first = pairDraft[u.key] ?? "";
+                if (!prs.length && !unpaired.length) return null;
+                return (
+                  <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
+                    <Label>Pairs — {u.label}</Label>
+                    {prs.length > 0 && <ul className="space-y-1">{prs.map(([x, y]) => (
+                      <li key={x + y} className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs">
+                        <span className="flex-1">{memberName(x)} &amp; {memberName(y)}</span>
+                        <Button variant="ghost" size="icon" aria-label="Split pair" onClick={() => setPairs(u.key, prs.filter((p) => p[0] !== x))}><Trash2 className="h-4 w-4" /></Button>
+                      </li>))}</ul>}
+                    {unpaired.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-xs text-muted-foreground">{first ? `Now tap ${memberName(first)}'s partner:` : "Not paired yet — tap two players to pair them:"}</div>
+                        <div className="flex flex-wrap gap-1.5">{unpaired.map((id) => (
+                          <button key={id} type="button" onClick={() => {
+                            if (!first) return setPairDraft({ ...pairDraft, [u.key]: id });
+                            if (first === id) return setPairDraft({ ...pairDraft, [u.key]: "" });
+                            setPairDraft({ ...pairDraft, [u.key]: "" }); setPairs(u.key, [...prs, [first, id]]);
+                          }} className={cn("rounded-full border px-2.5 py-1 text-xs", first === id ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>{memberName(id)}</button>))}</div>
+                        <div className="text-xs text-destructive">{unpaired.length} player{unpaired.length === 1 ? " is" : "s are"} not paired yet. Every player in this group needs a partner before you can continue.</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </>
           )}
 
@@ -1065,7 +1105,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               </div>}
               <div className="rounded-lg border border-accent bg-accent/30 p-3 text-sm">
                 <div className="flex items-center gap-1.5 font-semibold"><Lightbulb className="h-4 w-4 text-primary" />SquashHub Tip <span className="text-xs font-normal text-muted-foreground">(advice only{provisional ? " · provisional" : ""})</span></div>
-                <p className="mt-1">{knownField ? `${pickIds.length} selected players${provisional ? " (some are not placed yet)" : ""}` : `${fieldCount || "No"} estimated entries${pickIds.length ? `, including ${pickIds.length} picked so far` : ""}`} across {units.length} group{units.length === 1 ? "" : "s"}.</p>
+                <p className="mt-1">{knownField ? `${entryCount} selected ${pairMode ? "entries (pairs count as one)" : "players"}${provisional ? " (some are not placed yet)" : ""}` : `${fieldCount || "No"} estimated entries${pickIds.length ? `, including ${pickIds.length} picked so far` : ""}`} across {units.length} group{units.length === 1 ? "" : "s"}.</p>
                 {units.filter((u) => playoffActive(u.key)).map((u) => {
                   const p = playoffFor(u.key); const picked = groupCount(u.key);
                   const count = knownField && !provisional ? picked : units.length === 1 ? fieldCount : null;
@@ -1130,8 +1170,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label="Who may enter" onEdit={() => go("Eligibility")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{eligText(u.key)}</span></li>)}</ul>
               </SummaryRow>
-              {pickIds.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label="Picked players" onEdit={() => go("Pick")}>
-                <ul className="space-y-0.5">{pickIds.map((id) => <li key={id}>{memberName(id)} <span className="text-muted-foreground">— {unitLabel(a.picks[id])}</span></li>)}</ul>
+              {pickIds.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label={pairMode ? "Selected & paired players" : "Picked players"} onEdit={() => go("Pick")}>
+                <ul className="space-y-0.5">{pickIds.filter((id) => !adminPairKeys.has(a.picks[id])).map((id) => <li key={id}>{memberName(id)} <span className="text-muted-foreground">— {unitLabel(a.picks[id])}</span></li>)}</ul>
+                {adminPairUnits.map((u) => pairsFor(u.key).length > 0 || unpairedIn(u.key).length > 0 ? (
+                  <ul key={u.key} className="mt-1 space-y-0.5">
+                    {pairsFor(u.key).map(([x, y]) => <li key={x + y}>{memberName(x)} &amp; {memberName(y)} <span className="text-muted-foreground">— {u.label} (pair)</span></li>)}
+                    {unpairedIn(u.key).map((id) => <li key={id} className="text-destructive">{memberName(id)} — {u.label}: not paired yet</li>)}
+                  </ul>
+                ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
               {selfEntry && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label="Messaging" onEdit={() => go("Messaging")}>{(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`} <span className="text-muted-foreground">· setup only, not sent</span></SummaryRow>}

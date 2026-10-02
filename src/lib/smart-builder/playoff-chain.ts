@@ -61,7 +61,7 @@ function scheduleOf(p: PlannedPlayoff): PlannedStage["schedule"] | null {
  * Build the predefined play-off stages that follow `main`. `forceConfirm` keeps owner confirmation for
  * tournaments whose setup never chose a trigger (historical "Decide later").
  */
-export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean } = {}): ChainResult {
+export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null } = {}): ChainResult {
   const notes: string[] = [];
   if (!planned.length) return { stages: [], reason: null, notes };
   if (planned.length > 3) return { stages: [], reason: "More than three play-off stages can't be mapped automatically.", notes };
@@ -75,7 +75,26 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
   const g = 2 ** (planned.length - 1);
   const pairing = first.plan.pairing ?? "later";
   let games: Array<[[number, number], [number, number]]>;
-  if (pools === 2 && pairing === "crossover") games = crossoverPairs(g);
+  const q = opts.qualifiers ?? null;
+  if (q && q.runnersUp > 0) return { stages: [], reason: `${first.name}: "best runners-up" can't be mapped automatically yet — set the play-off up when the pools finish, or set best runners-up to 0.`, notes };
+  if (q?.perPool && pools > 1 && q.perPool * pools !== 2 * g) return { stages: [], reason: `${first.name} needs ${2 * g} qualifiers, but ${q.perPool} from each of ${pools} pools gives ${q.perPool * pools}. Change the qualifiers per pool or the play-off stages.`, notes };
+  if (pools > 2) {
+    // Any number of pools: qualifiers per pool = explicit, else derived when it divides evenly.
+    const per = q?.perPool ?? ((2 * g) % pools === 0 ? (2 * g) / pools : 0);
+    if (!per) return { stages: [], reason: `${first.name}: ${pools} pools can't fill ${2 * g} play-off places evenly — set "qualifiers from each pool" (and best runners-up) in Pool structure.`, notes };
+    if (pairing === "crossover" && per === 2) {
+      // Pool winner v the next pool's runner-up (A1 v B2, B1 v C2 … last pool's winner v A2).
+      games = Array.from({ length: pools }, (_, p) => [[p, 1], [(p + 1) % pools, 2]] as [[number, number], [number, number]]);
+    } else if (pairing === "seeded" || pairing === "crossover") {
+      // Highest qualifier v lowest: rank all pool winners first (A1, B1, C1 …), then runners-up, etc.
+      if (pairing === "crossover") notes.push(`${first.name}: crossover with ${per} qualifiers per pool — seeded highest v lowest is used.`);
+      const order: Array<[number, number]> = [];
+      for (let pos = 1; pos <= per; pos++) for (let p = 0; p < pools; p++) order.push([p, pos]);
+      games = seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]]);
+    } else if (pairing === "later" || pairing === "winners") return { stages: [], reason: `${first.name}: choose who plays whom (pairing) in Stages & Scheduling.`, notes };
+    else return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} pools can't be mapped automatically — use crossover or seeded.`, notes };
+  }
+  else if (pools === 2 && pairing === "crossover") games = crossoverPairs(g);
   else if (pools === 2 && pairing === "same_position") games = Array.from({ length: g }, (_, i) => [[0, i + 1], [1, i + 1]] as [[number, number], [number, number]]);
   else if (pools === 1 && (pairing === "seeded" || pairing === "crossover" || pairing === "same_position")) {
     if (pairing !== "seeded") notes.push(`${first.name}: one group only — seeded 1 v ${2 * g} pairing is used.`);

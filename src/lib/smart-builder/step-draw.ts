@@ -40,7 +40,9 @@ export type DrawDivision = { group: number; label: string; doubles: boolean; uni
   /** Pool rule review from the actual entrants (Step setup "Pool structure"). */
   poolReview?: PoolReview | null;
   /** Organiser accepted/adjusted the pools ("Decide after entries close" needs this before generating). */
-  poolAccepted?: boolean };
+  poolAccepted?: boolean;
+  /** Play-off qualifiers from the pool rule: per pool (null = derived) and best runners-up. */
+  poolQualifiers?: { perPool: number | null; runnersUp: number } | null };
 
 const INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 export const unitId = (u: DrawUnit) => (u.partner ? `${u.member}+${u.partner}` : u.member);
@@ -165,10 +167,10 @@ const playoffAnswer = (plan: Plan | null, label: string) => {
  * Planned play-offs as REAL predefined stages (progression runs them; Final ← Semifinal winners) when the
  * plan is complete; otherwise the "Define later" stages as before, set up when the main stage finishes.
  */
-export function playoffStagesFor(main: any, version: string, p: { playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null> }, opts: { forceConfirm?: boolean } = {}): { stages: any[]; deferredStages: any[] } {
+export function playoffStagesFor(main: any, version: string, p: { playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; poolQualifiers?: { perPool: number | null; runnersUp: number } | null }, opts: { forceConfirm?: boolean } = {}): { stages: any[]; deferredStages: any[] } {
   const plans = p.playoffPlans ?? p.playoffs.map(() => null);
   if (p.playoffs.length && plans.every(Boolean)) {
-    const chain = buildPlayoffChain(main, version, p.playoffs.map((name, i) => ({ name, plan: plans[i]! })), opts);
+    const chain = buildPlayoffChain(main, version, p.playoffs.map((name, i) => ({ name, plan: plans[i]! })), { ...opts, qualifiers: p.poolQualifiers ?? null });
     if (!chain.reason) return { stages: [main, ...chain.stages], deferredStages: [] };
   }
   return { stages: [main], deferredStages: deferredFor(version, p.playoffs, p.playoffPlans) };

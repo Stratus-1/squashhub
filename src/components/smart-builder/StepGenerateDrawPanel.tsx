@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
+import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
   divisionIssues, finalDrawSpec, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
@@ -48,11 +49,18 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [manual, setManual] = useState<Record<number, { order?: string[]; pools?: { ids: string[]; sizes: number[] } }>>({});
   const [poolMode, setPoolMode] = useState<PoolAllocationMode>("snake");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [venueErr, setVenueErr] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     // Reconcile organiser-entered pairs first so the draw only ever sees current active entries.
     await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
+    // Regional/national events must name a host venue; owner or admin's club never implies one.
+    const [{ data: kind }, { data: hosts }] = await Promise.all([
+      (supabase as any).rpc("tournament_event_kind", { _champ: tournamentId }),
+      (supabase as any).rpc("tournament_host_club_ids", { _champ: tournamentId }),
+    ]);
+    setVenueErr(venueBlocker(kind === "regional" ? "regional" : "club", (hosts as string[] | null) ?? []));
     const [{ data: t }, { data: regs }, { data: ms }] = await Promise.all([
       fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
       fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
@@ -256,7 +264,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     );
   };
 
-  const errors = [...pairErrors, ...(preview?.errors ?? [])];
+  const errors = [...(venueErr ? [venueErr] : []), ...pairErrors, ...(preview?.errors ?? [])];
   const hasDraw = existing.games > 0;
   const canGenerate = !busy && confirmed && errors.length === 0 && (!hasDraw || (rebuildOk && existing.played === 0));
 

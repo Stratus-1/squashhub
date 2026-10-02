@@ -1084,6 +1084,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <SectionHead>{notifyOnly ? "Entry notification" : "Invitation"}</SectionHead>
                   {notifyOnly
                     ? <p className="text-xs text-muted-foreground">Goes to: <b>the players you picked{pickIds.length ? ` (${pickIds.length})` : ""}</b>{pairMode ? ". Doubles players are told who their assigned partner is." : "."}</p>
                     : <p className="text-xs text-muted-foreground">Goes to: <b>{a.invite ? INVITE_LABEL[a.invite] : "the invitation audience"}</b>. Players you already picked are entered and don't need an invitation.</p>}
@@ -1117,7 +1118,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     <div className="mt-1 whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm">{preview}</div>
                   </div>
                   <div className="space-y-2 rounded-md border p-3">
-                    <Label className="text-sm">Tournament WhatsApp group</Label>
+                    <SectionHead>Tournament WhatsApp group</SectionHead>
                     <p className="text-[11px] text-muted-foreground">Optional. Entrants can use the link to join the tournament's WhatsApp group for updates. Create the group on your phone and paste its invite link — SquashHub doesn't create groups, and the link goes inside your messages; it isn't a way of sending them.</p>
                     <div className="flex flex-wrap gap-1">{([[false, "No WhatsApp group"], [true, "Use a WhatsApp group"]] as const).map(([v, l]) => (
                       <button key={l} type="button" aria-pressed={wa.use === v} onClick={() => setWa({ use: v })}
@@ -1131,15 +1132,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     </div>}
                   </div>
                   <div className="space-y-2 rounded-md border p-3">
-                    <Label className="text-sm">Draw notifications</Label>
-                    <p className="text-[11px] text-muted-foreground">When a round or stage is drawn, each player is told who they play, the opponent's phone number and the play-by date, and how to book a court. In doubles both partners get it, with their partner's name and both opponents' names and numbers. Sent for Round 1 when you generate the draw, and for each later stage (quarterfinals, semifinals, final) when it is created. Uses the channels chosen above.</p>
+                    <SectionHead>Draw notifications</SectionHead>
+                    <p className="text-[11px] text-muted-foreground">When a round or stage is drawn, each player is told who they play, the opponent's phone number and the play-by date, and how to book a court. In doubles both partners get it, with their partner's name and both opponents' names and numbers. If all rounds were drawn upfront with a play-by date each, the Round 1 notice lists every round and its booking date, so players can book all their courts in one go. Sent for Round 1 when you generate the draw, and for each later stage (quarterfinals, semifinals, final) when it is created. Uses the channels chosen above.</p>
                     <div className="flex flex-wrap gap-1">{([[true, "On"], [false, "Off"]] as const).map(([v, l]) => (
                       <button key={l} type="button" aria-pressed={(a.drawNotify !== false) === v} onClick={() => setA((prev) => ({ ...prev, drawNotify: v }))}
                         className={cn("rounded-full border px-3 py-1 text-xs", (a.drawNotify !== false) === v ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border")}>{l}</button>))}</div>
                     {a.drawNotify !== false && !msg.channels.filter(chAvail).some((c) => c !== "sms") && <p className="text-xs text-destructive">Choose at least one message channel above, otherwise nobody is told about the draw.</p>}
                   </div>
                   <div className="space-y-2 rounded-md border p-3">
-                    <Label className="text-sm">After-match notifications</Label>
+                    <SectionHead>After-match notifications</SectionHead>
                     <p className="text-[11px] text-muted-foreground">When a result is recorded, players can automatically get a message: the winner gets congratulations and who they play next, the other player gets the result (and, in a knockout, that they're out). Uses SquashHub's existing tournament result messages, including the semifinal and final wording.</p>
                     <div className="flex flex-wrap gap-1">{([[false, "Off"], [true, "On"]] as const).map(([v, l]) => (
                       <button key={l} type="button" aria-pressed={am.on === v} onClick={() => setAm({ on: v })}
@@ -1594,7 +1595,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
-              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `group link configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div><div className="text-xs">Draw notifications: {a.drawNotify === false ? "Off" : "On (Round 1 and each later stage)"}</div><div className="text-xs">After-match notifications: {am.on === null ? "not set (existing default: email after every match)" : am.on ? `On · ${am.channels.filter((c) => chAvail(c as Channel)).map((c) => ({ in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" } as Record<string, string>)[c]).join(" + ") || "no channel"}${am.scope === "playoffs" ? " · playoffs only" : ""}` : "Off"}</div></SummaryRow>}
+              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `group link configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div><div className="text-xs">Draw notifications: {a.drawNotify === false ? "Off" : "On (Round 1 and each later stage; all round booking dates listed when the draw is made upfront)"}</div><div className="text-xs">After-match notifications: {am.on === null ? "not set (existing default: email after every match)" : am.on ? `On · ${am.channels.filter((c) => chAvail(c as Channel)).map((c) => ({ in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" } as Record<string, string>)[c]).join(" + ") || "no channel"}${am.scope === "playoffs" ? " · playoffs only" : ""}` : "Off"}</div></SummaryRow>}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
@@ -1729,6 +1730,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       </aside>
     </div>
   );
+}
+
+/** Solid colour-block section heading (Invitation / WhatsApp group / Draw / After-match). */
+function SectionHead({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">{children}</div>;
 }
 
 function Q({ t, h }: { t: string; h: string }) {

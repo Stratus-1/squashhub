@@ -113,8 +113,9 @@ function criterionValues(c: TieBreakCriterion, group: string[], stats: Map<strin
  * Rank one pool. `units` gives the deterministic fallback order (e.g. seed order); `manualOrder` is the
  * organiser's saved order and is consulted ONLY for units still level after every criterion.
  */
-export function rankUnits(units: string[], games: RankGame[], criteria: TieBreakCriterion[] = DEFAULT_TIE_BREAKS, manualOrder: string[] = []): RankResult {
+export function rankUnits(units: string[], games: RankGame[], criteria: TieBreakCriterion[] = DEFAULT_TIE_BREAKS, manualOrder: string[] = [], extraWins?: Map<string, number>): RankResult {
   const stats = unitStats(units, games);
+  extraWins?.forEach((n, id) => { const x = stats.get(id); if (x) x.wins += n; });
   const base = new Map(units.map((id, i) => [id, i]));
   const ties: TieGroup[] = [];
   const manual: TieGroup[] = [];

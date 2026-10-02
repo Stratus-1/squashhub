@@ -399,10 +399,9 @@ export function perPoolQualifiers(prev: PlannedStage, rows: FixtureRow[], top: n
       for (const u of [f.a, f.b]) if (u && !units.includes(u)) units.push(u);
       if (f.a && f.b) games.push({ a: f.a, b: f.b, winner: f.winner ?? null, ...gameSetsOf({ score: f.score }) });
     }
-    const r = rankUnits(units, games, criteria);
     const byes = new Map<string, number>();
     for (const f of mine.filter((x) => (x.pool ?? 1) === i + 1 && x.a && !x.b)) byes.set(f.a!, (byes.get(f.a!) ?? 0) + 1);
-    if (byes.size) { const all = rankUnits(units, [...games, ...[...byes].flatMap(([u, n]) => Array.from({ length: n }, () => ({ a: u, b: "__bye__", winner: u, sets: null, pointsKnown: false })))].filter((g) => g.b !== "__bye__" || units.includes(g.a)), criteria); Object.assign(r, all); }
+    const r = rankUnits(units, games, criteria, [], byes);
     const t = r.ties.find((x) => tieIsMaterial(x, (p) => p <= top));
     if (t) throw new IntegrityError("tie", tieMessage(`Pool ${String.fromCharCode(65 + i)}`, t, criteria));
     const ranked = r.order;

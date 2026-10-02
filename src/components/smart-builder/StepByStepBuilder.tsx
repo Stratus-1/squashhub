@@ -557,6 +557,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
     setDays([...a.days, { date, venue: prev?.venue ?? clubName ?? "", courts: prev?.courts ?? "", windows: [{ from: "", to: "" }] }]);
   };
 
+  const [jumped, setJumped] = useState(false);
+  useEffect(() => { if (initialStep && !jumped) { setJumped(true); go(initialStep); } });
   /* ── Handover: Summary → Tournament Management ── */
   const deferred: DeferredDecision[] = (() => {
     const out: DeferredDecision[] = [];

@@ -805,7 +805,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                             const on = d.courtIds?.includes(c.id);
                             return (
                               <button key={c.id} type="button" aria-pressed={!!on}
-                                onClick={() => { const ids = on ? (d.courtIds ?? []).filter((x) => x !== c.id) : [...(d.courtIds ?? []), c.id]; updDay(i, { courtIds: ids, courts: ids.length ? String(ids.length) : d.courts }); }}
+                                onClick={() => { const ids = on ? (d.courtIds ?? []).filter((x) => x !== c.id) : [...(d.courtIds ?? []), c.id]; updDay(i, { courtIds: ids, courts: String(ids.length) }); }}
                                  className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition-colors", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground hover:border-primary/50")}>
                                 {c.name}
                               </button>

@@ -12,3 +12,18 @@ describe("Step-by-Step court bookings", () => {
     expect(bookableSlots("p1", [base])).toEqual(bookableSlots("p1", [base]));
   });
 });
+
+import { internalOverlaps } from "@/lib/smart-builder/stage-bookings";
+describe("internal overlaps", () => {
+  it("flags plan slots that overlap each other on the same court, keeps main rounds and playoffs alike", () => {
+    const slots = bookableSlots("p", [
+      { id: "a", name: "Round 1 (Men)", mode: "scheduled", date: "2026-11-03", from: "18:00", to: "21:00", courtIds: ["1"] },
+      { id: "b", name: "Round 1 (Ladies)", mode: "scheduled", date: "2026-11-03", from: "19:00", to: "20:00", courtIds: ["1", "2"] },
+      { id: "c", name: "Final", mode: "scheduled", date: "2026-11-21", from: "09:00", to: "12:00", courtIds: ["1"] },
+    ]);
+    expect(slots).toHaveLength(4);
+    const o = internalOverlaps(slots);
+    expect(o.map((x) => x.externalId)).toEqual(["sbs:p:b:1"]);
+    expect(o[0].reason).toMatch(/overlaps Round 1 \(Men\)/);
+  });
+});

@@ -611,6 +611,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
         tournamentId: tid, clubId, name: a.name || "Tournament", kind: isChamps ? "period" : "once_off",
         mode: notifyOnly ? "inform" : "invite", feeDue: !!fee.has, channels: msg.channels.filter(chAvail), messageTemplate: msgBody,
         entrantMessages, invitePreview: preview, deferred,
+        expected: units.map((u) => ({ label: u.label, expected: isChamps ? Number(a.unitEntries?.[u.key]) || null : null, doubles: u.disc === "doubles" })),
         stage: prev?.stage ?? "invite", completed: prev?.completed ?? ["planning"], informedAt: prev?.informedAt ?? null,
         createdAt: prev?.createdAt ?? new Date().toISOString(),
       });
@@ -624,22 +625,31 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
     } finally { setCompleting(false); }
   };
   const deferredByStage = LIFECYCLE.map((l) => ({ l, items: deferred.filter((d) => d.neededAt === l.key) })).filter((x) => x.items.length);
+  const mustNow = deferred.filter((d) => d.neededAt === "invite");
+  const canWait = deferred.filter((d) => d.neededAt !== "invite");
   const handoverPanel = (where: "top" | "bottom") => (
     <div className={cn("rounded-lg border p-3 text-sm", setupComplete ? "border-primary/50 bg-primary/10" : "border-destructive/50 bg-destructive/10")} data-testid={`handover-${where}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="font-semibold">{setupComplete ? "Tournament setup complete" : "Setup not finished yet"}</div>
+          <div className="font-semibold">{!setupComplete ? "Setup not finished yet" : mustNow.length ? "Almost ready" : "Tournament setup complete"}</div>
           <div className="text-xs text-muted-foreground">{setupComplete
             ? `${a.createdTournamentId ? "Already created — saving updates the same tournament." : "Next: "}${notifyOnly ? "inform your selected players" : "invite players"}.${deferred.length ? ` ${deferred.length} "Decide later" item${deferred.length === 1 ? "" : "s"} will be asked for when needed.` : ""}`
             : `Finish: ${steps.slice(0, -1).filter((k) => !okFor[k]).map((k) => STEP_LABEL[k]).join(", ")}`}</div>
         </div>
         <Button size="sm" disabled={!setupComplete || completing} onClick={completeSetup}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button>
       </div>
-      {where === "top" && deferredByStage.length > 0 && (
-        <div className="mt-2 space-y-1 text-xs">
-          <div className="font-medium">Decided later — tracked, not forgotten:</div>
-          {deferredByStage.map(({ l, items }) => <div key={l.key}><span className="text-muted-foreground">Needed at {l.label}:</span> {items.map((d) => d.label).join(" · ")}</div>)}
-          <div className="text-muted-foreground">None of these block completing setup.</div>
+      {where === "top" && deferred.length > 0 && (
+        <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
+          <div className={cn("rounded border p-2", mustNow.length ? "border-destructive/50" : "border-border")}>
+            <div className="font-medium">Must be decided before players are contacted ({mustNow.length})</div>
+            {mustNow.length ? <ul className="list-disc pl-4">{mustNow.map((d) => <li key={d.id}>{d.label}</li>)}</ul> : <div className="text-muted-foreground">Nothing — ready for the first step.</div>}
+            {mustNow.length > 0 && <div className="text-muted-foreground">You can still complete setup; Tournament Management will ask for these first.</div>}
+          </div>
+          <div className="rounded border border-border p-2">
+            <div className="font-medium">Can stay "Decide later" for now ({canWait.length})</div>
+            {deferredByStage.filter((x) => x.l.key !== "invite").map(({ l, items }) => <div key={l.key}><span className="text-muted-foreground">Needed at {l.label}:</span> {items.map((d) => d.label).join(" · ")}</div>)}
+            {!canWait.length && <div className="text-muted-foreground">Nothing deferred.</div>}
+          </div>
         </div>
       )}
       {completeErr && <p className="mt-2 text-xs text-destructive">{completeErr}</p>}

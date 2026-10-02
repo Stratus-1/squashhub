@@ -37,14 +37,31 @@ export async function loadPlanBookings(clubId: string, planId: string) {
   return data ?? [];
 }
 
-export async function findConflicts(clubId: string, slots: StageSlot[]): Promise<SlotConflict[]> {
+/**
+ * Pure: slots in this same plan that overlap an earlier slot on the same court/date
+ * (e.g. two categories' rounds on Court 1 at the same time). The backend refuses
+ * overlapping bookings, so these must be reported, never sent.
+ */
+export function internalOverlaps(slots: StageSlot[]): SlotConflict[] {
   const out: SlotConflict[] = [];
+  slots.forEach((s, i) => {
+    const hit = slots.slice(0, i).find((o) => o.courtId === s.courtId && o.date === s.date && o.start < s.end && o.end > s.start && !out.some((x) => x.externalId === o.externalId));
+    if (hit) out.push({ ...s, reason: `overlaps ${hit.stageName} on the same court ${hit.start.slice(0, 5)}–${hit.end.slice(0, 5)}` });
+  });
+  return out;
+}
+
+export async function findConflicts(clubId: string, slots: StageSlot[]): Promise<SlotConflict[]> {
+  const out: SlotConflict[] = internalOverlaps(slots);
+  const own = new Set(slots.map((x) => x.externalId));
   for (const s of slots) {
+    if (out.some((x) => x.externalId === s.externalId)) continue;
     const { data, error } = await supabase.from("bookings").select("id, external_id, start_time, end_time, guest_name")
       .eq("club_id", clubId).eq("court_id", s.courtId).eq("date", s.date).eq("status", "active")
       .lt("start_time", s.end).gt("end_time", s.start);
     if (error) throw error;
-    const clash = (data ?? []).find((b: any) => b.external_id !== s.externalId);
+    // Our own other slots are handled by internalOverlaps (they may be moving in this same save).
+    const clash = (data ?? []).find((b: any) => b.external_id !== s.externalId && !own.has(b.external_id));
     if (clash) out.push({ ...s, reason: `already booked ${String((clash as any).start_time).slice(0, 5)}–${String((clash as any).end_time).slice(0, 5)}${(clash as any).guest_name ? ` (${(clash as any).guest_name})` : ""}` });
   }
   return out;
@@ -55,21 +72,24 @@ export async function bookPlanSlots(clubId: string, planId: string, label: strin
   const conflicts = await findConflicts(clubId, slots);
   const blocked = new Set(conflicts.map((c) => c.externalId));
   const free = slots.filter((s) => !blocked.has(s.externalId));
-  if (free.length) {
-    const { error } = await supabase.from("bookings").upsert(free.map((s) => ({
-      club_id: clubId, court_id: s.courtId, user_id: null, club_member_id: null, date: s.date, start_time: s.start, end_time: s.end,
-      status: "active", is_friendly: false, guest_name: `${label} — ${s.stageName}`, source: "club_event", external_id: s.externalId,
-      ops_note: "Tournament court reservation (Step-by-Step Beta)",
-    })) as any, { onConflict: "club_id,source,external_id" });
-    if (error) throw error;
-  }
+  // Remove this plan's reservations no longer in the schedule first, so moved stages can take freed slots.
   const keep = new Set(slots.map((s) => s.externalId));
   const stale = (await loadPlanBookings(clubId, planId)).filter((b: any) => !keep.has(b.external_id)).map((b: any) => b.id);
   if (stale.length) {
     const { error } = await supabase.from("bookings").delete().in("id", stale);
     if (error) throw error;
   }
-  return { booked: free.length, conflicts, removed: stale.length };
+  // One row at a time: a single refused slot must never stop the other stages being booked.
+  let booked = 0;
+  for (const s of free) {
+    const { error } = await supabase.from("bookings").upsert({
+      club_id: clubId, court_id: s.courtId, user_id: null, club_member_id: null, date: s.date, start_time: s.start, end_time: s.end,
+      status: "active", is_friendly: false, guest_name: `${label} — ${s.stageName}`, source: "club_event", external_id: s.externalId,
+      ops_note: "Tournament court reservation (Step-by-Step Beta)",
+    } as any, { onConflict: "club_id,source,external_id" });
+    if (error) conflicts.push({ ...s, reason: error.message }); else booked++;
+  }
+  return { booked, conflicts, removed: stale.length };
 }
 
 export async function releasePlanBookings(clubId: string, planId: string) {

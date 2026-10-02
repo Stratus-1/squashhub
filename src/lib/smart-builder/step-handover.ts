@@ -43,6 +43,8 @@ export type Handover = {
   /** Invite mode: one sample invitation. */
   invitePreview: string;
   deferred: DeferredDecision[];
+  /** Expected entries per category/subcategory (estimates from setup), compared at Finalise entries. */
+  expected?: Array<{ label: string; expected: number | null; doubles: boolean }>;
   stage: LifecycleKey;
   completed: LifecycleKey[];
   informedAt?: string | null;
@@ -69,7 +71,11 @@ export function nextAction(h: Handover): { title: string; detail: string; availa
     if (h.mode === "inform") return { title: "Inform selected players", detail: `Tell the ${h.entrantMessages.length} entered player${h.entrantMessages.length === 1 ? "" : "s"} they have been entered${h.feeDue ? ", what they owe and how to pay" : ""}.`, available: blocked.length === 0 };
     return { title: "Invite players", detail: "Send the invitation so eligible players can enter.", available: blocked.length === 0 };
   }
-  if (h.stage === "registrations") return { title: "Track registrations & payments", detail: "Coming next in the Beta — follow entries and payments here.", available: false };
+  if (h.stage === "registrations") return { title: "Close registrations & finalise entries", detail: "When entries and payments are in, move on to check the final field.", available: true };
+  if (h.stage === "finalise") {
+    const blocked = blockersFor(h, "finalise");
+    return { title: "Generate draw & fixtures", detail: blocked.length ? "Decide the items below first — they depend on the real entries, so they're asked for now." : "Everything needed is decided. Draw and fixture generation is the next Beta build.", available: false };
+  }
   return { title: LIFECYCLE[lifecycleIndex(h.stage)].label, detail: "Not part of this Beta yet.", available: false };
 }
 

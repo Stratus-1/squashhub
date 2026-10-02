@@ -1,3 +1,4 @@
+import { derivedStageSize } from "./schedule-maths";
 /**
  * Smart Builder readiness — a deterministic completeness check over the ONE
  * structured draft. The AI, the tabs and the Review page all read this; the
@@ -129,7 +130,8 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     state: sm0 ? "missing" : "complete",
     detail: sm0 ? `${sm0.message}${smx.issues.length > 1 ? ` (+${smx.issues.length - 1} more)` : ""}` : `Valid — rounds, stage order and dependencies fit the dates. ${smx.capacityNote}.`,
     ask: sm0?.message });
-  const sized = schedulableStages(def).filter(({ stage }) => stage.groupSize == null && !stage.dynamic);
+  const sized = schedulableStages(def).filter(({ stage }) => stage.groupSize == null && !stage.dynamic
+    && !((stage.kind === "knockout" || stage.kind === "placement") && derivedStageSize(stage, def) != null));
   const later = deferredStages(def);
   if (later.length) design.push({ id: "later_stages", label: "Later stages", tab: "design", field: "canvas", stageId: later[0].stageId,
     state: "complete",

@@ -72,6 +72,13 @@ export async function bookPlanSlots(clubId: string, planId: string, label: strin
   const conflicts = await findConflicts(clubId, slots);
   const blocked = new Set(conflicts.map((c) => c.externalId));
   const free = slots.filter((s) => !blocked.has(s.externalId));
+  // Remove this plan's reservations no longer in the schedule first, so moved stages can take freed slots.
+  const keep = new Set(slots.map((s) => s.externalId));
+  const stale = (await loadPlanBookings(clubId, planId)).filter((b: any) => !keep.has(b.external_id)).map((b: any) => b.id);
+  if (stale.length) {
+    const { error } = await supabase.from("bookings").delete().in("id", stale);
+    if (error) throw error;
+  }
   // One row at a time: a single refused slot must never stop the other stages being booked.
   let booked = 0;
   for (const s of free) {
@@ -81,12 +88,6 @@ export async function bookPlanSlots(clubId: string, planId: string, label: strin
       ops_note: "Tournament court reservation (Step-by-Step Beta)",
     } as any, { onConflict: "club_id,source,external_id" });
     if (error) conflicts.push({ ...s, reason: error.message }); else booked++;
-  }
-  const keep = new Set(slots.map((s) => s.externalId));
-  const stale = (await loadPlanBookings(clubId, planId)).filter((b: any) => !keep.has(b.external_id)).map((b: any) => b.id);
-  if (stale.length) {
-    const { error } = await supabase.from("bookings").delete().in("id", stale);
-    if (error) throw error;
   }
   return { booked, conflicts, removed: stale.length };
 }

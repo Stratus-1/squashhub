@@ -18676,6 +18676,7 @@ export type Database = {
           p_group_number: number
           p_round_number: number
           p_sections?: number[]
+          p_stage_key?: string
         }
         Returns: Json
       }

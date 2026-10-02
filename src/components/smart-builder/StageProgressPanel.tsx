@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { atomically, loadEntrants, sourcePositions } from "@/lib/tournaments/structured-persist";
+import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
+import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { autoProgress, confirmNextStage, previewNextStage, checkDeferredSetup, decidePositionOrder, setupDeferredStage, setupOk, stageLifecycle, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
 import { parseMapping } from "@/lib/tournaments/mapping";
 import { sourcePoolCount } from "@/lib/tournaments/contract";
@@ -26,6 +28,17 @@ const STATE_LABEL: Record<StageStatus["state"], string> = {
   completed: "Completed", active: "In play", waiting: "Waiting", ready: "Starting…", blocked: "Needs your decision",
   deferred: "Define later", needs_setup: "Set up next stage",
 };
+
+/** Draw notice for a newly created stage (opponents, partner, phones, play-by), unless the organiser turned draw notifications off. */
+async function notifyStage(champId: string, spec: TournamentSpec, divisionKey: string, stageKey: string) {
+  try {
+    const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champId).maybeSingle();
+    if ((data as any)?.beta_lifecycle?.draw_notify === false) return;
+    const d = spec.divisions.find((x) => x.divisionId === divisionKey);
+    const r = await notifyRoundDraw({ champId, roundNumber: 1, groupNumber: d ? divisionGroup(spec, d) : null, stageKey });
+    toast.success(roundNotifySummary(r));
+  } catch (e: any) { toast.error(`Stage created, but players weren't notified: ${e.message}`); }
+}
 
 /** Live stage lifecycle + automatic progression + "Set up next stage" for Define-later stages. */
 export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string }) {
@@ -62,6 +75,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
         if (!r.started.length) return;
         toast.success(`Started automatically: ${r.started.map((s) => s.name).join(", ")}`);
         scheduleToast(await schedulePlannedPlayoffGames(champId));
+        for (const st of r.started) await notifyStage(champId, spec, st.divisionKey, st.stageKey);
         refresh();
       })
       .catch((e) => toast.error(e.message))
@@ -166,6 +180,7 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
       if (create && setupOk(c)) {
         await setupDeferredStage(supabaseDb, champId, status.divisionKey, status.stageKey, build(), exec);
         toast.success(`${status.name} created`);
+        await notifyStage(champId, spec, status.divisionKey, status.stageKey);
         onDone();
       }
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
@@ -276,6 +291,7 @@ function ConfirmStageDialog({ champId, spec, status, nameOf, exec, onClose, onDo
       await confirmNextStage(supabaseDb, champId, status.divisionKey, status.stageKey, exec);
       toast.success(`${status.name} created`);
       scheduleToast(await schedulePlannedPlayoffGames(champId));
+      await notifyStage(champId, spec, status.divisionKey, status.stageKey);
       onDone();
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };

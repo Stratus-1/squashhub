@@ -690,10 +690,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
           {cur === "Pick" && (
             <>
-              <Q t="Pick your players" h="Tap a member to add them, then choose where each one plays." />
-              {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
+              <Q t={pairMode ? "Select & pair your players" : "Pick your players"} h={pairMode ? "Tap a member to add them and choose where they play. In doubles groups where you assign partners, pair them up right here." : "Tap a member to add them, then choose where each one plays."} />
+              {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}{pairMode ? ` (${entryCount} entr${entryCount === 1 ? "y" : "ies"} — each pair counts as one)` : ""}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
               {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible members can still enter themselves, so the total stays provisional until entries close.</div>}
-              {units.some((u) => u.disc === "doubles") && <div className="text-xs text-muted-foreground">Doubles groups take players who will be paired up — partners are matched later. A player placed in a Singles group is not counted as a doubles entry.</div>}
+              {units.some((u) => u.disc === "doubles" && !adminPairKeys.has(u.key)) && <div className="text-xs text-muted-foreground">{pairMode ? "In doubles groups where players choose their own partner, picked players are paired by the players themselves." : "Doubles groups take players who will be paired up — partners are matched later."} A player placed in a Singles group is not counted as a doubles entry.</div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
               {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).length;
                 return <div className="text-xs text-muted-foreground">{n} of {members.length} members available{q ? " matching your search" : ""}</div>; })()}
@@ -1065,7 +1065,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               </div>}
               <div className="rounded-lg border border-accent bg-accent/30 p-3 text-sm">
                 <div className="flex items-center gap-1.5 font-semibold"><Lightbulb className="h-4 w-4 text-primary" />SquashHub Tip <span className="text-xs font-normal text-muted-foreground">(advice only{provisional ? " · provisional" : ""})</span></div>
-                <p className="mt-1">{knownField ? `${pickIds.length} selected players${provisional ? " (some are not placed yet)" : ""}` : `${fieldCount || "No"} estimated entries${pickIds.length ? `, including ${pickIds.length} picked so far` : ""}`} across {units.length} group{units.length === 1 ? "" : "s"}.</p>
+                <p className="mt-1">{knownField ? `${entryCount} selected ${pairMode ? "entries (pairs count as one)" : "players"}${provisional ? " (some are not placed yet)" : ""}` : `${fieldCount || "No"} estimated entries${pickIds.length ? `, including ${pickIds.length} picked so far` : ""}`} across {units.length} group{units.length === 1 ? "" : "s"}.</p>
                 {units.filter((u) => playoffActive(u.key)).map((u) => {
                   const p = playoffFor(u.key); const picked = groupCount(u.key);
                   const count = knownField && !provisional ? picked : units.length === 1 ? fieldCount : null;
@@ -1130,8 +1130,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label="Who may enter" onEdit={() => go("Eligibility")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{eligText(u.key)}</span></li>)}</ul>
               </SummaryRow>
-              {pickIds.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label="Picked players" onEdit={() => go("Pick")}>
-                <ul className="space-y-0.5">{pickIds.map((id) => <li key={id}>{memberName(id)} <span className="text-muted-foreground">— {unitLabel(a.picks[id])}</span></li>)}</ul>
+              {pickIds.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label={pairMode ? "Selected & paired players" : "Picked players"} onEdit={() => go("Pick")}>
+                <ul className="space-y-0.5">{pickIds.filter((id) => !adminPairKeys.has(a.picks[id])).map((id) => <li key={id}>{memberName(id)} <span className="text-muted-foreground">— {unitLabel(a.picks[id])}</span></li>)}</ul>
+                {adminPairUnits.map((u) => pairsFor(u.key).length > 0 || unpairedIn(u.key).length > 0 ? (
+                  <ul key={u.key} className="mt-1 space-y-0.5">
+                    {pairsFor(u.key).map(([x, y]) => <li key={x + y}>{memberName(x)} &amp; {memberName(y)} <span className="text-muted-foreground">— {u.label} (pair)</span></li>)}
+                    {unpairedIn(u.key).map((id) => <li key={id} className="text-destructive">{memberName(id)} — {u.label}: not paired yet</li>)}
+                  </ul>
+                ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
               {selfEntry && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label="Messaging" onEdit={() => go("Messaging")}>{(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`} <span className="text-muted-foreground">· setup only, not sent</span></SummaryRow>}

@@ -9,6 +9,7 @@ import {
   nextAction, loadConfirmNeedsPay, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
 } from "@/lib/smart-builder/step-handover";
 import { StepInformPanel } from "./StepInformPanel";
+import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
 import { fromExt } from "@/lib/supabase-ext";
 import { TournamentRegistrationsDialog } from "@/components/club-admin/TournamentRegistrationsDialog";
 
@@ -176,13 +177,17 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
                 {why.length
                   ? <><Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button><p className="text-destructive">Blocked because: {why.join(" · ")}. Decide {why.length === 1 ? "it" : "them"} in setup to unlock.</p></>
                   : <><Button onClick={() => { if (!payWarn || confirm(`${payWarn}. Continue anyway?`)) advance("finalise", "generate"); }}>Continue to Generate draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Button>
-                      <p className="text-muted-foreground">Prerequisites are met. Note: draw and fixture generation itself is the next Beta build — nothing will be generated yet.</p></>}
+                      <p className="text-muted-foreground">Prerequisites are met. Next you confirm the final format, preview the draw and generate it.</p></>}
               </>;
             })()}
           </div>
         )}
         {shown === "generate" && (
-          <p className="text-xs text-muted-foreground">Entries are final. Draw and fixture generation for Step-by-Step tournaments is the next Beta build — nothing has been generated.</p>
+          <StepGenerateDrawPanel clubId={clubId} tournamentId={tournamentId} revisiting={revisiting}
+            onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
+        )}
+        {shown === "activate" && !revisiting && (
+          <p className="text-xs text-muted-foreground">The draw and fixtures are saved. Open them from the "Generate draw & fixtures" stage above (Completed ✓ · View / manage). Activating the tournament is the next Beta build.</p>
         )}
       </CardContent></Card>
 

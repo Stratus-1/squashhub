@@ -349,17 +349,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     "You can enter: {{categories}}.",
     "Enter here: {{entry_link}}",
     "Entries close: {{closing_date}}",
-    "Tournament days: {{dates}}",
+    isChamps ? "Championship dates: {{dates}}" : "Tournament days: {{dates}}",
   ].join("\n\n");
   const msgBody = msg.body ?? defaultMsg;
   const previewVars: Record<string, string> = {
     first_name: "Jane",
-    tournament_name: "your tournament (name added when created)",
+    tournament_name: a.name?.trim() || "your tournament (name added when created)",
     club_name: clubName || "your club",
     categories: units.map((u) => u.label).join(", ") || "categories still to be set",
     entry_link: "[entry link added when the tournament is created]",
     closing_date: "[set later]",
-    dates: a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
+    dates: isChamps ? (a.periodStart ? `from ${fmtDay(a.periodStart)}, running until the last planned stage` : "[start date set in Basics]") : a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
   const isChamps = a.kind === "period";

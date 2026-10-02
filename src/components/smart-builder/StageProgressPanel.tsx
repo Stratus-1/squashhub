@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
-import { atomically, loadEntrants, sourcePositions } from "@/lib/tournaments/structured-persist";
+import { atomically } from "@/lib/tournaments/structured-persist";
+import { TIE_BREAK_TEXT } from "@/lib/tournaments/tie-breaks";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
-import { autoProgress, confirmNextStage, previewNextStage, checkDeferredSetup, decidePositionOrder, setupDeferredStage, setupOk, stageLifecycle, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
+import { autoProgress, confirmNextStage, previewNextStage, checkDeferredSetup, decidePositionOrder, setupDeferredStage, setupOk, stageLifecycle, stageTies, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
 import { parseMapping } from "@/lib/tournaments/mapping";
 import { sourcePoolCount } from "@/lib/tournaments/contract";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
@@ -105,8 +106,8 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
         const src = tieSource(s.divisionKey, s.stageKey);
         return (
           <div key={`tie-${s.divisionKey}-${s.stageKey}`} role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-destructive bg-destructive/10 p-2">
-            <span className="font-medium">Action required · {s.divisionLabel}: {s.detail} (decides who plays {s.name})</span>
-            {src && <Button size="sm" variant="destructive" onClick={() => setTie({ div: s.divisionKey, stage: src })}>Resolve tie</Button>}
+            <span className="font-medium">Action required · {s.divisionLabel}: {s.detail}</span>
+            {src && <Button size="sm" variant="destructive" onClick={() => setTie({ div: s.divisionKey, stage: s.stageKey })}>Resolve tie</Button>}
           </div>
         );
       })}
@@ -139,7 +140,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
                 {s.state === "blocked" && /tied/i.test(s.detail) && (() => {
                   const st = d.stages.find((x) => x.id === s.stageKey);
                   const srcId = st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;
-                  return srcId ? <Button size="sm" variant="outline" onClick={() => setTie({ div: d.divisionId, stage: srcId })}>Decide tied order</Button> : null;
+                  return srcId ? <Button size="sm" variant="outline" onClick={() => setTie({ div: d.divisionId, stage: s.stageKey })}>Decide tied order</Button> : null;
                 })()}
               </div>
             ))}
@@ -265,44 +266,55 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
   );
 }
 
-function TieDialog({ champId, spec, matches, nameOf, div, stage, exec, onClose, onDone }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string; div: string; stage: string; exec: Exec; onClose: () => void; onDone: () => void }) {
-  const d = spec.divisions.find((x) => x.divisionId === div)!;
-  const st = d.stages.find((x) => x.id === stage)!;
-  const gi = spec.divisions.indexOf(d) + 1;
-  const { data: pools = [] } = useQuery({
-    queryKey: ["tie-pools", champId, div, stage, matches.length],
-    queryFn: async () => {
-      const full = (await loadEntrants(supabaseDb, champId, spec)).divisions.find((x) => x.divisionId === div)!;
-      return sourcePositions(full, st, matches.filter((m) => m.group_number === gi), spec.positionOrders?.[`${div}/${stage}`], undefined, true);
-    },
-  });
+function TieDialog({ champId, nameOf, div, stage, exec, onClose, onDone }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string; div: string; stage: string; exec: Exec; onClose: () => void; onDone: () => void }) {
+  // Only the ties that still block this stage after every automatic tie-break (shared ranking engine).
+  const { data, isLoading } = useQuery({ queryKey: ["stage-ties", champId, div, stage], queryFn: () => stageTies(supabaseDb, champId, div, stage) });
+  const pools = data?.pools ?? [];
   const [pi, setPi] = useState(0);
-  const [order, setOrder] = useState<string[] | null>(null);
-  const list = order ?? pools[pi] ?? [];
-  const move = (i: number, dir: -1 | 1) => { const n = [...list]; [n[i], n[i + dir]] = [n[i + dir], n[i]]; setOrder(n); };
+  const [orders, setOrders] = useState<Record<string, string[]>>({});
+  const pool = pools[pi];
   const unit = (u: string) => u.split("+").map(nameOf).join(" & ");
+  const seq = data ? ["Wins", ...data.criteria.map((c) => TIE_BREAK_TEXT[c])].join(" → ") : "";
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md text-sm">
-        <DialogHeader><DialogTitle>Decide tied order — {st.name}</DialogTitle></DialogHeader>
-        <p className="text-muted-foreground">Wins always decide first. Your order only separates players who are level on wins.</p>
-        <select className="h-8 rounded-md border bg-background px-2" value={pi} onChange={(e) => { setPi(Number(e.target.value)); setOrder(null); }}>
-          {pools.map((_, i) => <option key={i} value={i}>{d.poolLabels?.[i] || `Pool ${String.fromCharCode(65 + i)}`}</option>)}
-        </select>
-        <ol className="space-y-1">
-          {list.map((u, i) => (
-            <li key={u} className="flex items-center gap-2">
-              <span className="w-5 text-muted-foreground">{i + 1}.</span><span className="flex-1">{unit(u)}</span>
-              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up"><ArrowUp className="h-3 w-3" /></Button>
-              <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === list.length - 1} onClick={() => move(i, 1)} aria-label="Move down"><ArrowDown className="h-3 w-3" /></Button>
-            </li>
-          ))}
-        </ol>
-        <DialogFooter>
-          <Button onClick={async () => {
-            try { await decidePositionOrder(supabaseDb, champId, div, stage, pi, list, exec); toast.success("Order saved"); onDone(); } catch (e: any) { toast.error(e.message); }
-          }}>Save order</Button>
-        </DialogFooter>
+        <DialogHeader><DialogTitle>Decide tied order — {data?.sourceName ?? "pool"}</DialogTitle></DialogHeader>
+        {isLoading && <div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Applying tie-break rules…</div>}
+        {data && !pools.length && <p>No decision needed — the tie-break rules separate everyone who affects {data.nextName}.</p>}
+        {pools.length > 1 && (
+          <select className="h-8 rounded-md border bg-background px-2" value={pi} onChange={(e) => setPi(Number(e.target.value))}>
+            {pools.map((p, i) => <option key={p.index} value={i}>{p.label}</option>)}
+          </select>
+        )}
+        {pool && pool.material.map((t, ti) => {
+          const key = `${pool.index}:${ti}`;
+          const list = orders[key] ?? t.ids;
+          const move = (i: number, dir: -1 | 1) => { const n = [...list]; [n[i], n[i + dir]] = [n[i + dir], n[i]]; setOrders({ ...orders, [key]: n }); };
+          return (
+            <div key={key} className="space-y-1">
+              <p className="text-muted-foreground">{pool.label}: these {t.ids.length} {t.ids.some((x) => x.includes("+")) ? "pairs" : "players"} are still tied after applying {seq}. Their order (positions {t.from}–{t.to}) determines who plays the {data!.nextName}. Choose the order to continue.</p>
+              <ol className="space-y-1">
+                {list.map((u, i) => (
+                  <li key={u} className="flex items-center gap-2">
+                    <span className="w-5 text-muted-foreground">{t.from + i}.</span><span className="flex-1">{unit(u)}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up"><ArrowUp className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" disabled={i === list.length - 1} onClick={() => move(i, 1)} aria-label="Move down"><ArrowDown className="h-3 w-3" /></Button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          );
+        })}
+        {pool && (
+          <DialogFooter>
+            <Button onClick={async () => {
+              // Full pool order = automatic order with each decided tied block replaced by the chosen order.
+              const full = [...pool.result.order];
+              pool.material.forEach((t, ti) => { const chosen = orders[`${pool.index}:${ti}`] ?? t.ids; chosen.forEach((u, k) => { full[t.from - 1 + k] = u; }); });
+              try { await decidePositionOrder(supabaseDb, champId, div, data!.sourceStageKey, pool.index, full, exec); toast.success("Order saved"); onDone(); } catch (e: any) { toast.error(e.message); }
+            }}>Save order</Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

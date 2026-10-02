@@ -309,6 +309,8 @@ export async function loadEntrants(db: Db, tid: string, rawSpec: TournamentSpec)
     ...spec,
     divisions: spec.divisions.map((d) => ({
       ...d,
+      // Division override → tournament tie-break rule (absent = documented default at ranking time).
+      tieBreaks: d.tieBreaks ?? spec.tieBreaks,
       entrants: rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
         .map((r, k) => ({ id: r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id, rank: r.order_index != null ? k + 1 : null })),
       expectedEntrants: d.expectedEntrants ?? rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).length,

@@ -443,7 +443,7 @@ export function nextStageFixtures(tid: string, d: SpecDivision, stageId: string,
   }
   // 2. Who continues.
   if (p.mode === "top_n" && p.perPool) {
-    ranked = perPoolQualifiers(prev, div, p.top ?? 0).map((q) => q.id);
+    ranked = perPoolQualifiers(prev, div, p.top ?? 0, d.tieBreaks ?? DEFAULT_TIE_BREAKS).map((q) => q.id);
   } else if (p.mode === "top_n") {
     if (!p.top || p.top > ranked.length) throw new IntegrityError("top_n", `Only ${ranked.length} can continue from ${prev.name}.`);
     ranked = ranked.slice(0, p.top);

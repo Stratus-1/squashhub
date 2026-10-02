@@ -22,13 +22,31 @@ const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
   : `Standard play · PAR ${s.pointsPerGame} · best of ${s.bestOf} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
+/** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
+type CompKind = "pools" | "knockout" | "swiss" | "cross" | "later";
+type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string };
+const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "" };
+const COMP_LABEL: Record<CompKind, string> = { pools: "Round Robin / Pools", knockout: "Knockout", swiss: "Swiss Pairing", cross: "Cross-League Round Robin", later: "Decide later" };
+const COMP_DESC: Record<CompKind, string> = {
+  pools: "Players are placed in a group/pool and play everyone else in that pool. If there are several pools, qualifiers may progress to later stages.",
+  knockout: "Players/pairs are placed in a draw; a loss normally eliminates them from the main draw and winners continue to the next round.",
+  swiss: "Everyone keeps playing for a set number of rounds; each new round pairs players with similar results instead of eliminating them after one loss.",
+  cross: "Everyone in one selected league/group plays everyone in another selected league/group — not a normal round robin within their own group.",
+  later: "Keep setting up without fixing a competition structure yet.",
+};
 type PlayoffChoice = "none" | "playoffs" | "later";
-type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded" };
-const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later" };
+type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded"; style?: "later" | "championship" | "placement" };
+const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later", style: "later" };
 const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.choice === "later" ? "Decide later" : p.rounds === 1 ? "Final only" : p.rounds === 2 ? "Semifinals + Final" : "Quarterfinals + Semifinals + Final";
-const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
+const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools/standings" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
 const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Cross-pool (A1 v B2, B1 v A2)" : p.pairing === "seeded" ? "Seeded (highest v lowest)" : "Pairing to be decided";
-const playoffDetail = (p: PlayoffPlan) => p.choice === "playoffs" ? `${playoffText(p)} · ${qualifierText(p)} · ${pairingText(p)}` : playoffText(p);
+const styleText = (p: PlayoffPlan) => p.style === "placement" ? "Placement play (A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th…)" : p.style === "championship" ? "Championship playoffs" : "Playoff type to be decided";
+const playoffDetail = (p: PlayoffPlan, k?: CompKind | null) => {
+  if (k === "knockout") return "Knockout rounds (no separate playoffs)";
+  if (p.choice !== "playoffs") return k === "swiss" && p.choice === "none" ? "Finish on Swiss standings" : k === "cross" && p.choice === "none" ? "Finish on standings" : playoffText(p);
+  if (p.style === "placement" && (k === "pools" || k === "cross")) return styleText(p);
+  return `${playoffText(p)}${k === "pools" || k === "cross" ? ` · ${styleText(p)}` : ""} · ${qualifierText(p)}${p.style !== "placement" ? ` · ${pairingText(p)}` : ""}`;
+};
 export type StepAnswers = {
   kind: Kind;
   entries: string;

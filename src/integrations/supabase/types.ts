@@ -3463,6 +3463,8 @@ export type Database = {
           division_choices: number[]
           fee_paid_cents: number
           fee_payment_id: string | null
+          fee_settled_via: string | null
+          fee_settled_via_at: string | null
           fee_status: string
           id: string
           invite_revoked_at: string | null
@@ -3496,6 +3498,8 @@ export type Database = {
           division_choices?: number[]
           fee_paid_cents?: number
           fee_payment_id?: string | null
+          fee_settled_via?: string | null
+          fee_settled_via_at?: string | null
           fee_status?: string
           id?: string
           invite_revoked_at?: string | null
@@ -3529,6 +3533,8 @@ export type Database = {
           division_choices?: number[]
           fee_paid_cents?: number
           fee_payment_id?: string | null
+          fee_settled_via?: string | null
+          fee_settled_via_at?: string | null
           fee_status?: string
           id?: string
           invite_revoked_at?: string | null
@@ -19191,6 +19197,10 @@ export type Database = {
       }
       start_arrears_plan: {
         Args: { p_mandate_id: string; p_months: number }
+        Returns: Json
+      }
+      step_sync_admin_entrants: {
+        Args: { p_champ_id: string; p_entrants: Json; p_fee_due: boolean }
         Returns: Json
       }
       store_bar_otp: {

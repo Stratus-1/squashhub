@@ -44,6 +44,7 @@ import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSugg
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { isParticipant } from "@/lib/tournaments/self-schedule";
 import { looksLikePhone } from "@/lib/member-display";
 import { hasKnockoutStage, winnerMemberIds, winnerRows, eliminatedMemberIds } from "@/lib/tournaments/survivors";
 

@@ -136,7 +136,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
     expect(screen.getByText(/Decide these first/).parentElement?.textContent).toMatch(/Seeding/);
     expect(screen.getByText(/expected 8 pairs/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Generate draw & fixtures/ })).toBeDisabled();
+    screen.getAllByRole("button", { name: /Generate draw & fixtures/ }).forEach((b) => expect(b).toBeDisabled());
 
     // Edit setup returns to Summary and re-saving updates the same tournament (no duplicate).
     fireEvent.click(screen.getByRole("button", { name: /Edit tournament setup/ }));

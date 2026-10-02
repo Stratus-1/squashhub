@@ -742,9 +742,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 return (
                   <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
                     <Label>Pairs — {u.label}</Label>
-                    {prs.length > 0 && <ul className="space-y-1">{prs.map(([x, y]) => (
+                    {prs.length > 0 && <ul className="space-y-1">{prs.map(([x, y], i) => (
                       <li key={x + y} className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs">
-                        <span className="flex-1">{memberName(x)} &amp; {memberName(y)}</span>
+                        <span className="flex-1"><b>Pair {i + 1}:</b> {memberName(x)} &amp; {memberName(y)}</span>
                         <Button variant="ghost" size="icon" aria-label="Split pair" onClick={() => setPairs(u.key, prs.filter((p) => p[0] !== x))}><Trash2 className="h-4 w-4" /></Button>
                       </li>))}</ul>}
                     {unpaired.length > 0 && (
@@ -839,6 +839,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   </div>
                 ))}
               </div>
+              <div className="space-y-2 rounded-lg border border-border p-3">
+                <div className="text-sm font-semibold">Entering as a pair</div>
+                <DoublesOption label="A player may register both partners" description="Yes: one player can complete the entry for both members of the pair. No: each partner registers themselves. Separate from who picks the partner and from who pays." value={a.doublesEntry ?? null} onChange={(value) => setA({ ...a, doublesEntry: value })} />
+              </div>
             </>
           )}
 
@@ -878,7 +882,6 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               )}
               {dblUnits.length > 0 && (
                 <div className="mt-4 space-y-4 border-t pt-4">
-                  <DoublesOption label="A player may enter both partners" description="Yes: one player may register the pair if players choose partners. No: each partner registers themselves." value={a.doublesEntry ?? null} onChange={(value) => setA({ ...a, doublesEntry: value })} />
                   <DoublesOption label="A player may pay for both partners" description="Yes: a player may choose to pay for both; they do not have to. No: each partner pays their own fee." value={fee.doublesCover} onChange={(value) => setFee({ doublesCover: value })} />
                 </div>
               )}
@@ -1164,7 +1167,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 })}</ul>
               </SummaryRow>
               {dblUnits.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label="Doubles partners" onEdit={() => go("Partners")}>
-                <ul className="space-y-0.5">{dblUnits.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "Not chosen"}</span></li>)}</ul>
+                <ul className="space-y-0.5">{dblUnits.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "Not chosen"}</span></li>)}<li>A player may register both partners: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></li></ul>
               </SummaryRow>}
               <SummaryRow icon={<UserPlus className="h-4 w-4" />} label="How players join" onEdit={() => go("Players")}>{a.source ? SOURCE_LABEL[a.source] : "Not chosen"}</SummaryRow>
               <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label="Who may enter" onEdit={() => go("Eligibility")}>
@@ -1183,7 +1186,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {selfEntry && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label="Messaging" onEdit={() => go("Messaging")}>{(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`} <span className="text-muted-foreground">· setup only, not sent</span></SummaryRow>}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
-                {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may enter the pair: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></li><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
+                {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>
               {isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Rounds → playoffs (provisional)" onEdit={() => go("Schedule")}>
@@ -1284,12 +1287,13 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {dblUnits.length > 0 && dblUnits.some((u) => partnerOf(u.key)) && (
                 <TreeNode icon={<Users className="h-4 w-4" />} title="Doubles partners" onClick={() => go("Partners")}>
                   {dblUnits.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "not chosen"}</span></TreeLeaf>)}
+                  <TreeLeaf>A player may register both partners: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></TreeLeaf>
                 </TreeNode>
               )}
               {(fee.has !== null || dblUnits.length > 0) && (
                 <TreeNode icon={<Wallet className="h-4 w-4" />} title={`Fees: ${feeSummary}`} onClick={() => go("Fees")}>
                   {fee.has && units.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{feeUnitText(u)}</span></TreeLeaf>)}
-                  {dblUnits.length > 0 && <><TreeLeaf>One player may enter the pair: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></TreeLeaf><TreeLeaf>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></TreeLeaf></>}
+                  {dblUnits.length > 0 && <TreeLeaf>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></TreeLeaf>}
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (

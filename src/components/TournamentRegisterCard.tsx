@@ -89,9 +89,13 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (res?.charged === false) {
         toast.info("No entry fee is payable for this tournament.");
       } else {
-        toast.success(`${money(entryFee)} was added to your account at the club hosting this tournament.`);
+        toast.success(res?.already
+          ? "This entry fee is already on your member account."
+          : `${money(entryFee)} was added to your account at the club hosting this tournament.`);
       }
       qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
+      qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+      qc.invalidateQueries({ queryKey: ["step-regs", champ.id] });
       qc.invalidateQueries({ queryKey: ["member-fees"] });
       qc.invalidateQueries({ queryKey: ["member-account"] });
     },
@@ -429,7 +433,12 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       )}
 
 
-      {myReg && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
+      {myReg && (myReg as any).fee_settled_via === "account" && !(myReg as any).paid_at && (
+        <p className="text-xs text-muted-foreground">
+          Entry fee {money(entryFee)} charged to your member account — settle it with the club as usual.
+        </p>
+      )}
+      {myReg && (myReg as any).fee_settled_via !== "account" && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">
           <div className="flex flex-wrap items-center gap-2">
             {cardReady && (

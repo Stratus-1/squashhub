@@ -15,6 +15,13 @@
       "when": 1790958449255,
       "tag": "0001_invite_payload_admin_entry",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790959333869,
+      "tag": "0002_step_entrant_sync_and_account_settlement",
+      "breakpoints": true
     }
   ]
 }

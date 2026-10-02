@@ -23,7 +23,7 @@ function chain(table: string): any {
   });
   return p;
 }
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (t: string) => chain(t), rpc: () => chain("rpc"),
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (t: string) => chain(t), rpc: (name: string, args: any) => { calls.push({ table: `rpc:${name}`, op: "rpc", arg: args }); return chain("rpc"); },
   auth: { getUser: async () => ({ data: { user: { id: "u1" } } }) },
   functions: { invoke: async (name: string, o: any) => { calls.push({ table: `fn:${name}`, op: "invoke", arg: o.body }); return { data: { ok: true, status: "sent", sent: 2, failed: 0, skipped: 0 }, error: null }; } } } }));
 vi.mock("@/hooks/use-tournament-eligibility", () => ({ useOrgHierarchyLite: () => ({ data: null, isLoading: false }) }));
@@ -84,12 +84,14 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(screen.getByText("Invite / Inform players").closest("li")).toHaveAttribute("aria-current", "step");
     const insert = calls.find((c) => c.table === "club_champs" && c.op === "insert")!;
     expect(insert.arg).toMatchObject({ club_id: "c1", name: "Riverside Champs", status: "planning", entry_fee_cents: 20000, payment_required: true, payment_methods: ["cash"], partner_mode: "admin", payment_timing: "after_acceptance" });
-    const regs = calls.find((c) => c.table === "club_champs_registrations" && c.op === "upsert")!;
-    expect(regs.arg).toEqual(expect.arrayContaining([
-      expect.objectContaining({ club_member_id: "m1", partner_member_id: "m2", status: "pending_payment", confirmation_source: "admin" }),
-      expect.objectContaining({ club_member_id: "m2", partner_member_id: "m1", status: "pending_payment" }),
+    // Entrants go through the one-for-one server sync (never a blind upsert that leaves replaced players counted).
+    const regs = calls.find((c) => c.table === "rpc:step_sync_admin_entrants")!;
+    expect(regs.arg.p_fee_due).toBe(true);
+    expect(regs.arg.p_entrants).toEqual(expect.arrayContaining([
+      expect.objectContaining({ memberId: "m1", partnerId: "m2" }),
+      expect.objectContaining({ memberId: "m2", partnerId: "m1" }),
     ]));
-    expect(regs.arg.some((r: any) => r.status === "paid")).toBe(false);
+    expect(calls.some((c) => c.table === "club_champs_registrations" && c.op === "upsert")).toBe(false);
 
     // Conditional first action: inform, not invite.
     expect(screen.queryByRole("button", { name: /^Invite players/ })).toBeNull();
@@ -149,5 +151,21 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(calls.filter((c) => c.table === "club_champs" && c.op === "insert")).toHaveLength(1);
     expect(calls.some((c) => c.table === "club_champs" && c.op === "update")).toBe(true);
     expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
+  });
+});
+
+import { isOutstanding, regLabel, paymentWarning } from "@/lib/smart-builder/step-handover";
+describe("Step-by-Step payment status semantics", () => {
+  it("account-charged entries are satisfied but never called paid; unpaid stays outstanding", () => {
+    expect(isOutstanding("on_account", true)).toBe(false);
+    expect(regLabel("on_account", true, true)).toBe("Entered · Charged to member account");
+    expect(isOutstanding("paid", true)).toBe(false);
+    expect(regLabel("paid", true)).toBe("Entered · Paid");
+    expect(isOutstanding("pending_payment", true)).toBe(true);
+    const rows = [
+      { memberId: "a", name: "A", partnerName: null, status: "on_account", owesCents: 0 },
+      { memberId: "b", name: "B", partnerName: null, status: "pending_payment", owesCents: 10000 },
+    ];
+    expect(paymentWarning(rows, true)).toBe("1 payment outstanding (R100)");
   });
 });

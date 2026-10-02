@@ -107,7 +107,7 @@ export type CreateInput = {
 /**
  * Create (or, when re-completing, update) the tournament record, then enter admin-picked
  * players. Admin selection never marks anyone paid: with a fee they are `pending_payment`.
- * Re-running is idempotent (upsert on champ_id + club_member_id; existing rows untouched).
+ * Re-running syncs the active entrant set (step_sync_admin_entrants): adds, updates and withdraws.
  */
 export async function persistStepTournament(i: CreateInput): Promise<string> {
   const row = sanitizeDraftPayload({
@@ -147,16 +147,17 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     const nDiv = Math.max(1, i.divisions?.length ?? 1);
     const missing = i.entrants.filter((e) => nDiv > 1 && !(e.division && e.division >= 1 && e.division <= nDiv));
     if (missing.length) throw new Error(`${missing.length} picked player${missing.length === 1 ? " is" : "s are"} not placed in a category yet — go back to "Select & pair players" and place them.`);
-    const now = new Date().toISOString();
-    const fee = (i.feeCents ?? 0) > 0;
-    const rows = i.entrants.map((e) => ({
-      champ_id: tid, club_member_id: e.memberId, partner_member_id: e.partnerId ?? null, partner_confirmed: !!e.partnerId,
-      status: fee ? "pending_payment" : "invited", invited_by_admin: true, confirmed_at: now, confirmation_source: "admin",
-      registration_source: "admin",
-      // Admin entry is already confirmed, so it must carry the player's division (category).
-      division_choices: nDiv > 1 ? [e.division as number] : [1],
-    }));
-    const { error } = await fromExt("club_champs_registrations").upsert(rows, { onConflict: "champ_id,club_member_id", ignoreDuplicates: true });
+    // One source of truth: the server syncs the active set of organiser-entered players
+    // (add / update partner+category / withdraw players no longer picked), so a
+    // replacement is one-for-one and never leaves the outgoing player counted.
+    const { error } = await (supabase as any).rpc("step_sync_admin_entrants", {
+      p_champ_id: tid,
+      p_fee_due: (i.feeCents ?? 0) > 0,
+      p_entrants: i.entrants.map((e) => ({
+        memberId: e.memberId, partnerId: e.partnerId ?? null,
+        division: nDiv > 1 ? (e.division as number) : 1,
+      })),
+    });
     if (error) {
       if (!i.existingId) await fromExt("tournaments").delete().eq("id", tid);
       throw error;
@@ -314,16 +315,19 @@ export function recipientStatus(memberIds: string[], rows: DeliveryRowAt[]) {
 
 /* ── Registrations & payments: source of truth is club_champs_registrations.status ── */
 
-export type RegRow = { memberId: string; name: string; partnerName: string | null; status: string; owesCents: number };
+export type RegRow = { memberId: string; name: string; partnerName: string | null; status: string; owesCents: number; feeStatus?: string | null };
+/** Charged to the member's club account: entry fee satisfied for readiness, but no money received. */
+export const ON_ACCOUNT = "on_account";
+const effStatus = (r: { status: string; feeStatus?: string | null }) => (r.feeStatus === ON_ACCOUNT ? ON_ACCOUNT : r.status);
 const OUTSTANDING = new Set(["pending_payment", "pending_eft", "invited", "payment_failed"]);
 export const isOutstanding = (status: string, feeDue: boolean) => feeDue && OUTSTANDING.has(status);
 export const regLabel = (status: string, feeDue: boolean, confirmNeedsPay = false) =>
-  confirmNeedsPay && feeDue && OUTSTANDING.has(status) ? (status === "pending_eft" ? "Not confirmed · EFT proof waiting" : status === "payment_failed" ? "Not confirmed · Payment failed" : "Not confirmed · Payment outstanding") : !feeDue ? "Entered · Payment not required" : status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : status === "payment_failed" ? "Entered · Payment failed" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
+  status === ON_ACCOUNT && feeDue ? "Entered · Charged to member account" : confirmNeedsPay && feeDue && OUTSTANDING.has(status) ? (status === "pending_eft" ? "Not confirmed · EFT proof waiting" : status === "payment_failed" ? "Not confirmed · Payment failed" : "Not confirmed · Payment outstanding") : !feeDue ? "Entered · Payment not required" : status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : status === "payment_failed" ? "Entered · Payment failed" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
 
 export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number }> {
   const [{ data: t }, { data: regs }] = await Promise.all([
     fromExt("club_champs").select("entry_fee_cents").eq("id", tournamentId).maybeSingle(),
-    fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status").eq("champ_id", tournamentId),
+    fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, fee_status").eq("champ_id", tournamentId),
   ]);
   const feeCents = Number((t as any)?.entry_fee_cents ?? 0);
   const live = ((regs ?? []) as any[]).filter((r) => !["cancelled", "withdrawn", "declined"].includes(String(r.status)));
@@ -335,7 +339,8 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
     rows: live.map((r) => ({
       memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Player",
       partnerName: r.partner_member_id ? nm.get(r.partner_member_id) ?? "Partner" : null,
-      status: String(r.status), owesCents: isOutstanding(String(r.status), feeCents > 0) ? feeCents : 0,
+      status: effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeStatus: r.fee_status ?? null,
+      owesCents: isOutstanding(effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeCents > 0) ? feeCents : 0,
     })),
   };
 }

@@ -2373,3 +2373,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Cause: the team summary read only the two pool tables, although the carried semi-final and final tables already contained each newly marked game's points. Position totals already scanned every saved Diamond stage.
 - Fix: summary teams and live markers now follow the furthest-created running table (final, then semi-final, then pool). Added focused guards that individual position points accumulate across pool, semi-final and final games, and renamed Last position to Wooden spoon position.
 - Scope: display calculations and tests only; no fixtures, scores, teams, tenants or live records changed.
+
+## 2026-10-02 — Step-by-Step Beta doubles entry and payment choices
+- Replaced the combined doubles entry/payment menu with independent optional controls: a player may enter both partners and a player may choose to pay for both. Off means each player registers or pays for themselves; either choice can be deferred.
+- Existing per-group partner selection and per-player/per-pair/category fees remain separate. Older device-local combined choices are converted on load; no tournament records, billing, schema, or normal builder were changed. These choices are planning-only, not active registration/payment rules.

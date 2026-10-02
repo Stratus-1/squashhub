@@ -128,6 +128,8 @@ type StageMode = "play_by" | "scheduled" | "later";
 type StagePhase = "main" | "playoff";
 type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; phase?: StagePhase };
 const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = "main"): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [], phase });
+/** Playoff stages are fixed standard rounds — organisers pick, never type arbitrary names. */
+const PLAYOFF_STAGE_NAMES = ["Quarterfinal", "Semifinal", "Final"] as const;
 const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0));
 /** Per category/subcategory: where main (qualifying) rounds end and the stage playoffs begin. Planning only. */
 type PlayoffStart = "qf" | "sf" | "final" | "custom" | "none" | "later";
@@ -322,7 +324,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           <option value="">{s.phase === "playoff" && a.playoffSync === true ? "All categories (common date)" : "All categories"}</option>
           {units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
         </select>
-        <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
+        {s.phase === "playoff" ? (
+          <select aria-label="Playoff stage" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })}>
+            {s.name && !(PLAYOFF_STAGE_NAMES as readonly string[]).includes(s.name) && <option value={s.name}>{s.name}</option>}
+            {PLAYOFF_STAGE_NAMES.map((n) => {
+              const taken = playoffStages.some((x) => x.id !== s.id && x.unit === s.unit && x.name === n);
+              return <option key={n} value={n} disabled={taken}>{n}{taken ? " (already planned)" : ""}</option>;
+            })}
+          </select>
+        ) : (
+          <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
+        )}
         <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -948,7 +960,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
                 {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
                 {playoffStages.map(renderStage)}
-                <Button variant="outline" size="sm" onClick={() => setStages([...stages, newStage("Playoff stage", "later", "", "playoff")])}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
+                <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
               </div>
               {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
             </>

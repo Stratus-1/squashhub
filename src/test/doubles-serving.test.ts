@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   afterRally, overrideServer, pairDisplayName, resolveDoublesPairs, restoreDoublesState,
-  servingBanner, startDoubles, startNextGame, type DoublesServeState, type PairPositions,
+  servingBanner, startDoubles, evenOddSide, startNextGame, type DoublesServeState, type PairPositions,
 } from "@/lib/marker/doubles-serving";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 
@@ -38,33 +38,39 @@ describe("Second server", () => {
 });
 
 describe("Even / Odd", () => {
-  it("at 1-0, the receiving pair's first server is its Forehand but serves LEFT (odd score)", () => {
+  it.each([
+    [{ a: 7, b: 5 }, "R"], [{ a: 7, b: 6 }, "L"], [{ a: 0, b: 0 }, "R"], [{ a: 5, b: 7 }, "R"], [{ a: 0, b: 1 }, "L"],
+  ] as const)("side comes from the combined score %o → %s", (scores, side) => {
+    expect(evenOddSide(scores)).toBe(side);
+    // Same answer whichever pair is serving.
+    expect(startDoubles({ method: "even_odd", positions, servingTeam: "a", scores }).side).toBe(side);
+    expect(startDoubles({ method: "even_odd", positions, servingTeam: "b", scores }).side).toBe(side);
+  });
+  it("7-5 with the serving pair on 7 shows SERVE RIGHT (regression)", () => {
+    let s = startDoubles({ method: "even_odd", positions, servingTeam: "a", scores: { a: 6, b: 5 } });
+    s = afterRally(s, "a", { a: 7, b: 5 });
+    expect(servingBanner(s, pairs)).toBe("Ann — SERVE RIGHT");
+  });
+  it("receiving pair's first server is its Forehand; side from combined score", () => {
     let s = startDoubles({ method: "even_odd", positions, servingTeam: "b" });
     expect([who(s), s.side]).toEqual(["Bob", "R"]);
     s = afterRally(s, "b", { a: 0, b: 1 });
     expect([who(s), s.side]).toEqual(["Bob", "L"]);
-    s = afterRally(s, "a", { a: 1, b: 1 }); // A's first turn at score 1 → Forehand Ann, LEFT
-    expect([who(s), s.side]).toEqual(["Ann", "L"]);
+    s = afterRally(s, "a", { a: 1, b: 1 }); // A's first turn → Forehand Ann, total 2 → RIGHT
+    expect([who(s), s.side]).toEqual(["Ann", "R"]);
   });
-  it("serving pair score 1-0 → pair with odd score serves Forehand from LEFT", () => {
-    let s = startDoubles({ method: "even_odd", positions, servingTeam: "a" });
-    s = afterRally(s, "a", { a: 1, b: 0 });
-    // B wins a rally and reaches 1 → B's first turn, Forehand Bob, odd → LEFT
-    s = afterRally(s, "b", { a: 1, b: 1 });
-    expect([who(s), s.side]).toEqual(["Bob", "L"]);
-  });
-  it("partners alternate on successive service turns, independent of parity", () => {
+  it("partners alternate on successive service turns, independent of side parity", () => {
     let s = startDoubles({ method: "even_odd", positions, servingTeam: "a" });
     expect([who(s), s.side]).toEqual(["Ann", "R"]);
     s = afterRally(s, "b", { a: 0, b: 1 });
     expect([who(s), s.side]).toEqual(["Bob", "L"]);
-    s = afterRally(s, "a", { a: 1, b: 1 }); // A's 2nd turn → Dave (Backhand), odd → LEFT
-    expect([who(s), s.side]).toEqual(["Dave", "L"]);
+    s = afterRally(s, "a", { a: 1, b: 1 }); // A's 2nd turn → Dave (Backhand), total 2 → RIGHT
+    expect([who(s), s.side]).toEqual(["Dave", "R"]);
     s = afterRally(s, "a", { a: 2, b: 1 });
-    expect([who(s), s.side]).toEqual(["Dave", "R"]); // Backhand serving RIGHT: side is parity only
-    s = afterRally(s, "b", { a: 2, b: 2 }); // B's 2nd turn → Cara, even → RIGHT
+    expect([who(s), s.side]).toEqual(["Dave", "L"]); // same server keeps serving, box changes
+    s = afterRally(s, "b", { a: 2, b: 2 }); // B's 2nd turn → Cara, total 4 → RIGHT
     expect([who(s), s.side]).toEqual(["Cara", "R"]);
-    s = afterRally(s, "a", { a: 3, b: 2 }); // A's 3rd turn → Ann
+    s = afterRally(s, "a", { a: 3, b: 2 }); // A's 3rd turn → Ann, total 5 → LEFT
     expect([who(s), s.side]).toEqual(["Ann", "L"]);
   });
 });

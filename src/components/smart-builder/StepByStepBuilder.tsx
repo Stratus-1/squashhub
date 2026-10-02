@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
+import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 
 /**
@@ -122,7 +123,7 @@ export type StepAnswers = {
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
-type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesCover: boolean | null };
+type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesCover: boolean | null; methods?: string[] };
 const DEFAULT_FEE: FeeCfg = { has: null, amount: "", varies: false, perUnit: {}, doublesBasis: "player", doublesCover: null };
 const ruleAnswer = (value: boolean | null) => value === null ? "Decide later" : value ? "Yes" : "No";
 type Channel = "in_app" | "email" | "whatsapp" | "sms";
@@ -214,6 +215,18 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   useEffect(() => {
     supabase.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).order("name")
       .then(({ data }) => setClubCourts((data ?? []).map((c) => ({ id: String(c.id), name: c.name }))));
+  }, [clubId]);
+  const [payCfg, setPayCfg] = useState<ClubPaymentConfig | null>(null);
+  useEffect(() => {
+    (async () => {
+      const [c, sec] = await Promise.all([
+        (supabase as any).from("clubs").select("accepted_payment_methods, payment_gateway").eq("id", clubId).maybeSingle(),
+        (supabase as any).from("club_secrets").select("bank_name, bank_account_number").eq("club_id", clubId).maybeSingle(),
+      ]);
+      const gw = c.data?.payment_gateway ?? null;
+      const GW: Record<string, string> = { payfast: "PayFast", yoco: "Yoco", peach: "Peach Payments", ozow: "Ozow", stitch: "Stitch", paystack: "Paystack", stripe: "Stripe", snapscan: "SnapScan" };
+      setPayCfg({ accepted: c.data?.accepted_payment_methods ?? null, gateway: gw, gatewayLabel: gw ? GW[gw] ?? gw : null, eftConfigured: !!(sec.data?.bank_name || sec.data?.bank_account_number) });
+    })().catch(() => setPayCfg({ accepted: null, gateway: null, eftConfigured: false }));
   }, [clubId]);
   const courtNames = (d: DayAvail) => clubCourts.filter((c) => d.courtIds?.includes(c.id)).map((c) => c.name).join(", ");
 
@@ -325,6 +338,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
   const feeFor = (k: string) => (fee.varies ? fee.perUnit[k] ?? "" : fee.amount);
   const feeUnitText = (u: { key: string; disc: Disc | null }) => `R${feeFor(u.key) || "?"} ${u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}`;
+  const methodOpts = payCfg ? tournamentMethodOptions(payCfg) : [];
+  const chosenMethods = allowedMethods(fee.methods, methodOpts);
+  const methodText = chosenMethods.map((m) => methodOpts.find((o) => o.key === m)?.label.split(" (")[0].split(" —")[0] ?? m).join(", ") || "none chosen";
+  /** What a picked entrant owes, worded for the notification (pair-aware). */
+  const dueText = (u?: { key: string; disc: Disc | null }) => {
+    if (!fee.has || !u) return "";
+    const amt = feeFor(u.key) || "?";
+    if (u.disc === "doubles" && fee.doublesBasis === "pair") return `R${amt} for your pair${fee.doublesCover ? " (either partner can pay for both)" : ""}`;
+    if (u.disc === "doubles" && fee.doublesCover) return `R${amt} each (you may pay R${Number(amt) * 2 || "?"} for both of you)`;
+    return `R${amt}`;
+  };
   const feeSummary = fee.has === null ? "Not chosen" : !fee.has ? "No entry fee" : fee.varies ? "Varies by category" : `R${fee.amount || "?"}`;
   const discOk = units.every((u) => u.disc !== null);
   const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
@@ -354,6 +378,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     "You have been entered into {{tournament_name}} at {{club_name}}.",
     "Category: {{category}}",
     ...(pairMode ? ["Your doubles partner: {{partner_name}}"] : []),
+    ...(fee.has ? ["Status: Entered · Payment outstanding", "Amount due: {{amount_due}}", "Pay now: {{pay_link}}"] : ["Status: Entered"]),
     a.kind === "period" ? "Championship dates: {{dates}}" : "Tournament days: {{dates}}",
     "We'll be in touch with fixtures and updates.",
   ].join("\n\n") : [
@@ -375,6 +400,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     club_name: clubName || "your club",
     categories: units.map((u) => u.label).join(", ") || "categories still to be set",
     category: firstPair ? firstPair.u.label : units[0]?.label || "[their category]",
+    amount_due: dueText(firstPair ? firstPair.u : units[0]) || "[set in Fees & Payment]",
+    pay_link: chosenMethods.length ? `[Pay now link added when the tournament is created · ${methodText}]` : "[choose accepted payment methods in Fees & Payment]",
     partner_name: firstPair ? memberName(firstPair.p![1]) : "[assigned partner]",
     entry_link: "[entry link added when the tournament is created]",
     closing_date: "[set later]",
@@ -474,7 +501,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msgLater || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msgLater || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -831,7 +858,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Messaging" && (
             <>
               {notifyOnly
-                ? <Q t="How should players hear they've been entered?" h="This is a notification, not an invitation — you entered these players, so nobody has to accept. Setup only — nothing is sent from here; you send it once entries and pairs are final, and can use tournament messaging later." />
+                ? <Q t="Inform selected players of their participation" h="This is a notification, not an invitation — you entered these players, so nobody has to accept. Setup only — nothing is sent from here; you send it once entries and pairs are final, and can use tournament messaging later." />
                 : <Q t="How should the invitation read?" h="Setup only — nothing is sent from here. Sending and test messages come later." />}
               {msgLater ? (
                 <div className="space-y-2 rounded-md border p-3 text-sm">
@@ -866,7 +893,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       {storedBody !== null && <Button variant="ghost" size="sm" onClick={() => setMsg(notifyOnly ? { notifyBody: null } : { body: null })}>Reset to suggested wording</Button>}
                     </div>
                     <textarea id="sbs-msg" rows={9} className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={msgBody} onChange={(e) => setMsg(notifyOnly ? { notifyBody: e.target.value } : { body: e.target.value })} />
-                    <p className="text-[11px] text-muted-foreground">Words in {"{{ }}"} fill in automatically: {notifyOnly ? `first_name, tournament_name, club_name, category${pairMode ? ", partner_name" : ""}, dates` : "first_name, tournament_name, club_name, categories, entry_link, closing_date, dates"}. They update as you add details later.</p>
+                    <p className="text-[11px] text-muted-foreground">Words in {"{{ }}"} fill in automatically: {notifyOnly ? `first_name, tournament_name, club_name, category${pairMode ? ", partner_name" : ""}${fee.has ? ", amount_due, pay_link" : ""}, dates` : "first_name, tournament_name, club_name, categories, entry_link, closing_date, dates"}. They update as you add details later.</p>
                   </div>
                   <div>
                     <Label className="text-sm">Preview (example member)</Label>
@@ -938,6 +965,27 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {dblUnits.length > 0 && (
                 <div className="mt-4 space-y-4 border-t pt-4">
                   <DoublesOption label="A player may pay for both partners" description="Yes: a player may choose to pay for both; they do not have to. No: each partner pays their own fee." value={fee.doublesCover} onChange={(value) => setFee({ doublesCover: value })} />
+                </div>
+              )}
+              {fee.has && (
+                <div className="mt-4 space-y-2 border-t pt-4" data-testid="accepted-methods">
+                  <div className="text-sm font-semibold">Accepted payment methods</div>
+                  <p className="text-xs text-muted-foreground">Only the ways your club already accepts (set in Club Admin → Banking) can be chosen. Players' Pay now only offers what you tick; with one method they go straight to it.</p>
+                  {!payCfg ? <p className="text-xs text-muted-foreground">Loading your club's payment settings…</p> : (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {methodOpts.map((o) => {
+                        const on = chosenMethods.includes(o.key);
+                        return <button key={o.key} type="button" disabled={!o.available} aria-pressed={on}
+                          onClick={() => setFee({ methods: on ? chosenMethods.filter((m) => m !== o.key) : [...chosenMethods, o.key] })}
+                          className={cn("rounded-md border p-2 text-left text-sm", on ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border", !o.available && "cursor-not-allowed opacity-50")}>
+                          <span className="flex items-center gap-1">{on && <Check className="h-3.5 w-3.5" />}{!o.available && <Lock className="h-3.5 w-3.5" />}{o.label}</span>
+                          {!o.available && o.why && <span className="block text-[11px] font-normal text-muted-foreground">{o.why}</span>}
+                        </button>;
+                      })}
+                    </div>
+                  )}
+                  {payCfg && chosenMethods.length === 0 && <p className="text-xs text-destructive">Choose at least one payment method.</p>}
+                  <p className="text-xs text-muted-foreground">Players you enter yourself are not marked paid: they show as Entered · Payment outstanding until they pay.</p>
                 </div>
               )}
             </>
@@ -1243,6 +1291,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
+                {fee.has && <ul className="space-y-0.5"><li>Accepted methods: <span className="text-muted-foreground">{methodText}</span></li>{showPick && <li>Picked entrants: <span className="text-muted-foreground">Entered · Payment outstanding (admin selection never marks paid)</span></li>}</ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>
               {isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Rounds → playoffs (provisional)" onEdit={() => go("Schedule")}>

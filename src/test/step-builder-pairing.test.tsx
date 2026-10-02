@@ -99,7 +99,35 @@ describe("Step-by-Step: Club Champs admin-selected + admin-paired keeps an entry
     fireEvent.click(within(box).getByRole("button", { name: /Create pair: Anna \+ Ben/ }));
     expect(within(box).getByText(/Pair 1:/)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: /Entry notification/ })[0]);
-    expect(await screen.findByText(/How should players hear they've been entered/)).toBeInTheDocument();
+    expect(await screen.findByText(/Inform selected players of their participation/)).toBeInTheDocument();
     expect(screen.getByText(/Your doubles partner: Ben/)).toBeInTheDocument();
+  });
+});
+
+describe("Step-by-Step: Club Champs admin-paired with an entry fee", () => {
+  beforeEach(() => localStorage.clear());
+  it("only offers club-accepted methods and puts amount due + Pay now in the notification", async () => {
+    localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
+      kind: "period", name: "Champs fee", scope: "club", periodStart: "2026-11-01", playType: "doubles", scoring: SCORING,
+      categories: ["Open Doubles"], disc: { "Open Doubles": "doubles" }, unitEntries: { "Open Doubles": "8" }, format: { kind: "knockout" },
+      seeding: "random", partner: { "Open Doubles": "admin" }, source: "select", elig: {},
+      picks: { m1: "Open Doubles", m2: "Open Doubles" }, pairs: { "Open Doubles": [["m1", "m2"]] },
+      fee: { has: true, amount: "200", varies: false, perUnit: {}, doublesBasis: "pair", doublesCover: true },
+    }));
+    render(<StepByStepBuilder clubId="c1" clubName="Riverside" />);
+    fireEvent.click(await screen.findByRole("button", { name: /Fees & Payment/ }));
+    const box = await screen.findByTestId("accepted-methods");
+    await within(box).findByRole("button", { name: /Cash at club/ });
+    expect(within(box).getByRole("button", { name: /Online/ })).toBeDisabled();
+    expect(within(box).getByRole("button", { name: /EFT/ })).toBeDisabled();
+    expect(within(box).getByText(/Choose at least one payment method/)).toBeInTheDocument();
+    fireEvent.click(within(box).getByRole("button", { name: /Cash at club/ }));
+    expect(within(box).queryByText(/Choose at least one payment method/)).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: /Entry notification/ })[0]);
+    await screen.findByText(/Inform selected players of their participation/);
+    expect(screen.getAllByText(/Your doubles partner: Ben/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Status: Entered · Payment outstanding/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Amount due: R200 for your pair \(either partner can pay for both\)/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pay now: \[Pay now link added when the tournament is created · Cash at club\]/).length).toBeGreaterThan(0);
   });
 });

@@ -157,7 +157,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <>
               <Q t="Where and when are courts available?" h="Each day can be different — e.g. Friday evening only, Saturday all day." />
               <div className="space-y-3">

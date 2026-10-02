@@ -1173,7 +1173,7 @@ export default function Tournaments() {
                     : "border-primary/40 bg-primary/10 text-primary",
               )}
             >
-              <CalendarClock className="w-3 h-3" /> {playBy.label}
+              <CalendarClock className="w-3 h-3" /> {playByText}
             </span>
           )}
 

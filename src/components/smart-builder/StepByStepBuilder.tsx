@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
  * per club so a future "Help me choose the format" step can read them.
  */
 type Kind = "once_off" | "period" | null;
+type PlayType = "singles" | "doubles" | "both" | null;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 export type StepAnswers = {

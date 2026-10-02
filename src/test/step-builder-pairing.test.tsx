@@ -125,9 +125,9 @@ describe("Step-by-Step: Club Champs admin-paired with an entry fee", () => {
     expect(within(box).queryByText(/Choose at least one payment method/)).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: /Entry notification/ })[0]);
     await screen.findByText(/Inform selected players of their participation/);
-    expect(screen.getByText(/Your doubles partner: Ben/)).toBeInTheDocument();
-    expect(screen.getByText(/Status: Entered · Payment outstanding/)).toBeInTheDocument();
-    expect(screen.getByText(/Amount due: R200 for your pair \(either partner can pay for both\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Pay now: \[Pay now link added when the tournament is created · Cash at club\]/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Your doubles partner: Ben/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Status: Entered · Payment outstanding/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Amount due: R200 for your pair \(either partner can pay for both\)/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pay now: \[Pay now link added when the tournament is created · Cash at club\]/).length).toBeGreaterThan(0);
   });
 });

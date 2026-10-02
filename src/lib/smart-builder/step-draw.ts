@@ -17,7 +17,7 @@ export type DrawSeeding = "entry_order" | "random" | "ladder" | "ranking";
  * Schedule. play_by: one or more deadlines (sorted). With several, `upto[k]` = last engine round due by deadlines[k]
  * (null = proposed even split, shown in the preview); the last deadline covers the remaining rounds.
  */
-export type DivSchedule = { rule: "play_by" | "fixed" | null; deadlines: string[]; upto: (number | null)[]; dates: string[] };
+export type DivSchedule = { rule: "play_by" | "fixed" | null; deadlines: string[]; upto: (number | null)[]; dates: string[]; /** Organiser explicitly lets several rounds share one play-by date. */ share?: boolean };
 export type DivFormat = {
   kind: DrawKind | null;
   pools: number;
@@ -276,11 +276,18 @@ export function crossMatchups(sizes: number[], meetings?: Array<[number, number]
   return out.map((x) => ({ ...x, round: used.indexOf(x.round) + 1 }));
 }
 
+/** Generic message when the structure needs more rounds than play-by dates were set. */
+export function roundShortfall(rounds: number, dates: number): string {
+  const more = rounds - dates;
+  return `This matchup requires ${rounds} rounds, but only ${dates} play-by date${dates === 1 ? "" : "s"}/round${dates === 1 ? " is" : "s are"} configured. Add at least ${more} more, or tick "Let several rounds share a play-by date".`;
+}
+
 /** Engine round → play-by deadline. Several plan deadlines are spread over the rounds by `upto` (or an even split). */
 export function roundDeadlines(s: DivSchedule, rounds: number): { dates: string[]; ranges: Array<{ deadline: string; from: number; to: number; proposed: boolean }>; error: string | null } {
   const ds = s.deadlines.filter(Boolean);
   if (!ds.length || rounds < 1) return { dates: [], ranges: [], error: null };
   if (ds.length > rounds) return { dates: [], ranges: [], error: `${ds.length} play-by dates but only ${rounds} round${rounds === 1 ? "" : "s"} — remove a date or change the format.` };
+  if (ds.length > 1 && ds.length < rounds && !s.share) return { dates: [], ranges: [], error: roundShortfall(rounds, ds.length) };
   const ranges: Array<{ deadline: string; from: number; to: number; proposed: boolean }> = [];
   let from = 1;
   for (let k = 0; k < ds.length; k++) {
@@ -389,7 +396,9 @@ export function finalDrawSpec(name: string, divs: DrawDivision[], version: strin
 }
 
 export type DrawPreview = {
-  divisions: Array<{ label: string; units: number; games: number; rounds: number; pools: number; byes: number; schedule: string; perRound: Array<{ round: number; games: number; date: string | null }> }>;
+  /** Rounds the structure needs, per entry group (known as soon as the dry run works, even when dates block). */
+  roundsByGroup: Record<number, number>;
+  divisions: Array<{ groups: number[]; label: string; units: number; games: number; rounds: number; pools: number; byes: number; schedule: string; perRound: Array<{ round: number; games: number; date: string | null }> }>;
   total: number; errors: string[];
 };
 
@@ -397,7 +406,7 @@ export type DrawPreview = {
 export function previewDraw(name: string, divs: DrawDivision[], window: { start: string | null; end: string | null }, version = "preview", poolMode: PoolAllocationMode = "snake"): DrawPreview {
   const errors = divs.flatMap((d) => divisionIssues(d).map((m) => `${d.label}: ${m}`));
   errors.push(...crossSets(divs).errors);
-  const out: DrawPreview = { divisions: [], total: 0, errors };
+  const out: DrawPreview = { divisions: [], total: 0, errors, roundsByGroup: {} };
   if (errors.length) return out;
   try {
     const first = buildDrawSpec(name, divs, version, { poolMode });
@@ -405,6 +414,7 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
     for (const sd of first.divisions) {
       const rounds = Math.max(0, ...fx0.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1));
       const d = divs.find((x) => x.group === sd.groupNumber)!;
+      for (const g of (sd as any).entryGroups ?? [sd.groupNumber]) out.roundsByGroup[g] = rounds;
       if (d.format.schedule.rule === "play_by") { const e = roundDeadlines(d.format.schedule, rounds).error; if (e) errors.push(`${sd.label}: ${e}`); }
     }
     if (errors.length) return out;
@@ -422,7 +432,7 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
       const dateOf = (r: number): string | null => sch.roundDates?.[r - 1] ?? (sch.rule === "play_by" ? sch.deadline : r === 1 ? sch.date : null);
       const rd = f.schedule.rule === "play_by" ? roundDeadlines(f.schedule, rounds) : null;
       out.divisions.push({
-        label: sd.label, units: sd.entrants.length, games: real.length, byes: mine.length - real.length, rounds,
+        groups: (sd as any).entryGroups ?? [sd.groupNumber], label: sd.label, units: sd.entrants.length, games: real.length, byes: mine.length - real.length, rounds,
         pools: f.kind === "pools" ? f.pools : f.kind === "cross" ? (sd.entryGroups?.length ?? 1) : 1,
         schedule: f.schedule.rule === "play_by"
           ? (rd && rd.ranges.length > 1 ? rd.ranges.map((x) => `rounds ${x.from}–${x.to} play by ${x.deadline}${x.proposed ? " (proposed split)" : ""}`).join("; ") : `Play by ${lastDeadline(f.schedule)}`)

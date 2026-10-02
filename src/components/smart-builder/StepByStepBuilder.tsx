@@ -342,7 +342,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     const rec = pp.mode === "auto" && exp ? recommendPools(exp, Number(pp.target) || 5) : [];
     return <div className="space-y-2 text-xs" aria-label={`Pool structure for ${u.base}`}>
       <div className="flex flex-wrap items-center gap-2"><span className="font-medium">Create pools?</span>
-        {(["auto", "none", "later"] as PoolMode[]).map((m) => <Button key={m} type="button" size="sm" variant={pp.mode === m ? "default" : "outline" aria-pressed={pp.mode === m} onClick={() => setPoolRule(u.key, { mode: m })}>{m === "auto" ? "Yes" : m === "none" ? "No" : "Decide after entries close"}</Button>)}
+        {(["auto", "none", "later"] as PoolMode[]).map((m) => <Button key={m} type="button" size="sm" variant={pp.mode === m ? "default" : "outline"} aria-pressed={pp.mode === m} onClick={() => setPoolRule(u.key, { mode: m })}>{m === "auto" ? "Yes" : m === "none" ? "No" : "Decide after entries close"}</Button>)}
       </div>
       {pp.mode === "auto" && <label className="flex flex-wrap items-center gap-2"><span>Preferred pool size</span><Input type="number" min={2} className="h-7 w-20" aria-label={`Preferred pool size for ${u.base}`} value={pp.target ?? "5"} onChange={(e) => setPoolRule(u.key, { target: e.target.value })} />
         <span className="text-muted-foreground">Balanced from actual entries{rec.length ? ` · with ${exp} expected: ${rec.length > 1 ? `${rec.length} pools (${rec.join(", ")})` : "one group"}` : ""}</span></label>}

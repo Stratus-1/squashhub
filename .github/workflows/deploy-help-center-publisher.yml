@@ -30,9 +30,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Verify publisher contract
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npm test -- --run src/test/help-center-feed-contract.test.ts
+        run: node scripts/validate-help-center-publisher.mjs
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'

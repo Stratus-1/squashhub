@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Loader2, Settings2 } from "lucide-react";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -40,8 +41,9 @@ async function notifyStage(champId: string, spec: TournamentSpec, divisionKey: s
   } catch (e: any) { toast.error(`Stage created, but players weren't notified: ${e.message}`); }
 }
 
-/** Live stage lifecycle + automatic progression + "Set up next stage" for Define-later stages. */
-export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string }) {
+/** Live stage lifecycle + automatic progression + "Set up next stage" for Define-later stages.
+ *  `collapsible` renders the whole panel as a collapsed "What's next" card (detail pages). */
+export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible = false }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string; collapsible?: boolean }) {
   const qc = useQueryClient();
   const exec: Exec = (fn) => atomically(supabaseDb, champId, commitStructured, fn);
   const sig = matches.map((m) => `${m.id}:${m.winner_member_id ?? ""}:${m.status ?? ""}`).join("|");

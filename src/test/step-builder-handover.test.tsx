@@ -140,6 +140,8 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
 
     // Edit setup returns to Summary and re-saving updates the same tournament (no duplicate).
     fireEvent.click(screen.getByRole("button", { name: /Edit tournament setup/ }));
+    expect(await screen.findByText("Players are already entered")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit anyway" }));
     fireEvent.click((await screen.findAllByRole("button", { name: /Save setup & return to management/ }))[0]);
     expect(await screen.findByText("Next action")).toBeInTheDocument();
     expect(calls.filter((c) => c.table === "club_champs" && c.op === "insert")).toHaveLength(1);

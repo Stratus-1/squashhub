@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { setupConflicts } from "@/lib/smart-builder/consistency";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Loader2, ChevronRight, AlertTriangle } from "lucide-react";
@@ -31,6 +32,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   clubId: string; tournamentId: string; revisiting: boolean; onGenerated: (info: { games: number }) => void;
 }) {
   const [loading, setLoading] = useState(true);
+  const [planConflicts, setPlanConflicts] = useState<string[]>([]);
   const [meta, setMeta] = useState<{ name: string; start: string | null; end: string | null } | null>(null);
   const [divs, setDivs] = useState<DrawDivision[]>([]);
   const [pairErrors, setPairErrors] = useState<string[]>([]);
@@ -112,6 +114,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const { data: mem } = ids.length ? await supabase.from("club_members").select("id, name, ladder_position, ranking_points").in("id", ids) : { data: [] as any[] };
     setPoints(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.ranking_points ?? null])));
     setScope(plan?.scope ?? null);
+    setPlanConflicts(setupConflicts(plan).map((c) => c.message));
     setNames(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.name ?? "Unknown"])));
     setLadder(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.ladder_position ?? null])));
     // Keep organiser edits only while the entries are unchanged; otherwise say so and start from the fresh entries.
@@ -137,8 +140,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     let units = orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points });
     const mo = manual[d.group]?.order;
     if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
-    return { ...d, blockers: rk ? [rk] : [], units, manualPools: d.format.kind === "pools" && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
-  }), [divs, baseUnits, ladder, points, scope, seed, manual]);
+    return { ...d, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: d.format.kind === "pools" && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
+  }), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts]);
   const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }, "preview", poolMode) : null, [meta, seeded, poolMode]);
   const setSch = (i: number, patch: Partial<DivSchedule>) => setFmt(i, { schedule: { ...divs[i].format.schedule, ...patch } });
   const setFmt = (i: number, patch: Partial<DivFormat>) => {

@@ -20,6 +20,7 @@ import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
+import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 
 /**
@@ -45,7 +46,7 @@ type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 /** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
 type CompKind = "pools" | "knockout" | "swiss" | "cross" | "later";
-type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string; crossUnits?: string[]; crossMode?: "all" | "chosen"; crossPairs?: [string, string][] };
+type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string; crossUnits?: string[]; crossMode?: "all" | "chosen" | "parent"; crossPairs?: [string, string][] };
 const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "", crossUnits: [] };
 /** Cross-league participants: the multi-select list, falling back to legacy two-group picks. */
 const crossList = (f: FormatPlan): string[] => f.crossUnits?.length ? f.crossUnits : [f.crossA, f.crossB].filter(Boolean);
@@ -341,7 +342,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
   };
   const formatDetail = (f: FormatPlan) => {
     if (!f.kind) return "Not chosen";
-    const extra = f.kind === "knockout" ? " · bracket from expected entries" : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${f.crossMode === "chosen" ? (f.crossPairs?.length ? `only ${f.crossPairs.map(([x, y]) => `${unitBase(x)} v ${unitBase(y)}`).join(", ")}` : "pairings not chosen") : crossList(f).length >= 2 ? `across ${crossList(f).map(unitBase).join(", ")} (all play each other)` : "participating groups not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
+    const extra = f.kind === "knockout" ? " · bracket from expected entries" : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${f.crossMode === "parent" ? "between subcategories of the same category only" : f.crossMode === "chosen" ? (f.crossPairs?.length ? `only ${f.crossPairs.map(([x, y]) => `${unitBase(x)} v ${unitBase(y)}`).join(", ")}` : "pairings not chosen") : crossList(f).length >= 2 ? `across ${crossList(f).map(unitBase).join(", ")} (all play each other)` : "participating groups not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
     return `${COMP_LABEL[f.kind]}${extra} (planned)`;
   };
   const formatExceptions = units.filter((u) => formatDetail(formatFor(u.key)) !== formatDetail(format));
@@ -365,6 +366,19 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
       await saveLifecycle(tid, { ...cur, partner_pay: partnerPayAnswer }).catch(() => undefined);
     })();
   }, [a.createdTournamentId, partnerPayAnswer]);
+  // Save the draw-relevant setup (format incl. within/between/custom matchups, seeding, stages) on the tournament so
+  // Generate draw & fixtures uses it on any device.
+  const drawPlanJson = JSON.stringify(drawPlanOf(a as any));
+  useEffect(() => {
+    const tid = a.createdTournamentId;
+    if (!tid) return;
+    const t = setTimeout(async () => {
+      const cur = await loadLifecycle(tid).catch(() => null);
+      if (!cur || JSON.stringify(cur.format_plan ?? null) === drawPlanJson) return;
+      await saveLifecycle(tid, { ...cur, format_plan: JSON.parse(drawPlanJson) }).catch(() => undefined);
+    }, 800);
+    return () => clearTimeout(t);
+  }, [a.createdTournamentId, drawPlanJson]);
   const feeUnitText = (u: { key: string; disc: Disc | null }) => `R${feeFor(u.key) || "?"} ${u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}`;
   const methodOpts = payCfg ? tournamentMethodOptions(payCfg) : [];
   const availMethods = methodOpts.filter((o) => o.available);
@@ -1650,7 +1664,23 @@ function FormatFields({ value, onChange, units, compact = false, entries = {}, s
       {units.filter((u) => !scope || scope.includes(u.key)).map((u) => <p key={u.key} className="text-xs">{u.base}: {Number(entries[u.key]) || "?"} expected → {bracketHint(Number(entries[u.key]) || 0)}</p>)}
     </div>}
     {value.kind === "swiss" && <div className="max-w-[260px] space-y-1"><Label>Roughly how many rounds? (optional)</Label><Input type="number" min="1" aria-label="Anticipated Swiss rounds" value={value.swissRounds} onChange={(e) => onChange({ swissRounds: e.target.value })} placeholder="e.g. 5" /><p className="text-xs text-muted-foreground">Each round pairs players on similar results; nobody is eliminated.</p></div>}
-    {value.kind === "cross" && <div className="space-y-2">
+    {(value.kind === "pools" || value.kind === "cross") && (() => {
+      const mode = value.kind === "pools" ? "within" : value.crossMode === "parent" ? "between" : "custom";
+      const inScope = units.filter((u) => !scope || scope.includes(u.key));
+      const parents = [...new Set(inScope.map((u) => u.key.split("::")[0]))];
+      const fam = parents.map((p) => ({ p, subs: inScope.filter((u) => u.key.split("::")[0] === p && u.key.includes("::")) }));
+      return <div className="space-y-2 rounded-lg border border-border p-3">
+        <Label>Round robin — who plays whom</Label>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Round robin matchups">
+          <Button type="button" size="sm" variant={mode === "within" ? "default" : "outline"} aria-pressed={mode === "within"} onClick={() => onChange({ kind: "pools", crossMode: undefined })}>Within subcategories</Button>
+          <Button type="button" size="sm" variant={mode === "between" ? "default" : "outline"} aria-pressed={mode === "between"} onClick={() => onChange({ kind: "cross", crossMode: "parent" })}>Between subcategories</Button>
+          <Button type="button" size="sm" variant={mode === "custom" ? "default" : "outline"} aria-pressed={mode === "custom"} onClick={() => onChange({ kind: "cross", crossMode: value.crossMode === "chosen" ? "chosen" : "all" })}>Custom matchups</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">{mode === "within" ? "Each subcategory plays its own round robin (e.g. Men's A v Men's A, Men's B v Men's B)." : mode === "between" ? "Subcategories under the same parent category play each other, never their own subcategory and never another parent category." : "Choose exactly which groups play each other below."}</p>
+        {mode === "between" && <ul className="text-xs">{fam.map(({ p, subs }) => <li key={p}>{p}: {subs.length >= 2 ? subs.flatMap((a, i) => subs.slice(i + 1).map((b) => `${a.base} v ${b.base}`)).join(" · ") : "no other subcategory to play"}</li>)}</ul>}
+      </div>;
+    })()}
+    {value.kind === "cross" && value.crossMode !== "parent" && <div className="space-y-2">
       <p className="text-xs text-muted-foreground">Select every existing category/subcategory/league that takes part. Players play opponents from the OTHER selected groups — not within their own group — and each group keeps its identity for later fixtures.</p>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Cross-league participating groups">
         {units.map((u) => { const on = crossList(value).includes(u.key); return <Button key={u.key} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => { const cur = crossList(value); onChange({ crossUnits: on ? cur.filter((k) => k !== u.key) : [...cur, u.key], crossA: "", crossB: "", crossPairs: on ? (value.crossPairs ?? []).filter((p) => !p.includes(u.key)) : value.crossPairs }); }}>{u.base}</Button>; })}

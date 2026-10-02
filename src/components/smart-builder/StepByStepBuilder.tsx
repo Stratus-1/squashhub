@@ -268,7 +268,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const dblUnits = units.filter((u) => u.disc === "doubles");
   const scoring = a.scoring ? { ...DEFAULT_SCORING, ...a.scoring } : null;
   const scoringFor = (key: string) => a.scoringOverrides?.[key] ?? a.scoringOverrides?.[key.split("::")[0]] ?? scoring;
-  const scoringOk = (s: MatchScoring | null) => !!s && (s.mode === "standard" || (Number.isFinite(Number(s.timeCapMinutes)) && Number(s.timeCapMinutes) > 0));
+  const scoringOk = (s: MatchScoring | null) => !!s && (s.mode === "standard" || slotMinutes(s) > 0);
   const setScoring = (patch: Partial<MatchScoring>) => setA({ ...a, scoring: { ...(scoring ?? DEFAULT_SCORING), ...patch } });
   const setScoringOverride = (key: string, patch: Partial<MatchScoring> | null) => {
     const next = { ...(a.scoringOverrides ?? {}) };

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
  * Picked players, eligibility and invite choices are captured here but nothing is sent or created.
- * Match scoring is planning-only; no draws, pools, play-offs or scheduling here — answers are kept locally
+ * Match scoring and playoff choices are planning-only; no draws, pools or scheduling here — answers are kept locally
  * per club so a future "Help me choose the format" step can read them.
  */
 type Kind = "once_off" | "period" | null;
@@ -22,6 +22,13 @@ const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
   : `Standard play · PAR ${s.pointsPerGame} · best of ${s.bestOf} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
+type PlayoffChoice = "none" | "playoffs" | "later";
+type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded" };
+const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later" };
+const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.choice === "later" ? "Decide later" : p.rounds === 1 ? "Final only" : p.rounds === 2 ? "Semifinals + Final" : "Quarterfinals + Semifinals + Final";
+const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
+const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Cross-pool (A1 v B2, B1 v A2)" : p.pairing === "seeded" ? "Seeded (highest v lowest)" : "Pairing to be decided";
+const playoffDetail = (p: PlayoffPlan) => p.choice === "playoffs" ? `${playoffText(p)} · ${qualifierText(p)} · ${pairingText(p)}` : playoffText(p);
 export type StepAnswers = {
   kind: Kind;
   entries: string;
@@ -49,6 +56,9 @@ export type StepAnswers = {
   /** Whether one player may register their partner (where players choose partners). */
   doublesEntry: boolean | null;
   fee: FeeCfg;
+  /** Default and category/subcategory exceptions; guidance only, not a generated bracket. */
+  playoff: PlayoffPlan;
+  playoffOverrides: Record<string, PlayoffPlan>;
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
@@ -65,9 +75,9 @@ type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; plac
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE };
-type StepKey = "Type" | "Entries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {} };
+type StepKey = "Type" | "Entries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -85,7 +95,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
       const doublesEntry = saved.doublesEntry !== undefined ? saved.doublesEntry : legacy === "later" || !legacy ? null : legacy !== "separate";
       const doublesCover = saved.fee?.doublesCover !== undefined ? saved.fee.doublesCover : legacy === "later" || !legacy ? null : legacy === "one_pays";
       const { doublesPay: _oldRule, ...savedFee } = saved.fee ?? {};
-      return { ...EMPTY, ...saved, scoringOverrides: saved.scoringOverrides ?? {}, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } };
+      return { ...EMPTY, ...saved, scoringOverrides: saved.scoringOverrides ?? {}, playoff: { ...DEFAULT_PLAYOFF, ...saved.playoff }, playoffOverrides: saved.playoffOverrides ?? {}, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } };
     } catch { return EMPTY; }
   });
   const [step, setStep] = useState(0);
@@ -155,6 +165,15 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     setA({ ...a, scoringOverrides: next });
   };
   const validOverrides = units.filter((u) => scoring && scoringFor(u.key) && scoringText(scoringFor(u.key) ?? scoring) !== scoringText(scoring));
+  const playoff = { ...DEFAULT_PLAYOFF, ...a.playoff };
+  const playoffFor = (key: string): PlayoffPlan => a.playoffOverrides?.[key] ?? a.playoffOverrides?.[key.split("::")[0]] ?? playoff;
+  const setPlayoff = (patch: Partial<PlayoffPlan>) => setA({ ...a, playoff: { ...playoff, ...patch } });
+  const setPlayoffOverride = (key: string, patch: Partial<PlayoffPlan> | null) => {
+    const next = { ...(a.playoffOverrides ?? {}) };
+    if (patch === null) delete next[key]; else next[key] = { ...playoffFor(key), ...patch };
+    setA({ ...a, playoffOverrides: next });
+  };
+  const playoffExceptions = units.filter((u) => playoffDetail(playoffFor(u.key)) !== playoffDetail(playoff));
   const partnerOf = (k: string): Partner | null => a.partner?.[k] ?? null;
   const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
@@ -192,7 +211,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
   const steps: StepKey[] = ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Summary"];
+    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
 
@@ -203,7 +222,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
   const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -219,6 +238,15 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     return h + (th * 60 + tm - fh * 60 - fm) / 60;
   }, 0), 0);
   const tipReady = fieldCount > 0 && cats.length > 0 && daysOk && courtsOk;
+  // Court-hour check is deliberately optimistic: pool matches, breaks, turnaround and parallel divisions are not planned here.
+  const plannedPlayoffMatches = units.reduce((n, u) => n + (playoffFor(u.key).choice === "playoffs" ? 2 ** playoffFor(u.key).rounds - 1 : 0), 0);
+  const playoffMinutes = units.reduce((n, u) => {
+    const p = playoffFor(u.key); const s = scoringFor(u.key) ?? scoring;
+    if (p.choice !== "playoffs" || !s) return n;
+    return n + (2 ** p.rounds - 1) * (s.mode === "time_capped_points" ? Number(s.timeCapMinutes) : s.bestOf === 3 ? 35 : 55);
+  }, 0);
+  const capacityEstimateValid = units.filter((u) => playoffFor(u.key).choice === "playoffs").every((u) => scoringOk(scoringFor(u.key) ?? scoring));
+  const provisional = !knownField || units.some((u) => !Object.values(a.picks).includes(u.key)) || selfEntry;
 
   const discText = (k: string) => { const d = units.find((u) => u.key === k)?.disc; return d ? PLAY_LABEL[d] : "?"; };
   const eligText = (k: string) => {

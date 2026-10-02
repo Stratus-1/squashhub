@@ -92,6 +92,9 @@ export type StepAnswers = {
   split: Record<string, ChampsSplit>;
   /** Club Champs: common playoff dates across categories (true) or per category (false); null = not chosen. */
   playoffSync: boolean | "later" | null;
+  /** Event level / owner context (planning only). */
+  scope: Scope | null;
+  ownerName: string;
   syncCutoff: string;
 };
 type Partner = "players" | "admin" | "later";
@@ -113,7 +116,7 @@ const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose
 type SeedMethod = "ranking" | "ladder" | "manual" | "random" | "none" | "later";
 const SEED_LABEL: Record<SeedMethod, string> = { ranking: "Use rankings", ladder: "Use the club ladder", manual: "Manual seeds", random: "Random placement", none: "No seeding", later: "Decide later" };
 const SEED_DESC: Record<SeedMethod, string> = {
-  ranking: "Club, regional or national ranking — whichever matches who may enter.",
+  ranking: "Ranking matching the event level (club, regional or national) where available.",
   ladder: "Seed from your club ladder positions.",
   manual: "You set the seeds yourself.",
   random: "Players are placed by random draw.",
@@ -128,7 +131,10 @@ const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = 
 const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0));
 /** Per category/subcategory: where main (qualifying) rounds end and the stage playoffs begin. Planning only. */
 type PlayoffStart = "qf" | "sf" | "final" | "custom" | "none" | "later";
-const START_LABEL: Record<PlayoffStart, string> = { qf: "Quarterfinals", sf: "Semifinals", final: "Final only", custom: "Custom stage", none: "No playoffs (finish on main rounds)", later: "Decide later" };
+const START_LABEL: Record<PlayoffStart, string> = { qf: "Quarterfinals (8 remain)", sf: "Semifinals (4 remain)", final: "Final only (2 remain)", custom: "Custom stage", none: "No separate playoff phase (format decides the finish)", later: "Decide later" };
+type Scope = "club" | "regional" | "national";
+const SCOPE_LABEL: Record<Scope, string> = { club: "Club", regional: "Regional / Association", national: "National / Federation" };
+const SCOPE_DESC: Record<Scope, string> = { club: "Run by your club.", regional: "Run by an association or region for its clubs and members.", national: "Run by the federation for associations, clubs and members." };
 type ChampsSplit = { mainEnd: string; start: PlayoffStart; custom: string };
 const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 
@@ -353,7 +359,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const basicsOk = !!a.name?.trim() && !!a.periodStart && !!a.periodEnd && a.periodStart <= a.periodEnd;
+  const periodOk = !!a.periodStart && !!a.periodEnd && a.periodStart <= a.periodEnd;
+  const basicsOk = !!a.name?.trim() && !!a.scope && (a.scope === "club" || !!a.ownerName?.trim()) && (!isChamps || periodOk);
+  const ownerText = a.scope === "club" ? `Club · ${clubName || "this club"}` : a.scope ? `${SCOPE_LABEL[a.scope]} · ${a.ownerName || "owner not named"}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Split: units.every((u) => splitOf(u.key).start !== "custom" || !!splitOf(u.key).custom.trim()) && a.playoffSync !== null && a.playoffSync !== undefined && (a.playoffSync !== true || !!a.syncCutoff), Schedule: stages.length > 0 && stages.every(stageOk), Playoffs: true, Summary: false };
   const canNext = okFor[cur];
@@ -856,14 +864,25 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
           {cur === "Basics" && (
             <>
-              <Q t="Club Championships basics" h="Name and the overall period the championships run over." />
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1 sm:col-span-3"><Label htmlFor="sbs-name">Name</Label><Input id="sbs-name" value={a.name ?? ""} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder="e.g. Club Championships 2026" /></div>
+              <Q t={isChamps ? "Club Championships basics" : "Tournament basics"} h="The tournament's name and who it belongs to — not how it is played." />
+              <div className="space-y-1"><Label htmlFor="sbs-name">Tournament name</Label><Input id="sbs-name" value={a.name ?? ""} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder={isChamps ? "e.g. Riverside Club Championships 2026" : "e.g. Riverside Spring Open"} /></div>
+              <div className="space-y-1">
+                <Label>Event level</Label>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(Object.keys(SCOPE_LABEL) as Scope[]).map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s })} title={SCOPE_LABEL[s]} desc={SCOPE_DESC[s]} />)}
+                </div>
+              </div>
+              {a.scope === "club" && <p className="text-sm">Owner: <b>{clubName || "this club"}</b></p>}
+              {(a.scope === "regional" || a.scope === "national") && <div className="max-w-[360px] space-y-1">
+                <Label htmlFor="sbs-owner">{a.scope === "regional" ? "Association / region" : "Federation / national body"}</Label>
+                <Input id="sbs-owner" value={a.ownerName ?? ""} onChange={(e) => setA({ ...a, ownerName: e.target.value })} placeholder={a.scope === "regional" ? "e.g. Mpumalanga Squash" : "e.g. Squash South Africa"} />
+                <p className="text-xs text-muted-foreground">Planning only — linking to the real {a.scope === "regional" ? "association and its clubs" : "federation, associations and clubs"} comes later. Who may enter is set in a later step.</p>
+              </div>}
+              {isChamps && <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1"><Label htmlFor="sbs-start">Starts</Label><Input id="sbs-start" type="date" value={a.periodStart ?? ""} onChange={(e) => setA({ ...a, periodStart: e.target.value })} /></div>
                 <div className="space-y-1"><Label htmlFor="sbs-end">Ends</Label><Input id="sbs-end" type="date" value={a.periodEnd ?? ""} onChange={(e) => setA({ ...a, periodEnd: e.target.value })} /></div>
-              </div>
-              {a.periodStart && a.periodEnd && a.periodStart > a.periodEnd && <p className="text-xs text-destructive">The end must be on or after the start.</p>}
-              <p className="text-xs text-muted-foreground">Singles/Doubles and who may enter are asked in the next steps.</p>
+              </div>}
+              {isChamps && a.periodStart && a.periodEnd && a.periodStart > a.periodEnd && <p className="text-xs text-destructive">The end must be on or after the start.</p>}
             </>
           )}
 
@@ -927,6 +946,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Choice active={a.playoffSync === true} onClick={() => setA({ ...a, playoffSync: true })} title="Yes — common playoff dates" desc="Categories play earlier rounds at their own pace but finish qualifying by a common cutoff, so all semifinals share one Semifinals Night and all finals one Finals Day, with courts reserved centrally." />
                   <Choice active={a.playoffSync === false} onClick={() => setA({ ...a, playoffSync: false })} title="No — separately per category" desc="Each category gets its own playoff dates, deadlines, times and courts." />
+                  <Choice active={a.playoffSync === "later"} onClick={() => setA({ ...a, playoffSync: "later" })} title="Decide later" desc="Keep planning; choose before playoff dates are set." />
                 </div>
                 {a.playoffSync === true && <div className="space-y-1">
                   <div className="max-w-[240px] space-y-1"><Label>Qualifying rounds complete by (common cutoff)</Label><Input type="date" aria-label="Common qualifying cutoff" value={a.syncCutoff ?? ""} onChange={(e) => setA({ ...a, syncCutoff: e.target.value })} /></div>

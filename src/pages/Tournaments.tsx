@@ -30,6 +30,7 @@ import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialo
 import { eliminatedMemberIds } from "@/lib/tournaments/survivors";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
+import { structuredMatchups, matchupForMatchGroup, matchupHeading, type StructuredMatchup } from "@/lib/tournaments/structured-matchups";
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
 import { entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
 import { distributeIntoPools, normalisePoolAllocation } from "@/lib/tournaments/pools";
@@ -138,6 +139,18 @@ export default function Tournaments() {
   // agrees on what "current" means (see src/lib/tournaments/lifecycle.ts).
   const { current: champs, past: pastChamps, needsDates: undatedChamps } =
     splitTournamentsByLifecycle(allChamps as any[], todayStr);
+  // Beta matchups (e.g. Men's A vs Men's B): games are stored under the first group, so labels must name both sides.
+  const champIdsKey = (champs as any[]).map((c: any) => c.id).sort().join(",");
+  const { data: matchupsByChamp } = useQuery({
+    queryKey: ["structured-matchups", champIdsKey],
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("id,builder_architecture,builder_spec").in("id", champIdsKey.split(","));
+      const m = new Map<string, StructuredMatchup[]>();
+      for (const t of (data || []) as any[]) if (t.builder_architecture === "structured") m.set(t.id, structuredMatchups(t.builder_spec));
+      return m;
+    },
+    enabled: !!champIdsKey,
+  });
   const champById = useMemo(
     () => new Map((allChamps as any[]).map((champ: any) => [champ.id, champ] as const)),
     [allChamps],
@@ -447,7 +460,9 @@ export default function Tournaments() {
       parts.push(b.stageLabel || "Play-offs");
       return parts.join(" · ");
     }
-    if (b.group != null) parts.push(getGroupLabel(champ, b.group));
+    const mu = matchupForMatchGroup(matchupsByChamp?.get(b.champId) ?? [], b.group);
+    if (mu) parts.push(matchupHeading(mu, (g) => getGroupLabel(champ, g)));
+    else if (b.group != null) parts.push(getGroupLabel(champ, b.group));
     const pl = poolLetter(b.pool);
     if (pl) parts.push(`Pool ${pl}`);
     return parts.join(" · ") || "Unassigned";

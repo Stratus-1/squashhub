@@ -4,7 +4,8 @@
  * against those ids → identity validation → insert. Legacy tournaments never come here.
  * The DB trigger `guard_structured_match_identity` enforces the same identity rules.
  */
-import { IntegrityError, rankPoolTally, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
+import { IntegrityError, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
+import { gameSetsOf, normaliseTieBreaks, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type RankResult, type TieBreakCriterion, type TieGroup } from "./tie-breaks";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
 import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec, divisionGroup, divisionEntryGroups } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";
@@ -308,6 +309,8 @@ export async function loadEntrants(db: Db, tid: string, rawSpec: TournamentSpec)
     ...spec,
     divisions: spec.divisions.map((d) => ({
       ...d,
+      // Division override → tournament tie-break rule (absent = documented default at ranking time).
+      tieBreaks: d.tieBreaks ?? spec.tieBreaks,
       entrants: rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
         .map((r, k) => ({ id: r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id, rank: r.order_index != null ? k + 1 : null })),
       expectedEntrants: d.expectedEntrants ?? rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).length,
@@ -334,29 +337,28 @@ export async function generateStructuredTournament(db: Db, tid: string) {
 
 /* ───── playoffs from persisted structure ───── */
 
-/** Pool standings from completed games of one pool stage. Ties at a qualifying boundary block (owner decision). */
-export function poolStandings(divisionKey: string, stageKey: string, matches: Array<Record<string, any>>, perPool: number): PoolStanding[] {
-  const unitOf = (m: Record<string, any>, side: "a" | "b") => {
-    const p = m[`player_${side}_member_id`], q = m[`partner_${side}_member_id`];
-    return q ? `${p}+${q}` : p;
-  };
-  const byPool = new Map<number, Map<string, number>>();
+/**
+ * Pool standings from completed games of one pool stage, ranked by the shared tie-break engine.
+ * Positions 1..perPool feed the next stage, so an unresolved tie touching them blocks (owner decision);
+ * ties below the qualifying line never block.
+ */
+export function poolStandings(divisionKey: string, stageKey: string, matches: Array<Record<string, any>>, perPool: number, criteria: TieBreakCriterion[] = DEFAULT_TIE_BREAKS, orders?: Record<number, string[]> | null, nextStage?: string): PoolStanding[] {
+  const rows = matches.filter((x) => x.stage_key === stageKey && !x.is_bye);
+  const byPool = new Map<number, string[]>();
   // A one-field round robin has no pool number: treat it as a single pool.
-  for (const m of matches.filter((x) => x.stage_key === stageKey)) {
+  for (const m of rows) {
     const pn = m.pool_number ?? 1;
-    const pool = byPool.get(pn) ?? new Map<string, number>();
-    byPool.set(pn, pool);
-    const a = unitOf(m, "a"), b = unitOf(m, "b");
-    for (const u of [a, b]) if (u && !pool.has(u)) pool.set(u, 0);
-    if (m.winner_member_id) {
-      const w = String(a).split("+").includes(m.winner_member_id) ? a : b;
-      pool.set(w, (pool.get(w) ?? 0) + 1);
-    }
+    const list = byPool.get(pn) ?? []; byPool.set(pn, list);
+    for (const u of [unitOfRow(m, "a"), unitOfRow(m, "b")]) if (u && !list.includes(u)) list.push(u);
   }
+  const games = rankGamesOf(rows);
   const out: PoolStanding[] = [];
-  for (const [pool, tally] of [...byPool.entries()].sort((x, y) => x[0] - y[0])) {
-    rankPoolTally(tally, perPool, `Pool ${pool}`).forEach((id, i) => out.push({ pool, position: i + 1, id, divisionId: divisionKey }));
-  }
+  [...byPool.entries()].sort((x, y) => x[0] - y[0]).forEach(([pool, members], pi) => {
+    const r = rankUnits(members, games, criteria, orders?.[pi] ?? []);
+    const t = r.ties.find((x) => tieIsMaterial(x, perPool > 0 ? (p) => p <= perPool : null));
+    if (t) throw new IntegrityError("tie", tieMessage(`Pool ${String.fromCharCode(64 + pool)}`, t, criteria, nextStage));
+    r.order.forEach((id, i) => out.push({ pool, position: i + 1, id, divisionId: divisionKey }));
+  });
   return out;
 }
 
@@ -391,7 +393,7 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   if (!srcDone.length || !srcDone.every(isDecided)) return notReady(`${src.name} is not finished.`);
   if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return notReady(`${src.name}: not all Swiss rounds are played yet.`);
   const cut = Math.max(0, ...transition.positions);
-  const standings = poolStandings(divisionKey, src.id, matches, cut);
+  const standings = poolStandings(divisionKey, src.id, matches, cut, resolveTieBreaks(spec, d), spec.positionOrders?.[`${divisionKey}/${src.id}`], stage.name);
   return previewPlayoffs(d, stageKey, standings, existing);
 }
 
@@ -512,21 +514,27 @@ const unitOfRow = (x: Record<string, any>, side: "a" | "b") => {
   return q ? `${p}+${q}` : p;
 };
 
-/**
- * Final finishing positions of a completed source stage, per source pool: `out[pool][position-1] = unit id`.
- * - pools / round robin: each unit ranked inside its own pool;
- * - entry-seeded pool-v-pool matchups: each player ranked inside the pool they were seeded into.
- * Ranking = wins, then the admin's recorded order (`orders[pool]`) for ties. A tie touching any
- * position the next stage uses is NEVER guessed: it blocks with a message naming the pool and places.
- */
-export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, used?: Set<string>, allowTies = false): string[][] {
-  const rows = matches.filter((x) => x.stage_key === src.id);
-  const wins = new Map<string, number>();
-  for (const x of rows) if (x.winner_member_id) {
+/** Tie-break order for a division: division override → tournament setting → documented default. */
+export const resolveTieBreaks = (spec: Pick<TournamentSpec, "tieBreaks"> | null | undefined, d?: Pick<SpecDivision, "tieBreaks"> | null): TieBreakCriterion[] =>
+  d?.tieBreaks ? normaliseTieBreaks(d.tieBreaks) : normaliseTieBreaks(spec?.tieBreaks);
+
+/** Decided games of one stage as ranking input (byes and one-sided rows ignored). */
+export function rankGamesOf(rows: Array<Record<string, any>>): RankGame[] {
+  return rows.filter((x) => !x.is_bye && x.player_a_member_id && x.player_b_member_id).map((x) => {
     const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
-    const w = String(a).split("+").includes(x.winner_member_id) ? a : b;
-    wins.set(w, (wins.get(w) ?? 0) + 1);
-  }
+    const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b;
+    return { a, b, winner, ...gameSetsOf(x) };
+  });
+}
+
+export interface SourcePool { index: number; label: string; members: string[]; result: RankResult; material: TieGroup[] }
+
+/**
+ * Rank every pool of a source stage with the shared tie-break engine.
+ * `used` = "pool:position" keys the next stage reads (undefined = every position matters).
+ */
+export function rankSourcePools(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, used?: Set<string>, criteria: TieBreakCriterion[] = resolveTieBreaks(null, d)): SourcePool[] {
+  const rows = matches.filter((x) => x.stage_key === src.id);
   let pools: string[][];
   if (src.kind === "mapped") {
     if (src.mapping?.source !== "seed_pools") throw new IntegrityError("mapping_source", `${src.name}: its players have no home pool to be ranked in.`);
@@ -537,24 +545,34 @@ export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Arr
   } else {
     const by = new Map<number, string[]>();
     for (const x of rows) {
+      if (x.is_bye) continue;
       const pn = x.pool_number ?? 1;
       const list = by.get(pn) ?? []; by.set(pn, list);
       for (const u of [unitOfRow(x, "a"), unitOfRow(x, "b")]) if (u && !list.includes(u)) list.push(u);
     }
     pools = [...by.entries()].sort((a, b) => a[0] - b[0]).map(([, l]) => l);
   }
+  // Deterministic fallback order = seed order, then first appearance.
+  const seed = new Map(d.entrants.map((e, i) => [e.id, i]));
+  const games = rankGamesOf(rows);
   return pools.map((members, pi) => {
-    const order = orders?.[pi] ?? [];
-    const idx = (id: string) => { const i = order.indexOf(id); return i < 0 ? 1e9 : i; };
-    const ranked = [...members].sort((a, b) => (wins.get(b) ?? 0) - (wins.get(a) ?? 0) || idx(a) - idx(b));
-    for (let i = 0; i + 1 < ranked.length; i++) {
-      const [x, y] = [ranked[i], ranked[i + 1]];
-      const touches = !used || used.has(`${pi}:${i + 1}`) || used.has(`${pi}:${i + 2}`);
-      if (!allowTies && touches && (wins.get(x) ?? 0) === (wins.get(y) ?? 0) && (idx(x) === 1e9 || idx(y) === 1e9))
-        throw new IntegrityError("tie", `${d.poolLabels?.[pi] ?? `Pool ${String.fromCharCode(65 + pi)}`}: positions ${i + 1} and ${i + 2} are tied on wins — decide the order before the next stage is formed.`);
-    }
-    return ranked;
+    const ordered = members.map((m, i) => [m, i] as const).sort((x, y) => (seed.get(x[0]) ?? 1e6 + x[1]) - (seed.get(y[0]) ?? 1e6 + y[1])).map(([m]) => m);
+    const result = rankUnits(ordered, games, criteria, orders?.[pi] ?? []);
+    const material = result.ties.filter((t) => tieIsMaterial(t, used ? (p) => used.has(`${pi}:${p}`) : null));
+    return { index: pi, label: d.poolLabels?.[pi] ?? `Pool ${String.fromCharCode(65 + pi)}`, members: ordered, result, material };
   });
+}
+
+/**
+ * Final finishing positions of a completed source stage, per source pool: `out[pool][position-1] = unit id`.
+ * Ranking = wins, then the tournament's tie-break rules, then the admin's recorded order (`orders[pool]`).
+ * A tie still unresolved that touches a position the next stage uses is NEVER guessed: it blocks with a
+ * message naming the pool, places and rules applied. Ties among positions nobody reads never block.
+ */
+export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, used?: Set<string>, allowTies = false, criteria: TieBreakCriterion[] = resolveTieBreaks(null, d), nextStage?: string): string[][] {
+  const pools = rankSourcePools(d, src, matches, orders, used, criteria);
+  if (!allowTies) for (const p of pools) if (p.material.length) throw new IntegrityError("tie", tieMessage(p.label, p.material[0], criteria, nextStage));
+  return pools.map((p) => p.result.order);
 }
 
 /**
@@ -584,7 +602,7 @@ async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: Sp
   const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
   const positions = m.source === "stage_winners"
     ? [stageWinners(src, matches)]
-    : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used);
+    : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used, false, resolveTieBreaks(spec, d), st.name);
   const fixtures = mappedFixtures(tid, d, st, positions);
   const known = new Set(d.entrants.map((e) => e.id));
   const units = [...new Set(fixtures.flatMap((f) => [f.a!, f.b!]))].filter((u) => !known.has(u)).map((id) => ({ id, rank: null }));

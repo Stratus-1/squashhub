@@ -1,3 +1,4 @@
+import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
 /**
@@ -22,6 +23,8 @@ export interface SpecDivision extends DivisionContract {
   /** Entrant ids in seed order (strongest first). */
   entrants: Array<{ id: string; rank: number | null }>;
   poolLabels?: string[];
+  /** Optional division override of TournamentSpec.tieBreaks. */
+  tieBreaks?: import("./tie-breaks").TieBreakCriterion[];
   /**
    * Stages the owner deliberately left "Define later" (semi-finals, final, …). Planning
    * targets only: never generated, never advanced into, kept so the admin can configure
@@ -47,6 +50,8 @@ export interface TournamentSpec {
    * (best first). Only consulted where results are level; never overrides a real difference in wins.
    */
   positionOrders?: Record<string, Record<number, string[]>>;
+  /** Tie-break order after wins for pool/round-robin standings and qualification (absent = DEFAULT_TIE_BREAKS). */
+  tieBreaks?: import("./tie-breaks").TieBreakCriterion[];
   architecture: "structured";
   tournamentId?: string;
   name: string;
@@ -378,23 +383,28 @@ const stageFinished = (st: PlannedStage, rows: FixtureRow[]) => {
 
 /**
  * Resolve "top N from EACH pool" into stable slots, each from its own pool's standings only
- * (the same rankPoolTally the play-offs use). Order: all 1st places by pool, then all 2nd places…
+ * (the same tie-break engine the play-offs use). Order: all 1st places by pool, then all 2nd places…
  * Refuses while any source pool is unfinished — slots are never filled early.
  */
-export function perPoolQualifiers(prev: PlannedStage, rows: FixtureRow[], top: number): Array<PoolSlot & { id: string }> {
+export function perPoolQualifiers(prev: PlannedStage, rows: FixtureRow[], top: number, criteria: TieBreakCriterion[] = DEFAULT_TIE_BREAKS): Array<PoolSlot & { id: string }> {
   if (prev.kind !== "pools") throw new IntegrityError("per_pool_source", `${prev.name} has no pools.`);
   const mine = rows.filter((f) => f.stageId === prev.id);
   if (!stageFinished(prev, rows)) throw new IntegrityError("prereq", `${prev.name} is not finished.`);
   const pools = prev.pools ?? 1;
   const tables: string[][] = [];
   for (let i = 0; i < pools; i++) {
-    const tally = new Map<string, number>();
+    // Same tie-break engine as standings and mapped play-offs (byes count as a win).
+    const units: string[] = []; const games: RankGame[] = [];
     for (const f of mine.filter((x) => (x.pool ?? 1) === i + 1)) {
-      for (const u of [f.a, f.b]) if (u && !tally.has(u)) tally.set(u, 0);
-      const w = f.a && !f.b ? f.a : f.winner;
-      if (w) tally.set(w, (tally.get(w) ?? 0) + 1);
+      for (const u of [f.a, f.b]) if (u && !units.includes(u)) units.push(u);
+      if (f.a && f.b) games.push({ a: f.a, b: f.b, winner: f.winner ?? null, ...gameSetsOf({ score: f.score }) });
     }
-    const ranked = rankPoolTally(tally, top, `Pool ${String.fromCharCode(65 + i)}`);
+    const byes = new Map<string, number>();
+    for (const f of mine.filter((x) => (x.pool ?? 1) === i + 1 && x.a && !x.b)) byes.set(f.a!, (byes.get(f.a!) ?? 0) + 1);
+    const r = rankUnits(units, games, criteria, [], byes);
+    const t = r.ties.find((x) => tieIsMaterial(x, (p) => p <= top));
+    if (t) throw new IntegrityError("tie", tieMessage(`Pool ${String.fromCharCode(65 + i)}`, t, criteria));
+    const ranked = r.order;
     if (ranked.length < top) throw new IntegrityError("top_exceeds_pool", `Pool ${String.fromCharCode(65 + i)} has only ${ranked.length} — can't take top ${top}.`);
     tables.push(ranked);
   }
@@ -433,7 +443,7 @@ export function nextStageFixtures(tid: string, d: SpecDivision, stageId: string,
   }
   // 2. Who continues.
   if (p.mode === "top_n" && p.perPool) {
-    ranked = perPoolQualifiers(prev, div, p.top ?? 0).map((q) => q.id);
+    ranked = perPoolQualifiers(prev, div, p.top ?? 0, d.tieBreaks ?? DEFAULT_TIE_BREAKS).map((q) => q.id);
   } else if (p.mode === "top_n") {
     if (!p.top || p.top > ranked.length) throw new IntegrityError("top_n", `Only ${ranked.length} can continue from ${prev.name}.`);
     ranked = ranked.slice(0, p.top);

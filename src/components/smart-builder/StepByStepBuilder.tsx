@@ -6,6 +6,11 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
+import { TieBreakFields } from "./TieBreakFields";
+import { normaliseTieBreaks, type TieBreakCriterion } from "@/lib/tournaments/tie-breaks";
+import { saveTieBreakRules } from "@/lib/tournaments/progression";
+import { atomically } from "@/lib/tournaments/structured-persist";
+import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
 import { inferCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
@@ -136,6 +141,8 @@ export type StepAnswers = {
   poolPlan?: Record<string, PoolPlan>;
   /** Playoff qualification is independent of the pool-creation rule (legacy qualifiers in poolPlan remain readable). */
   playoffPoolQualifiers?: Record<string, PoolQualification>;
+  /** Tie-break order after wins for every pool/round robin (absent = DEFAULT_TIE_BREAKS). Saved to the live spec. */
+  tieBreaks?: TieBreakCriterion[];
   /** Provisional seeding with category/subcategory exceptions. */
   seeding: SeedMethod | null;
   seedingOverrides: Record<string, SeedMethod>;
@@ -422,6 +429,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const cur = await loadLifecycle(tid).catch(() => null);
       if (!cur || JSON.stringify(cur.format_plan ?? null) === drawPlanJson) return;
       await saveLifecycle(tid, { ...cur, format_plan: JSON.parse(drawPlanJson) }).catch(() => undefined);
+      // Tie-break rules also apply to an already-generated draw (only stages not yet created are affected).
+      await saveTieBreakRules(supabaseDb, tid, normaliseTieBreaks(JSON.parse(drawPlanJson).tieBreaks), (fn) => atomically(supabaseDb, tid, commitStructured, fn)).catch(() => undefined);
     }, 800);
     return () => clearTimeout(t);
   }, [a.createdTournamentId, drawPlanJson]);
@@ -1454,6 +1463,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {mainStages.map(renderStage)}
                 <Button variant="outline" size="sm" onClick={() => setStages([...stages, newStage(`Round ${mainStages.length + 1}`, "play_by", "", "main")])}><Plus className="mr-1 h-4 w-4" />Add main round</Button>
               </div>
+              <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
               <div className="rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">▼ Playoffs begin</div>
               <div className="space-y-3">
                 <div className="text-sm font-semibold">Playoffs <span className="font-normal text-muted-foreground">· {a.playoffSync === true ? "common dates for all categories" : a.playoffSync === false ? "per category" : a.playoffSync === "later" ? "synchronisation decided later" : "synchronisation not chosen"}</span></div>
@@ -1485,6 +1495,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             <>
               <Q t="Will there be playoffs?" h="Playoffs follow your planned format. Categories inherit the tournament plan unless you choose an exception below. Planning only — no draw or fixtures are made, and this is revisited at Confirm final format." />
               <PlayoffFields value={playoff} onChange={setPlayoff} format={format.kind} />
+              <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
               {units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
                 <div className="text-sm font-semibold">Category and subcategory exceptions</div>
                 <p className="text-xs text-muted-foreground">Leave a group on the tournament plan, or give it its own playoff structure.</p>

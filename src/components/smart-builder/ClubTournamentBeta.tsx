@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, FlaskConical, ListChecks, Wand2 } from "lucide-react";
 import { SmartTournamentBuilderCore, type BuilderNav } from "@/pages/admin/SmartTournamentBuilder";
 import { StepByStepBuilder } from "./StepByStepBuilder";
+import { StepTournamentManagement } from "./StepTournamentManagement";
+import { loadHandovers } from "@/lib/smart-builder/step-handover";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -20,14 +22,28 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   const legacy = searchParams.get("legacy") === "1";
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
+  const [editAtSummary, setEditAtSummary] = useState(false);
+  const [managing, setManaging] = useState<string | null>(null);
+  const handovers = loadHandovers(clubId);
   const navigate = useNavigate();
 
   if (legacy) return <LegacyBetaHost clubId={clubId} clubName={clubName} open={legacyOpen} setOpen={setLegacyOpen} navigate={navigate} />;
 
+  if (managing) {
+    return (
+      <div className="dark rounded-xl bg-background p-4 text-foreground">
+        <StepTournamentManagement key={managing} clubId={clubId} tournamentId={managing}
+          onBack={() => setManaging(null)}
+          onEditSetup={() => { setManaging(null); setEditAtSummary(true); setStepByStepOpen(true); }} />
+      </div>
+    );
+  }
+
   if (stepByStepOpen) {
     return (
       <div className="dark rounded-xl bg-background p-4 text-foreground">
-        <StepByStepBuilder clubId={clubId} clubName={clubName} />
+        <StepByStepBuilder clubId={clubId} clubName={clubName} initialStep={editAtSummary ? "Summary" : undefined}
+          onCompleted={(tid) => { setStepByStepOpen(false); setEditAtSummary(false); setManaging(tid); }} />
       </div>
     );
   }
@@ -58,6 +74,16 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
           Walk through the what, who, format, schedule and payment questions in order — then review everything before anything is created.
         </div>
       </button>
+      {handovers.length > 0 && (
+        <div className="mt-4 max-w-md space-y-1">
+          <div className="text-xs text-white/60">Continue managing</div>
+          {handovers.map((h) => (
+            <button key={h.tournamentId} onClick={() => setManaging(h.tournamentId)} className="flex w-full items-center justify-between rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-white hover:bg-white/5">
+              {h.name}<ArrowRight className="h-4 w-4 text-amber-200" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

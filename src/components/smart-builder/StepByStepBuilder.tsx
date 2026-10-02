@@ -11,6 +11,7 @@ import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
+import { LIFECYCLE, loadHandover, persistStepTournament, saveHandover, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -70,6 +71,8 @@ const playoffDetail = (p: PlayoffPlan, k?: CompKind | null) => {
 };
 export type StepAnswers = {
   planId?: string;
+  /** Set once "Complete setup & continue" created the tournament; later saves update it. */
+  createdTournamentId?: string;
   kind: Kind;
   entries: string;
   playType: PlayType;
@@ -195,7 +198,7 @@ const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles"
 const fmtDay = (d: string) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "No date";
 
-export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubName?: string }) {
+export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }: { clubId: string; clubName?: string; onCompleted?: (tournamentId: string) => void; initialStep?: "Summary" }) {
   const key = `sh.stepbuilder.${clubId}`;
   const [a, setA] = useState<StepAnswers>(() => {
     try {
@@ -553,6 +556,95 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     if (prev?.date) { const n = new Date(prev.date + "T00:00:00"); n.setDate(n.getDate() + 1); date = n.toISOString().slice(0, 10); }
     setDays([...a.days, { date, venue: prev?.venue ?? clubName ?? "", courts: prev?.courts ?? "", windows: [{ from: "", to: "" }] }]);
   };
+
+  const [jumped, setJumped] = useState(false);
+  useEffect(() => { if (initialStep && !jumped) { setJumped(true); go(initialStep); } });
+  /* ── Handover: Summary → Tournament Management ── */
+  const deferred: DeferredDecision[] = (() => {
+    const out: DeferredDecision[] = [];
+    const ul = (keys: string[]) => keys.map(unitBase).join(", ");
+    const fLater = units.filter((u) => formatFor(u.key).kind === "later").map((u) => u.key);
+    if (fLater.length || (!units.length && format.kind === "later")) out.push({ id: "format", label: `Competition format${fLater.length ? ` (${ul(fLater)})` : ""}`, neededAt: "finalise", why: "Chosen at Finalise entries, once real entries are known." });
+    const sLater = units.filter((u) => seedFor(u.key) === "later").map((u) => u.key);
+    if (sLater.length) out.push({ id: "seeding", label: `Seeding (${ul(sLater)})`, neededAt: "finalise", why: "Depends on who actually entered." });
+    if (!isChamps) { const pl = units.filter((u) => playoffFor(u.key).choice === "later" && formatFor(u.key).kind !== "knockout").map((u) => u.key); if (pl.length) out.push({ id: "playoffs", label: `Playoffs (${ul(pl)})`, neededAt: "finalise", why: "Depends on the final field size." }); }
+    if (isChamps && a.playoffSync === "later") out.push({ id: "playoff_sync", label: "Playoff dates shared across categories?", neededAt: "generate", why: "Needed before fixtures are made." });
+    const stLater = stages.filter((s) => s.mode === "later");
+    if (stLater.length) out.push({ id: "stage_dates", label: `Stage dates (${stLater.map((s) => s.name).join(", ")})`, neededAt: "generate", why: "Needed before fixtures are made." });
+    const pLater = dblUnits.filter((u) => partnerOf(u.key) === "later").map((u) => u.key);
+    if (pLater.length) out.push({ id: "partners", label: `Who picks doubles partners (${ul(pLater)})`, neededAt: selfEntry ? "invite" : "finalise", why: selfEntry ? "Players need to know this before they enter." : "Pairs are needed before the draw." });
+    if (selfEntry && dblUnits.some((u) => partnerOf(u.key) === "players") && (a.doublesEntry ?? null) === null) out.push({ id: "doubles_entry", label: "May a player register both partners?", neededAt: "invite", why: "Affects how players enter." });
+    if (fee.has && dblUnits.length && fee.doublesCover === null) out.push({ id: "doubles_cover", label: "May one player pay for both partners?", neededAt: "invite", why: "Changes the amount shown in the message." });
+    if (selfEntry && a.invite === "later") out.push({ id: "invite_audience", label: "Who to invite", neededAt: "invite", why: "Needed before invitations go out." });
+    if (msgLater) out.push({ id: "message", label: notifyOnly ? "Participation notification wording/channels" : "Invitation wording/channels", neededAt: "invite", why: "Needed before players are contacted." });
+    return out;
+  })();
+  const renderMsg = (vars: Record<string, string>) => msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => vars[k] ?? previewVars[k] ?? m);
+  const entrantMessages: EntrantMessage[] = pickIds.filter((id) => !!a.picks[id]).map((id) => {
+    const k = a.picks[id]; const u = units.find((x) => x.key === k);
+    const partner = adminPairKeys.has(k) ? pairsFor(k).find((p) => p.includes(id))?.find((x) => x !== id) : undefined;
+    const text = renderMsg({ first_name: memberName(id).split(" ")[0] || "there", category: u?.label ?? "", partner_name: partner ? memberName(partner) : "[partner to be confirmed]", amount_due: dueText(u) || "" });
+    return { memberId: id, name: memberName(id), text, status: fee.has ? "Entered · Payment outstanding" : "Entered" };
+  });
+  const [completing, setCompleting] = useState(false);
+  const [completeErr, setCompleteErr] = useState<string | null>(null);
+  const setupComplete = steps.slice(0, -1).every((k) => okFor[k]);
+  const completeSetup = async () => {
+    setCompleting(true); setCompleteErr(null);
+    try {
+      const dates = a.days.map((d) => d.date).filter(Boolean).sort();
+      const amounts = units.map((u) => Number(feeFor(u.key)) || 0);
+      const feeCents = fee.has ? Math.round(Math.max(0, ...amounts) * 100) : 0;
+      const pms = dblUnits.map((u) => partnerOf(u.key)).filter((p): p is "admin" | "players" => p === "admin" || p === "players");
+      const entrants = notifyOnly || showPick ? pickIds.filter((id) => !!a.picks[id]).map((id) => {
+        const k = a.picks[id];
+        const partner = adminPairKeys.has(k) ? pairsFor(k).find((p) => p.includes(id))?.find((x) => x !== id) ?? null : null;
+        return { memberId: id, partnerId: partner };
+      }) : [];
+      const tid = await persistStepTournament({
+        clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
+        startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,
+        feeCents, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
+      });
+      const prev = loadHandover(clubId, tid);
+      saveHandover({
+        tournamentId: tid, clubId, name: a.name || "Tournament", kind: isChamps ? "period" : "once_off",
+        mode: notifyOnly ? "inform" : "invite", feeDue: !!fee.has, channels: msg.channels.filter(chAvail), messageTemplate: msgBody,
+        entrantMessages, invitePreview: preview, deferred,
+        stage: prev?.stage ?? "invite", completed: prev?.completed ?? ["planning"], informedAt: prev?.informedAt ?? null,
+        createdAt: prev?.createdAt ?? new Date().toISOString(),
+      });
+      // Persist synchronously: the builder unmounts on handover, so the save effect may never run.
+      const nextA = { ...a, createdTournamentId: tid };
+      localStorage.setItem(key, JSON.stringify(nextA));
+      setA(nextA);
+      onCompleted?.(tid);
+    } catch (e: any) {
+      setCompleteErr(e?.message || "Something went wrong — nothing was changed.");
+    } finally { setCompleting(false); }
+  };
+  const deferredByStage = LIFECYCLE.map((l) => ({ l, items: deferred.filter((d) => d.neededAt === l.key) })).filter((x) => x.items.length);
+  const handoverPanel = (where: "top" | "bottom") => (
+    <div className={cn("rounded-lg border p-3 text-sm", setupComplete ? "border-primary/50 bg-primary/10" : "border-destructive/50 bg-destructive/10")} data-testid={`handover-${where}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="font-semibold">{setupComplete ? "Tournament setup complete" : "Setup not finished yet"}</div>
+          <div className="text-xs text-muted-foreground">{setupComplete
+            ? `${a.createdTournamentId ? "Already created — saving updates the same tournament." : "Next: "}${notifyOnly ? "inform your selected players" : "invite players"}.${deferred.length ? ` ${deferred.length} "Decide later" item${deferred.length === 1 ? "" : "s"} will be asked for when needed.` : ""}`
+            : `Finish: ${steps.slice(0, -1).filter((k) => !okFor[k]).map((k) => STEP_LABEL[k]).join(", ")}`}</div>
+        </div>
+        <Button size="sm" disabled={!setupComplete || completing} onClick={completeSetup}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button>
+      </div>
+      {where === "top" && deferredByStage.length > 0 && (
+        <div className="mt-2 space-y-1 text-xs">
+          <div className="font-medium">Decided later — tracked, not forgotten:</div>
+          {deferredByStage.map(({ l, items }) => <div key={l.key}><span className="text-muted-foreground">Needed at {l.label}:</span> {items.map((d) => d.label).join(" · ")}</div>)}
+          <div className="text-muted-foreground">None of these block completing setup.</div>
+        </div>
+      )}
+      {completeErr && <p className="mt-2 text-xs text-destructive">{completeErr}</p>}
+    </div>
+  );
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
@@ -1234,6 +1326,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Summary" && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
+              {handoverPanel("top")}
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Tournament" onEdit={() => go("Basics")}>{a.name || "Unnamed"} · {ownerText}{isChamps && ` · ${periodText}`}</SummaryRow>
               {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("ExpEntries")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">about {a.unitEntries?.[u.key] || "?"}</span></li>)}</ul>
@@ -1329,6 +1422,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <div><div className="text-sm font-semibold">Next: Help me choose the format</div><div className="text-xs text-muted-foreground">Coming soon — not available in this version.</div></div>
                 <Button size="sm" disabled><Lock className="mr-1 h-4 w-4" />Coming soon</Button>
               </div>
+              {handoverPanel("bottom")}
             </>
           )}
 

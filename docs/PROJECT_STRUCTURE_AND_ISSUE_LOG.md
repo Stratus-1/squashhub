@@ -2427,3 +2427,5 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Several play-by deadlines in one stage → per-round `roundDates`; rounds split over the dates (organiser can set the split), saved per round/game `play_by`.
 - Draw reconciles entries before preview and again before commit, refusing if the entries changed.
 - Step-by-Step Generate draw: pools & seeds preview before generating (existing pools.ts allocation + move-to-pool, drag or select); organiser's pools saved as explicit poolMembers and used exactly by the engine (refuses if they no longer match entries).
+
+- 2026-10-02: Beta tournament court booking rejected Riverside courts (court_not_selected) because the venue had no explicit courts while the window fell back to all club courts. Fixed with one resolver `tournament_bookable_court_ids` used by both guard and window; regional events block generation until a host club is set.

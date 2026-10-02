@@ -232,6 +232,7 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
     return () => window.removeEventListener("smart-builder:focus-stage", on);
   }, []);
   const toggle = (s: Set<string>, k: string) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; };
+  const datePlan = useMemo(() => roundDatePlan(def), [def]);
   const groups = def.divisions.map((div) => ({ div, rows: allStages(def).filter((r) => r.division.id === div.id && r.stage.kind !== "pair_from_positions" && r.stage.kind !== "split") })).filter((g) => g.rows.length);
   const allIds = groups.flatMap((g) => g.rows.map((r) => r.stage.id));
   if (!groups.length) return <p className="text-xs text-white/50">No stages to schedule yet. Build the design first.</p>;
@@ -287,7 +288,14 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
                     v ? <span className={inherited ? "text-white/45" : ""}>{v}{inherited && <span className="text-[9px] ml-1">inh.</span>}</span>
                       : required ? <span className="rounded bg-red-500/20 px-1 text-red-300">Missing</span> : <span className="text-white/30">—</span>;
                   const sameDay = datePart(e.startDate.value) && datePart(e.startDate.value) === datePart(e.endDate.value);
-                  const dates = e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value && !sameDay ? ` – ${fmtDate(e.endDate.value) ?? "…"}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
+                  // Exact per-round dates (worked out from the Day and the previous stage) beat the inherited window.
+                  const rp = datePlan.get(stage.id);
+                  const rpDates = (rp?.dates ?? []).map(datePart).filter(Boolean) as string[];
+                  const rpNames = roundNames(stage, rpDates.length);
+                  const exactDates = rpDates.length && (stage.schedule.mode === "fixed" || stage.schedule.mode === "play_by")
+                    ? (rpDates.length <= 3 ? rpDates.map((d, i) => `${rpNames[i]} ${fmtDate(d)}`).join(" · ") : `${fmtDate(rpDates[0])} – ${fmtDate(rpDates[rpDates.length - 1])} (${rpDates.length} rounds)`)
+                    : null;
+                  const dates = exactDates ? exactDates : e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value && !sameDay ? ` – ${fmtDate(e.endDate.value) ?? "…"}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
                   const stageTime = timePart(e.startDate.value) ? `${timePart(e.startDate.value)}${timePart(e.endDate.value) ? `–${timePart(e.endDate.value)}` : ""}` : null;
                    const dayIndex = new Date(`${datePart(e.startDate.value)}T00:00:00`).getDay();
                    const dayName = e.weekday.value != null ? DAYS[e.weekday.value] : Number.isNaN(dayIndex) ? null : DAYS[dayIndex];
@@ -301,7 +309,7 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
                           <span className="truncate">{div.sections.length > 1 ? `${section.name} · ` : ""}{shortStageName(stage)}</span>
                         </span>
                         <span className="min-w-0"><span className="text-white/45">How: </span>{stage.schedule.mode === "unset" ? <span className="rounded bg-red-500/20 px-1 text-red-300">Not set</span> : MODE_LABEL[stage.schedule.mode]}</span>
-                        <span className="min-w-0"><span className="text-white/45">Dates: </span>{cell(dates, e.startDate.inherited || e.endDate.inherited, need.dates)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Dates: </span>{cell(dates, !exactDates && (e.startDate.inherited || e.endDate.inherited), need.dates)}</span>
                         <span className="min-w-0"><span className="text-white/45">Time: </span>{cell(dayTime, e.weekday.inherited, false)}</span>
                         <span className="min-w-0 break-words"><span className="text-white/45">Venue: </span>{cell(venue, e.venueNames.inherited, need.venue)}</span>
                         <span className="min-w-0"><span className="text-white/45">Courts: </span>{cell(sc.count ? sc.text : null, sc.source === "tournament" || sc.source === "division", need.courts)}</span>

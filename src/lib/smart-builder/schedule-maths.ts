@@ -74,6 +74,8 @@ export const rrRounds = (n: number, legs = 1) => (n % 2 === 0 ? n - 1 : n) * (le
  */
 export function requiredRounds(st: Stage, def?: TournamentDefinition): number | null {
   if (st.kind === "swiss") return st.swissRounds ?? null;
+  // Placement play-offs: every qualifier plays one match for a final place — one round.
+  if (st.kind === "placement") return 1;
   // Pool-v-pool ties: every pool meets every other pool once.
   if (st.kind === "cross_pool_league") return (st.groups ?? 0) >= 2 ? rrRounds(st.groups!, (st as any).legs === 2 ? 2 : 1) : null;
   const n = unitsPerGroup(st, def);
@@ -153,6 +155,7 @@ export function syncDerivedRoundDates(def: TournamentDefinition): boolean {
 
 /** Display names for a stage's rounds (knockout rounds are named from the final back). */
 export function roundNames(st: Stage, count: number): string[] {
+  if (st.kind === "placement") return Array.from({ length: count }, (_, i) => (i === 0 ? "Place play-offs" : `Round ${i + 1}`));
   if (st.kind !== "knockout") return Array.from({ length: count }, (_, i) => `Round ${i + 1}`);
   const tail = ["Final", "Semi-final", "Quarter-final", "Round of 16", "Round of 32", "Round of 64"];
   return Array.from({ length: count }, (_, i) => tail[count - 1 - i] ?? `Round ${i + 1}`);

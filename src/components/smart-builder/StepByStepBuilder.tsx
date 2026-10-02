@@ -1026,7 +1026,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Summary" && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
-              {isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Club Championships" onEdit={() => go("Basics")}>{a.name || "Unnamed"} · {fmtDay(a.periodStart)} – {fmtDay(a.periodEnd)}</SummaryRow>}
+              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Tournament" onEdit={() => go("Basics")}>{a.name || "Unnamed"} · {ownerText}{isChamps && ` · ${fmtDay(a.periodStart)} – ${fmtDay(a.periodEnd)}`}</SummaryRow>
               {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("ExpEntries")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">about {a.unitEntries?.[u.key] || "?"}</span></li>)}</ul>
               </SummaryRow> : <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${a.entries} (estimate)`}</SummaryRow>}
@@ -1045,7 +1045,16 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <span className="text-xs text-muted-foreground">No seeds are generated or locked now.</span>
               </SummaryRow>
               <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label={isChamps ? "Final Format Review (future checkpoint)" : "Confirm final format (future checkpoint)"} onEdit={() => go("Format")}>
-                <span className="text-muted-foreground">Required after registrations close: SquashHub will review actual entrants per group, courts, dates and match length, may suggest alternatives, and you confirm or change the final format and seeding before pools, draws, Swiss rounds or fixtures are made{isChamps ? " and before stage deadlines or scheduled sessions are attached" : ""}. SquashHub never changes your format automatically. Not active in this beta.</span>
+                <span className="text-muted-foreground">Required after registrations close. You will review:</span>
+                <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
+                  <li>Actual entrants per category/subcategory</li>
+                  <li>Planned competition format — confirm or reconsider</li>
+                  <li>Pool / draw / Swiss structure</li>
+                  <li>Seeding</li>
+                  {isChamps ? <li>Where the playoff phase begins per category</li> : <li>Playoffs</li>}
+                  <li>Dates, courts{isChamps ? " and the stage-by-stage schedule" : ""}</li>
+                </ul>
+                <span className="text-muted-foreground">SquashHub may suggest alternatives but never changes your choices automatically. Pools, draws and fixtures are made only after you confirm. Not active in this beta.</span>
               </SummaryRow>
               {!isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Playoffs" onEdit={() => go("Playoffs")}>
                 <div>{playoffDetail(playoff, format.kind)}{units.length > 0 && <span className="text-muted-foreground"> · {playoffExceptions.length ? "tournament default" : "all groups"}</span>}</div>
@@ -1119,7 +1128,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
       {/* growing tree */}
       <aside aria-label="Your tournament so far" className="rounded-xl border border-border p-4">
         <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your tournament so far</div>
-        <TreeNode icon={<Trophy className="h-4 w-4" />} title={a.kind === "once_off" ? "Once-off / weekend" : a.kind === "period" ? `Club Championships${a.name ? `: ${a.name}` : ""}` : "Type not chosen"} onClick={() => go("Type")}>
+        {a.name?.trim() && <div className="mb-1 text-sm font-semibold">{a.name}</div>}
+        {a.scope && <button type="button" onClick={() => go("Basics")} className="mb-2 block rounded px-1 text-left text-xs text-muted-foreground hover:bg-muted">{ownerText}</button>}
+        <TreeNode icon={<Trophy className="h-4 w-4" />} title={a.kind === "once_off" ? "Once-off / weekend" : a.kind === "period" ? "Club Championships (over a period)" : "Type not chosen"} onClick={() => go("Type")}>
           {a.kind && (
             <>
               {isChamps && basicsOk && <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${fmtDay(a.periodStart)} – ${fmtDay(a.periodEnd)}`} onClick={() => go("Basics")} />}

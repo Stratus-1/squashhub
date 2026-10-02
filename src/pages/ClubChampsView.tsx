@@ -1874,6 +1874,7 @@ export default function ClubChampsView() {
         )}
         {canManage && isStructured && arch?.builder_spec && (
           <StructuredEnginePanel
+            collapsibleStageProgress
             champId={champId!}
             spec={arch.builder_spec}
             matches={matches as any[]}

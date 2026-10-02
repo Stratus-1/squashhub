@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Loader2, Settings2 } from "lucide-react";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -40,8 +41,9 @@ async function notifyStage(champId: string, spec: TournamentSpec, divisionKey: s
   } catch (e: any) { toast.error(`Stage created, but players weren't notified: ${e.message}`); }
 }
 
-/** Live stage lifecycle + automatic progression + "Set up next stage" for Define-later stages. */
-export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string }) {
+/** Live stage lifecycle + automatic progression + "Set up next stage" for Define-later stages.
+ *  `collapsible` renders the whole panel as a collapsed "What's next" card (detail pages). */
+export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible = false }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string; collapsible?: boolean }) {
   const qc = useQueryClient();
   const exec: Exec = (fn) => atomically(supabaseDb, champId, commitStructured, fn);
   const sig = matches.map((m) => `${m.id}:${m.winner_member_id ?? ""}:${m.status ?? ""}`).join("|");
@@ -93,10 +95,13 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
     return st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d?.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;
   };
 
-  return (
-    <div className="rounded-lg border p-3 space-y-2 text-sm" data-testid="stage-progress">
+  const tieAlerts = states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail));
+  const goRows = states.filter((s) => s.state === "ready" && !s.automatic);
+  const dueRows = states.filter((s) => s.state === "needs_setup");
+  const body = (
+    <>
       <div className="font-semibold">Stage progress</div>
-      {states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail)).map((s) => {
+      {tieAlerts.map((s) => {
         const src = tieSource(s.divisionKey, s.stageKey);
         return (
           <div key={`tie-${s.divisionKey}-${s.stageKey}`} role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-destructive bg-destructive/10 p-2">
@@ -105,13 +110,13 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
           </div>
         );
       })}
-      {states.filter((s) => s.state === "ready" && !s.automatic).map((s) => (
+      {goRows.map((s) => (
         <div key={`go-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
           <Button size="sm" onClick={() => setConfirm(s)}>Generate {s.name}</Button>
         </div>
       ))}
-      {states.filter((s) => s.state === "needs_setup").map((s) => (
+      {dueRows.map((s) => (
         <div key={`due-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
           <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Generate {s.name}</Button>
@@ -144,6 +149,31 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
       {confirm && <ConfirmStageDialog champId={champId} spec={spec} status={confirm} nameOf={nameOf} exec={exec} onClose={() => setConfirm(null)} onDone={() => { setConfirm(null); refresh(); }} />}
       {setup && <SetupDialog champId={champId} spec={spec} status={setup} exec={exec} onClose={() => setSetup(null)} onDone={() => { setSetup(null); refresh(); }} />}
       {tie && <TieDialog champId={champId} spec={spec} matches={matches} nameOf={nameOf} div={tie.div} stage={tie.stage} exec={exec} onClose={() => setTie(null)} onDone={() => { setTie(null); refresh(); }} />}
+    </>
+  );
+
+  if (collapsible) {
+    const toGenerate = goRows.length + dueRows.length;
+    return (
+      <CollapsibleCard
+        defaultOpen={false}
+        className="border-primary/40"
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            What's next
+            {tieAlerts.length > 0 && <Badge variant="destructive">{tieAlerts.length} tied order{tieAlerts.length === 1 ? "" : "s"} to decide</Badge>}
+            {toGenerate > 0 && <Badge variant="outline">{toGenerate} stage{toGenerate === 1 ? "" : "s"} ready to generate</Badge>}
+          </span>
+        }
+      >
+        <div data-testid="stage-progress" className="space-y-2 text-sm">{body}</div>
+      </CollapsibleCard>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border p-3 space-y-2 text-sm" data-testid="stage-progress">
+      {body}
     </div>
   );
 }

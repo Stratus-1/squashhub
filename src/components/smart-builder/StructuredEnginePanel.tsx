@@ -17,8 +17,8 @@ import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */
-export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
-  champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string;
+export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsibleStageProgress = false }: {
+  champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string; collapsibleStageProgress?: boolean;
 }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
   return (
     <div className="rounded-lg border p-3 space-y-2 text-sm">
       <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /><span className="font-semibold">Structured tournament</span><Badge variant="outline">BETA engine</Badge></div>
-      {matches.length > 0 && <StageProgressPanel champId={champId} spec={spec} matches={matches} nameOf={nameOf} />}
+      {matches.length > 0 && <StageProgressPanel champId={champId} spec={spec} matches={matches} nameOf={nameOf} collapsible={collapsibleStageProgress} />}
       {matches.length === 0 && (
         <Button size="sm" disabled={!!busy} onClick={() => run("gen", () => atomically(supabaseDb, champId, commitStructured, (db) => generateStructuredTournament(db, champId)), "Games generated")}>
           {busy === "gen" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Generate games

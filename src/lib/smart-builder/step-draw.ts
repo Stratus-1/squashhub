@@ -6,7 +6,7 @@
  * TournamentSpec the existing structured engine (engine-service / structured-persist) generates from.
  * Nothing here writes; persistence is `step_prepare_draw` + the engine's structured_commit.
  */
-import { generateFromSpec, type TournamentSpec } from "@/lib/tournaments/engine-service";
+import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { specDateIssues } from "@/lib/tournaments/date-window";

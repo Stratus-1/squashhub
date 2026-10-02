@@ -59,3 +59,19 @@ describe("Step-by-Step: select & pair players", () => {
     expect(screen.queryByTestId("pairing-Open Doubles")).toBeNull();
   });
 });
+
+describe("Step-by-Step: Club Champs invitations reuse the shared step", () => {
+  beforeEach(() => localStorage.clear());
+  it("shows Invitations and Messaging in the Club Champs flow before Stages & scheduling", async () => {
+    localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
+      kind: "period", name: "Champs test", scope: "club", periodStart: "2026-11-01", playType: "singles", scoring: SCORING,
+      categories: ["Open"], disc: { Open: "singles" }, unitEntries: { Open: "8" }, format: { kind: "pools" }, seeding: "random", source: "self", elig: {},
+    }));
+    render(<StepByStepBuilder clubId="c1" clubName="Riverside" />);
+    const inv = await screen.findByRole("button", { name: /^\d*\s*Invitations/i });
+    const labels = screen.getAllByRole("button").map((b) => b.textContent ?? "");
+    const iInv = labels.findIndex((t) => /Invitations/.test(t)), iMsg = labels.findIndex((t) => /Messaging/.test(t)), iSch = labels.findIndex((t) => /Stages & scheduling/.test(t));
+    expect(iInv).toBeGreaterThan(-1); expect(iMsg).toBeGreaterThan(iInv); expect(iSch).toBeGreaterThan(iMsg);
+    expect(inv).toBeTruthy();
+  });
+});

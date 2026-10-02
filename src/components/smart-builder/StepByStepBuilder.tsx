@@ -795,7 +795,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                     <div className="text-sm font-semibold">{fmtDay(d.date)}</div>
                     <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
                       <div className="space-y-1"><Label>Venue / club</Label><Input value={d.venue} onChange={(e) => updDay(i, { venue: e.target.value })} placeholder="e.g. Riverside Squash Club" /></div>
-                      <div className="space-y-1"><Label>Courts</Label><Input type="number" min={1} value={d.courts} onChange={(e) => updDay(i, { courts: e.target.value })} placeholder="e.g. 4" /></div>
+                      <div className="space-y-1"><Label>Courts</Label><div className="flex h-9 items-center rounded-md border border-border bg-muted/50 px-3 text-sm font-semibold" aria-live="polite">{d.courtIds?.length ? d.courtIds.length : "—"}</div><p className="text-xs text-muted-foreground">Set by clicking the courts below.</p></div>
                     </div>
                     {clubCourts.length > 0 && (
                       <div className="space-y-1">
@@ -805,8 +805,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                             const on = d.courtIds?.includes(c.id);
                             return (
                               <button key={c.id} type="button" aria-pressed={!!on}
-                                onClick={() => { const ids = on ? (d.courtIds ?? []).filter((x) => x !== c.id) : [...(d.courtIds ?? []), c.id]; updDay(i, { courtIds: ids, courts: ids.length ? String(ids.length) : d.courts }); }}
-                                className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                                onClick={() => { const ids = on ? (d.courtIds ?? []).filter((x) => x !== c.id) : [...(d.courtIds ?? []), c.id]; updDay(i, { courtIds: ids, courts: String(ids.length) }); }}
+                                 className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition-colors", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground hover:border-primary/50")}>
                                 {c.name}
                               </button>
                             );

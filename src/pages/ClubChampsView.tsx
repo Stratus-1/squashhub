@@ -1,3 +1,4 @@
+import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -2018,6 +2019,11 @@ export default function ClubChampsView() {
           );
         })()}
 
+
+        {/* Entered players: the tournament WhatsApp group stays one tap away (hidden when none). */}
+        {myMemberId && registrations.some((r: any) => (r.club_member_id === myMemberId || r.partner_member_id === myMemberId) && !["cancelled", "withdrawn", "declined"].includes(String(r.status))) && (
+          <JoinWhatsAppGroupButton champId={champId} />
+        )}
 
         {/* Draw already published, but my own entry fee is still outstanding. */}
         {groupNumbers.length > 0 && myMemberId && (() => {

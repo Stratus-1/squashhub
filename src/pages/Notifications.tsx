@@ -34,6 +34,15 @@ function renderTemplate(template: string, vars: Record<string, string>) {
   });
 }
 
+/** Make plain https links in a text message clickable (opens in a new tab). */
+function linkify(text: string) {
+  return text.split(/(https:\/\/[^\s]+)/g).map((part, i) =>
+    /^https:\/\//.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-primary underline">{part}</a>
+      : part,
+  );
+}
+
 function stripScripts(html: string) {
   return html.replace(/<script[\s\S]*?<\/script>/gi, "");
 }
@@ -339,9 +348,19 @@ export default function Notifications() {
                           </Card>
                         ) : (
                           <Card className="p-3">
-                            <p className="text-sm whitespace-pre-wrap">{text}</p>
+                            <p className="text-sm whitespace-pre-wrap break-words">{linkify(text)}</p>
                           </Card>
                         )}
+                        {Array.isArray(notif?.data?.actions) && notif.data.actions.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {(notif.data.actions as Array<{ kind: string; label: string; url: string }>).map((a) => (
+                              <Button key={a.kind + a.url} variant={a.kind === "pay" ? "default" : "outline"}
+                                onClick={() => a.url.startsWith("/") ? navigate(a.url) : window.open(a.url, "_blank", "noopener,noreferrer")}>
+                                {a.label}
+                              </Button>
+                            ))}
+                          </div>
+                        ) : null}
                       </>
                     )}
 

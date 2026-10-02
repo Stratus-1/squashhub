@@ -176,7 +176,7 @@ async function syncWaGroup(tid: string, clubId: string, g: { url: string; includ
 export type BetaLifecycle = {
   stage: LifecycleKey; completed: LifecycleKey[];
   wa_include?: boolean;
-  inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string };
+  inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };
 };
 
 /** Lifecycle is persisted on the tournament (tournaments.beta_lifecycle), not just this device. */
@@ -199,10 +199,18 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export type InformChannel = "in_app" | "email" | "whatsapp" | "sms";
 export type DeliveryRow = { club_member_id: string; channel: string; status: string; error_message: string | null };
 
-/** Create one campaign (audience = the entered players) with each player's personal message, and dispatch it. */
+/** Player-facing route into the existing tournament payment card. */
+export const payRoute = (tournamentId: string) => `/club-champs/${tournamentId}?pay=1`;
+
+/**
+ * Create one campaign (audience = the given entered players) with each player's personal message,
+ * plus per-recipient in-app buttons (Pay now when they owe, Join WhatsApp group when configured), and dispatch it.
+ * A resend is simply a new campaign for the chosen players — the original delivery log is kept.
+ */
 export async function sendInform(i: {
   clubId: string; tournamentId: string; name: string; channels: InformChannel[]; feeDue: boolean;
-  messages: Array<{ memberId: string; text: string }>; existingCampaignId?: string | null;
+  messages: Array<{ memberId: string; text: string; owes?: boolean }>; existingCampaignId?: string | null;
+  waUrl?: string | null; resend?: boolean;
 }) {
   if (i.existingCampaignId) {
     const res = await dispatchCampaign(i.existingCampaignId);
@@ -211,7 +219,11 @@ export async function sendInform(i: {
   const memberVars: Record<string, Record<string, string>> = {};
   for (const m of i.messages) {
     const t = finaliseMessage(m.text);
-    memberVars[m.memberId] = { personal_message: t, personal_message_html: esc(t).replace(/\n/g, "<br>") };
+    memberVars[m.memberId] = {
+      personal_message: t, personal_message_html: esc(t).replace(/\n/g, "<br>"),
+      ...(i.feeDue && m.owes !== false ? { pay_url: payRoute(i.tournamentId), pay_label: "Pay now" } : {}),
+      ...(i.waUrl ? { wa_url: i.waUrl } : {}),
+    };
   }
   const subject = `You have been entered: ${i.name}`;
   const content: Record<string, { subject?: string; body?: string }> = {};
@@ -219,25 +231,71 @@ export async function sendInform(i: {
     ? { subject, body: "<p>{{personal_message_html}}</p>" }
     : { subject, body: "{{personal_message}}" };
   const { campaignId, dispatched } = await sendComms({
-    clubId: i.clubId, name: `${i.name} — entry notification`, channels: i.channels, content,
+    clubId: i.clubId, name: `${i.name} — entry notification${i.resend ? " (sent again)" : ""}`, channels: i.channels, content,
     action: { key: "tournament_view", label: i.feeDue ? "View my entry & pay" : "View my tournament entry", params: { tournament_id: i.tournamentId } } as any,
     audience: { type: "selected", memberIds: i.messages.map((m) => m.memberId) },
-    memberVars, meta: { tournament_id: i.tournamentId, purpose: "step_beta_inform" },
+    memberVars, meta: { tournament_id: i.tournamentId, purpose: i.resend ? "step_beta_inform_resend" : "step_beta_inform" },
   });
   return { campaignId, result: dispatched };
 }
 
-export async function loadDeliveries(campaignId: string): Promise<DeliveryRow[]> {
-  const { data } = await supabase.from("comms_deliveries").select("club_member_id,channel,status,error_message").eq("campaign_id", campaignId);
-  return (data ?? []) as DeliveryRow[];
+export type DeliveryRowAt = DeliveryRow & { created_at?: string; campaign_id?: string };
+export async function loadDeliveries(campaignIds: string | string[]): Promise<DeliveryRowAt[]> {
+  const ids = (Array.isArray(campaignIds) ? campaignIds : [campaignIds]).filter(Boolean);
+  if (!ids.length) return [];
+  const { data } = await supabase.from("comms_deliveries").select("club_member_id,channel,status,error_message,created_at,campaign_id").in("campaign_id", ids);
+  return (data ?? []) as DeliveryRowAt[];
 }
 
-/** Per recipient: reached if any channel delivered. */
-export function recipientStatus(memberIds: string[], rows: DeliveryRow[]) {
+/** Every inform campaign for this tournament (first send + resends). */
+export const informCampaignIds = (l: BetaLifecycle) =>
+  [l.inform?.method === "sent" ? l.inform.campaign_id : null, ...(l.inform?.resend_campaign_ids ?? [])].filter(Boolean) as string[];
+
+/** Per recipient: reached if any channel delivered (across all sends). */
+export function recipientStatus(memberIds: string[], rows: DeliveryRowAt[]) {
   return memberIds.map((id) => {
     const mine = rows.filter((r) => r.club_member_id === id);
-    const reached = mine.filter((r) => r.status === "sent").map((r) => r.channel);
+    const reached = [...new Set(mine.filter((r) => r.status === "sent").map((r) => r.channel))];
     const problems = mine.filter((r) => r.status !== "sent").map((r) => `${r.channel}: ${r.error_message || r.status}`);
-    return { memberId: id, reached, problems, state: reached.length ? "sent" as const : mine.length ? "failed" as const : "pending" as const };
+    const sends = new Set(mine.filter((r) => r.status === "sent").map((r) => r.campaign_id)).size;
+    const last = mine.map((r) => r.created_at ?? "").sort().pop() || null;
+    return { memberId: id, reached, problems, sends, last, state: reached.length ? "sent" as const : mine.length ? "failed" as const : "pending" as const };
   });
+}
+
+/* ── Registrations & payments: source of truth is club_champs_registrations.status ── */
+
+export type RegRow = { memberId: string; name: string; partnerName: string | null; status: string; owesCents: number };
+const OUTSTANDING = new Set(["pending_payment", "pending_eft", "invited"]);
+export const isOutstanding = (status: string, feeDue: boolean) => feeDue && OUTSTANDING.has(status);
+export const regLabel = (status: string, feeDue: boolean) =>
+  status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
+
+export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number }> {
+  const [{ data: t }, { data: regs }] = await Promise.all([
+    fromExt("club_champs").select("entry_fee_cents").eq("id", tournamentId).maybeSingle(),
+    fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status").eq("champ_id", tournamentId),
+  ]);
+  const feeCents = Number((t as any)?.entry_fee_cents ?? 0);
+  const live = ((regs ?? []) as any[]).filter((r) => !["cancelled", "withdrawn", "declined"].includes(String(r.status)));
+  const ids = [...new Set(live.flatMap((r) => [r.club_member_id, r.partner_member_id]).filter(Boolean))];
+  const { data: ms } = ids.length ? await supabase.from("club_members").select("id, first_name, last_name").in("id", ids) : { data: [] as any[] };
+  const nm = new Map(((ms ?? []) as any[]).map((m) => [m.id, `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() || "Player"]));
+  return {
+    feeCents,
+    rows: live.map((r) => ({
+      memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Player",
+      partnerName: r.partner_member_id ? nm.get(r.partner_member_id) ?? "Partner" : null,
+      status: String(r.status), owesCents: isOutstanding(String(r.status), feeCents > 0) ? feeCents : 0,
+    })),
+  };
+}
+
+/** Why the step after Registrations can't happen yet (empty = ready). */
+export function finalisePrereqs(rows: RegRow[], feeDue: boolean): string[] {
+  const out: string[] = [];
+  if (!rows.length) out.push("No entries yet");
+  const owing = rows.filter((r) => isOutstanding(r.status, feeDue)).length;
+  if (owing) out.push(`${owing} payment${owing === 1 ? "" : "s"} outstanding`);
+  return out;
 }

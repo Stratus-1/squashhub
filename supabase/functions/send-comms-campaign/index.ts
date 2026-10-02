@@ -331,6 +331,16 @@ Deno.serve(async (req) => {
                 action_label: action.label,
                 action_url: action.webUrl,
                 app_path: action.appPath,
+                // Per-recipient buttons (e.g. Pay now, Join WhatsApp group) from member_vars.
+                actions: (() => {
+                  const mv = (memberVars[m.id] ?? {}) as Record<string, unknown>;
+                  const out: Array<{ kind: string; label: string; url: string }> = [];
+                  const pay = typeof mv.pay_url === "string" ? mv.pay_url : "";
+                  if (pay.startsWith("/")) out.push({ kind: "pay", label: String(mv.pay_label || "Pay now"), url: pay });
+                  const wa = typeof mv.wa_url === "string" ? mv.wa_url : "";
+                  if (/^https:\/\/chat\.whatsapp\.com\//.test(wa)) out.push({ kind: "whatsapp", label: "Join WhatsApp group", url: wa });
+                  return out;
+                })(),
               },
             });
             if (error) throw error;

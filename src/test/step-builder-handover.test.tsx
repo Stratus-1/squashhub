@@ -98,7 +98,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     // Concise by default: one example message, recipients behind an expander.
     expect(await screen.findByText(/2 selected players/)).toBeInTheDocument();
     expect(screen.getAllByText(/Your doubles partner:/)).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: /^View recipients/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Choose recipients/ }));
     expect(screen.getAllByText(/Your doubles partner: Ben Jones/)).toHaveLength(1); // list doesn't repeat messages
     fireEvent.click(screen.getAllByRole("button", { name: "Preview" })[1]);
     expect(screen.getByText(/Your doubles partner: Anna Smith/)).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(screen.queryByText(/You are invited/)).toBeNull();
 
     expect(screen.queryByRole("button", { name: /Continue to Registrations/ })).toBeNull(); // not before sending
-    fireEvent.click(screen.getByRole("button", { name: /^Inform selected players/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Send to all 2/ }));
     expect(calls.some((c) => c.table === "comms_campaigns")).toBe(false); // nothing before confirming
     expect(await screen.findByText(/Send to 2 real players\?/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send now" }));
@@ -129,7 +129,16 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     // Invite / Inform stays revisitable with Send again; revisiting doesn't move the stage back.
     fireEvent.click(screen.getByRole("button", { name: /Invite \/ Inform players/ }));
     expect(await screen.findByText(/Revisiting/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Send again to everyone/ })).toBeInTheDocument();
+    // Subset resend: nobody preselected once everyone is informed; pick one player only.
+    expect(screen.getByTestId("selected-count")).toHaveTextContent("0 of 2 selected");
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(screen.getByRole("button", { name: /Send again to 2 selected/ })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    fireEvent.click(screen.getByRole("button", { name: /Send again to 1 selected/ }));
+    expect(await screen.findByText(/nobody else is messaged/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Send now" }));
+    await waitFor(() => expect(calls.filter((c) => c.table === "comms_campaigns" && c.op === "insert")).toHaveLength(2));
+    expect(calls.filter((c) => c.table === "comms_campaigns" && c.op === "insert")[1].arg.audience_member_ids).toEqual(["m2"]);
     expect(camp.arg.audience_filter.member_vars.m1).toMatchObject({ pay_url: "/club-champs/t-new?pay=1", pay_label: expect.stringMatching(/^Pay (R[\d.,]+ )?now$/) });
     fireEvent.click(screen.getByRole("button", { name: /Back to current stage/ }));
     regStatus = "paid";

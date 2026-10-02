@@ -313,6 +313,13 @@ export function recipientStatus(memberIds: string[], rows: DeliveryRowAt[]) {
   });
 }
 
+/** Recipient-picker presets. "not_informed" = never successfully reached on any channel (failed or never sent). */
+export function recipientPreset(kind: "all" | "none" | "not_informed", status: ReturnType<typeof recipientStatus>): string[] {
+  if (kind === "none") return [];
+  if (kind === "all") return status.map((s) => s.memberId);
+  return status.filter((s) => s.state !== "sent").map((s) => s.memberId);
+}
+
 /* ── Registrations & payments: source of truth is club_champs_registrations.status ── */
 
 export type RegRow = { memberId: string; name: string; partnerName: string | null; status: string; owesCents: number; feeStatus?: string | null };

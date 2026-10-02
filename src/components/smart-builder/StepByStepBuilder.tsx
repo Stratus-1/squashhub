@@ -883,8 +883,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                           <Button variant="outline" size="sm" onClick={() => setSubcats(cat, [...subs, ""])}><Plus className="mr-1 h-4 w-4" />Add another</Button>
                         </div>
                       )}
-                       {!has && cats.includes(cat) && units.filter((u) => u.key === cat).map((u) => <div key={u.key} className="border-t border-border pt-2">{poolControl(u)}</div>)}
-                       {has && units.filter((u) => u.key.startsWith(`${cat}::`)).map((u) => <div key={u.key} className="border-t border-border pt-2"><div className="mb-1 text-xs font-medium">{u.base}</div>{poolControl(u)}</div>)}
+                      {!has && units.filter((u) => u.key === cat).map((u) => <div key={u.key} className="border-t border-border pt-2">{poolControl(u)}</div>)}
+                      {has && units.filter((u) => u.key.startsWith(`${cat}::`)).map((u) => <div key={u.key} className="border-t border-border pt-2"><div className="mb-1 text-xs font-medium">{u.base}</div>{poolControl(u)}</div>)}
                     </div>
                   );
                 })}

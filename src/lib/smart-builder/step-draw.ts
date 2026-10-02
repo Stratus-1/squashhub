@@ -255,6 +255,7 @@ export function poolWarnings(d: DrawDivision, mode: PoolAllocationMode = "snake"
 export function divisionIssues(d: DrawDivision): string[] {
   const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? []), ...poolBlocks(d)];
   if (d.poolReview?.needsDecision && !d.poolAccepted) out.push(`pools are "Decide after entries close" — review the recommended pools and accept or adjust them`);
+  if (d.poolReview && d.poolReview.mode !== "none" && f.kind !== "cross" && f.kind !== "pools" && f.kind !== "round_robin") out.push(`pools need a within-group round robin; choose Round robin / Pools for this group or turn pools off in setup`);
   if (f.kind === "cross" && d.poolReview && d.poolReview.mode !== "none" && (d.poolReview.needsDecision || d.poolReview.recommended.length > 1)) out.push(`pools are set for a group that plays between subcategories — pool-to-pool cross play isn't supported, so choose "No pools" for it in setup (SquashHub won't guess which pools meet)`);
   const u = d.doubles ? "pairs" : "players";
   if (n < (f.kind === "cross" ? 1 : 2)) out.push(`needs at least ${f.kind === "cross" ? 1 : 2} ${u} (has ${n})`);

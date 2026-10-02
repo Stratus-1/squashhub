@@ -140,11 +140,11 @@ export default function Tournaments() {
   const { current: champs, past: pastChamps, needsDates: undatedChamps } =
     splitTournamentsByLifecycle(allChamps as any[], todayStr);
   // Beta matchups (e.g. Men's A vs Men's B): games are stored under the first group, so labels must name both sides.
-  const champIdsKey = (champs as any[]).map((c: any) => c.id).sort().join(",");
+  const muChampIdsKey = (champs as any[]).map((c: any) => c.id).sort().join(",");
   const { data: matchupsByChamp } = useQuery({
-    queryKey: ["structured-matchups", champIdsKey],
+    queryKey: ["structured-matchups", muChampIdsKey],
     queryFn: async () => {
-      const { data } = await fromExt("tournaments").select("id,builder_architecture,builder_spec").in("id", champIdsKey.split(","));
+      const { data } = await fromExt("tournaments").select("id,builder_architecture,builder_spec").in("id", muChampIdsKey.split(","));
       const m = new Map<string, StructuredMatchup[]>();
       for (const t of (data || []) as any[]) if (t.builder_architecture === "structured") m.set(t.id, structuredMatchups(t.builder_spec));
       return m;

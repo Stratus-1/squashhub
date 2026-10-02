@@ -21,11 +21,13 @@ export type StepAnswers = {
   entries: string;
   playType: PlayType;
   categories: string[];
+  /** Optional subcategories per category name; missing/empty = no subcategories. */
+  subcats: Record<string, string[]>;
   days: DayAvail[];
 };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], days: [] };
-const STEPS = ["Type", "Entries", "What", "Categories", "Dates", "Courts", "Summary"] as const;
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [] };
+const STEPS = ["Type", "Entries", "What", "Categories", "Subcategories", "Dates", "Courts", "Summary"] as const;
 
 const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles", doubles: "Doubles", both: "Both" };
 
@@ -51,11 +53,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const playOk = a.playType !== null;
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
-  const canNext = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, daysOk, courtsOk, false][step];
+  const canNext = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, true, daysOk, courtsOk, false][step];
   const reached = useMemo(() => {
-    const ok = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, daysOk, courtsOk];
+    const ok = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, true, daysOk, courtsOk];
     let i = 0; while (i < ok.length && ok[i]) i++; return i;
   }, [a.kind, entriesOk, playOk, cats.length, daysOk, courtsOk]);
+
+  const setSubcats = (cat: string, names: string[] | null) => {
+    const next = { ...a.subcats };
+    if (names === null) delete next[cat]; else next[cat] = names;
+    setA({ ...a, subcats: next });
+  };
 
   const setDays = (days: DayAvail[]) => setA({ ...a, days });
   const updDay = (i: number, p: Partial<DayAvail>) => setDays(a.days.map((d, j) => (j === i ? { ...d, ...p } : d)));

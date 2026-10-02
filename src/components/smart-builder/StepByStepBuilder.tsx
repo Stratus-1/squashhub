@@ -859,10 +859,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-sm" htmlFor="sbs-msg">Message</Label>
-                      {msg.body !== null && <Button variant="ghost" size="sm" onClick={() => setMsg({ body: null })}>Reset to suggested wording</Button>}
+                      {storedBody !== null && <Button variant="ghost" size="sm" onClick={() => setMsg(notifyOnly ? { notifyBody: null } : { body: null })}>Reset to suggested wording</Button>}
                     </div>
-                    <textarea id="sbs-msg" rows={9} className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={msgBody} onChange={(e) => setMsg({ body: e.target.value })} />
-                    <p className="text-[11px] text-muted-foreground">Words in {"{{ }}"} fill in automatically: first_name, tournament_name, club_name, categories, entry_link, closing_date, dates. They update as you add details later.</p>
+                    <textarea id="sbs-msg" rows={9} className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={msgBody} onChange={(e) => setMsg(notifyOnly ? { notifyBody: e.target.value } : { body: e.target.value })} />
+                    <p className="text-[11px] text-muted-foreground">Words in {"{{ }}"} fill in automatically: {notifyOnly ? `first_name, tournament_name, club_name, category${pairMode ? ", partner_name" : ""}, dates` : "first_name, tournament_name, club_name, categories, entry_link, closing_date, dates"}. They update as you add details later.</p>
                   </div>
                   <div>
                     <Label className="text-sm">Preview (example member)</Label>

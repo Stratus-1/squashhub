@@ -2396,3 +2396,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Fix: `StepInformPanel` sends one Communications-engine campaign (audience=selected entrants, per-recipient `audience_filter.member_vars.personal_message`, action `tournament_view` → `/club-champs/:id` with existing Pay card); `send-comms-campaign` now merges per-member vars and never re-sends an already-sent recipient/channel (safe retry). Per-recipient status from `comms_deliveries`; lifecycle persisted in `tournaments.beta_lifecycle`. Manual mark is a separate confirmed action.
 
 - 2026-10-02 Step-by-Step Beta management: lifecycle stages revisitable (no undo), Inform "Send again" (new campaign per resend, ids on beta_lifecycle.inform.resend_campaign_ids), in-app notifications carry per-recipient `data.actions` (Pay now → /club-champs/:id?pay=1, Join WhatsApp group) from member_vars; Finalise gated on registrations status with reasons.
+
+### 2026-10-02 — Stitch "Page not found" on tournament (and top-up) payments
+- Symptom: Riverside R100 entry fee opened Stitch "Page not found".
+- Root cause: `stitch-create-payment` Express fallback appended `?redirect_url=` to the hosted `/pay/<id>` link and kept it for club hosts even when its own probe got 404. Stitch 404s any query param on Express links (plain link 200). The v2 Payment Request attempt fails `invalid_client` for Express-only TEST creds, so every payment took this path.
+- Fix: return the plain `payment.link`; the return URL travels only in the create body (`merchantRedirectUrl`/`redirectUrl`). Settlement unchanged (`_shared/stitch-settlement.ts` updates the existing registration to paid).

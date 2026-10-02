@@ -105,10 +105,13 @@ export function readStepPlan(clubId: string, tournamentId: string): Plan | null 
     return p && p.createdTournamentId === tournamentId ? p : null;
   } catch { return null; }
 }
+/** Draw-relevant subset of the Step answers saved on the tournament (beta_lifecycle.format_plan). */
+export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope"] as const;
+export function drawPlanOf(a: Plan): Plan { const o: Plan = {}; for (const k of DRAW_PLAN_KEYS) if (a[k] !== undefined) o[k] = a[k]; return o; }
 /** "Mens › A 1st League · Doubles" → plan key "Mens::A 1st League". */
 export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
 
-export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; crossKeys: string[]; crossPairKeys: string[][] | null } {
+export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; crossKeys: string[]; crossPairKeys: string[][] | null; crossByParent: boolean } {
   const key = unitKeyOf(label);
   const pick = <T,>(o: Record<string, T> | undefined, d: T): T => o?.[key] ?? o?.[key.split("::")[0]] ?? d;
   const notes: string[] = [];
@@ -116,12 +119,14 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   let kind: DrawKind | null = null;
   let crossKeys: string[] = [];
   let crossPairKeys: string[][] | null = null;
+  let crossByParent = false;
   if (f.kind === "pools") kind = Number(f.pools) > 1 ? "pools" : "round_robin";
   else if (f.kind === "knockout" || f.kind === "swiss") kind = f.kind;
   else if (f.kind === "cross") {
     kind = "cross";
     crossKeys = (f.crossUnits?.length ? f.crossUnits : [f.crossA, f.crossB]).filter(Boolean);
-    if (f.crossMode === "chosen") crossPairKeys = (f.crossPairs ?? []).filter((x: any) => Array.isArray(x) && x.length === 2);
+    if (f.crossMode === "parent") crossByParent = true;
+    else if (f.crossMode === "chosen") crossPairKeys = (f.crossPairs ?? []).filter((x: any) => Array.isArray(x) && x.length === 2);
   }
   else notes.push(plan ? "Format was left as \"Decide later\" — choose it now." : "The setup answers aren't on this device — choose the format.");
   const sd = pick<string | null>(plan?.seedingOverrides, plan?.seeding ?? null);
@@ -141,7 +146,7 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   const po = pick(plan?.playoffOverrides, plan?.playoff) ?? {};
   const playoffs = kind && kind !== "knockout" && po.choice === "playoffs"
     ? (po.rounds === 1 ? ["Final"] : po.rounds === 2 ? ["Semi-final", "Final"] : ["Quarter-final", "Semi-final", "Final"]) : [];
-  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null }, notes, playoffs, crossKeys, crossPairKeys };
+  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null }, notes, playoffs, crossKeys, crossPairKeys, crossByParent };
 }
 
 /* ── pools preview (source of truth for Generate) ── */

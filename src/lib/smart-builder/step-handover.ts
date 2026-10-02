@@ -193,6 +193,8 @@ export type BetaLifecycle = {
   wa_include?: boolean;
   /** Fees & Payment "A player may pay for both partners" — read server-side by step_pair_payment_context. */
   partner_pay?: boolean | null;
+  /** Draw-relevant setup answers (format incl. within/between/custom matchups, seeding, stages, play-offs) so Generate draw works on any device. */
+  format_plan?: Record<string, unknown> | null;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };
 };
 

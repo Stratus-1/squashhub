@@ -11,7 +11,7 @@ import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -52,7 +52,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     // Reconcile organiser-entered pairs first so the draw only ever sees current active entries.
     await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
     const [{ data: t }, { data: regs }, { data: ms }] = await Promise.all([
-      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation").eq("id", tournamentId).maybeSingle(),
+      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
       fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
       fromExt("club_champs_matches").select("id, status, winner_member_id").eq("champ_id", tournamentId),
     ]);
@@ -62,7 +62,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setExisting({ games: games.length, played: games.filter((m) => m.winner_member_id || ["completed", "confirmed", "in_progress", "live", "walkover", "forfeit"].includes(String(m.status ?? "").toLowerCase())).length });
     setMeta({ name: tt?.name ?? "Tournament", start: tt?.start_date ?? null, end: tt?.end_date ?? null });
     const n = Math.max(1, Number(tt?.num_groups ?? 1));
-    const plan = readStepPlan(clubId, tournamentId);
+    // This device's answers when present, else the setup saved on the tournament (works on any device).
+    const plan = readStepPlan(clubId, tournamentId) ?? ((tt as any)?.beta_lifecycle?.format_plan ?? null);
     const errs: string[] = [];
     const list: DrawDivision[] = [];
     const units: DrawDivision["units"][] = [];
@@ -80,7 +81,13 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         const gs = p.crossKeys.map(groupOfKey);
         if (gs.some((x) => x == null)) notes.push("Some cross-league groups in your plan no longer match a category here — check the groups below.");
         p.format.crossGroups = [...new Set(gs.filter((x): x is number => x != null))].sort((a, b) => a - b);
-        if (p.crossPairKeys) {
+        if (p.crossByParent) {
+          // "Between subcategories": only subcategories under the SAME parent category meet — never across parents.
+          const me = g, parent = unitParentOf(label);
+          const vs = labels.map((l, k) => k + 1).filter((k) => k !== me && unitParentOf(labels[k - 1]) === parent);
+          if (!vs.length) notes.push(`"Between subcategories" is set, but ${parent} has no other subcategory here.`);
+          p.format.crossVs = vs; p.format.crossGroups = vs.length ? [me, ...vs] : [];
+        } else if (p.crossPairKeys) {
           // "Choose which groups play each other": only the organiser's pairings, nothing inferred.
           const me = g;
           const vs = p.crossPairKeys.map(([x, y]) => [groupOfKey(x), groupOfKey(y)]).filter(([x, y]) => x === me || y === me).map(([x, y]) => (x === me ? y : x));

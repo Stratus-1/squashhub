@@ -6,6 +6,7 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
+import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
 import { ConflictPanel } from "./ConflictPanel";
 import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
@@ -259,6 +260,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
 
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
+  const [leaguesByMember, setLeaguesByMember] = useState<Map<string, string[]>>(new Map());
+  const [genderByMember, setGenderByMember] = useState<Map<string, string | null>>(new Map());
   const [memberSearch, setMemberSearch] = useState("");
   /** First player tapped while forming a pair, per doubles unit (UI-only). */
   const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
@@ -266,15 +269,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;
     (async () => {
-      const PAGE = 1000; const all: { id: string; name: string }[] = [];
+      const PAGE = 1000; const all: { id: string; name: string }[] = []; const genders = new Map<string, string | null>();
       for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabase.from("club_members").select("id, name").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
+        const { data, error } = await supabase.from("club_members").select("id, name, gender").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
           .order("name").order("id").range(from, from + PAGE - 1);
         if (error || !data) break;
         all.push(...(data as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member" })));
+        (data as any[]).forEach((m) => genders.set(String(m.id), m.gender ?? null));
         if (data.length < PAGE) break;
       }
       if (!cancelled) setMembers(all);
+      const ids = all.map((m) => m.id); const lm = new Map<string, string[]>();
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data } = await (supabase as any).from("member_league_registrations").select("club_member_id, league_id").in("club_member_id", ids.slice(i, i + 200));
+        ((data ?? []) as any[]).forEach((r) => { if (!r.league_id) return; const l = lm.get(r.club_member_id) ?? []; l.push(String(r.league_id)); lm.set(r.club_member_id, l); });
+      }
+      if (!cancelled) { setLeaguesByMember(lm); setGenderByMember(genders); }
     })();
     supabase.from("leagues").select("id, name").eq("club_id", clubId).is("archived_at", null).order("name")
       .then(({ data }) => setLeagues(((data ?? []) as any[]).map((l) => ({ id: String(l.id), name: l.name }))));
@@ -410,6 +420,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;
   const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
   const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
+  const autoPlace = (id: string) => placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
   const anyManual = units.some((u) => eligOf(u.key).mode === "manual");
@@ -936,7 +947,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
                 {members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(memberSearch.trim().toLowerCase())).map((m) => (
                   <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
-                    onClick={() => setA({ ...a, picks: { ...a.picks, [m.id]: units.length === 1 ? units[0].key : "" } })}>
+                    onClick={() => setA({ ...a, picks: { ...a.picks, [m.id]: autoPlace(m.id) } })}>
                     {m.name}<Plus className="h-3 w-3" />
                   </button>
                 ))}
@@ -944,7 +955,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               </div>
               {pickIds.length > 0 && (
                 <div className="space-y-1">
-                  <Label>Picked ({pickIds.length})</Label>
+                  <div className="flex items-center justify-between"><Label>Picked ({pickIds.length})</Label>
+                    {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.some((id) => !a.picks[id]) && (
+                      <Button size="sm" variant="outline" onClick={() => { const n = { ...a.picks }; pickIds.forEach((id) => { if (!n[id]) n[id] = autoPlace(id); }); setA({ ...a, picks: n }); }}>Place by league</Button>)}
+                  </div>
                   {pickIds.map((id) => (
                     <div key={id} className="flex items-center gap-2 text-xs">
                       <span className="flex-1">{memberName(id)}</span>

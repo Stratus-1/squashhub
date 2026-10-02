@@ -21,11 +21,13 @@ export type StepAnswers = {
   entries: string;
   playType: PlayType;
   categories: string[];
+  /** Optional subcategories per category name; missing/empty = no subcategories. */
+  subcats: Record<string, string[]>;
   days: DayAvail[];
 };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], days: [] };
-const STEPS = ["Type", "Entries", "What", "Categories", "Dates", "Courts", "Summary"] as const;
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [] };
+const STEPS = ["Type", "Entries", "What", "Categories", "Subcategories", "Dates", "Courts", "Summary"] as const;
 
 const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles", doubles: "Doubles", both: "Both" };
 
@@ -51,11 +53,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const playOk = a.playType !== null;
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
-  const canNext = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, daysOk, courtsOk, false][step];
+  const canNext = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, true, daysOk, courtsOk, false][step];
   const reached = useMemo(() => {
-    const ok = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, daysOk, courtsOk];
+    const ok = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, true, daysOk, courtsOk];
     let i = 0; while (i < ok.length && ok[i]) i++; return i;
   }, [a.kind, entriesOk, playOk, cats.length, daysOk, courtsOk]);
+
+  const setSubcats = (cat: string, names: string[] | null) => {
+    const next = { ...a.subcats };
+    if (names === null) delete next[cat]; else next[cat] = names;
+    setA({ ...a, subcats: next });
+  };
 
   const setDays = (days: DayAvail[]) => setA({ ...a, days });
   const updDay = (i: number, p: Partial<DayAvail>) => setDays(a.days.map((d, j) => (j === i ? { ...d, ...p } : d)));
@@ -143,6 +151,46 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
           {step === 4 && (
             <>
+              <Q t="Do any categories need subcategories?" h="Optional — e.g. Men's could be split into Group A, Group B, Group C. Ladies can stay as one group." />
+              <div className="space-y-3">
+                {cats.map((cat) => {
+                  const subs = a.subcats[cat];
+                  const has = subs !== undefined;
+                  return (
+                    <div key={cat} className="space-y-2 rounded-lg border border-border p-3">
+                      <div className="text-sm font-semibold">{cat}</div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" aria-pressed={!has} onClick={() => setSubcats(cat, null)}
+                          className={cn("rounded-full border px-3 py-1 text-xs", !has ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                          No subcategories
+                        </button>
+                        <button type="button" aria-pressed={has} onClick={() => setSubcats(cat, has ? subs : ["A", "B"])}
+                          className={cn("rounded-full border px-3 py-1 text-xs", has ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                          Add subcategories
+                        </button>
+                      </div>
+                      {has && (
+                        <div className="space-y-2">
+                          {subs.map((s, i) => (
+                            <div key={i} className="flex gap-2">
+                              <Input aria-label={`${cat} subcategory ${i + 1}`} value={s} placeholder={`e.g. Group ${String.fromCharCode(65 + i)}`}
+                                onChange={(e) => setSubcats(cat, subs.map((x, j) => (j === i ? e.target.value : x)))} />
+                              <Button variant="ghost" size="icon" aria-label="Remove subcategory" disabled={subs.length === 1}
+                                onClick={() => setSubcats(cat, subs.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          ))}
+                          <Button variant="outline" size="sm" onClick={() => setSubcats(cat, [...subs, ""])}><Plus className="mr-1 h-4 w-4" />Add another</Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {step === 5 && (
+            <>
               <Q t="On which days will it be played?" h="Add one line for each tournament day." />
               <div className="space-y-2">
                 {a.days.map((d, i) => (
@@ -157,7 +205,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <>
               <Q t="Where and when are courts available?" h="Each day can be different — e.g. Friday evening only, Saturday all day." />
               <div className="space-y-3">
@@ -201,14 +249,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
               <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries" onEdit={() => setStep(1)}>About {a.entries}</SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => setStep(2)}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
-              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => setStep(3)}>{cats.join(", ")}</SummaryRow>
-              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(4)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
-              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(5)}>
+              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => setStep(3)}>
+                <ul className="space-y-0.5">{cats.map((c, i) => {
+                  const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
+                  return <li key={i}>{c}{subs.length > 0 && <span className="text-muted-foreground"> — {subs.join(", ")}</span>}</li>;
+                })}</ul>
+              </SummaryRow>
+              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(5)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
+              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(6)}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
                   <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}{courtNames(d) && ` (${courtNames(d)})`}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
                 ))}</ul>
@@ -223,7 +276,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step < 6 && (
+          {step < 7 && (
             <div className="flex justify-between pt-2">
               <Button variant="ghost" size="sm" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
               <Button size="sm" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
@@ -242,11 +295,23 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => setStep(2)} />}
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => setStep(3)}>
-                  {cats.map((c, i) => <TreeLeaf key={i}>{c}</TreeLeaf>)}
+                  {cats.map((c, i) => {
+                    const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
+                    return (
+                      <TreeLeaf key={i}>
+                        <button type="button" onClick={() => setStep(4)} className="rounded px-1 hover:bg-muted">{c}</button>
+                        {subs.length > 0 && (
+                          <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
+                            {subs.map((s, j) => <TreeLeaf key={j}>{s}</TreeLeaf>)}
+                          </div>
+                        )}
+                      </TreeLeaf>
+                    );
+                  })}
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (
-                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => setStep(4)}>
+                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => setStep(5)}>
                   {a.days.map((d, i) => (
                     <TreeLeaf key={i}>
                       {fmtDay(d.date)}

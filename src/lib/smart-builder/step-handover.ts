@@ -110,6 +110,8 @@ export type CreateInput = {
   drawChannels?: string[];
   /** Fees & Payment doubles answer: may one partner pay the other's fee. undefined = leave as is. */
   partnerPay?: boolean | null;
+  /** Messaging step "Draw notifications": tell players their opponents + play-by date when each round/stage is drawn. undefined = leave as is. */
+  drawNotify?: boolean;
 };
 
 /**
@@ -157,6 +159,10 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     const cur = (await loadLifecycle(tid!)) ?? ({ stage: "invite", completed: ["planning"] } as BetaLifecycle);
     await saveLifecycle(tid!, { ...cur, partner_pay: i.partnerPay });
   }
+  if (i.drawNotify !== undefined) {
+    const cur = (await loadLifecycle(tid!)) ?? ({ stage: "invite", completed: ["planning"] } as BetaLifecycle);
+    await saveLifecycle(tid!, { ...cur, draw_notify: i.drawNotify });
+  }
   if (i.entrants.length) {
     const nDiv = Math.max(1, i.divisions?.length ?? 1);
     const missing = i.entrants.filter((e) => nDiv > 1 && !(e.division && e.division >= 1 && e.division <= nDiv));
@@ -199,6 +205,8 @@ export type BetaLifecycle = {
   wa_include?: boolean;
   /** Fees & Payment "A player may pay for both partners" — read server-side by step_pair_payment_context. */
   partner_pay?: boolean | null;
+  /** Messaging "Draw notifications" (default on): Round 1 at Generate draw and every later stage when it is created. */
+  draw_notify?: boolean;
   /** Draw-relevant setup answers (format incl. within/between/custom matchups, seeding, stages, play-offs) so Generate draw works on any device. */
   format_plan?: Record<string, unknown> | null;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };

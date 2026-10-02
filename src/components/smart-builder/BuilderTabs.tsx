@@ -193,6 +193,7 @@ export function PlayersTab({ def, validation, edit }: { def: TournamentDefinitio
                           st.groups = n; if (n === 1) st.groupSize = null;
                           if (x.poolLabels) x.poolLabels = x.poolLabels.slice(0, n);
                         })} />
+                      <p className="mt-0.5 text-[10px] text-white/45">Each division has its own pools. Copied a division? You can always reduce its pools here later.</p>
                     </Field>
                   );
                 })()}

@@ -113,3 +113,4 @@
 
 - [x] Platform invoices: issue on the 1st, bill previous month WhatsApp + SMS, amend unpaid invoice; Super Admin shows real amounts owed (2026-10-01)
 - [x] Update Diamond League team summary and individual position summaries live through semi-finals and finals; rename Last position.
+- [x] Builder: tip that pools can be reduced per division later

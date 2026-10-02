@@ -2420,3 +2420,9 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 
 ### 2026-10-02 — Step-by-Step: Generate draw & fixtures
 - Added StepGenerateDrawPanel (confirm final format → preview → generate/rebuild), `step-draw.ts` bridge, migration 0007 `step_prepare_draw`. Structured `insertFixtures` now writes `play_by` on rounds/games for play-by stages. Payment never affects the draw. Tests: src/test/step-generate-draw.test.ts.
+
+### 2026-10-02 — Step-by-Step Generate draw: cross-league, rankings, multiple play-by rounds
+- Cross-League Round Robin now generates (existing Club Champs rule: every selected group plays every other selected group, never its own) as one structured `mapped` division with explicit league positions; entries keep their own group so league standings still work; `round_format` set to `cross_league`.
+- "Use rankings" seeds by club ranking points (pair = both players' points); regional/national level, unknown level, or no points recorded → blocks with a message (never falls back to entry order).
+- Several play-by deadlines in one stage → per-round `roundDates`; rounds split over the dates (organiser can set the split), saved per round/game `play_by`.
+- Draw reconciles entries before preview and again before commit, refusing if the entries changed.

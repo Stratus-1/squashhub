@@ -70,8 +70,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   useEffect(() => {
-    supabase.from("club_members").select("id, name").eq("club_id", clubId).eq("status", "active").neq("role", "visitor").order("name").limit(2000)
-      .then(({ data }) => setMembers(((data ?? []) as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member" }))));
+    // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
+    let cancelled = false;
+    (async () => {
+      const PAGE = 1000; const all: { id: string; name: string }[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase.from("club_members").select("id, name").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
+          .order("name").order("id").range(from, from + PAGE - 1);
+        if (error || !data) break;
+        all.push(...(data as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member" })));
+        if (data.length < PAGE) break;
+      }
+      if (!cancelled) setMembers(all);
+    })();
     supabase.from("leagues").select("id, name").eq("club_id", clubId).is("archived_at", null).order("name")
       .then(({ data }) => setLeagues(((data ?? []) as any[]).map((l) => ({ id: String(l.id), name: l.name }))));
   }, [clubId]);
@@ -329,8 +340,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible members can still enter themselves, so the total stays provisional until entries close.</div>}
               {units.some((u) => u.disc === "doubles") && <div className="text-xs text-muted-foreground">Doubles groups take players who will be paired up — partners are matched later. A player placed in a Singles group is not counted as a doubles entry.</div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
-              <div className="max-h-48 space-y-1 overflow-auto rounded-lg border border-border p-2">
-                {members.filter((m) => !a.picks[m.id] && a.picks[m.id] !== "" && m.name.toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 50).map((m) => (
+              {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).length;
+                return <div className="text-xs text-muted-foreground">{n} of {members.length} members available{q ? " matching your search" : ""}</div>; })()}
+              <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
+                {members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(memberSearch.trim().toLowerCase())).map((m) => (
                   <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
                     onClick={() => setA({ ...a, picks: { ...a.picks, [m.id]: units.length === 1 ? units[0].key : "" } })}>
                     {m.name}<Plus className="h-3 w-3" />

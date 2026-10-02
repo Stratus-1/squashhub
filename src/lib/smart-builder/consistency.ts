@@ -43,7 +43,7 @@ export function setupConflicts(a: Answers | null | undefined): SetupConflict[] {
     const earlier = choice === "none" ? "No playoffs" : "Decide later";
     out.push({
       id: "playoffs_vs_timeline", step: "Stages & scheduling",
-      message: `Your tournament setup has changed. Earlier you selected '${earlier}' for playoffs, but you have now configured ${names.map((n) => `${article(n)} ${n}`).join(" and ").replace(/ and (?=[^ ]+ [^ ]+$)/, " and ")}. Update the tournament to include these playoff stages?`.replace(` ${list(names.map((n) => `${article(n)} ${n}`))}`, ` ${list(names.map((n) => `${article(n)} ${n}`))}`),
+      message: `Your tournament setup has changed. Earlier you selected '${earlier}' for playoffs, but you have now configured ${list(names.map((n) => `${article(n)} ${n}`))}. Update the tournament to include these playoff stages?`,
       yes: {
         label: "Yes, update tournament",
         apply: (x) => ({ ...x, playoff: { ...(x.playoff ?? {}), choice: "playoffs", rounds: Math.min(3, Math.max(1, Math.max(...[...playoffChains(x).values()].map((r) => r.length)))) }, playoffOverrides: Object.fromEntries(Object.entries(x.playoffOverrides ?? {}).filter(([, v]: any) => v?.choice === "playoffs")) }),

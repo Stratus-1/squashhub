@@ -2386,3 +2386,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-10-02 — Step-by-Step "Book courts now" booked only Semifinal/Final
 - Cause: plan slots were checked for clashes only against existing bookings, never against each other, then sent in ONE batch upsert. The `prevent_overlapping_bookings` trigger refused the batch whenever two plan slots shared a court/time (e.g. two categories' rounds), so later presses booked nothing new; earlier-booked playoffs stayed.
 - Fix (`src/lib/smart-builder/stage-bookings.ts`): `internalOverlaps` reports same-plan overlaps as clashes; stale plan rows are removed first; each slot is upserted on its own so one refusal never blocks other stages. Test: `step-builder-court-bookings.test.ts`, `step-builder-handover.test.tsx`.
+
+### 2026-10-02 — Step-by-Step "Complete setup" hit invitation division error
+- Cause: `persistStepTournament` never set divisions, so `tournaments.num_groups` took its default (2 unnamed divisions); admin-entered registrations carry `confirmed_at`, so trigger `enforce_confirmed_tournament_division_choice` required `division_choices` and raised the participant message.
+- Fix: Step-by-Step categories map to `num_groups`/`group_labels` (+ `league_match_types` on base table); each admin entrant gets `division_choices=[its category]`; unplaced picks give a builder-specific error. Trigger unchanged (empty choices still rejected).

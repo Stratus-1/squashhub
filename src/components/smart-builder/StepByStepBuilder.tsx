@@ -300,10 +300,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
   const stageWhen = (s: ClubStage) => s.mode === "later" ? "Decide later" : s.mode === "play_by" ? `Play by ${s.deadline ? fmtDay(s.deadline) : "(deadline not set)"}` : `Scheduled ${s.date ? fmtDay(s.date) : "(date not set)"} ${s.from || "?"}–${s.to || "?"} · ${clubCourts.filter((c) => s.courtIds.includes(c.id)).map((c) => c.name).join(", ") || "no courts"}`;
   const splitOf = (k: string): ChampsSplit => ({ ...DEFAULT_SPLIT, ...(a.split?.[k] ?? {}) });
-  const setSplit = (k: string, p: Partial<ChampsSplit>) => setA({ ...a, split: { ...(a.split ?? {}), [k]: { ...splitOf(k), ...p } } });
   const champsEnd = (() => { const ds = (a.stages ?? []).map((x) => x.mode === "scheduled" ? x.date : x.mode === "play_by" ? x.deadline : "").filter(Boolean).sort(); return ds.length ? ds[ds.length - 1] : ""; })();
   const periodText = `${fmtDay(a.periodStart)} – ${champsEnd ? fmtDay(champsEnd) : "ends with the final"}`;
-  const splitText = (k: string) => { const sp = splitOf(k); return `Main rounds end: ${sp.mainEnd.trim() || "not set"} · Playoffs begin: ${sp.start === "custom" ? sp.custom || "custom (not named)" : START_LABEL[sp.start]}`; };
   const mainStages = stages.filter((s) => (s.phase ?? "main") === "main");
   const playoffStages = stages.filter((s) => s.phase === "playoff");
   const suggestStages = () => {

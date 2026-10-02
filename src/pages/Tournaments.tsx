@@ -1285,7 +1285,7 @@ export default function Tournaments() {
           // Allowed for the two players in THIS match, club/tournament admins
           // and super admins — never for an uninvolved player.
           if (isPlaceholder) return null;
-          const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
+          const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps || isClubAdmin, anyClubMember: false });
           if (!perm.allowed) return null;
           return (
             <Button

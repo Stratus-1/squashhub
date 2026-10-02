@@ -37,7 +37,7 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
-import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage, playByNudge } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones as parseMilestonesForDates } from "@/lib/tournaments/round-definitions";
 import { assignFixedSlots, playoffDeadline, playoffKeyForLabel, playoffModeFor, stageSchedulingFromChamp, type PlayoffKey } from "@/lib/tournaments/round-plan";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
@@ -2513,6 +2513,21 @@ export default function ClubChampsView() {
     qc.invalidateQueries({ queryKey: ["bookings"] });
   }
 
+  // The fixture's applicable round deadline: its own play_by wins, then the
+  // round/stage deadline (live round rows merged over the planned list, with
+  // play-off milestones for knockout stages). Repeated on every fixture card
+  // so the date stays visible on mobile once the round header scrolls away.
+  const fixtureDeadlines = mergeRoundDeadlines(
+    parseRoundDeadlines((champ as any)?.round_play_by),
+    champRounds as any[],
+  );
+  const fixtureMilestones = parseMilestonesForDates((champ as any)?.milestone_play_by);
+  const playByForMatch = (m: any): string | null => {
+    const own = typeof m?.play_by === "string" ? m.play_by.slice(0, 10) : "";
+    if (own) return own;
+    return deadlineForStage(fixtureDeadlines, m.round_number, m.stage_label ?? m.stage, fixtureMilestones);
+  };
+
   function renderMatchRow(m: any) {
 
     const mine = isMyMatch(m);
@@ -2608,6 +2623,35 @@ export default function ClubChampsView() {
           return <Badge variant="secondary" className="text-[10px]">{m.status}</Badge>;
         })()}
 
+
+        {(() => {
+          // Round deadline repeated on every fixture card: the round header
+          // scrolls away on mobile, so the date must travel with the fixture.
+          // "Book by …" when this viewer can book the court, otherwise the
+          // read-only "Play by …". Completed fixtures show their result instead.
+          if (completed) return null;
+          const nudge = playByNudge(playByForMatch(m), format(new Date(), "yyyy-MM-dd"));
+          if (!nudge) return null;
+          const canBook = canScheduleFixture(m, myMemberId, { canManage }).allowed;
+          const date = playByForMatch(m)!.slice(0, 10);
+          const nice = format(new Date(`${date}T00:00:00`), "d MMM");
+          return (
+            <span
+              title={nudge.label}
+              className={cn(
+                "inline-flex items-center gap-1 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                nudge.tone === "late"
+                  ? "border-destructive/50 bg-destructive/10 text-destructive"
+                  : nudge.tone === "soon"
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-primary/40 bg-primary/10 text-primary",
+              )}
+            >
+              <CalendarClock className="h-3 w-3" />
+              {canBook ? `Book by ${nice}` : `Play by ${nice}`}
+            </span>
+          );
+        })()}
 
         {(() => {
 

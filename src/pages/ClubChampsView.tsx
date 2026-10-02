@@ -3127,6 +3127,38 @@ export default function ClubChampsView() {
 
 
     orderedGroups.forEach((gn: number) => {
+      const mu = matchupForGroup(matchups, gn);
+      if (mu) {
+        // One card per matchup (e.g. Men's A vs Men's B): each subcategory's
+        // table, then the shared games once. Rendered at its first group only.
+        if (gn !== mu.entryGroups.find((g) => orderedGroups.includes(g))) return;
+        const heading = matchupHeading(mu, (g) => getGroupLabel(champ, g));
+        const muMatches = sortMatchesChrono(matches.filter((m: any) =>
+          (m.stage || "group") === "group" && m.group_number === mu.groupNumber));
+        standingsCards.push(
+          <CollapsibleCard key={`mu-${mu.groupNumber}`} defaultOpen={false}
+            title={heading} titleClassName="text-lg" contentClassName="space-y-4"
+          >
+            <p className="text-xs text-muted-foreground">Between subcategories — these groups play each other only.</p>
+            {mu.entryGroups.map((g, i) => (
+              <div key={g} className="space-y-1.5">
+                <h4 className="font-medium text-sm">{(mu.labels[i] || "").trim() || getGroupLabel(champ, g)}</h4>
+                {renderGroupStandings(g)}
+              </div>
+            ))}
+            {muMatches.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
+                  <div className="space-y-1.5">{muMatches.map((m: any) => renderMatchRow(m))}</div>
+                </div>
+              </>
+            )}
+          </CollapsibleCard>
+        );
+        return;
+      }
       const groupMemberIds = new Set<string>(
         entries.filter((e: any) => e.group_number === gn)
           .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])

@@ -1,3 +1,4 @@
+import { PartnerFeeOptions, type PartnerPayScope } from "@/components/tournaments/PartnerFeeOptions";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -224,13 +225,14 @@ export default function TournamentInvite() {
   const payVerifyReady = isInviteVerificationComplete(verificationKind, verify);
 
   const payNow = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (payScope?: PartnerPayScope | void) => {
       const { data: res, error } = await supabase.functions.invoke("stitch-create-payment", {
         body: {
           invite_token: token,
           invite_verify: verify.trim() || null,
           method: "paybybank",
           return_url: window.location.href,
+          ...(payScope ? { pay_scope: payScope } : {}),
         },
       });
       if (error) throw new Error(error.message || "Could not start the payment");
@@ -558,7 +560,7 @@ export default function TournamentInvite() {
             <Button
               className="w-full"
               disabled={payNow.isPending || (payNeedsVerify && !payVerifyReady)}
-              onClick={() => payNow.mutate()}
+              onClick={() => payNow.mutate(undefined)}
             >
               {payNow.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -568,6 +570,8 @@ export default function TournamentInvite() {
                 </>
               )}
             </Button>
+            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!payNeedsVerify || payVerifyReady}
+              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} />
             <p className="text-[11px] text-muted-foreground text-center">
               You can pay straight from this invitation — no login needed.
             </p>

@@ -792,6 +792,20 @@ export default function Tournaments() {
     );
   };
 
+  /**
+   * "By round" container key. Round-robin/pool games group by their ACTUAL round
+   * (round_number → round row / planned label), never by stage_label — structured
+   * cross-league games carry seed slots there ("A1 v B1"), which are matchup info,
+   * not rounds. Play-off/knockout games keep their stage name.
+   */
+  const roundGroupKey = (m: any): string => {
+    const st = String(m?.stage || "");
+    if (isPlayoffGame(m) || (st && st !== "group" && st !== "pool")) return matchStageLabel(m);
+    const row = String(matchRoundRow(m)?.label || "").trim();
+    if (row && !/^[A-Z]\d+\s+v(s)?\.?\s+[A-Z]\d+$/i.test(row)) return row;
+    return roundMeta(m.champ_id, m.round_number).label || `Round ${Number(m.round_number) || 1}`;
+  };
+
   const renderRoundGroups = (list: any[]) => {
     // Grouped by STAGE, not by round number: a league that reached its
     // semi-final in round 5 must not sit under another league's "Round 5".
@@ -800,7 +814,7 @@ export default function Tournaments() {
     list.forEach((m) => {
       const n = Number(m.round_number);
       const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
-      const key = num === 0 ? "\u0000pool" : matchStageLabel(m);
+      const key = num === 0 ? "\u0000pool" : roundGroupKey(m);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
       const prev = order.get(key);
@@ -837,7 +851,7 @@ export default function Tournaments() {
             if (m.status === "placeholder" || !champsHere.has(m.champ_id)) return false;
             const r = Number(m.round_number);
             const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
-            return isPool ? num === 0 : num !== 0 && matchStageLabel(m) === key;
+            return isPool ? num === 0 : num !== 0 && roundGroupKey(m) === key;
           });
           const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
           const outstanding = all.length - done;

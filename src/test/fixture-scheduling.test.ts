@@ -123,3 +123,19 @@ describe("generated knockout fixture scheduling", () => {
     expect(unscheduledFixtures(list).map((m) => m.id)).toEqual(["a"]);
   });
 });
+
+import { canScheduleFixture as canSched, isCentrallyScheduled } from "@/lib/tournaments/fixture-scheduling";
+describe("centrally scheduled play-offs", () => {
+  const qf = { stage: "ko", status: "scheduled", play_by: null, scheduled_date: "2026-10-22", scheduled_time: "16:00:00", court_id: 1, player_a_member_id: "a", player_b_member_id: "b" };
+  it("players cannot book/reschedule an organiser-scheduled play-off; admins can", () => {
+    expect(isCentrallyScheduled(qf)).toBe(true);
+    expect(canSched(qf, "a").allowed).toBe(false);
+    expect(canSched(qf, "a", { canManage: true }).allowed).toBe(true);
+  });
+  it("player-arranged stages (own play-by deadline) stay bookable by participants only", () => {
+    const pa = { ...qf, play_by: "2026-10-30", scheduled_date: null, scheduled_time: null };
+    expect(isCentrallyScheduled(pa)).toBe(false);
+    expect(canSched(pa, "a").allowed).toBe(true);
+    expect(canSched(pa, "z").allowed).toBe(false);
+  });
+});

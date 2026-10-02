@@ -1047,11 +1047,17 @@ export default function Tournaments() {
       koOut === "b" && ELIMINATED_NAME_CLASS,
     );
 
-    // Self-scheduled rounds carry a "must be played by" date. Show it on any
-    // fixture that still has no court/time so players know their booking cut-off.
-    const playBy = !m.scheduled_date && !isPlaceholder
+    // Self-scheduled rounds carry a "must be played by" date. Repeat it on
+    // EVERY uncompleted fixture card — the round header scrolls away on
+    // mobile, so the deadline must travel with the fixture. "Book by …" when
+    // this viewer can book the court, otherwise read-only "Play by …".
+    const playByDeadline = !isPlaceholder && m.status !== "completed"
       && ((champById.get(m.champ_id) as any)?.scoring_mode === "time_capped_points" || groupMode !== "round")
-      ? playByNudge(matchPlayBy(m), todayISO())
+      ? matchPlayBy(m)
+      : null;
+    const playBy = playByDeadline ? playByNudge(playByDeadline, todayISO()) : null;
+    const playByText = playByDeadline
+      ? `${!isPlaceholder && canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin }).allowed ? "Book by" : "Play by"} ${format(new Date(`${playByDeadline.slice(0, 10)}T00:00:00`), "d MMM")}`
       : null;
 
 

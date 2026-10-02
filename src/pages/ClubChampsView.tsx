@@ -75,6 +75,8 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
 import { getRankRowStyle } from "@/lib/standings-rank-style";
+import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
+import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
@@ -707,6 +709,30 @@ export default function ClubChampsView() {
         name: info.names.join(" & "),
       } as any);
     });
+
+    // Structured (Beta) pools/round robins: the SAME tie-break engine as play-off qualification, so the
+    // table can never show a different order from the one the next stage is built from.
+    const spec = isStructured ? arch?.builder_spec : null;
+    const sdiv = spec && !mu && !isCrossLeague ? (spec.divisions ?? []).find((d: any) => divisionGroup(spec, d) === groupNum) : null;
+    if (sdiv) {
+      const keyOf = (r: any) => (isDoubles && r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id);
+      const byMember = new Map<string, string>();
+      rows.forEach((r: any) => { byMember.set(r.club_member_id, keyOf(r)); if (r.partner_member_id) byMember.set(r.partner_member_id, keyOf(r)); });
+      const games = groupMatches.flatMap((m: any) => {
+        const a = byMember.get(m.player_a_member_id), b = byMember.get(m.player_b_member_id);
+        if (!a || !b) return [];
+        const winner = !m.winner_member_id ? null : byMember.get(m.winner_member_id) ?? null;
+        return [{ a, b, winner, ...gameSetsOf(m) }];
+      });
+      const firstStage = [...(sdiv.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
+      const saved: string[] = (spec.positionOrders?.[`${sdiv.divisionId}/${firstStage?.id}`]?.[(poolNumber ?? 1) - 1] ?? [])
+        .map((u: string) => byMember.get(u.split("+")[0])).filter(Boolean);
+      const base = [...rows].sort((a: any, b: any) => (a.clubLadderRank ?? 1e9) - (b.clubLadderRank ?? 1e9) || (a.order_index ?? 0) - (b.order_index ?? 0));
+      const ranked = rankUnits(base.map(keyOf), games, resolveTieBreaks(spec, sdiv), saved);
+      const pos = new Map(ranked.order.map((k, i) => [k, i]));
+      const tied = new Set(ranked.ties.flatMap((t) => t.ids));
+      return rows.map((r: any) => ({ ...r, tiedUnresolved: tied.has(keyOf(r)) })).sort((a: any, b: any) => (pos.get(keyOf(a)) ?? 1e9) - (pos.get(keyOf(b)) ?? 1e9));
+    }
 
     // Strategy-driven ranking. When stats are equal (e.g. before any games are
     // played) use the regional average index for league-average handicap events,

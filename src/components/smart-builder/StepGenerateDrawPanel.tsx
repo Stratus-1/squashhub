@@ -78,6 +78,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setMeta({ name: tt?.name ?? "Tournament", start: tt?.start_date ?? null, end: tt?.end_date ?? null });
     const n = Math.max(1, Number(tt?.num_groups ?? 1));
     // This device's answers when present, else the setup saved on the tournament (works on any device).
+    if ((tt as any)?.beta_lifecycle?.draw_notify === false) setNotifyDraw(false);
     const plan = readStepPlan(clubId, tournamentId) ?? ((tt as any)?.beta_lifecycle?.format_plan ?? null);
     const errs: string[] = [];
     const list: DrawDivision[] = [];
@@ -506,7 +507,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       {!(hasDraw && existing.played > 0) && (
         <>
           <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
-          {!hasDraw && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>Tell players their Round 1 opponent and play-by date now (uses the tournament's message channels).</span></label>}
+          {!hasDraw && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>Tell players their Round 1 opponent (name and phone number, and in doubles their partner too) and play-by date now (uses the tournament's message channels).</span></label>}
           <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
         </>
       )}

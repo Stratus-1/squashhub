@@ -22,6 +22,8 @@ export type RoundDrawNotifyScope = {
   roundNumber: number;
   groupNumber?: number | null;
   sections?: number[] | null;
+  /** Structured stage key: only that stage's games (rounds restart per stage). */
+  stageKey?: string | null;
 };
 
 export type RoundDrawNotifyResult = {
@@ -47,6 +49,7 @@ export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<Roun
     p_round_number: scope.roundNumber,
     p_group_number: scope.groupNumber ?? null,
     p_sections: scope.sections && scope.sections.length ? scope.sections : null,
+    p_stage_key: scope.stageKey ?? null,
   });
   if (error) throw error;
 

@@ -10,17 +10,25 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
  * Picked players, eligibility and invite choices are captured here but nothing is sent or created.
- * No formats, pools, play-offs or scheduling here — answers are kept locally
+ * Match scoring is planning-only; no draws, pools, play-offs or scheduling here — answers are kept locally
  * per club so a future "Help me choose the format" step can read them.
  */
 type Kind = "once_off" | "period" | null;
 type PlayType = "singles" | "doubles" | "both" | null;
+type MatchScoring = { mode: "standard" | "time_capped_points"; pointsPerGame: 11 | 15; bestOf: 3 | 5; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string };
+const DEFAULT_SCORING: MatchScoring = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "" };
+const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
+  ? `Time-capped / Bells${Number(s.timeCapMinutes) > 0 ? ` · ${s.timeCapMinutes} min per match` : " · time not set"}`
+  : `Standard play · PAR ${s.pointsPerGame} · best of ${s.bestOf} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 export type StepAnswers = {
   kind: Kind;
   entries: string;
   playType: PlayType;
+  /** Whole-tournament scoring, with optional category/subcategory overrides. Planning only. */
+  scoring: MatchScoring | null;
+  scoringOverrides: Record<string, MatchScoring>;
   categories: string[];
   /** Optional subcategories per category name; missing/empty = no subcategories. */
   subcats: Record<string, string[]>;
@@ -57,13 +65,13 @@ type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; plac
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE };
-type StepKey = "Type" | "Entries" | "What" | "Categories" | "Subcategories" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Categories: "Categories", Subcategories: "Subcategories", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE };
+type StepKey = "Type" | "Entries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
-const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles", doubles: "Doubles", both: "Both" };
+const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles", doubles: "Doubles", both: "Singles and Doubles" };
 
 const fmtDay = (d: string) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "No date";
@@ -77,7 +85,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
       const doublesEntry = saved.doublesEntry !== undefined ? saved.doublesEntry : legacy === "later" || !legacy ? null : legacy !== "separate";
       const doublesCover = saved.fee?.doublesCover !== undefined ? saved.fee.doublesCover : legacy === "later" || !legacy ? null : legacy === "one_pays";
       const { doublesPay: _oldRule, ...savedFee } = saved.fee ?? {};
-      return { ...EMPTY, ...saved, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } };
+      return { ...EMPTY, ...saved, scoringOverrides: saved.scoringOverrides ?? {}, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } };
     } catch { return EMPTY; }
   });
   const [step, setStep] = useState(0);
@@ -137,6 +145,16 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     setA({ ...a, playType: p, disc });
   };
   const dblUnits = units.filter((u) => u.disc === "doubles");
+  const scoring = a.scoring ? { ...DEFAULT_SCORING, ...a.scoring } : null;
+  const scoringFor = (key: string) => a.scoringOverrides?.[key] ?? scoring;
+  const scoringOk = (s: MatchScoring | null) => !!s && (s.mode === "standard" || (Number.isFinite(Number(s.timeCapMinutes)) && Number(s.timeCapMinutes) > 0));
+  const setScoring = (patch: Partial<MatchScoring>) => setA({ ...a, scoring: { ...(scoring ?? DEFAULT_SCORING), ...patch } });
+  const setScoringOverride = (key: string, patch: Partial<MatchScoring> | null) => {
+    const next = { ...(a.scoringOverrides ?? {}) };
+    if (patch === null) delete next[key]; else next[key] = { ...(next[key] ?? scoring ?? DEFAULT_SCORING), ...patch };
+    setA({ ...a, scoringOverrides: next });
+  };
+  const validOverrides = units.filter((u) => a.scoringOverrides?.[u.key]);
   const partnerOf = (k: string): Partner | null => a.partner?.[k] ?? null;
   const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
@@ -173,7 +191,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     dates: a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
-  const steps: StepKey[] = ["Type", "Entries", "What", "Categories", "Subcategories", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+  const steps: StepKey[] = ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
     ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
@@ -184,7 +202,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Categories: cats.length > 0, Subcategories: discOk, Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: validOverrides.every((u) => scoringOk(scoringFor(u.key))), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
@@ -284,6 +302,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
+          {cur === "Match" && (
+            <>
+              <Q t="How will matches be played?" h="This applies to every category unless you choose an exception after setting up your categories." />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Choice active={scoring?.mode === "standard"} onClick={() => setScoring({ mode: "standard" })} title="Standard play" desc="Games to a set score, with a best-of match." />
+                <Choice active={scoring?.mode === "time_capped_points"} onClick={() => setScoring({ mode: "time_capped_points" })} title="Time-capped / Bells format" desc="Matches run for a set number of minutes." />
+              </div>
+              {scoring && <ScoringFields value={scoring} onChange={setScoring} />}
+            </>
+          )}
+
           {cur === "Categories" && (
             <>
               <Q t="What categories will you have?" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
@@ -302,7 +331,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Subcategories" && (
             <>
               <Q t="Do any categories need subcategories?" h="Optional — e.g. Men's could be split into Group A, Group B, Group C. Ladies can stay as one group." />
-              {a.playType === "both" && <p className="text-xs text-muted-foreground">You chose Both — pick Singles or Doubles for each category, or for each subcategory if it's split. Singles and doubles entries are always kept apart.</p>}
+              {a.playType === "both" && <p className="text-xs text-muted-foreground">You chose Singles and Doubles — pick one for each category, or for each subcategory if it's split. Singles and doubles entries are always kept apart.</p>}
               <div className="space-y-3">
                 {cats.map((cat) => {
                   const subs = a.subcats[cat];
@@ -338,6 +367,27 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       )}
                     </div>
                   );
+                })}
+              </div>
+            </>
+          )}
+
+          {cur === "Overrides" && (
+            <>
+              <Q t="Does any group need a different match format?" h="The tournament match format already applies to every group. Only change the groups that need an exception." />
+              <p className="text-sm">For all groups: <span className="font-medium">{scoring ? scoringText(scoring) : "Not chosen"}</span></p>
+              <div className="space-y-3">
+                {units.map((u) => {
+                  const override = a.scoringOverrides?.[u.key];
+                  return <div key={u.key} className="space-y-3 border-t pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-medium">{u.base}</div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setScoringOverride(u.key, override ? null : {})}>
+                        {override ? "Use tournament format" : "Change this group's format"}
+                      </Button>
+                    </div>
+                    {override ? <ScoringFields value={override} onChange={(patch) => setScoringOverride(u.key, patch)} showMode /> : <p className="text-xs text-muted-foreground">Uses {scoring ? scoringText(scoring) : "tournament format"}</p>}
+                  </div>;
                 })}
               </div>
             </>
@@ -614,6 +664,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
               <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${a.entries} (estimate)`}</SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => go("What")}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
+              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Match format" onEdit={() => go("Match")}>
+                <div>{scoring ? scoringText(scoring) : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {validOverrides.length ? "tournament default" : "all groups"}</span>}</div>
+                {validOverrides.length > 0 && <ul className="space-y-0.5">{validOverrides.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</span></li>)}</ul>}
+              </SummaryRow>
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
                   const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
@@ -678,6 +732,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             <>
               {entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => go("Entries")} />}
               {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => go("What")} />}
+              {scoring && <TreeNode icon={<Trophy className="h-4 w-4" />} title={scoringText(scoring)} onClick={() => go("Match")}>
+                {validOverrides.length > 0 && validOverrides.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}
+              </TreeNode>}
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>
                   {cats.map((c, i) => {

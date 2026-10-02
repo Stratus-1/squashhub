@@ -707,7 +707,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   {dblUnits.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "not chosen"}</span></TreeLeaf>)}
                 </TreeNode>
               )}
-              {fee.has !== null && (
+              {(fee.has !== null || dblUnits.length > 0) && (
                 <TreeNode icon={<Wallet className="h-4 w-4" />} title={`Fees: ${feeSummary}`} onClick={() => go("Fees")}>
                   {fee.has && units.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{feeUnitText(u)}</span></TreeLeaf>)}
                   {dblUnits.length > 0 && <><TreeLeaf>One player may enter the pair: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></TreeLeaf><TreeLeaf>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></TreeLeaf></>}

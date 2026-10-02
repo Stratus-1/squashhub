@@ -45,7 +45,7 @@ export interface EntrantRowLike {
   registration_source?: string | null;
 }
 
-export type FeeStatus = "not_required" | "due" | "pending" | "paid" | "waived";
+export type FeeStatus = "not_required" | "due" | "pending" | "paid" | "waived" | "on_account";
 
 export const FEE_STATUS_LABEL: Record<FeeStatus, string> = {
   not_required: "No fee",
@@ -53,6 +53,7 @@ export const FEE_STATUS_LABEL: Record<FeeStatus, string> = {
   pending: "Payment pending",
   paid: "Fee paid",
   waived: "Fee waived",
+  on_account: "Charged to member account",
 };
 
 export interface EntrantContext {

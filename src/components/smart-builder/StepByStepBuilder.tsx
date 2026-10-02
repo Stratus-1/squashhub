@@ -18,10 +18,16 @@ import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility
  */
 type Kind = "once_off" | "period" | null;
 type PlayType = "singles" | "doubles" | "both" | null;
-type MatchScoring = { mode: "standard" | "time_capped_points"; pointsPerGame: 11 | 15; bestOf: 3 | 5; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string };
-const DEFAULT_SCORING: MatchScoring = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "" };
+type MatchScoring = { mode: "standard" | "time_capped_points"; pointsPerGame: 11 | 15; bestOf: 3 | 5; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string; timeCapPlay: string; timeCapBreak: string };
+const DEFAULT_SCORING: MatchScoring = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
+/** Slot time = playing time + break/changeover. Scheduling and capacity maths use the slot; playing time describes actual play. */
+const slotMinutes = (s: MatchScoring) => {
+  const play = Number(s.timeCapPlay);
+  if (Number.isFinite(play) && play > 0) return play + (Number.isFinite(Number(s.timeCapBreak)) ? Math.max(0, Number(s.timeCapBreak) || 0) : 0);
+  return Number.isFinite(Number(s.timeCapMinutes)) ? Number(s.timeCapMinutes) || 0 : 0; // legacy single field
+};
 const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
-  ? `Time-capped / Bells${Number(s.timeCapMinutes) > 0 ? ` · ${s.timeCapMinutes} min per match` : " · time not set"}`
+  ? `Time-capped / Bells${slotMinutes(s) > 0 ? ` · ${slotMinutes(s)} min slot per match` : " · time not set"}`
   : `Standard play · PAR ${s.pointsPerGame} · best of ${s.bestOf} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
@@ -444,7 +450,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const playoffMinutes = units.reduce((n, u) => {
     const p = playoffFor(u.key); const s = scoringFor(u.key) ?? scoring;
     if (!playoffActive(u.key) || !s) return n;
-    return n + (2 ** p.rounds - 1) * (s.mode === "time_capped_points" ? Number(s.timeCapMinutes) : s.bestOf === 3 ? 35 : 55);
+    return n + (2 ** p.rounds - 1) * (s.mode === "time_capped_points" ? slotMinutes(s) : s.bestOf === 3 ? 35 : 55);
   }, 0);
   const capacityEstimateValid = units.filter((u) => playoffActive(u.key)).every((u) => scoringOk(scoringFor(u.key) ?? scoring));
   const provisional = !knownField || pickIds.some((id) => !units.some((u) => u.key === a.picks[id])) || selfEntry;

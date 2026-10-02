@@ -10,7 +10,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, moveUnit, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
 } from "@/lib/smart-builder/step-draw";
 
@@ -40,6 +40,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [rebuildOk, setRebuildOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
+  /** Organiser edits per group: seed order and/or pools. These are what Generate saves — never recalculated away. */
+  const [manual, setManual] = useState<Record<number, { order?: string[]; pools?: string[][] }>>({});
+  const [dragId, setDragId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -82,6 +85,18 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setScope(plan?.scope ?? null);
     setNames(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.name ?? "Unknown"])));
     setLadder(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.ladder_position ?? null])));
+    // Keep organiser edits only while the entries are unchanged; otherwise say so and start from the fresh entries.
+    setManual((m) => {
+      const kept: typeof m = {};
+      let dropped = false;
+      for (const [g, v] of Object.entries(m)) {
+        const ids = new Set((units[Number(g) - 1] ?? []).map(unitId));
+        const same = (xs?: string[]) => !xs || (xs.length === ids.size && xs.every((x) => ids.has(x)));
+        if (same(v.order) && same(v.pools?.flat())) kept[Number(g)] = v; else dropped = true;
+      }
+      if (dropped) toast.warning("Entries changed, so your manual seed/pool changes for that category were reset.");
+      return kept;
+    });
     setBaseUnits(units); setDivs(list); setPairErrors(errs); setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tournamentId]);
@@ -90,11 +105,19 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const seeded = useMemo(() => divs.map((d, i) => {
     const base = baseUnits[i] ?? [];
     const rk = d.format.seeding === "ranking" ? rankingIssue(base, scope, points) : null;
-    return { ...d, blockers: rk ? [rk] : [], units: orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points }) };
-  }), [divs, baseUnits, ladder, points, scope, seed]);
+    let units = orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points });
+    const mo = manual[d.group]?.order;
+    if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
+    return { ...d, blockers: rk ? [rk] : [], units, manualPools: d.format.kind === "pools" ? manual[d.group]?.pools ?? null : null };
+  }), [divs, baseUnits, ladder, points, scope, seed, manual]);
   const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }) : null, [meta, seeded]);
   const setSch = (i: number, patch: Partial<DivSchedule>) => setFmt(i, { schedule: { ...divs[i].format.schedule, ...patch } });
-  const setFmt = (i: number, patch: Partial<DivFormat>) => { setConfirmed(false); setDivs((ds) => ds.map((d, k) => k === i ? { ...d, format: { ...d.format, ...patch } } : d)); };
+  const setFmt = (i: number, patch: Partial<DivFormat>) => {
+    const g = divs[i]?.group;
+    if (g != null && manual[g] && ("kind" in patch || "pools" in patch || "seeding" in patch)) {
+      setManual((m) => { const n = { ...m }; delete n[g]; return n; });
+      toast.info(`${divs[i].label}: format/seeding changed, so your manual seed and pool changes were reset.`);
+    } setConfirmed(false); setDivs((ds) => ds.map((d, k) => k === i ? { ...d, format: { ...d.format, ...patch } } : d)); };
   const nm = (id: string | null) => (id ? names.get(id) ?? "Unknown" : "");
 
   const errors = [...pairErrors, ...(preview?.errors ?? [])];

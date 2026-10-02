@@ -14,7 +14,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 import { toast } from "sonner";
 import { getMarkerSessionKey, getMarkerSessionKeys, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import {
-  afterRally, isForehand, methodLabel, overrideServer, resolveDoublesPairs, restoreDoublesState,
+  afterRally, evenOddSide, isForehand, methodLabel, overrideServer, resolveDoublesPairs, restoreDoublesState,
   servingBanner, sideWord, startDoubles, startNextGame, type DoublesServeState, type Slot,
 } from "@/lib/marker/doubles-serving";
 import { DoublesServeSetup } from "./DoublesServeSetup";
@@ -235,7 +235,12 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const doublesPairs = resolveDoublesPairs(config);
   const dblMethod = doublesPairs?.method ?? null;
   const guided = !!doublesPairs && !!dblMethod;
-  const [dbl, setDbl] = useState<DoublesServeState | null>(() => (guided ? restoreDoublesState(persisted?.dbl, dblMethod) : null));
+  const [dbl, setDbl] = useState<DoublesServeState | null>(() => {
+    const r = guided ? restoreDoublesState(persisted?.dbl, dblMethod) : null;
+    // Even/Odd side is always derived from the combined live score — re-derive on resume
+    // so a session saved before the combined-score rule shows the correct box.
+    return r && r.method === "even_odd" ? { ...r, side: evenOddSide({ a: persisted?.scoreA ?? savedState?.scoreA ?? 0, b: persisted?.scoreB ?? savedState?.scoreB ?? 0 }) } : r;
+  });
   const [dblStart, setDblStart] = useState<DoublesServeState | null>(() => (guided ? restoreDoublesState(persisted?.dblStart, dblMethod) : null));
   const [overrideOpen, setOverrideOpen] = useState(false);
   const dblBlocked = guided && !dbl;

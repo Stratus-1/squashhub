@@ -110,6 +110,8 @@ export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingO
 export function drawPlanOf(a: Plan): Plan { const o: Plan = {}; for (const k of DRAW_PLAN_KEYS) if (a[k] !== undefined) o[k] = a[k]; return o; }
 /** "Mens › A 1st League · Doubles" → plan key "Mens::A 1st League". */
 export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
+/** Parent category of a division label ("Mens › A · Doubles" → "Mens"). */
+export const unitParentOf = (label: string) => unitKeyOf(label).split("::")[0];
 
 export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; crossKeys: string[]; crossPairKeys: string[][] | null; crossByParent: boolean } {
   const key = unitKeyOf(label);

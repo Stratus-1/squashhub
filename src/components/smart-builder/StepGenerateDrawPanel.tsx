@@ -156,6 +156,27 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       return { ...d, format: { ...d.format, kind: d.format.kind ?? "cross", crossVs: vs, crossGroups: vs.length ? [d.group, ...vs].sort((a, b) => a - b) : [] } };
     }));
   };
+  /** Other subcategories under the same parent category as this division. */
+  const siblings = (d: DrawDivision) => divs.filter((o) => o.group !== d.group && unitParentOf(o.label) === unitParentOf(d.label)).map((o) => o.group);
+  const rrScope = (d: DrawDivision): "within" | "between" | "custom" | null => {
+    if (d.format.kind === "round_robin") return "within";
+    if (d.format.kind !== "cross") return null;
+    const sib = siblings(d), vs = d.format.crossVs;
+    return vs && sib.length && vs.length === sib.length && vs.every((g) => sib.includes(g)) ? "between" : "custom";
+  };
+  /** Within = own round robin; Between = siblings of the same parent (set on every sibling); Custom = explicit pairings. */
+  const setRrScope = (i: number, scope: "within" | "between" | "custom") => {
+    const d = divs[i];
+    if (scope === "within") { setFmt(i, { kind: "round_robin", crossVs: null, crossGroups: [] }); return; }
+    if (scope === "custom") { setFmt(i, { kind: "cross", crossVs: d.format.crossVs ?? [], crossGroups: d.format.crossVs?.length ? d.format.crossGroups : [] }); return; }
+    const fam = [d.group, ...siblings(d)];
+    setConfirmed(false);
+    setDivs((ds) => ds.map((x) => {
+      if (!fam.includes(x.group)) return x;
+      const vs = fam.filter((g) => g !== x.group);
+      return { ...x, format: { ...x.format, kind: "cross", crossVs: vs, crossGroups: vs.length ? [...fam].sort((a, b) => a - b) : [] } };
+    }));
+  };
   const crossPairs = useMemo(() => {
     const { meetings } = crossSets(divs);
     const lab = (g: number) => divs.find((d) => d.group === g)?.label ?? `Group ${g}`;
@@ -324,7 +345,18 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
               )}
               {f.schedule.rule === "fixed" && <label className="space-y-0.5"><span className="text-muted-foreground">Round dates (comma-separated)</span><Input className="h-7" placeholder="2026-10-10, 2026-10-17" value={f.schedule.dates.join(", ")} onChange={(e) => setFmt(i, { schedule: { ...f.schedule, dates: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })} /></label>}
             </div>
-            {f.kind === "cross" && (
+            {(f.kind === "cross" || f.kind === "round_robin") && (
+              <div className="space-y-1" role="radiogroup" aria-label={`${d.label} round robin matchups`}>
+                <span className="text-muted-foreground">Round robin — who plays whom ({unitParentOf(d.label)}):</span>
+                <div className="flex flex-wrap gap-1">
+                  <Button type="button" size="sm" variant={f.kind === "round_robin" ? "default" : "outline"} aria-pressed={f.kind === "round_robin"} onClick={() => setRrScope(i, "within")}>Within subcategories</Button>
+                  <Button type="button" size="sm" variant={rrScope(d) === "between" ? "default" : "outline"} aria-pressed={rrScope(d) === "between"} onClick={() => setRrScope(i, "between")}>Between subcategories</Button>
+                  <Button type="button" size="sm" variant={rrScope(d) === "custom" ? "default" : "outline"} aria-pressed={rrScope(d) === "custom"} onClick={() => setRrScope(i, "custom")}>Custom matchups</Button>
+                </div>
+                <span className="text-muted-foreground">{f.kind === "round_robin" ? `${d.label} plays only within itself.` : rrScope(d) === "between" ? `${d.label} plays only the other subcategories of ${unitParentOf(d.label)}: ${siblings(d).map((g) => seeded.find((o) => o.group === g)?.label).join(", ") || "none"}.` : ""}</span>
+              </div>
+            )}
+            {f.kind === "cross" && rrScope(d) !== "between" && (
               <div className="space-y-1">
                 <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Cross-league matchups">
                   <Button type="button" size="sm" variant={!f.crossVs ? "default" : "outline"} aria-pressed={!f.crossVs} onClick={() => setCrossMode(i, "all")}>All selected groups play each other</Button>

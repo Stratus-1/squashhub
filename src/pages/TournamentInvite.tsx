@@ -560,12 +560,16 @@ export default function TournamentInvite() {
             <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
           </Button>
         ) : user ? (
-          <Button
-            className="w-full"
-            onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
-          >
-            <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
-          </Button>
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
+            >
+              <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
+            </Button>
+            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready
+              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
+          </div>
         ) : (
           <div className="space-y-2">
             {payNeedsVerify && !hasDoublesChoice && payVerifyField}
@@ -583,7 +587,7 @@ export default function TournamentInvite() {
               )}
             </Button>
             <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!payNeedsVerify || payVerifyReady}
-              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} />
+              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
             <p className="text-[11px] text-muted-foreground text-center">
               You can pay straight from this invitation — no login needed.
             </p>

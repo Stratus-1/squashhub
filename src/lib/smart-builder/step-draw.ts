@@ -26,6 +26,8 @@ export type DivFormat = {
   schedule: DivSchedule;
   /** cross: every tournament group in this cross-league set (incl. its own). Each group plays every other group. */
   crossGroups: number[];
+  /** cross: "Choose which groups play each other" — the exact groups this one plays. null/undefined = all selected groups play each other. */
+  crossVs?: number[] | null;
 };
 export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null };
 export type DrawUnit = { member: string; partner: string | null };
@@ -106,18 +108,20 @@ export function readStepPlan(clubId: string, tournamentId: string): Plan | null 
 /** "Mens › A 1st League · Doubles" → plan key "Mens::A 1st League". */
 export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
 
-export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; crossKeys: string[] } {
+export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; crossKeys: string[]; crossPairKeys: string[][] | null } {
   const key = unitKeyOf(label);
   const pick = <T,>(o: Record<string, T> | undefined, d: T): T => o?.[key] ?? o?.[key.split("::")[0]] ?? d;
   const notes: string[] = [];
   const f = pick(plan?.formatOverrides, plan?.format) ?? {};
   let kind: DrawKind | null = null;
   let crossKeys: string[] = [];
+  let crossPairKeys: string[][] | null = null;
   if (f.kind === "pools") kind = Number(f.pools) > 1 ? "pools" : "round_robin";
   else if (f.kind === "knockout" || f.kind === "swiss") kind = f.kind;
   else if (f.kind === "cross") {
     kind = "cross";
     crossKeys = (f.crossUnits?.length ? f.crossUnits : [f.crossA, f.crossB]).filter(Boolean);
+    if (f.crossMode === "chosen") crossPairKeys = (f.crossPairs ?? []).filter((x: any) => Array.isArray(x) && x.length === 2);
   }
   else notes.push(plan ? "Format was left as \"Decide later\" — choose it now." : "The setup answers aren't on this device — choose the format.");
   const sd = pick<string | null>(plan?.seedingOverrides, plan?.seeding ?? null);
@@ -137,7 +141,7 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   const po = pick(plan?.playoffOverrides, plan?.playoff) ?? {};
   const playoffs = kind && kind !== "knockout" && po.choice === "playoffs"
     ? (po.rounds === 1 ? ["Final"] : po.rounds === 2 ? ["Semi-final", "Final"] : ["Quarter-final", "Semi-final", "Final"]) : [];
-  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [] }, notes, playoffs, crossKeys };
+  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null }, notes, playoffs, crossKeys, crossPairKeys };
 }
 
 /* ── pools preview (source of truth for Generate) ── */
@@ -180,7 +184,7 @@ export function divisionIssues(d: DrawDivision): string[] {
   if (!f.kind) out.push("choose a format");
   if (f.kind === "pools" && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
   if (f.kind === "swiss" && (f.swissRounds < 1 || f.swissRounds > n - 1)) out.push(`Swiss rounds must be 1–${Math.max(1, n - 1)}`);
-  if (f.kind === "cross" && (f.crossGroups.length < 2 || !f.crossGroups.includes(d.group))) out.push("cross-league needs this group and at least one other group to play against");
+  if (f.kind === "cross" && crossOpponents(d).length < 1) out.push(f.crossVs ? "choose at least one group for this group to play" : "cross-league needs this group and at least one other group to play against");
   if (!f.schedule.rule) out.push("choose play-by date or fixed date");
   if (f.schedule.rule === "play_by" && !f.schedule.deadlines.filter(Boolean).length) out.push("set the play-by date");
   if (f.schedule.rule === "play_by" && f.schedule.deadlines.some((x) => !x)) out.push("a play-by round has no date");
@@ -189,42 +193,69 @@ export function divisionIssues(d: DrawDivision): string[] {
   return out;
 }
 
-/** Cross-league sets: divisions that play each other. Every listed group must also be cross with the same set and schedule. */
-export function crossSets(divs: DrawDivision[]): { sets: number[][]; errors: string[] } {
-  const errors: string[] = [];
-  const byGroup = new Map(divs.map((d) => [d.group, d]));
-  const sets: number[][] = [];
-  const seen = new Set<string>();
-  for (const d of divs) {
-    if (d.format.kind !== "cross") continue;
-    const set = [...new Set(d.format.crossGroups)].sort((a, b) => a - b);
-    for (const g of set) {
-      const o = byGroup.get(g);
-      if (!o) { errors.push(`${d.label}: cross-league group ${g} doesn't exist in this tournament.`); continue; }
-      if (o.format.kind !== "cross") errors.push(`${d.label}: plays cross-league against ${o.label}, but ${o.label} is set to a different format. Make both cross-league or remove ${o.label} from the set.`);
-      else if ([...new Set(o.format.crossGroups)].sort((a, b) => a - b).join() !== set.join()) errors.push(`${d.label} and ${o.label} list different cross-league groups — they must play in the same set.`);
-      else if (JSON.stringify(o.format.schedule) !== JSON.stringify(d.format.schedule)) errors.push(`${d.label} and ${o.label} play each other but have different dates — give them the same schedule.`);
-      else if (o.doubles !== d.doubles) errors.push(`${d.label} and ${o.label} can't play each other: one is singles, the other doubles.`);
-    }
-    const k = set.join();
-    if (!seen.has(k)) { seen.add(k); sets.push(set); }
-  }
-  return { sets, errors: [...new Set(errors)] };
+/** Groups this cross-league division plays: the chosen pairings, else every other group in its selected set. Never its own group. */
+export function crossOpponents(d: DrawDivision): number[] {
+  const f = d.format;
+  const xs = f.crossVs ? f.crossVs : f.crossGroups.length >= 2 && f.crossGroups.includes(d.group) ? f.crossGroups : [];
+  return [...new Set(xs)].filter((g) => g !== d.group).sort((a, b) => a - b);
 }
 
 /**
- * Cross-league matchups (the existing Club Champs rule: every selected group plays every other selected group,
- * never within its own group). Groups meet in a group rotation; within a meeting, a circle schedule so nobody plays
- * twice in one round. Pool index = group order in the set, position = seed within the group.
+ * Cross-league sets = connected groups that play each other, with the exact group-vs-group meetings.
+ * Pairings must be reciprocal; nothing beyond the configured meetings is inferred.
  */
-export function crossMatchups(sizes: number[]): Array<{ round: number; order: number; a: string; b: string; tie: string }> {
+export function crossSets(divs: DrawDivision[]): { sets: number[][]; meetings: Map<string, Array<[number, number]>>; errors: string[] } {
+  const errors: string[] = [];
+  const byGroup = new Map(divs.map((d) => [d.group, d]));
+  const edges = new Map<string, [number, number]>();
+  const parent = new Map<number, number>();
+  const find = (x: number): number => { while (parent.get(x)! !== x) x = parent.get(x)!; return x; };
+  for (const d of divs) if (d.format.kind === "cross") parent.set(d.group, d.group);
+  for (const d of divs) {
+    if (d.format.kind !== "cross") continue;
+    for (const g of crossOpponents(d)) {
+      const o = byGroup.get(g);
+      if (!o) { errors.push(`${d.label}: cross-league group ${g} doesn't exist in this tournament.`); continue; }
+      if (o.format.kind !== "cross") { errors.push(`${d.label}: plays cross-league against ${o.label}, but ${o.label} is set to a different format. Make both cross-league or remove ${o.label} from the pairing.`); continue; }
+      if (!crossOpponents(o).includes(d.group)) { errors.push(`${d.label} is set to play ${o.label}, but ${o.label} isn't set to play ${d.label} — make the pairing match on both groups.`); continue; }
+      if (JSON.stringify(o.format.schedule) !== JSON.stringify(d.format.schedule)) errors.push(`${d.label} and ${o.label} play each other but have different dates — give them the same schedule.`);
+      if (o.doubles !== d.doubles) errors.push(`${d.label} and ${o.label} can't play each other: one is singles, the other doubles.`);
+      const [x, y] = d.group < g ? [d.group, g] : [g, d.group];
+      edges.set(`${x}-${y}`, [x, y]);
+      parent.set(find(x), find(y));
+    }
+  }
+  const comp = new Map<number, number[]>();
+  for (const g of parent.keys()) { const r = find(g); comp.set(r, [...(comp.get(r) ?? []), g]); }
+  const sets = [...comp.values()].map((s) => s.sort((a, b) => a - b)).sort((a, b) => a[0] - b[0]);
+  const meetings = new Map<string, Array<[number, number]>>();
+  for (const set of sets) meetings.set(set.join(), [...edges.values()].filter(([x]) => set.includes(x)).sort((p, q) => p[0] - q[0] || p[1] - q[1]));
+  return { sets, meetings, errors: [...new Set(errors)] };
+}
+
+/**
+ * Cross-league matchups (the existing Club Champs rule: groups play OTHER groups, never within their own group).
+ * `meetings` = exact group-index pairs that meet (default: every group meets every other). Meetings are spread over
+ * meeting-rounds so no group plays two meetings at once; within a meeting, a circle schedule so nobody plays twice in
+ * one round. Pool index = group order in the set, position = seed within the group.
+ */
+export function crossMatchups(sizes: number[], meetings?: Array<[number, number]>): Array<{ round: number; order: number; a: string; b: string; tie: string }> {
   const letter = (i: number) => String.fromCharCode(65 + i);
-  const meetings = roundRobin(sizes.map((_, i) => String(i)));
+  let sched: Array<{ a: number; b: number; round: number }>;
+  if (!meetings) sched = roundRobin(sizes.map((_, i) => String(i))).map((m) => ({ a: Number(m.a), b: Number(m.b), round: m.round }));
+  else {
+    const busy = new Map<number, Set<number>>();
+    sched = meetings.map(([a, b]) => {
+      let r = 1; while (busy.get(r)?.has(a) || busy.get(r)?.has(b)) r++;
+      busy.set(r, new Set([...(busy.get(r) ?? []), a, b]));
+      return { a, b, round: r };
+    });
+  }
   const k = Math.max(1, ...sizes);
   const out: Array<{ round: number; order: number; a: string; b: string; tie: string }> = [];
   const orderIn = new Map<number, number>();
-  for (const m of meetings) {
-    const pa = Number(m.a), pb = Number(m.b);
+  for (const m of sched) {
+    const pa = m.a, pb = m.b;
     for (let r = 0; r < k; r++) for (let i = 0; i < k; i++) {
       const ia = i, ib = (i + r) % k;
       if (ia >= sizes[pa] || ib >= sizes[pb]) continue;
@@ -271,7 +302,7 @@ function stageSchedule(s: DivSchedule, rounds: number | undefined) {
 
 export function buildDrawSpec(name: string, divs: DrawDivision[], version: string, opts: SpecOpts = {}): TournamentSpec {
   const mode = opts.poolMode ?? "snake";
-  const { sets } = crossSets(divs);
+  const { sets, meetings } = crossSets(divs);
   const byGroup = new Map(divs.map((d) => [d.group, d]));
   const done = new Set<number>();
   const out: TournamentSpec["divisions"] = [];
@@ -284,10 +315,13 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
       members.forEach((m) => done.add(m.group));
       const id = `x${set.join("-")}`;
       const sizes = members.map((m) => m.units.length);
-      const matches = crossMatchups(sizes);
+      const idx = (g: number) => set.indexOf(g);
+      const mt = (meetings.get(set.join()) ?? []).map(([x, y]) => [idx(x), idx(y)] as [number, number]);
+      const allMeet = mt.length === (set.length * (set.length - 1)) / 2;
+      const matches = crossMatchups(sizes, allMeet ? undefined : mt);
       const slotIds = [...new Set(matches.flatMap((m) => [m.a, m.b]))];
       out.push({
-        divisionId: id, label: members.map((m) => m.label).join(" v "), unit: d.doubles ? "pairs" : "players",
+        divisionId: id, label: allMeet ? members.map((m) => m.label).join(" v ") : (meetings.get(set.join()) ?? []).map(([x, y]) => `${byGroup.get(x)!.label} v ${byGroup.get(y)!.label}`).join("; "), unit: d.doubles ? "pairs" : "players",
         expectedEntrants: sizes.reduce((s, x) => s + x, 0),
         seeding: { source: "entry_order", method: "snake" }, placements: "champion", finalStandings: "last_stage", entrants: [],
         groupNumber: set[0], entryGroups: set, poolLabels: members.map((m) => m.label),

@@ -335,29 +335,28 @@ export async function generateStructuredTournament(db: Db, tid: string) {
 
 /* ───── playoffs from persisted structure ───── */
 
-/** Pool standings from completed games of one pool stage. Ties at a qualifying boundary block (owner decision). */
-export function poolStandings(divisionKey: string, stageKey: string, matches: Array<Record<string, any>>, perPool: number): PoolStanding[] {
-  const unitOf = (m: Record<string, any>, side: "a" | "b") => {
-    const p = m[`player_${side}_member_id`], q = m[`partner_${side}_member_id`];
-    return q ? `${p}+${q}` : p;
-  };
-  const byPool = new Map<number, Map<string, number>>();
+/**
+ * Pool standings from completed games of one pool stage, ranked by the shared tie-break engine.
+ * Positions 1..perPool feed the next stage, so an unresolved tie touching them blocks (owner decision);
+ * ties below the qualifying line never block.
+ */
+export function poolStandings(divisionKey: string, stageKey: string, matches: Array<Record<string, any>>, perPool: number, criteria: TieBreakCriterion[] = DEFAULT_TIE_BREAKS, orders?: Record<number, string[]> | null, nextStage?: string): PoolStanding[] {
+  const rows = matches.filter((x) => x.stage_key === stageKey && !x.is_bye);
+  const byPool = new Map<number, string[]>();
   // A one-field round robin has no pool number: treat it as a single pool.
-  for (const m of matches.filter((x) => x.stage_key === stageKey)) {
+  for (const m of rows) {
     const pn = m.pool_number ?? 1;
-    const pool = byPool.get(pn) ?? new Map<string, number>();
-    byPool.set(pn, pool);
-    const a = unitOf(m, "a"), b = unitOf(m, "b");
-    for (const u of [a, b]) if (u && !pool.has(u)) pool.set(u, 0);
-    if (m.winner_member_id) {
-      const w = String(a).split("+").includes(m.winner_member_id) ? a : b;
-      pool.set(w, (pool.get(w) ?? 0) + 1);
-    }
+    const list = byPool.get(pn) ?? []; byPool.set(pn, list);
+    for (const u of [unitOfRow(m, "a"), unitOfRow(m, "b")]) if (u && !list.includes(u)) list.push(u);
   }
+  const games = rankGamesOf(rows);
   const out: PoolStanding[] = [];
-  for (const [pool, tally] of [...byPool.entries()].sort((x, y) => x[0] - y[0])) {
-    rankPoolTally(tally, perPool, `Pool ${pool}`).forEach((id, i) => out.push({ pool, position: i + 1, id, divisionId: divisionKey }));
-  }
+  [...byPool.entries()].sort((x, y) => x[0] - y[0]).forEach(([pool, members], pi) => {
+    const r = rankUnits(members, games, criteria, orders?.[pi] ?? []);
+    const t = r.ties.find((x) => tieIsMaterial(x, perPool > 0 ? (p) => p <= perPool : null));
+    if (t) throw new IntegrityError("tie", tieMessage(`Pool ${String.fromCharCode(64 + pool)}`, t, criteria, nextStage));
+    r.order.forEach((id, i) => out.push({ pool, position: i + 1, id, divisionId: divisionKey }));
+  });
   return out;
 }
 

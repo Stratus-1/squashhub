@@ -22,6 +22,8 @@ export interface SpecDivision extends DivisionContract {
   /** Entrant ids in seed order (strongest first). */
   entrants: Array<{ id: string; rank: number | null }>;
   poolLabels?: string[];
+  /** Optional division override of TournamentSpec.tieBreaks. */
+  tieBreaks?: import("./tie-breaks").TieBreakCriterion[];
   /**
    * Stages the owner deliberately left "Define later" (semi-finals, final, …). Planning
    * targets only: never generated, never advanced into, kept so the admin can configure
@@ -47,6 +49,8 @@ export interface TournamentSpec {
    * (best first). Only consulted where results are level; never overrides a real difference in wins.
    */
   positionOrders?: Record<string, Record<number, string[]>>;
+  /** Tie-break order after wins for pool/round-robin standings and qualification (absent = DEFAULT_TIE_BREAKS). */
+  tieBreaks?: import("./tie-breaks").TieBreakCriterion[];
   architecture: "structured";
   tournamentId?: string;
   name: string;

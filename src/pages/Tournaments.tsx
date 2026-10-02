@@ -1052,7 +1052,6 @@ export default function Tournaments() {
     // mobile, so the deadline must travel with the fixture. "Book by …" when
     // this viewer can book the court, otherwise read-only "Play by …".
     const playByDeadline = !isPlaceholder && m.status !== "completed"
-      && ((champById.get(m.champ_id) as any)?.scoring_mode === "time_capped_points" || groupMode !== "round")
       ? matchPlayBy(m)
       : null;
     const playBy = playByDeadline ? playByNudge(playByDeadline, todayISO()) : null;

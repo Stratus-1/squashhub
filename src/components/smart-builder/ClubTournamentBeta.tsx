@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, FlaskConical, ListChecks, Wand2 } from "lucide-react";
+import { ArrowRight, FlaskConical, Gem, Layers, ListChecks, Wand2 } from "lucide-react";
 import { SmartTournamentBuilderCore, type BuilderNav } from "@/pages/admin/SmartTournamentBuilder";
 import { StepByStepBuilder } from "./StepByStepBuilder";
 import { StepTournamentManagement } from "./StepTournamentManagement";
+import { TemplatePicker } from "./StepTemplates";
 import { loadHandovers } from "@/lib/smart-builder/step-handover";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +25,8 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
   const [editAt, setEditAt] = useState<"Summary" | "Messaging" | null>(null);
   const [managing, setManaging] = useState<string | null>(null);
+  const [picker, setPicker] = useState<"mine" | "prebuilt" | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
   const handovers = loadHandovers(clubId);
   const navigate = useNavigate();
 
@@ -48,6 +51,30 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
     );
   }
 
+  if (draftId) {
+    const nav: BuilderNav = {
+      openDraft: setDraftId,
+      backToList: () => setDraftId(null),
+      exit: () => setDraftId(null),
+      afterCreate: (id: string) => navigate(`/beta-tournament/${id}`),
+    };
+    return (
+      <div className="dark rounded-xl bg-background p-4 text-foreground">
+        <SmartTournamentBuilderCore scope={{ kind: "club", clubId, clubName }} draftId={draftId} nav={nav} />
+      </div>
+    );
+  }
+
+  if (picker) {
+    return (
+      <div className="dark rounded-xl bg-background p-4 text-foreground">
+        <TemplatePicker clubId={clubId} mode={picker} onClose={() => setPicker(null)}
+          onStartStep={() => { setPicker(null); setEditAt(null); setStepByStepOpen(true); }}
+          onOpenDraft={(id) => { setPicker(null); setDraftId(id); }} />
+      </div>
+    );
+  }
+
   return (
     <div className="dark rounded-xl bg-background p-4 text-foreground">
       <div className="flex flex-wrap items-center gap-3">
@@ -61,9 +88,10 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
       <p className="mt-4 max-w-xl text-xs text-white/60">
         Set up your tournament by answering simple questions, one step at a time. Nothing is fixed until you confirm it.
       </p>
+      <div className="mt-4 grid max-w-4xl gap-3 md:grid-cols-[1.4fr_1fr]">
       <button
         onClick={() => setStepByStepOpen(true)}
-        className="mt-4 block w-full max-w-md rounded-xl border border-amber-300/40 bg-amber-300/10 p-5 text-left transition-colors hover:bg-amber-300/15"
+        className="block w-full rounded-xl border border-amber-300/40 bg-amber-300/10 p-5 text-left transition-colors hover:bg-amber-300/15"
       >
         <div className="flex items-center gap-2 font-semibold text-white">
           <ListChecks className="w-5 h-5 text-amber-300" />
@@ -74,6 +102,17 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
           Walk through the what, who, format, schedule and payment questions in order — then review everything before anything is created.
         </div>
       </button>
+      <div className="grid gap-3">
+        <button onClick={() => setPicker("mine")} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-white"><Layers className="h-4 w-4 text-amber-300" />Use one of my templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
+          <div className="mt-1 text-[11px] text-white/60">Start from a setup your club saved before, e.g. last year's Club Championships.</div>
+        </button>
+        <button onClick={() => setPicker("prebuilt")} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-white"><Gem className="h-4 w-4 text-amber-300" />Pre-built templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
+          <div className="mt-1 text-[11px] text-white/60">Standard SquashHub formats, including Diamond League.</div>
+        </button>
+      </div>
+      </div>
       {handovers.length > 0 && (
         <div className="mt-4 max-w-md space-y-1">
           <div className="text-xs text-white/60">Continue managing</div>

@@ -6,6 +6,7 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
+import { SaveAsTemplateButton } from "./StepTemplates";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -672,7 +673,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
             ? `${a.createdTournamentId ? "Already created — saving updates the same tournament." : "Next: "}${notifyOnly ? "inform your selected players" : "invite players"}.${deferred.length ? ` ${deferred.length} "Decide later" item${deferred.length === 1 ? "" : "s"} will be asked for when needed.` : ""}`
             : `Finish: ${steps.slice(0, -1).filter((k) => !okFor[k]).map((k) => STEP_LABEL[k]).join(", ")}`}</div>
         </div>
-        <Button size="sm" disabled={!setupComplete || completing} onClick={completeSetup}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button>
+        <div className="flex gap-2">{where === "top" && <SaveAsTemplateButton clubId={clubId} answers={a} />}<Button size="sm" disabled={!setupComplete || completing} onClick={completeSetup}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button></div>
       </div>
       {where === "top" && deferred.length > 0 && (
         <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">

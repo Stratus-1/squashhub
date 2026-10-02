@@ -75,30 +75,53 @@ export function ScheduleMatchDialog({
     enabled: !!clubId && open,
   });
 
-  const allowedKey = (allowedCourtIds || []).join(",");
+  // Tournament games: the server resolves the bookable courts (stage override →
+  // selected venue courts → host club's normal courts). The same function guards
+  // saving, so the window can never offer a court the booking then refuses.
+  const champId: string | null = (match as any)?.champ_id ?? null;
+  const { data: resolved } = useQuery({
+    queryKey: ["tournament-bookable-courts", champId, (match as any)?.stage ?? null, (match as any)?.round_label ?? null],
+    queryFn: async () => {
+      const { data, error } = await rpcExt("tournament_bookable_court_ids", {
+        _champ: champId, _stage: (match as any)?.stage ?? null, _round_label: (match as any)?.round_label ?? null,
+      });
+      if (error) throw error;
+      return ((data as number[] | null) ?? []).map(Number);
+    },
+    enabled: !!champId && open,
+  });
+  const effectiveAllowed = champId ? resolved ?? null : allowedCourtIds;
+  const allowedKey = (effectiveAllowed || []).join(",");
 
   const { data: courts = [] } = useQuery({
-    queryKey: ["club-courts-self-schedule", clubId, allowedKey],
+    queryKey: ["club-courts-self-schedule", clubId, champId, allowedKey],
     queryFn: async () => {
-      const ids = (allowedCourtIds || []).filter((n) => Number.isFinite(n));
-      let q = fromExt("courts").select("id, name, is_external").eq("club_id", clubId!);
-      // Tournament setup wins: only the chosen courts (which may include an
-      // external venue). Otherwise never offer external courts.
+      const ids = (effectiveAllowed || []).filter((n) => Number.isFinite(n));
+      if (champId) {
+        if (ids.length === 0) return [];
+        const { data } = await fromExt("courts").select("id, name, is_external, club_id").in("id", ids).order("name");
+        return (data || []) as Array<{ id: number; name: string; is_external?: boolean; club_id?: string }>;
+      }
+      let q = fromExt("courts").select("id, name, is_external, club_id").eq("club_id", clubId!);
       if (ids.length > 0) q = q.in("id", ids);
       else q = q.eq("is_external", false);
       const { data } = await q.order("name");
-      return (data || []) as Array<{ id: number; name: string; is_external?: boolean }>;
+      return (data || []) as Array<{ id: number; name: string; is_external?: boolean; club_id?: string }>;
     },
-    enabled: !!clubId && open,
+    enabled: open && (champId ? resolved !== undefined : !!clubId),
   });
 
   const courtOptions = useMemo(() => {
-    const allowed = allowedCourtIds && allowedCourtIds.length > 0 ? new Set(allowedCourtIds) : null;
+    if (champId) return courts;
+    const allowed = effectiveAllowed && effectiveAllowed.length > 0 ? new Set(effectiveAllowed) : null;
     return courts.filter((court) => {
       if (allowed) return allowed.has(court.id);
       return !court.is_external;
     });
-  }, [allowedCourtIds, courts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedKey, courts, champId]);
+  // The venue's diary (may differ from the acting admin's club or the owner).
+  const bookingClubId = courts.find((c) => c.id === courtId)?.club_id || clubId;
 
 
   useEffect(() => {
@@ -122,16 +145,16 @@ export function ScheduleMatchDialog({
   }, [courtOptions, courtId, courts]);
 
   const { data: bookings = [], isFetching, refetch: refetchBookings } = useQuery({
-    queryKey: ["court-bookings-self-schedule", clubId, date],
+    queryKey: ["court-bookings-self-schedule", bookingClubId, date],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
         .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id")
-        .eq("club_id", clubId!)
+        .eq("club_id", bookingClubId!)
         .eq("date", date)
         .eq("status", "active");
       return (data || []) as any[];
     },
-    enabled: !!clubId && !!date && open,
+    enabled: !!bookingClubId && !!date && open,
   });
 
   const slotMinutes = Number(club?.booking_slot_minutes) || 60;

@@ -19326,6 +19326,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      tournament_bookable_court_ids: {
+        Args: { _champ: string; _round_label?: string; _stage?: string }
+        Returns: number[]
+      }
       tournament_division_options: {
         Args: { p_champ_id: string; p_member_id?: string }
         Returns: Json
@@ -19361,6 +19365,7 @@ export type Database = {
           ranking_points: number
         }[]
       }
+      tournament_event_kind: { Args: { _champ: string }; Returns: string }
       tournament_fee_allocation: {
         Args: { p_tournament_id: string }
         Returns: {
@@ -19377,6 +19382,7 @@ export type Database = {
           platform_fee_cents: number
         }[]
       }
+      tournament_host_club_ids: { Args: { _champ: string }; Returns: string[] }
       tournament_host_courts: {
         Args: { _club_ids: string[] }
         Returns: {

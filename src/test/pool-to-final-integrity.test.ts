@@ -81,7 +81,7 @@ function snapshot(t: Record<string, any[]>) {
     const id = m[`player_${side}_member_id`];
     const l = line.get(id) ?? { P: 0, W: 0, L: 0, GW: 0, GL: 0, PF: 0, PA: 0 }; line.set(id, l);
     l.P++; if (m.winner_member_id === id) l.W++; else l.L++;
-    for (const [x, y] of gameSetsOf(m).sets ?? []) {
+    for (const { a: x, b: y } of gameSetsOf(m).sets ?? []) {
       const [me, op] = side === "a" ? [x, y] : [y, x];
       if (me > op) l.GW++; else l.GL++; l.PF += me; l.PA += op;
     }

@@ -17,8 +17,8 @@ const ALL: InformChannel[] = ["in_app", "email", "whatsapp", "sms"];
  * Communications engine (comms_campaigns → send-comms-campaign → notifications / email / WhatsApp,
  * logged per recipient in comms_deliveries). Progression only after delivery, or an explicit manual mark.
  */
-export function StepInformPanel({ h, lifecycle, onLifecycle }: {
-  h: Handover; lifecycle: BetaLifecycle; onLifecycle: (l: BetaLifecycle) => Promise<void>;
+export function StepInformPanel({ h, lifecycle, onLifecycle, onAddGroup }: {
+  h: Handover; lifecycle: BetaLifecycle; onLifecycle: (l: BetaLifecycle) => Promise<void>; onAddGroup?: () => void;
 }) {
   const saved = (h.channels.filter((c) => (ALL as string[]).includes(c)) as InformChannel[]);
   const [picked, setChannels] = useState<InformChannel[]>(saved.length ? saved : ["in_app"]);

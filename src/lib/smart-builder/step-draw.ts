@@ -124,7 +124,7 @@ export function readStepPlan(clubId: string, tournamentId: string): Plan | null 
   try { return readTournamentPlan(clubId, tournamentId); } catch { return null; }
 }
 /** Draw-relevant subset of the Step answers saved on the tournament (beta_lifecycle.format_plan). */
-export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope", "poolPlan", "playoffPoolQualifiers"] as const;
+export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope", "poolPlan", "playoffPoolQualifiers", "tieBreaks"] as const;
 export function drawPlanOf(a: Plan): Plan { const o: Plan = {}; for (const k of DRAW_PLAN_KEYS) if (a[k] !== undefined) o[k] = a[k]; return o; }
 /** "Mens › A 1st League · Doubles" → plan key "Mens::A 1st League". */
 export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");

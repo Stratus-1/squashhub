@@ -102,6 +102,8 @@ export type CreateInput = {
   /** Maps to the existing tournament payment_timing: true → on_entry, false → after_acceptance. */
   confirmNeedsPay?: boolean;
   resultNotify?: { scope: "all" | "playoffs" | "never"; channels: string[] };
+  /** Fees & Payment doubles answer: may one partner pay the other's fee. undefined = leave as is. */
+  partnerPay?: boolean | null;
 };
 
 /**
@@ -143,6 +145,10 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     if (error) throw error;
   }
   if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);
+  if (i.partnerPay !== undefined) {
+    const cur = (await loadLifecycle(tid!)) ?? ({ stage: "invite", completed: ["planning"] } as BetaLifecycle);
+    await saveLifecycle(tid!, { ...cur, partner_pay: i.partnerPay });
+  }
   if (i.entrants.length) {
     const nDiv = Math.max(1, i.divisions?.length ?? 1);
     const missing = i.entrants.filter((e) => nDiv > 1 && !(e.division && e.division >= 1 && e.division <= nDiv));
@@ -183,6 +189,8 @@ async function syncWaGroup(tid: string, clubId: string, g: { url: string; includ
 export type BetaLifecycle = {
   stage: LifecycleKey; completed: LifecycleKey[];
   wa_include?: boolean;
+  /** Fees & Payment "A player may pay for both partners" — read server-side by step_pair_payment_context. */
+  partner_pay?: boolean | null;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };
 };
 

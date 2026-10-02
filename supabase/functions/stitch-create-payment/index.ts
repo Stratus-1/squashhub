@@ -32,6 +32,8 @@ Deno.serve(async (req) => {
       // may still pay their own tournament entry. The invitation token (plus
       // the same surname / last-4-digits check used to accept) is the proof.
       invite_token = null, invite_verify = null,
+      // Step-by-Step organiser-made doubles: "partner" = pay my partner's fee, "both" = mine + partner's.
+      pay_scope = null,
     } = body || {};
     let { club_id, club_member_id, amount, purpose, champ_registration_id = null } = body || {};
 
@@ -39,8 +41,29 @@ Deno.serve(async (req) => {
 
     let userId: string | null = null;
     let inviteContext: any = null;
+    let sessionMeta: Record<string, unknown> | null = null;
 
-    if (invite_token) {
+    if (pay_scope === "partner" || pay_scope === "both") {
+      let callerId: string | null = null;
+      if (authHeader) {
+        const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+        const { data: u } = await userClient.auth.getUser();
+        callerId = u?.user?.id || null;
+      }
+      if (!callerId && !invite_token) return json({ error: "Unauthorized" }, 200);
+      const { data: ctx, error: ctxErr } = await admin.rpc("step_pair_payment_context", {
+        p_registration_id: champ_registration_id, p_token: invite_token, p_verify: invite_verify,
+        p_user_id: callerId, p_scope: pay_scope,
+      });
+      if (ctxErr) { console.error("pair payment context error", ctxErr); return json({ error: "Could not check this payment" }, 200); }
+      if (!ctx?.ok) return json({ error: ctx?.error || "Could not check this payment", needs_verification: !!ctx?.needs_verification }, 200);
+      // Amount, payer and the entries settled all come from the server.
+      inviteContext = ctx;
+      club_id = ctx.club_id; club_member_id = ctx.club_member_id; amount = ctx.amount;
+      purpose = "tournament"; champ_registration_id = ctx.registration_id;
+      userId = callerId || ctx.user_id || null;
+      sessionMeta = { pay_scope, payer_member_id: ctx.payer_member_id, cover_registration_ids: ctx.cover_registration_ids ?? [] };
+    } else if (invite_token) {
       // A signed-in member paying from their own invitation should not have to
       // re-enter the guest check, so pass the verified caller through.
       let callerId: string | null = null;
@@ -132,9 +155,10 @@ Deno.serve(async (req) => {
         club_id, club_member_id, user_id: userId,
         amount: amt, purpose, method,
         fee_ids, champ_registration_id,
-        description: description || inviteContext?.description || defaultDesc,
+        description: (sessionMeta ? inviteContext?.description : description) || inviteContext?.description || defaultDesc,
         payer_reference: refPrefix,
         status: "created",
+        ...(sessionMeta ? { metadata: sessionMeta } : {}),
       }).select("id").single();
     if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 200);
 

@@ -1,3 +1,4 @@
+import { PartnerFeeOptions, type PartnerPayScope } from "@/components/tournaments/PartnerFeeOptions";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
@@ -220,7 +221,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     onError: (e: any) => toast.error(e.message),
   });
 
-  const launchPayment = async (regId: string) => {
+  const launchPayment = async (regId: string, payScope?: PartnerPayScope) => {
     try {
       if (!isSupportedGateway(paymentGateway)) {
         throw new Error("No supported online payment gateway is configured for this club.");
@@ -230,6 +231,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         amount: entryFee, purpose: "tournament",
         champ_registration_id: regId,
         description: `${champ.name} entry fee`,
+        ...(payScope ? { pay_scope: payScope } : {}),
         returnPath: `${window.location.pathname}?ctx=tournament`,
       });
       // Stitch leaves the payer on its own completion page, so poll from here.
@@ -437,6 +439,9 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         <p className="text-xs text-muted-foreground">
           Entry fee {money(entryFee)} charged to your member account — settle it with the club as usual.
         </p>
+      )}
+      {myReg && cardReady && paymentGateway === "stitch" && (
+        <PartnerFeeOptions registrationId={myReg.id} onPay={(scope) => launchPayment(myReg.id, scope)} />
       )}
       {myReg && (myReg as any).fee_settled_via !== "account" && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">

@@ -100,6 +100,17 @@ export async function finalisePayment(admin: any, session: any) {
       p_payment_ref: session.stitch_request_id,
     });
     if (pairErr) console.error("champ_apply_paid_registration failed", pairErr);
+    // Step-by-Step organiser-made pairs: partner/both payments name exactly which entries they settle.
+    const meta = (session as any).metadata;
+    if (meta?.pay_scope === "partner" || meta?.pay_scope === "both") {
+      const { error: coverErr } = await admin.rpc("step_apply_partner_cover", {
+        p_primary_registration_id: session.champ_registration_id,
+        p_cover_ids: Array.isArray(meta.cover_registration_ids) ? meta.cover_registration_ids : [],
+        p_payer_member_id: meta.payer_member_id,
+        p_payment_ref: session.stitch_request_id,
+      });
+      if (coverErr) console.error("step_apply_partner_cover failed", coverErr);
+    }
   }
 }
 

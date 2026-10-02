@@ -66,9 +66,12 @@ export interface StartCheckoutOpts {
   description?: string;
   returnPath: string;            // e.g. "/my-account" or `/c/.../tournaments?ctx=tournament`
   method?: "paybybank" | "card"; // Stitch only; defaults to paybybank
+  /** Stitch only: Step-by-Step organiser-made pair — pay partner's fee or both (server computes amount). */
+  pay_scope?: "partner" | "both" | null;
 }
 
 export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutOpts) {
+  if (opts.pay_scope && gateway !== "stitch") throw new Error("Paying for a partner is only available with Stitch payments at the moment.");
   if (gateway === "yoco") {
     const return_url = buildYocoReturnUrl(opts.returnPath);
     const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
@@ -101,6 +104,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
         fee_ids: opts.fee_ids || [],
         champ_registration_id: opts.champ_registration_id ?? null,
         description: opts.description, return_url,
+        ...(opts.pay_scope ? { pay_scope: opts.pay_scope } : {}),
       },
     });
     if (error) throw new Error(error.message || "Could not start Stitch checkout");

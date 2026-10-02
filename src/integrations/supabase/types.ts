@@ -19199,6 +19199,25 @@ export type Database = {
         Args: { p_mandate_id: string; p_months: number }
         Returns: Json
       }
+      step_apply_partner_cover: {
+        Args: {
+          p_cover_ids: string[]
+          p_payer_member_id: string
+          p_payment_ref: string
+          p_primary_registration_id: string
+        }
+        Returns: Json
+      }
+      step_pair_payment_context: {
+        Args: {
+          p_registration_id: string
+          p_scope?: string
+          p_token?: string
+          p_user_id?: string
+          p_verify?: string
+        }
+        Returns: Json
+      }
       step_reconcile_admin_entrants: {
         Args: { p_champ_id: string }
         Returns: Json

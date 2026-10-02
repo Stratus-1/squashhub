@@ -6,7 +6,7 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
-import { POOL_MODE_LABEL, recommendPools, type PoolMode, type PoolPlan } from "@/lib/smart-builder/pool-plan";
+import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
 import { inferCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
@@ -132,6 +132,8 @@ export type StepAnswers = {
   serving?: Record<string, DoublesServingMethod>;
   /** Optional pools INSIDE each category/subcategory (unit key). A rule only — real pools are made from actual entrants at Generate draw. */
   poolPlan?: Record<string, PoolPlan>;
+  /** Playoff qualification is independent of the pool-creation rule (legacy qualifiers in poolPlan remain readable). */
+  playoffPoolQualifiers?: Record<string, PoolQualification>;
   /** Provisional seeding with category/subcategory exceptions. */
   seeding: SeedMethod | null;
   seedingOverrides: Record<string, SeedMethod>;
@@ -330,6 +332,24 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return { ...u, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
+  const poolRule = (k: string): PoolPlan => poolPlanOf(a, k) ?? { mode: "none" };
+  const setPoolRule = (k: string, patch: Partial<PoolPlan>) => setA((prev) => ({ ...prev, poolPlan: { ...(prev.poolPlan ?? {}), [k]: { ...poolPlanOf(prev, k), ...patch } as PoolPlan } }));
+  const poolQualification = (k: string) => poolQualificationOf(a, k);
+  const setPoolQualification = (k: string, patch: Partial<PoolQualification>) => setA((prev) => ({ ...prev, playoffPoolQualifiers: { ...(prev.playoffPoolQualifiers ?? {}), [k]: { ...poolQualificationOf(prev, k), ...patch } } }));
+  const poolControl = (u: (typeof units)[number]) => {
+    const pp = poolRule(u.key);
+    const exp = Number(a.unitEntries?.[u.key]) || 0;
+    const rec = pp.mode === "auto" && exp ? recommendPools(exp, Number(pp.target) || 5) : [];
+    return <div className="space-y-2 text-xs" aria-label={`Pool structure for ${u.base}`}>
+      <div className="flex flex-wrap items-center gap-2"><span className="font-medium">Create pools?</span>
+        {(["auto", "none", "later"] as PoolMode[]).map((m) => <Button key={m} type="button" size="sm" variant={pp.mode === m ? "default" : "outline"} aria-pressed={pp.mode === m} onClick={() => setPoolRule(u.key, { mode: m })}>{m === "auto" ? "Yes" : m === "none" ? "No" : "Decide after entries close"}</Button>)}
+      </div>
+      {pp.mode === "auto" && <label className="flex flex-wrap items-center gap-2"><span>Preferred pool size</span><Input type="number" min={2} className="h-7 w-20" aria-label={`Preferred pool size for ${u.base}`} value={pp.target ?? "5"} onChange={(e) => setPoolRule(u.key, { target: e.target.value })} />
+        <span className="text-muted-foreground">Balanced from actual entries{rec.length ? ` · with ${exp} expected: ${rec.length > 1 ? `${rec.length} pools (${rec.join(", ")})` : "one group"}` : ""}</span></label>}
+      {pp.mode === "later" && <p className="text-muted-foreground">Review and accept the actual pools before generating fixtures.</p>}
+      {pp.mode !== "none" && !["pools", "later", null].includes(formatFor(u.key).kind) && <p className="text-destructive">Pools need a within-group round robin. Change the planned format before generating.</p>}
+    </div>;
+  };
   const setDisc = (k: string, d: Disc) => setA({ ...a, disc: { ...a.disc, [k]: d } });
   const setPlayType = (p: Exclude<PlayType, null>) => {
     if (p === "both") { setA({ ...a, playType: p }); return; }
@@ -863,6 +883,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                           <Button variant="outline" size="sm" onClick={() => setSubcats(cat, [...subs, ""])}><Plus className="mr-1 h-4 w-4" />Add another</Button>
                         </div>
                       )}
+                      {!has && units.filter((u) => u.key === cat).map((u) => <div key={u.key} className="border-t border-border pt-2">{poolControl(u)}</div>)}
+                      {has && units.filter((u) => u.key.startsWith(`${cat}::`)).map((u) => <div key={u.key} className="border-t border-border pt-2"><div className="mb-1 text-xs font-medium">{u.base}</div>{poolControl(u)}</div>)}
                     </div>
                   );
                 })}
@@ -1315,30 +1337,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   </div>;
                 })}
               </div>}
-              {units.some((u) => ["pools", "cross"].includes(formatFor(u.key).kind ?? "")) && <div className="space-y-3 border-t border-border pt-4">
-                <div className="text-sm font-semibold">Pool structure</div>
-                <p className="text-xs text-muted-foreground">Pools are an optional split <em>inside</em> a {cats.some((c) => (a.subcats[c] ?? []).some((x) => x.trim())) ? "subcategory" : "category"} — never a new subcategory. Only the rule is saved now; the actual pools are proposed from real entries and you review them before fixtures are made.</p>
-                {units.filter((u) => ["pools", "cross"].includes(formatFor(u.key).kind ?? "")).map((u) => {
-                  const pp: PoolPlan = a.poolPlan?.[u.key] ?? { mode: "none" };
-                  const setPP = (patch: Partial<PoolPlan>) => setA((prev) => ({ ...prev, poolPlan: { ...(prev.poolPlan ?? {}), [u.key]: { ...pp, ...(prev.poolPlan?.[u.key] ?? {}), ...patch } } }));
-                  const exp = Number(a.unitEntries?.[u.key]) || 0;
-                  const rec = pp.mode === "auto" && exp ? recommendPools(exp, Number(pp.target) || 5) : [];
-                  return <div key={u.key} className="space-y-2 rounded-lg border border-border p-3 text-xs">
-                    <div className="font-medium">{u.base}</div>
-                    <div className="flex flex-wrap gap-2">{(["none", "auto", "later"] as PoolMode[]).map((m) => (
-                      <button key={m} type="button" aria-pressed={pp.mode === m} onClick={() => setPP({ mode: m })} className={cn("rounded-full border px-2.5 py-1 text-xs", pp.mode === m ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{POOL_MODE_LABEL[m]}</button>))}</div>
-                    {pp.mode === "auto" && <label className="flex items-center gap-2"><span>Preferred pool size</span><Input type="number" min={2} className="h-7 w-20" aria-label={`Preferred pool size for ${u.base}`} value={pp.target ?? "5"} onChange={(e) => setPP({ target: e.target.value })} />
-                      <span className="text-muted-foreground">a preference — pools are balanced from the real entries{rec.length ? ` (with ${exp} expected: ${rec.length > 1 ? `${rec.length} pools — ${rec.join(", ")}` : "one group"})` : ""}</span></label>}
-                    {pp.mode === "later" && <p className="text-muted-foreground">You'll be asked to set the pools after entries close — fixtures can't be generated until you do.</p>}
-                    {formatFor(u.key).kind === "cross" && pp.mode !== "none" && <p className="text-amber-600 dark:text-amber-400">This group plays between subcategories. With pools, SquashHub won't guess which pools meet — you'll need to choose "No pools" here before generating (pool-to-pool cross play isn't supported yet).</p>}
-                    {pp.mode !== "none" && <div className="flex flex-wrap items-center gap-2">
-                      <span>Play-offs: qualifiers from each pool</span><Input type="number" min={1} className="h-7 w-16" aria-label={`Qualifiers per pool for ${u.base}`} placeholder="auto" value={pp.perPool ?? ""} onChange={(e) => setPP({ perPool: e.target.value })} />
-                      <span>plus best runners-up</span><Input type="number" min={0} className="h-7 w-16" aria-label={`Best runners-up for ${u.base}`} placeholder="0" value={pp.runnersUp ?? ""} onChange={(e) => setPP({ runnersUp: e.target.value })} />
-                      <span className="text-muted-foreground">Who meets whom follows the first play-off stage's pairing (crossover = pool winner v another pool's runner-up; seeded = highest qualifier v lowest).</span>
-                    </div>}
-                  </div>;
-                })}
-              </div>}
               {dblUnits.length > 0 && <div className="space-y-3 border-t border-border pt-4">
                 <div className="text-sm font-semibold">Doubles serving method</div>
                 <p className="text-xs text-muted-foreground">How service rotates in doubles games. Set per doubles category — each can differ. "Not set" means the marker picks the server manually.</p>
@@ -1451,6 +1449,19 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
                 {playoffStages.map(renderStage)}
                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
+               {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
+                 const q = poolQualification(u.key);
+                 const first = playoffStages.find((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0]);
+                 const field = first?.name.toLowerCase().includes("quarter") ? 8 : first?.name.toLowerCase().includes("semi") ? 4 : first?.name.toLowerCase().includes("final") ? 2 : null;
+                 const expected = Number(a.unitEntries?.[u.key]) || 0;
+                 const nPools = expected ? recommendPools(expected, Number(poolRule(u.key).target) || 5).length : 0;
+                 return <div key={u.key} className="space-y-1 border-t border-border pt-2 text-xs"><div className="font-medium">{u.base} · {first?.name} qualification</div>
+                   <div className="flex flex-wrap items-center gap-2"><Label>Qualifiers from each pool</Label><Input type="number" min={1} className="h-8 w-20" aria-label={`Qualifiers per pool for ${u.base}`} placeholder="Auto" value={q.perPool ?? ""} onChange={(e) => setPoolQualification(u.key, { perPool: e.target.value })} />
+                   <Label>Best runners-up</Label><Input type="number" min={0} className="h-8 w-20" aria-label={`Best runners-up for ${u.base}`} placeholder="0" value={q.runnersUp ?? ""} onChange={(e) => setPoolQualification(u.key, { runnersUp: e.target.value })} /></div>
+                   <p className="text-muted-foreground">{field ? `${first?.name} needs ${field} qualifiers. ` : ""}{nPools && field ? `${nPools} estimated pools × ${Number(q.perPool) || "?"} per pool + ${Number(q.runnersUp) || 0} best runners-up${Number(q.perPool) ? ` = ${nPools * Number(q.perPool) + (Number(q.runnersUp) || 0)} planned qualifiers` : " (pool count confirmed after entries close)"}. ` : ""}Confirm the actual pool count and field size before the draw.</p>
+                   {Number(q.runnersUp) > 0 && <p className="text-destructive">Best runners-up cannot be mapped automatically yet; the playoff stage must be set up after pool play.</p>}
+                 </div>;
+               })}
               </div>
               <ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} />
               {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
@@ -1474,6 +1485,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       <Button type="button" size="sm" variant={!a.playoffOverrides?.[cat] ? "default" : "outline"} onClick={() => setPlayoffOverride(cat, null)}>Inherit tournament</Button>
                       <Button type="button" size="sm" variant={a.playoffOverrides?.[cat] ? "default" : "outline"} onClick={() => setPlayoffOverride(cat, {})}>Change category</Button>
                     </div>}
+               {units.filter((u) => poolRule(u.key).mode !== "none" && playoffFor(u.key).choice === "playoffs").map((u) => {
+                 const q = poolQualification(u.key);
+                 return <div key={u.key} className="space-y-1 border-t border-border pt-2 text-xs"><div className="font-medium">{u.base} · Pool qualification for {playoffText(playoffFor(u.key))} ({2 ** playoffFor(u.key).rounds} places)</div>
+                   <div className="flex flex-wrap items-center gap-2"><Label>Qualifiers from each pool</Label><Input type="number" min={1} className="h-8 w-20" aria-label={`Qualifiers per pool for ${u.base}`} placeholder="Auto" value={q.perPool ?? ""} onChange={(e) => setPoolQualification(u.key, { perPool: e.target.value })} /><Label>Best runners-up</Label><Input type="number" min={0} className="h-8 w-20" aria-label={`Best runners-up for ${u.base}`} placeholder="0" value={q.runnersUp ?? ""} onChange={(e) => setPoolQualification(u.key, { runnersUp: e.target.value })} /></div>
+                   <p className="text-muted-foreground">Actual pool count and qualifying field are checked at Generate draw & fixtures.</p>
+                   {Number(q.runnersUp) > 0 && <p className="text-destructive">Best runners-up require manual playoff setup after pool play.</p>}
+                 </div>;
+               })}
                     {subs.length > 0 && a.playoffOverrides?.[cat] && <PlayoffFields value={a.playoffOverrides[cat]} onChange={(patch) => setPlayoffOverride(cat, patch)} format={formatFor(cat).kind} />}
                     {catUnits.map((u) => <div key={u.key} className="space-y-2 border-t border-border pt-2">
                       <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</div>

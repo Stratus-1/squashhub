@@ -1,5 +1,5 @@
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
-import { poolPlanOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
+import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
 import { setupConflicts } from "@/lib/smart-builder/consistency";
 import { Link } from "react-router-dom";
@@ -15,7 +15,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -112,13 +112,11 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         }
       }
       // Pool structure: a rule from setup, resolved here from the ACTUAL entrants (never earlier).
-      const review = reviewPools(poolPlanOf(plan, unitKeyOf(label)), label.replace(/ · (Singles|Doubles)$/i, ""), r.units.length, doubles ? "pair" : "player");
-      if (review.mode === "auto" && (p.format.kind === "pools" || p.format.kind === "round_robin")) {
-        const k = review.recommended.length;
-        p.format.kind = k > 1 ? "pools" : "round_robin"; p.format.pools = Math.max(1, k);
-      }
+      const rule = poolPlanOf(plan, unitKeyOf(label));
+      const review = reviewPools(rule, label.replace(/ · (Singles|Doubles)$/i, ""), r.units.length, doubles ? "pair" : "player");
+      p.format = formatWithPoolRule(p.format, rule, r.units.length);
       list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto",
-        poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(r.perPool) || null, runnersUp: Number(r.runnersUp) || 0 } : null; })() });
+        poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); const q = poolQualificationOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(q.perPool) || null, runnersUp: Number(q.runnersUp) || 0 } : null; })() });
     }
     const ids = [...new Set(((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id]).filter(Boolean))];
     const { data: mem } = ids.length ? await supabase.from("club_members").select("id, name, ladder_position, ranking_points").in("id", ids) : { data: [] as any[] };

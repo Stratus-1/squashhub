@@ -10,7 +10,7 @@ import { readTournamentPlan } from "./step-storage";
 import { buildPlayoffChain } from "./playoff-chain";
 import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
-import type { PoolReview } from "@/lib/smart-builder/pool-plan";
+import { recommendPools, type PoolPlan, type PoolReview } from "@/lib/smart-builder/pool-plan";
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { poolAssignmentIssues } from "@/lib/tournaments/pool-boundaries";
 import { specDateIssues } from "@/lib/tournaments/date-window";
@@ -44,6 +44,17 @@ export type DrawDivision = { group: number; label: string; doubles: boolean; uni
   poolAccepted?: boolean;
   /** Play-off qualifiers from the pool rule: per pool (null = derived) and best runners-up. */
   poolQualifiers?: { perPool: number | null; runnersUp: number } | null };
+
+/** Respect an explicit No even if a saved provisional format used several pools; absent rule keeps legacy format. */
+export function formatWithPoolRule(format: DivFormat, rule: PoolPlan | null, entrants: number): DivFormat {
+  if (!rule) return format;
+  if (rule.mode === "none" && format.kind === "pools") return { ...format, kind: "round_robin", pools: 1 };
+  if (rule.mode === "auto" && (format.kind === "pools" || format.kind === "round_robin")) {
+    const count = Math.max(1, recommendPools(entrants, Number(rule.target) || 5).length);
+    return { ...format, kind: count > 1 ? "pools" : "round_robin", pools: count };
+  }
+  return format;
+}
 
 const INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 export const unitId = (u: DrawUnit) => (u.partner ? `${u.member}+${u.partner}` : u.member);
@@ -113,7 +124,7 @@ export function readStepPlan(clubId: string, tournamentId: string): Plan | null 
   try { return readTournamentPlan(clubId, tournamentId); } catch { return null; }
 }
 /** Draw-relevant subset of the Step answers saved on the tournament (beta_lifecycle.format_plan). */
-export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope", "poolPlan"] as const;
+export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope", "poolPlan", "playoffPoolQualifiers"] as const;
 export function drawPlanOf(a: Plan): Plan { const o: Plan = {}; for (const k of DRAW_PLAN_KEYS) if (a[k] !== undefined) o[k] = a[k]; return o; }
 /** "Mens › A 1st League · Doubles" → plan key "Mens::A 1st League". */
 export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
@@ -255,7 +266,8 @@ export function poolWarnings(d: DrawDivision, mode: PoolAllocationMode = "snake"
 export function divisionIssues(d: DrawDivision): string[] {
   const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? []), ...poolBlocks(d)];
   if (d.poolReview?.needsDecision && !d.poolAccepted) out.push(`pools are "Decide after entries close" — review the recommended pools and accept or adjust them`);
-  if (f.kind === "cross" && d.poolReview && d.poolReview.mode !== "none" && (d.poolReview.needsDecision || d.poolReview.recommended.length > 1)) out.push(`pools are set for a group that plays between subcategories — pool-to-pool cross play isn't supported, so choose "No pools" for it in setup (SquashHub won't guess which pools meet)`);
+  if (d.poolReview && d.poolReview.mode !== "none" && f.kind !== "cross" && f.kind !== "pools" && f.kind !== "round_robin") out.push(`pools need a within-group round robin; choose Round robin / Pools for this group or turn pools off in setup`);
+  if (f.kind === "cross" && d.poolReview && d.poolReview.mode !== "none") out.push(`pools are set for a group that plays between subcategories — pool-to-pool cross play isn't supported, so choose "No pools" for it in setup (SquashHub won't guess which pools meet)`);
   const u = d.doubles ? "pairs" : "players";
   if (n < (f.kind === "cross" ? 1 : 2)) out.push(`needs at least ${f.kind === "cross" ? 1 : 2} ${u} (has ${n})`);
   if (!f.kind) out.push("choose a format");

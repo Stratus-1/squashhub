@@ -81,7 +81,7 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
   if (pools > 2) {
     // Any number of pools: qualifiers per pool = explicit, else derived when it divides evenly.
     const per = q?.perPool ?? ((2 * g) % pools === 0 ? (2 * g) / pools : 0);
-    if (!per) return { stages: [], reason: `${first.name}: ${pools} pools can't fill ${2 * g} play-off places evenly — set "qualifiers from each pool" (and best runners-up) in Pool structure.`, notes };
+    if (!per) return { stages: [], reason: `${first.name}: ${pools} pools can't fill ${2 * g} play-off places evenly — set qualifiers in Playoffs / Progression.`, notes };
     if (pairing === "crossover" && per === 2) {
       // Pool winner v the next pool's runner-up (A1 v B2, B1 v C2 … last pool's winner v A2).
       games = Array.from({ length: pools }, (_, p) => [[p, 1], [(p + 1) % pools, 2]] as [[number, number], [number, number]]);

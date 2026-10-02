@@ -33,8 +33,18 @@ type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 /** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
 type CompKind = "pools" | "knockout" | "swiss" | "cross" | "later";
-type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string };
-const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "" };
+type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string; crossUnits?: string[] };
+const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "", crossUnits: [] };
+/** Cross-league participants: the multi-select list, falling back to legacy two-group picks. */
+const crossList = (f: FormatPlan): string[] => f.crossUnits?.length ? f.crossUnits : [f.crossA, f.crossB].filter(Boolean);
+/** Provisional knockout bracket inferred from the expected entrant count (planning only). */
+function bracketHint(n: number): string {
+  if (n < 2) return "bracket inferred once expected entries are known";
+  let size = 2; while (size < n) size *= 2;
+  const names: Record<number, string> = { 2: "Final", 4: "Semifinal", 8: "Quarterfinal", 16: "Round of 16", 32: "Round of 32", 64: "Round of 64" };
+  const rounds = Math.log2(size); const byes = size - n;
+  return `draw of ${size}, ${rounds} round${rounds === 1 ? "" : "s"} from ${names[size] ?? `Round of ${size}`}${byes ? `, ${byes} bye${byes === 1 ? "" : "s"}` : ""}`;
+}
 const COMP_LABEL: Record<CompKind, string> = { pools: "Round Robin / Pools", knockout: "Knockout", swiss: "Swiss Pairing", cross: "Cross-League Round Robin", later: "Decide later" };
 const COMP_DESC: Record<CompKind, string> = {
   pools: "Players are placed in a group/pool and play everyone else in that pool. If there are several pools, qualifiers may progress to later stages.",
@@ -48,7 +58,7 @@ type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "l
 const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later", style: "later" };
 const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.choice === "later" ? "Decide later" : p.rounds === 1 ? "Final only" : p.rounds === 2 ? "Semifinals + Final" : "Quarterfinals + Semifinals + Final";
 const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools/standings" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
-const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Cross-pool (A1 v B2, B1 v A2)" : p.pairing === "seeded" ? "Seeded (highest v lowest)" : "Pairing to be decided";
+const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Pool crossover: A1 vs B2, B1 vs A2" : p.pairing === "seeded" ? "Seeded: 1 vs 4, 2 vs 3 (highest vs lowest)" : "Pairing to be decided";
 const styleText = (p: PlayoffPlan) => p.style === "placement" ? "Placement play (A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th…)" : p.style === "championship" ? "Championship playoffs" : "Playoff type to be decided";
 const playoffDetail = (p: PlayoffPlan, k?: CompKind | null) => {
   if (k === "knockout") return "Knockout rounds (no separate playoffs)";
@@ -138,9 +148,9 @@ type StagePhase = "main" | "playoff";
 /** Who plays whom at a playoff stage — separate from the stage name and from scheduling. Planning only. */
 type PlayoffPairing = "crossover" | "same_position" | "seeded" | "winners" | "later";
 const PAIRING_LABEL: Record<PlayoffPairing, string> = {
-  crossover: "Pool crossover (A1 v B2, B1 v A2)",
-  same_position: "Same position (A1 v B1, A2 v B2)",
-  seeded: "Seeded (highest v lowest qualifier)",
+  crossover: "Pool crossover: A1 vs B2, B1 vs A2",
+  same_position: "Same position: A1 vs B1, A2 vs B2",
+  seeded: "Seeded: 1 vs 4, 2 vs 3 (highest vs lowest; 1 vs 8, 2 vs 7… for 8)",
   winners: "Winners of the previous stage",
   later: "Pairing: decide later",
 };
@@ -294,7 +304,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   };
   const formatDetail = (f: FormatPlan) => {
     if (!f.kind) return "Not chosen";
-    const extra = f.kind === "knockout" && f.drawRounds ? ` · ${f.drawRounds}` : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${f.crossA && f.crossB ? `${unitBase(f.crossA)} v ${unitBase(f.crossB)}` : "groups to cross not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
+    const extra = f.kind === "knockout" ? " · bracket from expected entries" : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${crossList(f).length >= 2 ? `across ${crossList(f).map(unitBase).join(", ")}` : "participating groups not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
     return `${COMP_LABEL[f.kind]}${extra} (planned)`;
   };
   const formatExceptions = units.filter((u) => formatDetail(formatFor(u.key)) !== formatDetail(format));
@@ -899,7 +909,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             <>
               <Q t="What format are you planning?" h="How players will compete — separate from how each match is scored." />
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">This is your planned format. Once registrations close and final player numbers are known, SquashHub will revisit the format with you before pools, draws or fixtures are generated.</div>
-              <FormatFields value={format} onChange={setFormat} units={units} />
+              <FormatFields value={format} onChange={setFormat} units={units} entries={a.unitEntries ?? {}} />
               {units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
                 <div className="text-sm font-semibold">Category and subcategory exceptions</div>
                 <p className="text-xs text-muted-foreground">Leave a group on the tournament format, or plan a different one.</p>
@@ -912,14 +922,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       <Button type="button" size="sm" variant={!a.formatOverrides?.[cat] ? "default" : "outline"} onClick={() => setFormatOverride(cat, null)}>Inherit tournament</Button>
                       <Button type="button" size="sm" variant={a.formatOverrides?.[cat] ? "default" : "outline"} onClick={() => setFormatOverride(cat, {})}>Change category</Button>
                     </div>}
-                    {subs.length > 0 && a.formatOverrides?.[cat] && <FormatFields value={a.formatOverrides[cat]} onChange={(patch) => setFormatOverride(cat, patch)} units={units} compact />}
+                    {subs.length > 0 && a.formatOverrides?.[cat] && <FormatFields value={a.formatOverrides[cat]} onChange={(patch) => setFormatOverride(cat, patch)} units={units} compact entries={a.unitEntries ?? {}} scope={units.filter((u) => u.key === cat || u.key.startsWith(cat + "::")).map((u) => u.key)} />}
                     {catUnits.map((u) => <div key={u.key} className="space-y-2 border-t border-border pt-2">
                       <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {formatDetail(formatFor(u.key))}</div>
                       <div className="flex flex-wrap gap-2">
                         <Button type="button" size="sm" variant={!a.formatOverrides?.[u.key] ? "default" : "outline"} onClick={() => setFormatOverride(u.key, null)}>Inherit {subs.length ? "category" : "tournament"}</Button>
                         <Button type="button" size="sm" variant={a.formatOverrides?.[u.key] ? "default" : "outline"} onClick={() => setFormatOverride(u.key, {})}>Change this {subs.length ? "subcategory" : "category"}</Button>
                       </div>
-                      {a.formatOverrides?.[u.key] && <FormatFields value={a.formatOverrides[u.key]} onChange={(patch) => setFormatOverride(u.key, patch)} units={units} compact />}
+                      {a.formatOverrides?.[u.key] && <FormatFields value={a.formatOverrides[u.key]} onChange={(patch) => setFormatOverride(u.key, patch)} units={units} compact entries={a.unitEntries ?? {}} scope={[u.key]} />}
                     </div>)}
                   </div>;
                 })}
@@ -1277,13 +1287,13 @@ function PlayoffFields({ value, onChange, format }: { value: PlayoffPlan; onChan
       {poolish && value.style === "placement" && <p className="text-xs text-muted-foreground">e.g. A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th. Exact placement games are set once the final format is confirmed.</p>}
       {!(poolish && value.style === "placement") && <>
         <div><Label>Who qualifies?</Label><select aria-label="Who qualifies for playoffs" className={sel} value={value.qualification} onChange={(e) => onChange({ qualification: e.target.value as PlayoffPlan["qualification"] })}><option value="later">Decide qualification later</option><option value="top_pools">{format === "swiss" ? "Top players/pairs on standings" : "Top players/pairs from pools"}</option><option value="seeded">Highest-ranked entrants</option></select></div>
-        <div><Label>How are qualifiers paired?</Label><select aria-label="How playoff qualifiers are paired" className={sel} value={value.pairing} onChange={(e) => onChange({ pairing: e.target.value as PlayoffPlan["pairing"] })}><option value="later">Decide pairing later</option>{poolish && <option value="cross_pools">Crossover (A1 v B2, B1 v A2)</option>}<option value="seeded">Seeded (highest v lowest)</option></select></div>
+        <div><Label>How are qualifiers paired?</Label><select aria-label="How playoff qualifiers are paired" className={sel} value={value.pairing} onChange={(e) => onChange({ pairing: e.target.value as PlayoffPlan["pairing"] })}><option value="later">Decide pairing later</option>{poolish && <option value="cross_pools">Pool crossover: A1 vs B2, B1 vs A2</option>}<option value="seeded">Seeded: 1 vs 4, 2 vs 3 (highest vs lowest)</option></select></div>
       </>}
       <p className="text-xs text-muted-foreground">Ideas for later setup, not a draw. Revisited at Confirm final format; no bracket is generated here.</p>
     </div>}
   </div>;
 }
-function FormatFields({ value, onChange, units, compact = false }: { value: FormatPlan; onChange: (patch: Partial<FormatPlan>) => void; units: { key: string; base: string }[]; compact?: boolean }) {
+function FormatFields({ value, onChange, units, compact = false, entries = {}, scope }: { value: FormatPlan; onChange: (patch: Partial<FormatPlan>) => void; units: { key: string; base: string }[]; compact?: boolean; entries?: Record<string, string | number>; scope?: string[] }) {
   const sel = "mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
   return <div className="space-y-3">
     <div className={cn("grid gap-2", compact ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
@@ -1292,14 +1302,17 @@ function FormatFields({ value, onChange, units, compact = false }: { value: Form
         : <Choice key={k} active={value.kind === k} onClick={() => onChange({ kind: k })} title={COMP_LABEL[k]} desc={COMP_DESC[k]} />)}
     </div>
     {value.kind === "pools" && <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">The number of pools will be decided later for each category or subcategory, based on the number of entries. Categories and subcategories are not themselves automatically pools — a category/subcategory such as Men's A Singles may later contain one, two, three or more pools. Pool numbers stay provisional during planning and are finalised once registrations close and actual entry numbers are known.</div>}
-    {value.kind === "knockout" && <div className="max-w-[320px]"><Label>Expected draw (optional)</Label><select aria-label="Expected draw" className={sel} value={value.drawRounds} onChange={(e) => onChange({ drawRounds: e.target.value })}><option value="">Decide when entries are known</option><option value="Draw of 4">Draw of 4</option><option value="Draw of 8">Draw of 8</option><option value="Draw of 16">Draw of 16</option><option value="Draw of 32">Draw of 32</option></select><p className="mt-1 text-xs text-muted-foreground">The final draw size depends on actual entries.</p></div>}
+    {value.kind === "knockout" && <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground space-y-1">
+      <p>The provisional bracket comes from the expected entries you already gave — no need to enter it again. Actual entrants replace the estimate when registration closes.</p>
+      {units.filter((u) => !scope || scope.includes(u.key)).map((u) => <p key={u.key} className="text-xs">{u.base}: {Number(entries[u.key]) || "?"} expected → {bracketHint(Number(entries[u.key]) || 0)}</p>)}
+    </div>}
     {value.kind === "swiss" && <div className="max-w-[260px] space-y-1"><Label>Roughly how many rounds? (optional)</Label><Input type="number" min="1" aria-label="Anticipated Swiss rounds" value={value.swissRounds} onChange={(e) => onChange({ swissRounds: e.target.value })} placeholder="e.g. 5" /><p className="text-xs text-muted-foreground">Each round pairs players on similar results; nobody is eliminated.</p></div>}
     {value.kind === "cross" && <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Everyone in the first group plays everyone in the second — not within their own group.</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div><Label>Group A</Label><select aria-label="First group to cross" className={sel} value={value.crossA} onChange={(e) => onChange({ crossA: e.target.value })}><option value="">Choose later</option>{units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}</select></div>
-        <div><Label>Group B</Label><select aria-label="Second group to cross" className={sel} value={value.crossB} onChange={(e) => onChange({ crossB: e.target.value })}><option value="">Choose later</option>{units.filter((u) => u.key !== value.crossA).map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}</select></div>
+      <p className="text-xs text-muted-foreground">Select every existing category/subcategory/league that takes part. Players play opponents from the OTHER selected groups — not within their own group — and each group keeps its identity for later fixtures.</p>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Cross-league participating groups">
+        {units.map((u) => { const on = crossList(value).includes(u.key); return <Button key={u.key} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => { const cur = crossList(value); onChange({ crossUnits: on ? cur.filter((k) => k !== u.key) : [...cur, u.key], crossA: "", crossB: "" }); }}>{u.base}</Button>; })}
       </div>
+      <p className="text-xs text-muted-foreground">{crossList(value).length >= 2 ? `${crossList(value).length} groups selected: ${crossList(value).map((k) => units.find((u) => u.key === k)?.base ?? k).join(", ")}` : "Select at least two groups (or decide later)."}</p>
     </div>}
   </div>;
 }

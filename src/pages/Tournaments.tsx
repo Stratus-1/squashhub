@@ -867,7 +867,7 @@ export default function Tournaments() {
             <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
-                <span className="uppercase tracking-wider">{heading}</span>
+                <span className="uppercase tracking-wider">{heading}{!isPool && playBy ? ` — Play by ${format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}` : ""}</span>
                 <span className="text-muted-foreground font-normal">
                   {all.length > 0 && outstanding > 0
                     ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`

@@ -21,6 +21,7 @@ import { StageCourtBookings } from "./StageCourtBookings";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
+import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 
 /**
@@ -121,6 +122,8 @@ export type StepAnswers = {
   /** Planned competition format (provisional) with category/subcategory overrides. */
   format: FormatPlan;
   formatOverrides: Record<string, FormatPlan>;
+  /** Doubles serving method per doubles category/subcategory (unit key); saved to league_doubles_serving_methods. */
+  serving?: Record<string, DoublesServingMethod>;
   /** Provisional seeding with category/subcategory exceptions. */
   seeding: SeedMethod | null;
   seedingOverrides: Record<string, SeedMethod>;
@@ -655,7 +658,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
         feeCents, confirmNeedsPay: fee.has ? fee.confirmNeedsPay !== false : undefined, partnerPay: fee.has && dblUnits.length ? fee.doublesCover : undefined, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
-        divisions: units.map((u) => ({ label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const })),
+        divisions: units.map((u) => ({ label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null })),
       });
       const prev = loadHandover(clubId, tid);
       saveHandover({
@@ -1278,6 +1281,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                     </div>)}
                   </div>;
                 })}
+              </div>}
+              {dblUnits.length > 0 && <div className="space-y-3 border-t border-border pt-4">
+                <div className="text-sm font-semibold">Doubles serving method</div>
+                <p className="text-xs text-muted-foreground">How service rotates in doubles games. Set per doubles category — each can differ. "Not set" means the marker picks the server manually.</p>
+                {dblUnits.length > 1 && <div className="flex flex-wrap items-center gap-2 text-xs"><span>Same for all doubles:</span>
+                  {DOUBLES_SERVING_METHODS.map((m) => <Button key={m.value} type="button" size="sm" variant="outline" onClick={() => setA({ ...a, serving: Object.fromEntries(dblUnits.map((u) => [u.key, m.value])) })}>{m.label}</Button>)}
+                </div>}
+                {dblUnits.map((u) => <div key={u.key} className="flex flex-wrap items-center gap-2">
+                  <Label htmlFor={`sbs-serve-${u.key}`} className="min-w-[200px] text-sm">{u.base}</Label>
+                  <select id={`sbs-serve-${u.key}`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={a.serving?.[u.key] ?? ""}
+                    onChange={(e) => { const next = { ...(a.serving ?? {}) }; if (e.target.value) next[u.key] = e.target.value as DoublesServingMethod; else delete next[u.key]; setA({ ...a, serving: next }); }}>
+                    <option value="">Not set</option>
+                    {DOUBLES_SERVING_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  {a.serving?.[u.key] && <span className="text-xs text-muted-foreground">{DOUBLES_SERVING_METHODS.find((m) => m.value === a.serving?.[u.key])?.hint}</span>}
+                </div>)}
               </div>}
             </>
           )}

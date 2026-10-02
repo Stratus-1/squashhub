@@ -2743,10 +2743,13 @@ export default function ClubChampsView() {
               variant="secondary"
               size="sm"
               className="h-6 px-2 text-[10px]"
-              onClick={() => setResultMatch(m)}
+              onClick={() => {
+                if (!isParticipant(m, myMemberId) && !window.confirm("This is not your game. Are you sure you want to enter the result?")) return;
+                setResultMatch(m);
+              }}
               title="Capture the score of a match that has already been played"
             >
-              Enter your result
+              Enter result
             </Button>
           );
         })()}

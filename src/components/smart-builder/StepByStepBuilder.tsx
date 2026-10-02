@@ -1220,3 +1220,8 @@ function DiscPick({ value, onChange }: { value?: Disc; onChange: (d: Disc) => vo
     </div>
   );
 }
+function StageTable({ stages, unitName, when }: { stages: ClubStage[]; unitName: (k: string) => string; when: (s: ClubStage) => string }) {
+  if (!stages.length) return <p className="text-xs text-muted-foreground">No stages yet.</p>;
+  return <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Stage</th><th className="py-1">Method · deadline or session</th></tr></thead>
+    <tbody>{stages.map((s) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1">{when(s)}</td></tr>)}</tbody></table>;
+}

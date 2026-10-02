@@ -32,13 +32,16 @@ export type StepAnswers = {
   /** Organiser-selected players → category/subcategory key ("" = not placed yet). */
   picks: Record<string, string>;
   invite: Invite;
+  /** Discipline per unit key ("Cat" or "Cat::Sub"). Inherited from playType unless it is "both". */
+  disc: Record<string, Disc>;
 };
+type Disc = "singles" | "doubles";
 type Source = "select" | "self" | "both" | null;
 type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose" };
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null };
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {} };
 type StepKey = "Type" | "Entries" | "What" | "Categories" | "Subcategories" | "Players" | "Eligibility" | "Pick" | "Invites" | "Dates" | "Courts" | "Summary";
 const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Categories: "Categories", Subcategories: "Subcategories", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
@@ -77,8 +80,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   /** Every place a player can end up: a subcategory, or the category itself when it has none. */
   const units = cats.flatMap((c) => {
     const subs = (a.subcats[c] ?? []).map((x) => x.trim()).filter(Boolean);
-    return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, label: `${c} › ${x}` })) : [{ key: c, label: c }];
+    return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: `${c} › ${x}` })) : [{ key: c, base: c }];
+  }).map((u) => {
+    const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
+    return { ...u, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
+  const setDisc = (k: string, d: Disc) => setA({ ...a, disc: { ...a.disc, [k]: d } });
+  const setPlayType = (p: Exclude<PlayType, null>) => {
+    if (p === "both") { setA({ ...a, playType: p }); return; }
+    const disc: Record<string, Disc> = {};
+    units.forEach((u) => { disc[u.key] = p; });
+    setA({ ...a, playType: p, disc });
+  };
+  const discOk = units.every((u) => u.disc !== null);
   const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
   const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;
   const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
@@ -100,7 +114,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Categories: cats.length > 0, Subcategories: true,
+  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Categories: cats.length > 0, Subcategories: discOk,
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Dates: daysOk, Courts: courtsOk, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
@@ -118,6 +132,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   }, 0), 0);
   const tipReady = fieldCount > 0 && cats.length > 0 && daysOk && courtsOk;
 
+  const discText = (k: string) => { const d = units.find((u) => u.key === k)?.disc; return d ? PLAY_LABEL[d] : "?"; };
   const eligText = (k: string) => {
     const e = eligOf(k);
     const who = e.mode === "everyone" ? "Everyone" : e.mode === "leagues" ? (e.leagueIds.map(leagueName).join(" + ") || "Leagues not chosen") : "Players I pick";
@@ -193,7 +208,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <Q t="What will be played?" h="Just the basic fact for now — we won't ask how it fits together yet." />
               <div className="grid gap-3 sm:grid-cols-3">
                 {(["singles", "doubles", "both"] as const).map((p) => (
-                  <Choice key={p} active={a.playType === p} onClick={() => setA({ ...a, playType: p })} title={PLAY_LABEL[p]} desc={p === "both" ? "Singles and doubles at the same event." : p === "singles" ? "One player per side." : "Two players per side."} />
+                  <Choice key={p} active={a.playType === p} onClick={() => setPlayType(p)} title={PLAY_LABEL[p]} desc={p === "both" ? "Singles and doubles at the same event." : p === "singles" ? "One player per side." : "Two players per side."} />
                 ))}
               </div>
             </>
@@ -217,6 +232,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Subcategories" && (
             <>
               <Q t="Do any categories need subcategories?" h="Optional — e.g. Men's could be split into Group A, Group B, Group C. Ladies can stay as one group." />
+              {a.playType === "both" && <p className="text-xs text-muted-foreground">You chose Both — pick Singles or Doubles for each category, or for each subcategory if it's split. Singles and doubles entries are always kept apart.</p>}
               <div className="space-y-3">
                 {cats.map((cat) => {
                   const subs = a.subcats[cat];
@@ -234,12 +250,15 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                           Add subcategories
                         </button>
                       </div>
+                      {a.playType === "both" && !has && <DiscPick value={a.disc[cat]} onChange={(d) => setDisc(cat, d)} />}
+                      {a.playType !== "both" && a.playType && <div className="text-xs text-muted-foreground">{has ? "All groups play" : "Plays"} {PLAY_LABEL[a.playType]} (from "What will be played")</div>}
                       {has && (
                         <div className="space-y-2">
                           {subs.map((s, i) => (
-                            <div key={i} className="flex gap-2">
+                            <div key={i} className="flex flex-wrap items-center gap-2">
                               <Input aria-label={`${cat} subcategory ${i + 1}`} value={s} placeholder={`e.g. Group ${String.fromCharCode(65 + i)}`}
-                                onChange={(e) => setSubcats(cat, subs.map((x, j) => (j === i ? e.target.value : x)))} />
+                                className="max-w-[220px]" onChange={(e) => setSubcats(cat, subs.map((x, j) => (j === i ? e.target.value : x)))} />
+                              {a.playType === "both" && s.trim() && <DiscPick value={a.disc[`${cat}::${s.trim()}`]} onChange={(d) => setDisc(`${cat}::${s.trim()}`, d)} />}
                               <Button variant="ghost" size="icon" aria-label="Remove subcategory" disabled={subs.length === 1}
                                 onClick={() => setSubcats(cat, subs.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
                             </div>
@@ -308,6 +327,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <Q t="Pick your players" h="Tap a member to add them, then choose where each one plays." />
               {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
               {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible members can still enter themselves, so the total stays provisional until entries close.</div>}
+              {units.some((u) => u.disc === "doubles") && <div className="text-xs text-muted-foreground">Doubles groups take players who will be paired up — partners are matched later. A player placed in a Singles group is not counted as a doubles entry.</div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
               <div className="max-h-48 space-y-1 overflow-auto rounded-lg border border-border p-2">
                 {members.filter((m) => !a.picks[m.id] && a.picks[m.id] !== "" && m.name.toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 50).map((m) => (
@@ -417,7 +437,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
                   const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
-                  return <li key={i}>{c}{subs.length > 0 && <span className="text-muted-foreground"> — {subs.join(", ")}</span>}</li>;
+                  return <li key={i}>{c}{subs.length > 0 ? <span className="text-muted-foreground"> — {subs.map((x) => `${x} ${discText(`${c}::${x}`)}`).join(", ")}</span> : <span className="text-muted-foreground"> — {discText(c)}</span>}</li>;
                 })}</ul>
               </SummaryRow>
               <SummaryRow icon={<UserPlus className="h-4 w-4" />} label="How players join" onEdit={() => go("Players")}>{a.source ? SOURCE_LABEL[a.source] : "Not chosen"}</SummaryRow>
@@ -475,10 +495,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                     const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
                     return (
                       <TreeLeaf key={i}>
-                        <button type="button" onClick={() => go("Subcategories")} className="rounded px-1 hover:bg-muted">{c}</button>
+                        <button type="button" onClick={() => go("Subcategories")} className="rounded px-1 hover:bg-muted">{c}{subs.length === 0 && <span className="text-muted-foreground"> · {discText(c)}</span>}</button>
                         {subs.length > 0 && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
-                            {subs.map((s, j) => <TreeLeaf key={j}>{s}</TreeLeaf>)}
+                            {subs.map((s, j) => <TreeLeaf key={j}>{s} <span className="text-muted-foreground">{discText(`${c}::${s}`)}</span></TreeLeaf>)}
                           </div>
                         )}
                       </TreeLeaf>
@@ -544,4 +564,17 @@ function TreeNode({ icon, title, children, onClick }: { icon: React.ReactNode; t
 }
 function TreeLeaf({ children }: { children: React.ReactNode }) {
   return <div className="text-xs">{children}</div>;
+}
+
+function DiscPick({ value, onChange }: { value?: Disc; onChange: (d: Disc) => void }) {
+  return (
+    <div className="flex gap-1.5" role="group" aria-label="Singles or Doubles">
+      {(["singles", "doubles"] as const).map((d) => (
+        <button key={d} type="button" aria-pressed={value === d} onClick={() => onChange(d)}
+          className={cn("rounded-full border px-2.5 py-1 text-xs", value === d ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+          {d === "singles" ? "Singles" : "Doubles"}
+        </button>
+      ))}
+    </div>
+  );
 }

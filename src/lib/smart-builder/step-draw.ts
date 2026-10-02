@@ -234,11 +234,11 @@ export function poolsFor(d: DrawDivision, mode: PoolAllocationMode = "snake"): s
   return null;
 }
 function poolBlocks(d: DrawDivision): string[] {
-  if (d.format.kind !== "pools" || !d.manualPools) return [];
+  if (d.format.kind !== "pools") return [];
   const out: string[] = [];
-  const all = d.manualPools.flat(), ids = new Set(d.units.map(unitId));
-  if (d.manualPools.length !== d.format.pools || all.length !== ids.size || all.some((x) => !ids.has(x))) out.push("your pool changes no longer match the entries or pool count — reset the pools");
-  d.manualPools.forEach((p, i) => { if (p.length < 2) out.push(`Pool ${String.fromCharCode(65 + i)} has ${p.length} ${d.doubles ? "pair" : "player"}${p.length === 1 ? "" : "s"} — a pool needs at least 2`); });
+  const pools = poolsFor(d);
+  if (d.manualPools && d.manualPools.length !== d.format.pools) out.push("your pool changes no longer match the pool count — reset the pools");
+  out.push(...poolAssignmentIssues(pools, d.units.map(unitId), d.doubles ? "pair" : "player"));
   return out;
 }
 /** Allowed but worth a look: uneven pools. */

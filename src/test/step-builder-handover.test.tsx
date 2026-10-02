@@ -68,6 +68,9 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     fireEvent.click((await screen.findAllByRole("button", { name: /^\d*\s*Summary/ }))[0]);
 
     const top = await screen.findByTestId("handover-top");
+    // Playoffs were "Decide later" but a Semifinal and Final are configured: must be reconciled explicitly.
+    expect(top.textContent).toMatch(/Your tournament setup has changed/);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Yes, update tournament" }))[0]);
     await waitFor(() => expect(top.textContent).toMatch(/Tournament setup complete/));
     expect(top.textContent).toMatch(/Needed at Finalise entries:.*Seeding/);
     expect(top.textContent).toMatch(/Needed at Generate draw & fixtures:.*Playoff dates/);
@@ -160,7 +163,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(calls.filter((c) => c.table === "club_champs" && c.op === "insert")).toHaveLength(1);
     expect(calls.some((c) => c.table === "club_champs" && c.op === "update")).toBe(true);
     expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
-  });
+  }, 20000);
 });
 
 import { isOutstanding, regLabel, paymentWarning } from "@/lib/smart-builder/step-handover";

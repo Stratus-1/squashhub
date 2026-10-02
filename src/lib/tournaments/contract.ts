@@ -91,10 +91,14 @@ export interface PlannedStage {
   /** knockout draw size */
   drawSize?: number;
   /** start/end = explicit stage window (NULL = inherit tournament window); date/deadline/roundDates = round schedule. */
-  schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null; roundDates?: string[] };
+  schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null; roundDates?: string[];
+    /** Planned session for a fixed-date stage (HH:MM) and the courts games may use; slots are allocated by the scheduler, never invented here. */
+    timeFrom?: string | null; timeTo?: string | null; courtIds?: number[]; matchMinutes?: number | null };
   /** playoff stages only. `transition` is the explicit, stable-id progression rule; `mapping` stays in step for older readers. */
   qualify?: { perPool: number; mapping: QualifierMapping | null; transition?: import("./transition").StageTransition | null } | null;
   generation?: GenerationMode;
+  /** Step-by-Step "Start this stage → Wait for organiser confirmation": progression offers the stage, never starts it alone. Unset = predefined stages start automatically. */
+  waitForOrganiser?: boolean;
   /** mapped stages: explicit source → units (players/pairs) → matchups. See ./mapping. */
   mapping?: import("./mapping").StageMapping | null;
 }
@@ -461,6 +465,14 @@ function mappedIssues(s: PlannedStage, earlier: PlannedStage[]): string[] {
     const firstSeeded = earlier.find((x) => x.kind === "mapped" && x.mapping?.source === "seed_pools");
     if (earlier.length && !firstSeeded) out.push(`${s.name}: entry-seeded pools can only be used by the opening stage (or stages sharing its pools).`);
     if (firstSeeded && (firstSeeded.mapping!.pools !== m.pools || firstSeeded.mapping!.poolSize !== m.poolSize)) out.push(`${s.name}: uses different pools from ${firstSeeded.name}.`);
+  } else if (m.source === "stage_winners") {
+    const src = earlier.find((x) => x.id === m.sourceStageId);
+    if (!src) out.push(`${s.name}: its source stage must be an earlier stage of this division.`);
+    else if (src.kind !== "mapped" || src.mapping?.source === "seed_pools") out.push(`${s.name}: winners can only come from an earlier play-off stage (${src.name} is not one).`);
+    else {
+      const games = src.mapping?.matches.length ?? 0;
+      if (m.pools !== 1 || m.poolSize !== games) out.push(`${s.name}: ${src.name} has ${games} games, so ${games} winners — the mapping uses ${m.poolSize}.`);
+    }
   } else {
     const src = earlier.find((x) => x.id === m.sourceStageId);
     if (!src) out.push(`${s.name}: its source stage must be an earlier stage of this division.`);

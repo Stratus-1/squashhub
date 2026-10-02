@@ -6,6 +6,8 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
+import { ConflictPanel } from "./ConflictPanel";
+import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
 import { SaveAsTemplateButton } from "./StepTemplates";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -179,7 +181,7 @@ const PAIRING_LABEL: Record<PlayoffPairing, string> = {
   winners: "Winners of the previous stage",
   later: "Pairing: decide later",
 };
-type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; phase?: StagePhase; pairing?: PlayoffPairing };
+type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; phase?: StagePhase; pairing?: PlayoffPairing; /** Playoffs: start automatically when the previous stage is complete, or wait for organiser confirmation. */ start?: "auto" | "confirm" };
 const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = "main"): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [], phase, ...(phase === "playoff" ? { pairing: "later" as PlayoffPairing } : {}) });
 /** Playoff stages are fixed standard rounds — organisers pick, never type arbitrary names. */
 const PLAYOFF_STAGE_NAMES = ["Quarterfinal", "Semifinal", "Final"] as const;
@@ -517,6 +519,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
         })()}
         <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
       </div>
+      {s.phase === "playoff" && <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Start this stage">
+        <span className="text-xs font-medium">Start this stage</span>
+        {(["auto", "confirm"] as const).map((v) => <Button key={v} type="button" size="sm" role="radio" aria-checked={(s.start ?? "confirm") === v} variant={(s.start ?? "confirm") === v ? "default" : "outline"} onClick={() => updStage(s.id, { start: v })}>{v === "auto" ? "Automatically when previous stage is complete" : "Wait for organiser confirmation"}</Button>)}
+      </div>}
       <div className="flex flex-wrap gap-2">
         {(["play_by", "scheduled", "later"] as const).map((m) => <Button key={m} type="button" size="sm" variant={s.mode === m ? "default" : "outline"} aria-pressed={s.mode === m} onClick={() => updStage(s.id, { mode: m })}>{m === "play_by" ? "Play by a date" : m === "scheduled" ? "Play on scheduled date/time" : "Decide later"}</Button>)}
       </div>
@@ -638,7 +644,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
   });
   const [completing, setCompleting] = useState(false);
   const [completeErr, setCompleteErr] = useState<string | null>(null);
-  const setupComplete = steps.slice(0, -1).every((k) => okFor[k]);
+  const conflicts = setupConflicts(a);
+  const setupComplete = steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
   const completeSetup = async () => {
     setCompleting(true); setCompleteErr(null);
     try {
@@ -690,6 +697,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
             ? `${a.createdTournamentId ? "Already created — saving updates the same tournament." : "Next: "}${notifyOnly ? "inform your selected players" : "invite players"}.${deferred.length ? ` ${deferred.length} "Decide later" item${deferred.length === 1 ? "" : "s"} will be asked for when needed.` : ""}`
             : `Finish: ${steps.slice(0, -1).filter((k) => !okFor[k]).map((k) => STEP_LABEL[k]).join(", ")}`}</div>
         </div>
+        {conflicts.length > 0 && <div className="w-full"><ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} /></div>}
         <div className="flex gap-2">{where === "top" && <SaveAsTemplateButton clubId={clubId} answers={a} />}<Button size="sm" disabled={!setupComplete || completing} onClick={completeSetup}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button></div>
       </div>
       {where === "top" && deferred.length > 0 && (
@@ -1395,6 +1403,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                 {playoffStages.map(renderStage)}
                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
               </div>
+              <ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} />
               {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
               {a.planId && <StageCourtBookings clubId={clubId} planId={a.planId} label={a.name?.trim() || "Club Championships"} stages={stages.map((x) => ({ ...x, name: `${x.name} (${stageUnit(x.unit)})` }))} courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} />}
             </>

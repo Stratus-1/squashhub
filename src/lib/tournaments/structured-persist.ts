@@ -228,7 +228,8 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
   if (fixtures.some((f) => f.courtId != null)) {
     const venues = await db.select("tournament_venues", { tournament_id: tid });
     const pool = new Set<number>(venues.flatMap((v) => (v.court_ids ?? []) as number[]));
-    const bad = fixtures.find((f) => f.courtId != null && !pool.has(f.courtId));
+    // No explicit selection = the host club's normal courts (resolved and enforced by the DB court guard).
+    const bad = pool.size ? fixtures.find((f) => f.courtId != null && !pool.has(f.courtId)) : undefined;
     if (bad) throw new IntegrityError("court_not_selected", `Court ${bad.courtId} is not one of the tournament's selected courts.`);
   }
   const roundIds: Record<string, string> = {};
@@ -529,7 +530,10 @@ export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Arr
   let pools: string[][];
   if (src.kind === "mapped") {
     if (src.mapping?.source !== "seed_pools") throw new IntegrityError("mapping_source", `${src.name}: its players have no home pool to be ranked in.`);
-    pools = seedPools(d.entrants.filter((e) => !e.id.includes("+")), src.mapping.pools, d.seeding.method);
+    // Explicit pool membership (e.g. cross-league: pool = league, pairs are single units) wins over entry seeding.
+    pools = src.mapping.positions?.length
+      ? src.mapping.positions.map((p) => [...p])
+      : seedPools(d.entrants.filter((e) => d.unit === "pairs" || !e.id.includes("+")), src.mapping.pools, d.seeding.method);
   } else {
     const by = new Map<number, string[]>();
     for (const x of rows) {
@@ -553,10 +557,24 @@ export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Arr
   });
 }
 
+/**
+ * Winners of a finished play-off stage in playing order (round, then game order): out[n-1] = winner of game n.
+ * Never falls back to earlier finishing positions — an undecided game blocks.
+ */
+export function stageWinners(src: PlannedStage, matches: Array<Record<string, any>>): string[] {
+  const rows = matches.filter((x) => x.stage_key === src.id)
+    .sort((a, b) => (a.round_number ?? 1) - (b.round_number ?? 1) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
+  return rows.map((x, i) => {
+    if (!x.winner_member_id) throw new IntegrityError("prereq", `${src.name}: game ${i + 1} has no winner yet.`);
+    const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+    return String(a).split("+").includes(x.winner_member_id) ? a : b;
+  });
+}
+
 /** Mapped stage fed by finishing positions of an earlier pool stage: positions → units → fixtures. */
 async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: SpecDivision, st: PlannedStage, matches: Array<Record<string, any>>, existing: FixtureRow[], ownerConfirmed: boolean) {
   const m = st.mapping;
-  if (!m || m.source !== "stage_standings") throw new IntegrityError("mapping_source", `${st.name}: its games were created with the tournament.`);
+  if (!m || m.source === "seed_pools") throw new IntegrityError("mapping_source", `${st.name}: its games were created with the tournament.`);
   if (existing.some((f) => f.stageId === st.id)) throw new IntegrityError("exists", `${st.name} already has games.`);
   if (st.generation !== "automatic" && !ownerConfirmed) throw new IntegrityError("needs_confirmation", "Owner must confirm before the next stage is created.");
   const src = d.stages.find((s) => s.id === m.sourceStageId);
@@ -564,7 +582,9 @@ async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: Sp
   const done = existing.filter((f) => f.stageId === src.id);
   if (!done.length || !done.every(isDecided)) throw new IntegrityError("prereq", `${src.name} is not finished.`);
   const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
-  const positions = sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used);
+  const positions = m.source === "stage_winners"
+    ? [stageWinners(src, matches)]
+    : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used);
   const fixtures = mappedFixtures(tid, d, st, positions);
   const known = new Set(d.entrants.map((e) => e.id));
   const units = [...new Set(fixtures.flatMap((f) => [f.a!, f.b!]))].filter((u) => !known.has(u)).map((id) => ({ id, rank: null }));

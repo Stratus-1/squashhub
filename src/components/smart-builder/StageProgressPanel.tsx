@@ -9,12 +9,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { atomically, loadEntrants, sourcePositions } from "@/lib/tournaments/structured-persist";
-import { autoProgress, checkDeferredSetup, decidePositionOrder, setupDeferredStage, setupOk, stageLifecycle, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
+import { autoProgress, confirmNextStage, previewNextStage, checkDeferredSetup, decidePositionOrder, setupDeferredStage, setupOk, stageLifecycle, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
 import { parseMapping } from "@/lib/tournaments/mapping";
 import { sourcePoolCount } from "@/lib/tournaments/contract";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { attachPlannedPlayoffs } from "@/lib/smart-builder/step-draw";
 import { fromExt } from "@/lib/supabase-ext";
+import { schedulePlannedPlayoffGames, type ScheduleReport } from "@/lib/smart-builder/playoff-schedule";
+
+const scheduleToast = (r: ScheduleReport) => {
+  if (r.booked) toast.success(`${r.booked} game${r.booked === 1 ? "" : "s"} booked into the planned session.`);
+  if (r.unplaced.length) toast.warning(`${r.unplaced.length} game(s) couldn't be placed: ${[...new Set(r.unplaced.map((u) => `${u.stage} — ${u.reason}`))].join("; ")}`);
+};
 
 const STATE_LABEL: Record<StageStatus["state"], string> = {
   completed: "Completed", active: "In play", waiting: "Waiting", ready: "Starting…", blocked: "Needs your decision",
@@ -49,22 +55,34 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [champId]);
   useEffect(() => {
-    if (running.current || !states.some((s) => s.state === "ready")) return;
+    if (running.current || !states.some((s) => s.state === "ready" && s.automatic)) return;
     running.current = true;
     autoProgress(supabaseDb, champId, exec)
-      .then((r) => { if (r.started.length) { toast.success(`Started automatically: ${r.started.map((s) => s.name).join(", ")}`); refresh(); } })
+      .then(async (r) => {
+        if (!r.started.length) return;
+        toast.success(`Started automatically: ${r.started.map((s) => s.name).join(", ")}`);
+        scheduleToast(await schedulePlannedPlayoffGames(champId));
+        refresh();
+      })
       .catch((e) => toast.error(e.message))
       .finally(() => { running.current = false; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [states]);
 
   const [setup, setSetup] = useState<StageStatus | null>(null);
+  const [confirm, setConfirm] = useState<StageStatus | null>(null);
   const [tie, setTie] = useState<{ div: string; stage: string } | null>(null);
   const current = (div: string) => states.filter((s) => s.divisionKey === div);
 
   return (
     <div className="rounded-lg border p-3 space-y-2 text-sm" data-testid="stage-progress">
       <div className="font-semibold">Stage progress</div>
+      {states.filter((s) => s.state === "ready" && !s.automatic).map((s) => (
+        <div key={`go-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
+          <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
+          <Button size="sm" onClick={() => setConfirm(s)}>Generate {s.name}</Button>
+        </div>
+      ))}
       {states.filter((s) => s.state === "needs_setup").map((s) => (
         <div key={`due-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
@@ -80,7 +98,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
             {now && <div className="text-muted-foreground">Current: {now.name} · {STATE_LABEL[now.state]}</div>}
             {list.map((s) => (
               <div key={s.stageKey} className="flex flex-wrap items-center gap-2">
-                <Badge variant={s.state === "blocked" || s.state === "needs_setup" ? "destructive" : s.state === "completed" ? "secondary" : "outline"}>{STATE_LABEL[s.state]}</Badge>
+                <Badge variant={s.state === "blocked" || s.state === "needs_setup" ? "destructive" : s.state === "completed" ? "secondary" : "outline"}>{s.state === "ready" && !s.automatic ? "Ready — confirm" : STATE_LABEL[s.state]}</Badge>
                 <span>{s.name}</span>
                 {s.total > 0 && <span className="text-muted-foreground">{s.played}/{s.total}</span>}
                 <span className="text-muted-foreground">{s.detail}{s.plannedDate ? ` · planned ${s.plannedDate}` : ""}</span>
@@ -95,6 +113,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
           </div>
         );
       })}
+      {confirm && <ConfirmStageDialog champId={champId} spec={spec} status={confirm} nameOf={nameOf} exec={exec} onClose={() => setConfirm(null)} onDone={() => { setConfirm(null); refresh(); }} />}
       {setup && <SetupDialog champId={champId} spec={spec} status={setup} exec={exec} onClose={() => setSetup(null)} onDone={() => { setSetup(null); refresh(); }} />}
       {tie && <TieDialog champId={champId} spec={spec} matches={matches} nameOf={nameOf} div={tie.div} stage={tie.stage} exec={exec} onClose={() => setTie(null)} onDone={() => { setTie(null); refresh(); }} />}
     </div>
@@ -224,6 +243,42 @@ function TieDialog({ champId, spec, matches, nameOf, div, stage, exec, onClose, 
           <Button onClick={async () => {
             try { await decidePositionOrder(supabaseDb, champId, div, stage, pi, list, exec); toast.success("Order saved"); onDone(); } catch (e: any) { toast.error(e.message); }
           }}>Save order</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Preview the calculated qualifiers/matchups of a confirmation stage, then create it once and book its planned session. */
+function ConfirmStageDialog({ champId, spec, status, nameOf, exec, onClose, onDone }: { champId: string; spec: TournamentSpec; status: StageStatus; nameOf: (id: string | null) => string; exec: Exec; onClose: () => void; onDone: () => void }) {
+  const st = spec.divisions.find((d) => d.divisionId === status.divisionKey)?.stages.find((x) => x.id === status.stageKey);
+  const { data: rows, error, isLoading } = useQuery({ queryKey: ["stage-preview", champId, status.stageKey, status.divisionKey], queryFn: () => previewNextStage(supabaseDb, champId, status.divisionKey, status.stageKey) });
+  const [busy, setBusy] = useState(false);
+  const side = (p: string | null, q: string | null) => [p, q].filter(Boolean).map((x) => nameOf(x as string)).join(" & ");
+  const sch = st?.schedule;
+  const go = async () => {
+    setBusy(true);
+    try {
+      await confirmNextStage(supabaseDb, champId, status.divisionKey, status.stageKey, exec);
+      toast.success(`${status.name} created`);
+      scheduleToast(await schedulePlannedPlayoffGames(champId));
+      onDone();
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Generate {status.name} — {status.divisionLabel}</DialogTitle></DialogHeader>
+        <div className="space-y-2 text-sm">
+          {isLoading && <div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Calculating qualifiers…</div>}
+          {error && <div className="text-destructive">{(error as Error).message}</div>}
+          {rows && <ol className="list-decimal space-y-1 pl-5" data-testid="stage-preview">{rows.map((r) => <li key={r.id}>{side(r.player_a_member_id, r.partner_a_member_id)} <span className="text-muted-foreground">v</span> {side(r.player_b_member_id, r.partner_b_member_id)}</li>)}</ol>}
+          {st?.mapping?.source === "stage_winners" && <p className="text-xs text-muted-foreground">Played by the winners of the previous stage, in game order.</p>}
+          {sch && <p className="text-xs text-muted-foreground">{sch.rule === "fixed" ? `Scheduled ${sch.date}${sch.timeFrom ? ` · ${sch.timeFrom}–${sch.timeTo}` : ""}${sch.courtIds?.length ? ` · ${sch.courtIds.length} courts — games are booked into free court slots in this session` : ""}` : sch.rule === "play_by" ? `Play by ${sch.deadline}` : ""}</p>}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={busy || !rows?.length} onClick={go}>{busy ? "Creating…" : `Create ${status.name}`}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

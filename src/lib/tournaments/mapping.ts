@@ -13,7 +13,8 @@ import { IntegrityError, roundRobin, snakePools } from "./contract";
 export interface SlotRef { pool: number; position: number } // pool 0-based, position 1-based
 export interface MappedUnit { id: string; slots: SlotRef[] }
 export interface MappedMatch { round: number; order: number; a: string; b: string; tie?: string }
-export type MappingSource = "seed_pools" | "stage_standings";
+/** stage_winners: slot A{n} = winner of the n-th game (playing order) of the source stage — e.g. Final ← Semifinal winners. */
+export type MappingSource = "seed_pools" | "stage_standings" | "stage_winners";
 export interface StageMapping {
   source: MappingSource;
   /** stage_standings: the earlier pool stage whose finishing positions are used. */
@@ -111,6 +112,7 @@ export function mappingIssues(m: StageMapping | null | undefined, label = "Stage
   const need = m.discipline === "doubles" ? 2 : 1;
   if (m.pools < 1 || m.poolSize < 1) out.push(`${label}: pool count and pool size must be set.`);
   if (m.source === "stage_standings" && !m.sourceStageId) out.push(`${label}: choose which earlier stage's finishing positions are used.`);
+  if (m.source === "stage_winners" && !m.sourceStageId) out.push(`${label}: choose which earlier stage's winners play.`);
   if (!m.matches.length) out.push(`${label}: no matchups yet.`);
   const byId = new Map(m.units.map((u) => [u.id, u]));
   for (const u of m.units) {

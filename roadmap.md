@@ -12,3 +12,6 @@
 - [x] Messaging step: solid colour-block section headings (Entry notification, WhatsApp group, Draw notifications, After-match notifications) + Summary wording for all-rounds booking dates.
 - [x] Generate-draw Round 1 checkbox explains all-rounds booking-date schedule; server notice includes "Your rounds and booking dates: ..." when every round is drawn upfront (migration applied).
 - [x] Visual check via Riverside preview: Entry notification step renders the blue block heading; sections listed; no publish.
+
+## Mobile fixture deadline (done)
+- [x] Repeat round play/book-by deadline on every fixture card (Tournaments list + ClubChampsView renderMatchRow); "Book by" when viewer can book, read-only "Play by" otherwise; removed view-toggle gate that hid it in By round view; Mark Game unchanged; verified mobile 390px, 103 badges on Riverside fixtures

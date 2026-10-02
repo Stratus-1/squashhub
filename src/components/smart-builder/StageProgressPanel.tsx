@@ -13,6 +13,8 @@ import { autoProgress, checkDeferredSetup, decidePositionOrder, setupDeferredSta
 import { parseMapping } from "@/lib/tournaments/mapping";
 import { sourcePoolCount } from "@/lib/tournaments/contract";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
+import { attachPlannedPlayoffs } from "@/lib/smart-builder/step-draw";
+import { fromExt } from "@/lib/supabase-ext";
 
 const STATE_LABEL: Record<StageStatus["state"], string> = {
   completed: "Completed", active: "In play", waiting: "Waiting", ready: "Starting…", blocked: "Needs your decision",
@@ -27,6 +29,25 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
   const { data: states = [], refetch } = useQuery({ queryKey: ["stage-lifecycle", champId, sig], queryFn: () => stageLifecycle(supabaseDb, champId) });
   const refresh = () => { qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(champId) }); refetch(); };
   const running = useRef(false);
+  // Draws generated before play-offs were bridged: attach the builder's planned play-offs (append-only,
+  // no games written) so a finished stage is never a dead end. Idempotent — only fills divisions with none.
+  const repaired = useRef(false);
+  useEffect(() => {
+    if (repaired.current) return;
+    repaired.current = true;
+    (async () => {
+      const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champId).maybeSingle();
+      const plan = (data as any)?.beta_lifecycle?.format_plan ?? null;
+      if (!plan || !attachPlannedPlayoffs(spec, plan)) return;
+      await exec(async (tx) => {
+        const [t] = await tx.select("tournaments", { id: champId });
+        const next = attachPlannedPlayoffs(t.builder_spec as TournamentSpec, plan);
+        if (next) await tx.update("tournaments", { id: champId }, { builder_spec: next });
+      });
+      refresh();
+    })().catch((e) => toast.error(`Couldn't attach the planned play-offs: ${e.message}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [champId]);
   useEffect(() => {
     if (running.current || !states.some((s) => s.state === "ready")) return;
     running.current = true;
@@ -44,6 +65,12 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
   return (
     <div className="rounded-lg border p-3 space-y-2 text-sm" data-testid="stage-progress">
       <div className="font-semibold">Stage progress</div>
+      {states.filter((s) => s.state === "needs_setup").map((s) => (
+        <div key={`due-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
+          <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
+          <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Generate {s.name}</Button>
+        </div>
+      ))}
       {spec.divisions.map((d) => {
         const list = current(d.divisionId);
         const now = list.find((s) => s.state === "active") ?? list.find((s) => s.state !== "completed");
@@ -57,7 +84,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
                 <span>{s.name}</span>
                 {s.total > 0 && <span className="text-muted-foreground">{s.played}/{s.total}</span>}
                 <span className="text-muted-foreground">{s.detail}{s.plannedDate ? ` · planned ${s.plannedDate}` : ""}</span>
-                {s.state === "needs_setup" && <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Set up next stage</Button>}
+                {s.state === "needs_setup" && <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Generate {s.name}</Button>}
                 {s.state === "blocked" && /tied/i.test(s.detail) && (() => {
                   const st = d.stages.find((x) => x.id === s.stageKey);
                   const srcId = st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;
@@ -81,7 +108,9 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
   const poolSize = src.kind === "mapped" ? src.mapping?.poolSize ?? 0 : src.poolSize ?? 0;
   const [kind, setKind] = useState<"mapped" | "knockout">("mapped");
   const [discipline, setDiscipline] = useState<"singles" | "doubles">("singles");
-  const [text, setText] = useState(pools >= 2 ? "R1: A1 v B2\nR1: B1 v A2" : "R1: A1 v A4\nR1: A2 v A3");
+  const plan = (d.deferredStages ?? []).find((x) => x.stageKey === status.stageKey)?.plan ?? null;
+  // Pre-fill from the builder's plan: same_position = A1 v B1, crossover (default for two pools) = A1 v B2.
+  const [text, setText] = useState(pools >= 2 ? (plan?.pairing === "same_position" ? "R1: A1 v B1\nR1: A2 v B2" : "R1: A1 v B2\nR1: B1 v A2") : "R1: A1 v A4\nR1: A2 v A3");
   const [perPool, setPerPool] = useState(2);
   const [method, setMethod] = useState<"cross_pool" | "reseed">(pools >= 2 ? "cross_pool" : "reseed");
   const [thirdPlace, setThirdPlace] = useState(false);
@@ -146,6 +175,7 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
           </div>
         )}
         <label className="block">How each game is scored<Input placeholder="e.g. PAR 11, best of 5" value={format} onChange={(e) => setFormat(e.target.value)} /></label>
+        {plan && <p className="rounded border bg-muted/40 p-2 text-xs">From your setup: {plan.pairing === "crossover" ? "crossover pairing (winner of one group v runner-up of the other)" : plan.pairing === "same_position" ? "same-position pairing" : "pairing not chosen"}{plan.mode === "scheduled" && plan.date ? ` · scheduled ${plan.date}${plan.from ? ` ${plan.from}–${plan.to ?? ""}` : ""}` : plan.deadline ? ` · play by ${plan.deadline}` : ""}{plan.courtIds?.length ? ` · ${plan.courtIds.length} court${plan.courtIds.length > 1 ? "s" : ""} chosen` : ""}. Check it, then generate.</p>}
         <label className="block">Date (optional)<Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         {check && <div className="rounded border p-2 space-y-0.5">{row("Structure", check.structure)}{row("Engine support", check.engine)}{row("Schedule", check.schedule)}{row("Scoring", check.scoring)}</div>}
         <DialogFooter>

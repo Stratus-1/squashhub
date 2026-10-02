@@ -106,7 +106,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           p.format.crossGroups = [me, ...p.format.crossVs].sort((a, b) => a - b);
         }
       }
-      list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs });
+      list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans });
     }
     const ids = [...new Set(((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id]).filter(Boolean))];
     const { data: mem } = ids.length ? await supabase.from("club_members").select("id, name, ladder_position, ranking_points").in("id", ids) : { data: [] as any[] };

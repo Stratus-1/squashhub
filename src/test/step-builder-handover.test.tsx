@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const MEMBERS = [{ id: "m1", name: "Anna Smith" }, { id: "m2", name: "Ben Jones" }];
 let regStatus = "pending_payment";
@@ -55,7 +56,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
 
   it("completes setup, enters the pair as payment outstanding, and opens Inform selected players", async () => {
     seedChamps();
-    render(<MemoryRouter><ClubTournamentBeta clubId="c1" clubName="Riverside" /></MemoryRouter>);
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><ClubTournamentBeta clubId="c1" clubName="Riverside" /></MemoryRouter></QueryClientProvider>);
     // The seeded plan is an unfinished NEW draft: resume it explicitly (the New tile never resumes silently).
     fireEvent.click(screen.getByText(/^Continue draft/));
     // Court bookings plan lists every concretely scheduled stage — main rounds too, not only playoffs; play-by rounds are not booked.

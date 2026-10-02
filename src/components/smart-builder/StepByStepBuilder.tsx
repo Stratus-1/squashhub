@@ -48,13 +48,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
   const cats = a.categories.map((c) => c.trim()).filter(Boolean);
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
+  const playOk = a.playType !== null;
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
-  const canNext = [a.kind === "once_off", entriesOk, cats.length > 0, daysOk, courtsOk, false][step];
+  const canNext = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, daysOk, courtsOk, false][step];
   const reached = useMemo(() => {
-    const ok = [a.kind === "once_off", entriesOk, cats.length > 0, daysOk, courtsOk];
+    const ok = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, daysOk, courtsOk];
     let i = 0; while (i < ok.length && ok[i]) i++; return i;
-  }, [a.kind, entriesOk, cats.length, daysOk, courtsOk]);
+  }, [a.kind, entriesOk, playOk, cats.length, daysOk, courtsOk]);
 
   const setDays = (days: DayAvail[]) => setA({ ...a, days });
   const updDay = (i: number, p: Partial<DayAvail>) => setDays(a.days.map((d, j) => (j === i ? { ...d, ...p } : d)));

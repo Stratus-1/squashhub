@@ -97,6 +97,8 @@ export interface PlannedStage {
   /** playoff stages only. `transition` is the explicit, stable-id progression rule; `mapping` stays in step for older readers. */
   qualify?: { perPool: number; mapping: QualifierMapping | null; transition?: import("./transition").StageTransition | null } | null;
   generation?: GenerationMode;
+  /** Step-by-Step "Start this stage → Wait for organiser confirmation": progression offers the stage, never starts it alone. Unset = predefined stages start automatically. */
+  waitForOrganiser?: boolean;
   /** mapped stages: explicit source → units (players/pairs) → matchups. See ./mapping. */
   mapping?: import("./mapping").StageMapping | null;
 }

@@ -100,6 +100,7 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
       id: `${version}-po${i + 1}`, order: main.order + i + 1, kind: "mapped", name: e.name, discipline: main.discipline,
       schedule, mapping, progression: { mode: "all_continue", standings: "reset" } as any,
       generation: !opts.forceConfirm && e.plan.trigger === "auto" ? "automatic" : "owner_approval",
+      waitForOrganiser: !(!opts.forceConfirm && e.plan.trigger === "auto"),
     };
     stages.push(st);
     prev = st;

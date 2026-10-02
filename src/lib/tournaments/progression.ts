@@ -98,7 +98,7 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
       }
       const src = sourceOf(d, st);
       if (!src) { out.push({ ...base, state: "blocked", automatic: false, detail: `${st.name}: the stage it takes players from no longer exists.` }); continue; }
-      const auto = st.generation === "automatic";
+      const auto = !st.waitForOrganiser;
       const plannedDate = st.schedule?.date ?? st.schedule?.deadline ?? null;
       if (!done.get(src.id)) {
         out.push({ ...base, state: "waiting", automatic: auto, plannedDate, detail: auto ? `Starts automatically when ${src.name} is finished.` : `Offered for your confirmation when ${src.name} is finished.` });

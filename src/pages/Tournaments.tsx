@@ -1,3 +1,4 @@
+import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import React from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
@@ -907,11 +908,39 @@ export default function Tournaments() {
                     still outstanding
                   </Badge>
                 )}
-                {allScheduled && !playBy && (
-                  <span className="ml-auto font-normal text-[11px] text-muted-foreground">
-                    Scheduled by the organiser — no court booking needed
-                  </span>
-                )}
+                {allScheduled && !playBy && (() => {
+                  const unallocated = items.filter((m: any) => !m.court_id || !m.scheduled_time);
+                  const champIdsHere = Array.from(new Set(unallocated.map((m: any) => m.champ_id))) as string[];
+                  return (
+                    <span className="ml-auto flex items-center gap-2 font-normal text-[11px] text-muted-foreground">
+                      {unallocated.length === 0
+                        ? "Scheduled by the organiser — no court booking needed"
+                        : `Scheduled by the organiser — court & time still to be assigned (${unallocated.length})`}
+                      {unallocated.length > 0 && (canManageChamps || isClubAdmin) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={async (e) => {
+                            e.preventDefault(); e.stopPropagation();
+                            try {
+                              let booked = 0; const notes: string[] = [];
+                              for (const id of champIdsHere) {
+                                const r = await schedulePlannedPlayoffGames(id);
+                                booked += r.booked; notes.push(...r.unplaced.map((u) => `${u.stage}: ${u.reason}`));
+                              }
+                              if (booked) toast.success(`Assigned ${booked} game${booked === 1 ? "" : "s"} to courts`);
+                              if (notes.length) toast.warning(notes.join("\n"));
+                              queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+                            } catch (err: any) { toast.error(err.message); }
+                          }}
+                        >
+                          Assign courts &amp; times
+                        </Button>
+                      )}
+                    </span>
+                  );
+                })()}
                 {playBy && (
                   <span className="ml-auto font-normal text-[11px] text-amber-700 dark:text-amber-300">
                     Please book your court and play by {format(new Date(`${playBy}T00:00:00`), "EEE dd MMM")}

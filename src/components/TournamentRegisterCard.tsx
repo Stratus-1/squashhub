@@ -560,7 +560,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {myReg && !adminEntered && isDoubles && partnerByPlayers && (
+      {myReg && !adminEntered && isDoubles && partnerByPlayers && !typedCategories && !categoriesLoading && (
         <div className="mt-2">
           {myReg.partner ? (
             <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -573,7 +573,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {!notYetOpen && !isClosed && !adminEntered && !typedCategories && (
+      {!notYetOpen && !isClosed && !adminEntered && !typedCategories && !categoriesLoading && (
         <div className="mt-2 pt-2 border-t border-border/60">
           <GroupEntryCard champ={champ} clubId={clubId} memberId={memberId} paymentGateway={paymentGateway} />
         </div>

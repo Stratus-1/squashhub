@@ -304,6 +304,7 @@ export function TournamentInviteRegisterDialog({
   const choosePartner = useMutation({
     mutationFn: async () => {
       if (!partnerId) throw new Error("Pick a partner");
+      if (categoryTypes) throw new Error("Choose a partner through the category entry form");
       const { error } = await (supabase as any).rpc("register_doubles_pair", {
         _champ_id: champ.id,
         _member_id: memberId,

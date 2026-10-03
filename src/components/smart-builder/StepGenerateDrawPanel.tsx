@@ -1,3 +1,4 @@
+import { patchTournamentPlanFormat } from "@/lib/smart-builder/step-storage";
 import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
@@ -17,7 +18,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, isPooledKnockout, knockoutNeedText, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -157,6 +158,20 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     return { ...d, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: (d.format.kind === "pools" || isPooledKnockout(d.format)) && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
   }), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts]);
   const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }, "preview", poolMode) : null, [meta, seeded, poolMode]);
+  /** Knockout pace / pairing are real settings: saved on the tournament's plan (and this device's copy) so Generate and Manage use them. */
+  const saveKnockoutChoice = async (labels: string[], patch: Record<string, string>) => {
+    try {
+      const keys = labels.map(unitKeyOf);
+      keys.forEach((k) => patchTournamentPlanFormat(clubId, tournamentId, k, patch));
+      const { data: t } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
+      const bl: any = (t as any)?.beta_lifecycle ?? {};
+      const fp: any = bl.format_plan ?? {};
+      const fo = { ...(fp.formatOverrides ?? {}) };
+      for (const k of keys) fo[k] = { ...(fo[k] ?? fo[k.split("::")[0]] ?? fp.format ?? {}), ...patch };
+      const { error } = await fromExt("tournaments").update({ beta_lifecycle: { ...bl, format_plan: { ...fp, formatOverrides: fo } } } as any).eq("id", tournamentId);
+      if (error) throw error;
+    } catch (e: any) { toast.error(`Knockout setting not saved: ${e?.message ?? e}`); }
+  };
   const acceptPools = (is: number[]) => { setConfirmed(false); setDivs((ds) => ds.map((d, k) => is.includes(k) ? { ...d, poolAccepted: true } : d)); };
   const setSch = (i: number, patch: Partial<DivSchedule>) => setFmt(i, { schedule: { ...divs[i].format.schedule, ...patch } });
   const setFmt = (i: number, patch: Partial<DivFormat>) => {
@@ -380,6 +395,26 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 <select className="w-full rounded border border-input bg-background p-1" value={f.schedule.rule ?? ""} onChange={(e) => apply({ schedule: { ...f.schedule, rule: (e.target.value || null) as any } })}>
                   <option value="">Choose…</option><option value="play_by">Play by a date (players arrange)</option><option value="fixed">Fixed match date(s)</option>
                 </select></label>
+              {f.kind === "knockout" && (() => {
+                const pace = f.ko?.pace ?? "paced", pairing = f.ko?.pairing ?? "progressive";
+                const choose = (c: { pace?: "paced" | "immediate"; pairing?: "progressive" | "traditional" }) => {
+                  (block ? targets : [i]).forEach((j) => setFmt(j, withKnockoutChoice(divs[j].format, c)));
+                  void saveKnockoutChoice((block ? targets : [i]).map((j) => divs[j].label), { ...(c.pace ? { koPace: c.pace } : {}), ...(c.pairing ? { koPairing: c.pairing } : {}) });
+                };
+                return <div className="space-y-2 sm:col-span-3 rounded border border-border p-2" aria-label={`Knockout settings for ${d.label}`}>
+                  <div className="space-y-1" role="radiogroup" aria-label="Knockout pace">
+                    <div className="font-medium">Knockout pace</div>
+                    <label className="flex items-start gap-2"><input type="radio" name={`pace-${d.group}`} checked={pace === "paced"} onChange={() => choose({ pace: "paced" })} /><span><span className="font-medium">Pace eliminations across these rounds</span> (recommended) — only the eliminations needed to reach {f.ko?.label ?? "the next stage"} are spread over the play-by rounds; nobody is knocked out sooner than needed.</span></label>
+                    <label className="flex items-start gap-2"><input type="radio" name={`pace-${d.group}`} checked={pace === "immediate"} onChange={() => choose({ pace: "immediate" })} /><span><span className="font-medium">Immediate knockout</span> — each round plays as many matches as the field allows, progressing as fast as results come in.</span></label>
+                  </div>
+                  <div className="space-y-1" role="radiogroup" aria-label="Pairing strategy">
+                    <div className="font-medium">Pairing strategy</div>
+                    <label className="flex items-start gap-2"><input type="radio" name={`pair-${d.group}`} checked={pairing === "progressive"} onChange={() => choose({ pairing: "progressive" })} /><span><span className="font-medium">Progressive / closer-ranked</span> — closer-strength pairings in early rounds, giving weaker players more opportunity before the field tightens.</span></label>
+                    <label className="flex items-start gap-2"><input type="radio" name={`pair-${d.group}`} checked={pairing === "traditional"} onChange={() => choose({ pairing: "traditional" })} /><span><span className="font-medium">Traditional seeded knockout</span> — strongest v weakest (1 v N, 2 v N−1…).</span></label>
+                  </div>
+                  <p className="text-muted-foreground">{knockoutNeedText(d, poolMode)} You can change any suggested pairing later in Manage Tournament.</p>
+                </div>;
+              })()}
               {f.schedule.rule === "play_by" && (
                 <div className="space-y-1 sm:col-span-3">
                   <span className="text-muted-foreground">Play-by rounds{f.schedule.deadlines.length > 1 ? " — later dates cover the later rounds" : ""}</span>

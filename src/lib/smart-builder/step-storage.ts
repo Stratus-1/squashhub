@@ -36,3 +36,12 @@ export function readTournamentPlan(clubId: string, tid: string): Record<string, 
   const p = parse(localStorage.getItem(tournamentKey(tid)));
   return p && p.createdTournamentId === tid ? p : null;
 }
+
+/** Update one category's knockout pace/pairing on this device's saved plan (no-op if the plan lives on another device). */
+export function patchTournamentPlanFormat(clubId: string, tid: string, key: string, patch: Record<string, any>) {
+  const p = readTournamentPlan(clubId, tid);
+  if (!p) return;
+  const base = p.formatOverrides?.[key] ?? p.formatOverrides?.[key.split("::")[0]] ?? p.format ?? {};
+  p.formatOverrides = { ...(p.formatOverrides ?? {}), [key]: { ...base, ...patch } };
+  localStorage.setItem(tournamentKey(tid), JSON.stringify(p));
+}

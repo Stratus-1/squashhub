@@ -100,9 +100,9 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const qc = useQueryClient();
   const key = unitKeyOf(div.label);
   const fmt: any = plan?.formatOverrides?.[key] ?? plan?.formatOverrides?.[key.split("::")[0]] ?? plan?.format ?? {};
-  // Tournaments set up before these choices existed keep classic behaviour.
-  const pace: KnockoutPace = fmt.koPace === "paced" ? "paced" : "immediate";
-  const pairing: KnockoutPairing = fmt.koPairing === "progressive" ? "progressive" : "traditional";
+  // Missing values default to paced + progressive (the recommended knockout behaviour).
+  const pace: KnockoutPace = fmt.koPace === "immediate" ? "immediate" : "paced";
+  const pairing: KnockoutPairing = fmt.koPairing === "traditional" ? "traditional" : "progressive";
   const nameOf = (id?: string | null) => (id ? data.members.get(id)?.name ?? "Player" : "—");
 
   const poolNo = pool ? pool.index + 1 : null;

@@ -242,7 +242,7 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
       ? (po.rounds === 1 ? ["Final"] : po.rounds === 2 ? ["Semi-final", "Final"] : ["Quarter-final", "Semi-final", "Final"]) : [];
   const playoffPlans = planned.length ? planned.map((s) => s.plan) : playoffs.map(() => null);
   let paced: DivFormat["paced"] = null;
-  if (kind === "knockout" && f.koPace === "paced") {
+  if (kind === "knockout" && f.koPace !== "immediate") {
     const m = milestoneFor(plan as any, key);
     paced = { pairing: f.koPairing === "traditional" ? "traditional" : "progressive", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
     notes.push(m.source === "none" ? "Paced knockout without a play-off milestone: Round 1 plays a paced share; later rounds are confirmed week by week in Manage Tournament." : `Paced knockout towards ${m.label} (${m.source === "shared" ? "shared tournament stage" : "this category's own stage"}); only Round 1 is created now — later rounds are confirmed week by week in Manage Tournament.`);
@@ -250,7 +250,7 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   let ko: DivFormat["ko"] = null;
   if (kind === "knockout") {
     const m = milestoneFor(plan as any, key);
-    ko = { pace: f.koPace === "paced" ? "paced" : "immediate", pairing: f.koPairing === "progressive" ? "progressive" : f.koPairing === "traditional" ? "traditional" : f.koPace === "paced" ? "progressive" : "traditional", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
+    ko = { pace: f.koPace === "immediate" ? "immediate" : "paced", pairing: f.koPairing === "traditional" ? "traditional" : "progressive", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
   }
   return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
 }
@@ -462,6 +462,12 @@ export function knockoutNeedText(d: DrawDivision, mode: PoolAllocationMode = "sn
   const t = d.format.ko?.target ?? d.format.paced?.target ?? 1;
   const elim = Math.max(0, d.units.length - t);
   return `${elim} elimination${elim === 1 ? "" : "s"} needed to reach ${label ?? (t > 1 ? `a field of ${t}` : "a winner")}; at least ${knockoutRoundsNeeded(d, mode)} round${knockoutRoundsNeeded(d, mode) === 1 ? "" : "s"}.`;
+}
+
+/** Apply the organiser's knockout pace / pairing (independent settings) to a division format. */
+export function withKnockoutChoice(f: DivFormat, c: { pace?: "paced" | "immediate"; pairing?: KnockoutPairing }): Partial<DivFormat> {
+  const ko = { pace: "paced" as const, pairing: "progressive" as KnockoutPairing, target: null, rounds: null, label: null, ...(f.ko ?? {}), ...c } as NonNullable<DivFormat["ko"]>;
+  return { ko, paced: ko.pace === "paced" ? { pairing: ko.pairing, target: ko.target, rounds: ko.rounds, label: ko.label } : null };
 }
 
 export function buildDrawSpec(name: string, divs: DrawDivision[], version: string, opts: SpecOpts = {}): TournamentSpec {

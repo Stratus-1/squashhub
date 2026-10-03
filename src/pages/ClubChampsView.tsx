@@ -78,6 +78,7 @@ import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
+import { historicalPoolStatuses, playoffDisplayStages, structuredProgressHeadline, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
@@ -760,7 +761,7 @@ export default function ClubChampsView() {
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string> }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus> }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
     const poolLabels = opts?.poolLabels;
@@ -775,7 +776,7 @@ export default function ClubChampsView() {
 
     return (
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs sm:text-sm">
           <thead>
             <tr className="border-b text-left">
               <th className="pb-2 font-medium">#</th>
@@ -814,14 +815,16 @@ export default function ClubChampsView() {
               const rowStyle = getRankRowStyle(i, competitors.length);
               const isWinner = allPlayed && i === 0;
               const isLast = allPlayed && i === competitors.length - 1;
+              const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                <tr key={s.id} style={opts?.historical ? undefined : rowStyle} className={cn("border-b border-border/30", progress?.eliminated && "opacity-65", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
                   <td className="py-2 text-muted-foreground">{i + 1}</td>
-                  <td className="py-2 font-medium">
-                    <span className={cn(isPulledOut(s) && "line-through text-muted-foreground")}>{s.name}</span>
+                  <td className="py-2 font-medium min-w-24">
+                    <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2 text-muted-foreground")}>{s.name}</span>
                     {isPulledOut(s) && <Badge variant="outline" className="text-[9px] ml-1">Withdrawn</Badge>}
-                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
+                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge variant="secondary" className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>}{!opts?.historical && isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
+                    {progress?.label && <span className="block text-[10px] font-normal text-muted-foreground no-underline leading-tight mt-0.5">{progress.label}</span>}
                   </td>
                   {showPool && (
                     <td className="py-2 text-center">
@@ -983,13 +986,20 @@ export default function ClubChampsView() {
         });
     });
     if (pc <= 1 || isCrossLeague) {
-      return renderStandingsTable(getGroupStandings(gn), { poolLabels });
+      const specDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
+      const rows = getGroupStandings(gn);
+      const statuses = specDivision ? historicalPoolStatuses(specDivision, (matches as any[]).filter((m: any) => m.group_number === gn), rows.map((r: any) => ({ memberId: r.club_member_id, partnerId: r.partner_member_id }))) : undefined;
+      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision, statuses });
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view
     // is one combined FINAL table ordered by play-off outcomes; pool tables
     // stay below as qualification history.
     const poolRowsAll = Array.from({ length: pc }).flatMap((_, i) => getGroupStandings(gn, i + 1));
+    const structuredDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
+    const divisionMatches = (matches as any[]).filter((m: any) => m.group_number === gn);
+    const statuses = structuredDivision ? historicalPoolStatuses(structuredDivision, divisionMatches, poolRowsAll.map((r: any) => ({ memberId: r.club_member_id, partnerId: r.partner_member_id }))) : undefined;
+    const stageDisplays = structuredDivision ? playoffDisplayStages(structuredDivision, divisionMatches) : [];
     const finals = computeFinalPlacements(matches as any[], gn, poolRowsAll.length);
     const nameFor = (pid: string, partner: string | null) => {
       const hit = poolRowsAll.find((s: any) =>
@@ -997,10 +1007,19 @@ export default function ClubChampsView() {
         (partner && (s.club_member_id === partner || s.partner_member_id === partner)));
       return hit?.name ?? "—";
     };
+    const playoffName = (id: string | null | undefined) => {
+      if (!id) return "—";
+      for (const m of divisionMatches) {
+        for (const side of ["player_a", "partner_a", "player_b", "partner_b"]) {
+          if (m[`${side}_member_id`] === id && m[side]?.name) return m[side].name as string;
+        }
+      }
+      return nameFor(id, null);
+    };
 
     return (
       <div className="space-y-4">
-        {finals && (
+        {!structuredDivision && finals && (
           <div className="space-y-2">
             <Badge className="text-xs font-semibold">Final Standings</Badge>
             <div className="overflow-x-auto">
@@ -1041,7 +1060,7 @@ export default function ClubChampsView() {
           return (
             <CollapsibleSection
               key={poolNumber}
-              defaultOpen={!finals}
+              defaultOpen={!!structuredDivision || !finals}
               className="space-y-2"
               header={
                 <>
@@ -1052,12 +1071,36 @@ export default function ClubChampsView() {
                 </>
               }
             >
-              {s.length > 0 ? renderStandingsTable(s) : (
+              {s.length > 0 ? renderStandingsTable(s, { historical: true, statuses }) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
               )}
             </CollapsibleSection>
           );
         })}
+        {stageDisplays.length > 0 && (
+          <div className="space-y-3 border-t border-border pt-3">
+            {stageDisplays.map((stage) => (
+              <section key={stage.id} className="space-y-2" aria-label={`${stage.name} draw`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-sm font-semibold text-foreground">{stage.name}</h4>
+                  {stage.projected && <Badge variant="outline" className="text-[10px]">Pairings from results · not generated</Badge>}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {stage.matches.map((m) => (
+                    <div key={m.displayId} className="border border-border rounded-sm p-2 text-xs min-w-0">
+                      <div className="flex items-start gap-2 justify-between">
+                        <span className="font-medium min-w-0 break-words">{[m.player_a_member_id, m.partner_a_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ")}</span>
+                        <span className="shrink-0 text-muted-foreground">vs</span>
+                        <span className="font-medium min-w-0 break-words text-right">{[m.player_b_member_id, m.partner_b_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ")}</span>
+                      </div>
+                      {m.winner_member_id && <div className="text-muted-foreground mt-1">Winner: {playoffName(m.winner_member_id)}</div>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -3004,7 +3047,7 @@ export default function ClubChampsView() {
       ? (decidedFinal.winner_member_id === decidedFinal.player_a_member_id ? getMatchTeamA(decidedFinal) : getMatchTeamB(decidedFinal))
       : null;
 
-    const winnersCard = !koRunning && leagueWinners.length > 0 ? (
+    const winnersCard = !isStructured && !koRunning && leagueWinners.length > 0 ? (
       <CollapsibleCard key="winners" defaultOpen={false} className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5"
         title={
           <span className="flex items-center gap-2">
@@ -3118,7 +3161,7 @@ export default function ClubChampsView() {
       overallRows.slice().reverse().find((s: any) => (s.played || 0) > 0) ||
       overallRows[overallRows.length - 1] ||
       null;
-    const woodenSpoonsCard = !koRunning && leagueLosers.length > 0 ? (
+    const woodenSpoonsCard = !isStructured && !koRunning && leagueLosers.length > 0 ? (
       <CollapsibleCard key="wooden-spoons" defaultOpen={false} className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10"
         title={
           <span className="flex items-center gap-2">
@@ -3319,7 +3362,7 @@ export default function ClubChampsView() {
         if (summaryFirst) {
           // Summary tables first, fixtures for each league below them.
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={false} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3338,7 +3381,7 @@ export default function ClubChampsView() {
           }
         } else {
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={false} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3362,7 +3405,7 @@ export default function ClubChampsView() {
 
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
-          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={false}
+          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={isStructured}
             title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
           >
             {swissControlsFor(gn)}
@@ -3463,7 +3506,7 @@ export default function ClubChampsView() {
           </CardContent></Card>
         )}
         {summary}
-        <TournamentNextActionBar
+        {!isStructured && <TournamentNextActionBar
           champId={champId!}
           canManage={canManage}
           status={(champ as any)?.status}
@@ -3484,8 +3527,17 @@ export default function ClubChampsView() {
           onFocusFixtures={() =>
             document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
-        />
-        <TournamentProgressCard
+        />}
+        {isStructured && arch?.builder_spec ? (
+          <CollapsibleCard defaultOpen={false} title="Tournament progress — what's next" contentClassName="space-y-2">
+            {arch.builder_spec.divisions.map((d: any) => (
+              <div key={d.divisionId} className="border border-border bg-muted/30 px-3 py-2 text-xs space-y-1">
+                <span className="font-medium">{d.label}</span>
+                <p>{structuredProgressHeadline(d, (matches as any[]).filter((m: any) => m.group_number === divisionGroup(arch.builder_spec, d)))}</p>
+              </div>
+            ))}
+          </CollapsibleCard>
+        ) : <TournamentProgressCard
 
 
           champId={champId!}
@@ -3494,8 +3546,8 @@ export default function ClubChampsView() {
           championScope={(champ as any)?.champion_scope || undefined}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
-        />
-        {!diamondEvent && survivorsCard}
+        />}
+        {!diamondEvent && !isStructured && survivorsCard}
         {diamondEvent ? <DiamondStandings tournamentId={champId!} canManage={canManage} /> : winnersCard}
 
         {!diamondEvent && woodenSpoonsCard}
@@ -3512,7 +3564,7 @@ export default function ClubChampsView() {
           />
         )}
 
-        <KnockoutCard
+        {!isStructured && <KnockoutCard
           champId={champId!}
           matches={matches as any[]}
           canManage={canManage}
@@ -3530,7 +3582,7 @@ export default function ClubChampsView() {
               parseMilestonesForDates((champ as any)?.milestone_play_by),
             )
           }
-        />
+        />}
         {playoffCard}
       </>
     );

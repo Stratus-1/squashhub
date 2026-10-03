@@ -29,6 +29,8 @@ import { outstandingDrawsHeadline, readyNextRoundScopes } from "@/lib/tournament
 import { finalsRoundNumber } from "@/lib/tournaments/league-finals-draw";
 import { useRoundDefinitions } from "@/hooks/use-round-definitions";
 import { resolvePlayBy } from "@/lib/tournaments/round-definitions";
+import { structuredProgressHeadline } from "@/lib/tournaments/historical-pool-progress";
+import { divisionGroup } from "@/lib/tournaments/engine-service";
 
 
 
@@ -76,6 +78,16 @@ export function TournamentProgressCard({
         .eq("champ_id", champId);
       if (error) throw error;
       return (data || []) as any[];
+    },
+    enabled: !!champId,
+    staleTime: 15_000,
+  });
+  const { data: structuredSpec } = useQuery({
+    queryKey: ["tournament-progress-structured-spec", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("tournaments").select("builder_architecture,builder_spec").eq("id", champId).maybeSingle();
+      if (error) throw error;
+      return data?.builder_architecture === "structured" ? data.builder_spec as any : null;
     },
     enabled: !!champId,
     staleTime: 15_000,
@@ -133,9 +145,27 @@ export function TournamentProgressCard({
       .filter(Boolean) as NonNullable<ReturnType<typeof groupStageControl>>[];
   }, [shown.length, matches, onlyGroup]);
 
-  if (shown.length === 0 && poolOnly.length === 0) return null;
+  if (!structuredSpec && shown.length === 0 && poolOnly.length === 0) return null;
 
   const label = (gn: number) => groupLabel?.(gn) || `Division ${gn}`;
+
+  // Structured tournaments use their configured stage chain, never the legacy
+  // knockout round plan (whose default labels are Round 1 / Round 2).
+  if (structuredSpec) {
+    const divisions = (structuredSpec.divisions ?? []).filter((d: any) => onlyGroup === undefined || divisionGroup(structuredSpec, d) === Number(onlyGroup));
+    const body = divisions.map((d: any) => (
+      <div key={d.divisionId} className="rounded-sm border bg-muted/30 px-3 py-2 text-xs space-y-1">
+        {onlyGroup === undefined && <Badge variant="outline" className="text-[10px]">{d.label}</Badge>}
+        <p>{structuredProgressHeadline(d, (matches as any[]).filter((m) => m.group_number === divisionGroup(structuredSpec, d)))}</p>
+      </div>
+    ));
+    if (!body.length) return null;
+    return compact ? <div className={cn("space-y-2", className)}>{body}</div> : (
+      <CollapsibleCard className={cn("border-primary/40", className)} defaultOpen={false} title={<span className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Tournament progress — what's next</span>}>
+        <div className="space-y-2">{body}</div>
+      </CollapsibleCard>
+    );
+  }
 
   const stateFor = (s: SectionControl): SectionProgression | null =>
     states.find((x) => x.groupNumber === s.groupNumber && x.section === s.section) ?? null;

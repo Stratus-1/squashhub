@@ -259,6 +259,10 @@ interface ClubChampsTabProps {
   launchDiamond?: boolean;
   /** Called when a launched Diamond League setup is closed. */
   onLaunchExit?: () => void;
+  /** Hide "Plan New Tournament" — creation lives in the consolidated Tournaments start section. */
+  hideCreateButton?: boolean;
+  /** Manage for Step-by-Step (beta_lifecycle) tournaments: opens the Step-by-Step management, never the legacy wizard. */
+  onManageBeta?: (tournamentId: string) => void;
 }
 
 /**
@@ -845,7 +849,7 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
   return error?.message || fallback;
 }
 
-export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds, launchDiamond = false, onLaunchExit }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds, launchDiamond = false, onLaunchExit, hideCreateButton = false, onManageBeta }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Pull the latest club-ladder positions (and entrant list) on demand — the
@@ -1050,7 +1054,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_doubles_serving_methods, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes, draft_player_ids")
+        .select("id, beta_lifecycle, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_doubles_serving_methods, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes, draft_player_ids")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -8747,9 +8751,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <h2 className="text-lg font-semibold">Club Tournaments</h2>
           <div className="flex flex-col gap-1 sm:items-end">
+            {!hideCreateButton && (
             <Button className="w-full sm:w-auto" onClick={() => { resetWizard(); setShowWizard(true); }}>
               <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
             </Button>
+            )}
             <p className="text-xs text-muted-foreground sm:max-w-xs sm:text-right">
               Tip: to save time, use the <strong>Template</strong> button on any tournament below to duplicate its full setup with new dates.
             </p>
@@ -8801,8 +8807,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setBulkImportChamp(c)} title="Bulk import entrants & email magic-links">
                         <Plus className="w-4 h-4 mr-1" /> <span className="truncate">Import entrants</span>
                       </Button>
-                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => loadChampForEdit(c)}>
-                        <Pencil className="w-4 h-4 mr-1" /> Edit
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" data-testid={`manage-${c.id}`} onClick={() => {
+                        // Step-by-Step tournaments reopen their own management; Diamond and legacy events keep the existing setup.
+                        if (onManageBeta && tournamentExtras?.[c.id]?.beta_lifecycle) onManageBeta(c.id);
+                        else loadChampForEdit(c);
+                      }}>
+                        <Pencil className="w-4 h-4 mr-1" /> Manage
                       </Button>
                       <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
                         <ShieldCheck className="w-4 h-4 mr-1" /> Governance

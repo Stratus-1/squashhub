@@ -841,7 +841,7 @@ export default function Tournaments() {
       const dates = (groups.get(key) || [])
         .map((m: any) => {
           const s = matchSchedule(m);
-          return m.date || s.date || s.playBy || null;
+          return m.date || (s.mode === "scheduled" ? s.date : null) || s.playBy || null;
         })
         .filter(Boolean)
         .sort() as string[];

@@ -2491,3 +2491,9 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Cause: the shared invitation details and preview used the singles match type and an unset scoring mode for a new Diamond team event, producing a misleading singles name and standard scoring description.
 - Fix: the Diamond setup identity now drives its editable invitation opening, separate competition/category lines, time-capped team-tie scoring, and placing-round points rule. The default tournament name, in-app heading, test heading, and email preview no longer fall back to Singles. The same invitation body is used by preview and outbound in-app/email/WhatsApp; ordinary singles/doubles wording stays unchanged. Existing events, saved copy, fixtures, scores and standings were not modified.
 - Verified the unsaved Riverside Diamond preview across in-app, email, WhatsApp and SMS, plus five focused invitation tests; no message sent or event saved. Not published.
+
+## 2026-10-03 — New self-signup members not charged membership (Nelspruit)
+- Cause: the sign-up trigger creates the club_members row before MemberOnboardingWizard runs, so the wizard treated the member as pre-existing and skipped the pro-rata + registration fees.
+- Fix: wizard treats a signup-created row (pending approval, or joined within 10 min of auth account creation) with no club/registration/opening fee as new.
+- Data: Francois Steyn fees raised (R875 pro-rata + R350 registration) and settled from his R2,100 top-ups (R875 credit left); Francois Vosloo's paid-by-card fees marked paid. Ledger settled via balanced "Wallet credit applied" debtors entries (no extra bank posting).
+- Open: marking a fee paid from wallet credit posts Dr bank/Cr debtors a second time (journal_fee_payment_received) — inflates bank and member credit on wallet settlements club-wide; not yet fixed.

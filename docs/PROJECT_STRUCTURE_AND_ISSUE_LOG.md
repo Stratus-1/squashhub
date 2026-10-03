@@ -1,3 +1,7 @@
+### 2026-10-03 — Player-booked knockout court slots mistaken for fixed organiser sessions
+- Cause: a saved date and time alone classified a fixture as centrally scheduled, hiding participant Reschedule and its round deadline even when the players made the booking.
+- Fix: structured fixed-stage rules remain authoritative; legacy organiser slots require club scheduling mode and no linked player booking. Player-booked slots continue to resolve the fixture's own round/play-off deadline and retain participant rescheduling. No existing bookings or match data changed; focused schedule and permission tests cover both paths.
+
 ### 2026-10-03 — Beta Continue managing orphaned cards
 - Cause: Continue managing rendered device-local handover records without checking whether their real tournaments still existed. The normal tournament delete path did not clear this device-local cache.
 - Fix: verify saved IDs against club-scoped tournament rows before showing cards; confirmed missing rows prune only their local handover and setup plan. A failed lookup leaves stored data intact and offers retry. Separate confirmed Remove actions delete an unfinished local draft or a local management card/plan; neither action deletes a real tournament, its fixtures, results or history. Cards refresh immediately after removal. Covered by landing tests; no live data changed.

@@ -41,7 +41,7 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage, playByNudge } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones as parseMilestonesForDates } from "@/lib/tournaments/round-definitions";
-import { assignFixedSlots, isPlayoffGame, playoffDeadline, playoffKeyForLabel, playoffModeFor, stageSchedulingFromChamp, type PlayoffKey } from "@/lib/tournaments/round-plan";
+import { assignFixedSlots, isPlayoffGame, playoffDeadline, playoffKeyForLabel, playoffModeFor, stageModeForGame, stageSchedulingFromChamp, type PlayoffKey } from "@/lib/tournaments/round-plan";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
@@ -136,7 +136,11 @@ export default function ClubChampsView() {
   const isStructured = arch?.builder_architecture === "structured";
   const stageSched = useMemo(() => stageScheduleIndex(arch?.builder_spec), [arch?.builder_spec]);
   const centrallyScheduled = (m: any) =>
-    resolveFixtureSchedule(m, { stage: (m?.stage_key && stageSched.get(m.stage_key)) || null }).mode === "scheduled";
+    resolveFixtureSchedule(m, {
+      stage: (m?.stage_key && stageSched.get(m.stage_key)) || null,
+      organiserScheduled: !m?.stage_key && !m?.booking_id && !!m?.scheduled_date && !!m?.scheduled_time &&
+        stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "club",
+    }).mode === "scheduled";
   // Beta "between subcategories" matchups: several entry groups share one set of games.
   const matchups = useMemo(() => (isStructured ? structuredMatchups(arch?.builder_spec) : []), [isStructured, arch?.builder_spec]);
 
@@ -2673,9 +2677,8 @@ export default function ClubChampsView() {
     if (m?.stage_key && stageSched.get(m.stage_key)) {
       return resolveFixtureSchedule(m, { stage: stageSched.get(m.stage_key), rows: champRounds as any[] }).playBy;
     }
-    // A fixed session (date + time) is not a play-by fixture; and a structured play-off
-    // owns its schedule — never inherit the pool rounds' deadlines.
-    if (m?.scheduled_date && m?.scheduled_time) return null;
+    // A player-booked slot is not a fixed session: retain its round deadline.
+    if (centrallyScheduled(m)) return null;
     if (isPlayoffGame(m)) {
       if (!m?.stage_key) return playoffDeadline(parseMilestonesForDates((champ as any)?.milestone_play_by) as any, m.stage_label, m.stage);
       const r = (champRounds as any[]).find((x) => x.id === m.round_id);

@@ -33,12 +33,12 @@ export function fixtureScheduleState(m: FixtureLike): FixtureScheduleState {
 }
 
 /**
- * A play-off game the organiser has already placed on a date, time (and court):
- * players just turn up — no booking needed, no "Book by" deadline. Player-arranged
- * stages always carry their own play-by deadline, so they never match this.
+ * Only an explicitly club-scheduled fixture without a player booking can be
+ * inferred here. Structured fixed stages are passed by the caller via opts.
  */
 export function isCentrallyScheduled(m: FixtureLike): boolean {
-  return m.stage === "ko" && !m.play_by && !!m.scheduled_date && !!m.scheduled_time;
+  return (m as FixtureLike & { scheduling_mode?: string | null }).scheduling_mode === "club" &&
+    !m.booking_id && !m.play_by && !!m.scheduled_date && !!m.scheduled_time;
 }
 
 export interface FixtureSchedulePermission {

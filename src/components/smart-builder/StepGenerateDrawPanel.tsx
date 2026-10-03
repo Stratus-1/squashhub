@@ -319,7 +319,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 {picked.map(([a, b]) => (
                   <div key={`${a}|${b}`} className="flex flex-wrap items-center gap-2">
                     <span>{unitName(a)}</span><span className="text-muted-foreground">vs</span><span>{unitName(b)}</span>
-                    <button type="button" className="text-destructive underline" onClick={() => setPlayerMatches(i, (f.crossPlayerMatches ?? []).filter(([x, y]) => !((x === a && y === b) || (x === b && y === a))))}>Remove</button>
+                    <button type="button" className="text-destructive underline" onClick={() => { setConfirmed(false); setDivs((ds) => ds.map((x) => ({ ...x, format: { ...x.format, crossPlayerMatches: (x.format.crossPlayerMatches ?? []).filter(([p, q]) => !((p === a && q === b) || (p === b && q === a))) } }))); }}>Remove</button>
                   </div>
                 ))}
                 <div className="flex flex-wrap items-center gap-1">

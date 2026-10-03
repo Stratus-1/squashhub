@@ -23,7 +23,7 @@ import {
 } from "@/lib/tournaments/paced-knockout";
 
 const INACTIVE_REG = new Set(["declined", "withdrawn", "cancelled", "removed"]);
-const COPY_KEYS = ["stage", "stage_key", "section_number"] as const;
+const COPY_KEYS = ["stage", "stage_key", "section_number", "division_id", "stage_id"] as const;
 
 type Div = { group: number; label: string; pools: string[][] | null; poolTarget: number | null };
 type PoolCtx = { index: number; members: Set<string>; target: number };
@@ -156,8 +156,24 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       if (real.some((m) => Number(m.round_number) >= nextRound)) throw new Error("This round already has fixtures — refresh to see them.");
       const template: any = rows[0] ?? {};
       const partner = (id: string) => field.active.find((e) => e.id === id)?.partnerId ?? null;
+      // Structured games must carry division/stage/round identity: reuse or create this stage's round row.
+      let roundId: string | null = null;
+      if (template.stage_id) {
+        const { data: ex, error: re } = await fromExt("club_champs_rounds").select("id").eq("champ_id", tournamentId).eq("stage_id", template.stage_id).eq("round_number", nextRound).maybeSingle();
+        if (re) throw re;
+        roundId = (ex as any)?.id ?? null;
+        if (!roundId) {
+          const { data: cr, error: ce } = await fromExt("club_champs_rounds").insert({
+            champ_id: tournamentId, group_number: div.group, section_number: 1, round_number: nextRound, label: nextLabel,
+            round_type: ks.kind !== "playoff" ? "knockout" : /semi/i.test(nextLabel) ? "semi_final" : /^final/i.test(nextLabel) ? "final" : "knockout", play_by: playBy, status: "active", scheduling_mode: "self",
+            division_id: template.division_id ?? null, stage_id: template.stage_id, stage_key: template.stage_key ?? null,
+          } as any).select("id").single();
+          if (ce) throw ce;
+          roundId = (cr as any).id;
+        }
+      }
       const insert = pairs.map(([a, b], i) => ({
-        champ_id: tournamentId, group_number: div.group, section_number: 1, stage: "ko",
+        champ_id: tournamentId, group_number: div.group, stage: "ko", round_id: roundId,
         ...Object.fromEntries(COPY_KEYS.filter((k) => template[k] != null).map((k) => [k, template[k]])),
         round_number: nextRound, bracket_position: i + 1, stage_label: nextLabel, pool_number: poolNo,
         player_a_member_id: a, partner_a_member_id: partner(a), player_b_member_id: b, partner_b_member_id: partner(b),

@@ -26,7 +26,13 @@ export function KnockoutNextActions({ champId }: { champId: string }) {
   if (!data || data.d.divs.length === 0) return null;
   const rows = koDivisionActions(data.d, data.plan, new Date().toISOString().slice(0, 10));
   const pending = rows.filter((r) => r.action.kind === "approve");
-  const open = (group: number) => navigate(`/club-admin?tab=champs&manage=${champId}&ko=${group}`);
+  // Keep the current club context (e.g. ?club=riverside) so Manage opens in the tournament's own club.
+  const open = (group: number) => {
+    const q = new URLSearchParams({ tab: "champs", manage: champId, ko: String(group) });
+    const club = new URLSearchParams(window.location.search).get("club");
+    if (club) q.set("club", club);
+    navigate(`/club-admin?${q.toString()}`);
+  };
   return (
     <div className="rounded-lg border border-primary/40 p-3 space-y-2 text-sm" data-testid="ko-next-actions">
       <div className="flex flex-wrap items-center gap-2">

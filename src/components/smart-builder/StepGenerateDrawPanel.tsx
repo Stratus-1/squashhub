@@ -242,7 +242,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const crossPairs = useMemo(() => {
     const { meetings } = crossSets(divs);
     const lab = (g: number) => divs.find((d) => d.group === g)?.label ?? `Group ${g}`;
-    return [...meetings.values()].flat().map(([x, y]) => `${lab(x)} v ${lab(y)}`);
+    const size = (g: number) => divs.find((d) => d.group === g)?.units.length ?? 0;
+    return [...meetings.values()].flat().map(([x, y]) => `${lab(x)} ↔ ${lab(y)}: ${size(x) * size(y)} matches`);
   }, [divs]);
   const nm = (id: string | null) => (id ? names.get(id) ?? "Unknown" : "");
   const unitName = (id: string) => id.split("+").map(nm).join(" & ");

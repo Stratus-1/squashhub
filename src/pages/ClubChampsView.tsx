@@ -78,7 +78,7 @@ import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
-import { historicalPoolStatuses, playoffDisplayStages, structuredProgressHeadline, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
+import { historicalPoolStatuses, playoffDisplayStages, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
@@ -1083,17 +1083,20 @@ export default function ClubChampsView() {
               <section key={stage.id} className="space-y-2" aria-label={`${stage.name} draw`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="text-sm font-semibold text-foreground">{stage.name}</h4>
-                  {stage.projected && <Badge variant="outline" className="text-[10px]">Pairings from results · not generated</Badge>}
+                  {stage.projected && <Badge variant="outline" className="text-[10px]">Fixed bracket path · not generated</Badge>}
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {stage.matches.map((m) => (
                     <div key={m.displayId} className="border border-border rounded-sm p-2 text-xs min-w-0">
                       <div className="flex items-start gap-2 justify-between">
-                        <span className="font-medium min-w-0 break-words">{[m.player_a_member_id, m.partner_a_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ")}</span>
+                        <span className="font-medium min-w-0 break-words">{m.player_a_member_id ? [m.player_a_member_id, m.partner_a_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ") : <span className="italic text-muted-foreground">{m.feederA ?? "TBD"}</span>}</span>
                         <span className="shrink-0 text-muted-foreground">vs</span>
-                        <span className="font-medium min-w-0 break-words text-right">{[m.player_b_member_id, m.partner_b_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ")}</span>
+                        <span className="font-medium min-w-0 break-words text-right">{m.player_b_member_id ? [m.player_b_member_id, m.partner_b_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ") : <span className="italic text-muted-foreground">{m.feederB ?? "TBD"}</span>}</span>
                       </div>
-                      {m.winner_member_id && <div className="text-muted-foreground mt-1">Winner: {playoffName(m.winner_member_id)}</div>}
+                      <div className="flex items-center justify-between gap-2 mt-1 text-muted-foreground">
+                        <span>{stageShort(stage.name)}{m.bracket_position ?? ""}{m.winner_member_id ? ` · Winner: ${playoffName(m.winner_member_id)}` : ""}</span>
+                        {m.feedsInto && <span className="shrink-0">Winner → {m.feedsInto}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>

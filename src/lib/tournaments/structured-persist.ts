@@ -300,6 +300,8 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       pool_id: poolIdx == null ? null : ids.pool[`${sk}/${poolIdx}`] ?? (() => { throw new IntegrityError("no_pool", "Pool not persisted."); })(),
       round_id: roundIds[`${f.divisionId}/${f.stageId}/${f.roundId}`],
       ...(f.courtId != null ? { court_id: f.courtId } : {}),
+      ...(f.placeholderA ? { placeholder_a: f.placeholderA } : {}),
+      ...(f.placeholderB ? { placeholder_b: f.placeholderB } : {}),
       ...(date ? { scheduled_date: date } : {}),
       ...(playBy(f) ? { play_by: playBy(f) } : {}),
     };

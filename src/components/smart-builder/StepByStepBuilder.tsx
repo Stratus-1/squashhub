@@ -853,8 +853,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="space-y-2">
                 {a.categories.map((c, i) => (
                   <div key={i} className="flex flex-wrap gap-2">
-                    <Input aria-label={`Category ${i + 1}`} value={c} placeholder={`Category ${i + 1}`} onChange={(e) => setA({ ...a, categories: a.categories.map((x, j) => (j === i ? e.target.value : x)) })} />
-                    <select aria-label={`Category ${i + 1} type`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={a.categoryTypes?.[c] ?? ""} onChange={(e) => setA({ ...a, categoryTypes: { ...a.categoryTypes, [c]: e.target.value as CompetitionCategory } })}><option value="">Category type required</option>{COMPETITION_CATEGORIES.map((type) => <option key={type} value={type}>{CATEGORY_LABELS[type]}</option>)}</select>
+                    <Input aria-label={`Category ${i + 1}`} value={c} placeholder={`Category ${i + 1}`} onChange={(e) => {
+                      const oldKey = c.trim(), newKey = e.target.value.trim();
+                      const types = { ...(a.categoryTypes ?? {}) };
+                      const t = types[oldKey] ?? types[c];
+                      if (t && newKey && !types[newKey]) types[newKey] = t;
+                      setA({ ...a, categories: a.categories.map((x, j) => (j === i ? e.target.value : x)), categoryTypes: types });
+                    }} />
+                    <select aria-label={`Category ${i + 1} type`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={a.categoryTypes?.[c.trim()] ?? a.categoryTypes?.[c] ?? ""} onChange={(e) => setA({ ...a, categoryTypes: { ...a.categoryTypes, [c.trim()]: e.target.value as CompetitionCategory } })}><option value="">Category type required</option>{COMPETITION_CATEGORIES.map((type) => <option key={type} value={type}>{CATEGORY_LABELS[type]}</option>)}</select>
                     <Button variant="ghost" size="icon" aria-label="Remove category" disabled={a.categories.length === 1} onClick={() => setA({ ...a, categories: a.categories.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}

@@ -1061,7 +1061,7 @@ export default function Tournaments() {
       : null;
     const playBy = playByDeadline ? playByNudge(playByDeadline, todayISO()) : null;
     const playByText = playByDeadline
-      ? `${!isPlaceholder && canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin }).allowed ? "Book by" : "Play by"} ${format(new Date(`${playByDeadline.slice(0, 10)}T00:00:00`), "d MMM")}`
+      ? `${!isPlaceholder && canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin, centrallyScheduled: isMatchCentrallyScheduled(m) }).allowed ? "Book by" : "Play by"} ${format(new Date(`${playByDeadline.slice(0, 10)}T00:00:00`), "d MMM")}`
       : null;
 
 
@@ -1269,7 +1269,7 @@ export default function Tournaments() {
           // match and to club / tournament admins — same rule as the standings
           // page, so a player can arrange their own game from the games list.
           if (isPlaceholder) return null;
-          const perm = canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin });
+          const perm = canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin, centrallyScheduled: isMatchCentrallyScheduled(m) });
           if (!perm.allowed) return null;
           return (
             <Button

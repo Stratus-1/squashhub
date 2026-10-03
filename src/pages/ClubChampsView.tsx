@@ -85,6 +85,7 @@ import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
+import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
@@ -774,7 +775,7 @@ export default function ClubChampsView() {
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus>; koStatus?: boolean }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus>; koStatus?: boolean; plain?: boolean }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
     const poolLabels = opts?.poolLabels;
@@ -786,7 +787,8 @@ export default function ClubChampsView() {
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
-    const hasProgress = opts?.koStatus ? !!opts.statuses : opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
+    const anyPlayed = standings.some((s: any) => (s.played || 0) > 0);
+    const hasProgress = opts?.plain ? false : opts?.koStatus ? !!opts.statuses : opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
 
     return (
       <div className="overflow-x-auto">
@@ -832,7 +834,7 @@ export default function ClubChampsView() {
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={opts?.historical || opts?.koStatus ? undefined : rowStyle} className={cn(
+                <tr key={s.id} style={opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed) ? undefined : rowStyle} className={cn(
                   "border-b border-border/30",
                   hasProgress && (progress?.eliminated ? "bg-pool-eliminated" : "bg-pool-survivor"),
                   isMe && "font-semibold ring-2 ring-inset ring-primary/60"
@@ -1053,6 +1055,9 @@ export default function ClubChampsView() {
           if (!poolLabels.has(mid)) poolLabels.set(mid, poolLabel(p));
         });
     });
+    // Between-group round robins (e.g. League A v League B) are tables, not knockouts:
+    // no active/eliminated colouring; rank tint only once results exist.
+    if (matchupForGroup(matchups, gn)) return renderStandingsTable(getGroupStandings(gn), { poolLabels, plain: true });
     if (pc <= 1 || isCrossLeague) {
       const specDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
       const rows = getGroupStandings(gn);
@@ -1226,6 +1231,69 @@ export default function ClubChampsView() {
     });
     return tournamentSummary(categories, matches as SummaryFixture[]);
   })() : [];
+
+  // Configured championship outcome + awards (null = keep existing behaviour).
+  const awardsCfg = isStructured && !diamondEvent ? readStandingsAwards(arch?.beta_lifecycle) : null;
+  const toOutcomeRow = (g: number) => (r: any): OutcomeRow => ({
+    id: r.club_member_id, partnerId: r.partner_member_id, name: r.name, group: g,
+    played: Number(r.played) || 0, won: Number(r.won) || 0, lost: Number(r.lost) || 0,
+    pointsFor: Number(r.pointsFor) || 0, pointsAgainst: Number(r.pointsAgainst) || 0,
+    gamesWon: Number(r.gamesWon) || 0, gamesLost: Number(r.gamesLost) || 0,
+  });
+  const awardNames = (rows: OutcomeRow[]) => rows.map((r) => r.name).join(" & ");
+  const renderOutcomeSummary = () => {
+    if (!awardsCfg) return null;
+    const cfg = awardsCfg;
+    const awardLines = (rows: OutcomeRow[], complete: boolean) => {
+      const a = individualAwards(rows, complete);
+      return <>
+        {cfg.topScorer && <div className="text-xs"><span className="text-muted-foreground">Top points scorer: </span>{a.topScorer
+          ? <span className="font-semibold">{awardNames(a.topScorer.rows)} · {a.topScorer.rows[0].pointsFor} pts{a.topScorer.state === "current" ? " (current leader)" : ""}</span>
+          : <span className="text-muted-foreground">pending</span>}</div>}
+        {cfg.woodenSpoon && <div className="text-xs"><span className="text-muted-foreground">Wooden Spoon: </span>{a.woodenSpoon
+          ? <span className="font-semibold">{awardNames(a.woodenSpoon.rows)} · {a.woodenSpoon.rows[0].pointsFor} pts</span>
+          : <span className="text-muted-foreground">awarded when all games are complete</span>}</div>}
+      </>;
+    };
+    if (cfg.outcome === "team" && matchups.length) {
+      return <Card data-testid="tournament-summary" data-outcome="team">
+        <CardHeader className="py-3 px-4"><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4 text-primary" />Tournament Summary</CardTitle></CardHeader>
+        <CardContent className="px-4 pb-3 pt-0 space-y-3">
+          {matchups.map((mu) => {
+            const groups = mu.entryGroups.map((g, i) => ({ group: g, label: (mu.labels[i] || "").trim() || getGroupLabel(champ, g) }));
+            const rows = groups.flatMap((g) => getGroupStandings(g.group).map(toOutcomeRow(g.group)));
+            const scoped = (matches as any[]).filter((m: any) => m.group_number === mu.groupNumber && (m.stage || "group") === "group");
+            const complete = fixturesComplete(scoped);
+            const done = scoped.filter((m: any) => m.status === "completed").length;
+            const t = teamOutcome(groups, rows, complete);
+            return <div key={mu.groupNumber} className="space-y-1.5 border-b last:border-b-0 pb-2">
+              <div className="flex flex-wrap items-baseline gap-2 text-sm">
+                {t.teams.map((tm, i) => <Fragment key={tm.group}>
+                  {i > 0 && <span className="text-muted-foreground">vs</span>}
+                  <span className={cn("font-semibold", t.leader?.group === tm.group && "text-primary")}>{tm.label} <span className="tabular-nums">{tm.points}</span></span>
+                </Fragment>)}
+                <span className="text-xs text-muted-foreground">· {done}/{scoped.length} games played</span>
+              </div>
+              {cfg.champion && <div className="text-xs"><span className="text-muted-foreground">Team Winner: </span>{t.state === "pending"
+                ? <span className="text-muted-foreground">pending</span>
+                : t.tied ? <span>{t.state === "final" ? "Tied" : "Level"}</span>
+                : <span className="inline-flex items-center gap-1 font-semibold text-primary">{t.state === "final" && <Trophy className="h-3.5 w-3.5" />}{t.leader!.label}{t.state === "current" ? " (current leader)" : ""}</span>}</div>}
+              {awardLines(rows, complete)}
+            </div>;
+          })}
+          <p className="text-[11px] text-muted-foreground">Team result = each group's total points scored in these games. Player tables below show each contribution.</p>
+        </CardContent>
+      </Card>;
+    }
+    if (!cfg.topScorer && !cfg.woodenSpoon) return null;
+    const gns: number[] = [...new Set((entries as any[]).map((e: any) => Number(e.group_number)).filter((n) => Number.isFinite(n)))];
+    const rows = gns.flatMap((g) => getGroupStandings(g).map(toOutcomeRow(g)));
+    const complete = fixturesComplete((matches as any[]));
+    return <Card data-testid="tournament-awards"><CardContent className="px-4 py-3 space-y-1">
+      <div className="text-xs text-muted-foreground">{OUTCOME_LABEL[cfg.outcome]} · Awards</div>
+      {awardLines(rows, complete)}
+    </CardContent></Card>;
+  };
 
   const summaryMatch = (m: SummaryFixture) => {
     const row = m as any;
@@ -3621,7 +3689,8 @@ export default function ClubChampsView() {
           </CardContent></Card>
         )}
         {summary}
-        {structuredSummary.length > 0 && <Card data-testid="tournament-summary">
+        {renderOutcomeSummary()}
+        {structuredSummary.length > 0 && awardsCfg?.outcome !== "team" && <Card data-testid="tournament-summary">
           <CardHeader className="py-3 px-4"><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4 text-primary" />Tournament Summary</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <div className="hidden md:grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)] gap-3 border-b pb-1 text-xs text-muted-foreground font-medium">
@@ -3631,7 +3700,7 @@ export default function ClubChampsView() {
               <div className="min-w-0"><span className="font-semibold text-sm break-words">{r.category.label}</span><p className="text-xs text-muted-foreground">{r.status}</p></div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Semifinals</span>{r.semifinals.length ? r.semifinals.map(summaryMatch) : <span className="text-xs text-muted-foreground">{r.quarterfinals.length ? "Quarterfinals in progress" : r.category.firstStage === "final" ? "Not configured" : r.category.fieldReady ? "Field ready" : "Awaiting qualification"}</span>}</div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Final</span>{r.finals.length ? r.finals.map(summaryMatch) : <span className="text-xs text-muted-foreground">Awaiting finalists</span>}</div>
-              <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Winner</span>{r.champion ? <span className="inline-flex items-start gap-1 text-xs font-bold text-primary break-words"><Trophy className="h-3.5 w-3.5 shrink-0" />{playoffResult(r.champion).winnerSide === "a" ? getMatchTeamA(r.champion) : getMatchTeamB(r.champion)}</span> : <span className="text-xs text-muted-foreground">—</span>}</div>
+              <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Winner</span>{r.champion ? <span className="inline-flex items-start gap-1 text-xs font-bold text-primary break-words"><Trophy className="h-3.5 w-3.5 shrink-0" />{playoffResult(r.champion).winnerSide === "a" ? getMatchTeamA(r.champion) : getMatchTeamB(r.champion)}</span> : <span className="text-xs text-muted-foreground">{awardsCfg?.outcome === "none" ? "No overall winner" : "—"}</span>}</div>
             </div>)}
           </CardContent>
         </Card>}

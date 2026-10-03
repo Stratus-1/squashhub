@@ -78,7 +78,7 @@ import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
-import { historicalPoolStatuses, playoffDisplayStages, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
+import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
@@ -1091,19 +1091,29 @@ export default function ClubChampsView() {
                   {stage.projected && <Badge variant="outline" className="text-[10px]">Fixed bracket path · not generated</Badge>}
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {stage.matches.map((m) => (
-                    <div key={m.displayId} className="border border-border rounded-sm p-2 text-xs min-w-0">
-                      <div className="flex items-start gap-2 justify-between">
-                        <span className="font-medium min-w-0 break-words">{m.player_a_member_id ? [m.player_a_member_id, m.partner_a_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ") : <span className="italic text-muted-foreground">{m.feederA ?? "TBD"}</span>}</span>
-                        <span className="shrink-0 text-muted-foreground">vs</span>
-                        <span className="font-medium min-w-0 break-words text-right">{m.player_b_member_id ? [m.player_b_member_id, m.partner_b_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ") : <span className="italic text-muted-foreground">{m.feederB ?? "TBD"}</span>}</span>
+                  {stage.matches.map((m) => {
+                    const result = playoffResult(m);
+                    return (
+                      <div key={m.displayId} className="border border-border rounded-sm p-2 text-xs min-w-0 space-y-1" data-testid={`playoff-${stageShort(stage.name)}-${m.bracket_position}`}>
+                        <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                          <span className="font-medium">{stageShort(stage.name)}{m.bracket_position ?? ""}</span>
+                          <span>{result.winnerSide ? "Completed" : "Pending"}</span>
+                        </div>
+                        {(["a", "b"] as const).map((side) => {
+                          const id = side === "a" ? m.player_a_member_id : m.player_b_member_id;
+                          const partner = side === "a" ? m.partner_a_member_id : m.partner_b_member_id;
+                          const feeder = side === "a" ? m.feederA : m.feederB;
+                          const won = result.winnerSide === side;
+                          return <div key={side} className={cn("flex items-center justify-between gap-2 min-w-0 px-2 py-1 rounded-sm", won && "bg-pool-survivor font-semibold", result.winnerSide && !won && "text-muted-foreground")}>
+                            <span className="min-w-0 break-words">{id ? [id, partner].filter(Boolean).map((pid) => playoffName(String(pid))).join(" & ") : <span className="italic">{feeder ?? "TBD"}</span>}</span>
+                            {won && <span className="shrink-0">Winner</span>}
+                          </div>;
+                        })}
+                        {result.score && <div className="text-muted-foreground tabular-nums break-words" aria-label={`Result ${result.score}`}>Score · {result.score}</div>}
+                        {m.feedsInto && <div className="text-muted-foreground">Winner → {m.feedsInto}</div>}
                       </div>
-                      <div className="flex items-center justify-between gap-2 mt-1 text-muted-foreground">
-                        <span>{stageShort(stage.name)}{m.bracket_position ?? ""}{m.winner_member_id ? ` · Winner: ${playoffName(m.winner_member_id)}` : ""}</span>
-                        {m.feedsInto && <span className="shrink-0">Winner → {m.feedsInto}</span>}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             ))}

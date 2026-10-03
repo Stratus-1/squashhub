@@ -9,6 +9,8 @@ export interface PlayoffMatchLike {
   bracket_position?: number | null;
   status?: string | null;
   winner_member_id?: string | null;
+  game_scores?: string | null;
+  score?: string | null;
   player_a_member_id?: string | null;
   partner_a_member_id?: string | null;
   player_b_member_id?: string | null;
@@ -84,6 +86,26 @@ const winnerUnit = (m: PlayoffMatchLike): string[] => {
   if (!winner) return [];
   return idsOn(m, "a").includes(winner) ? idsOn(m, "a") : idsOn(m, "b");
 };
+
+/** Read-only summary of the saved result, never inferred from pool standings. */
+export function playoffResult(m: PlayoffMatchLike): { winnerSide: "a" | "b" | null; score: string | null } {
+  const winnerSide = decided(m)
+    ? idsOn(m, "a").includes(String(m.winner_member_id)) ? "a" : idsOn(m, "b").includes(String(m.winner_member_id)) ? "b" : null
+    : null;
+  let score: string | null = null;
+  if (m.game_scores) {
+    try {
+      const parsed = JSON.parse(m.game_scores);
+      if (Array.isArray(parsed?.sets)) {
+        const sets = parsed.sets.filter((s: unknown): s is { a: number; b: number } =>
+          typeof s === "object" && s !== null &&
+          typeof (s as { a?: unknown }).a === "number" && typeof (s as { b?: unknown }).b === "number");
+        if (sets.length) score = sets.map((s) => `${s.a}–${s.b}`).join(" · ");
+      }
+    } catch { /* Legacy score field below. */ }
+  }
+  return { winnerSide, score: score ?? m.score ?? null };
+}
 
 /** Status beside a frozen historical pool row. */
 export function historicalPoolStatuses(

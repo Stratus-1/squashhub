@@ -51,9 +51,13 @@ describe("lowest-group pool setup and saved-plan compatibility", () => {
     expect(drawPlanOf(changed).playoffPoolQualifiers).toEqual(changed.playoffPoolQualifiers);
     expect(poolQualificationOf(changed, "Men::B").perPool).toBe("2");
   });
-  it("blocks pool creation with a knockout main format rather than discarding the chosen pool rule", () => {
-    const d = { units: [{ member: "a", partner: null }, { member: "b", partner: null }], doubles: false, format: { kind: "knockout", schedule: { rule: "fixed", dates: ["2026-11-02"] } }, poolReview: reviewPools({ mode: "auto", target: "5" }, "Men", 2, "player") } as DrawDivision;
-    expect(divisionIssues(d)).toEqual(expect.arrayContaining([expect.stringMatching(/pools need a within-group round robin/)]));
+  it("allows pools with a knockout format (pools are a partition, not round robin)", () => {
+    const d = { units: [{ member: "a", partner: null }, { member: "b", partner: null }], doubles: false, format: { kind: "knockout", pools: 1, schedule: { rule: "fixed", dates: ["2026-11-02"] } }, poolReview: reviewPools({ mode: "auto", target: "5" }, "Men", 2, "player") } as DrawDivision;
+    expect(divisionIssues(d).join(" ")).not.toMatch(/round robin/);
+  });
+  it("still blocks Swiss inside pools", () => {
+    const d = { units: [{ member: "a", partner: null }, { member: "b", partner: null }], doubles: false, format: { kind: "swiss", pools: 1, swissRounds: 1, schedule: { rule: "fixed", dates: ["2026-11-02"] } }, poolReview: reviewPools({ mode: "auto", target: "5" }, "Men", 2, "player") } as DrawDivision;
+    expect(divisionIssues(d).join(" ")).toMatch(/Swiss/);
   });
   it("explicit No turns off provisional pools while missing rule preserves old format", () => {
     const f = { kind: "pools", pools: 3 } as DivFormat;

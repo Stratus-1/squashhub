@@ -2511,3 +2511,5 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-03 Knockout inside pools
 - "NSP Knock out": Create pools = Yes + Format = Knockout was blocked ("Pools need a within-group round robin"). Pools are now a partition; knockout eliminates within each pool to its qualifiers, then the play-off takes over. Round robin pools unchanged.
 - Follow-up: knockout "rounds needed" now = fewest elimination rounds to the next stage field per pool (10 players, 2×5, QF 8 → 2 eliminations, 1 round), not round-robin rounds; each play-by date is one knockout scheduling round; format shows "Knockout within pools/groups".
+
+- 2026-10-03 NSP Knock out: paced Round 1 games were saved as "Quarter-final"/"Semi-final" because structured-persist named knockout rounds by game count. Paced fixtures now carry `pacedRound` and save as "Round N"; pool rounds in Manage never take play-off names. No future rounds had been created; 8 unplayed rows relabelled only.

@@ -708,3 +708,26 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
   } catch (e: any) { errors.push(e.message); }
   return out;
 }
+
+/**
+ * The fixed-date (non-knockout) games Generate would create, as timed-scheduler input — from the same
+ * engine dry run as the preview. Used only to show scheduling feasibility before anything is saved.
+ */
+export function previewTimedGames(name: string, divs: DrawDivision[], poolMode: PoolAllocationMode = "snake") {
+  try {
+    const spec = withEntrants(finalDrawSpec(name, divs, "preview", poolMode), divs);
+    const fx = generateFromSpec(spec, "preview");
+    const groupOf = new Map<string, number>();
+    for (const d of divs) for (const u of d.units) { groupOf.set(u.member, d.group); if (u.partner) groupOf.set(u.partner, d.group); }
+    const out: Array<{ id: string; round: number; group: number; bracket: number; people: string[]; groups: number[] }> = [];
+    fx.forEach((f, k) => {
+      const sd = spec.divisions.find((x) => x.divisionId === f.divisionId);
+      const st: any = sd?.stages.find((s: any) => s.id === f.stageId);
+      if (!sd || !f.a || !f.b || st?.schedule?.rule !== "fixed" || st?.kind === "knockout") return;
+      const [a1, a2] = String(f.a).split("+"); const [b1, b2] = String(f.b).split("+");
+      const groups = [...new Set([groupOf.get(a1), groupOf.get(b1)].filter((g): g is number => g != null))];
+      out.push({ id: `p${k}`, round: f.round ?? 1, group: Number((sd as any).groupNumber) || 0, bracket: Number((f as any).slot) || 0, people: [a1, a2, b1, b2].filter(Boolean), groups });
+    });
+    return out;
+  } catch { return []; }
+}

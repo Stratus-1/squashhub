@@ -14,7 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
-import { proposedKnockoutRound1 } from "@/lib/smart-builder/step-draw";
+import { proposedKnockoutRound1, previewTimedGames } from "@/lib/smart-builder/step-draw";
+import { SchedulingPreferencesSection } from "./SchedulingPreferencesSection";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
@@ -61,6 +62,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [poolMode, setPoolMode] = useState<PoolAllocationMode>("snake");
   const [dragId, setDragId] = useState<string | null>(null);
   const [venueErr, setVenueErr] = useState<string | null>(null);
+  const [schedOk, setSchedOk] = useState(true);
 
   const load = async () => {
     setLoading(true);
@@ -176,6 +178,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     if (new Set(used).size !== used.length) return [`${d.label}: a player appears in two Round 1 matches.`];
     return [];
   }), [seeded, manual]);
+  const timedPreview = useMemo(() => meta && seeded.some((d) => d.format.schedule.rule === "fixed") ? previewTimedGames(meta.name, seeded, poolMode) : [], [meta, seeded, poolMode]);
   const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }, "preview", poolMode) : null, [meta, seeded, poolMode]);
   /** Knockout pace / pairing are real settings: saved on the tournament's plan (and this device's copy) so Generate and Manage use them. */
   const saveKnockoutChoice = async (labels: string[], patch: Record<string, string>) => {
@@ -468,7 +471,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
   const errors = [...(venueErr ? [venueErr] : []), ...pairErrors, ...round1Issues, ...(preview?.errors ?? [])];
   const hasDraw = existing.games > 0;
-  const canGenerate = !busy && confirmed && errors.length === 0 && (!hasDraw || (rebuildOk && existing.played === 0));
+  const canGenerate = !busy && schedOk && confirmed && errors.length === 0 && (!hasDraw || (rebuildOk && existing.played === 0));
 
   const generate = async () => {
     if (!meta) return;
@@ -719,6 +722,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       {hasDraw && existing.played === 0 && (
         <label className="flex items-start gap-2"><Checkbox checked={rebuildOk} onCheckedChange={(v) => setRebuildOk(!!v)} />
           <span>Replace the existing draw: all {existing.games} unplayed games are deleted and a new draw is made from the current entries. No results are lost (none exist). Players who already saw their games should be told.</span></label>
+      )}
+      {seeded.some((d) => d.format.schedule.rule === "fixed") && errors.length === 0 && (
+        <SchedulingPreferencesSection tournamentId={tournamentId} categories={seeded.map((d) => ({ group: d.group, label: d.label }))} previewGames={timedPreview} useSaved={hasDraw && !rebuildOk} onFeasible={setSchedOk} />
       )}
       {!(hasDraw && existing.played > 0) && (
         <>

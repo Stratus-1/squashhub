@@ -19,7 +19,7 @@ import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { labelForActive } from "@/lib/tournaments/active-draw";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import {
-  activeField, byRank, milestoneFor, pacePlan, proposePairings, roundsLeftFor,
+  activeField, byRank, isDecided, milestoneFor, pacePlan, proposePairings, roundsLeftFor,
   type FieldEntry, type KnockoutPace, type KnockoutPairing,
 } from "@/lib/tournaments/paced-knockout";
 
@@ -162,7 +162,7 @@ function DivisionRounds({ tournamentId, plan, div, data }: {
       {pp.warning && !winner && <p className="rounded bg-accent/40 px-2 py-1 text-xs">{pp.warning}</p>}
 
       {winner ? <p>Winner: <span className="font-medium">{nameOf(winner.id)}</span></p>
-        : field.roundOpen ? <p className="text-xs">Round {field.lastRound} is in play — {field.inPlay.length / 2 | 0 || 1} fixture(s) still to finish. The next round is proposed once its results are in.</p>
+        : field.roundOpen ? <p className="text-xs">Round {field.lastRound} is in play — {rows.filter((m) => Number(m.round_number) === field.lastRound && !m.is_bye && !isDecided(m)).length} fixture(s) still to finish. The next round is proposed once its results are in.</p>
         : pp.thisRound === 0 ? <p className="text-xs text-muted-foreground">No elimination needed this round — everyone stays active.</p>
         : <div className="space-y-2">
             <div className="text-xs font-medium">Proposed {nextLabel}{playBy ? ` · play by ${playBy}` : ""} — {pp.thisRound} match{pp.thisRound === 1 ? "" : "es"}</div>

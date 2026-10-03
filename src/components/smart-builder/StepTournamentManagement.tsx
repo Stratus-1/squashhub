@@ -11,6 +11,7 @@ import {
 import { StepInformPanel } from "./StepInformPanel";
 import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
 import { StepRunOverview } from "./StepRunOverview";
+import { StepKnockoutRoundsPanel } from "./StepKnockoutRoundsPanel";
 import { fromExt } from "@/lib/supabase-ext";
 import { isDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { Link } from "react-router-dom";
@@ -201,6 +202,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <StepGenerateDrawPanel clubId={clubId} tournamentId={tournamentId} revisiting={revisiting}
             onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
         )}
+        {!revisiting && diamond === false && <StepKnockoutRoundsPanel tournamentId={tournamentId} plan={life?.format_plan as any} />}
         {!revisiting && (
           <StepRunOverview clubId={clubId} tournamentId={tournamentId} plan={life?.format_plan as any}
             onLifecycle={(to) => {

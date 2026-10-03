@@ -1,3 +1,4 @@
+import { KnockoutNextActions } from "@/components/smart-builder/KnockoutNextActions";
 import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -2016,6 +2017,7 @@ export default function ClubChampsView() {
             <Button size="sm" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the Beta control page</Button>
           </div>
         )}
+        {canManage && isStructured && <KnockoutNextActions champId={champId!} />}
         {canManage && isStructured && arch?.builder_spec && (
           <StructuredEnginePanel
             collapsibleStageProgress

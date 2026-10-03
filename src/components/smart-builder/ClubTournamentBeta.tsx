@@ -42,7 +42,8 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
   const draft = readDraft(clubId);
   const [askDraft, setAskDraft] = useState(false);
   const [editAt, setEditAt] = useState<"Summary" | "Messaging" | null>(null);
-  const [managing, setManaging] = useState<string | null>(null);
+  // ?manage=<id> deep-links straight into Manage (e.g. Standings "Review & approve next round").
+  const [managing, setManaging] = useState<string | null>(() => searchParams.get("manage"));
   const [picker, setPicker] = useState<"mine" | "prebuilt" | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [handovers, setHandovers] = useState<Handover[]>([]);

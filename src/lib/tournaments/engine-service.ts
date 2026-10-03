@@ -67,6 +67,8 @@ export interface EngineFixture extends FixtureRow {
   poolId: string | null;
   /** Knockout inside pools: 1-based pool number (partition only; no pool table/round robin). */
   koPool?: number;
+  /** Paced knockout round: named "Round N", never a play-off name inferred from its game count. */
+  pacedRound?: boolean;
   slot?: number;
   /** Real court record ID; must be one of the tournament's selected courts (tournament_venues.court_ids). */
   courtId?: number | null;
@@ -203,7 +205,7 @@ function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seed
     let slot = 0;
     return st.poolMembers.flatMap((members, pi) => {
       const { pairs } = proposePairings(members.map((id) => ({ id, rank: rank.get(id)! })), st.paced!.perPool![pi] ?? 0, st.paced!.pairing);
-      return pairs.map(([a, b]) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, koPool: pi + 1, slot: ++slot, a: a.id, b: b.id }));
+      return pairs.map(([a, b]) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, koPool: pi + 1, pacedRound: true, slot: ++slot, a: a.id, b: b.id }));
     });
   }
   if (st.paced && st.paced.count > 0) {

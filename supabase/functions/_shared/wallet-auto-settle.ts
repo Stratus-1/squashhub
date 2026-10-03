@@ -89,7 +89,7 @@ export async function autoSettleFeesFromTopup(
       // `paid` is the settlement flag.
       await admin
         .from("club_member_fee_payments")
-        .update({ paid: true, paid_at: new Date().toISOString() })
+        .update({ paid: true, paid_at: new Date().toISOString(), settled_from_wallet: true })
         .eq("id", fee.id);
     } else {
       // Partially settled — reduce the outstanding amount.

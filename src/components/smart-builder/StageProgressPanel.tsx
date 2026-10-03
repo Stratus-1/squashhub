@@ -48,7 +48,11 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
   const qc = useQueryClient();
   const exec: Exec = (fn) => atomically(supabaseDb, champId, commitStructured, fn);
   const sig = matches.map((m) => `${m.id}:${m.winner_member_id ?? ""}:${m.status ?? ""}`).join("|");
-  const { data: states = [], refetch } = useQuery({ queryKey: ["stage-lifecycle", champId, sig], queryFn: () => stageLifecycle(supabaseDb, champId) });
+  const { data: allStates = [], refetch } = useQuery({ queryKey: ["stage-lifecycle", champId, sig], queryFn: () => stageLifecycle(supabaseDb, champId) });
+  // Knockout categories run round by round in "Knockout rounds" (one state machine); never show engine stage state for them here.
+  const koDivs = new Set(spec.divisions.filter((d) => d.stages[0]?.kind === "knockout").map((d) => d.divisionId));
+  const states = allStates.filter((s) => !koDivs.has(s.divisionKey));
+
   const refresh = () => { qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(champId) }); refetch(); };
   const running = useRef(false);
   // Draws generated before play-offs were bridged: attach the builder's planned play-offs (append-only,
@@ -96,9 +100,6 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
     return st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d?.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;
   };
 
-  // Knockout categories run round by round in "Knockout rounds" (one state machine); never show engine stage state for them here.
-  const koDivs = new Set(spec.divisions.filter((d) => d.stages[0]?.kind === "knockout").map((d) => d.divisionId));
-  const states = allStates.filter((s) => !koDivs.has(s.divisionKey));
   const tieAlerts = states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail));
   const goRows = states.filter((s) => s.state === "ready" && !s.automatic);
   const dueRows = states.filter((s) => s.state === "needs_setup");

@@ -62,7 +62,7 @@ export default function BellsMarker() {
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
         .select(
-          "id, champ_id, stage_key, group_number, section_number, pool_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, bell_ends_at, bell_paused_seconds, handicap_a, handicap_b, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, match_duration_minutes, group_durations, group_break_minutes, pool_durations, default_break_minutes, rules:tournament_rules(scoring_mode, handicap_mode))",
+          "id, champ_id, stage_key, group_number, section_number, pool_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, bell_ends_at, bell_paused_seconds, handicap_a, handicap_b, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, league_scoring_modes, match_duration_minutes, group_durations, group_break_minutes, pool_durations, default_break_minutes, rules:tournament_rules(scoring_mode, handicap_mode))",
         )
         .eq("id", matchId!)
         .single();
@@ -70,7 +70,9 @@ export default function BellsMarker() {
       const row = data as any;
       if (row?.champ) {
         const r = Array.isArray(row.champ.rules) ? row.champ.rules[0] : row.champ.rules;
-        row.champ = { ...row.champ, scoring_mode: r?.scoring_mode ?? null, handicap_mode: r?.handicap_mode ?? null };
+        const per = (row.champ as any).league_scoring_modes?.[String(row.group_number)];
+        // Category scoring (setup) wins over the tournament-wide fallback.
+        row.champ = { ...row.champ, scoring_mode: per ?? r?.scoring_mode ?? null, handicap_mode: r?.handicap_mode ?? null };
       }
       const [named] = await hydrateTournamentNames([row]);
       return named;

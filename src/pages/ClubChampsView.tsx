@@ -78,6 +78,7 @@ import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
+import { historicalPoolStatuses, playoffDisplayStages, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
@@ -760,7 +761,7 @@ export default function ClubChampsView() {
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string> }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus> }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
     const poolLabels = opts?.poolLabels;
@@ -775,7 +776,7 @@ export default function ClubChampsView() {
 
     return (
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs sm:text-sm">
           <thead>
             <tr className="border-b text-left">
               <th className="pb-2 font-medium">#</th>
@@ -814,14 +815,16 @@ export default function ClubChampsView() {
               const rowStyle = getRankRowStyle(i, competitors.length);
               const isWinner = allPlayed && i === 0;
               const isLast = allPlayed && i === competitors.length - 1;
+              const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", progress?.eliminated && "opacity-65", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
                   <td className="py-2 text-muted-foreground">{i + 1}</td>
-                  <td className="py-2 font-medium">
-                    <span className={cn(isPulledOut(s) && "line-through text-muted-foreground")}>{s.name}</span>
+                  <td className="py-2 font-medium min-w-24">
+                    <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2 text-muted-foreground")}>{s.name}</span>
                     {isPulledOut(s) && <Badge variant="outline" className="text-[9px] ml-1">Withdrawn</Badge>}
-                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
+                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
+                    {progress?.label && <span className="block text-[10px] font-normal text-muted-foreground no-underline leading-tight mt-0.5">{progress.label}</span>}
                   </td>
                   {showPool && (
                     <td className="py-2 text-center">
@@ -990,6 +993,10 @@ export default function ClubChampsView() {
     // is one combined FINAL table ordered by play-off outcomes; pool tables
     // stay below as qualification history.
     const poolRowsAll = Array.from({ length: pc }).flatMap((_, i) => getGroupStandings(gn, i + 1));
+    const structuredDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
+    const divisionMatches = (matches as any[]).filter((m: any) => m.group_number === gn);
+    const statuses = structuredDivision ? historicalPoolStatuses(structuredDivision, divisionMatches, poolRowsAll.map((r: any) => ({ memberId: r.club_member_id, partnerId: r.partner_member_id }))) : undefined;
+    const stageDisplays = structuredDivision ? playoffDisplayStages(structuredDivision, divisionMatches) : [];
     const finals = computeFinalPlacements(matches as any[], gn, poolRowsAll.length);
     const nameFor = (pid: string, partner: string | null) => {
       const hit = poolRowsAll.find((s: any) =>
@@ -1052,12 +1059,36 @@ export default function ClubChampsView() {
                 </>
               }
             >
-              {s.length > 0 ? renderStandingsTable(s) : (
+              {s.length > 0 ? renderStandingsTable(s, { historical: true, statuses }) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
               )}
             </CollapsibleSection>
           );
         })}
+        {stageDisplays.length > 0 && (
+          <div className="space-y-3 border-t border-border pt-3">
+            {stageDisplays.map((stage) => (
+              <section key={stage.id} className="space-y-2" aria-label={`${stage.name} draw`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-sm font-semibold text-foreground">{stage.name}</h4>
+                  {stage.projected && <Badge variant="outline" className="text-[10px]">Pairings from results · not generated</Badge>}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {stage.matches.map((m) => (
+                    <div key={m.displayId} className="border border-border rounded-sm p-2 text-xs min-w-0">
+                      <div className="flex items-start gap-2 justify-between">
+                        <span className="font-medium min-w-0 break-words">{[m.player_a_member_id, m.partner_a_member_id].filter(Boolean).map((id) => nameFor(String(id), null)).join(" & ")}</span>
+                        <span className="shrink-0 text-muted-foreground">vs</span>
+                        <span className="font-medium min-w-0 break-words text-right">{[m.player_b_member_id, m.partner_b_member_id].filter(Boolean).map((id) => nameFor(String(id), null)).join(" & ")}</span>
+                      </div>
+                      {m.winner_member_id && <div className="text-muted-foreground mt-1">Winner: {nameFor(m.winner_member_id, null)}</div>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </div>
     );
   };

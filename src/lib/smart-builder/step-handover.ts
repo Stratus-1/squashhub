@@ -120,6 +120,25 @@ export function nextAction(h: Handover): { title: string; detail: string; availa
   return { title: LIFECYCLE[lifecycleIndex(h.stage)].label, detail: "", available: false };
 }
 
+/** Setup "Match scoring" answer for one category — the result-entry rules the live tournament must use. */
+export type DivisionScoring = { mode: "standard" | "time_capped_points"; pointsPerGame?: number; bestOf?: number; winCondition?: "win_by_2" | "sudden_death" };
+
+/**
+ * Map each category's setup scoring onto the live per-division columns the marker/result entry
+ * read (effectiveTournamentSettings). Divisions without a scoring answer are left unset (legacy default).
+ * Root cause fix: the setup choice (e.g. Bells) previously lived only in format_plan.
+ */
+export function divisionScoringColumns(divs: Array<{ scoring?: DivisionScoring | null }>): Record<string, Record<string, unknown>> {
+  if (!divs.some((d) => d.scoring)) return {};
+  const pick = <T,>(f: (s: DivisionScoring) => T | undefined) => Object.fromEntries(divs.flatMap((d, n) => { const v = d.scoring ? f(d.scoring) : undefined; return v === undefined ? [] : [[String(n + 1), v]]; }));
+  return {
+    league_scoring_modes: pick((s) => s.mode),
+    league_points_per_game: pick((s) => (s.pointsPerGame === 15 ? 15 : s.pointsPerGame === 11 ? 11 : undefined)),
+    league_best_of: pick((s) => (s.bestOf === 3 ? 3 : s.bestOf === 5 ? 5 : undefined)),
+    league_win_conditions: pick((s) => s.winCondition),
+  };
+}
+
 export type CreateInput = {
   clubId: string;
   name: string;
@@ -131,7 +150,7 @@ export type CreateInput = {
   /** Admin-entered players (pairs carry a partner). */
   entrants: Array<{ memberId: string; partnerId?: string | null; division?: number | null }>;
   /** Step-by-Step categories/subcategories, in order — become the tournament's divisions (group 1..n). */
-  divisions?: Array<{ leagueIds?: string[]; gender?: string | null; label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null }>;
+  divisions?: Array<{ leagueIds?: string[]; gender?: string | null; label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null; scoring?: DivisionScoring | null }>;
   existingId?: string | null;
   /** Beta-only explicit division types, applied by the server registration guard. */
   categoryTypes?: string[];
@@ -186,7 +205,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   if (i.divisions?.length) {
     // league_match_types lives only on the base table (not the club_champs view).
     const serving = Object.fromEntries(i.divisions.flatMap((d, n) => d.matchType === "doubles" && d.serving ? [[String(n + 1), d.serving]] : []));
-    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), league_sources: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.leagueIds ?? []])), league_source_modes: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), "selected"])), league_genders: Object.fromEntries(i.divisions.flatMap((d, n) => d.gender === "mens" ? [[String(n + 1), "men"]] : d.gender === "ladies" ? [[String(n + 1), "ladies"]] : [])), ...(i.divisions.some((d) => d.serving !== undefined) ? { league_doubles_serving_methods: Object.keys(serving).length ? serving : null } : {}) }).eq("id", tid);
+    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), league_sources: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.leagueIds ?? []])), league_source_modes: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), "selected"])), league_genders: Object.fromEntries(i.divisions.flatMap((d, n) => d.gender === "mens" ? [[String(n + 1), "men"]] : d.gender === "ladies" ? [[String(n + 1), "ladies"]] : [])), ...(i.divisions.some((d) => d.serving !== undefined) ? { league_doubles_serving_methods: Object.keys(serving).length ? serving : null } : {}), ...divisionScoringColumns(i.divisions) }).eq("id", tid);
     if (error) throw error;
   }
   if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);

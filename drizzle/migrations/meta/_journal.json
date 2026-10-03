@@ -134,6 +134,13 @@
       "when": 1791028054181,
       "tag": "0018_enforce_beta_category_on_every_entry",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791028325069,
+      "tag": "0019_validate_beta_doubles_pair_categories",
+      "breakpoints": true
     }
   ]
 }

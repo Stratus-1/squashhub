@@ -37,14 +37,14 @@ describe("scheduling preferences", () => {
   });
   it("3. require 1-slot rest: fits with room, blocks when impossible", () => {
     const g = cross();
-    const ok = planPrefWaves({ games: g, days: day([1, 2, 3]), minutes: 13, prefs: P({ rest: "one" }), keyOf });
+    const ok = planPrefWaves({ games: g, days: day([1, 2, 3], "22:30"), minutes: 13, prefs: P({ rest: "one" }), keyOf });
     expect(ok.issues).toEqual([]); expect(restGaps(ok.slots, g, 13)).toBeGreaterThanOrEqual(2);
     const bad = planPrefWaves({ games: g, days: day([1, 2, 3, 4, 5, 6], "19:18"), minutes: 13, prefs: P({ rest: "one" }), keyOf });
     expect(bad.slots).toEqual([]); expect(bad.issues[0]).toMatch(/Requiring 1-slot rest leaves \d+ match/);
   });
   it("4. require 2-slot rest keeps 2 slots between appearances", () => {
     const g = cross();
-    const r = planPrefWaves({ games: g, days: day([1, 2, 3], "22:00"), minutes: 13, prefs: P({ rest: "two" }), keyOf });
+    const r = planPrefWaves({ games: g, days: day([1, 2, 3], "23:59"), minutes: 13, prefs: P({ rest: "two" }), keyOf });
     expect(r.issues).toEqual([]); expect(restGaps(r.slots, g, 13)).toBeGreaterThanOrEqual(3);
   });
   it("5. rotate courts on 3 and 4 courts: no one stays on one court consecutively when avoidable", () => {

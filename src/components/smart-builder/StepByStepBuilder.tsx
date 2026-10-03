@@ -340,7 +340,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: `${c} › ${x}` })) : [{ key: c, base: c }];
   }).map((u) => {
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
-    return { ...u, categoryType: a.categoryTypes?.[u.key.split("::")[0]] ?? null, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
+    return { ...u, categoryType: a.categoryTypes?.[u.key.split("::")[0]] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === u.key.split("::")[0])?.[1] ?? null, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const poolRule = (k: string): PoolPlan => poolPlanOf(a, k) ?? { mode: "none" };
@@ -616,7 +616,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
-  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c])), Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {

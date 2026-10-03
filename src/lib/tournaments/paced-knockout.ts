@@ -183,7 +183,7 @@ export function proposePairings(field: FieldEntry[], count: number, strategy: Kn
 
 /* ── milestone from the existing Stages & scheduling answers ── */
 
-export type PlanStage = { unit?: string; name?: string; phase?: string; mode?: string; date?: string; deadline?: string };
+export type PlanStage = { unit?: string; name?: string; phase?: string; mode?: string; date?: string; deadline?: string; start?: "auto" | "confirm" | string; pairing?: string; from?: string; to?: string; courtIds?: string[] };
 export type Milestone = {
   source: "shared" | "own" | "none";
   label: string | null;
@@ -252,21 +252,26 @@ export function minRoundsToTarget(active: number, target: number): number {
  * stage opens only once its pre-milestone scheduling rounds are behind us (or there are
  * none). Until then a category that already has its field waits. Round N ≠ Quarter-final.
  */
-export type PlayoffStep = { label: string; fieldSize: number; date: string | null };
+/** `start`: "auto" = opens as soon as its qualified field is ready; "confirm" = only when the organiser opens it; undefined (legacy) = opens after the last pre-stage round date. */
+export type PlayoffStep = { label: string; fieldSize: number; date: string | null; start?: "auto" | "confirm"; pairing?: string; mode?: string; from?: string; to?: string; courtIds?: string[] };
 
 export function playoffSteps(plan: { stages?: PlanStage[]; playoffSync?: boolean | "later" | null } | null, key: string): PlayoffStep[] {
   const po = (plan?.stages ?? []).filter((s) => s && s.phase === "playoff" && s.name);
   const own = po.filter((s) => forUnit(s, key));
   const shared = plan?.playoffSync === false ? [] : po.filter((s) => !s.unit);
   return (own.length ? own : shared)
-    .map((s) => ({ label: s.name!, fieldSize: fieldSizeForStage(s.name!) ?? 0, date: when(s) || null }))
+    .map((s) => ({
+      label: s.name!, fieldSize: fieldSizeForStage(s.name!) ?? 0, date: when(s) || null,
+      start: s.start === "auto" ? "auto" as const : s.start === "confirm" ? "confirm" as const : undefined,
+      pairing: s.pairing, mode: s.mode, from: s.from || undefined, to: s.to || undefined, courtIds: s.courtIds ?? [],
+    }))
     .filter((s) => s.fieldSize > 0)
     .sort((a, b) => b.fieldSize - a.fieldSize || (a.date ?? "").localeCompare(b.date ?? ""));
 }
 
 export type KoRoundState =
   | { kind: "pre_round"; label: string; count: number }
-  | { kind: "waiting_for_stage"; stage: string; date: string | null; reason: "field_ready" | "no_elimination_needed" }
+  | { kind: "waiting_for_stage"; stage: string; date: string | null; reason: "field_ready" | "no_elimination_needed"; needsOrganiser?: boolean }
   | { kind: "playoff"; label: string; count: number }
   | { kind: "no_elimination"; label: string };
 
@@ -276,6 +281,8 @@ export type KoRoundState =
  */
 export function koRoundState(o: {
   active: number; nextRound: number; milestone: Milestone; steps: PlayoffStep[]; plan: PacePlan; today: string;
+  /** Formal stages the organiser has explicitly opened (labels). */
+  opened?: ReadonlySet<string>;
 }): KoRoundState {
   const { active, milestone, steps } = o;
   const preRoundLabel = `Round ${o.nextRound}`;
@@ -283,17 +290,47 @@ export function koRoundState(o: {
     return o.plan.thisRound > 0 ? { kind: "pre_round", label: preRoundLabel, count: o.plan.thisRound } : { kind: "no_elimination", label: preRoundLabel };
   }
   const lastPre = milestone.roundDates[milestone.roundDates.length - 1] ?? null;
-  const stageOpen = !lastPre || o.today > lastPre;
-  if (active > milestone.fieldSize && !stageOpen) {
-    return o.plan.thisRound > 0 ? { kind: "pre_round", label: preRoundLabel, count: o.plan.thisRound } : { kind: "no_elimination", label: preRoundLabel };
-  }
-  if (!stageOpen) {
-    return { kind: "waiting_for_stage", stage: milestone.label ?? steps[0].label, date: milestone.date, reason: active === milestone.fieldSize ? "field_ready" : "no_elimination_needed" };
-  }
+  const dateOpen = !lastPre || o.today > lastPre;
+  const fieldReady = active <= milestone.fieldSize;
   // Formal stage: the smallest configured stage that still holds the whole field.
   const step = [...steps].reverse().find((s) => s.fieldSize >= active) ?? steps[0];
+  const opened = !!o.opened?.has(step.label);
+  // Readiness, not the date, opens a stage: "auto" opens once the qualified field is ready; "confirm" waits for the organiser.
+  const open = opened || (fieldReady && step.start === "auto") || (step.start == null && dateOpen);
+  if (active > milestone.fieldSize && !open) {
+    return o.plan.thisRound > 0 ? { kind: "pre_round", label: preRoundLabel, count: o.plan.thisRound } : { kind: "no_elimination", label: preRoundLabel };
+  }
+  if (!open) {
+    return { kind: "waiting_for_stage", stage: step.label, date: step.date ?? milestone.date, reason: active === milestone.fieldSize ? "field_ready" : "no_elimination_needed", ...(step.start === "confirm" && fieldReady ? { needsOrganiser: true } : {}) };
+  }
   const count = Math.max(0, Math.min(Math.floor(active / 2), active - step.fieldSize / 2));
   return count > 0 ? { kind: "playoff", label: step.label, count } : { kind: "no_elimination", label: step.label };
+}
+
+/**
+ * Formal play-off pairings. The first formal stage is seeded from the qualified field
+ * (highest v lowest, top seeds get any byes); a "winners" stage after an earlier formal
+ * stage keeps the bracket: winner of match 1 v winner of match 2, and so on.
+ */
+export function playoffPairings(
+  active: FieldEntry[], count: number, rule: string | undefined,
+  prevFormal: Array<{ bracket_position?: number | null; winner_member_id?: string | null }> | null,
+): ProposedPairing & { rule: string } {
+  if (rule === "winners" && prevFormal && prevFormal.length) {
+    const pos = (id: string) => prevFormal.find((m) => m.winner_member_id === id)?.bracket_position ?? 999;
+    const order = [...active].sort((a, b) => pos(a.id) - pos(b.id));
+    const pairs: Array<[FieldEntry, FieldEntry]> = [];
+    for (let i = 0; i + 1 < order.length && pairs.length < count; i += 2) pairs.push([order[i], order[i + 1]]);
+    const used = new Set(pairs.flat().map((e) => e.id));
+    return { pairs, waiting: order.filter((e) => !used.has(e.id)), rule: "Winners of previous stage, bracket order (W1 v W2, W3 v W4)" };
+  }
+  const seeds = byRank(active);
+  const byes = Math.max(0, seeds.length - 2 * count);
+  const playing = seeds.slice(byes);
+  const pairs: Array<[FieldEntry, FieldEntry]> = [];
+  for (let i = 0; i < count; i++) pairs.push([playing[i], playing[playing.length - 1 - i]]);
+  const n = seeds.length;
+  return { pairs, waiting: seeds.slice(0, byes), rule: `Seeded from the qualified field (club ranking): ${n === 4 ? "1 v 4, 2 v 3" : "highest v lowest"}${byes ? `, top ${byes} seed${byes === 1 ? "" : "s"} through` : ""}` };
 }
 
 /**

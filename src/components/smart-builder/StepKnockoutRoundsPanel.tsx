@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import {
-  activeField, byRank, isDecided, koRoundState, milestoneFor, pacePlan, playoffSteps, proposePairings, roundsLeftFor,
+  activeField, byRank, isDecided, koRoundState, milestoneFor, pacePlan, playoffPairings, playoffSteps, proposePairings, roundsLeftFor,
   type FieldEntry, type KoRoundState, type KnockoutPace, type KnockoutPairing,
 } from "@/lib/tournaments/paced-knockout";
 
@@ -33,7 +33,7 @@ const lead = (unit: string) => unit.split("+")[0];
 /** Shared loader for the knockout control panel and the Standings "What's next" shortcut. */
 export async function fetchKoRoundsData(tournamentId: string) {
       const [{ data: t }, { data: matches }, { data: regs }] = await Promise.all([
-        fromExt("tournaments").select("builder_spec").eq("id", tournamentId).maybeSingle(),
+        fromExt("tournaments").select("builder_spec, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
         fromExt("club_champs_matches").select("*").eq("champ_id", tournamentId),
         fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
       ]);
@@ -52,6 +52,8 @@ export async function fetchKoRoundsData(tournamentId: string) {
       const { data: mem } = ids.length ? await supabase.from("club_members").select("id, name, ladder_position").in("id", ids) : { data: [] as any[] };
       return {
         divs, matches: (matches ?? []) as any[], regs: (regs ?? []) as any[],
+        /** Formal stages the organiser opened by hand ("Wait for organiser confirmation"), keyed `g<group>:<label>`. */
+        opened: (((t as any)?.beta_lifecycle?.opened_stages ?? {}) as Record<string, string>),
         members: new Map(((mem ?? []) as any[]).map((m) => [m.id, { name: m.name as string, ladder: (m.ladder_position ?? null) as number | null }])),
       };
 }
@@ -81,7 +83,7 @@ export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: 
   );
 }
 
-type Data = { matches: any[]; regs: any[]; members: Map<string, { name: string; ladder: number | null }> };
+type Data = { matches: any[]; regs: any[]; members: Map<string, { name: string; ladder: number | null }>; opened?: Record<string, string> };
 export type { Div as KoDiv };
 
 /**
@@ -138,19 +140,27 @@ export function computeKoUnit({ plan, div, data, pool, today }: { plan: Record<s
   // One state machine: reaching the field size never opens a play-off stage by itself.
   const ks: KoRoundState = pool
     ? (reached ? { kind: "no_elimination", label: `Round ${nextRound}` } : basePlan.thisRound > 0 ? { kind: "pre_round", label: `Round ${nextRound}`, count: basePlan.thisRound } : { kind: "no_elimination", label: `Round ${nextRound}` })
-    : koRoundState({ active: field.active.length, nextRound, milestone, steps, plan: basePlan, today });
+    : koRoundState({ active: field.active.length, nextRound, milestone, steps, plan: basePlan, today,
+        opened: new Set(Object.keys(data.opened ?? {}).filter((k) => k.startsWith(`g${div.group}:`)).map((k) => k.slice(`g${div.group}:`.length))) });
   const pp = { ...basePlan, thisRound: ks.kind === "pre_round" || ks.kind === "playoff" ? ks.count : 0 };
   const nextLabel = ks.kind === "waiting_for_stage" ? ks.stage : ks.label;
   const playBy = ks.kind === "pre_round" ? milestone.roundDates[nextRound - 1] ?? null : ks.kind === "playoff" ? steps.find((s) => s.label === ks.label)?.date ?? null : null;
   const winner = field.active.length === 1 && field.eliminated.length > 0 ? field.active[0] : null;
+  const step = ks.kind === "playoff" ? steps.find((s) => s.label === ks.label) ?? null : null;
+  // Formal stages consume only active qualified survivors; the proposal follows the stage's configured rule.
+  const lastRows = rows.filter((m) => Number(m.round_number) === field.lastRound && !m.is_bye);
+  const prevFormal = lastRows.length && lastRows.every((m) => steps.some((x) => x.label === m.stage_label)) ? lastRows : null;
+  const proposal = step
+    ? playoffPairings(field.active, pp.thisRound, step.pairing, prevFormal)
+    : { ...proposePairings(field.active, pp.thisRound, pairing), rule: pairing === "progressive" ? "Progressive (closer-ranked, bottom up)" : "Traditional seeded" };
   const openFixtures = field.roundOpen ? rows.filter((m) => Number(m.round_number) === field.lastRound && !m.is_bye && !isDecided(m)).length : 0;
-  return { pace, pairing, rows, field, milestone, reached, poolDone, target, roundsLeft, nextRound, steps, ks, pp, nextLabel, playBy, winner, openFixtures };
+  return { pace, pairing, rows, field, milestone, reached, poolDone, target, roundsLeft, nextRound, steps, ks, pp, nextLabel, playBy, winner, openFixtures, step, proposal };
 }
 
 export type KoAction =
-  | { kind: "approve"; label: string; count: number; playBy: string | null }
+  | { kind: "approve"; label: string; count: number; playBy: string | null; formal: boolean; qualified: number }
   | { kind: "results_outstanding"; round: number; open: number }
-  | { kind: "waiting_for_stage"; stage: string; date: string | null; fieldReady: boolean }
+  | { kind: "waiting_for_stage"; stage: string; date: string | null; fieldReady: boolean; needsOrganiser?: boolean; qualified: number }
   | { kind: "idle" }
   | { kind: "decided" };
 
@@ -160,8 +170,8 @@ export function koDivisionActions(data: KoRoundsData, plan: Record<string, any> 
   const toAction = (u: ReturnType<typeof computeKoUnit>): KoAction =>
     u.winner ? { kind: "decided" }
       : u.field.roundOpen ? { kind: "results_outstanding", round: u.field.lastRound, open: u.openFixtures }
-      : u.ks.kind === "waiting_for_stage" ? { kind: "waiting_for_stage", stage: u.ks.stage, date: u.ks.date, fieldReady: u.ks.reason === "field_ready" }
-      : u.pp.thisRound > 0 && !u.poolDone ? { kind: "approve", label: u.nextLabel, count: u.pp.thisRound, playBy: u.playBy }
+      : u.ks.kind === "waiting_for_stage" ? { kind: "waiting_for_stage", stage: u.ks.stage, date: u.ks.date, fieldReady: u.ks.reason === "field_ready", needsOrganiser: u.ks.needsOrganiser, qualified: u.field.active.length }
+      : u.pp.thisRound > 0 && !u.poolDone ? { kind: "approve", label: u.nextLabel, count: u.pp.thisRound, playBy: u.playBy, formal: u.ks.kind === "playoff", qualified: u.field.active.length }
       : { kind: "idle" };
   for (const div of data.divs) {
     if (div.pools) {
@@ -183,7 +193,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const nameOf = (id?: string | null) => (id ? data.members.get(id)?.name ?? "Player" : "—");
   const poolNo = pool ? pool.index + 1 : null;
 
-  const proposal = useMemo(() => proposePairings(field.active, pp.thisRound, pairing), [field.active, pp.thisRound, pairing]);
+  const proposal = u.proposal;
   const [pairs, setPairs] = useState<Array<[string, string]>>([]);
   const sig = proposal.pairs.map(([a, b]) => `${a.id}-${b.id}`).join(",");
   useEffect(() => { setPairs(proposal.pairs.map(([a, b]) => [a.id, b.id])); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [sig]);
@@ -196,6 +206,21 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const waiting = field.active.filter((e) => !used.includes(e.id));
   const winner = u.winner;
 
+  const openStage = async (label: string) => {
+    setSaving(true);
+    try {
+      const { data: t, error } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
+      if (error) throw error;
+      const bl = { ...((t as any)?.beta_lifecycle ?? {}) };
+      bl.opened_stages = { ...(bl.opened_stages ?? {}), [`g${div.group}:${label}`]: new Date().toISOString() };
+      const { error: ue } = await fromExt("tournaments").update({ beta_lifecycle: bl } as any).eq("id", tournamentId);
+      if (ue) throw ue;
+      toast.success(`${label} opened — review the proposed pairings.`);
+      qc.invalidateQueries({ queryKey: ["step-ko-rounds", tournamentId] });
+      qc.invalidateQueries({ queryKey: ["step-ko-rounds-summary", tournamentId] });
+    } catch (e: any) { toast.error(e?.message || "Could not open the stage"); } finally { setSaving(false); }
+  };
+
   const confirm = async () => {
     if (!pairs.length || dup || incomplete) return;
     if (inFlight.current) return; inFlight.current = true;
@@ -205,6 +230,9 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       if (fe) throw fe;
       const real = ((fresh ?? []) as any[]).filter((m) => (m.player_a_member_id || m.player_b_member_id) && (poolNo == null || Number(m.pool_number) === poolNo));
       if (real.some((m) => Number(m.round_number) >= nextRound)) throw new Error("This round already has fixtures — refresh to see them.");
+      // Formal stages only ever take players who are still active.
+      const activeIds = new Set(field.active.map((e) => e.id));
+      if (pairs.flat().some((id) => !activeIds.has(id))) throw new Error("Only qualified players who are still in can be paired.");
       const template: any = { ...(rows[0] ?? {}) };
       const partner = (id: string) => field.active.find((e) => e.id === id)?.partnerId ?? null;
       // Structured games must carry division/stage/round identity. Resolve it from the
@@ -218,7 +246,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
         if (se) throw se;
         const stages = (stRows ?? []) as any[];
         const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z]/g, "").replace(/s$/, "");
-        const formal = ks.kind === "playoff" ? stages.find((s) => norm(s.label) === norm(nextLabel)) : null;
+        const formal = ks.kind === "playoff" ? stages.find((s) => norm(s.label) === norm(nextLabel)) ?? null : null;
         const stage = formal ?? stages.find((s) => s.id === template.stage_id) ?? stages.find((s) => s.kind === "knockout") ?? stages[0];
         if (stage) {
           template.division_id = divRow.id;
@@ -235,7 +263,9 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
         if (!roundId) {
           const { data: cr, error: ce } = await fromExt("club_champs_rounds").insert({
             champ_id: tournamentId, group_number: div.group, section_number: 1, round_number: nextRound, label: nextLabel,
-            round_type: ks.kind !== "playoff" ? "knockout" : /semi/i.test(nextLabel) ? "semi_final" : /^final/i.test(nextLabel) ? "final" : "knockout", play_by: playBy, status: "active", scheduling_mode: "self",
+            round_type: ks.kind !== "playoff" ? "knockout" : /semi/i.test(nextLabel) ? "semi_final" : /^final/i.test(nextLabel) ? "final" : "knockout", play_by: playBy, status: "active",
+            scheduling_mode: u.step?.mode === "scheduled" ? "club" : "self", field_size: ks.kind === "playoff" ? u.step?.fieldSize ?? null : null,
+            notes: u.step ? `Formal play-off stage: ${nextLabel} · qualified from ${field.active.length} active survivors · ${proposal.rule}${u.step.mode === "scheduled" && u.step.date ? ` · scheduled ${u.step.date}${u.step.from ? ` ${u.step.from}–${u.step.to ?? ""}` : ""}${u.step.courtIds?.length ? ` · courts ${u.step.courtIds.join(", ")}` : ""}` : ""}` : null,
             division_id: template.division_id, stage_id: template.stage_id, stage_key: template.stage_key ?? null,
           } as any).select("id").single();
           if (ce) throw ce;
@@ -258,18 +288,20 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       } catch (e: any) { toast.warning(`Fixtures created, but players were not notified: ${e?.message || "unknown error"}`); }
       qc.invalidateQueries({ queryKey: ["step-ko-rounds", tournamentId] });
       qc.invalidateQueries({ queryKey: ["step-run", tournamentId] });
+      qc.invalidateQueries({ queryKey: ["step-ko-rounds-summary", tournamentId] });
     } catch (e: any) {
       toast.error(e?.message || "Could not confirm fixtures");
     } finally { inFlight.current = false; setSaving(false); }
   };
 
-  const status = winner ? "done" : ks.kind === "waiting_for_stage" ? "done" : pp.status;
+  const status = winner ? "done" : ks.kind === "playoff" && !field.roundOpen ? "ready" : ks.kind === "waiting_for_stage" ? "done" : pp.status;
   const badge: Record<string, { text: string; cls: string }> = {
     on_track: { text: "On track", cls: "bg-primary/10 text-primary" },
     at_risk: { text: "At risk", cls: "bg-accent text-accent-foreground" },
     behind: { text: "Behind schedule", cls: "bg-destructive/10 text-destructive" },
     done: { text: winner ? "Decided" : "Milestone reached", cls: "bg-muted text-foreground" },
     free: { text: "Own pace", cls: "bg-muted text-foreground" },
+    ready: { text: `${nextLabel} ready to approve`, cls: "bg-primary/10 text-primary" },
   };
 
   return (
@@ -291,10 +323,11 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       {poolDone ? <p className="text-xs">Pool complete — qualifiers: {field.active.map((e) => nameOf(e.id)).join(", ")}. Waiting for the other pools before the play-off.</p>
         : winner ? <p>Winner: <span className="font-medium">{nameOf(winner.id)}</span></p>
         : field.roundOpen ? <p className="text-xs">Round {field.lastRound} is in play — {rows.filter((m) => Number(m.round_number) === field.lastRound && !m.is_bye && !isDecided(m)).length} fixture(s) still to finish. The next round is proposed once its results are in.</p>
-        : ks.kind === "waiting_for_stage" ? <p className="text-xs" data-field="ko-waiting">{ks.reason === "field_ready" ? `${ks.stage} field ready` : `No elimination needed before ${ks.stage}`} — waiting for the {ks.stage} stage{ks.date ? ` on ${ks.date}` : ""}. Nothing is created until it opens.</p>
+        : ks.kind === "waiting_for_stage" ? <p className="text-xs" data-field="ko-waiting">{ks.reason === "field_ready" ? `${ks.stage} field ready` : `No elimination needed before ${ks.stage}`} — {ks.needsOrganiser ? `${ks.stage} is set to wait for your confirmation` : `waiting for the ${ks.stage} stage`}{ks.date ? ` (scheduled ${ks.date})` : ""}. Nothing is created until it opens.{ks.needsOrganiser && <Button type="button" size="sm" variant="outline" className="ml-2 h-7" disabled={saving} onClick={() => openStage(ks.stage)}>Open {ks.stage}</Button>}</p>
         : pp.thisRound === 0 ? <p className="text-xs text-muted-foreground">No elimination needed this round — everyone stays active.</p>
         : <div className="space-y-2">
-            <div className="text-xs font-medium">Proposed {nextLabel}{playBy ? ` · play by ${playBy}` : ""} — {pp.thisRound} match{pp.thisRound === 1 ? "" : "es"}</div>
+            <div className="text-xs font-medium" data-field={ks.kind === "playoff" ? "ko-formal-proposal" : "ko-proposal"}>Proposed {nextLabel}{playBy ? ` · ${u.step?.mode === "scheduled" ? "scheduled" : "play by"} ${playBy}` : ""} — {pp.thisRound} match{pp.thisRound === 1 ? "" : "es"}{ks.kind === "playoff" ? ` from ${field.active.length} qualified` : ""}</div>
+            <div className="text-xs text-muted-foreground">Pairing rule: {proposal.rule}. Edit any pairing before confirming — nothing is created until you confirm.</div>
             {pairs.map(([a, b], i) => (
               <div key={i} className="flex flex-wrap items-center gap-2">
                 {[a, b].map((v, side) => (

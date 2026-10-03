@@ -38,7 +38,7 @@ export function KnockoutNextActions({ champId }: { champId: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold">What's next · Knockout rounds</span>
         {pending.length > 0 && <Badge variant="outline">{pending.length} round{pending.length === 1 ? "" : "s"} to approve</Badge>}
-        {pending.length > 0 && <Button size="sm" className="ml-auto" onClick={() => open(pending[0].group)}>Review & approve next round</Button>}
+        {pending.length > 0 && <Button size="sm" className="ml-auto" onClick={() => open(pending[0].group)}>{(pending[0].action as any).formal ? `Review & approve ${(pending[0].action as any).label}` : "Review & approve next round"}</Button>}
       </div>
       <ul className="space-y-1 text-xs">
         {rows.map((r) => {
@@ -47,11 +47,14 @@ export function KnockoutNextActions({ champId }: { champId: string }) {
             <li key={r.unit} className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{r.unit}:</span>
               {a.kind === "approve" && <>
-                <span>{a.label} ready for approval — {a.count} match{a.count === 1 ? "" : "es"}{a.playBy ? `, play by ${a.playBy}` : ""}</span>
-                <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={() => open(r.group)}>Review</Button>
+                <span>{a.formal ? `${a.qualified} qualified — ${a.label} proposal ready` : `${a.label} ready for approval`} — {a.count} match{a.count === 1 ? "" : "es"}{a.playBy ? `, ${a.formal ? "on" : "play by"} ${a.playBy}` : ""}</span>
+                <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={() => open(r.group)}>{a.formal ? `Review & approve ${a.label}` : "Review"}</Button>
               </>}
               {a.kind === "results_outstanding" && <span className="text-muted-foreground">Round {a.round} results outstanding — {a.open} fixture{a.open === 1 ? "" : "s"} still to finish</span>}
-              {a.kind === "waiting_for_stage" && <span className="text-muted-foreground">{a.fieldReady ? `${a.stage} field ready` : `No elimination needed before ${a.stage}`} — waiting for {a.stage} stage{a.date ? ` on ${a.date}` : ""}</span>}
+              {a.kind === "waiting_for_stage" && <>
+                <span className="text-muted-foreground">{a.qualified} qualified · {a.fieldReady ? `${a.stage} field ready` : `No elimination needed before ${a.stage}`} — {a.needsOrganiser ? `${a.stage} waits for your confirmation` : `waiting for ${a.stage} stage`}{a.date ? ` (${a.date})` : ""}</span>
+                {a.needsOrganiser && <Button size="sm" variant="link" className="h-auto p-0 text-xs" onClick={() => open(r.group)}>Open {a.stage}</Button>}
+              </>}
               {a.kind === "idle" && <span className="text-muted-foreground">No action needed — everyone stays active this round</span>}
               {a.kind === "decided" && <span className="text-muted-foreground">Decided</span>}
             </li>

@@ -16,6 +16,7 @@ import { CalendarClock, Check, CheckCircle, CreditCard, Landmark, Loader2, Searc
 import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
 import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 import { toast } from "sonner";
+import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -50,6 +51,15 @@ export function TournamentInviteRegisterDialog({
   const clubId = champ?.club_id as string;
   const memberId = registration?.club_member_id as string;
   const { data: members = [] } = useClubMembers(clubId);
+  const { data: categoryTypes } = useQuery({
+    queryKey: ["tournament-category-types", champ?.id, clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champ.id).eq("club_id", clubId).maybeSingle();
+      if (error) throw error;
+      return (data as any)?.beta_lifecycle?.category_types as Record<string, CompetitionCategory> | undefined;
+    },
+    enabled: open && !!champ?.id && !!clubId,
+  });
   const [partnerId, setPartnerId] = useState("");
   const [partnerOpen, setPartnerOpen] = useState(false);
   const [showEft, setShowEft] = useState(false);
@@ -175,8 +185,15 @@ export function TournamentInviteRegisterDialog({
     // With an entry fee, partners are picked from players in this tournament —
     // they do not have to have paid yet; the pair locks once both fees are in.
     if (paymentRequired) list = list.filter((m) => registeredPaid.has(m.id));
+    if (categoryTypes) {
+      const playerGender = (members as any[]).find((m) => m.id === memberId)?.gender;
+      list = list.filter((m) => chosenDivisions.length > 0 && chosenDivisions.every((division) => {
+        const type = categoryTypes[String(division)];
+        return type && validatePairComposition([playerGender, m.gender], type, { requireMixedPair: type === "mixed" }).valid;
+      }));
+    }
     return list;
-  }, [others, members, memberId, champ?.gender, paymentRequired]);
+  }, [others, members, memberId, champ?.gender, paymentRequired, categoryTypes, chosenDivisions]);
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["tournament-invite-registration"] });
@@ -287,6 +304,7 @@ export function TournamentInviteRegisterDialog({
   const choosePartner = useMutation({
     mutationFn: async () => {
       if (!partnerId) throw new Error("Pick a partner");
+      if (categoryTypes) throw new Error("Choose a partner through the category entry form");
       const { error } = await (supabase as any).rpc("register_doubles_pair", {
         _champ_id: champ.id,
         _member_id: memberId,
@@ -395,7 +413,7 @@ export function TournamentInviteRegisterDialog({
                 </p>
               )}
               <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
-                if (mustChooseDivision && chosenDivisions.length === 0) {
+                if ((mustChooseDivision || categoryTypes) && chosenDivisions.length === 0) {
                   setDivisionError(singleDivisionOnly
                     ? "Please choose the league you want to play in."
                     : "Please tick at least one division you want to play in.");

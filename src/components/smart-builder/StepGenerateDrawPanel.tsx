@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
+import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
@@ -59,6 +60,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
   const load = async () => {
     setLoading(true);
+    await assertNotDiamondTournament(tournamentId);
     // Reconcile organiser-entered pairs first so the draw only ever sees current active entries.
     await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
     // Regional/national events must name a host venue; owner or admin's club never implies one.
@@ -286,6 +288,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     if (!meta) return;
     setBusy(true);
     try {
+      await assertNotDiamondTournament(tournamentId);
       const version = `v${Date.now().toString(36)}`;
       // Re-check against the freshest entries right before saving (server re-validates pairs too).
       await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);

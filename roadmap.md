@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Beta category type (Men's/Ladies/Open/Mixed) required at parent, inherited by subcategories; eligibility across admin/player entry, invites, grouping, doubles, and Diamond slots; server validation; historical data untouched.
+- [ ] Protect existing Diamond League standings/reporting from generic Beta management and generation paths.
+
 - [x] Step by Step path v1 in Tournament Beta (type, entries, categories, dates, courts, summary)
 - [x] Club court picker in Step by Step
 - [x] Add "What will be played?" (Singles / Doubles / Both) before Categories in Step by Step

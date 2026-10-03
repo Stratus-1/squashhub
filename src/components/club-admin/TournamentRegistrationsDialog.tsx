@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock, MessageCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { isPlayerEligibleForCategory, validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
 import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
 import {
   classifyEntrant,
@@ -40,6 +41,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const { data: members = [] } = useClubMembers(clubId);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteMemberId, setInviteMemberId] = useState<string>("");
+  const [inviteDivision, setInviteDivision] = useState("");
   const [overrideRegId, setOverrideRegId] = useState<string | null>(null);
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
@@ -51,6 +53,8 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
   const isDoubles = champ?.match_type === "doubles";
   const champGender = champ?.gender as "men" | "ladies" | "mixed";
+  const typedCategories = (champ?.beta_lifecycle?.category_types ?? null) as Record<string, CompetitionCategory> | null;
+  const chosenType = typedCategories?.[inviteDivision];
 
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ["champ-registrations", champId],
@@ -108,18 +112,20 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const invalidate = () => qc.invalidateQueries({ queryKey: ["champ-registrations", champId] });
 
   const eligibleMembersForInvite = useMemo(() => {
+    if (typedCategories) return members.filter((x: any) => !!chosenType && isPlayerEligibleForCategory(x.gender, chosenType));
     if (champGender === "mixed") return members;
     const m = champGender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members.filter((x: any) => x.gender && m.includes(x.gender.toLowerCase()));
-  }, [members, champGender]);
+  }, [members, champGender, typedCategories, chosenType]);
 
   const registeredMemberIds = new Set(registrations.map((r: any) => r.club_member_id));
 
   const invitableMembers = eligibleMembersForInvite.filter((m: any) => !registeredMemberIds.has(m.id));
 
   const eligiblePartners = useMemo(() => {
+    if (typedCategories) return members.filter((x: any) => Object.values(typedCategories).some((type) => isPlayerEligibleForCategory(x.gender, type)));
     return eligibleMembersForInvite;
-  }, [eligibleMembersForInvite]);
+  }, [eligibleMembersForInvite, members, typedCategories]);
 
   // Mark EFT paid
   const markPaid = useMutation({
@@ -225,10 +231,12 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const inviteMember = useMutation({
     mutationFn: async (memberId: string) => {
+      if (typedCategories && (!chosenType || !isPlayerEligibleForCategory((members as any[]).find((m) => m.id === memberId)?.gender, chosenType))) throw new Error("Select an eligible category first");
       const fee = Number(champ?.entry_fee_cents || 0);
       const { error } = await fromExt("club_champs_registrations").insert({
         champ_id: champId,
         club_member_id: memberId,
+        ...(typedCategories ? { division_choices: [Number(inviteDivision)] } : {}),
         status: fee > 0 && champ?.payment_required ? "pending_payment" : "paid",
         invited_by_admin: true,
         fee_paid_cents: fee > 0 && champ?.payment_required ? 0 : 0,
@@ -241,6 +249,16 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const overridePartner = useMutation({
     mutationFn: async ({ regId, partnerId }: { regId: string; partnerId: string | null }) => {
+      if (typedCategories && partnerId) {
+        const reg = registrations.find((r: any) => r.id === regId) as any;
+        const playerGender = (members as any[]).find((m) => m.id === reg?.club_member_id)?.gender;
+        const partnerGender = (members as any[]).find((m) => m.id === partnerId)?.gender;
+        const choices = (reg?.division_choices || []) as number[];
+        if (!choices.length || !choices.every((division) => {
+          const type = typedCategories[String(division)];
+          return type && validatePairComposition([playerGender, partnerGender], type, { requireMixedPair: type === "mixed" }).valid;
+        })) throw new Error("This partner is not eligible for the selected category");
+      }
       const { error } = await fromExt("club_champs_registrations")
         .update({ partner_member_id: partnerId, partner_confirmed: !!partnerId })
         .eq("id", regId);
@@ -343,6 +361,10 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
           {inviteOpen && (
             <div className="border rounded p-2 flex items-center gap-2">
+              {typedCategories && <Select value={inviteDivision} onValueChange={(v) => { setInviteDivision(v); setInviteMemberId(""); }}>
+                <SelectTrigger className="h-8"><SelectValue placeholder="Category" /></SelectTrigger>
+                <SelectContent>{Object.entries(typedCategories).map(([number]) => <SelectItem key={number} value={number}>{leagueLabel(Number(number))}</SelectItem>)}</SelectContent>
+              </Select>}
               <Select value={inviteMemberId} onValueChange={setInviteMemberId}>
                 <SelectTrigger className="h-8"><SelectValue placeholder="Pick a member to invite" /></SelectTrigger>
                 <SelectContent>
@@ -351,7 +373,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                   ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" disabled={!inviteMemberId || inviteMember.isPending} onClick={() => inviteMember.mutate(inviteMemberId)}>
+              <Button size="sm" disabled={!inviteMemberId || (typedCategories && !inviteDivision) || inviteMember.isPending} onClick={() => inviteMember.mutate(inviteMemberId)}>
                 {inviteMember.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}Invite
               </Button>
               <Button size="sm" variant="ghost" onClick={() => { setInviteOpen(false); setInviteMemberId(""); }}><X className="w-3.5 h-3.5" /></Button>
@@ -539,7 +561,10 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         <SelectContent>
                           <SelectItem value="__none">No partner</SelectItem>
                           {eligiblePartners
-                            .filter((m: any) => m.id !== r.club_member_id)
+                            .filter((m: any) => m.id !== r.club_member_id && (!typedCategories || (r.division_choices || []).every((division: number) => {
+                              const type = typedCategories[String(division)];
+                              return type && validatePairComposition([(members as any[]).find((p) => p.id === r.club_member_id)?.gender, m.gender], type, { requireMixedPair: type === "mixed" }).valid;
+                            })))
                             .map((m: any) => (
                               <SelectItem key={m.id} value={m.id}>{getName(m)}</SelectItem>
                             ))}

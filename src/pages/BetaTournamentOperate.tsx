@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarClock, Loader2 } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
+import { isDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,11 +34,12 @@ export default function BetaTournamentOperate() {
   const { data: t, isLoading } = useQuery({
     queryKey: ["beta-operate", champId],
     queryFn: async () => {
-      const [{ data: champ }, { data: arch }] = await Promise.all([
+      const [{ data: champ }, { data: arch }, diamond] = await Promise.all([
         fromExt("club_champs").select("*").eq("id", champId!).single(),
         fromExt("tournaments").select("builder_architecture,builder_spec,status").eq("id", champId!).maybeSingle(),
+        isDiamondTournament(champId!),
       ]);
-      return { champ: champ as any, arch: arch as any };
+      return { champ: champ as any, arch: arch as any, diamond };
     },
     enabled: !!champId,
   });
@@ -92,6 +94,7 @@ export default function BetaTournamentOperate() {
   }, [matches]);
 
   if (isLoading || !t) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (t.diamond) return <div className="max-w-3xl mx-auto p-6 text-sm">Diamond League keeps its existing results and standings. <Link className="underline" to={`/club-champs/${champId}`}>Open tournament</Link>.</div>;
   if (t.arch?.builder_architecture !== "structured") {
     return <div className="max-w-3xl mx-auto p-6 text-sm">This tournament wasn't built with Tournament Beta. <Link className="underline" to={`/club-champs/${champId}`}>Open it here</Link>.</div>;
   }

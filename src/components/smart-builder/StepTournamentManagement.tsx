@@ -12,6 +12,8 @@ import { StepInformPanel } from "./StepInformPanel";
 import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
 import { StepRunOverview } from "./StepRunOverview";
 import { fromExt } from "@/lib/supabase-ext";
+import { isDiamondTournament } from "@/lib/tournaments/diamond-guard";
+import { Link } from "react-router-dom";
 import { TournamentRegistrationsDialog } from "@/components/club-admin/TournamentRegistrationsDialog";
 
 const money = (c: number) => `R${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
@@ -25,6 +27,8 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   clubId: string; tournamentId: string; onEditSetup: (at?: "Summary" | "Messaging") => void; onBack: () => void;
 }) {
   const [h, setH] = useState<Handover | null>(() => loadHandover(clubId, tournamentId));
+  const [diamond, setDiamond] = useState<boolean | null>(null);
+  useEffect(() => { let active = true; isDiamondTournament(tournamentId).then((yes) => { if (active) setDiamond(yes); }).catch(() => { if (active) setDiamond(true); }); return () => { active = false; }; }, [tournamentId]);
   const [open, setOpen] = useState(false);
   const [regs, setRegs] = useState<{ rows: RegRow[]; feeCents: number } | null>(null);
   const [showRegs, setShowRegs] = useState(false);
@@ -55,6 +59,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
     setLife(l);
     setH((cur) => { if (!cur) return cur; const n = { ...cur, stage: l.stage, completed: l.completed, informedAt: l.inform?.at ?? cur.informedAt }; saveHandover(n); return n; });
   };
+  if (diamond !== false) return diamond ? <div className="text-sm">Diamond League keeps its existing tournament view. <Link className="underline" to={`/club-champs/${tournamentId}`}>Open tournament</Link></div> : null;
   if (!h) return <div className="text-sm">This tournament's Beta management record isn't on this device. <Button variant="link" onClick={onBack}>Back</Button></div>;
   const advance = (from: LifecycleKey, to: LifecycleKey) => {
     const n = { ...h, stage: to, completed: [...new Set([...h.completed, from])] as LifecycleKey[] };

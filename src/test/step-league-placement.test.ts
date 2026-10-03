@@ -29,3 +29,11 @@ describe("placeByLeague", () => {
     expect(run("g", ["L9"], "Male")).toBe("");
   });
 });
+
+  it("uses explicit type instead of a misleading label, including a single unit", () => {
+    const typed = [{ key: "Division::A", base: "Division › A", categoryType: "ladies" as const }];
+    const place = (gender: string | null) => placeByLeague({ memberId: "p", units: typed, eligOf: () => ({ mode: "all", leagueIds: [] }), leaguesByMember: new Map(), genderByMember: new Map([["p", gender]]) });
+    expect(place("Female")).toBe("Division::A");
+    expect(place("Male")).toBe("");
+    expect(place(null)).toBe("");
+  });

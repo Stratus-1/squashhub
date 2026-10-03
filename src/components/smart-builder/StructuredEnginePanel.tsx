@@ -9,6 +9,7 @@ import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { StructuredEditorDialog } from "./StructuredEditorDialog";
 import { StageProgressPanel } from "./StageProgressPanel";
 import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
+import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import {
   atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
@@ -31,7 +32,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
   const refresh = () => qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(champId) });
   const run = async (key: string, fn: () => Promise<unknown>, ok: string) => {
     setBusy(key);
-    try { await fn(); toast.success(ok); refresh(); } catch (e: any) { toast.error(e.message); } finally { setBusy(null); }
+    try { await assertNotDiamondTournament(champId); await fn(); toast.success(ok); refresh(); } catch (e: any) { toast.error(e.message); } finally { setBusy(null); }
   };
   const [pairing, setPairing] = useState<{ div: string; stage: string; players: string[]; pairs: string[][]; pick: string | null } | null>(null);
   const startStage = (div: string, stage: string, pairs?: string[][]) => run(`st${stage}`, () =>

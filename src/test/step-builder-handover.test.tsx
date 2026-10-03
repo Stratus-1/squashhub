@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const MEMBERS = [{ id: "m1", name: "Anna Smith" }, { id: "m2", name: "Ben Jones" }];
+const MEMBERS = [{ id: "m1", name: "Anna Smith", gender: "female" }, { id: "m2", name: "Ben Jones", gender: "male" }];
 let regStatus = "pending_payment";
 const calls: Array<{ table: string; op: string; arg: any }> = [];
 function chain(table: string): any {
@@ -14,6 +14,7 @@ function chain(table: string): any {
     : table === "comms_campaigns" && op === "insert" ? { data: { id: "camp1" }, error: null }
     : table === "comms_deliveries" ? { data: [{ club_member_id: "m1", channel: "in_app", status: "sent", error_message: null }, { club_member_id: "m2", channel: "in_app", status: "sent", error_message: null }], error: null }
     : table === "club_champs_registrations" && op === "select" ? { data: [{ club_member_id: "m1", partner_member_id: "m2", status: regStatus }, { club_member_id: "m2", partner_member_id: "m1", status: regStatus }], error: null }
+    : table === "team_league_events" ? { data: null, error: null }
     : { data: [], error: null };
   const p: any = new Proxy(() => {}, {
     get: (_t, prop) => {
@@ -36,7 +37,7 @@ import { ClubTournamentBeta } from "@/components/smart-builder/ClubTournamentBet
 const SCORING = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
 const seedChamps = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
   kind: "period", name: "Riverside Champs", scope: "club", periodStart: "2026-11-01", playType: "doubles", scoring: SCORING,
-  categories: ["Open Doubles"], disc: { "Open Doubles": "doubles" }, unitEntries: { "Open Doubles": "8" }, format: { kind: "knockout" },
+  categories: ["Open Doubles"], categoryTypes: { "Open Doubles": "open" }, disc: { "Open Doubles": "doubles" }, unitEntries: { "Open Doubles": "8" }, format: { kind: "knockout" },
   seeding: "later", partner: { "Open Doubles": "admin" }, source: "select", elig: {},
   picks: { m1: "Open Doubles", m2: "Open Doubles" }, pairs: { "Open Doubles": [["m1", "m2"]] },
   fee: { has: true, amount: "200", varies: false, perUnit: {}, doublesBasis: "pair", doublesCover: true, methods: ["cash"], confirmNeedsPay: false },

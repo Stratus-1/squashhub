@@ -432,6 +432,7 @@ export function MarkerSetup({ onStart }: Props) {
         bestOf: effective.bestOf,
         playAllGames: effective.playAllGames,
         winCondition: effective.winCondition,
+        doublesServingMethod: effective.doublesServingMethod,
       playerAName: pA?.name || "Player A",
       playerBName: pB?.name || "Player B",
       playerANumber: pA?.club_member_number || "",
@@ -781,6 +782,10 @@ export function MarkerSetup({ onStart }: Props) {
       partnerA: isDoubles ? partnerA : undefined,
       partnerB: isDoubles ? partnerB : undefined,
       isDoubles,
+      // Tournament doubles: serving method follows the division setting (the marker re-syncs it on start).
+      doublesServing: selectedTournamentMatch && isDoubles
+        ? { method: (selectedTournamentMatch as any).doublesServingMethod ?? null, pairA: [playerA.name, partnerA.name] as [string, string], pairB: [playerB.name, partnerB.name] as [string, string] }
+        : undefined,
       matchType,
       scoringFormat: scoring?.scoringFormat ?? scoringFormat,
       bestOf: scoring?.bestOf ?? bestOf,

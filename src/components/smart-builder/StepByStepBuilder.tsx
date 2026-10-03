@@ -58,7 +58,7 @@ type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 /** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
 type CompKind = "pools" | "knockout" | "swiss" | "cross" | "later";
-type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string; crossUnits?: string[]; crossMode?: "all" | "chosen" | "parent"; crossPairs?: [string, string][] };
+type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string; crossUnits?: string[]; crossMode?: "all" | "chosen" | "parent"; crossPairs?: [string, string][]; /** Knockout only: pace eliminations across the scheduling rounds, or play the field down normally. */ koPace?: "paced" | "immediate"; /** Knockout only: closer-ranked (progressive) or traditional seeded pairings. Admin can still edit every pairing. */ koPairing?: "progressive" | "traditional" };
 const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "", crossUnits: [] };
 /** Cross-league participants: the multi-select list, falling back to legacy two-group picks. */
 const crossList = (f: FormatPlan): string[] => f.crossUnits?.length ? f.crossUnits : [f.crossA, f.crossB].filter(Boolean);
@@ -1790,13 +1790,31 @@ function FormatFields({ value, onChange, units, compact = false, entries = {}, s
   return <div className="space-y-3">
     <div className={cn("grid gap-2", compact ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
       {(Object.keys(COMP_LABEL) as CompKind[]).map((k) => compact
-        ? <Button key={k} type="button" size="sm" variant={value.kind === k ? "default" : "outline"} aria-pressed={value.kind === k} onClick={() => onChange({ kind: k })}>{COMP_LABEL[k]}</Button>
-        : <Choice key={k} active={value.kind === k} onClick={() => onChange({ kind: k })} title={COMP_LABEL[k]} desc={COMP_DESC[k]} />)}
+        ? <Button key={k} type="button" size="sm" variant={value.kind === k ? "default" : "outline"} aria-pressed={value.kind === k} onClick={() => onChange(k === "knockout" ? { kind: k, koPace: value.koPace ?? "paced", koPairing: value.koPairing ?? "progressive" } : { kind: k })}>{COMP_LABEL[k]}</Button>
+        : <Choice key={k} active={value.kind === k} onClick={() => onChange(k === "knockout" ? { kind: k, koPace: value.koPace ?? "paced", koPairing: value.koPairing ?? "progressive" } : { kind: k })} title={COMP_LABEL[k]} desc={COMP_DESC[k]} />)}
     </div>
     {value.kind === "pools" && <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">The number of pools will be decided later for each category or subcategory, based on the number of entries. Categories and subcategories are not themselves automatically pools — a category/subcategory such as Men's A Singles may later contain one, two, three or more pools. Pool numbers stay provisional during planning and are finalised once registrations close and actual entry numbers are known.</div>}
     {value.kind === "knockout" && <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground space-y-1">
       <p>The provisional bracket comes from the expected entries you already gave — no need to enter it again. Actual entrants replace the estimate when registration closes.</p>
       {units.filter((u) => !scope || scope.includes(u.key)).map((u) => <p key={u.key} className="text-xs">{u.base}: {Number(entries[u.key]) || "?"} expected → {bracketHint(Number(entries[u.key]) || 0)}</p>)}
+    </div>}
+    {value.kind === "knockout" && <div className="space-y-3 rounded-lg border border-border p-3">
+      <div className="space-y-1">
+        <Label>Knockout pace</Label>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Knockout pace">
+          <Button type="button" size="sm" variant={(value.koPace ?? "paced") === "paced" ? "default" : "outline"} aria-pressed={(value.koPace ?? "paced") === "paced"} onClick={() => onChange({ koPace: "paced" })}>Paced across the rounds</Button>
+          <Button type="button" size="sm" variant={value.koPace === "immediate" ? "default" : "outline"} aria-pressed={value.koPace === "immediate"} onClick={() => onChange({ koPace: "immediate" })}>Immediate knockout</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">{(value.koPace ?? "paced") === "paced" ? "Eliminations are spread over the play-by rounds you set, so the field reaches its quarter-final/semi-final/final on time without knocking players out sooner than needed." : "Each round plays as many matches as the field allows (normal halving)."}</p>
+      </div>
+      <div className="space-y-1">
+        <Label>Pairing strategy</Label>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Pairing strategy">
+          <Button type="button" size="sm" variant={(value.koPairing ?? "progressive") === "progressive" ? "default" : "outline"} aria-pressed={(value.koPairing ?? "progressive") === "progressive"} onClick={() => onChange({ koPairing: "progressive" })}>Progressive (closer-ranked)</Button>
+          <Button type="button" size="sm" variant={value.koPairing === "traditional" ? "default" : "outline"} aria-pressed={value.koPairing === "traditional"} onClick={() => onChange({ koPairing: "traditional" })}>Traditional seeded</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">{(value.koPairing ?? "progressive") === "progressive" ? "Players of similar ranking meet — early rounds give weaker players a game against each other." : "Strongest v weakest: 1v8, 2v7, 3v6, 4v5."} You can change any pairing each round in Manage Tournament before fixtures are confirmed.</p>
+      </div>
     </div>}
     {value.kind === "swiss" && <div className="max-w-[260px] space-y-1"><Label>Roughly how many rounds? (optional)</Label><Input type="number" min="1" aria-label="Anticipated Swiss rounds" value={value.swissRounds} onChange={(e) => onChange({ swissRounds: e.target.value })} placeholder="e.g. 5" /><p className="text-xs text-muted-foreground">Each round pairs players on similar results; nobody is eliminated.</p></div>}
     {(value.kind === "pools" || value.kind === "cross") && (() => {

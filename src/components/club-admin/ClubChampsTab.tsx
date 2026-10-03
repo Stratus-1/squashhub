@@ -7994,8 +7994,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setShowWizard(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [launchDiamond]);
+  const launchOpenedRef = useRef(false);
   useEffect(() => {
-    if (launchDiamond && launchedRef.current && !showWizard) onLaunchExit?.();
+    if (!launchDiamond) return;
+    if (showWizard) { launchOpenedRef.current = true; return; }
+    if (launchOpenedRef.current) onLaunchExit?.();
   }, [launchDiamond, showWizard, onLaunchExit]);
 
   const loadChampForEdit = async (champ: any) => {

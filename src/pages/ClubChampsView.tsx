@@ -1110,6 +1110,7 @@ export default function ClubChampsView() {
                           </div>;
                         })}
                         {result.score && <div className="text-muted-foreground tabular-nums break-words" aria-label={`Result ${result.score}`}>Score · {result.score}</div>}
+                        {m.feederMismatch && <div role="alert" className="text-destructive font-medium">Fixture players differ from recorded feeder winners — review before progressing.</div>}
                         {m.feedsInto && <div className="text-muted-foreground">Winner → {m.feedsInto}</div>}
                       </div>
                     );

@@ -60,4 +60,13 @@ describe("historical pool progression presentation", () => {
     expect(projected?.matches[1].player_a_member_id).toBeNull();
     expect(projected?.matches[1].feederA).toBe("Winner QF3");
   });
+
+  it("flags a saved semifinal whose players disagree with recorded QF winners without rewriting it", () => {
+    const wrong = [{ id: "saved", stage_key: "sf", bracket_position: 1, status: "scheduled", player_a_member_id: "b1", player_b_member_id: "a2" }];
+    const snapshot = JSON.stringify(wrong);
+    const displayed = playoffDisplayStages(division, [...qfs, ...wrong]).find((s) => s.id === "sf")?.matches[0];
+    expect(displayed?.feederMismatch).toBe(true);
+    expect(displayed?.player_a_member_id).toBe("b1");
+    expect(JSON.stringify(wrong)).toBe(snapshot);
+  });
 });

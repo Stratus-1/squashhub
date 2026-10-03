@@ -46,6 +46,8 @@ export interface PlayoffDisplayMatch extends PlayoffMatchLike {
   feederB?: string | null;
   /** Where this game's winner goes, e.g. "Semifinals 1". */
   feedsInto?: string | null;
+  /** Saved fixture disagrees with a decided source game; never silently rewrite a played fixture. */
+  feederMismatch?: boolean;
 }
 
 /** Short stage prefix for feeder labels: Quarterfinals → QF, Semifinals → SF. */
@@ -167,7 +169,24 @@ export function playoffDisplayStages(division: StructuredDivisionLike, matches: 
     if (next) knockoutFeeders(next).forEach((f) => { [f.a, f.b].forEach((p) => p != null && feedsMap.set(p, `${next.name} ${f.order}`)); });
     const existing = orderMatches(matches.filter((m) => m.stage_key === stage.id));
     if (existing.length) {
-      result.push({ id: stage.id, name: stage.name, projected: false, matches: existing.map((m, k) => ({ ...m, displayId: String(m.id ?? `${stage.id}-${k}`), projected: false, feedsInto: feedsMap.get(Number(m.bracket_position) || k + 1) ?? null })) });
+      const source = orderMatches(matches.filter((m) => m.stage_key === stage.mapping?.sourceStageId));
+      const sourceByPosition = new Map(source.map((m, k) => [Number(m.bracket_position) || k + 1, m]));
+      const feeders = new Map(knockoutFeeders(stage).map((f) => [f.order, f]));
+      result.push({ id: stage.id, name: stage.name, projected: false, matches: existing.map((m, k) => {
+        const position = Number(m.bracket_position) || k + 1;
+        const f = feeders.get(position);
+        const differs = (sourcePosition: number | null | undefined, side: "a" | "b") => {
+          const sourceMatch = sourcePosition == null ? undefined : sourceByPosition.get(sourcePosition);
+          if (!sourceMatch || !decided(sourceMatch)) return false;
+          const actual = winnerUnit(sourceMatch);
+          const saved = idsOn(m, side);
+          return actual.length !== saved.length || actual.some((id, index) => id !== saved[index]);
+        };
+        return { ...m, displayId: String(m.id ?? `${stage.id}-${k}`), projected: false,
+          feedsInto: feedsMap.get(position) ?? null,
+          feederMismatch: !!f && (differs(f.a, "a") || differs(f.b, "b")),
+        };
+      }) });
       continue;
     }
     const mapping = stage.mapping;

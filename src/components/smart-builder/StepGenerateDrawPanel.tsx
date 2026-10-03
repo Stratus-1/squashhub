@@ -4,7 +4,7 @@ import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-not
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
 import { setupConflicts } from "@/lib/smart-builder/consistency";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Loader2, ChevronRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";

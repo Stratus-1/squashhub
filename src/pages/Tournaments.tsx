@@ -501,7 +501,11 @@ export default function Tournaments() {
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
-  const [champFilter, setChampFilter] = useState<string>("all");
+  // ?champ=<id> deep-links straight to one tournament's games (e.g. after Generate draw & fixtures).
+  const [champFilter, setChampFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    return new URLSearchParams(window.location.search).get("champ") ?? "all";
+  });
   const gamesCardRef = useRef<HTMLDivElement | null>(null);
   // "round" (default) | "slot" | "flat"
   const [groupMode, setGroupMode] = useState<"round" | "slot" | "flat">(() => {

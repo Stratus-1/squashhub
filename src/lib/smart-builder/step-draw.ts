@@ -414,7 +414,12 @@ export function roundDeadlines(s: DivSchedule, rounds: number): { dates: string[
 type SpecOpts = { roundCounts?: Map<string, number>; poolMode?: PoolAllocationMode };
 const lastDeadline = (s: DivSchedule) => s.deadlines.filter(Boolean).slice(-1)[0] ?? null;
 
-function stageSchedule(s: DivSchedule, rounds: number | undefined) {
+function stageSchedule(s: DivSchedule, rounds: number | undefined, knockout = false) {
+  // Knockout: each play-by date is one scheduling round (round N plays by date N); later rounds are confirmed in Manage.
+  if (s.rule === "play_by" && knockout && s.deadlines.filter(Boolean).length > 1) {
+    const ds = s.deadlines.filter(Boolean);
+    return { rule: "play_by" as const, deadline: ds[ds.length - 1], roundDates: [...ds] };
+  }
   if (s.rule === "play_by") {
     const rd = rounds && s.deadlines.filter(Boolean).length > 1 ? roundDeadlines(s, rounds).dates : [];
     return { rule: "play_by" as const, deadline: lastDeadline(s), roundDates: rd.length ? rd : undefined };
@@ -513,7 +518,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
         drawSize: kind === "knockout" && !isPooledKnockout(f) ? nextPow2(n) : undefined,
         paced: isPooledKnockout(f) ? pooledPaced(d, mode) : kind === "knockout" && f.paced ? (() => { const p = pacePlan({ active: n, target: f.paced.target, roundsLeft: f.paced.rounds, pace: "paced", milestoneLabel: f.paced.label }); return p.thisRound > 0 ? { count: p.thisRound, pairing: f.paced.pairing } : undefined; })() : undefined,
         discipline: d.doubles ? "doubles" : "singles",
-        schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id)),
+        schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id), kind === "knockout"),
       } as any, version, d),
     } as any);
   }

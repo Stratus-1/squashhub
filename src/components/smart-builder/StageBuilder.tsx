@@ -85,7 +85,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
 
       {def.templateMeta?.key === DIAMOND_KEY && (
         <div className="rounded-md border border-amber-400/30 bg-amber-400/5 p-3 text-white/80" data-field="diamond-retired">
-          Built with the retired Beta Diamond model. Diamond League now uses the proven Diamond League setup — start a new one from "Diamond League" on the Tournament Beta page.
+          Built with the retired Beta Diamond model. Diamond League now uses the proven Diamond League setup — start a new one from "Diamond League" on the Tournaments page.
         </div>
       )}
 

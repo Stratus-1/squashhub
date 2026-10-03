@@ -20,7 +20,7 @@ export function TournamentBetaClubsCard() {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 space-y-2">
       <div className="text-sm font-semibold text-white">Clubs testing Tournament Beta</div>
-      <p className="text-[11px] text-white/55">These clubs get a separate "Tournament Beta" tile in Club Admin, next to their normal Tournaments tile. Switching off hides the tile only — nothing is deleted.</p>
+      <p className="text-[11px] text-white/55">The Step-by-Step builder now lives on every club's normal Tournaments page. This list is kept for reference; switching off deletes nothing.</p>
       <div className="flex flex-wrap gap-2">
         {betaClubs.length === 0 && <span className="text-xs text-white/50">No clubs yet.</span>}
         {betaClubs.map((b) => (

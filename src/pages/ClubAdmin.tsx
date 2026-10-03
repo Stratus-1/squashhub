@@ -203,11 +203,8 @@ export default function ClubAdmin() {
   // Capability filter — core tabs (no capability) are always visible.
   const capFilter = (tab: AdminTab) => isTabVisible(tab, enabledCaps, hasCapRows);
   const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
-  const opsTabs = clubHasTournamentBeta
-    ? OPERATIONS_TABS.flatMap((t) => t.value === "champs"
-        ? [t, { value: "champs_beta", label: CLUB_BETA_TILE_LABEL, icon: Wand2, permission: "champs" as PermissionSlug, color: "amber", noStatus: true, capability: "tournaments" as Capability }]
-        : [t])
-    : OPERATIONS_TABS;
+  // The Step-by-Step builder now lives on the single Tournaments page; no separate Beta tile.
+  const opsTabs = OPERATIONS_TABS;
   const visibleOps = opsTabs.filter(permFilter).filter(capFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];
 
@@ -231,8 +228,10 @@ export default function ClubAdmin() {
       case "ladder": return <LadderTab clubId={club.id} />;
       case "ranking-points": return <RankingPointsTab clubId={club.id} />;
       case "leagues": return <LeaguesTab clubId={club.id} />;
-      case "champs": return <TournamentPlanner mode="club" clubId={club.id} />;
-      case "champs_beta": return <ClubTournamentBeta clubId={club.id} clubName={(club as any)?.name} />;
+      case "champs":
+      case "champs_beta":
+        return <ClubTournamentBeta clubId={club.id} clubName={(club as any)?.name}
+          renderList={(manage) => <TournamentPlanner mode="club" clubId={club.id} hideCreateButton onManageBeta={manage} />} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
       // IoT owns device registration end to end: each door/gate/gadget keeps

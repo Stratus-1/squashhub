@@ -89,7 +89,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" />Tournament Beta</Button>
+          <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" />Tournaments</Button>
           <h2 className="text-lg font-semibold">{h.name}</h2>
           <p className="text-xs text-muted-foreground">Tournament management (Beta) · {h.kind === "period" ? "Club Championships" : "Once-off / weekend"}</p>
         </div>

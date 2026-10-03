@@ -106,7 +106,7 @@ export function TemplatePicker({ clubId, mode, onStartStep, onOpenDraft, onStart
   return (
     <div className="max-w-2xl space-y-3">
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="ghost" onClick={onClose}>← Tournament Beta</Button>
+        <Button size="sm" variant="ghost" onClick={onClose}>← Tournaments</Button>
         <h3 className="font-semibold">{mode === "mine" ? "My templates" : "Pre-built templates"}</h3>
       </div>
       {mode === "mine" ? (

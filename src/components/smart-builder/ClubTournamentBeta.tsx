@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, FlaskConical, Gem, Layers, ListChecks, Trash2, Wand2 } from "lucide-react";
 import { SmartTournamentBuilderCore, type BuilderNav } from "@/pages/admin/SmartTournamentBuilder";
@@ -22,7 +22,12 @@ import { fromExt } from "@/lib/supabase-ext";
  * the normal visible Beta entry experience. The production/Current Builder
  * (SmartTournamentBuilder route) is untouched.
  */
-export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubName?: string }) {
+export function ClubTournamentBeta({ clubId, clubName, renderList }: {
+  clubId: string; clubName?: string;
+  /** Consolidated Tournaments home: the normal tournament list rendered under the start section; receives the Step-by-Step Manage opener. */
+  renderList?: (manage: (tournamentId: string) => void) => ReactNode;
+}) {
+  const home = !!renderList;
   const [searchParams] = useSearchParams();
   const legacy = searchParams.get("legacy") === "1";
   const [legacyOpen, setLegacyOpen] = useState(false);
@@ -81,7 +86,7 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   if (diamondOpen) {
     return (
       <div className="space-y-2" data-field="beta-diamond-league">
-        <Button size="sm" variant="ghost" onClick={() => setDiamondOpen(false)}>← Tournament Beta</Button>
+        <Button size="sm" variant="ghost" onClick={() => setDiamondOpen(false)}>← Tournaments</Button>
         <ClubChampsTab clubId={clubId} launchDiamond onLaunchExit={() => setDiamondOpen(false)} />
       </div>
     );
@@ -132,14 +137,15 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   }
 
   return (
+    <div className="space-y-4">
     <div className="dark rounded-xl bg-background p-4 text-foreground">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Wand2 className="w-5 h-5 text-amber-300" /> Tournament Beta
+          <Wand2 className="w-5 h-5 text-amber-300" /> {home ? "Tournaments" : "Tournament Beta"}
         </h2>
-        <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1">
+        {!home && <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1">
           <FlaskConical className="w-3 h-3" />Beta testing · {clubName ?? "this club"}
-        </span>
+        </span>}
       </div>
       <p className="mt-4 max-w-xl text-xs text-white/60">
         Set up your tournament by answering simple questions, one step at a time. Nothing is fixed until you confirm it.
@@ -234,6 +240,8 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+    {renderList?.((id) => { setEditTid(null); setManaging(id); })}
     </div>
   );
 }

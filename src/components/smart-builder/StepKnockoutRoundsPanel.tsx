@@ -181,6 +181,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const u = useMemo(() => computeKoUnit({ plan, div, data, pool, today: new Date().toISOString().slice(0, 10) }), [plan, div, data, pool]);
   const { pace, pairing, rows, field, milestone, reached, poolDone, target, roundsLeft, nextRound, steps, ks, pp, nextLabel, playBy } = u;
   const nameOf = (id?: string | null) => (id ? data.members.get(id)?.name ?? "Player" : "—");
+  const poolNo = pool ? pool.index + 1 : null;
 
   const proposal = useMemo(() => proposePairings(field.active, pp.thisRound, pairing), [field.active, pp.thisRound, pairing]);
   const [pairs, setPairs] = useState<Array<[string, string]>>([]);

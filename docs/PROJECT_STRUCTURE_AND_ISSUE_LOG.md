@@ -2513,3 +2513,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Follow-up: knockout "rounds needed" now = fewest elimination rounds to the next stage field per pool (10 players, 2×5, QF 8 → 2 eliminations, 1 round), not round-robin rounds; each play-by date is one knockout scheduling round; format shows "Knockout within pools/groups".
 
 - 2026-10-03 NSP Knock out: paced Round 1 games were saved as "Quarter-final"/"Semi-final" because structured-persist named knockout rounds by game count. Paced fixtures now carry `pacedRound` and save as "Round N"; pool rounds in Manage never take play-off names. No future rounds had been created; 8 unplayed rows relabelled only.
+
+### 2026-10-03 — Paced knockout: Round 1 created while organiser thought they were still choosing matches
+- NSP Knock out: all 8 Round 1 games were created in one Generate commit (16:41:47); the Generate step showed only pools/seeds, never the actual Round 1 matches, then closed straight into the next stage.
+- Fix: Generate draw now lists the proposed Round 1 matches per pool (same engine dry run, `proposedKnockoutRound1`) with editable players, remove/add and reset; Generate saves exactly those (`paced.pairs` / `paced.poolPairs`, validated in `engine-service` — same pool, distinct, real entrants) and asks for an explicit confirmation stating how many games are created. Edits reset when seeds, pools, pace or pairing change.

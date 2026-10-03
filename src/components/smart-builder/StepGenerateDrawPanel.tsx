@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
+import { proposedKnockoutRound1 } from "@/lib/smart-builder/step-draw";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
@@ -54,7 +55,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
   /** Organiser edits per group: seed order and/or pools. These are what Generate saves — never recalculated away. */
-  const [manual, setManual] = useState<Record<number, { order?: string[]; pools?: { ids: string[]; sizes: number[] } }>>({});
+  const [manual, setManual] = useState<Record<number, { order?: string[]; pools?: { ids: string[]; sizes: number[] }; pairs?: Array<Array<[string, string]>> }>>({});
   const [poolMode, setPoolMode] = useState<PoolAllocationMode>("snake");
   const [dragId, setDragId] = useState<string | null>(null);
   const [venueErr, setVenueErr] = useState<string | null>(null);
@@ -155,8 +156,22 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     let units = orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points });
     const mo = manual[d.group]?.order;
     if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
-    return { ...d, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: (d.format.kind === "pools" || isPooledKnockout(d.format)) && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
+    return { ...d, koPairs: manual[d.group]?.pairs ?? null, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: (d.format.kind === "pools" || isPooledKnockout(d.format)) && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
   }), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts]);
+  /** Round 1 matches the engine proposes for each paced knockout (before organiser edits) — reviewed below before anything is created. */
+  const proposals = useMemo(() => meta ? proposedKnockoutRound1(meta.name, seeded, poolMode) : new Map<number, Array<Array<[string, string]>>>(), [meta, seeded, poolMode]);
+  const round1Of = (g: number) => manual[g]?.pairs ?? proposals.get(g) ?? null;
+  const setRound1 = (g: number, pairs: Array<Array<[string, string]>> | null) => {
+    setConfirmed(false);
+    setManual((m) => { const cur = { ...m[g] }; if (pairs) cur.pairs = pairs; else delete cur.pairs; const n = { ...m, [g]: cur }; if (!cur.order && !cur.pools && !cur.pairs) delete n[g]; return n; });
+  };
+  const round1Issues = useMemo(() => seeded.flatMap((d) => {
+    const ps = manual[d.group]?.pairs; if (!ps) return [];
+    const used = ps.flat().flat();
+    if (used.some((x) => !x) || ps.flat().some(([a, b]) => a === b)) return [`${d.label}: a Round 1 match is missing a player.`];
+    if (new Set(used).size !== used.length) return [`${d.label}: a player appears in two Round 1 matches.`];
+    return [];
+  }), [seeded, manual]);
   const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }, "preview", poolMode) : null, [meta, seeded, poolMode]);
   /** Knockout pace / pairing are real settings: saved on the tournament's plan (and this device's copy) so Generate and Manage use them. */
   const saveKnockoutChoice = async (labels: string[], patch: Record<string, string>) => {
@@ -179,6 +194,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     if (g != null && manual[g] && ("kind" in patch || "pools" in patch || "seeding" in patch)) {
       setManual((m) => { const n = { ...m }; delete n[g]; return n; });
       toast.info(`${divs[i].label}: format/seeding changed, so your manual seed and pool changes were reset.`);
+    } else if (g != null && manual[g]?.pairs && ("ko" in patch || "paced" in patch)) {
+      setManual((m) => { const cur = { ...m[g] }; delete cur.pairs; const n = { ...m, [g]: cur }; if (!cur.order && !cur.pools) delete n[g]; return n; });
+      toast.info(`${divs[i].label}: knockout pace/pairing changed, so the Round 1 matches were re-proposed.`);
     } setConfirmed(false); setDivs((ds) => ds.map((d, k) => k === i ? { ...d, format: { ...d.format, ...patch } } : d)); };
   /** Switch a cross group between "all selected play each other" and explicit pairings (seeded from its current opponents). */
   const setCrossMode = (i: number, mode: "all" | "chosen") => {
@@ -241,7 +259,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     if (j < 0 || j >= order.length) return;
     [order[k], order[j]] = [order[j], order[k]];
     setConfirmed(false);
-    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], order } }));
+    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], order, pairs: undefined } }));
   };
   // Same move-to-pool action as the existing builder (pools.ts moveToPool): sizes follow the move, a pair moves as one.
   const movePool = (d: DrawDivision, id: string, to: number) => {
@@ -249,7 +267,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const r = moveToPool(cur.flat(), id, to, d.format.pools, { manual: true, sizes: cur.map((p) => p.length) });
     if (!r) return;
     setConfirmed(false);
-    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], pools: r } }));
+    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], pools: r, pairs: undefined } }));
   };
   const resetManual = (g: number) => { setConfirmed(false); setManual((m) => { const n = { ...m }; delete n[g]; return n; }); };
   const poolEditor = (d: DrawDivision) => {
@@ -297,12 +315,55 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     );
   };
 
-  const errors = [...(venueErr ? [venueErr] : []), ...pairErrors, ...(preview?.errors ?? [])];
+  /** Review / edit the Round 1 matches before anything is created. Only these matches are saved by Generate. */
+  const round1Editor = (d: DrawDivision) => {
+    const groups = round1Of(d.group) ?? [];
+    const pooled = isPooledKnockout(d.format);
+    const pools = pooled ? poolsFor(d, poolMode) ?? [] : [d.units.map(unitId)];
+    const edited = !!manual[d.group]?.pairs;
+    const change = (pi: number, next: Array<[string, string]>) => setRound1(d.group, pools.map((_, k) => (k === pi ? next : groups[k] ?? [])));
+    return (
+      <div className="space-y-2 rounded border border-primary/40 bg-primary/5 p-2" aria-label={`Round 1 matches for ${d.label}`}>
+        <div className="font-medium">Round 1 matches — review before creating</div>
+        <p className="text-muted-foreground">Nothing is created until you press Generate below. Only these Round 1 matches are created; everyone not listed stays in (waiting is not a loss). Later rounds are proposed in Manage Tournament after results.</p>
+        {pools.map((members, pi) => {
+          const list = groups[pi] ?? [];
+          const used = list.flat();
+          const waiting = members.filter((id) => !used.includes(id));
+          return (
+            <div key={pi} className="space-y-1">
+              {pooled && <div className="font-medium">Pool {String.fromCharCode(65 + pi)}</div>}
+              {list.length === 0 && <p className="text-muted-foreground">No match this round — everyone stays in.</p>}
+              {list.map(([a, b], i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  {[a, b].map((v, side) => (
+                    <select key={side} aria-label={`${d.label}${pooled ? ` pool ${String.fromCharCode(65 + pi)}` : ""} match ${i + 1} player ${side ? "B" : "A"}`} className="rounded border border-input bg-background p-1" value={v}
+                      onChange={(e) => change(pi, list.map((p, j) => (j === i ? (side ? [p[0], e.target.value] : [e.target.value, p[1]]) : p)) as Array<[string, string]>)}>
+                      <option value="">Choose…</option>
+                      {members.map((id) => <option key={id} value={id}>{unitName(id)}</option>)}
+                    </select>
+                  )).reduce((acc: any[], el, k) => (k ? [...acc, <span key="v">v</span>, el] : [el]), [])}
+                  <button type="button" className="text-destructive underline" onClick={() => change(pi, list.filter((_, j) => j !== i))}>Remove</button>
+                </div>
+              ))}
+              {waiting.length > 0 && <p className="text-muted-foreground">Waiting (still in): {waiting.map(unitName).join(", ")}</p>}
+              {waiting.length >= 2 && <button type="button" className="text-primary underline" onClick={() => change(pi, [...list, [waiting[waiting.length - 2], waiting[waiting.length - 1]]])}>+ add a match</button>}
+            </div>
+          );
+        })}
+        {edited && <button type="button" className="text-primary underline" onClick={() => setRound1(d.group, null)}>Reset to the proposed matches</button>}
+      </div>
+    );
+  };
+
+  const errors = [...(venueErr ? [venueErr] : []), ...pairErrors, ...round1Issues, ...(preview?.errors ?? [])];
   const hasDraw = existing.games > 0;
   const canGenerate = !busy && confirmed && errors.length === 0 && (!hasDraw || (rebuildOk && existing.played === 0));
 
   const generate = async () => {
     if (!meta) return;
+    const ko = seeded.some((d) => proposals.has(d.group));
+    if (!window.confirm(`This creates ${preview?.total ?? 0} game${preview?.total === 1 ? "" : "s"} now${ko ? " — exactly the Round 1 matches listed above. Later knockout rounds are only proposed and confirmed week by week in Manage Tournament" : ""}. Players ${notifyDraw ? "WILL" : "will not"} be notified. Continue?`)) return;
     setBusy(true);
     try {
       await assertNotDiamondTournament(tournamentId);
@@ -474,6 +535,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 })}</div>
               </div>
             )}
+            {f.kind === "knockout" && proposals.has(d.group) && round1Editor(d)}
             {d.playoffs.length > 0 && <p className="text-muted-foreground">Planned play-offs: {d.playoffs.join(" → ")} — kept as "Define later", created after this stage finishes.</p>}
             {d.notes.map((n) => <p key={n} className="text-muted-foreground">• {n}</p>)}
             {issues.length > 0 && <p className="text-destructive">Fix: {issues.join(" · ")}</p>}

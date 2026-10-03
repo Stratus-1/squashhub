@@ -71,3 +71,32 @@ describe("knockout round maths (acceptance: 10 players, 2 pools of 5, QF field 8
     expect(p.divisions[0].perRound[0].date).toBe("2026-10-10");
   });
 });
+
+describe("organiser-reviewed Round 1 matches (nothing created until Generate, exactly what was reviewed)", () => {
+  const rule = { mode: "auto", target: "5" } as const;
+  const mk = (n: number): DrawDivision => {
+    const format = formatWithPoolRule(koFormat("paced", 8, 3), rule as any, n);
+    return { group: 1, label: "Men › 1st · Singles", doubles: false, units: units(n), format, notes: [], playoffs: [], poolReview: reviewPools(rule as any, "Men 1st", n, "player"), poolAccepted: true };
+  };
+  const gen = (d: DrawDivision) => {
+    const spec = buildDrawSpec("NSP", [d], "v1");
+    return generateFromSpec({ ...spec, divisions: spec.divisions.map((x) => ({ ...x, entrants: d.units.map((u, k) => ({ id: u.member, rank: k + 1 })) })) }, "t");
+  };
+  it("proposes per pool and generates exactly the edited matches", async () => {
+    const { proposedKnockoutRound1 } = await import("@/lib/smart-builder/step-draw");
+    const d = mk(10);
+    const prop = proposedKnockoutRound1("NSP", [d]).get(1)!;
+    expect(prop).toHaveLength(2);
+    const pool0 = (buildDrawSpec("NSP", [d], "v1").divisions[0].stages[0] as any).poolMembers[0] as string[];
+    const edited: Array<Array<[string, string]>> = [[[pool0[0], pool0[1]], [pool0[2], pool0[3]]], []];
+    const fx = gen({ ...d, koPairs: edited });
+    expect(fx.map((f) => [f.a, f.b])).toEqual(edited[0]);
+    expect(fx.every((f) => f.round === 1)).toBe(true);
+  });
+  it("refuses a confirmed match that crosses pools or repeats a player", () => {
+    const d = mk(10);
+    const pm = (buildDrawSpec("NSP", [d], "v1").divisions[0].stages[0] as any).poolMembers as string[][];
+    expect(() => gen({ ...d, koPairs: [[[pm[0][0], pm[1][0]]], []] })).toThrow(/Round 1 matches/);
+    expect(() => gen({ ...d, koPairs: [[[pm[0][0], pm[0][1]], [pm[0][0], pm[0][2]]], []] })).toThrow(/Round 1 matches/);
+  });
+});

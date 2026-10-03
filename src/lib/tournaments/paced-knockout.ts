@@ -295,3 +295,12 @@ export function koRoundState(o: {
   const count = Math.max(0, Math.min(Math.floor(active / 2), active - step.fieldSize / 2));
   return count > 0 ? { kind: "playoff", label: step.label, count } : { kind: "no_elimination", label: step.label };
 }
+
+/**
+ * The configured formal play-off path for a category, e.g. "Pool knockout → Semifinals → Final".
+ * Built only from the stages that exist (own stages win, else shared) — Quarterfinals are never assumed.
+ */
+export function configuredPathText(plan: { stages?: PlanStage[]; playoffSync?: boolean | "later" | null } | null, key: string, pre = "Knockout rounds"): string {
+  const steps = playoffSteps(plan, key);
+  return [pre, ...steps.map((s) => s.label)].join(" → ");
+}

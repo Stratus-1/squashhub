@@ -2521,3 +2521,5 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-10-03 — Knockout pool colours before the first result
 - Cause: standings only passed pool status to the shared table after a completed elimination; Masters had results and turned green/red, while every other NSP Knock out category with no results stayed neutral.
 - Fix: all configured knockout pools always pass active/eliminated status to the same table. An unplayed match never eliminates anyone; no results or tournament records changed.
+
+- 2026-10-03 Optional play-off stages (knockout): QF no longer assumed. Builder pool-qualification target, summary path text and pairing ("Winners of previous stage" = qualification survivors for the first knockout play-off) now read the first CONFIGURED stage via milestoneFor/playoffSteps; removing a play-off stage on a live tournament is blocked when that stage has played games. Tests: src/test/optional-playoff-stages.test.ts.

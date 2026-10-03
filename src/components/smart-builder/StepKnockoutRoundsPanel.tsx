@@ -261,7 +261,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
         <div>Still in: <span className="text-foreground font-medium">{field.active.length}</span> · Out: {field.eliminated.length}</div>
         <div>
-          {milestone.source === "none" ? "No play-off milestone — runs at its own pace" : `${milestone.label}${milestone.date ? ` on ${milestone.date}` : ""} (${milestone.source === "shared" ? "shared tournament stage" : "own stage"})`}
+          {milestone.source === "none" ? "No play-off milestone — runs at its own pace" : `${milestone.label}${milestone.date ? ` on ${milestone.date}` : ""} (${milestone.source === "shared" ? "shared tournament stage" : "own stage"})${steps.length ? ` · path: ${["Round 1…", ...steps.map((x) => x.label)].join(" → ")}` : ""}`}
         </div>
         {!reached && target != null && ks.kind === "pre_round" && <div>Eliminations still needed: <span className="text-foreground font-medium">{pp.needed}</span>{roundsLeft != null ? ` over ${roundsLeft} round${roundsLeft === 1 ? "" : "s"}` : ""}</div>}
       </div>

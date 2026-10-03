@@ -1,3 +1,6 @@
+import { toast } from "sonner";
+import { fromExt } from "@/lib/supabase-ext";
+import { milestoneFor, configuredPathText } from "@/lib/tournaments/paced-knockout";
 /** Lenient WhatsApp group invite check: chat.whatsapp.com/<code> or /invite/<code>, with or without https/www, any query string. */
 const normaliseGroupInviteUrl = (raw: string) => {
   let v = raw.trim().replace(/[.,;)\]]+$/, "");
@@ -85,8 +88,8 @@ const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.
 const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools/standings" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
 const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Pool crossover: A1 vs B2, B1 vs A2" : p.pairing === "seeded" ? "Seeded: 1 vs 4, 2 vs 3 (highest vs lowest)" : "Pairing to be decided";
 const styleText = (p: PlayoffPlan) => p.style === "placement" ? "Placement play (A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th…)" : p.style === "championship" ? "Championship playoffs" : "Playoff type to be decided";
-const playoffDetail = (p: PlayoffPlan, k?: CompKind | null) => {
-  if (k === "knockout") return "Knockout rounds (no separate playoffs)";
+const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => {
+  if (k === "knockout") return koPath && koPath.includes("→") ? koPath : "Knockout rounds (no separate playoffs)";
   if (p.choice !== "playoffs") return k === "swiss" && p.choice === "none" ? "Finish on Swiss standings" : k === "cross" && p.choice === "none" ? "Finish on standings" : playoffText(p);
   if (p.style === "placement" && (k === "pools" || k === "cross")) return styleText(p);
   return `${playoffText(p)}${k === "pools" || k === "cross" ? ` · ${styleText(p)}` : ""} · ${qualifierText(p)}${p.style !== "placement" ? ` · ${pairingText(p)}` : ""}`;
@@ -210,7 +213,8 @@ function pairingOptions(s: ClubStage, playoffs: ClubStage[], kind: string): Play
   const hasEarlier = idx > 0 && playoffs.some((x) => x.id !== s.id && (x.unit === s.unit || !x.unit || !s.unit) && PLAYOFF_STAGE_NAMES.indexOf(x.name as typeof PLAYOFF_STAGE_NAMES[number]) > -1 && PLAYOFF_STAGE_NAMES.indexOf(x.name as typeof PLAYOFF_STAGE_NAMES[number]) < idx);
   const poolish = kind === "pools" || kind === "cross" || kind === "later";
   const out: PlayoffPairing[] = [];
-  if (hasEarlier) out.push("winners");
+  // Knockout: the first play-off stage takes the qualification survivors ("winners" of the pre-play-off knockout).
+  if (hasEarlier || kind === "knockout") out.push("winners");
   if (poolish) out.push("crossover", "same_position");
   out.push("seeded", "later");
   return out;
@@ -404,8 +408,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const formatExceptions = units.filter((u) => formatDetail(formatFor(u.key)) !== formatDetail(format));
   const formatOk = (f: FormatPlan) => f.kind !== null;
   /** Playoffs only apply where the planned format is not already a knockout. */
+  /** Actual configured knockout path, e.g. "Pool knockout → Semifinal → Final" (never assumes Quarterfinals). */
+  const koPath = (key: string) => configuredPathText(a as any, key, (poolPlanOf(a, key)?.mode ?? "none") !== "none" ? "Pool knockout" : "Knockout rounds");
   const playoffActive = (key: string) => playoffFor(key).choice === "playoffs" && formatFor(key).kind !== "knockout";
-  const playoffExceptions = units.filter((u) => playoffDetail(playoffFor(u.key), formatFor(u.key).kind) !== playoffDetail(playoff, format.kind));
+  const playoffExceptions = units.filter((u) => playoffDetail(playoffFor(u.key), formatFor(u.key).kind, koPath(u.key)) !== playoffDetail(playoff, format.kind));
   const partnerOf = (k: string): Partner | null => a.partner?.[k] ?? null;
   const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
@@ -545,6 +551,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       : units.flatMap((u) => { const s = startOf(u.key); const own = s === "qf" ? ["Quarterfinals", "Semifinals", "Final"] : s === "sf" ? ["Semifinals", "Final"] : s === "final" ? ["Final"] : s === "custom" || s === "later" ? ["Playoffs"] : []; return own.map((n) => newStage(n, "later", u.key, "playoff")); });
     setStages([...main, ...po]);
   };
+  /** Removing a stage never deletes games: a live tournament with played games in that stage blocks the removal. */
+  const removeStage = async (s: ClubStage) => {
+    if (tournamentId && s.phase === "playoff") {
+      const { data } = await fromExt("club_champs_matches").select("id, stage_label, status, winner_member_id").eq("champ_id", tournamentId);
+      const base = s.name.toLowerCase().replace(/s$/, "");
+      const played = ((data ?? []) as any[]).filter((m) => String(m.stage_label ?? "").toLowerCase().replace(/-/g, "").includes(base.replace(/-/g, "")) && (m.status === "completed" || m.winner_member_id));
+      if (played.length) { toast.error(`${s.name} already has ${played.length} played game(s) — it can't be removed. Results are kept.`); return; }
+    }
+    setStages(stages.filter((x) => x.id !== s.id));
+  };
   const renderStage = (s: ClubStage) => (
     <div key={s.id} className={cn("space-y-2 rounded-lg border p-3", s.phase === "playoff" ? "border-primary/50" : "border-border")}>
       <div className="flex flex-wrap items-center gap-2">
@@ -572,7 +588,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             {opts.map((p) => <option key={p} value={p}>{PAIRING_LABEL[p]}</option>)}
           </select>;
         })()}
-        <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => void removeStage(s)}><Trash2 className="h-4 w-4" /></Button>
       </div>
       {s.phase === "playoff" && <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Start this stage">
         <span className="text-xs font-medium">Start this stage</span>
@@ -1485,8 +1501,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
                {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
                  const q = poolQualification(u.key);
-                 const first = playoffStages.find((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0]);
-                 const field = first?.name.toLowerCase().includes("quarter") ? 8 : first?.name.toLowerCase().includes("semi") ? 4 : first?.name.toLowerCase().includes("final") ? 2 : null;
+                 // First CONFIGURED play-off stage (own stages win, else shared) — never assume Quarterfinals.
+                 const ms = milestoneFor(a as any, u.key);
+                 const first = ms.label ? { name: ms.label } : null;
+                 const field = ms.fieldSize;
                  const expected = Number(a.unitEntries?.[u.key]) || 0;
                  const nPools = expected ? recommendPools(expected, Number(poolRule(u.key).target) || 5).length : 0;
                  return <div key={u.key} className="space-y-1 border-t border-border pt-2 text-xs"><div className="font-medium">{u.base} · {first?.name} qualification</div>
@@ -1530,7 +1548,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                })}
                     {subs.length > 0 && a.playoffOverrides?.[cat] && <PlayoffFields value={a.playoffOverrides[cat]} onChange={(patch) => setPlayoffOverride(cat, patch)} format={formatFor(cat).kind} />}
                     {catUnits.map((u) => <div key={u.key} className="space-y-2 border-t border-border pt-2">
-                      <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</div>
+                      <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {playoffDetail(playoffFor(u.key), formatFor(u.key).kind, koPath(u.key))}</div>
                       <div className="flex flex-wrap gap-2">
                         <Button type="button" size="sm" variant={!a.playoffOverrides?.[u.key] ? "default" : "outline"} onClick={() => setPlayoffOverride(u.key, null)}>Inherit {subs.length ? "category" : "tournament"}</Button>
                         <Button type="button" size="sm" variant={a.playoffOverrides?.[u.key] ? "default" : "outline"} onClick={() => setPlayoffOverride(u.key, {})}>Change this {subs.length ? "subcategory" : "category"}</Button>
@@ -1592,7 +1610,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               </SummaryRow>
               {!isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Playoffs" onEdit={() => go("Playoffs")}>
                 <div>{playoffDetail(playoff, format.kind)}{units.length > 0 && <span className="text-muted-foreground"> · {playoffExceptions.length ? "tournament default" : "all groups"}</span>}</div>
-                {playoffExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</span></li>)}</ul>}
+                {playoffExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{playoffDetail(playoffFor(u.key), formatFor(u.key).kind, koPath(u.key))}</span></li>)}</ul>}
                 {provisional && <span className="text-xs text-muted-foreground">Recommendations provisional until entries are known.</span>}
               </SummaryRow>}
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
@@ -1696,7 +1714,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {stages.map((s) => <TreeLeaf key={s.id}>{stageUnit(s.unit)} · {s.name || "Unnamed"}<span className="block text-muted-foreground">{stageWhen(s)}</span></TreeLeaf>)}
               </TreeNode>}
               {!isChamps && <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Playoffs: ${playoffDetail(playoff, format.kind)}`} onClick={() => go("Playoffs")}>
-                {playoffExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Playoffs")}>{u.base}: {playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</Button></TreeLeaf>)}
+                {playoffExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Playoffs")}>{u.base}: {playoffDetail(playoffFor(u.key), formatFor(u.key).kind, koPath(u.key))}</Button></TreeLeaf>)}
               </TreeNode>}
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>

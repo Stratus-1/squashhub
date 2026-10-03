@@ -808,7 +808,7 @@ export default function ClubChampsView() {
                   <th className="pb-2 font-medium text-center">P</th>
                   <th className="pb-2 font-medium text-center">W</th>
                   <th className="pb-2 font-medium text-center">L</th>
-                  {standingsColumns.map((col) => (
+                  {!opts?.koStatus && standingsColumns.map((col) => (
                     <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
                   ))}
                 </>
@@ -864,7 +864,7 @@ export default function ClubChampsView() {
                       <td className="py-2 text-center">{s.played}</td>
                       <td className="py-2 text-center">{s.won}</td>
                       <td className="py-2 text-center">{s.lost}</td>
-                      {standingsColumns.map((col) => (
+                      {!opts?.koStatus && standingsColumns.map((col) => (
                         <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
                       ))}
                     </>
@@ -906,7 +906,16 @@ export default function ClubChampsView() {
         <div className="space-y-4">
           {cpools.map((pool) => {
             const inPool = (r: any) => pool.memberIds.includes(r.club_member_id) || (r.partner_member_id && pool.memberIds.includes(r.partner_member_id));
-            const rows = allRows.filter(inPool);
+            // Knockout P/W/L from completed, non-bye knockout games of this division only.
+            const koDone = (matches as any[]).filter((m: any) => Number(m.group_number) === Number(gn) && ["ko", "playoff_sf", "playoff_final"].includes(String(m.stage || "")) && !m.is_bye && m.status === "completed" && m.winner_member_id);
+            const rows = allRows.filter(inPool).map((r: any) => {
+              const mine = koDone.filter((m: any) => [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].includes(r.club_member_id));
+              const won = mine.filter((m: any) => m.winner_member_id === r.club_member_id || (r.partner_member_id && m.winner_member_id === r.partner_member_id)).length;
+              return { ...r, played: mine.length, won, lost: mine.length - won };
+            }).sort((a: any, b: any) => {
+              const ix = (r: any) => { const i = pool.memberIds.indexOf(r.club_member_id); return i >= 0 ? i : pool.memberIds.indexOf(r.partner_member_id); };
+              return ix(a) - ix(b);
+            });
             const statuses = new Map<string, HistoricalPoolStatus>();
             rows.forEach((r: any) => {
               const out = pool.eliminatedIds.includes(r.club_member_id) || (r.partner_member_id && pool.eliminatedIds.includes(r.partner_member_id));

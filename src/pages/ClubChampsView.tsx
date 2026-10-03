@@ -986,7 +986,10 @@ export default function ClubChampsView() {
         });
     });
     if (pc <= 1 || isCrossLeague) {
-      return renderStandingsTable(getGroupStandings(gn), { poolLabels });
+      const specDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
+      const rows = getGroupStandings(gn);
+      const statuses = specDivision ? historicalPoolStatuses(specDivision, (matches as any[]).filter((m: any) => m.group_number === gn), rows.map((r: any) => ({ memberId: r.club_member_id, partnerId: r.partner_member_id }))) : undefined;
+      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision, statuses });
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view
@@ -1016,7 +1019,7 @@ export default function ClubChampsView() {
 
     return (
       <div className="space-y-4">
-        {finals && (
+        {!structuredDivision && finals && (
           <div className="space-y-2">
             <Badge className="text-xs font-semibold">Final Standings</Badge>
             <div className="overflow-x-auto">
@@ -1057,7 +1060,7 @@ export default function ClubChampsView() {
           return (
             <CollapsibleSection
               key={poolNumber}
-              defaultOpen={!finals}
+              defaultOpen={!!structuredDivision || !finals}
               className="space-y-2"
               header={
                 <>

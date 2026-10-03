@@ -145,7 +145,7 @@ export function TournamentProgressCard({
       .filter(Boolean) as NonNullable<ReturnType<typeof groupStageControl>>[];
   }, [shown.length, matches, onlyGroup]);
 
-  if (shown.length === 0 && poolOnly.length === 0) return null;
+  if (!structuredSpec && shown.length === 0 && poolOnly.length === 0) return null;
 
   const label = (gn: number) => groupLabel?.(gn) || `Division ${gn}`;
 

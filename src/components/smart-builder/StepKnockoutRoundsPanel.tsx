@@ -294,13 +294,14 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
     } finally { inFlight.current = false; setSaving(false); }
   };
 
-  const status = winner ? "done" : ks.kind === "waiting_for_stage" ? "done" : pp.status;
+  const status = winner ? "done" : ks.kind === "playoff" && !field.roundOpen ? "ready" : ks.kind === "waiting_for_stage" ? "done" : pp.status;
   const badge: Record<string, { text: string; cls: string }> = {
     on_track: { text: "On track", cls: "bg-primary/10 text-primary" },
     at_risk: { text: "At risk", cls: "bg-accent text-accent-foreground" },
     behind: { text: "Behind schedule", cls: "bg-destructive/10 text-destructive" },
     done: { text: winner ? "Decided" : "Milestone reached", cls: "bg-muted text-foreground" },
     free: { text: "Own pace", cls: "bg-muted text-foreground" },
+    ready: { text: `${nextLabel} ready to approve`, cls: "bg-primary/10 text-primary" },
   };
 
   return (

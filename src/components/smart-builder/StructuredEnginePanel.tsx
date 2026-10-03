@@ -86,17 +86,21 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
         const gi0 = spec.divisions.indexOf(d) + 1;
         const exists = matches.some((m) => m.stage_key === s.id && m.group_number === gi0);
         const koRows = matches.filter((m) => m.stage_key === s.id && m.group_number === spec.divisions.indexOf(d) + 1);
+        // Only actions the progression panel above can't do: manual doubles pairing, qualifier
+        // preview, and a further knockout round inside the same stage. Status lives in the panel.
+        const prevSt0 = d.stages.find((x) => x.order === s.order - 1);
+        const src0 = matches.filter((m) => m.stage_key === prevSt0?.id && m.group_number === gi0);
+        const srcDone0 = src0.length > 0 && src0.every((m) => m.winner_member_id || ["completed", "walkover", "bye"].includes(String(m.status ?? "").toLowerCase()));
+        const pr0 = progressionOf(s);
+        const lastRound = koRows.length ? Math.max(...koRows.map((m) => m.round_number ?? 1)) : 0;
+        const lastRows = koRows.filter((m) => (m.round_number ?? 1) === lastRound && m.stage_label !== "3rd place");
+        const needsNextKo = exists && s.kind === "knockout" && lastRows.length > 1 && lastRows.every((m) => m.winner_member_id);
+        const needsStart = !exists && srcDone0 && (pr0.pairing === "manual" || pr0.mode === "qualifiers");
+        if (!needsNextKo && !needsStart) return null;
         return (
           <div key={`${d.divisionId}/${s.id}`} className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">{d.label} · {s.name}</span>
-            {!exists && (() => {
-              const prevSt = d.stages.find((x) => x.order === s.order - 1);
-              const gi = spec.divisions.indexOf(d) + 1;
-              const src = matches.filter((m) => m.stage_key === prevSt?.id && m.group_number === gi);
-              const srcDone = src.length > 0 && src.every((m) => m.winner_member_id || ["completed", "walkover", "bye"].includes(String(m.status ?? "").toLowerCase()));
-              return <span className="rounded-full border px-2 py-0.5 text-[11px]">{srcDone ? "Ready to start" : `Pending ${prevSt?.name ?? "previous stage"} completion`}</span>;
-            })()}
-            {!exists && matches.length > 0 && progressionOf(s).mode !== "qualifiers" && (
+            {needsStart && progressionOf(s).mode !== "qualifiers" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => {
                 const pr = progressionOf(s);
                 if (pr.pairing === "manual") {
@@ -114,13 +118,13 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
                 startStage(d.divisionId, s.id);
               }}>Start {s.name}</Button>
             )}
-            {!exists && matches.length > 0 && progressionOf(s).mode === "qualifiers" && (
+            {needsStart && progressionOf(s).mode === "qualifiers" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`pv${s.id}`, async () => {
                 const p = await previewStructuredPlayoffs(supabaseDb, champId, d.divisionId, s.id);
                 setPreview({ div: d.divisionId, stage: s.id, p, labels: d.poolLabels });
               }, "Preview ready")}><Trophy className="w-4 h-4 mr-1" />Preview play-offs</Button>
             )}
-            {exists && s.kind === "knockout" && (
+            {needsNextKo && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`nx${s.id}`, async () => {
                 await atomically(supabaseDb, champId, commitStructured, async (db) => {
                 const full = await loadEntrants(db, champId, spec);

@@ -865,6 +865,12 @@ export default function Tournaments() {
             new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),
           ).sort() as string[];
           const playBy = dates[0] || null;
+          // Centrally scheduled stage: show the target stage's own date (no booking prompt).
+          const schedDates = Array.from(new Set(items.map((m: any) => {
+            const r = matchSchedule(m);
+            return r.mode === "scheduled" ? r.date : null;
+          }).filter(Boolean))).sort() as string[];
+          const allScheduled = !isPool && items.length > 0 && items.every((m: any) => matchSchedule(m).mode === "scheduled");
           const notes = Array.from(
             new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).notes).filter(Boolean)),
           );
@@ -872,7 +878,7 @@ export default function Tournaments() {
             <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
-                <span className="uppercase tracking-wider">{heading}{!isPool && playBy ? ` — Play by ${format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}` : ""}</span>
+                <span className="uppercase tracking-wider">{heading}{!isPool && playBy ? ` — Play by ${format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}` : allScheduled && schedDates[0] ? ` — Scheduled ${format(new Date(`${schedDates[0]}T00:00:00`), "EEE dd MMM yyyy")}` : ""}</span>
                 <span className="text-muted-foreground font-normal">
                   {all.length > 0 && outstanding > 0
                     ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
@@ -882,6 +888,11 @@ export default function Tournaments() {
                   <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/60 text-amber-700 dark:text-amber-300">
                     still outstanding
                   </Badge>
+                )}
+                {allScheduled && !playBy && (
+                  <span className="ml-auto font-normal text-[11px] text-muted-foreground">
+                    Scheduled by the organiser — no court booking needed
+                  </span>
                 )}
                 {playBy && (
                   <span className="ml-auto font-normal text-[11px] text-amber-700 dark:text-amber-300">

@@ -2497,3 +2497,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Fix: wizard treats a signup-created row (pending approval, or joined within 10 min of auth account creation) with no club/registration/opening fee as new.
 - Data: Francois Steyn fees raised (R875 pro-rata + R350 registration) and settled from his R2,100 top-ups (R875 credit left); Francois Vosloo's paid-by-card fees marked paid. Ledger settled via balanced "Wallet credit applied" debtors entries (no extra bank posting).
 - Open: marking a fee paid from wallet credit posts Dr bank/Cr debtors a second time (journal_fee_payment_received) — inflates bank and member credit on wallet settlements club-wide; not yet fixed.
+
+## 2026-10-03 — Wallet-settled fees double-counted in bank
+- Cause: `journal_fee_payment_received` posted Dr bank / Cr debtors whenever a fee flipped to paid, even when settled from wallet credit (top-up had already posted that).
+- Fix: `club_member_fee_payments.settled_from_wallet`; trigger skips it; set by `_shared/wallet-auto-settle.ts` and MyAccount "Credit" payment.
+- Data: removed 3 duplicate "Fee paid" pairs (GB R725, GB R120, NSC R150). Only cases club-wide.

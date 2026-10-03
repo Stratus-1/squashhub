@@ -173,10 +173,6 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
           <div className="flex items-center gap-2 text-sm font-semibold text-white"><Gem className="h-4 w-4 text-amber-300" />Pre-built templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
           <div className="mt-1 text-[11px] text-white/60">Standard SquashHub formats.</div>
         </button>
-        <button onClick={() => setDiamondOpen(true)} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white"><Gem className="h-4 w-4 text-amber-300" />Diamond League<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
-          <div className="mt-1 text-[11px] text-white/60">Team singles and doubles league — opens the proven one-page Diamond League setup.</div>
-        </button>
       </div>
       </div>
       {askDraft && draft && (

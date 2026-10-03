@@ -221,3 +221,21 @@ export function roundsLeftFor(m: Milestone, roundsCreated: number): number | nul
   if (!m.roundDates.length) return null;
   return Math.max(0, m.roundDates.length - roundsCreated);
 }
+
+/* ── knockout inside pools ──
+ * A pool is only a partition of entrants. In a knockout tournament each pool is
+ * reduced by elimination (never round robin) until it holds its qualifiers; the
+ * configured play-off / crossover then takes over from the combined survivors.
+ */
+
+/** Survivors each pool must be reduced to. Explicit per-pool qualifiers win; else the milestone field is split evenly; no milestone = pool winner. */
+export function poolKnockoutTarget(milestoneField: number | null, pools: number, perPool?: number | null): number {
+  if (perPool && perPool > 0) return perPool;
+  if (milestoneField && pools > 0) return Math.max(1, Math.ceil(milestoneField / pools));
+  return 1;
+}
+
+/** First-round match counts per pool from the pace rules. */
+export function pooledRoundCounts(poolSizes: number[], o: { target: number; roundsLeft: number | null; pace: KnockoutPace }): number[] {
+  return poolSizes.map((n) => pacePlan({ active: n, target: o.target, roundsLeft: o.roundsLeft, pace: o.pace }).thisRound);
+}

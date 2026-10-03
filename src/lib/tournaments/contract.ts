@@ -91,7 +91,7 @@ export interface PlannedStage {
   /** knockout draw size */
   drawSize?: number;
   /** Paced knockout: create only `count` Round 1 matches (weakest entrants), everyone else stays active. */
-  paced?: { count: number; pairing: "progressive" | "traditional" };
+  paced?: { count: number; pairing: "progressive" | "traditional"; /** Knockout inside pools: matches per pool (pool i of `poolMembers`). Elimination within each pool, never round robin. */ perPool?: number[]; /** Survivors each pool is reduced to before the play-off takes over. */ poolTarget?: number };
   /** start/end = explicit stage window (NULL = inherit tournament window); date/deadline/roundDates = round schedule. */
   schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null; roundDates?: string[];
     /** Planned session for a fixed-date stage (HH:MM) and the courts games may use; slots are allocated by the scheduler, never invented here. */

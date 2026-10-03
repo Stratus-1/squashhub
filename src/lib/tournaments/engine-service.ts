@@ -65,6 +65,8 @@ export interface EngineFixture extends FixtureRow {
   tournamentId: string;
   roundId: string;
   poolId: string | null;
+  /** Knockout inside pools: 1-based pool number (partition only; no pool table/round robin). */
+  koPool?: number;
   slot?: number;
   /** Real court record ID; must be one of the tournament's selected courts (tournament_venues.court_ids). */
   courtId?: number | null;
@@ -192,6 +194,18 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
 }
 
 function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seeded: Array<string | null>): EngineFixture[] {
+  if (st.paced?.perPool && st.poolMembers?.length) {
+    // Knockout inside pools: elimination within each pool only — never round robin, never across pools.
+    const rank = new Map(seeded.filter(Boolean).map((id, i) => [id as string, i + 1]));
+    const all = st.poolMembers.flat();
+    if (all.length !== rank.size || new Set(all).size !== all.length || all.some((x) => !rank.has(x)))
+      throw new IntegrityError("pool_members", `${st.name}: the confirmed pools don't match the current entries — refresh the preview.`);
+    let slot = 0;
+    return st.poolMembers.flatMap((members, pi) => {
+      const { pairs } = proposePairings(members.map((id) => ({ id, rank: rank.get(id)! })), st.paced!.perPool![pi] ?? 0, st.paced!.pairing);
+      return pairs.map(([a, b]) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, koPool: pi + 1, slot: ++slot, a: a.id, b: b.id }));
+    });
+  }
   if (st.paced && st.paced.count > 0) {
     // Paced knockout: only this round's matches; nobody else is drawn or eliminated.
     const field = seeded.filter(Boolean).map((id, i) => ({ id: id as string, rank: i + 1 }));

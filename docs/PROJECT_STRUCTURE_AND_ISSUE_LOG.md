@@ -2507,3 +2507,6 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-10-03 — Paced knockout management
 - New pure engine `src/lib/tournaments/paced-knockout.ts` (active field, milestone from existing shared/own play-off stages, pace plan + risk warnings, progressive/traditional pairings) with tests in `src/test/paced-knockout.test.ts`.
 - Builder knockout format gains Knockout pace and Pairing strategy; Generate draw creates only the paced Round 1; Manage Tournament gets "Knockout rounds" to confirm each later round with editable pairings. Round-robin round-count errors no longer apply to knockout categories. Diamond League untouched.
+
+## 2026-10-03 Knockout inside pools
+- "NSP Knock out": Create pools = Yes + Format = Knockout was blocked ("Pools need a within-group round robin"). Pools are now a partition; knockout eliminates within each pool to its qualifiers, then the play-off takes over. Round robin pools unchanged.

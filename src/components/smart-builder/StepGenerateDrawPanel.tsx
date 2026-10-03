@@ -17,7 +17,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, isPooledKnockout, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -119,6 +119,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const rule = poolPlanOf(plan, unitKeyOf(label));
       const review = reviewPools(rule, label.replace(/ · (Singles|Doubles)$/i, ""), r.units.length, doubles ? "pair" : "player");
       p.format = formatWithPoolRule(p.format, rule, r.units.length);
+      // Knockout never plays a round robin, so round-robin game-count warnings do not apply.
+      if (p.format.kind === "knockout") review.warnings = [];
       list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto",
         poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); const q = poolQualificationOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(q.perPool) || null, runnersUp: Number(q.runnersUp) || 0 } : null; })() });
     }
@@ -152,7 +154,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     let units = orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points });
     const mo = manual[d.group]?.order;
     if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
-    return { ...d, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: d.format.kind === "pools" && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
+    return { ...d, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: (d.format.kind === "pools" || isPooledKnockout(d.format)) && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
   }), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts]);
   const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }, "preview", poolMode) : null, [meta, seeded, poolMode]);
   const acceptPools = (is: number[]) => { setConfirmed(false); setDivs((ds) => ds.map((d, k) => is.includes(k) ? { ...d, poolAccepted: true } : d)); };
@@ -239,7 +241,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const pools = poolsFor(d, poolMode);
     const seedOf = new Map(d.units.map((u, k) => [unitId(u), k]));
     const groups = pools ?? [d.units.map(unitId)];
-    const isPools = d.format.kind === "pools";
+    const isPools = d.format.kind === "pools" || isPooledKnockout(d.format);
     const title = (pi: number) => isPools ? `Pool ${String.fromCharCode(65 + pi)}` : d.format.kind === "cross" ? (rrScope(d) === "between" ? "Seed order" : `${d.label} (plays the other selected groups)`) : d.format.kind === "round_robin" ? "Round robin (one group)" : "Seed order";
     return (
       <div className="space-y-2" aria-label={`Pools and seeds for ${d.label}`}>
@@ -355,12 +357,12 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         const controls = (
           <>
             {pr && (pr.line || pr.warnings.length > 0) && <div className="space-y-1 rounded border border-border bg-muted/30 p-2">
-              {pr.line && <p><span className="font-medium">Pools:</span> {pr.line}{f.kind === "pools" && pr.recommended.length > 1 && (f.pools !== pr.recommended.length) ? ` Currently set: ${f.pools} pools — ${sizesText(balancedSizes(d.units.length, f.pools))}.` : ""}</p>}
+              {pr.line && <p><span className="font-medium">Pools:</span> {pr.line}{(f.kind === "pools" || isPooledKnockout(f)) && pr.recommended.length > 1 && (f.pools !== pr.recommended.length) ? ` Currently set: ${f.pools} pools — ${sizesText(balancedSizes(d.units.length, f.pools))}.` : ""}</p>}
               {pr.mode !== "none" && f.kind !== "cross" && <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant={d.poolAccepted ? "outline" : "default"} onClick={() => { const k = pr.recommended.length; apply({ kind: k > 1 ? "pools" : "round_robin", pools: Math.max(1, k) }); acceptPools(block ? targets : [i]); }}>{d.poolAccepted ? "Use the recommendation again" : "Accept recommended pools"}</Button>
+                <Button size="sm" variant={d.poolAccepted ? "outline" : "default"} onClick={() => { const k = pr.recommended.length; apply(f.kind === "knockout" ? { pools: Math.max(1, k) } : { kind: k > 1 ? "pools" : "round_robin", pools: Math.max(1, k) }); acceptPools(block ? targets : [i]); }}>{d.poolAccepted ? "Use the recommendation again" : "Accept recommended pools"}</Button>
                 {d.poolAccepted ? <span className="text-muted-foreground">Accepted — adjust the number of pools or move {d.doubles ? "pairs" : "players"} below if you want.</span> : <span className="text-destructive">Pools must be accepted or adjusted before fixtures can be generated.</span>}
               </div>}
-              {pr.mode !== "none" && <p className="text-muted-foreground">Within this group each pool plays its own round robin — pools don't play each other.</p>}
+              {pr.mode !== "none" && <p className="text-muted-foreground">{f.kind === "knockout" ? `Knockout inside each pool: losers are eliminated within their pool until it is down to ${pooledKnockoutTarget(d)} (${f.ko?.label ? `for ${f.ko.label}` : "its pool winner"}); then the play-offs take over. No round robin.` : "Within this group each pool plays its own round robin — pools don't play each other."}</p>}
               {pr.warnings.map((w) => <p key={w} className="text-amber-600 dark:text-amber-400">⚠ {w} {f.kind !== "cross" && <button type="button" className="text-primary underline" onClick={() => { const k = Math.max(2, Math.round(d.units.length / 5)); apply({ kind: "pools", pools: k }); acceptPools(block ? targets : [i]); }}>Split into pools of about 5</button>}</p>)}
             </div>}
             <div className="grid gap-2 sm:grid-cols-3">
@@ -368,7 +370,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 <select className="w-full rounded border border-input bg-background p-1" value={f.kind ?? ""} onChange={(e) => apply({ kind: (e.target.value || null) as DrawKind | null })}>
                   <option value="">Choose…</option>{(Object.keys(KIND_LABEL) as DrawKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
                 </select></label>
-              {f.kind === "pools" && <label className="space-y-0.5"><span className="text-muted-foreground">Number of pools</span><Input type="number" min={2} className="h-7" value={f.pools} onChange={(e) => { apply({ pools: Number(e.target.value) || 1 }); acceptPools(block ? targets : [i]); }} /></label>}
+              {(f.kind === "pools" || (f.kind === "knockout" && pr && pr.mode !== "none")) && <label className="space-y-0.5"><span className="text-muted-foreground">Number of pools</span><Input type="number" min={2} className="h-7" value={f.pools} onChange={(e) => { apply({ pools: Number(e.target.value) || 1 }); acceptPools(block ? targets : [i]); }} /></label>}
               {f.kind === "swiss" && <label className="space-y-0.5"><span className="text-muted-foreground">Swiss rounds</span><Input type="number" min={1} className="h-7" value={f.swissRounds} onChange={(e) => apply({ swissRounds: Number(e.target.value) || 0 })} /></label>}
               <label className="space-y-0.5"><span className="text-muted-foreground">Seeding</span>
                 <select className="w-full rounded border border-input bg-background p-1" value={f.seeding} onChange={(e) => apply({ seeding: e.target.value as DrawSeeding })}>

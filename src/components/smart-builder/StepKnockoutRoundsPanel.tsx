@@ -26,7 +26,9 @@ import {
 const INACTIVE_REG = new Set(["declined", "withdrawn", "cancelled", "removed"]);
 const COPY_KEYS = ["stage", "stage_key", "section_number"] as const;
 
-type Div = { group: number; label: string };
+type Div = { group: number; label: string; pools: string[][] | null; poolTarget: number | null };
+type PoolCtx = { index: number; members: Set<string>; target: number };
+const lead = (unit: string) => unit.split("+")[0];
 
 export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: string; plan: Record<string, any> | null | undefined }) {
   const { data } = useQuery({
@@ -41,7 +43,11 @@ export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: 
       const spec: any = (t as any)?.builder_spec;
       const divs: Div[] = ((spec?.divisions ?? []) as any[])
         .filter((d) => d?.stages?.[0]?.kind === "knockout")
-        .map((d, i) => ({ group: Number(d.groupNumber ?? i + 1), label: String(d.label ?? `Division ${i + 1}`) }));
+        .map((d, i) => {
+          const st = d.stages[0];
+          const pools = st?.paced?.perPool && Array.isArray(st.poolMembers) && st.poolMembers.length > 1 ? (st.poolMembers as string[][]) : null;
+          return { group: Number(d.groupNumber ?? i + 1), label: String(d.label ?? `Division ${i + 1}`), pools, poolTarget: pools ? Number(st.paced.poolTarget) || 1 : null };
+        });
       const ids = [...new Set([
         ...((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id]),
         ...((matches ?? []) as any[]).flatMap((m) => [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id]),
@@ -57,14 +63,39 @@ export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: 
   return (
     <div className="space-y-3" data-testid="knockout-rounds">
       <div className="text-sm font-semibold">Knockout rounds</div>
-      {data.divs.map((d) => <DivisionRounds key={d.group} tournamentId={tournamentId} plan={plan} div={d} data={data} />)}
+      {data.divs.map((d) => d.pools ? <PooledDivision key={d.group} tournamentId={tournamentId} plan={plan} div={d} data={data} />
+        : <DivisionRounds key={d.group} tournamentId={tournamentId} plan={plan} div={d} data={data} />)}
     </div>
   );
 }
 
-function DivisionRounds({ tournamentId, plan, div, data }: {
-  tournamentId: string; plan: Record<string, any> | null | undefined; div: Div;
-  data: { matches: any[]; regs: any[]; members: Map<string, { name: string; ladder: number | null }> };
+type Data = { matches: any[]; regs: any[]; members: Map<string, { name: string; ladder: number | null }> };
+
+/**
+ * Knockout inside pools: each pool is eliminated down to its qualifiers (never round robin, never across pools).
+ * Once every pool is down to its target, the combined survivors continue towards the play-off milestone.
+ */
+function PooledDivision({ tournamentId, plan, div, data }: { tournamentId: string; plan: Record<string, any> | null | undefined; div: Div; data: Data }) {
+  const pools = div.pools!;
+  const ctxs: PoolCtx[] = pools.map((p, i) => ({ index: i, members: new Set(p.map(lead)), target: div.poolTarget ?? 1 }));
+  const remaining = ctxs.map((c) => {
+    const rows = data.matches.filter((m) => Number(m.group_number) === div.group && Number(m.pool_number) === c.index + 1);
+    const ents = data.regs.filter((r) => c.members.has(r.club_member_id) && !INACTIVE_REG.has(String(r.status || "").toLowerCase())).map((r) => ({ id: r.club_member_id, partnerId: r.partner_member_id ?? null }));
+    return activeField(ents, rows).active.length;
+  });
+  const poolsDone = remaining.every((n) => n <= (div.poolTarget ?? 1));
+  return (
+    <div className="space-y-2 rounded-lg border border-border p-3" data-field={`ko-pooled-${div.group}`}>
+      <div className="text-sm font-medium">{div.label} · knockout in {pools.length} pools</div>
+      <p className="text-xs text-muted-foreground">Each pool is knocked down to {div.poolTarget} — losers are eliminated within their pool; pools never play each other until the play-off. {poolsDone ? "All pools are complete — the play-off runs from the combined survivors below." : ""}</p>
+      {poolsDone ? <DivisionRounds tournamentId={tournamentId} plan={plan} div={div} data={data} />
+        : ctxs.map((c) => <DivisionRounds key={c.index} tournamentId={tournamentId} plan={plan} div={div} data={data} pool={c} />)}
+    </div>
+  );
+}
+
+function DivisionRounds({ tournamentId, plan, div, data, pool }: {
+  tournamentId: string; plan: Record<string, any> | null | undefined; div: Div; data: Data; pool?: PoolCtx;
 }) {
   const qc = useQueryClient();
   const key = unitKeyOf(div.label);
@@ -74,9 +105,10 @@ function DivisionRounds({ tournamentId, plan, div, data }: {
   const pairing: KnockoutPairing = fmt.koPairing === "progressive" ? "progressive" : "traditional";
   const nameOf = (id?: string | null) => (id ? data.members.get(id)?.name ?? "Player" : "—");
 
-  const rows = useMemo(() => data.matches.filter((m) => Number(m.group_number) === div.group && (m.player_a_member_id || m.player_b_member_id)), [data.matches, div.group]);
+  const poolNo = pool ? pool.index + 1 : null;
+  const rows = useMemo(() => data.matches.filter((m) => Number(m.group_number) === div.group && (poolNo == null || Number(m.pool_number) === poolNo) && (m.player_a_member_id || m.player_b_member_id)), [data.matches, div.group, poolNo]);
   const entrants: FieldEntry[] = useMemo(() => data.regs
-    .filter((r) => !INACTIVE_REG.has(String(r.status || "").toLowerCase()) && (r.division_choices ?? []).map(Number).includes(div.group))
+    .filter((r) => !INACTIVE_REG.has(String(r.status || "").toLowerCase()) && (pool ? pool.members.has(r.club_member_id) : (r.division_choices ?? []).map(Number).includes(div.group)))
     .map((r) => ({ id: r.club_member_id, partnerId: r.partner_member_id ?? null })), [data.regs, div.group]);
   const field = useMemo(() => {
     const f = activeField(entrants, rows);
@@ -84,8 +116,11 @@ function DivisionRounds({ tournamentId, plan, div, data }: {
     return { ...f, active: byRank(f.active.map(rank)), eliminated: f.eliminated };
   }, [entrants, rows, data.members]);
 
-  const milestone = useMemo(() => milestoneFor(plan as any, key), [plan, key]);
+  const baseMilestone = useMemo(() => milestoneFor(plan as any, key), [plan, key]);
+  // In a pool, the milestone is the pool's own qualifier count, paced over the same scheduling rounds.
+  const milestone = pool ? { ...baseMilestone, label: `Pool ${String.fromCharCode(65 + pool.index)} down to ${pool.target}`, fieldSize: pool.target } : baseMilestone;
   const reached = milestone.fieldSize != null && field.active.length <= milestone.fieldSize;
+  const poolDone = !!pool && reached;
   const target = reached ? null : milestone.fieldSize;
   const roundsLeft = reached ? null : roundsLeftFor(milestone, field.lastRound);
   const pp = pacePlan({ active: field.active.length, target, roundsLeft, pace: reached ? "immediate" : pace, milestoneLabel: milestone.label });
@@ -109,16 +144,16 @@ function DivisionRounds({ tournamentId, plan, div, data }: {
     if (!pairs.length || dup || incomplete) return;
     setSaving(true);
     try {
-      const { data: fresh, error: fe } = await fromExt("club_champs_matches").select("id, round_number, player_a_member_id, player_b_member_id, status, winner_member_id, is_bye").eq("champ_id", tournamentId).eq("group_number", div.group);
+      const { data: fresh, error: fe } = await fromExt("club_champs_matches").select("id, round_number, pool_number, player_a_member_id, player_b_member_id, status, winner_member_id, is_bye").eq("champ_id", tournamentId).eq("group_number", div.group);
       if (fe) throw fe;
-      const real = ((fresh ?? []) as any[]).filter((m) => m.player_a_member_id || m.player_b_member_id);
+      const real = ((fresh ?? []) as any[]).filter((m) => (m.player_a_member_id || m.player_b_member_id) && (poolNo == null || Number(m.pool_number) === poolNo));
       if (real.some((m) => Number(m.round_number) >= nextRound)) throw new Error("This round already has fixtures — refresh to see them.");
       const template: any = rows[0] ?? {};
       const partner = (id: string) => field.active.find((e) => e.id === id)?.partnerId ?? null;
       const insert = pairs.map(([a, b], i) => ({
         champ_id: tournamentId, group_number: div.group, section_number: 1, stage: "ko",
         ...Object.fromEntries(COPY_KEYS.filter((k) => template[k] != null).map((k) => [k, template[k]])),
-        round_number: nextRound, bracket_position: i + 1, stage_label: nextLabel,
+        round_number: nextRound, bracket_position: i + 1, stage_label: nextLabel, pool_number: poolNo,
         player_a_member_id: a, partner_a_member_id: partner(a), player_b_member_id: b, partner_b_member_id: partner(b),
         is_bye: false, status: "scheduled", play_by: playBy,
       }));
@@ -148,7 +183,7 @@ function DivisionRounds({ tournamentId, plan, div, data }: {
   return (
     <div className="rounded-lg border border-border p-3 space-y-2 text-sm" data-field={`ko-div-${div.group}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{div.label}</span>
+        <span className="font-medium">{pool ? `Pool ${String.fromCharCode(65 + pool.index)}` : div.label}</span>
         <Badge variant="outline" className={cn("border-0", badge[status].cls)}>{badge[status].text}</Badge>
         <span className="text-xs text-muted-foreground">{pace === "paced" ? "Paced" : "Immediate"} · {pairing === "progressive" ? "Progressive pairing" : "Traditional seeded"}</span>
       </div>
@@ -161,7 +196,8 @@ function DivisionRounds({ tournamentId, plan, div, data }: {
       </div>
       {pp.warning && !winner && <p className="rounded bg-accent/40 px-2 py-1 text-xs">{pp.warning}</p>}
 
-      {winner ? <p>Winner: <span className="font-medium">{nameOf(winner.id)}</span></p>
+      {poolDone ? <p className="text-xs">Pool complete — qualifiers: {field.active.map((e) => nameOf(e.id)).join(", ")}. Waiting for the other pools before the play-off.</p>
+        : winner ? <p>Winner: <span className="font-medium">{nameOf(winner.id)}</span></p>
         : field.roundOpen ? <p className="text-xs">Round {field.lastRound} is in play — {rows.filter((m) => Number(m.round_number) === field.lastRound && !m.is_bye && !isDecided(m)).length} fixture(s) still to finish. The next round is proposed once its results are in.</p>
         : pp.thisRound === 0 ? <p className="text-xs text-muted-foreground">No elimination needed this round — everyone stays active.</p>
         : <div className="space-y-2">

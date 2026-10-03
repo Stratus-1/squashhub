@@ -102,3 +102,15 @@ describe("Bells waves", () => {
     expect(bellsSlotMinutes({ mode: "standard" })).toBeNull();
   });
 });
+
+describe("Bells 10 + 3 = 13 minute slots", () => {
+  it("uses play + changeover from the saved setup and schedules all 36 on 3 courts at 13-min bells", () => {
+    const m = bellsSlotMinutes({ mode: "time_capped_points", timeCapPlay: "10", timeCapBreak: "3" })!;
+    expect(m).toBe(13);
+    const rounds = Array.from({ length: 6 }, (_, k) => ({ round: k + 1, games: Array.from({ length: 6 }, (_, i) => `A${i}-B${(i + k) % 6}`) }));
+    const players = Object.fromEntries(rounds.flatMap((r) => r.games).map((id) => [id, id.split("-")]));
+    const r = planBellsWaves({ rounds, days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }], minutes: m, players });
+    expect(r.issues).toEqual([]); expect(r.available).toBe(39); expect(r.slots).toHaveLength(36);
+    expect([...new Set(r.slots.map((s) => s.time))].slice(0, 3)).toEqual(["18:00", "18:13", "18:26"]);
+  });
+});

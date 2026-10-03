@@ -2476,3 +2476,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 
 ### 2026-10-03 — Historical pool survivor colours
 - Structured historical pool rows use theme-aware green for players still alive and light pink/red for eliminated players once progression is known. Eliminated names keep their strike-through; historical position and statistics are unchanged. Unresolved pre-progression tables stay neutral. No tournament records or notifications changed.
+
+### 2026-10-03 — Final courts/times blocked by the stage's own reservation; "Book court" on organiser-run Finals
+- Cause: "Book courts now" reserved courts 20/21/24/26 10:25–17:25 on 28 Oct as `sbs:` blocks; the play-off scheduler and `self_schedule_champ_match` saw that block as a clash, so Finals stayed date-only. Admins saw the generic "Book court" label.
+- Fix: `schedulePlannedPlayoffGames` treats the stage's own `sbs:` block as room and carves each game slot out of it (rest stays reserved); organiser-run unallocated fixtures say "Assign court"; header says "court & time still to be assigned" with an admin "Assign courts & times" action. Test: `src/test/playoff-reservation-carve.test.ts`.

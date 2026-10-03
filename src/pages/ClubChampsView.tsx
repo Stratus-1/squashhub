@@ -912,6 +912,9 @@ export default function ClubChampsView() {
               const mine = koDone.filter((m: any) => [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].includes(r.club_member_id));
               const won = mine.filter((m: any) => m.winner_member_id === r.club_member_id || (r.partner_member_id && m.winner_member_id === r.partner_member_id)).length;
               return { ...r, played: mine.length, won, lost: mine.length - won };
+            }).sort((a: any, b: any) => {
+              const ix = (r: any) => { const i = pool.memberIds.indexOf(r.club_member_id); return i >= 0 ? i : pool.memberIds.indexOf(r.partner_member_id); };
+              return ix(a) - ix(b);
             });
             const statuses = new Map<string, HistoricalPoolStatus>();
             rows.forEach((r: any) => {

@@ -2050,8 +2050,8 @@ export default function ClubChampsView() {
 
         {isStructured && (
           <div className="rounded border border-primary/40 bg-primary/5 px-3 py-2 text-sm flex flex-wrap items-center gap-2">
-            This is a Tournament Beta tournament.
-            <Button size="sm" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the Beta control page</Button>
+            This tournament uses step-by-step management.
+            <Button size="sm" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the tournament control page</Button>
           </div>
         )}
         {canManage && isStructured && <KnockoutNextActions champId={champId!} />}

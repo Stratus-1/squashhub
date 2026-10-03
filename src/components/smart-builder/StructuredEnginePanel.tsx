@@ -42,7 +42,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
 
   return (
     <div className="rounded-lg border p-3 space-y-2 text-sm">
-      <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /><span className="font-semibold">Structured tournament</span><Badge variant="outline">BETA engine</Badge></div>
+      <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /><span className="font-semibold">Structured tournament</span></div>
       {matches.length > 0 && <StageProgressPanel champId={champId} spec={spec} matches={matches} nameOf={nameOf} collapsible={collapsibleStageProgress} />}
       {matches.length === 0 && (
         <Button size="sm" disabled={!!busy} onClick={() => run("gen", () => atomically(supabaseDb, champId, commitStructured, (db) => generateStructuredTournament(db, champId)).then(async (r) => { await allocateAllFixedStages(champId); return r; }), "Games generated")}>

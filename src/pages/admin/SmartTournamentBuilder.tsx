@@ -81,8 +81,8 @@ function BetaHeader({ onBack, scope }: { onBack: (() => void) | null; scope: Bui
   return (
     <div className="flex flex-wrap items-center gap-3">
       {onBack && <Button size="sm" variant="ghost" className="text-white/70" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-1" />Back</Button>}
-      <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Wand2 className="w-5 h-5 text-amber-300" /> {scope.kind === "club" ? "Tournament Beta" : SMART_BUILDER_LABEL}</h2>
-      <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1"><FlaskConical className="w-3 h-3" />{scope.kind === "club" ? `Beta testing · ${scope.clubName ?? "this club"}` : SMART_BUILDER_SUBLABEL}</span>
+      <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Wand2 className="w-5 h-5 text-amber-300" /> {scope.kind === "club" ? "Tournaments" : SMART_BUILDER_LABEL}</h2>
+      <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1"><FlaskConical className="w-3 h-3" />{scope.kind === "club" ? `${scope.clubName ?? "this club"}` : SMART_BUILDER_SUBLABEL}</span>
     </div>
   );
 }

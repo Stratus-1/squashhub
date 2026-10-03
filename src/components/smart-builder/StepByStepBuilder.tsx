@@ -340,7 +340,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: `${c} › ${x}` })) : [{ key: c, base: c }];
   }).map((u) => {
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
-    return { ...u, categoryType: a.categoryTypes?.[u.key.split("::")[0]] ?? null, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
+    return { ...u, categoryType: a.categoryTypes?.[u.key.split("::")[0]] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === u.key.split("::")[0])?.[1] ?? null, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const poolRule = (k: string): PoolPlan => poolPlanOf(a, k) ?? { mode: "none" };
@@ -616,7 +616,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
-  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c])), Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
@@ -853,8 +853,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="space-y-2">
                 {a.categories.map((c, i) => (
                   <div key={i} className="flex flex-wrap gap-2">
-                    <Input aria-label={`Category ${i + 1}`} value={c} placeholder={`Category ${i + 1}`} onChange={(e) => setA({ ...a, categories: a.categories.map((x, j) => (j === i ? e.target.value : x)) })} />
-                    <select aria-label={`Category ${i + 1} type`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={a.categoryTypes?.[c] ?? ""} onChange={(e) => setA({ ...a, categoryTypes: { ...a.categoryTypes, [c]: e.target.value as CompetitionCategory } })}><option value="">Category type required</option>{COMPETITION_CATEGORIES.map((type) => <option key={type} value={type}>{CATEGORY_LABELS[type]}</option>)}</select>
+                    <Input aria-label={`Category ${i + 1}`} value={c} placeholder={`Category ${i + 1}`} onChange={(e) => {
+                      const oldKey = c.trim(), newKey = e.target.value.trim();
+                      const types = { ...(a.categoryTypes ?? {}) };
+                      const t = types[oldKey] ?? types[c];
+                      if (t && newKey && !types[newKey]) types[newKey] = t;
+                      setA({ ...a, categories: a.categories.map((x, j) => (j === i ? e.target.value : x)), categoryTypes: types });
+                    }} />
+                    <select aria-label={`Category ${i + 1} type`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={a.categoryTypes?.[c.trim()] ?? a.categoryTypes?.[c] ?? ""} onChange={(e) => setA({ ...a, categoryTypes: { ...a.categoryTypes, [c.trim()]: e.target.value as CompetitionCategory } })}><option value="">Category type required</option>{COMPETITION_CATEGORIES.map((type) => <option key={type} value={type}>{CATEGORY_LABELS[type]}</option>)}</select>
                     <Button variant="ghost" size="icon" aria-label="Remove category" disabled={a.categories.length === 1} onClick={() => setA({ ...a, categories: a.categories.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}

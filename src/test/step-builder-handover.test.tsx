@@ -14,6 +14,7 @@ function chain(table: string): any {
     : table === "comms_campaigns" && op === "insert" ? { data: { id: "camp1" }, error: null }
     : table === "comms_deliveries" ? { data: [{ club_member_id: "m1", channel: "in_app", status: "sent", error_message: null }, { club_member_id: "m2", channel: "in_app", status: "sent", error_message: null }], error: null }
     : table === "club_champs_registrations" && op === "select" ? { data: [{ club_member_id: "m1", partner_member_id: "m2", status: regStatus }, { club_member_id: "m2", partner_member_id: "m1", status: regStatus }], error: null }
+    : table === "team_league_events" ? { data: null, error: null }
     : { data: [], error: null };
   const p: any = new Proxy(() => {}, {
     get: (_t, prop) => {

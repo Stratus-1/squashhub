@@ -44,6 +44,7 @@ describe("timed round sessions (Bells / fixed dates)", () => {
     const keys = r.slots.map((s) => `${s.date}${s.time}${s.courtId}`); expect(new Set(keys).size).toBe(keys.length);
   });
   it("reads each day's own selected courts from the plan", () => {
-    expect(planDays({ days: [{ date: "2026-10-06", courtIds: [20, 21, 24], windows: [{ from: "18:00", to: "21:00" }] }])).toEqual([{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }]);
+    const plan = { days: [{ date: "2026-10-06", courtIds: [20, 21, 24], windows: [{ from: "18:00", to: "21:00" }] }] };
+    expect(planDays(plan)).toEqual([{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }]);
   });
 });

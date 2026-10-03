@@ -165,7 +165,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
         if (!roundId) {
           const { data: cr, error: ce } = await fromExt("club_champs_rounds").insert({
             champ_id: tournamentId, group_number: div.group, section_number: 1, round_number: nextRound, label: nextLabel,
-            round_type: ks.kind === "playoff" ? "playoff" : "knockout", play_by: playBy, status: "active", scheduling_mode: "self",
+            round_type: ks.kind !== "playoff" ? "knockout" : /semi/i.test(nextLabel) ? "semi_final" : /^final/i.test(nextLabel) ? "final" : "knockout", play_by: playBy, status: "active", scheduling_mode: "self",
             division_id: template.division_id ?? null, stage_id: template.stage_id, stage_key: template.stage_key ?? null,
           } as any).select("id").single();
           if (ce) throw ce;

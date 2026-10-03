@@ -1,3 +1,7 @@
+### 2026-10-03 — Beta Continue managing orphaned cards
+- Cause: Continue managing rendered device-local handover records without checking whether their real tournaments still existed. The normal tournament delete path did not clear this device-local cache.
+- Fix: verify saved IDs against club-scoped tournament rows before showing cards; confirmed missing rows prune only their local handover and setup plan. A failed lookup leaves stored data intact and offers retry. Separate confirmed Remove actions delete an unfinished local draft or a local management card/plan; neither action deletes a real tournament, its fixtures, results or history. Cards refresh immediately after removal. Covered by landing tests; no live data changed.
+
 ### 2026-10-03 — Play-off stages leaked the pool's 6 Oct deadline; one progression panel
 - Cause: Tournament Games matched a fixture's round row by round number + draw only, so Final (round 1) read pool "Round 1" (play by 6 Oct). Fix: `src/lib/tournaments/stage-schedule.ts` (`fixtureRoundRow` by round_id → stage_key, `resolveFixtureSchedule` from the target stage's spec schedule); header, badge, banner and Book court use it; fixed-session stages show "Scheduled <date>" and no player booking. Test: `src/test/target-stage-schedule.test.ts`.
 - Removed the lower "Tournament progress — what's next" card and the raw per-stage status list; StructuredEnginePanel keeps only manual-pairing / qualifier-preview / next-knockout-round actions when actually needed.

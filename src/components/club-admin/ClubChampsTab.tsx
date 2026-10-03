@@ -12853,7 +12853,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 const ladder = genderMembers.map((m) => m.id);
                 const order = playerOrder.length ? [...playerOrder, ...ladder.filter((id) => !playerOrder.includes(id))] : ladder;
                 const rest = Array.from(selectedPlayerIds).filter((id) => !order.includes(id) && availablePlayers.some((m) => m.id === id));
-                return [...order.filter((id) => selectedPlayerIds.has(id) && availablePlayers.some((m) => m.id === id)), ...rest];
+                const picked = [...order.filter((id) => selectedPlayerIds.has(id) && availablePlayers.some((m) => m.id === id)), ...rest];
+                // Seed by the tournament's "Seeding from" choice (club ladder,
+                // club/regional/national ranking). Manual keeps the drag order;
+                // unranked players keep their relative order at the bottom.
+                if (seedingSource === "manual" || seedingSource === "ladder") return picked;
+                const byId = new Map((availablePlayers as any[]).map((m) => [m.id, m]));
+                return picked
+                  .map((id, i) => ({ id, i, r: seedRankOf(byId.get(id)) }))
+                  .sort((a, b) => (a.r ?? Infinity) - (b.r ?? Infinity) || a.i - b.i)
+                  .map((x) => x.id);
               })()}
               nameOf={(id) => (members as any[]).find((m) => m.id === id)?.name || "Player"}
             />

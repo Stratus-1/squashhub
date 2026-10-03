@@ -999,6 +999,78 @@ export default function Tournaments() {
   const renderMatchList = (list: any[]) => {
     if (listIsChronological(list)) {
       const schedule = chronologicalTournamentMatches(list);
+      // Bells/timed events keep programme order inside a round, but the
+      // organiser asked for the generated rounds to show as headings
+      // (Round 1, Round 2, …) so players can see which round they are in.
+      // Games with no real round number (empty slots) collect at the end.
+      const roundOf = (m: any) => {
+        const n = Number(m.round_number);
+        return Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
+      };
+      if (schedule.some((m: any) => roundOf(m) > 0)) {
+        const groups = new Map<number, any[]>();
+        schedule.forEach((m: any) => {
+          const n = roundOf(m);
+          if (!groups.has(n)) groups.set(n, []);
+          groups.get(n)!.push(m);
+        });
+        const champIdsHere = new Set(schedule.map((m: any) => m.champ_id));
+        const keys = Array.from(groups.keys()).sort((a, b) => a - b);
+        return (
+          <div className="space-y-2">
+            {keys.map((n) => {
+              const items = groups.get(n)!;
+              const isUnslotted = n === 0;
+              const all = (allMatches as any[]).filter(
+                (m: any) =>
+                  m.status !== "placeholder" &&
+                  champIdsHere.has(m.champ_id) &&
+                  (isUnslotted ? roundOf(m) === 0 : roundOf(m) === n),
+              );
+              const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
+              const outstanding = all.length - done;
+              const heading = isUnslotted ? "Unscheduled" : `Round ${n}`;
+              // Rounds without an organiser play-by plan (e.g. Bells) get the
+              // date span of the games inside the round so the heading still
+              // tells players when it runs.
+              const roundDates = all
+                .map((m: any) => m.scheduled_date)
+                .filter(Boolean)
+                .sort();
+              const firstD = roundDates[0];
+              const lastD = roundDates[roundDates.length - 1];
+              const dateSpan =
+                firstD && lastD
+                  ? firstD === lastD
+                    ? format(new Date(`${firstD}T00:00:00`), "EEE dd MMM")
+                    : `${format(new Date(`${firstD}T00:00:00`), "dd MMM")} – ${format(new Date(`${lastD}T00:00:00`), "dd MMM")}`
+                  : null;
+              return (
+                <details key={n} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
+                  <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
+                    <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
+                    <span className="uppercase tracking-wider">{heading}</span>
+                    {dateSpan && (
+                      <span className="text-foreground/80 font-normal">{dateSpan}</span>
+                    )}
+                    <span className="text-muted-foreground font-normal">
+                      {all.length > 0 && outstanding > 0
+                        ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
+                        : `${items.length} game${items.length === 1 ? "" : "s"}`}
+                    </span>
+                    {!isUnslotted && outstanding > 0 && done > 0 && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/60 text-amber-700 dark:text-amber-300">
+                        still outstanding
+                      </Badge>
+                    )}
+                  </summary>
+                  <div className="p-2 space-y-1.5">{items.map((m, i) => renderMatchRow(m, i, items))}</div>
+                </details>
+              );
+            })}
+          </div>
+        );
+      }
       return <div className="space-y-1.5">{schedule.map(renderMatchRow)}</div>;
     }
     if (groupMode === "round") {

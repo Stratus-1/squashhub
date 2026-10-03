@@ -114,3 +114,17 @@ describe("Bells 10 + 3 = 13 minute slots", () => {
     expect([...new Set(r.slots.map((s) => s.time))].slice(0, 3)).toEqual(["18:00", "18:13", "18:26"]);
   });
 });
+
+describe("validator and allocator agree (13-min Bells)", () => {
+  it("re-running the same plan as a dry-run check after assignment raises no capacity issue", () => {
+    const m = bellsSlotMinutes({ mode: "time_capped_points", timeCapPlay: "10", timeCapBreak: "3" })!;
+    const rounds = Array.from({ length: 6 }, (_, k) => ({ round: k + 1, games: Array.from({ length: 6 }, (_, i) => `A${i}-B${(i + k) % 6}`) }));
+    const players = Object.fromEntries(rounds.flatMap((r) => r.games).map((id) => [id, id.split("-")]));
+    const days = [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }];
+    const alloc = planBellsWaves({ rounds, days, minutes: m, players });
+    const check = planBellsWaves({ rounds, days, minutes: m, players });
+    expect(alloc.issues).toEqual([]); expect(check.issues).toEqual([]);
+    expect(alloc.slots.filter((s) => s.time === "18:00")).toHaveLength(3);
+    expect(alloc.slots.filter((s) => s.time === "18:13")).toHaveLength(3);
+  });
+});

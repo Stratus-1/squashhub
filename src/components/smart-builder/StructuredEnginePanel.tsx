@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { StructuredEditorDialog } from "./StructuredEditorDialog";
 import { StageProgressPanel } from "./StageProgressPanel";
+import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import {
   atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
@@ -34,7 +35,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
   };
   const [pairing, setPairing] = useState<{ div: string; stage: string; players: string[]; pairs: string[][]; pick: string | null } | null>(null);
   const startStage = (div: string, stage: string, pairs?: string[][]) => run(`st${stage}`, () =>
-    atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, div, stage, { ownerConfirmed: true, pairs })), "Next stage created");
+    atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, div, stage, { ownerConfirmed: true, pairs })).then(() => schedulePlannedPlayoffGames(champId)), "Next stage created");
   const unitName = (u: string | null) => (u ? u.split("+").map(nameOf).join(" & ") : "TBD");
 
   return (
@@ -81,7 +82,9 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
         </div>
       )))}
       {spec.divisions.map((d) => d.stages.filter((s) => s.order > 0).map((s) => {
-        const exists = stages.some((x: any) => x.spec_key === s.id && matches.some((m) => m.stage_id === x.id));
+        // Stage keys repeat across draws: a stage "exists" only when THIS draw's stage row has games.
+        const gi0 = spec.divisions.indexOf(d) + 1;
+        const exists = matches.some((m) => m.stage_key === s.id && m.group_number === gi0);
         const koRows = matches.filter((m) => m.stage_key === s.id && m.group_number === spec.divisions.indexOf(d) + 1);
         return (
           <div key={`${d.divisionId}/${s.id}`} className="flex flex-wrap items-center gap-2">
@@ -188,7 +191,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
             <Button disabled={!!busy || !preview?.p.ok} onClick={() => preview && run("cf", async () => {
-              await atomically(supabaseDb, champId, commitStructured, (db) => confirmStructuredPlayoffs(db, champId, preview.div, preview.stage, true)); setPreview(null);
+              await atomically(supabaseDb, champId, commitStructured, (db) => confirmStructuredPlayoffs(db, champId, preview.div, preview.stage, true)); await schedulePlannedPlayoffGames(champId); setPreview(null);
             }, "Play-offs created")}>Confirm</Button>
           </DialogFooter>
         </DialogContent>

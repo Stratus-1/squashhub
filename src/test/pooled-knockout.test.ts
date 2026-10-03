@@ -51,3 +51,23 @@ describe("knockout inside pools (NSP Knock out acceptance)", () => {
     expect(formatWithPoolRule(f, rule as any, 18)).toMatchObject({ kind: "pools", pools: 4 });
   });
 });
+
+describe("knockout round maths (acceptance: 10 players, 2 pools of 5, QF field 8, 4 dates)", () => {
+  it("needs 2 eliminations and 1 round, never 5 round-robin rounds", async () => {
+    const { knockoutRoundsNeeded, knockoutNeedText, previewDraw, formatWithPoolRule } = await import("@/lib/smart-builder/step-draw");
+    const { reviewPools } = await import("@/lib/smart-builder/pool-plan");
+    const base: any = { kind: "knockout", pools: 1, swissRounds: 0, seeding: "entry_order", crossGroups: [], crossVs: null,
+      schedule: { rule: "play_by", deadlines: ["2026-10-10", "2026-10-13", "2026-10-16", "2026-10-19"], upto: [null, null, null], dates: [] },
+      paced: null, ko: { pace: "immediate", pairing: "traditional", target: 8, rounds: 4, label: "Quarterfinals" } };
+    const rule: any = { mode: "auto", target: "5" };
+    const d: any = { group: 1, label: "Mens 1st · Singles", doubles: false, units: Array.from({ length: 10 }, (_, i) => ({ member: `m${i}`, partner: null })),
+      format: formatWithPoolRule(base, rule, 10), notes: [], playoffs: [], poolReview: reviewPools(rule, "Mens 1st", 10, "player"), poolAccepted: true };
+    expect(d.format.pools).toBe(2);
+    expect(knockoutRoundsNeeded(d)).toBe(1);
+    expect(knockoutNeedText(d)).toMatch(/^2 eliminations needed/);
+    const p = previewDraw("NSP", [d], { start: null, end: null });
+    expect(p.errors).toEqual([]);
+    expect(p.roundsByGroup[1]).toBe(1);
+    expect(p.divisions[0].perRound[0].date).toBe("2026-10-10");
+  });
+});

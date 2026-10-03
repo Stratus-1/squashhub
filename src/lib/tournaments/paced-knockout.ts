@@ -239,3 +239,10 @@ export function poolKnockoutTarget(milestoneField: number | null, pools: number,
 export function pooledRoundCounts(poolSizes: number[], o: { target: number; roundsLeft: number | null; pace: KnockoutPace }): number[] {
   return poolSizes.map((n) => pacePlan({ active: n, target: o.target, roundsLeft: o.roundsLeft, pace: o.pace }).thisRound);
 }
+
+/** Fewest scheduling rounds that can reduce `active` to `target` (each round removes at most half the field). */
+export function minRoundsToTarget(active: number, target: number): number {
+  let a = active, r = 0;
+  while (a > Math.max(1, target)) { a -= Math.min(Math.floor(a / 2), a - Math.max(1, target)); r++; if (r > 64) break; }
+  return r;
+}

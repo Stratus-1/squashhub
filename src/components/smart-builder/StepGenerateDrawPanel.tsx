@@ -88,6 +88,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const plan = readStepPlan(clubId, tournamentId) ?? ((tt as any)?.beta_lifecycle?.format_plan ?? null);
     const errs: string[] = [];
     const list: DrawDivision[] = [];
+    const unspecifiedCross = new Set<number>();
     const units: DrawDivision["units"][] = [];
     const labels = Array.from({ length: n }, (_, k) => tt?.group_labels?.[String(k + 1)] ?? `Division ${k + 1}`);
     const groupOfKey = (key: string) => { const i = labels.findIndex((l) => unitKeyOf(l) === key || unitKeyOf(l).split("::")[0] === key); return i < 0 ? null : i + 1; };

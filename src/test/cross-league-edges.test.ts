@@ -56,3 +56,12 @@ describe("cross-league relationships are canonical group-pair edges", () => {
     expect(divisionIssues(d[0], d).join()).toMatch(/at least one other group/);
   });
 });
+
+describe("setup chose cross-league without naming groups", () => {
+  it("defaults to all same-discipline cross groups playing each other", async () => {
+    const { defaultCrossAll } = await import("@/lib/smart-builder/step-draw");
+    const d = defaultCrossAll([grp(6, 6, {}), grp(7, 6, {})], new Set([6, 7]));
+    expect(d.flatMap((x) => divisionIssues(x, d))).toEqual([]);
+    expect(games(d)).toHaveLength(36);
+  });
+});

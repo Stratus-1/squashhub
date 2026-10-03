@@ -19,7 +19,7 @@ import { sourcePoolCount } from "@/lib/tournaments/contract";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { attachPlannedPlayoffs } from "@/lib/smart-builder/step-draw";
 import { fromExt } from "@/lib/supabase-ext";
-import { schedulePlannedPlayoffGames, type ScheduleReport } from "@/lib/smart-builder/playoff-schedule";
+import { playoffSlotPlan, schedulePlannedPlayoffGames, type ScheduleReport } from "@/lib/smart-builder/playoff-schedule";
 
 const scheduleToast = (r: ScheduleReport) => {
   if (r.booked) toast.success(`${r.booked} game${r.booked === 1 ? "" : "s"} booked into the planned session.`);
@@ -147,6 +147,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
           </div>
         );
       })}
+      <PlayoffSlotOrderNote champId={champId} spec={spec} />
       {confirm && <ConfirmStageDialog champId={champId} spec={spec} status={confirm} nameOf={nameOf} exec={exec} onClose={() => setConfirm(null)} onDone={() => { setConfirm(null); refresh(); }} />}
       {setup && <SetupDialog champId={champId} spec={spec} status={setup} exec={exec} onClose={() => setSetup(null)} onDone={() => { setSetup(null); refresh(); }} />}
       {tie && <TieDialog champId={champId} spec={spec} matches={matches} nameOf={nameOf} div={tie.div} stage={tie.stage} exec={exec} onClose={() => setTie(null)} onDone={() => { setTie(null); refresh(); }} />}
@@ -346,6 +347,7 @@ function ConfirmStageDialog({ champId, spec, status, nameOf, exec, onClose, onDo
           {error && <div className="text-destructive">{(error as Error).message}</div>}
           {rows && <ol className="list-decimal space-y-1 pl-5" data-testid="stage-preview">{rows.map((r) => <li key={r.id}>{side(r.player_a_member_id, r.partner_a_member_id)} <span className="text-muted-foreground">v</span> {side(r.player_b_member_id, r.partner_b_member_id)}</li>)}</ol>}
           {st?.mapping?.source === "stage_winners" && <p className="text-xs text-muted-foreground">Played by the winners of the previous stage, in game order.</p>}
+          {sch?.rule === "fixed" && <PlayoffSlotOrderNote champId={champId} spec={spec} stageKey={status.stageKey} />}
           {sch && <p className="text-xs text-muted-foreground">{sch.rule === "fixed" ? `Scheduled ${sch.date}${sch.timeFrom ? ` · ${sch.timeFrom}–${sch.timeTo}` : ""}${sch.courtIds?.length ? ` · ${sch.courtIds.length} courts — games are booked into free court slots in this session` : ""}` : sch.rule === "play_by" ? `Play by ${sch.deadline}` : ""}</p>}
         </div>
         <DialogFooter>
@@ -354,5 +356,26 @@ function ConfirmStageDialog({ champId, spec, status, nameOf, exec, onClose, onDo
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Preview of the court-slot order for centrally scheduled play-off stages (scheduling only). */
+export function PlayoffSlotOrderNote({ champId, spec, stageKey }: { champId: string; spec: TournamentSpec; stageKey?: string }) {
+  const { data = [] } = useQuery({ queryKey: ["playoff-slot-plan", champId, JSON.stringify(spec.divisions.map((d) => d.stages.map((s) => s.schedule?.slotOrder ?? null)))], queryFn: () => playoffSlotPlan(champId, spec) });
+  const plans = data.filter((p) => !stageKey || p.stageId === stageKey);
+  if (!plans.length) return null;
+  return (
+    <div className="space-y-1 rounded-md border border-border bg-muted/30 p-2 text-xs" data-testid="slot-order">
+      <p className="font-medium">Court order on scheduled play-off days</p>
+      {plans.map((p) => (
+        <div key={p.stageId}>
+          <span className="text-muted-foreground">{p.name}: </span>
+          {p.tiers.map((t) => t.map((id) => p.labels[id] ?? id).join(" + ")).join(" → ")}
+          <span className="text-muted-foreground"> ({p.source === "override" ? "organiser order" : p.source === "level" ? "lower level first, Ladies before Men" : "draw order"})</span>
+          {p.warnings.length > 0 && <p className="text-amber-700 dark:text-amber-300">Level information is incomplete, so draw order is used: {p.warnings.join("; ")}.</p>}
+        </div>
+      ))}
+      <p className="text-muted-foreground">Affects only which games get the earlier court slots — never who qualifies or who plays whom.</p>
+    </div>
   );
 }

@@ -93,7 +93,9 @@ export interface PlannedStage {
   /** start/end = explicit stage window (NULL = inherit tournament window); date/deadline/roundDates = round schedule. */
   schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null; roundDates?: string[];
     /** Planned session for a fixed-date stage (HH:MM) and the courts games may use; slots are allocated by the scheduler, never invented here. */
-    timeFrom?: string | null; timeTo?: string | null; courtIds?: number[]; matchMinutes?: number | null };
+    timeFrom?: string | null; timeTo?: string | null; courtIds?: number[]; matchMinutes?: number | null;
+    /** Organiser's explicit court-slot order (division ids, earliest first) — overrides the level default. Scheduling only. */
+    slotOrder?: string[] | null };
   /** playoff stages only. `transition` is the explicit, stable-id progression rule; `mapping` stays in step for older readers. */
   qualify?: { perPool: number; mapping: QualifierMapping | null; transition?: import("./transition").StageTransition | null } | null;
   generation?: GenerationMode;

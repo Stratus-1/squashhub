@@ -65,6 +65,34 @@ export function saveHandover(h: Handover) {
   localStorage.setItem(hkey(h.clubId), JSON.stringify([h, ...all]));
 }
 
+/**
+ * Rebuild the management record from the club-scoped tournament row when this device has none
+ * (e.g. opened via Tournaments > Manage on another device). The server row and `beta_lifecycle`
+ * are authoritative; the device copy is only a cache. Returns null when the tournament isn't a
+ * Step-by-Step tournament or isn't in this club.
+ */
+export async function rebuildHandoverFromServer(clubId: string, tournamentId: string): Promise<Handover | null> {
+  const { data, error } = await fromExt("club_champs")
+    .select("id, club_id, name, start_date, end_date, entry_fee_cents, payment_required, invite_methods, invite_short_message, created_at")
+    .eq("id", tournamentId).eq("club_id", clubId).maybeSingle();
+  if (error || !data) return null;
+  const life = await loadLifecycle(tournamentId);
+  if (!life) return null;
+  const d = data as any;
+  const h: Handover = {
+    tournamentId, clubId, name: d.name ?? "Tournament",
+    kind: d.start_date && d.end_date && d.start_date !== d.end_date ? "period" : "once_off",
+    mode: "invite",
+    feeDue: !!d.payment_required && Number(d.entry_fee_cents ?? 0) > 0,
+    channels: Array.isArray(d.invite_methods) ? d.invite_methods : [],
+    messageTemplate: d.invite_short_message ?? "", entrantMessages: [], invitePreview: d.invite_short_message ?? "",
+    deferred: [], stage: life.stage, completed: life.completed ?? [],
+    informedAt: life.inform?.at ?? null, createdAt: d.created_at ?? new Date().toISOString(),
+  };
+  saveHandover(h);
+  return h;
+}
+
 /** Forget a device-local management entry; never deletes a tournament or its history. */
 export function removeHandover(clubId: string, tournamentId: string) {
   localStorage.setItem(hkey(clubId), JSON.stringify(loadHandovers(clubId).filter((h) => h.tournamentId !== tournamentId)));

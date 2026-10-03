@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   LIFECYCLE, blockersFor, finalisePrereqs, isOutstanding, lifecycleIndex, loadHandover, loadLifecycle, loadRegistrations,
-  nextAction, loadConfirmNeedsPay, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
+  nextAction, loadConfirmNeedsPay, rebuildHandoverFromServer, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
 } from "@/lib/smart-builder/step-handover";
 import { StepInformPanel } from "./StepInformPanel";
 import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
@@ -27,6 +27,14 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   clubId: string; tournamentId: string; onEditSetup: (at?: "Summary" | "Messaging") => void; onBack: () => void;
 }) {
   const [h, setH] = useState<Handover | null>(() => loadHandover(clubId, tournamentId));
+  const [rebuilding, setRebuilding] = useState(() => !loadHandover(clubId, tournamentId));
+  useEffect(() => {
+    if (loadHandover(clubId, tournamentId)) { setRebuilding(false); return; }
+    let active = true;
+    setRebuilding(true);
+    rebuildHandoverFromServer(clubId, tournamentId).then((r) => { if (active && r) setH(r); }).catch(() => {}).finally(() => { if (active) setRebuilding(false); });
+    return () => { active = false; };
+  }, [clubId, tournamentId]);
   const [diamond, setDiamond] = useState<boolean | null>(null);
   useEffect(() => { let active = true; isDiamondTournament(tournamentId).then((yes) => { if (active) setDiamond(yes); }).catch(() => { if (active) setDiamond(true); }); return () => { active = false; }; }, [tournamentId]);
   const [open, setOpen] = useState(false);
@@ -62,6 +70,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const [needPay, setNeedPay] = useState(false);
   useEffect(() => { if (h?.feeDue) loadConfirmNeedsPay(tournamentId).then(setNeedPay).catch(() => {}); }, [tournamentId, h?.feeDue]);
   if (diamond !== false) return diamond ? <div className="text-sm">Diamond League keeps its existing tournament view. <Link className="underline" to={`/club-champs/${tournamentId}`}>Open tournament</Link></div> : null;
+  if (!h && rebuilding) return <div className="text-sm text-muted-foreground">Loading tournament…</div>;
   if (!h) return <div className="text-sm">This tournament's Beta management record isn't on this device. <Button variant="link" onClick={onBack}>Back</Button></div>;
   const advance = (from: LifecycleKey, to: LifecycleKey) => {
     const n = { ...h, stage: to, completed: [...new Set([...h.completed, from])] as LifecycleKey[] };

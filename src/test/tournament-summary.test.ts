@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formalStageOf, tournamentSummary, type SummaryFixture } from "@/lib/tournaments/tournament-summary";
 
 const cats = [
-  { group: 2, label: "Boys", firstStage: "sf" as const },
+  { group: 2, label: "Boys", firstStage: "sf" as const, fieldReady: true },
   { group: 1, label: "Men's 1st", firstStage: "sf" as const },
 ];
 const fixture = (group: number, label: string, a: string, b: string, winner?: string): SummaryFixture => ({

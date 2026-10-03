@@ -9,7 +9,7 @@ export type SummaryFixture = {
   score?: string | null; game_scores?: string | null; round_number?: number | null; bracket_position?: number | null;
 };
 export type SummaryStage = "qf" | "sf" | "final";
-export type SummaryCategory = { group: number; label: string; firstStage: SummaryStage | null };
+export type SummaryCategory = { group: number; label: string; firstStage: SummaryStage | null; fieldReady?: boolean };
 export type SummaryRow<M extends SummaryFixture> = {
   category: SummaryCategory; quarterfinals: M[]; semifinals: M[]; finals: M[];
   champion: M | null; status: string;
@@ -41,9 +41,10 @@ export function tournamentSummary<M extends SummaryFixture>(categories: SummaryC
       : finals.length ? "Final in progress"
       : semifinals.length ? "Semifinals in progress"
       : quarterfinals.length ? "Quarterfinals in progress"
-      : first === "sf" ? "Semifinal field ready / waiting for Semifinals"
-      : first === "final" ? "Final field ready / waiting for Final"
-      : first === "qf" ? "Waiting for Quarterfinals" : "Qualification in progress";
+      : category.fieldReady && first === "sf" ? "Semifinal field ready / waiting for Semifinals"
+      : category.fieldReady && first === "final" ? "Final field ready / waiting for Final"
+      : category.fieldReady && first === "qf" ? "Quarterfinal field ready / waiting for Quarterfinals"
+      : "Qualification in progress";
     return { category, quarterfinals, semifinals, finals, champion, status };
   });
 }

@@ -1,73 +1,83 @@
-# Diamond League in the Step-by-Step Beta — integration report and plan
+# Diamond League in the Step-by-Step Beta — integration plan (revised)
 
-No code changes yet. This is the findings report plus the proposed approach.
+Plan only. No code changes yet.
 
-## What exists today (source of truth)
+## Source of truth: the proven Diamond League
 
-The working Diamond League is the Current Builder's **Structure → Diamond League** team mode:
+The working Diamond League is the Current Builder's **Structure → Diamond League** team mode, set up almost entirely on one page:
 
-- Setup UI: `DiamondRulesPanel`, `DiamondAllocationBoard`, `DiamondFixturesPreview` (`components/tournaments/DiamondLeagueSetup.tsx`), driven by `diamondMode` + `diamondDraft` inside `ClubChampsTab.tsx`.
-- Rules/maths: `lib/tournaments/team-league.ts` (config defaults, tie games, pool rounds, crossover semis, placing finals, `buildPoolWeeks`, `autoSlotPlayers` with locks, team names).
-- Data: one `team_league_events` row per tournament (linked 1:1 by `tournament_id`) holding `config`, `teams`, `weeks`; the tournament row itself is a normal `club_champs` row with `scoring_mode = time_capped_points` (new events) and `doubles_serving_method`.
-- Fixtures: `persistDiamond` → `syncDiamondFixtures` (`lib/tournaments/diamond-fixtures.ts`) writes stable `dl:` match rows; knockout weeks already stored are never wiped.
-- Runtime: `TeamLeagueManager`, `DiamondStandings`, `diamond-live-summary`, `diamond-position-points`, `diamond-participants` (replacements), DB trigger `diamond_seed_doubles_from_singles`, Bells marker, Tournaments/ClubChampsView display.
-- Current Builder skips its Schedule step in Diamond mode; dates come from the weekly fixture dates.
+- Setup UI: `DiamondRulesPanel`, `DiamondAllocationBoard`, `DiamondFixturesPreview` (`components/tournaments/DiamondLeagueSetup.tsx`), driven by `diamondMode` + `diamondDraft` in `ClubChampsTab.tsx`.
+- Rules: `lib/tournaments/team-league.ts` (defaults, tie games, pool rounds, crossover semis, placing finals, `buildPoolWeeks`, `autoSlotPlayers` with locks).
+- Data: a normal `club_champs` row (`scoring_mode = time_capped_points`, `doubles_serving_method`) plus one linked `team_league_events` row (`config`, `teams`, `weeks`).
+- Fixtures: `persistDiamond` → `syncDiamondFixtures` writes stable `dl:` match rows and never wipes stored knockout weeks.
+- Runtime and display: `TeamLeagueManager`, `DiamondStandings`, `diamond-live-summary`, `diamond-position-points`, `diamond-participants`, DB trigger `diamond_seed_doubles_from_singles`, Bells marker, Tournaments and ClubChampsView.
 
-## Important finding: a second, unrelated "Diamond League" already exists in the Beta
+None of the above changes behaviour.
 
-The Beta already ships a "Diamond League" pre-built template (`StepTemplates.tsx` → `diamondTemplate()` in `smart-builder/stage-builder.ts`, `smart-builder/diamond-league.ts`, `DiamondLeaguePanel`). It models Diamond League as generic pool-v-pool **stages** on the structured engine (`mapped` stages). It does **not** use `team_league_events`, `buildPoolWeeks`, `dl:` rows or the Diamond standings/trigger. Tournaments created that way would not behave like the live Diamond League. This is the biggest risk and the plan addresses it.
+## The Beta Diamond League path to remove
 
-## Schema / type assumptions in the Beta that would reject or overwrite Diamond League
+The Beta has its own separate interpretation (Diamond League modelled as generic structured-engine stages). Entry points to remove for future creation:
 
-- `CompKind` in `StepByStepBuilder.tsx` is `pools | knockout | swiss | cross | later` — no Diamond option.
-- `QuickPath` in `quick-path.ts` is `round_robin | swiss | knockout | custom`.
-- `step-draw.ts` "Generate draw & fixtures" converts the tournament to the structured engine (`step_prepare_draw` + `generateStructuredTournament`). Run on a Diamond tournament, it would create a second fixture set beside the `dl:` rows — must be hard-blocked.
-- `consistency.ts` / readiness / Final Format Review / playoff chain / pool plan / `playoff-schedule` / `stage-bookings` all assume structured stages; they must skip Diamond tournaments, not "repair" them.
-- `step-handover.ts` inserts `club_champs` with Beta-derived scoring/format fields; for Diamond it must set exactly what the Current Builder sets (`time_capped_points`, `doubles_serving_method`) and nothing structured (`builder_spec`, `beta_lifecycle.format_plan` stages).
-- `step_sync_admin_entrants` enters players as `club_champs_registrations`; Diamond players live in `team_league_events.teams` slots. Needs a decision (see Open questions).
-- `run-overview.ts` derives lifecycle from structured stage games; Diamond progress must come from the existing Diamond weeks/standings.
+1. `lib/smart-builder/step-templates.ts` — `PREBUILT_TEMPLATES` entry `key: "diamond_league"`.
+2. `components/smart-builder/StepTemplates.tsx` — the `diamond_league` handler that creates a draft via `emptyDefinition` + `diamondTemplate()`.
+3. `components/smart-builder/StageBuilder.tsx` — the "Load Diamond League template" button and the `DiamondLeaguePanel` mount plus `diamond` special cases.
+4. `components/smart-builder/DiamondLeaguePanel.tsx` — removed (also saved club templates with `template_key = DIAMOND_KEY`; that save button goes with it).
+5. `lib/smart-builder/diamond-league.ts` and `diamondTemplate()` in `stage-builder.ts` — removed once nothing references them; related Beta-only tests (`pool-v-pool-builder`, `stage-builder`, `explicit-mapping`, `builder-canonical-state` Diamond cases) updated or dropped. Generic pool-v-pool / mapped-stage support stays (used by other formats).
+6. `ClubTournamentBeta.tsx` line 122 copy "including Diamond League" — points to the new option instead.
 
-## Recommended approach: guided shell, shared Diamond engine
+Existing data is not touched: no tournament rows, `team_league_events`, fixtures, results or saved `tournament_templates` rows are deleted or migrated. If an old Beta draft built from the stage template is opened, it shows a read-only note "Built with the retired Beta Diamond model — start a new Diamond League" rather than crashing.
+
+## New approach: one Diamond option, compact one-page setup
 
 ```text
-Beta steps:  Basics -> Category -> Structure [Diamond League] -> Dates & courts -> Fees/payments -> Messaging -> Summary
-                                              |
-                                              v
-                         Diamond-specific branch (existing components):
-                         Rules -> Teams & player slots -> Fixtures preview
-                                              |
-                         Complete setup -> same persistDiamond / syncDiamondFixtures
+Beta landing / Structure choice: [Diamond League]
+        |
+        v
+Compact Diamond League page (the existing one-page setup, reused as-is):
+  name + category + dates/courts/times
+  Rules panel -> Team & player slot board -> Fixtures preview
+        |
+  Separate only: Fees/payments, Messaging & invitations (existing Beta screens)
+        |
+  Save / Complete setup -> same persistDiamond + syncDiamondFixtures
+        |
+  Runs in the existing Diamond screens (standings, results, marking, reporting)
 ```
 
-1. **Extract, don't rewrite.** Move `persistDiamond` and `createDiamond`'s checks out of `ClubChampsTab.tsx` into a pure-ish shared module (e.g. `lib/tournaments/diamond-persist.ts`) with identical behaviour; the Current Builder calls it unchanged. Covered by a snapshot test showing the same `team_league_events` row and `dl:` fixtures before/after the move.
-2. **Add "Diamond League" as a Structure choice** in the Beta (`CompKind` gains `diamond`). Choosing it switches to a Diamond branch that renders the existing `DiamondRulesPanel`, `DiamondAllocationBoard`, `DiamondFixturesPreview` with the same `DiamondDraft` shape (stored device-local in the Beta answers until Complete setup).
-3. **Shared steps reused:** basic info/name, category (Men/Ladies/Mixed), courts + start/end time, entry fee and accepted payment methods, invitations/WhatsApp link/messaging, lifecycle stage. Weekly dates come from the Diamond fixture dates (as in the Current Builder), not the Beta's per-stage timeline.
-4. **Steps hidden for Diamond:** subcategories/pool plan, seeding, match scoring overrides, playoffs, Club Champs stages & scheduling, Confirm final format, Generate draw, play-off court booking/slot order, structured run overview.
-5. **Handover:** Summary's "Complete setup" creates/updates the `club_champs` row the same way the Current Builder does for Diamond, then calls the shared persist. Re-saving updates the linked event (never a second one). Tournament marked in `beta_lifecycle` as `structure: "diamond"` so every Beta screen routes correctly.
-6. **Guards:** Generate draw, consistency, pool plan, playoff scheduling and run overview return "Diamond League — managed by the Diamond League engine" and do nothing when a `team_league_events` row exists for the tournament. Same guard if an existing Diamond tournament is opened in the Beta.
-7. **Retire the stage-based Beta template path for new drafts:** the "Diamond League" pre-built template opens the new Diamond branch instead of `diamondTemplate()`. Existing drafts made from the old template are left untouched (no migration); flagged in the UI as the "experimental stage model". Needs your OK.
-8. **After creation**, management, results, standings, marking and display stay entirely in the existing Diamond screens.
+1. **Extract, don't rewrite.** Move `persistDiamond` and `createDiamond`'s validation out of `ClubChampsTab.tsx` into a shared module (e.g. `lib/tournaments/diamond-persist.ts`) with identical behaviour; the Current Builder calls it unchanged.
+2. **Single Diamond entry** in the Beta (landing tile and Structure choice, `CompKind` gains `diamond`). Selecting it opens a dedicated compact page that mounts the existing Diamond components together — not split across the long guided wizard.
+3. **Kept outside the compact page** (genuinely separate): fees/payment methods, messaging/invitations/WhatsApp link, lifecycle hand-off. Everything else stays on the one page.
+4. **Hidden for Diamond:** subcategories/pool plan, seeding, scoring overrides, playoffs, stages & scheduling timeline, Confirm final format, Generate draw, play-off court booking/slot order, structured run overview.
+5. **Handover:** creates/updates the `club_champs` row exactly as the Current Builder does for Diamond, then the shared persist; re-saving updates the same linked event, never a second one. `beta_lifecycle` records `structure: "diamond"` so Beta screens route correctly.
+6. **Guards:** Generate draw (`step-draw.ts`), consistency, pool plan, playoff scheduling, stage bookings and run overview do nothing for a tournament with a `team_league_events` row and point to the Diamond screens instead.
+7. After creation, all management, standings and reporting stay in the existing Diamond views.
 
-## What will not change
+## Beta assumptions that would otherwise reject or overwrite Diamond League
 
-Existing Diamond tournaments, `team_league_events` rows, `dl:` fixtures, results, standings, scoring, doubles re-seeding trigger, crossover/placing rules, the Current Builder's Diamond flow. No schema change, nothing published.
+- `CompKind` / `QuickPath` have no Diamond option.
+- `step-draw.ts` would generate a second structured fixture set beside the `dl:` rows.
+- Consistency/readiness/Final Format Review/playoff chain assume structured stages.
+- `step-handover.ts` writes Beta format fields and `format_plan`; Diamond must write only what the Current Builder writes.
+- `step_sync_admin_entrants` uses `club_champs_registrations`; Diamond players live in team slots.
+- `run-overview.ts` derives progress from structured stages.
 
 ## Risks
 
-- Extracting `persistDiamond` touches the Current Builder file — mitigated by a behaviour-identical move and before/after tests.
-- Two "Diamond League" models currently coexist in the Beta; leaving the stage-based one reachable invites incompatible tournaments.
-- Player entry: Diamond teams use slot assignment, the Beta uses registrations; mixing them could double-count entrants.
-- Courts: Diamond uses a court count/selected courts; the Beta has venue/court pool — map selected court ids only.
+- Extracting `persistDiamond` touches the Current Builder file — behaviour-identical move with before/after tests.
+- Removing the Beta template code must not remove generic mapped-stage features other formats use.
+- Player entry: Diamond uses the slot board only; no Beta registrations, to avoid double-counting.
+- Courts: map Beta selected court ids into the Diamond court list only.
 
-## Open questions (assumptions stated)
+## Assumptions (correct me if wrong)
 
-- Players: assume the Beta's Diamond branch uses the existing team slot board only (no `club_champs_registrations`) and invitations/fees work as in the Current Builder's Diamond mode.
-- Assume the stage-based Beta "Diamond League" template should be replaced by the new branch for new drafts (step 7).
+- Diamond players are placed via the existing team slot board; invitations and fees behave as in the Current Builder's Diamond mode.
+- Saved club `tournament_templates` rows of the old Beta Diamond kind stay in the database but are no longer offered.
 
 ## Tests
 
 - Persist extraction: identical event row and `dl:` rows for a fixture draft.
-- Beta Diamond handover creates exactly one `club_champs` + one `team_league_events`; re-save updates, never duplicates.
+- Beta Diamond save creates exactly one `club_champs` + one `team_league_events`; re-save never duplicates.
 - Generate draw / consistency / playoff scheduling refuse Diamond tournaments.
+- No remaining Beta reference to `diamondTemplate`/`DIAMOND_KEY`; only one Diamond option shown.
 - Existing Diamond suites (`diamond-*.test.ts`, `team-league.test.ts`) pass unchanged.
-- Playwright on Riverside preview: create a Diamond draft through the Beta (draft only, no invites sent) and confirm it opens in the existing Diamond screens.
+- Playwright on Riverside preview: create a Diamond draft through the Beta (no invites sent), confirm the compact page and that it opens in the existing Diamond screens.

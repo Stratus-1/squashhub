@@ -96,6 +96,9 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
     return st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d?.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;
   };
 
+  // Knockout categories run round by round in "Knockout rounds" (one state machine); never show engine stage state for them here.
+  const koDivs = new Set(spec.divisions.filter((d) => d.stages[0]?.kind === "knockout").map((d) => d.divisionId));
+  const states = allStates.filter((s) => !koDivs.has(s.divisionKey));
   const tieAlerts = states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail));
   const goRows = states.filter((s) => s.state === "ready" && !s.automatic);
   const dueRows = states.filter((s) => s.state === "needs_setup");
@@ -124,6 +127,12 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
         </div>
       ))}
       {spec.divisions.map((d) => {
+        if (koDivs.has(d.divisionId)) return (
+          <div key={d.divisionId} className="space-y-1">
+            {spec.divisions.length > 1 && <div className="font-medium">{d.label}</div>}
+            <div className="text-muted-foreground">Knockout — runs round by round; see Knockout rounds above for the current state.</div>
+          </div>
+        );
         const list = current(d.divisionId);
         const now = list.find((s) => s.state === "active") ?? list.find((s) => s.state !== "completed");
         return (

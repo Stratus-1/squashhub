@@ -1,7 +1,7 @@
 /**
  * Age from a date of birth or a South African ID number (YYMMDD…).
  * Returns null when age cannot be determined — never guesses. Keep in sync
- * with src/lib/member-age.ts.
+ * with supabase/functions/_shared/member-age.ts.
  */
 export function dobFromSaId(id: string | null | undefined, now = new Date()): Date | null {
   const digits = String(id ?? "").replace(/\D/g, "");

@@ -238,7 +238,7 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
       const m: any = activeMember || {};
       const gate = checkAgeGate(minAge, resolveAge({ dob: m.date_of_birth ?? null, idNumbers: [m.id_number] }));
       if (!gate.allowed) {
-        showAgeDenied(gate.reason === "underage" ? "age_restricted" : "age_unknown");
+        showAgeDenied((gate as { reason?: string }).reason === "underage" ? "age_restricted" : "age_unknown");
         return;
       }
     }

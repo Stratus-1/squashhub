@@ -7,7 +7,7 @@
  * the assumption of a winner. Played/scored fixtures are never touched.
  * Logic lives in `src/lib/tournaments/paced-knockout.ts`.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -188,6 +188,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const sig = proposal.pairs.map(([a, b]) => `${a.id}-${b.id}`).join(",");
   useEffect(() => { setPairs(proposal.pairs.map(([a, b]) => [a.id, b.id])); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [sig]);
   const [saving, setSaving] = useState(false);
+  const inFlight = useRef(false);
 
   const used = pairs.flat();
   const dup = used.length !== new Set(used).size;
@@ -197,17 +198,37 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
 
   const confirm = async () => {
     if (!pairs.length || dup || incomplete) return;
+    if (inFlight.current) return; inFlight.current = true;
     setSaving(true);
     try {
       const { data: fresh, error: fe } = await fromExt("club_champs_matches").select("id, round_number, pool_number, player_a_member_id, player_b_member_id, status, winner_member_id, is_bye").eq("champ_id", tournamentId).eq("group_number", div.group);
       if (fe) throw fe;
       const real = ((fresh ?? []) as any[]).filter((m) => (m.player_a_member_id || m.player_b_member_id) && (poolNo == null || Number(m.pool_number) === poolNo));
       if (real.some((m) => Number(m.round_number) >= nextRound)) throw new Error("This round already has fixtures — refresh to see them.");
-      const template: any = rows[0] ?? {};
+      const template: any = { ...(rows[0] ?? {}) };
       const partner = (id: string) => field.active.find((e) => e.id === id)?.partnerId ?? null;
-      // Structured games must carry division/stage/round identity: reuse or create this stage's round row.
+      // Structured games must carry division/stage/round identity. Resolve it from the
+      // tournament's own structure (never from an earlier game, which may not exist yet).
+      const { data: divRows, error: de } = await fromExt("tournament_divisions").select("id, spec_key, sort_order").eq("tournament_id", tournamentId);
+      if (de) throw de;
+      const divRow: any = (divRows ?? []).find((d: any) => d.spec_key === `g${div.group}`)
+        ?? (template.division_id ? (divRows ?? []).find((d: any) => d.id === template.division_id) : null);
+      if (divRow) {
+        const { data: stRows, error: se } = await fromExt("tournament_stages").select("id, kind, label, spec_key, stage_order").eq("division_id", divRow.id).order("stage_order");
+        if (se) throw se;
+        const stages = (stRows ?? []) as any[];
+        const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z]/g, "").replace(/s$/, "");
+        const formal = ks.kind === "playoff" ? stages.find((s) => norm(s.label) === norm(nextLabel)) : null;
+        const stage = formal ?? stages.find((s) => s.id === template.stage_id) ?? stages.find((s) => s.kind === "knockout") ?? stages[0];
+        if (stage) {
+          template.division_id = divRow.id;
+          template.stage_id = stage.id;
+          template.stage_key = stage.spec_key ?? template.stage_key ?? null;
+        }
+      }
+      if (!template.division_id || !template.stage_id) throw new Error("This category has no knockout stage set up yet — reopen setup and generate the draw.");
       let roundId: string | null = null;
-      if (template.stage_id) {
+      {
         const { data: ex, error: re } = await fromExt("club_champs_rounds").select("id").eq("champ_id", tournamentId).eq("stage_id", template.stage_id).eq("round_number", nextRound).maybeSingle();
         if (re) throw re;
         roundId = (ex as any)?.id ?? null;
@@ -215,7 +236,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
           const { data: cr, error: ce } = await fromExt("club_champs_rounds").insert({
             champ_id: tournamentId, group_number: div.group, section_number: 1, round_number: nextRound, label: nextLabel,
             round_type: ks.kind !== "playoff" ? "knockout" : /semi/i.test(nextLabel) ? "semi_final" : /^final/i.test(nextLabel) ? "final" : "knockout", play_by: playBy, status: "active", scheduling_mode: "self",
-            division_id: template.division_id ?? null, stage_id: template.stage_id, stage_key: template.stage_key ?? null,
+            division_id: template.division_id, stage_id: template.stage_id, stage_key: template.stage_key ?? null,
           } as any).select("id").single();
           if (ce) throw ce;
           roundId = (cr as any).id;
@@ -239,7 +260,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       qc.invalidateQueries({ queryKey: ["step-run", tournamentId] });
     } catch (e: any) {
       toast.error(e?.message || "Could not confirm fixtures");
-    } finally { setSaving(false); }
+    } finally { inFlight.current = false; setSaving(false); }
   };
 
   const status = winner ? "done" : ks.kind === "waiting_for_stage" ? "done" : pp.status;

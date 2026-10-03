@@ -778,7 +778,7 @@ export default function ClubChampsView() {
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
-    const hasProgress = (opts?.historical || opts?.koStatus) && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
+    const hasProgress = !!opts?.koStatus || opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
 
     return (
       <div className="overflow-x-auto">
@@ -819,8 +819,8 @@ export default function ClubChampsView() {
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
               const rowStyle = getRankRowStyle(i, competitors.length);
-              const isWinner = allPlayed && i === 0;
-              const isLast = allPlayed && i === competitors.length - 1;
+              const isWinner = !opts?.koStatus && allPlayed && i === 0;
+              const isLast = !opts?.koStatus && allPlayed && i === competitors.length - 1;
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>

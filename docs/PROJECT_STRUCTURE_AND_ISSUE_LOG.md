@@ -2482,3 +2482,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Fix: `schedulePlannedPlayoffGames` treats the stage's own `sbs:` block as room and carves each game slot out of it (rest stays reserved); organiser-run unallocated fixtures say "Assign court"; header says "court & time still to be assigned" with an admin "Assign courts & times" action. Test: `src/test/playoff-reservation-carve.test.ts`.
 
 - 2026-10-03 — Tournament Beta Diamond League now opens the proven Current Builder Diamond setup (ClubChampsTab `launchDiamond`); the Beta's stage-model Diamond template, "Load Diamond League template" button and DiamondLeaguePanel removed for new creation. Existing Diamond tournaments/data untouched.
+
+### 2026-10-03 — Diamond League invitation wording in the Beta entry
+- Cause: the shared invitation details and preview used the singles match type and an unset scoring mode for a new Diamond team event, producing a misleading singles name and standard scoring description.
+- Fix: the Diamond setup identity now drives its editable invitation opening, separate competition/category lines, time-capped team-tie scoring, and placing-round points rule. The default tournament name, in-app heading, test heading, and email preview no longer fall back to Singles. The same invitation body is used by preview and outbound in-app/email/WhatsApp; ordinary singles/doubles wording stays unchanged. Existing events, saved copy, fixtures, scores and standings were not modified.
+- Verified the unsaved Riverside Diamond preview across in-app, email, WhatsApp and SMS, plus five focused invitation tests; no message sent or event saved. Not published.

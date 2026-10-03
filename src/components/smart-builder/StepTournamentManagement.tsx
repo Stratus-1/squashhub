@@ -59,6 +59,8 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
     setLife(l);
     setH((cur) => { if (!cur) return cur; const n = { ...cur, stage: l.stage, completed: l.completed, informedAt: l.inform?.at ?? cur.informedAt }; saveHandover(n); return n; });
   };
+  const [needPay, setNeedPay] = useState(false);
+  useEffect(() => { if (h?.feeDue) loadConfirmNeedsPay(tournamentId).then(setNeedPay).catch(() => {}); }, [tournamentId, h?.feeDue]);
   if (diamond !== false) return diamond ? <div className="text-sm">Diamond League keeps its existing tournament view. <Link className="underline" to={`/club-champs/${tournamentId}`}>Open tournament</Link></div> : null;
   if (!h) return <div className="text-sm">This tournament's Beta management record isn't on this device. <Button variant="link" onClick={onBack}>Back</Button></div>;
   const advance = (from: LifecycleKey, to: LifecycleKey) => {
@@ -76,8 +78,6 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const owing = rows.filter((r) => isOutstanding(r.status, h.feeDue));
   const paid = rows.filter((r) => r.status === "paid" || r.status === "waived").length;
   const onAccount = rows.filter((r) => r.status === "on_account").length;
-  const [needPay, setNeedPay] = useState(false);
-  useEffect(() => { if (h.feeDue) loadConfirmNeedsPay(tournamentId).then(setNeedPay).catch(() => {}); }, [tournamentId, h.feeDue]);
   const prereqs = finalisePrereqs(rows, h.feeDue, needPay);
   const payWarn = paymentWarning(rows, h.feeDue);
   const pairs = rows.filter((r) => r.partnerName).length;

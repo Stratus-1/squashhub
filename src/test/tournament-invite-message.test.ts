@@ -1,10 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDefaultTournamentInviteText,
+  inviteCompetitionLines,
   migrateLegacyTournamentInviteText,
 } from "@/lib/tournaments/invite-message";
 
 describe("editable tournament invitation wording", () => {
+  it("previews Diamond League as combined singles and doubles, independently of the tournament name", () => {
+    const details = inviteCompetitionLines(true, "Men's", "singles").join("\n");
+    const preview = buildDefaultTournamentInviteText("River 2 Clubs", details, true);
+    expect(preview).toContain("You have been invited to the Diamond League — River 2 Clubs.");
+    expect(preview).toContain("Competition: Diamond League (singles and doubles)\nCategory: Men's");
+    expect(preview).not.toContain("Men's Singles");
+    expect(buildDefaultTournamentInviteText("Diamond League 2026", details, true)).toContain("the Diamond League 2026.");
+  });
+
+  it("preserves the normal singles and doubles category wording", () => {
+    expect(inviteCompetitionLines(false, "Men's", "singles")).toEqual(["Category: Men's Singles"]);
+    expect(inviteCompetitionLines(false, "Ladies", "doubles")).toEqual(["Category: Ladies Doubles"]);
+  });
   it("puts the default invitation sentence inside the editable text", () => {
     expect(buildDefaultTournamentInviteText("Friday Doubles", "— Tournament details —"))
       .toBe("You have been invited to Friday Doubles.\n\n— Tournament details —");

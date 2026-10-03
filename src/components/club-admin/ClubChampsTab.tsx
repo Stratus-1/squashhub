@@ -11,6 +11,7 @@ import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-lin
 import {
   buildDefaultTournamentInviteText,
   migrateLegacyTournamentInviteText,
+  inviteCompetitionLines,
 } from "@/lib/tournaments/invite-message";
 import type { TournamentPaymentMethod } from "@/lib/tournaments/payment-methods";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
@@ -485,6 +486,8 @@ function formatInviteDate(value: string | null | undefined, withTime = false): s
 function buildInviteDetailLines(opts: {
   gender: GenderCategory;
   matchType: "singles" | "doubles";
+  diamondLeague?: boolean;
+  diamondFinalsPoints?: "carry" | "reset";
   scoringMode: string;
   roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
@@ -519,13 +522,17 @@ function buildInviteDetailLines(opts: {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
   if (opts.tournamentName?.trim()) lines.push(`Tournament: ${opts.tournamentName.trim()}`);
-  lines.push(`Category: ${GENDER_LABELS[opts.gender]} ${isDoubles ? "Doubles" : "Singles"}`);
+  lines.push(...inviteCompetitionLines(!!opts.diamondLeague, GENDER_LABELS[opts.gender], opts.matchType));
 
-  try {
-    const fmt = getTournamentFormat(opts.scoringMode);
-    lines.push(`Scoring format: ${fmt.label}`);
-  } catch {
-    /* unknown format key — skip */
+  if (opts.diamondLeague) {
+    lines.push("Scoring format: Time-capped points (singles and doubles team ties)");
+  } else {
+    try {
+      const fmt = getTournamentFormat(opts.scoringMode);
+      lines.push(`Scoring format: ${fmt.label}`);
+    } catch {
+      /* unknown format key — skip */
+    }
   }
 
   if (opts.scoringMode === "standard" && opts.pointsPerGame && opts.bestOf) {
@@ -543,13 +550,13 @@ function buildInviteDetailLines(opts: {
     new Set((opts.divisionFormats?.length ? opts.divisionFormats : [opts.roundFormat]).filter(Boolean))
   );
   const effective = formats.length ? formats : ["single_round_robin"];
-  lines.push(
-    `Draw format: ${effective.map((f) => FORMAT_LABELS[f] || f).join(" · ")}`
-  );
+  lines.push(opts.diamondLeague
+    ? `Draw format: Two team divisions · round-robin ties, followed by placing rounds${opts.diamondFinalsPoints === "carry" ? " (points carry forward)" : opts.diamondFinalsPoints === "reset" ? " (points reset)" : ""}`
+    : `Draw format: ${effective.map((f) => FORMAT_LABELS[f] || f).join(" · ")}`);
 
   // Byes only mean something where every entrant is scheduled against the
   // field — a knockout-only draw has no bye scoring rule to report.
-  if (effective.some((f) => f !== "knockout")) {
+  if (!opts.diamondLeague && effective.some((f) => f !== "knockout")) {
     const byeLabel =
       opts.byeHandling === "walkover_win"
         ? "Walkover win — full points"
@@ -560,7 +567,7 @@ function buildInviteDetailLines(opts: {
   }
 
 
-  if (isDoubles) {
+  if (isDoubles && !opts.diamondLeague) {
     lines.push(
       `Partner selection: ${opts.partnerMode === "players"
         ? "Players choose their own partner"
@@ -2903,7 +2910,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const saveDraft = async () => {
     if (!clubId) return editingChampId;
     if (!champName.trim() && !editingChampId) return editingChampId;
-    const defaultName = `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
+    const defaultName = diamondMode ? `Diamond League ${new Date().getFullYear()}` : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
     const rawPayload: Record<string, any> = {
       name: champName || defaultName,
       gender,
@@ -3600,7 +3607,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
    */
   const autoDetailBlock = useMemo(() => {
     const lines = buildInviteDetailLines({
-      gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+      gender, matchType, diamondLeague: diamondMode, diamondFinalsPoints: diamondDraft.config.finalsPoints ?? "reset", scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,
@@ -3619,7 +3626,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
     registrationOpensAt, registrationClosesAt, entryFeeRand, pointsPerGame, bestOf,
     registrationRequired, registrationMode, champName, schedulingMode, roundDeadlines,
-    divisionFormatsKey, inviteExtraDetails,
+    divisionFormatsKey, inviteExtraDetails, diamondMode, diamondDraft.config.finalsPoints,
   ]);
 
   useEffect(() => {
@@ -3631,10 +3638,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
         .trimStart();
       const details = extra ? `${autoDetailBlock}\n\n${extra}` : autoDetailBlock;
-      const next = buildDefaultTournamentInviteText(champName, details);
+      const next = buildDefaultTournamentInviteText(champName, details, diamondMode);
       return next === prev ? prev : next;
     });
-  }, [autoDetailBlock, champName, descriptionCustom]);
+  }, [autoDetailBlock, champName, descriptionCustom, diamondMode]);
 
 
   const goToStep = (s: WizardStep) => {
@@ -5650,7 +5657,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
       let champId: string;
       const existingChampId = draftChampId || editingChampId;
-      const defaultName = `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
+      const defaultName = diamondMode ? `Diamond League ${new Date().getFullYear()}` : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (existingChampId) {
         // PHASE 3b GUARD: a locked draw is frozen — refuse to rebuild fixtures.
@@ -6645,7 +6652,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
       : "";
     const detailLines = descHasDetails ? [] : buildInviteDetailLines({
-      gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+      gender, matchType, diamondLeague: diamondMode, diamondFinalsPoints: diamondDraft.config.finalsPoints ?? "reset", scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,
@@ -6954,7 +6961,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const { data: sendRes, error: sendErr } = await (supabase as any).rpc("send_champ_invite_notifications", {
         p_champ_id: champId,
         p_recipients: recipients,
-        p_title: "Tournament invitation",
+        p_title: diamondMode ? "Diamond League invitation" : "Tournament invitation",
         p_message: msg,
         p_send_email: sendEmail,
         p_app_silent: !sendApp,
@@ -7152,7 +7159,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             action: "club-send",
             clubId,
             to: parsedEmail,
-            subject: `${champName || "Tournament"} — invitation (test)`,
+            subject: `${champName || (diamondMode ? "Diamond League" : "Tournament")} — invitation (test)`,
             body: buildInviteBody(),
             url: previewUrl,
             ctaLabel: "Accept / Register",
@@ -7241,7 +7248,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (wantsApp && (myMember as any)?.id) {
         const { error } = await fromExt("notifications").insert([{
           club_member_id: (myMember as any).id,
-          title: "TEST — Tournament invitation",
+          title: diamondMode ? "TEST — Diamond League invitation" : "TEST — Tournament invitation",
           message: body,
           type: "tournament_invite_test",
           url: testUrl,
@@ -7263,7 +7270,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               action: "club-send",
               clubId,
               to: myEmail,
-              subject: `TEST — ${champName || "Tournament"} invitation`,
+              subject: `TEST — ${champName || (diamondMode ? "Diamond League" : "Tournament")} invitation`,
               body,
               url: testUrl,
               ctaLabel: "Accept / Register",
@@ -12040,7 +12047,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     variant="ghost"
                     className="flex-1 md:flex-none"
                     onClick={() => {
-                      setDescription(buildDefaultTournamentInviteText(champName, autoDetailBlock));
+                      setDescription(buildDefaultTournamentInviteText(champName, autoDetailBlock, diamondMode));
                       setDescriptionCustom(false);
                       toast.success("Invite text rebuilt from the tournament settings");
                     }}
@@ -13872,7 +13879,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardHeader><CardTitle>Review & Generate</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
-              <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
+              <p><strong>Name:</strong> {champName || (diamondMode ? `Diamond League ${new Date().getFullYear()}` : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`)}</p>
               <p><strong>Type:</strong> {diamondMode ? "Diamond League team competition" : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"}`}</p>
               <p><strong>{diamondMode ? "Teams" : isDoubles ? "Pairs" : "Players"}:</strong> {diamondMode ? `${diamondDraft.teams.length} teams · ${diamondDraft.config.playersPerTeam} players per team · ${diamondDraft.teams.length * diamondDraft.config.playersPerTeam} places` : awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
@@ -14129,8 +14136,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         open={showInvitePreview}
         onOpenChange={setShowInvitePreview}
         clubId={clubId}
-        tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
+        tournamentName={champName || (diamondMode ? "Diamond League" : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`)}
         builtBody={buildInviteBody()}
+        diamondLeague={diamondMode}
         paymentRequired={paymentRequired}
         inviteShortMessage={inviteShortMessage}
         methods={inviteMethods}
@@ -14350,6 +14358,7 @@ function InvitePreviewDialog({
   clubId,
   tournamentName,
   builtBody,
+  diamondLeague,
   paymentRequired,
   inviteShortMessage,
   methods,
@@ -14365,6 +14374,7 @@ function InvitePreviewDialog({
   tournamentName: string;
   /** Exact body the send path (buildInviteBody) will use — preview must show this verbatim. */
   builtBody: string;
+  diamondLeague: boolean;
   paymentRequired: boolean;
   inviteShortMessage: boolean;
   methods: Set<"app" | "email" | "whatsapp">;
@@ -14457,7 +14467,7 @@ function InvitePreviewDialog({
                 <Trophy className="w-3.5 h-3.5" /> In-app notification
               </div>
               <div className="rounded-md border bg-background p-3">
-                <p className="text-sm font-semibold">Tournament invitation</p>
+                <p className="text-sm font-semibold">{diamondLeague ? "Diamond League invitation" : "Tournament invitation"}</p>
                 <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
                 <div className="flex gap-2 mt-3">
                   <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>

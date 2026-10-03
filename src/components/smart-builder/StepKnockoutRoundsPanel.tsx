@@ -273,7 +273,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
           const { data: cr, error: ce } = await fromExt("club_champs_rounds").insert({
             champ_id: tournamentId, group_number: div.group, section_number: 1, round_number: nextRound, label: nextLabel,
             round_type: ks.kind !== "playoff" ? "knockout" : /semi/i.test(nextLabel) ? "semi_final" : /^final/i.test(nextLabel) ? "final" : "knockout", play_by: playBy, status: "active",
-            scheduling_mode: u.step?.mode === "scheduled" ? "club" : "self", field_size: ks.kind === "playoff" ? u.step?.fieldSize ?? null : null,
+            scheduling_mode: central || u.step?.mode === "scheduled" ? "club" : "self", field_size: ks.kind === "playoff" ? u.step?.fieldSize ?? null : null,
             notes: u.step ? `Formal play-off stage: ${nextLabel} · qualified from ${field.active.length} active survivors · ${proposal.rule}${u.step.mode === "scheduled" && u.step.date ? ` · scheduled ${u.step.date}${u.step.from ? ` ${u.step.from}–${u.step.to ?? ""}` : ""}${u.step.courtIds?.length ? ` · courts ${u.step.courtIds.join(", ")}` : ""}` : ""}` : null,
             division_id: template.division_id, stage_id: template.stage_id, stage_key: template.stage_key ?? null,
           } as any).select("id").single();

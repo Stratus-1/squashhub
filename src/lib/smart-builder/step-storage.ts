@@ -27,6 +27,8 @@ export function readDraft(clubId: string): Record<string, any> | null {
   return d && !d.createdTournamentId && (d.kind || d.playType || d.name || (d.categories ?? []).some(Boolean)) ? d : null;
 }
 export const clearDraft = (clubId: string) => localStorage.removeItem(draftKey(clubId));
+/** Only the local setup copy is removed; the real tournament remains untouched. */
+export const clearTournamentPlan = (tid: string) => localStorage.removeItem(tournamentKey(tid));
 
 /** Saved plan of one created tournament (null if planned on another device). */
 export function readTournamentPlan(clubId: string, tid: string): Record<string, any> | null {

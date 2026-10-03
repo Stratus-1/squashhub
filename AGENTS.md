@@ -30,3 +30,4 @@ Multi-tenant squash operations platform (clubs, associations, federation, member
 ## Done checklist
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
 - Knockout stages after the first play-off use fixed feeder paths (stage_winners by bracket_position); never reseed from standings — keeps brackets deterministic and auditable.
+- Beta builder management cards are device-local projections verified against club-scoped tournament rows, and card removal never deletes a real tournament; why: a stale local record must not survive deletion or erase competition history.

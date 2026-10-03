@@ -900,7 +900,7 @@ export default function ClubChampsView() {
     const kdiv = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
     const kstage = kdiv?.stages?.find((st: any) => st.kind === "knockout" && Array.isArray(st.poolMembers) && st.poolMembers.length > 1);
     if (kstage) {
-      const { pools: cpools, anyResult } = configuredKnockoutPools(kstage.poolMembers, matches as any[], gn);
+      const { pools: cpools } = configuredKnockoutPools(kstage.poolMembers, matches as any[], gn);
       const allRows = getGroupStandings(gn);
       return (
         <div className="space-y-4">
@@ -937,7 +937,7 @@ export default function ClubChampsView() {
                 }
               >
                 {rows.length > 0
-                  ? renderStandingsTable(rows, { statuses: anyResult ? statuses : undefined, koStatus: true })
+                  ? renderStandingsTable(rows, { statuses, koStatus: true })
                   : <p className="text-xs text-muted-foreground italic">No players in this pool.</p>}
               </CollapsibleSection>
             );

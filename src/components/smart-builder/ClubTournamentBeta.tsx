@@ -151,9 +151,9 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
         Set up your tournament by answering simple questions, one step at a time. Nothing is fixed until you confirm it.
       </p>
       <div className="mt-4 grid max-w-4xl gap-3 md:grid-cols-[1.4fr_1fr]">
-      <Button variant="outline"
+      <button
         onClick={() => (draft ? setAskDraft(true) : openNew(true))}
-        className="block h-auto w-full whitespace-normal rounded-xl border-amber-300/40 bg-amber-300/10 p-5 text-left transition-colors hover:bg-amber-300/15"
+        className="block w-full rounded-xl border border-amber-300/40 bg-amber-300/10 p-5 text-left transition-colors hover:bg-amber-300/15"
       >
         <div className="flex items-center gap-2 font-semibold text-white">
           <ListChecks className="w-5 h-5 text-amber-300" />
@@ -163,16 +163,16 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
         <div className="mt-1 text-xs text-white/60">
           Walk through the what, who, format, schedule and payment questions in order — then review everything before anything is created.
         </div>
-      </Button>
+      </button>
       <div className="grid gap-3">
-        <Button variant="outline" onClick={() => setPicker("mine")} className="h-auto whitespace-normal rounded-xl border-white/15 p-4 text-left transition-colors hover:bg-white/5">
+        <button onClick={() => setPicker("mine")} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
           <div className="flex items-center gap-2 text-sm font-semibold text-white"><Layers className="h-4 w-4 text-amber-300" />Use one of my templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
           <div className="mt-1 text-[11px] text-white/60">Start from a setup your club saved before, e.g. last year's Club Championships.</div>
-        </Button>
-        <Button variant="outline" onClick={() => setPicker("prebuilt")} className="h-auto whitespace-normal rounded-xl border-white/15 p-4 text-left transition-colors hover:bg-white/5">
+        </button>
+        <button onClick={() => setPicker("prebuilt")} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
           <div className="flex items-center gap-2 text-sm font-semibold text-white"><Gem className="h-4 w-4 text-amber-300" />Pre-built templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
           <div className="mt-1 text-[11px] text-white/60">Standard SquashHub formats.</div>
-        </Button>
+        </button>
       </div>
       </div>
       {askDraft && draft && (

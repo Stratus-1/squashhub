@@ -9,9 +9,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 
 import { Navigate } from "react-router-dom";
 import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown, Info, Megaphone, Wand2 } from "lucide-react";
-import { useClubHasTournamentBeta } from "@/hooks/use-tournament-beta";
 import { ClubTournamentBeta } from "@/components/smart-builder/ClubTournamentBeta";
-import { CLUB_BETA_TILE_LABEL } from "@/lib/smart-builder/access";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 import { RulesTab } from "@/components/club-admin/RulesTab";
@@ -129,7 +127,7 @@ export default function ClubAdmin() {
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "features");
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t) setActiveTab(t);
+    if (t) setActiveTab(t === "champs_beta" ? "champs" : t);
   }, [searchParams]);
 
   const baseClub = data?.club;
@@ -153,9 +151,6 @@ export default function ClubAdmin() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
-  // Tournament Beta: opt-in per club (Super Admin switch), shown next to the
-  // unchanged legacy Tournaments tile — never replaces it.
-  const { data: clubHasTournamentBeta = false } = useClubHasTournamentBeta(club?.id);
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get
   // seeded capability rows by a DB trigger, so "no rows" is never true — the

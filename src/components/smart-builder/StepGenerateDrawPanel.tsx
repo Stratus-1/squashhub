@@ -17,7 +17,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, unitKeyOf as keyOfLabel, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -160,7 +160,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   /** Knockout pace / pairing are real settings: saved on the tournament's plan (and this device's copy) so Generate and Manage use them. */
   const saveKnockoutChoice = async (labels: string[], patch: Record<string, string>) => {
     try {
-      const keys = labels.map(keyOfLabel);
+      const keys = labels.map(unitKeyOf);
       keys.forEach((k) => patchTournamentPlanFormat(clubId, tournamentId, k, patch));
       const { data: t } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
       const bl: any = (t as any)?.beta_lifecycle ?? {};

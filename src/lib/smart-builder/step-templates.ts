@@ -74,7 +74,7 @@ export type PrebuiltTemplate = {
   name: string;
   description: string;
   /** Which existing builder can run this format. */
-  target: "legacy_draft" | "step";
+  target: "legacy_draft" | "step" | "diamond";
 };
 
 /** SquashHub system templates, shipped in code so no master copy can be overwritten. */
@@ -82,7 +82,7 @@ export const PREBUILT_TEMPLATES: PrebuiltTemplate[] = [
   {
     key: "diamond_league",
     name: "Diamond League",
-    description: "Cross-pool singles, pairs formed from positions, cross-pool doubles, then crossover play-offs. Opens in the Beta format editor.",
-    target: "legacy_draft",
+    description: "Team event of singles and doubles with weekly pool ties and crossover play-offs. Opens the proven Diamond League setup.",
+    target: "diamond",
   },
 ];

@@ -254,6 +254,10 @@ interface ClubChampsTabProps {
   scope?: "club" | "association" | "federation";
   /** Extra clubs (besides clubId) whose members and courts may be used. */
   participatingClubIds?: string[];
+  /** Open straight into the existing Diamond League setup (used by the Tournament Beta). */
+  launchDiamond?: boolean;
+  /** Called when a launched Diamond League setup is closed. */
+  onLaunchExit?: () => void;
 }
 
 /**
@@ -834,7 +838,7 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
   return error?.message || fallback;
 }
 
-export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds, launchDiamond = false, onLaunchExit }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Pull the latest club-ladder positions (and entrant list) on demand — the
@@ -7977,6 +7981,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setEntitiesSnapshotAtLoad(null);
     setRebuildToastFiredForSnapshot(null);
   };
+
+  // Tournament Beta "Diamond League": open the SAME Diamond setup the Current Builder uses.
+  const launchedRef = useRef(false);
+  useEffect(() => {
+    if (!launchDiamond || launchedRef.current) return;
+    launchedRef.current = true;
+    resetWizard();
+    setDiamondMode(true);
+    setStartTime("17:45"); setEndTime("21:15");
+    setStep("category");
+    setShowWizard(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [launchDiamond]);
+  const launchOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!launchDiamond) return;
+    if (showWizard) { launchOpenedRef.current = true; return; }
+    if (launchOpenedRef.current) onLaunchExit?.();
+  }, [launchDiamond, showWizard, onLaunchExit]);
 
   const loadChampForEdit = async (champ: any) => {
     resetWizard();

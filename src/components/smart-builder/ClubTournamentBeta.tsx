@@ -8,6 +8,7 @@ import { StepTournamentManagement } from "./StepTournamentManagement";
 import { TemplatePicker } from "./StepTemplates";
 import { loadHandovers } from "@/lib/smart-builder/step-handover";
 import { Button } from "@/components/ui/button";
+import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 
 /**
  * Club-context host for the Tournament Beta.
@@ -39,8 +40,19 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   const [draftId, setDraftId] = useState<string | null>(null);
   const handovers = loadHandovers(clubId);
   const navigate = useNavigate();
+  const [diamondOpen, setDiamondOpen] = useState(false);
 
   if (legacy) return <LegacyBetaHost clubId={clubId} clubName={clubName} open={legacyOpen} setOpen={setLegacyOpen} navigate={navigate} />;
+
+  // Diamond League: the proven compact Diamond setup, data model and engine — never a Beta reinterpretation.
+  if (diamondOpen) {
+    return (
+      <div className="space-y-2" data-field="beta-diamond-league">
+        <Button size="sm" variant="ghost" onClick={() => setDiamondOpen(false)}>← Tournament Beta</Button>
+        <ClubChampsTab clubId={clubId} launchDiamond onLaunchExit={() => setDiamondOpen(false)} />
+      </div>
+    );
+  }
 
   if (managing) {
     return (
@@ -80,7 +92,8 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
       <div className="dark rounded-xl bg-background p-4 text-foreground">
         <TemplatePicker clubId={clubId} mode={picker} onClose={() => setPicker(null)}
           onStartStep={() => { setPicker(null); openNew(false); }}
-          onOpenDraft={(id) => { setPicker(null); setDraftId(id); }} />
+          onOpenDraft={(id) => { setPicker(null); setDraftId(id); }}
+          onStartDiamond={() => { setPicker(null); setDiamondOpen(true); }} />
       </div>
     );
   }
@@ -119,7 +132,11 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
         </button>
         <button onClick={() => setPicker("prebuilt")} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
           <div className="flex items-center gap-2 text-sm font-semibold text-white"><Gem className="h-4 w-4 text-amber-300" />Pre-built templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
-          <div className="mt-1 text-[11px] text-white/60">Standard SquashHub formats, including Diamond League.</div>
+          <div className="mt-1 text-[11px] text-white/60">Standard SquashHub formats.</div>
+        </button>
+        <button onClick={() => setDiamondOpen(true)} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-white"><Gem className="h-4 w-4 text-amber-300" />Diamond League<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
+          <div className="mt-1 text-[11px] text-white/60">Team singles and doubles league — opens the proven one-page Diamond League setup.</div>
         </button>
       </div>
       </div>

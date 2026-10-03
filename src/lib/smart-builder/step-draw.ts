@@ -567,6 +567,30 @@ export type DrawPreview = {
 };
 
 /** Dry run through the real engine generator — exactly what Generate will save. */
+/**
+ * The Round 1 matches Generate would create for each paced knockout division, from the same engine dry run
+ * (organiser edits ignored), grouped per pool (index 0 = whole field). Divisions without a paced knockout are absent.
+ */
+export function proposedKnockoutRound1(name: string, divs: DrawDivision[], poolMode: PoolAllocationMode = "snake"): Map<number, Array<Array<[string, string]>>> {
+  const out = new Map<number, Array<Array<[string, string]>>>();
+  const plain = divs.map((d) => ({ ...d, koPairs: null }));
+  try {
+    const spec = withEntrants(buildDrawSpec(name, plain, "proposal", { poolMode }), plain);
+    const fx = generateFromSpec(spec, "proposal");
+    for (const d of plain) {
+      if (d.format.kind !== "knockout") continue;
+      const mine = fx.filter((f) => f.divisionId === `g${d.group}` && f.pacedRound && f.a && f.b);
+      const pooled = isPooledKnockout(d.format);
+      if (!pooled && !d.format.paced) continue;
+      const n = pooled ? Math.max(1, (poolsFor(d, poolMode) ?? []).length) : 1;
+      const groups: Array<Array<[string, string]>> = Array.from({ length: n }, () => []);
+      for (const f of mine) groups[pooled ? Math.max(0, (f.koPool ?? 1) - 1) : 0]?.push([f.a!, f.b!]);
+      out.set(d.group, groups);
+    }
+  } catch { /* preview errors are reported by previewDraw */ }
+  return out;
+}
+
 export function previewDraw(name: string, divs: DrawDivision[], window: { start: string | null; end: string | null }, version = "preview", poolMode: PoolAllocationMode = "snake"): DrawPreview {
   const errors = divs.flatMap((d) => divisionIssues(d).map((m) => `${d.label}: ${m}`));
   errors.push(...crossSets(divs).errors);

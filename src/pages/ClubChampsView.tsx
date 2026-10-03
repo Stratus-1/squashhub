@@ -24,6 +24,7 @@ import { isVoidResult } from "@/lib/tournaments/forfeit";
 import { classifyEntrant, type EntrantCategory } from "@/lib/tournaments/entrant-status";
 import { cn } from "@/lib/utils";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+import { configuredKnockoutPools } from "@/lib/tournaments/active-draw";
 import { divisionPools } from "@/lib/tournaments/active-draw";
 
 import { getTournamentFormat } from "@/lib/tournament-formats";
@@ -765,7 +766,7 @@ export default function ClubChampsView() {
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus> }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus>; koStatus?: boolean }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
     const poolLabels = opts?.poolLabels;
@@ -777,7 +778,7 @@ export default function ClubChampsView() {
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
-    const hasProgress = opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
+    const hasProgress = opts?.koStatus ? !!opts.statuses : opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
 
     return (
       <div className="overflow-x-auto">
@@ -818,19 +819,19 @@ export default function ClubChampsView() {
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
               const rowStyle = getRankRowStyle(i, competitors.length);
-              const isWinner = allPlayed && i === 0;
-              const isLast = allPlayed && i === competitors.length - 1;
+              const isWinner = !opts?.koStatus && allPlayed && i === 0;
+              const isLast = !opts?.koStatus && allPlayed && i === competitors.length - 1;
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={opts?.historical ? undefined : rowStyle} className={cn(
+                <tr key={s.id} style={opts?.historical || opts?.koStatus ? undefined : rowStyle} className={cn(
                   "border-b border-border/30",
                   hasProgress && (progress?.eliminated ? "bg-pool-eliminated" : "bg-pool-survivor"),
                   isMe && "font-semibold ring-2 ring-inset ring-primary/60"
                 )}>
                   <td className="py-2 text-muted-foreground">{i + 1}</td>
                   <td className="py-2 font-medium min-w-24">
-                    <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2 text-muted-foreground")}>{s.name}</span>
+                    <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2", opts?.koStatus && progress?.eliminated ? "text-destructive" : (isPulledOut(s) || progress?.eliminated) && "text-muted-foreground")}>{s.name}</span>
                     {isPulledOut(s) && <Badge variant="outline" className="text-[9px] ml-1">Withdrawn</Badge>}
                     {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge variant="secondary" className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>}{!opts?.historical && isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
                     {progress?.label && <span className="block text-[10px] font-normal text-muted-foreground no-underline leading-tight mt-0.5">{progress.label}</span>}
@@ -894,6 +895,47 @@ export default function ClubChampsView() {
       (m: any) => Number(m.group_number) === Number(gn) && ["group", "pool", "league"].includes(String(m.stage || "")),
     );
     if (hasGroupStage) return null;
+    // Configured pools (saved allocation) are the stable display boundary for
+    // every Pools + Knockout category, played or not. Status is result-only.
+    const kdiv = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
+    const kstage = kdiv?.stages?.find((st: any) => st.kind === "knockout" && Array.isArray(st.poolMembers) && st.poolMembers.length > 1);
+    if (kstage) {
+      const { pools: cpools, anyResult } = configuredKnockoutPools(kstage.poolMembers, matches as any[], gn);
+      const allRows = getGroupStandings(gn);
+      return (
+        <div className="space-y-4">
+          {cpools.map((pool) => {
+            const inPool = (r: any) => pool.memberIds.includes(r.club_member_id) || (r.partner_member_id && pool.memberIds.includes(r.partner_member_id));
+            const rows = allRows.filter(inPool);
+            const statuses = new Map<string, HistoricalPoolStatus>();
+            rows.forEach((r: any) => {
+              const out = pool.eliminatedIds.includes(r.club_member_id) || (r.partner_member_id && pool.eliminatedIds.includes(r.partner_member_id));
+              statuses.set(r.club_member_id, { eliminated: !!out, label: out ? "Eliminated" : null });
+            });
+            const outCount = rows.filter((r: any) => statuses.get(r.club_member_id)?.eliminated).length;
+            return (
+              <CollapsibleSection
+                key={pool.index}
+                className="space-y-2"
+                defaultOpen
+                header={
+                  <>
+                    <Badge variant="outline" className="text-xs font-semibold">Pool {pool.letter}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {rows.length - outCount} still in{outCount > 0 ? ` · ${outCount} eliminated` : ""}
+                    </span>
+                  </>
+                }
+              >
+                {rows.length > 0
+                  ? renderStandingsTable(rows, { statuses: anyResult ? statuses : undefined, koStatus: true })
+                  : <p className="text-xs text-muted-foreground italic">No players in this pool.</p>}
+              </CollapsibleSection>
+            );
+          })}
+        </div>
+      );
+    }
     const pools = koPoolsFor(gn).filter((p) => p.entrantIds.length > 0);
     if (pools.length === 0) return null;
     const all = getGroupStandings(gn);

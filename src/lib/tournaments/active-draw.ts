@@ -219,3 +219,31 @@ export function divisionPools(
   }
   return out.sort((a, b) => a.section - b.section);
 }
+
+export type ConfiguredKoPool = {
+  index: number;
+  letter: string;
+  memberIds: string[];
+  eliminatedIds: string[];
+};
+
+/**
+ * Configured knockout pools (Pool A, Pool B …) with result-derived status.
+ * Membership comes only from the saved pool allocation and never changes; a
+ * member is eliminated only by losing a COMPLETED, non-bye knockout match in
+ * this division. Seeds, proposals and unplayed fixtures never change status.
+ */
+export function configuredKnockoutPools(
+  poolMembers: string[][],
+  matches: KnockoutMatchLike[],
+  groupNumber: number,
+): { pools: ConfiguredKoPool[]; anyResult: boolean } {
+  const elim = divisionEliminations(matches, groupNumber);
+  const pools = poolMembers.map((ids, i) => ({
+    index: i + 1,
+    letter: String.fromCharCode(65 + i),
+    memberIds: [...ids],
+    eliminatedIds: ids.filter((id) => elim.has(id)),
+  }));
+  return { pools, anyResult: elim.size > 0 };
+}

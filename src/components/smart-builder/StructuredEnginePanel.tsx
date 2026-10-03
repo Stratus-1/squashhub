@@ -1,3 +1,4 @@
+import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
       <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /><span className="font-semibold">Structured tournament</span><Badge variant="outline">BETA engine</Badge></div>
       {matches.length > 0 && <StageProgressPanel champId={champId} spec={spec} matches={matches} nameOf={nameOf} collapsible={collapsibleStageProgress} />}
       {matches.length === 0 && (
-        <Button size="sm" disabled={!!busy} onClick={() => run("gen", () => atomically(supabaseDb, champId, commitStructured, (db) => generateStructuredTournament(db, champId)), "Games generated")}>
+        <Button size="sm" disabled={!!busy} onClick={() => run("gen", () => atomically(supabaseDb, champId, commitStructured, (db) => generateStructuredTournament(db, champId)).then(async (r) => { await allocateAllFixedStages(champId); return r; }), "Games generated")}>
           {busy === "gen" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Generate games
         </Button>
       )}

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
+import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { proposedKnockoutRound1 } from "@/lib/smart-builder/step-draw";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
@@ -388,6 +389,10 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const rows = await atomically(supabaseDb, tournamentId, commitStructured, (db) => generateStructuredTournament(db, tournamentId));
       const games = Array.isArray(rows) ? rows.filter((r: any) => r.player_a_member_id && r.player_b_member_id).length : preview?.total ?? 0;
       toast.success(`Draw saved — ${games} games created`);
+      // Universal fixed-stage rule: games of any fixed date/window/courts stage get real slots before any notice.
+      for (const r of await allocateAllFixedStages(tournamentId)) {
+        if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit — widen the time window or add courts.`);
+      }
       if (notifyDraw) {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.
         try { const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1 }); toast.success(roundNotifySummary(r)); }

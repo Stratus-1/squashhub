@@ -2526,3 +2526,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - 2026-10-03: KO Confirm N fixtures failed 'needs division, stage and round' for categories with no prior games (Ladies/Boys). StepKnockoutRoundsPanel now resolves division/stage from tournament_divisions/tournament_stages (formal stage by label when present), creates the round row, and guards double-clicks.
 
 - 2026-10-03: Tournament Games grouped paced knockout fixtures under bare "Round N", suggesting one global tournament round although each category advances independently. Structured pre-playoff knockout headings now read "Knockout Round N" with category names (compact count for long lists) and category subheadings; formal playoff labels and fixture data are unchanged.
+
+## 2026-10-03 — Fixed-stage games left TBD (NSP Knock out Final)
+- Cause: scheduling was only wired to formal play-off confirmation via the panel's own step lookup; Finals created without it stayed TBD/"Book by".
+- Fix: `src/lib/tournaments/formal-stage-schedule.ts` is the single fixed-stage scheduler (any round/stage with fixed date + window + courts). Knockout confirm resolves the configured stage by label for every round; initial draw generation (StepGenerateDrawPanel, StructuredEnginePanel) calls `allocateAllFixedStages`. Capacity shortfall blocks confirm with required vs available. Tests: `src/test/fixed-stage-scheduler.test.ts`.
+- Repair: 5 unplayed NSP Finals slotted on 26 Oct (last category first). SFs with missing slots already had results — left untouched.

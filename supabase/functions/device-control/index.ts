@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveAge, checkAgeGate } from "../_shared/member-age.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -333,10 +334,49 @@ Deno.serve(async (req) => {
 
     const { data: member } = await admin
       .from("club_members")
-      .select("id")
+      .select("id, id_number, person_id")
       .eq("club_id", device.club_id)
       .eq("user_id", userId)
       .maybeSingle();
+
+    // Optional age gate (Access devices only). NULL min_age = no restriction,
+    // so existing devices behave exactly as before. Missing age is NOT treated
+    // as underage — it gets its own reason so the member can complete details.
+    const minAge = device.category === "access" ? Number((device as any).min_age) || null : null;
+    if (minAge && action !== "off") {
+      let priv: any = null;
+      if ((member as any)?.person_id) {
+        const { data } = await admin
+          .from("people_private")
+          .select("date_of_birth, id_number")
+          .eq("person_id", (member as any).person_id)
+          .maybeSingle();
+        priv = data;
+      }
+      const age = resolveAge({
+        dob: priv?.date_of_birth ?? null,
+        idNumbers: [(member as any)?.id_number, priv?.id_number],
+      });
+      const gate = checkAgeGate(minAge, age);
+      if (!gate.allowed) {
+        await admin.from("access_events").insert({
+          club_id: device.club_id,
+          club_member_id: member?.id ?? null,
+          door_name: device.name,
+          event_type: gate.reason === "underage" ? "access_denied_underage" : "access_denied_age_unknown",
+          occurred_at: new Date().toISOString(),
+          // Age itself is not logged — DOB-derived data stays private.
+          raw: { device_id, category: device.category, action, trigger: trigger === "geofence" ? "geofence" : "manual", min_age: minAge, reason: gate.reason },
+        });
+        return json({
+          error: gate.reason === "underage"
+            ? `Access restricted. You must be ${minAge} or older to enter this area.`
+            : "We don't have your age information yet. Please complete your ID/date-of-birth information in your profile to access this area.",
+          code: gate.reason === "underage" ? "age_restricted" : "age_unknown",
+          min_age: minAge,
+        }, 403);
+      }
+    }
 
     const isGeofence = trigger === "geofence";
     if (isGeofence) {

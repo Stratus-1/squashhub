@@ -148,6 +148,13 @@
       "when": 1791028360854,
       "tag": "0020_allow_invited_beta_partners_before_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791032151551,
+      "tag": "0021_fee_settled_from_wallet",
+      "breakpoints": true
     }
   ]
 }

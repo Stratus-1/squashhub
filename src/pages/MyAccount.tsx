@@ -644,14 +644,14 @@ export default function MyAccount() {
             remaining -= deduction;
             const newAmount = feeAmt - deduction;
             if (newAmount <= 0) {
-              await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString(), amount: 0 }).eq("id", fee.id);
+              await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString(), amount: 0, settled_from_wallet: true }).eq("id", fee.id);
             } else {
               await fromExt("club_member_fee_payments").update({ amount: newAmount }).eq("id", fee.id);
             }
           }
         } else {
           for (const fee of selectedFees) {
-            await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString() }).eq("id", fee.id);
+            await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString(), settled_from_wallet: true }).eq("id", fee.id);
           }
         }
       } else if (method === "card") {

@@ -4685,6 +4685,7 @@ export type Database = {
           paid_at: string | null
           paid_by_member_id: string | null
           season_year: number
+          settled_from_wallet: boolean
           updated_at: string
         }
         Insert: {
@@ -4708,6 +4709,7 @@ export type Database = {
           paid_at?: string | null
           paid_by_member_id?: string | null
           season_year?: number
+          settled_from_wallet?: boolean
           updated_at?: string
         }
         Update: {
@@ -4731,6 +4733,7 @@ export type Database = {
           paid_at?: string | null
           paid_by_member_id?: string | null
           season_year?: number
+          settled_from_wallet?: boolean
           updated_at?: string
         }
         Relationships: [

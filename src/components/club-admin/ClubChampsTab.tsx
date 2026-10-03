@@ -11,6 +11,7 @@ import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-lin
 import {
   buildDefaultTournamentInviteText,
   migrateLegacyTournamentInviteText,
+  inviteCompetitionLines,
 } from "@/lib/tournaments/invite-message";
 import type { TournamentPaymentMethod } from "@/lib/tournaments/payment-methods";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
@@ -485,6 +486,7 @@ function formatInviteDate(value: string | null | undefined, withTime = false): s
 function buildInviteDetailLines(opts: {
   gender: GenderCategory;
   matchType: "singles" | "doubles";
+  diamondLeague?: boolean;
   scoringMode: string;
   roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
@@ -519,7 +521,7 @@ function buildInviteDetailLines(opts: {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
   if (opts.tournamentName?.trim()) lines.push(`Tournament: ${opts.tournamentName.trim()}`);
-  lines.push(`Category: ${GENDER_LABELS[opts.gender]} ${isDoubles ? "Doubles" : "Singles"}`);
+  lines.push(...inviteCompetitionLines(!!opts.diamondLeague, GENDER_LABELS[opts.gender], opts.matchType));
 
   try {
     const fmt = getTournamentFormat(opts.scoringMode);
@@ -560,7 +562,7 @@ function buildInviteDetailLines(opts: {
   }
 
 
-  if (isDoubles) {
+  if (isDoubles && !opts.diamondLeague) {
     lines.push(
       `Partner selection: ${opts.partnerMode === "players"
         ? "Players choose their own partner"
@@ -3600,7 +3602,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
    */
   const autoDetailBlock = useMemo(() => {
     const lines = buildInviteDetailLines({
-      gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+      gender, matchType, diamondLeague: diamondMode, scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,
@@ -3619,7 +3621,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
     registrationOpensAt, registrationClosesAt, entryFeeRand, pointsPerGame, bestOf,
     registrationRequired, registrationMode, champName, schedulingMode, roundDeadlines,
-    divisionFormatsKey, inviteExtraDetails,
+    divisionFormatsKey, inviteExtraDetails, diamondMode,
   ]);
 
   useEffect(() => {
@@ -3631,10 +3633,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
         .trimStart();
       const details = extra ? `${autoDetailBlock}\n\n${extra}` : autoDetailBlock;
-      const next = buildDefaultTournamentInviteText(champName, details);
+      const next = buildDefaultTournamentInviteText(champName, details, diamondMode);
       return next === prev ? prev : next;
     });
-  }, [autoDetailBlock, champName, descriptionCustom]);
+  }, [autoDetailBlock, champName, descriptionCustom, diamondMode]);
 
 
   const goToStep = (s: WizardStep) => {
@@ -6645,7 +6647,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
       : "";
     const detailLines = descHasDetails ? [] : buildInviteDetailLines({
-      gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+      gender, matchType, diamondLeague: diamondMode, scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,
@@ -12040,7 +12042,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     variant="ghost"
                     className="flex-1 md:flex-none"
                     onClick={() => {
-                      setDescription(buildDefaultTournamentInviteText(champName, autoDetailBlock));
+                      setDescription(buildDefaultTournamentInviteText(champName, autoDetailBlock, diamondMode));
                       setDescriptionCustom(false);
                       toast.success("Invite text rebuilt from the tournament settings");
                     }}

@@ -824,7 +824,7 @@ export default function ClubChampsView() {
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={opts?.historical ? undefined : rowStyle} className={cn(
+                <tr key={s.id} style={opts?.historical || opts?.koStatus ? undefined : rowStyle} className={cn(
                   "border-b border-border/30",
                   hasProgress && (progress?.eliminated ? "bg-pool-eliminated" : "bg-pool-survivor"),
                   isMe && "font-semibold ring-2 ring-inset ring-primary/60"

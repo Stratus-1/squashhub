@@ -100,3 +100,17 @@ describe("milestone (existing shared vs own option)", () => {
     expect(fieldSizeForStage("Round of 16")).toBe(16);
   });
 });
+
+import { generateFromSpec } from "@/lib/tournaments/engine-service";
+describe("engine: paced first round", () => {
+  it("creates only the paced matches and no bye rows", () => {
+    const spec: any = { version: 1, architecture: "structured", name: "T", divisions: [{
+      divisionId: "g1", label: "Mens", unit: "players", expectedEntrants: 9, groupNumber: 1,
+      seeding: { source: "entry_order", method: "snake" }, placements: "champion", finalStandings: "last_stage",
+      entrants: Array.from({ length: 9 }, (_, i) => ({ id: `p${i + 1}`, rank: i + 1 })),
+      stages: [{ id: "s1", order: 0, kind: "knockout", name: "Knockout", drawSize: 16, discipline: "singles", schedule: { rule: "play_by", deadline: "2026-10-10" }, paced: { count: 1, pairing: "progressive" } }],
+    }] };
+    const fx = generateFromSpec(spec, "t");
+    expect(fx.map((f) => `${f.a}v${f.b}`)).toEqual(["p8vp9"]);
+  });
+});

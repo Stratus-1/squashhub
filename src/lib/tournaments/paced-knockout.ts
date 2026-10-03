@@ -246,3 +246,52 @@ export function minRoundsToTarget(active: number, target: number): number {
   while (a > Math.max(1, target)) { a -= Math.min(Math.floor(a / 2), a - Math.max(1, target)); r++; if (r > 64) break; }
   return r;
 }
+
+/* ── one state machine for Manage: pre-play-off rounds vs formal play-off stages ──
+ * Reaching the milestone field size never by itself starts a play-off stage. The formal
+ * stage opens only once its pre-milestone scheduling rounds are behind us (or there are
+ * none). Until then a category that already has its field waits. Round N ≠ Quarter-final.
+ */
+export type PlayoffStep = { label: string; fieldSize: number; date: string | null };
+
+export function playoffSteps(plan: { stages?: PlanStage[]; playoffSync?: boolean | "later" | null } | null, key: string): PlayoffStep[] {
+  const po = (plan?.stages ?? []).filter((s) => s && s.phase === "playoff" && s.name);
+  const own = po.filter((s) => forUnit(s, key));
+  const shared = plan?.playoffSync === false ? [] : po.filter((s) => !s.unit);
+  return (own.length ? own : shared)
+    .map((s) => ({ label: s.name!, fieldSize: fieldSizeForStage(s.name!) ?? 0, date: when(s) || null }))
+    .filter((s) => s.fieldSize > 0)
+    .sort((a, b) => b.fieldSize - a.fieldSize || (a.date ?? "").localeCompare(b.date ?? ""));
+}
+
+export type KoRoundState =
+  | { kind: "pre_round"; label: string; count: number }
+  | { kind: "waiting_for_stage"; stage: string; date: string | null; reason: "field_ready" | "no_elimination_needed" }
+  | { kind: "playoff"; label: string; count: number }
+  | { kind: "no_elimination"; label: string };
+
+/**
+ * What Manage may propose next for a (non-pool) knockout category.
+ * `today` is YYYY-MM-DD. Play-off stages open once the last pre-milestone round date has passed.
+ */
+export function koRoundState(o: {
+  active: number; nextRound: number; milestone: Milestone; steps: PlayoffStep[]; plan: PacePlan; today: string;
+}): KoRoundState {
+  const { active, milestone, steps } = o;
+  const preRoundLabel = `Round ${o.nextRound}`;
+  if (milestone.fieldSize == null || !steps.length) {
+    return o.plan.thisRound > 0 ? { kind: "pre_round", label: preRoundLabel, count: o.plan.thisRound } : { kind: "no_elimination", label: preRoundLabel };
+  }
+  const lastPre = milestone.roundDates[milestone.roundDates.length - 1] ?? null;
+  const stageOpen = !lastPre || o.today > lastPre;
+  if (active > milestone.fieldSize && !stageOpen) {
+    return o.plan.thisRound > 0 ? { kind: "pre_round", label: preRoundLabel, count: o.plan.thisRound } : { kind: "no_elimination", label: preRoundLabel };
+  }
+  if (!stageOpen) {
+    return { kind: "waiting_for_stage", stage: milestone.label ?? steps[0].label, date: milestone.date, reason: active === milestone.fieldSize ? "field_ready" : "no_elimination_needed" };
+  }
+  // Formal stage: the smallest configured stage that still holds the whole field.
+  const step = [...steps].reverse().find((s) => s.fieldSize >= active) ?? steps[0];
+  const count = Math.max(0, Math.min(Math.floor(active / 2), active - step.fieldSize / 2));
+  return count > 0 ? { kind: "playoff", label: step.label, count } : { kind: "no_elimination", label: step.label };
+}

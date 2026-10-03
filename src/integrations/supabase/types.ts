@@ -3836,6 +3836,7 @@ export type Database = {
           last_state: boolean | null
           last_state_at: string | null
           location: string | null
+          min_age: number | null
           name: string
           notes: string | null
           output_inverted: boolean
@@ -3878,6 +3879,7 @@ export type Database = {
           last_state?: boolean | null
           last_state_at?: string | null
           location?: string | null
+          min_age?: number | null
           name: string
           notes?: string | null
           output_inverted?: boolean
@@ -3920,6 +3922,7 @@ export type Database = {
           last_state?: boolean | null
           last_state_at?: string | null
           location?: string | null
+          min_age?: number | null
           name?: string
           notes?: string | null
           output_inverted?: boolean

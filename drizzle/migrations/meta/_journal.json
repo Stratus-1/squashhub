@@ -155,6 +155,13 @@
       "when": 1791032151551,
       "tag": "0021_fee_settled_from_wallet",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791040585317,
+      "tag": "0022_access_device_min_age",
+      "breakpoints": true
     }
   ]
 }

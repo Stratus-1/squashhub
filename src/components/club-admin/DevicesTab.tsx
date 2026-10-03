@@ -116,6 +116,8 @@ type DeviceForm = {
   near_only: boolean;
   button_radius: string;
   output_inverted: boolean;
+  age_restricted: boolean;
+  min_age: string;
 };
 
 const emptyForm = (category: DeviceCategory): DeviceForm => ({
@@ -153,6 +155,8 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   near_only: false,
   button_radius: "150",
   output_inverted: false,
+  age_restricted: false,
+  min_age: "18",
 });
 
 const toForm = (d: IoTDevice): DeviceForm => ({
@@ -192,6 +196,8 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   near_only: !!(d as any).button_near_door_only,
   button_radius: String(d.geofence_radius_m ?? 50),
   output_inverted: !!(d as any).output_inverted,
+  age_restricted: (d as any).min_age != null,
+  min_age: String((d as any).min_age ?? 18),
 });
 
 const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [
@@ -584,6 +590,15 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         shelly_channel: Number(form.shelly_channel) || 0,
         pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
         output_inverted: form.control_mode === "pulse" ? form.output_inverted : false,
+        // Optional Access-only age gate; NULL = unrestricted (existing behaviour).
+        ...(form.source === "registry"
+          ? {
+              min_age:
+                form.category === "access" && form.age_restricted && Number(form.min_age) >= 1
+                  ? Math.min(120, Math.round(Number(form.min_age)))
+                  : null,
+            }
+          : {}),
         ble_mac: form.ble_mac.trim() || null,
         auto_off_minutes: form.control_mode === "pulse" ? null : autoOff,
         ...(hasGeofenceSettings
@@ -1034,6 +1049,38 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         relay's on / auto-off time). Around 3 seconds suits most doors. The door itself
                         can stay physically open after the lock re-engages.
                       </p>
+                    )}
+                    {form.category === "access" && form.source === "registry" && (
+                      <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <Label className="text-sm">Age restriction</Label>
+                            <p className="text-[11px] text-muted-foreground">
+                              Members still see this door, but Open Door only unlocks for members whose ID
+                              number or date of birth shows they meet the minimum age. Members with no age
+                              details are asked to complete their profile.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={form.age_restricted}
+                            onCheckedChange={(v) => set("age_restricted", v)}
+                          />
+                        </div>
+                        {form.age_restricted && (
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs">Minimum age</Label>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={120}
+                              className="w-24 h-8"
+                              value={form.min_age}
+                              onChange={(e) => set("min_age", e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
                     )}
                     <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3">
                       <div className="min-w-0">

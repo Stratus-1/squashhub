@@ -171,7 +171,18 @@ export function useDeviceControl(clubId?: string) {
         body: { device_id: deviceId, action, trigger: trigger ?? "manual" },
       });
       if (error) {
-        throw new Error(await extractFunctionError(error, "Device command failed"));
+        // Read the structured body first so callers can react to codes such
+        // as the Access age gate (age_restricted / age_unknown).
+        let code: string | undefined;
+        let message: string | undefined;
+        try {
+          const body = await (error as any)?.context?.clone?.().json?.();
+          code = body?.code;
+          message = body?.error;
+        } catch { /* not JSON */ }
+        const err = new Error(message || (await extractFunctionError(error, "Device command failed"))) as Error & { code?: string };
+        if (code) err.code = code;
+        throw err;
       }
       return data as DeviceCommandResult;
     },

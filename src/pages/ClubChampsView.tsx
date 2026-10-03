@@ -78,7 +78,7 @@ import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
-import { historicalPoolStatuses, playoffDisplayStages, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
+import { historicalPoolStatuses, playoffDisplayStages, structuredProgressHeadline, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
@@ -818,12 +818,12 @@ export default function ClubChampsView() {
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={rowStyle} className={cn("border-b border-border/30", progress?.eliminated && "opacity-65", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                <tr key={s.id} style={opts?.historical ? undefined : rowStyle} className={cn("border-b border-border/30", progress?.eliminated && "opacity-65", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
                   <td className="py-2 text-muted-foreground">{i + 1}</td>
                   <td className="py-2 font-medium min-w-24">
                     <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2 text-muted-foreground")}>{s.name}</span>
                     {isPulledOut(s) && <Badge variant="outline" className="text-[9px] ml-1">Withdrawn</Badge>}
-                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>}{isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
+                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge variant="secondary" className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>}{!opts?.historical && isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
                     {progress?.label && <span className="block text-[10px] font-normal text-muted-foreground no-underline leading-tight mt-0.5">{progress.label}</span>}
                   </td>
                   {showPool && (
@@ -3506,7 +3506,7 @@ export default function ClubChampsView() {
           </CardContent></Card>
         )}
         {summary}
-        <TournamentNextActionBar
+        {!isStructured && <TournamentNextActionBar
           champId={champId!}
           canManage={canManage}
           status={(champ as any)?.status}
@@ -3527,8 +3527,17 @@ export default function ClubChampsView() {
           onFocusFixtures={() =>
             document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
-        />
-        <TournamentProgressCard
+        />}
+        {isStructured && arch?.builder_spec ? (
+          <CollapsibleCard defaultOpen={false} title="Tournament progress — what's next" contentClassName="space-y-2">
+            {arch.builder_spec.divisions.map((d: any) => (
+              <div key={d.divisionId} className="border border-border bg-muted/30 px-3 py-2 text-xs space-y-1">
+                <span className="font-medium">{d.label}</span>
+                <p>{structuredProgressHeadline(d, (matches as any[]).filter((m: any) => m.group_number === divisionGroup(arch.builder_spec, d)))}</p>
+              </div>
+            ))}
+          </CollapsibleCard>
+        ) : <TournamentProgressCard
 
 
           champId={champId!}
@@ -3537,7 +3546,7 @@ export default function ClubChampsView() {
           championScope={(champ as any)?.champion_scope || undefined}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
-        />
+        />}
         {!diamondEvent && !isStructured && survivorsCard}
         {diamondEvent ? <DiamondStandings tournamentId={champId!} canManage={canManage} /> : winnersCard}
 

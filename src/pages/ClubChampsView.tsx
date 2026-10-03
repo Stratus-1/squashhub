@@ -778,7 +778,7 @@ export default function ClubChampsView() {
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
-    const hasProgress = !!opts?.koStatus || opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
+    const hasProgress = opts?.koStatus ? !!opts.statuses : opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
 
     return (
       <div className="overflow-x-auto">
@@ -928,7 +928,7 @@ export default function ClubChampsView() {
                 }
               >
                 {rows.length > 0
-                  ? renderStandingsTable(rows, { statuses: anyResult ? statuses : undefined, koStatus: anyResult })
+                  ? renderStandingsTable(rows, { statuses: anyResult ? statuses : undefined, koStatus: true })
                   : <p className="text-xs text-muted-foreground italic">No players in this pool.</p>}
               </CollapsibleSection>
             );

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
+import { isCentrallyScheduled, planStageFromDb, scheduleFormalStage } from "@/lib/tournaments/formal-stage-schedule";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import {
   activeField, byRank, isDecided, koRoundState, milestoneFor, pacePlan, playoffPairings, playoffSteps, proposePairings, roundsLeftFor,
@@ -233,6 +234,12 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       // Formal stages only ever take players who are still active.
       const activeIds = new Set(field.active.map((e) => e.id));
       if (pairs.flat().some((id) => !activeIds.has(id))) throw new Error("Only qualified players who are still in can be paired.");
+      // Centrally scheduled formal stage: every game must get a real slot — block rather than leave TBD games.
+      const central = ks.kind === "playoff" && isCentrallyScheduled(u.step) ? u.step! : null;
+      if (central) {
+        const cap = await planStageFromDb(tournamentId, central, pairs.map((_, i) => ({ id: `new-${i}`, group: div.group, bracket: i + 1 })));
+        if (cap && cap.overflow.length) throw new Error(`Not enough court time for ${nextLabel}: ${cap.overflow.length} game${cap.overflow.length === 1 ? "" : "s"} would not fit on ${central.date} between ${central.from} and ${central.to} on the selected courts. Widen the time window or add courts in setup.`);
+      }
       const template: any = { ...(rows[0] ?? {}) };
       const partner = (id: string) => field.active.find((e) => e.id === id)?.partnerId ?? null;
       // Structured games must carry division/stage/round identity. Resolve it from the
@@ -277,11 +284,16 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
         ...Object.fromEntries(COPY_KEYS.filter((k) => template[k] != null).map((k) => [k, template[k]])),
         round_number: nextRound, bracket_position: i + 1, stage_label: nextLabel, pool_number: poolNo,
         player_a_member_id: a, partner_a_member_id: partner(a), player_b_member_id: b, partner_b_member_id: partner(b),
-        is_bye: false, status: "scheduled", play_by: playBy,
+        is_bye: false, status: "scheduled", play_by: central ? null : playBy,
       }));
       const { error } = await fromExt("club_champs_matches").insert(insert as any);
       if (error) throw error;
       toast.success(`${insert.length} fixture${insert.length === 1 ? "" : "s"} confirmed for ${nextLabel}.`);
+      if (central) {
+        const sch = await scheduleFormalStage(tournamentId, central);
+        if (sch.overflow.length) toast.error(`${sch.overflow.length} ${nextLabel} game(s) could not be given a court — widen the window or add courts.`);
+        else toast.success(`${nextLabel} scheduled on ${central.date} — times and courts allocated.`);
+      }
       try {
         const res = await notifyRoundDraw({ champId: tournamentId, roundNumber: nextRound, groupNumber: div.group });
         if (res.sent > 0) toast.success(roundNotifySummary(res));

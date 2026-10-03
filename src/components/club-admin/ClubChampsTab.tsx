@@ -7982,6 +7982,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setRebuildToastFiredForSnapshot(null);
   };
 
+  // Tournament Beta "Diamond League": open the SAME Diamond setup the Current Builder uses.
+  const launchedRef = useRef(false);
+  useEffect(() => {
+    if (!launchDiamond || launchedRef.current) return;
+    launchedRef.current = true;
+    resetWizard();
+    setDiamondMode(true);
+    setStartTime("17:45"); setEndTime("21:15");
+    setStep("category");
+    setShowWizard(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [launchDiamond]);
+  useEffect(() => {
+    if (launchDiamond && launchedRef.current && !showWizard) onLaunchExit?.();
+  }, [launchDiamond, showWizard, onLaunchExit]);
+
   const loadChampForEdit = async (champ: any) => {
     resetWizard();
     setEditingChampId(champ.id);

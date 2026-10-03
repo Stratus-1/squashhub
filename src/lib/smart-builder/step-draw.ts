@@ -14,7 +14,7 @@ import { recommendPools, type PoolPlan, type PoolReview } from "@/lib/smart-buil
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { poolAssignmentIssues } from "@/lib/tournaments/pool-boundaries";
 import { specDateIssues } from "@/lib/tournaments/date-window";
-import { milestoneFor, pacePlan, poolKnockoutTarget, pooledRoundCounts, type KnockoutPairing } from "@/lib/tournaments/paced-knockout";
+import { milestoneFor, minRoundsToTarget, pacePlan, poolKnockoutTarget, pooledRoundCounts, type KnockoutPairing } from "@/lib/tournaments/paced-knockout";
 
 export type DrawKind = "pools" | "round_robin" | "knockout" | "swiss" | "cross";
 export type DrawSeeding = "entry_order" | "random" | "ladder" | "ranking";
@@ -434,6 +434,31 @@ function pooledPaced(d: DrawDivision, mode: PoolAllocationMode) {
   return { count: perPool.reduce((s, x) => s + x, 0), pairing: ko?.pairing ?? "traditional", perPool, poolTarget: target };
 }
 
+/**
+ * Knockout scheduling need: per pool (or the whole field), eliminations = active − survivors the next stage needs;
+ * the fewest rounds that fit them (each round removes at most half). Paced play spreads them over the dates given.
+ */
+export function knockoutRoundsNeeded(d: DrawDivision, mode: PoolAllocationMode = "snake"): number {
+  if (isPooledKnockout(d.format)) {
+    const t = pooledKnockoutTarget(d);
+    return Math.max(0, ...(poolsFor(d, mode) ?? []).map((p) => minRoundsToTarget(p.length, t)));
+  }
+  return minRoundsToTarget(d.units.length, d.format.ko?.target ?? d.format.paced?.target ?? 1);
+}
+/** Plain summary of the knockout requirement for Review. */
+export function knockoutNeedText(d: DrawDivision, mode: PoolAllocationMode = "snake"): string {
+  const label = d.format.ko?.label ?? d.format.paced?.label ?? null;
+  if (isPooledKnockout(d.format)) {
+    const t = pooledKnockoutTarget(d);
+    const pools = poolsFor(d, mode) ?? [];
+    const elim = pools.reduce((s, p) => s + Math.max(0, p.length - t), 0);
+    return `${elim} elimination${elim === 1 ? "" : "s"} needed (each pool down to ${t}${label ? ` for ${label}` : ""}); at least ${knockoutRoundsNeeded(d, mode)} round${knockoutRoundsNeeded(d, mode) === 1 ? "" : "s"}.`;
+  }
+  const t = d.format.ko?.target ?? d.format.paced?.target ?? 1;
+  const elim = Math.max(0, d.units.length - t);
+  return `${elim} elimination${elim === 1 ? "" : "s"} needed to reach ${label ?? (t > 1 ? `a field of ${t}` : "a winner")}; at least ${knockoutRoundsNeeded(d, mode)} round${knockoutRoundsNeeded(d, mode) === 1 ? "" : "s"}.`;
+}
+
 export function buildDrawSpec(name: string, divs: DrawDivision[], version: string, opts: SpecOpts = {}): TournamentSpec {
   const mode = opts.poolMode ?? "snake";
   const { sets, meetings } = crossSets(divs);
@@ -533,7 +558,9 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
     for (const sd of first.divisions) {
       const rounds = Math.max(0, ...fx0.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1));
       const d = divs.find((x) => x.group === sd.groupNumber)!;
-      for (const g of (sd as any).entryGroups ?? [sd.groupNumber]) out.roundsByGroup[g] = rounds;
+      // Knockout: rounds needed = fewest elimination rounds to reach the next stage's field, never a round-robin count.
+      const need = d.format.kind === "knockout" ? knockoutRoundsNeeded(d, poolMode) : rounds;
+      for (const g of (sd as any).entryGroups ?? [sd.groupNumber]) out.roundsByGroup[g] = need;
       // Knockout categories are paced week by week in Manage Tournament — never judged by round-robin round counts.
       if (d.format.schedule.rule === "play_by" && d.format.kind !== "knockout") { const e = roundDeadlines(d.format.schedule, rounds).error; if (e) errors.push(`${sd.label}: ${e}`); }
     }
@@ -550,7 +577,7 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
       const rounds = Math.max(0, ...mine.map((m) => m.round ?? 1));
       const sch: any = sd.stages[0].schedule;
       const dateOf = (r: number): string | null => sch.roundDates?.[r - 1] ?? (sch.rule === "play_by" ? sch.deadline : r === 1 ? sch.date : null);
-      const rd = f.schedule.rule === "play_by" ? roundDeadlines(f.schedule, rounds) : null;
+      const rd = f.schedule.rule === "play_by" && f.kind !== "knockout" ? roundDeadlines(f.schedule, rounds) : null;
       out.divisions.push({
         groups: (sd as any).entryGroups ?? [sd.groupNumber], label: sd.label, units: sd.entrants.length, games: real.length, byes: mine.length - real.length, rounds,
         pools: hasPools(f) ? f.pools : f.kind === "cross" ? (sd.entryGroups?.length ?? 1) : 1,

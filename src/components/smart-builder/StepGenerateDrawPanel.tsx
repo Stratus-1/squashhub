@@ -17,7 +17,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, isPooledKnockout, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, isPooledKnockout, knockoutNeedText, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -368,7 +368,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="space-y-0.5"><span className="text-muted-foreground">Format</span>
                 <select className="w-full rounded border border-input bg-background p-1" value={f.kind ?? ""} onChange={(e) => apply({ kind: (e.target.value || null) as DrawKind | null })}>
-                  <option value="">Choose…</option>{(Object.keys(KIND_LABEL) as DrawKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
+                  <option value="">Choose…</option>{(Object.keys(KIND_LABEL) as DrawKind[]).map((k) => <option key={k} value={k}>{k === "knockout" && isPooledKnockout(f) ? "Knockout within pools/groups" : KIND_LABEL[k]}</option>)}
                 </select></label>
               {(f.kind === "pools" || (f.kind === "knockout" && pr && pr.mode !== "none")) && <label className="space-y-0.5"><span className="text-muted-foreground">Number of pools</span><Input type="number" min={2} className="h-7" value={f.pools} onChange={(e) => { apply({ pools: Number(e.target.value) || 1 }); acceptPools(block ? targets : [i]); }} /></label>}
               {f.kind === "swiss" && <label className="space-y-0.5"><span className="text-muted-foreground">Swiss rounds</span><Input type="number" min={1} className="h-7" value={f.swissRounds} onChange={(e) => apply({ swissRounds: Number(e.target.value) || 0 })} /></label>}
@@ -387,7 +387,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                     <div key={k} className="flex flex-wrap items-center gap-2">
                       <Input type="date" aria-label={`Play-by date ${k + 1}`} className="h-7 w-40" value={dl} onChange={(e) => { const ds = [...arr]; ds[k] = e.target.value; applySch({ deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }} />
                       {(() => { const need = preview?.roundsByGroup[d.group]; const have = arr.filter(Boolean).length;
-                        if (need == null || have <= 1) return null;
+                        if (need == null || have <= 1 || f.kind === "knockout") return null;
                         if (have === need) return <span className="font-medium">Round {k + 1} · Play by {fmtDay(dl)}</span>;
                         if (have > need && k >= need) return <span className="font-medium text-destructive">Unused — this structure has only {need} round{need === 1 ? "" : "s"}</span>;
                         return null; })()}
@@ -403,8 +403,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 const have = f.schedule.deadlines.filter(Boolean).length;
                 return (
                   <div className="space-y-1 sm:col-span-3">
-                    {need != null && <span className={have > 1 && have < need && !f.schedule.share ? "font-medium text-destructive" : "text-muted-foreground"}>This structure needs {need} round{need === 1 ? "" : "s"}; {have} play-by date{have === 1 ? "" : "s"} set{have === 1 ? " (one date for all games)" : ""}.</span>}
-                    {have > 1 && need != null && have < need && <label className="flex items-center gap-2"><Checkbox checked={!!f.schedule.share} onCheckedChange={(v) => applySch({ share: !!v })} /><span>Let several rounds share a play-by date (choose "games up to round" for each date)</span></label>}
+                    {need != null && f.kind === "knockout" && <span className={have > 0 && have < need ? "font-medium text-destructive" : "text-muted-foreground"}>Knockout: {knockoutNeedText(d, poolMode)} {have} play-by date{have === 1 ? "" : "s"} set{have >= need ? " — enough; eliminations are paced across them in Manage Tournament." : " — add dates or reduce the qualifiers."}</span>}
+                    {need != null && f.kind !== "knockout" && <span className={have > 1 && have < need && !f.schedule.share ? "font-medium text-destructive" : "text-muted-foreground"}>This structure needs {need} round{need === 1 ? "" : "s"}; {have} play-by date{have === 1 ? "" : "s"} set{have === 1 ? " (one date for all games)" : ""}.</span>}
+                    {f.kind !== "knockout" && have > 1 && need != null && have < need && <label className="flex items-center gap-2"><Checkbox checked={!!f.schedule.share} onCheckedChange={(v) => applySch({ share: !!v })} /><span>Let several rounds share a play-by date (choose "games up to round" for each date)</span></label>}
                   </div>
                 );
               })()}

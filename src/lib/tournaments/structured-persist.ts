@@ -287,7 +287,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
   const rows = fixtures.map((f) => {
     const sk = `${f.divisionId}/${f.stageId}`;
     const date = roundDate(f);
-    const koLabel = legacyStage(f.stageKind) === "ko" && !f.thirdPlace ? koName(koCount.get(`${f.divisionId}/${f.stageId}/${f.round ?? 1}`) ?? 1) : null;
+    const koLabel = f.pacedRound ? `Round ${f.round ?? 1}` : legacyStage(f.stageKind) === "ko" && !f.thirdPlace ? koName(koCount.get(`${f.divisionId}/${f.stageId}/${f.round ?? 1}`) ?? 1) : null;
     const poolIdx = f.poolId ? Number(/pool(\d+)$/.exec(f.poolId)![1]) - 1 : null;
     const [a1, a2] = splitUnit(f.a); const [b1, b2] = splitUnit(f.b);
     return {

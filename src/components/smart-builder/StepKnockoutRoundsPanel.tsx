@@ -125,7 +125,8 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const roundsLeft = reached ? null : roundsLeftFor(milestone, field.lastRound);
   const pp = pacePlan({ active: field.active.length, target, roundsLeft, pace: reached ? "immediate" : pace, milestoneLabel: milestone.label });
   const nextRound = field.lastRound + 1;
-  const nextLabel = reached || target == null && field.active.length <= 8 ? labelForActive(field.active.length) : `Round ${nextRound}`;
+  // Pool rounds are always "Round N"; play-off names only once the real milestone field is reached.
+  const nextLabel = pool ? `Round ${nextRound}` : reached || target == null && field.active.length <= 8 ? labelForActive(field.active.length) : `Round ${nextRound}`;
   const playBy = !reached ? milestone.roundDates[nextRound - 1] ?? null : null;
 
   const proposal = useMemo(() => proposePairings(field.active, pp.thisRound, pairing), [field.active, pp.thisRound, pairing]);

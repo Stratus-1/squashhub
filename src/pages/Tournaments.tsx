@@ -969,6 +969,7 @@ export default function Tournaments() {
                               if (booked) toast.success(`Assigned ${booked} game${booked === 1 ? "" : "s"} to courts`);
                               if (notes.length) toast.warning(notes.join("\n"));
                               qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+                              qc.invalidateQueries({ queryKey: ["timed-round-capacity"] });
                             } catch (err: any) { toast.error(err.message); }
                           }}
                         >
@@ -1269,7 +1270,7 @@ export default function Tournaments() {
 
     return (
       <div key={m.id}>
-        {slotChanged && idx > 0 && (
+        {slotChanged && (idx > 0 || !!m.scheduled_time) && (
           <div className="flex items-center gap-2 pt-2 pb-1 select-none">
             <div className="flex-1 h-px bg-border" />
             <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-1.5">

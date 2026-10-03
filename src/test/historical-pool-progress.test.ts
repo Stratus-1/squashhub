@@ -29,6 +29,7 @@ describe("historical pool progression presentation", () => {
   });
 
   it("uses configured playoff names instead of generic round numbers", () => {
-    expect(structuredProgressHeadline(division, qfs)).toBe("Quarterfinals complete — Ready for Semifinals.");
+    const pools = [{ stage_key: "pools", status: "completed", winner_member_id: "a1" }];
+    expect(structuredProgressHeadline(division, [...pools, ...qfs])).toBe("Quarterfinals complete — Ready for Semifinals.");
   });
 });

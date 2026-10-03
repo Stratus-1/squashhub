@@ -7,7 +7,7 @@
  * the assumption of a winner. Played/scored fixtures are never touched.
  * Logic lives in `src/lib/tournaments/paced-knockout.ts`.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -188,6 +188,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const sig = proposal.pairs.map(([a, b]) => `${a.id}-${b.id}`).join(",");
   useEffect(() => { setPairs(proposal.pairs.map(([a, b]) => [a.id, b.id])); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [sig]);
   const [saving, setSaving] = useState(false);
+  const inFlight = useRef(false);
 
   const used = pairs.flat();
   const dup = used.length !== new Set(used).size;
@@ -197,6 +198,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
 
   const confirm = async () => {
     if (!pairs.length || dup || incomplete) return;
+    if (inFlight.current) return; inFlight.current = true;
     setSaving(true);
     try {
       const { data: fresh, error: fe } = await fromExt("club_champs_matches").select("id, round_number, pool_number, player_a_member_id, player_b_member_id, status, winner_member_id, is_bye").eq("champ_id", tournamentId).eq("group_number", div.group);
@@ -258,7 +260,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       qc.invalidateQueries({ queryKey: ["step-run", tournamentId] });
     } catch (e: any) {
       toast.error(e?.message || "Could not confirm fixtures");
-    } finally { setSaving(false); }
+    } finally { inFlight.current = false; setSaving(false); }
   };
 
   const status = winner ? "done" : ks.kind === "waiting_for_stage" ? "done" : pp.status;

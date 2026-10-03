@@ -71,9 +71,9 @@ export function TemplateReviewBanner({ clubId }: { clubId: string }) {
 }
 
 /** My templates / Pre-built templates lists. */
-export function TemplatePicker({ clubId, mode, onStartStep, onOpenDraft, onClose }: {
+export function TemplatePicker({ clubId, mode, onStartStep, onOpenDraft, onStartDiamond, onClose }: {
   clubId: string; mode: "mine" | "prebuilt";
-  onStartStep: () => void; onOpenDraft: (draftId: string) => void; onClose: () => void;
+  onStartStep: () => void; onOpenDraft: (draftId: string) => void; onStartDiamond?: () => void; onClose: () => void;
 }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState(false);

@@ -254,6 +254,10 @@ interface ClubChampsTabProps {
   scope?: "club" | "association" | "federation";
   /** Extra clubs (besides clubId) whose members and courts may be used. */
   participatingClubIds?: string[];
+  /** Open straight into the existing Diamond League setup (used by the Tournament Beta). */
+  launchDiamond?: boolean;
+  /** Called when a launched Diamond League setup is closed. */
+  onLaunchExit?: () => void;
 }
 
 /**
@@ -834,7 +838,7 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
   return error?.message || fallback;
 }
 
-export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds, launchDiamond = false, onLaunchExit }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Pull the latest club-ladder positions (and entrant list) on demand — the

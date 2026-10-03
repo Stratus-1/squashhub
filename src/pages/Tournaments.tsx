@@ -786,6 +786,8 @@ export default function Tournaments() {
     const milestones = parseMilestones((champ as any)?.milestone_play_by);
     return resolveFixtureSchedule(m, {
       stage: matchStage(m),
+      organiserScheduled: !m.stage_key && !m.booking_id && !!m.scheduled_date && !!m.scheduled_time &&
+        stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "club",
       rows: roundsByChamp.get(m.champ_id) || [],
       fallback: () => {
         // Legacy (non-structured) tournaments only — structured stages never reach here.

@@ -48,4 +48,15 @@ describe("target-stage schedule: pool 6 Oct -> QF 22 -> SF 25 -> Final 28", () =
     // no spec at all: still never the pool's 6 Oct for a play-off stage
     expect(resolveFixtureSchedule(fx("po3"), { rows }).playBy).toBeNull();
   });
+
+  it("keeps a player-booked knockout's round deadline and reschedule permission", () => {
+    const booked = fx("po2", { round_id: "r-sf", scheduled_date: "2026-10-23", scheduled_time: "18:00", booking_id: "booking-1" });
+    const r = resolveFixtureSchedule(booked, { stage: stageScheduleIndex(spec("play_by")).get("po2"), rows });
+    expect(r).toMatchObject({ mode: "play_by", playBy: "2026-10-25" });
+    const m = { ...booked, stage: "ko", status: "scheduled", player_a_member_id: "a", player_b_member_id: "b" } as any;
+    expect(canScheduleFixture(m, "a", { centrallyScheduled: r.mode === "scheduled" }).allowed).toBe(true);
+    expect(canScheduleFixture(m, "outsider", { centrallyScheduled: r.mode === "scheduled" }).allowed).toBe(false);
+    const legacy = resolveFixtureSchedule({ ...booked, stage_key: null }, { rows: [{ ...rows[0], stage_key: null, play_by: "2026-10-25" }] });
+    expect(legacy.playBy).toBe("2026-10-25");
+  });
 });

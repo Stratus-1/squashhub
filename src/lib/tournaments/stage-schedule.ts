@@ -101,13 +101,15 @@ export type FixtureSchedule =
  */
 export function resolveFixtureSchedule(
   m: FixtureLikeForSchedule,
-  opts: { stage?: StageScheduleInfo | null; rows?: RoundRowLike[]; fallback?: () => string | null | undefined } = {},
+  opts: { stage?: StageScheduleInfo | null; rows?: RoundRowLike[]; fallback?: () => string | null | undefined; organiserScheduled?: boolean } = {},
 ): FixtureSchedule {
   const own = m.play_by ? String(m.play_by).slice(0, 10) : "";
   if (own) return { mode: "play_by", playBy: own, bookable: true };
   const st = opts.stage ?? null;
   const allocated = !!(m.court_id || m.booking_id);
-  if (st?.rule === "fixed" || (m.scheduled_date && m.scheduled_time)) {
+  // A player booking also writes scheduled_date/time. Only the stage's fixed rule
+  // (or an explicitly identified legacy organiser slot) makes it central.
+  if (st?.rule === "fixed" || opts.organiserScheduled) {
     return {
       mode: "scheduled",
       date: (m.scheduled_date ? String(m.scheduled_date).slice(0, 10) : null) ?? st?.date ?? null,

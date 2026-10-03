@@ -451,7 +451,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         const targets = fam.map((o) => seeded.indexOf(o));
         const apply = (patch: Partial<DivFormat>) => (block ? targets : [i]).forEach((j) => setFmt(j, patch));
         const applySch = (patch: Partial<DivSchedule>) => apply({ schedule: { ...d.format.schedule, ...patch } });
-        const issues = block ? [...new Set(fam.flatMap((o) => divisionIssues(o)))] : divisionIssues(d);
+        const issues = block ? [...new Set(fam.flatMap((o) => divisionIssues(o, divs)))] : divisionIssues(d, divs);
         const f = d.format;
         const pr = d.poolReview;
         const controls = (

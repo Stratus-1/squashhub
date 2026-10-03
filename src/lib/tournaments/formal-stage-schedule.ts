@@ -13,6 +13,7 @@
  * "Play by a date" keeps player booking; "Decide later" stays intentionally unscheduled.
  */
 import { fromExt } from "@/lib/supabase-ext";
+import { normaliseSchedulingPrefs, planPrefWaves, prefsActive, type SchedulingPrefs } from "./scheduling-prefs";
 
 export type SlotGame = { id: string; group: number; bracket: number };
 export type Busy = { courtId: number; start: string; end: string };
@@ -307,54 +308,108 @@ export function planDays(formatPlan: any): TimedDay[] {
   return out;
 }
 
-/**
- * Schedule every unplayed, unbooked game of the tournament's FIXED-date (non-formal) stages into
- * timed round sessions. Duration = the format's own slot (Bells cap via match_duration_minutes;
- * break already inside the slot). Writes nothing when the plan does not fit.
- */
-export async function scheduleTimedRounds(champId: string, opts: { dryRun?: boolean } = {}) {
-  const [{ data: t }, { data: rows }] = await Promise.all([
-    fromExt("tournaments").select("builder_spec, beta_lifecycle, match_duration_minutes, default_break_minutes, start_time, rules:tournament_rules(scoring_mode)").eq("id", champId).maybeSingle(),
-    fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id").eq("champ_id", champId),
+/** One game the timed scheduler places (same shape for the pre-generation preview and live games). */
+export type TimedGame = { id: string; round: number; group: number; bracket: number; people: string[]; groups: number[] };
+
+/** Everything the timed scheduler reads from the tournament — loaded once, shared by preview and allocation. */
+export type TimedContext = {
+  days: TimedDay[]; minutes: number; bells: boolean; waves: boolean; roundDates: string[];
+  prefs: SchedulingPrefs; labels: Record<string, string>; entryGroup: Map<string, number>;
+  /** Court occupancy on the plan's dates/courts, excluding this tournament's own games. */
+  busyOther: Array<Busy & { date: string }>;
+  fixedStages: boolean;
+};
+
+export async function loadTimedContext(champId: string): Promise<TimedContext | null> {
+  const [{ data: t }, { data: entries }] = await Promise.all([
+    fromExt("tournaments").select("builder_spec, beta_lifecycle, group_labels, match_duration_minutes, rules:tournament_rules(scoring_mode)").eq("id", champId).maybeSingle(),
+    fromExt("club_champs_entries").select("club_member_id, partner_member_id, group_number").eq("champ_id", champId),
   ]);
-  const spec: any = (t as any)?.builder_spec;
-  const plan: any = (t as any)?.beta_lifecycle?.format_plan;
-  const fixedStages = ((spec?.divisions ?? []) as any[]).flatMap((d) => d.stages ?? []).filter((s: any) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
-  if (!fixedStages.length) return null;
+  if (!t) return null;
+  const spec: any = (t as any).builder_spec;
+  const plan: any = (t as any).beta_lifecycle?.format_plan;
+  const fixed = ((spec?.divisions ?? []) as any[]).flatMap((d) => d.stages ?? []).filter((s: any) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
   const days = planDays(plan);
-  if (!days.length) return null;
-  const steps = planSteps(plan);
-  const roundDates: string[] = (fixedStages[0].schedule.roundDates ?? []).map((x: string) => String(x).slice(0, 10));
-  const movable = (m: any) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()) && m.player_a_member_id && m.player_b_member_id;
-  const own = ((rows ?? []) as any[]).filter((m) => movable(m) && !findStep(steps, String(m.stage_label ?? "")));
-  if (!own.length) return { label: "Round robin", scheduled: 0, overflow: [], required: 0, available: 0, issues: [] as string[] };
-  const ownIds = new Set(own.map((m) => m.id));
+  const rulesMode = ([] as any[]).concat((t as any).rules ?? [])[0]?.scoring_mode;
+  const bells = plan?.scoring?.mode === "time_capped_points" || rulesMode === "time_capped_points";
+  const minutes = (bells ? bellsSlotMinutes(plan?.scoring) : null) ?? (Number((t as any).match_duration_minutes) || 30);
+  const entryGroup = new Map<string, number>();
+  for (const e of (entries ?? []) as any[]) { entryGroup.set(e.club_member_id, Number(e.group_number)); if (e.partner_member_id) entryGroup.set(e.partner_member_id, Number(e.group_number)); }
   const dates = Array.from(new Set(days.map((d) => d.date)));
   const courts = Array.from(new Set(days.flatMap((d) => d.courtIds)));
-  const rulesMode = ([] as any[]).concat((t as any)?.rules ?? [])[0]?.scoring_mode;
-  const bells = plan?.scoring?.mode === "time_capped_points" || rulesMode === "time_capped_points";
-  const minutes = (bells ? bellsSlotMinutes(plan?.scoring) : null) ?? (Number((t as any)?.match_duration_minutes) || 30);
-  const [{ data: dayGames }, { data: bk }] = await Promise.all([
-    fromExt("club_champs_matches").select("id, court_id, scheduled_date, scheduled_time").in("scheduled_date", dates).in("court_id", courts),
-    fromExt("bookings").select("court_id, date, start_time, end_time, external_id").in("date", dates).eq("status", "active").in("court_id", courts),
+  let busyOther: Array<Busy & { date: string }> = [];
+  if (dates.length && courts.length) {
+    const [{ data: dayGames }, { data: bk }] = await Promise.all([
+      fromExt("club_champs_matches").select("id, champ_id, court_id, scheduled_date, scheduled_time").in("scheduled_date", dates).in("court_id", courts),
+      fromExt("bookings").select("court_id, date, start_time, end_time, external_id").in("date", dates).eq("status", "active").in("court_id", courts),
+    ]);
+    busyOther = [
+      ...((dayGames ?? []) as any[]).filter((m) => m.champ_id !== champId && m.scheduled_time).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM(toMin(m.scheduled_time) + minutes) })),
+      ...((bk ?? []) as any[]).filter((b) => !String(b.external_id ?? "").startsWith("sbs:")).map((b) => ({ date: String(b.date).slice(0, 10), courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) })),
+    ];
+  }
+  return {
+    days, minutes, bells, waves: !!plan?.waves, fixedStages: fixed.length > 0,
+    roundDates: ((fixed[0]?.schedule?.roundDates ?? []) as string[]).map((x) => String(x).slice(0, 10)),
+    prefs: normaliseSchedulingPrefs((t as any).beta_lifecycle?.scheduling_prefs),
+    labels: ((t as any).group_labels ?? {}) as Record<string, string>, entryGroup, busyOther,
+  };
+}
+
+/** Preferences apply only where games pack into court-sized waves (Bells/time-capped, or waves enabled). */
+export const prefsApplicable = (ctx: Pick<TimedContext, "bells" | "waves">) => ctx.bells || ctx.waves;
+
+/**
+ * THE timed planner used by both the Generate Draw & Fixtures preview and the real allocation.
+ * Default preferences (No restriction + Any court) run the exact pre-existing planners unchanged.
+ */
+export function planTimedSchedule(ctx: Omit<TimedContext, "entryGroup" | "fixedStages">, games: TimedGame[], extraBusy: Array<Busy & { date: string }> = []) {
+  const sorted = [...games].sort((a, b) => a.round - b.round || a.group - b.group || a.bracket - b.bracket);
+  const busy = [...ctx.busyOther, ...extraBusy];
+  const keyOf = (g: number) => ctx.labels[String(g)];
+  if (prefsActive(ctx.prefs) && prefsApplicable(ctx)) {
+    return planPrefWaves({ games: sorted.map((g) => ({ id: g.id, round: g.round, people: g.people, groups: g.groups })), days: ctx.days, minutes: ctx.minutes, busy, prefs: ctx.prefs, keyOf });
+  }
+  const byRound = new Map<number, string[]>();
+  for (const g of sorted) byRound.set(g.round, [...(byRound.get(g.round) ?? []), g.id]);
+  const rounds: TimedRound[] = [...byRound.entries()].map(([round, ids]) => ({ round, date: ctx.roundDates.length > 1 ? ctx.roundDates[round - 1] ?? null : null, games: ids }));
+  const players = Object.fromEntries(sorted.map((g) => [g.id, g.people]));
+  const r = ctx.bells ? planBellsWaves({ rounds, days: ctx.days, minutes: ctx.minutes, busy, players }) : planTimedRounds({ rounds, days: ctx.days, minutes: ctx.minutes, busy, waves: ctx.waves, players });
+  return { ...r, notes: [] as string[], backToBack: 0 };
+}
+
+/** Saved game → TimedGame (people include doubles partners; categories from each side's entry group). */
+export function timedGameFromRow(m: any, entryGroup: Map<string, number>): TimedGame {
+  const people = [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
+  const groups = [...new Set([entryGroup.get(m.player_a_member_id), entryGroup.get(m.player_b_member_id)].filter((g): g is number => g != null))];
+  return { id: m.id, round: Number(m.round_number) || 1, group: Number(m.group_number) || 0, bracket: Number(m.bracket_position) || 0, people, groups: groups.length ? groups : [Number(m.group_number) || 0] };
+}
+
+/**
+ * Schedule every unplayed, unbooked game of the tournament's FIXED-date (non-formal) stages into
+ * timed sessions via `planTimedSchedule` (honouring saved scheduling preferences). Writes nothing
+ * when the plan does not fit. Played/started/booked games are never moved; they block their slots.
+ */
+export async function scheduleTimedRounds(champId: string, opts: { dryRun?: boolean } = {}) {
+  const ctx = await loadTimedContext(champId);
+  if (!ctx || !ctx.fixedStages || !ctx.days.length) return null;
+  const [{ data: rows }, steps] = await Promise.all([
+    fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId),
+    loadPlanSteps(champId),
   ]);
-  const busy = [
-    ...((dayGames ?? []) as any[]).filter((m) => !ownIds.has(m.id) && m.scheduled_time).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM(toMin(m.scheduled_time) + minutes) })),
-    ...((bk ?? []) as any[]).filter((b) => !String(b.external_id ?? "").startsWith("sbs:")).map((b) => ({ date: String(b.date).slice(0, 10), courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) })),
-  ];
-  const byRound = new Map<number, any[]>();
-  for (const m of own) { const r = Number(m.round_number) || 1; byRound.set(r, [...(byRound.get(r) ?? []), m]); }
-  const rounds: TimedRound[] = [...byRound.entries()].map(([round, ms]) => ({
-    round, date: roundDates.length > 1 ? roundDates[round - 1] ?? null : null,
-    games: ms.sort((a, b) => (Number(a.group_number) - Number(b.group_number)) || (Number(a.bracket_position) || 0) - (Number(b.bracket_position) || 0)).map((m) => m.id),
-  }));
-  const players = Object.fromEntries(own.map((m) => [m.id, [m.player_a_member_id, m.player_b_member_id].filter(Boolean)]));
-  const res = bells ? planBellsWaves({ rounds, days, minutes, busy, players }) : planTimedRounds({ rounds, days, minutes, busy, waves: !!plan?.waves, players });
+  const movable = (m: any) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()) && m.player_a_member_id && m.player_b_member_id;
+  const all = (rows ?? []) as any[];
+  const own = all.filter((m) => movable(m) && !findStep(steps, String(m.stage_label ?? "")));
+  if (!own.length) return { label: "Round robin", scheduled: 0, overflow: [], required: 0, available: 0, issues: [] as string[], notes: [] as string[] };
+  const ownIds = new Set(own.map((m) => m.id));
+  // This tournament's fixed (played/booked/other-stage) games keep their slots.
+  const keep = all.filter((m) => !ownIds.has(m.id) && m.scheduled_time && m.court_id).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM(toMin(m.scheduled_time) + ctx.minutes) }));
+  const res = planTimedSchedule(ctx, own.map((m) => timedGameFromRow(m, ctx.entryGroup)), keep);
   for (const s of opts.dryRun ? [] : res.slots) {
     const { error } = await fromExt("club_champs_matches")
       .update({ scheduled_date: s.date, scheduled_time: `${s.time}:00`, court_id: s.courtId, play_by: null } as any)
       .eq("id", s.id).is("winner_member_id", null).is("booking_id", null);
     if (error) throw new Error(error.message);
   }
-  return { label: "Round robin", scheduled: res.slots.length, overflow: res.issues.length ? own.map((m) => m.id) : [], required: res.required, available: res.available, issues: res.issues };
+  return { label: "Round robin", scheduled: res.slots.length, overflow: res.issues.length ? own.map((m) => m.id) : [], required: res.required, available: res.available, issues: res.issues, notes: res.notes };
 }

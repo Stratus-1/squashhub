@@ -20,7 +20,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, defaultCrossAll, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, defaultCrossAll, crossOpponents, crossEdges, crossPlayerMatchesFor, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -50,6 +50,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [baseUnits, setBaseUnits] = useState<DrawDivision["units"][]>([]);
   const [existing, setExisting] = useState<Existing>({ games: 0, played: 0 });
   const [seed] = useState(() => Date.now() % 2147483647);
+  const [pickDraft, setPickDraft] = useState<Record<number, [string, string]>>({});
   const [confirmed, setConfirmed] = useState(false);
   const [notifyDraw, setNotifyDraw] = useState(true);
   const [rebuildOk, setRebuildOk] = useState(false);
@@ -241,11 +242,116 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       return { ...x, format: { ...x.format, kind: "cross", crossVs: vs, crossGroups: vs.length ? [...fam].sort((a, b) => a - b) : [] } };
     }));
   };
+  /** Turn "Against other groups" on for a pairing — always set on BOTH groups (one canonical relationship). */
+  const linkGroups = (me: number, other: number, on: boolean) => {
+    setConfirmed(false);
+    setDivs((ds) => ds.map((d) => {
+      if (d.group !== me && d.group !== other) return d;
+      const peer = d.group === me ? other : me;
+      const cur = crossOpponents(d, ds);
+      const vs = (on ? [...new Set([...cur, peer])] : cur.filter((g) => g !== peer)).sort((a, b) => a - b);
+      const keepKind = !on && !vs.length && d.group === peer ? d.format.kind : "cross";
+      return { ...d, format: { ...d.format, kind: d.group === me ? "cross" : keepKind, crossVs: vs, crossGroups: vs.length ? [d.group, ...vs].sort((a, b) => a - b) : [] } };
+    }));
+  };
+  const setWho = (i: number, who: "within" | "against") => {
+    const d = divs[i];
+    if (who === "within") {
+      for (const g of crossOpponents(d, divs)) linkGroups(d.group, g, false);
+      setFmt(i, { kind: "round_robin", crossVs: null, crossGroups: [], crossHow: undefined, crossPlayerMatches: [] });
+      return;
+    }
+    setFmt(i, { kind: "cross", crossHow: d.format.crossHow ?? "full", crossVs: crossOpponents(d, divs), crossGroups: d.format.crossGroups });
+  };
+  /** Apply "How should they play?" to this group and every group it is related to (same relationship, same rule). */
+  const setHow = (i: number, how: "full" | "players") => {
+    const d = divs[i]; const rel = new Set([d.group, ...crossOpponents(d, divs)]);
+    setConfirmed(false);
+    setDivs((ds) => ds.map((x) => rel.has(x.group) && x.format.kind === "cross" ? { ...x, format: { ...x.format, crossHow: how } } : x));
+  };
+  const setPlayerMatches = (i: number, ms: Array<[string, string]>) => setFmt(i, { crossPlayerMatches: ms });
+  const crossSection = (i: number, d: DrawDivision) => {
+    const f = d.format; const sd = seeded.find((o) => o.group === d.group) ?? d;
+    const against = f.kind === "cross";
+    const opp = crossOpponents(d, divs);
+    const others = seeded.filter((o) => o.group !== d.group && o.doubles === d.doubles);
+    const lab = (g: number) => seeded.find((o) => o.group === g)?.label ?? `Group ${g}`;
+    const size = (g: number) => seeded.find((o) => o.group === g)?.units.length ?? 0;
+    const u = d.doubles ? "pairs" : "players";
+    const n = d.units.length;
+    const how = f.crossHow ?? "full";
+    const relDivs = seeded.filter((o) => o.group === d.group || opp.includes(o.group));
+    const picked = crossPlayerMatchesFor(relDivs, crossEdges(divs)).filter(([a, b]) => sd.units.some((x) => unitId(x) === a || unitId(x) === b));
+    const oppUnits = seeded.filter((o) => opp.includes(o.group)).flatMap((o) => o.units.map((x) => ({ id: unitId(x), g: o.group })));
+    const [draftA, draftB] = (pickDraft[d.group] ?? ["", ""]) as [string, string];
+    const fullTotal = opp.reduce((t, g) => t + n * size(g), 0);
+    return (
+      <div className="space-y-2 rounded border border-border p-2" aria-label={`${d.label} who plays whom`}>
+        <div className="space-y-1">
+          <span className="font-medium">Who should this group play?</span>
+          <div className="flex flex-wrap gap-1" role="radiogroup">
+            <Button type="button" size="sm" variant={!against ? "default" : "outline"} aria-pressed={!against} onClick={() => setWho(i, "within")}>Within this group</Button>
+            <Button type="button" size="sm" variant={against ? "default" : "outline"} aria-pressed={against} disabled={!others.length} onClick={() => setWho(i, "against")}>Against other groups</Button>
+          </div>
+          {!against && <p className="text-muted-foreground">Everyone in this group plays everyone else once: {n} {u} → {(n * (n - 1)) / 2} matches.</p>}
+        </div>
+        {against && (
+          <div className="space-y-1">
+            <span className="font-medium">How should they play?</span>
+            <div className="flex flex-wrap gap-1" role="radiogroup">
+              <Button type="button" size="sm" variant={how === "full" ? "default" : "outline"} aria-pressed={how === "full"} onClick={() => setHow(i, "full")}>Full cross-group round robin</Button>
+              <Button type="button" size="sm" variant={how === "players" ? "default" : "outline"} aria-pressed={how === "players"} onClick={() => setHow(i, "players")}>Selected player matchups</Button>
+            </div>
+            <p className="text-muted-foreground">{how === "full" ? "Every player in this group plays every player in the selected group(s) once." : "Choose the individual cross-group matches yourself."}</p>
+            <span className="font-medium">Which groups should they play?</span>
+            <div className="flex flex-wrap gap-1">
+              <Button type="button" size="sm" variant={others.length > 0 && others.every((o) => opp.includes(o.group)) ? "default" : "outline"} onClick={() => others.forEach((o) => { if (!opp.includes(o.group)) linkGroups(d.group, o.group, true); })}>All other groups</Button>
+              {others.map((o) => { const on = opp.includes(o.group); return <Button key={o.group} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => linkGroups(d.group, o.group, !on)}>{o.label}</Button>; })}
+            </div>
+            {how === "full" && opp.length > 0 && (
+              <div className="rounded bg-muted/40 p-1.5" data-testid={`cross-calc-${d.group}`}>
+                {opp.map((g) => <div key={g}><span className="font-medium">{d.label} ↔ {lab(g)}</span> — {n} × {size(g)} = {n * size(g)} matches</div>)}
+                <div className="text-muted-foreground">Every player plays every player in the other group once.{opp.length > 1 ? ` ${fullTotal} matches for this group.` : ""}</div>
+              </div>
+            )}
+            {how === "players" && opp.length > 0 && (
+              <div className="space-y-1">
+                {picked.map(([a, b]) => (
+                  <div key={`${a}|${b}`} className="flex flex-wrap items-center gap-2">
+                    <span>{unitName(a)}</span><span className="text-muted-foreground">vs</span><span>{unitName(b)}</span>
+                    <button type="button" className="text-destructive underline" onClick={() => { setConfirmed(false); setDivs((ds) => ds.map((x) => ({ ...x, format: { ...x.format, crossPlayerMatches: (x.format.crossPlayerMatches ?? []).filter(([p, q]) => !((p === a && q === b) || (p === b && q === a))) } }))); }}>Remove</button>
+                  </div>
+                ))}
+                <div className="flex flex-wrap items-center gap-1">
+                  <select aria-label={`${d.label} matchup player`} className="rounded border border-input bg-background p-1 max-w-full" value={draftA} onChange={(e) => setPickDraft((p) => ({ ...p, [d.group]: [e.target.value, draftB] }))}>
+                    <option value="">Player from {d.label}</option>
+                    {sd.units.map((x) => <option key={unitId(x)} value={unitId(x)}>{unitName(unitId(x))}</option>)}
+                  </select>
+                  <span className="text-muted-foreground">vs</span>
+                  <select aria-label={`${d.label} matchup opponent`} className="rounded border border-input bg-background p-1 max-w-full" value={draftB} onChange={(e) => setPickDraft((p) => ({ ...p, [d.group]: [draftA, e.target.value] }))}>
+                    <option value="">Player from another group</option>
+                    {oppUnits.map((x) => <option key={x.id} value={x.id}>{unitName(x.id)} ({lab(x.g)})</option>)}
+                  </select>
+                  <Button type="button" size="sm" variant="outline" disabled={!draftA || !draftB} onClick={() => {
+                    if (picked.some(([x, y]) => (x === draftA && y === draftB) || (x === draftB && y === draftA))) { toast.error("That matchup is already in the list."); return; }
+                    setPlayerMatches(i, [...(f.crossPlayerMatches ?? []), [draftA, draftB]]);
+                    setPickDraft((p) => ({ ...p, [d.group]: ["", ""] }));
+                  }}>Add matchup</Button>
+                </div>
+                <p className="text-muted-foreground" data-testid={`cross-picked-${d.group}`}>{picked.length} selected match{picked.length === 1 ? "" : "es"} — only these are created.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
   const crossPairs = useMemo(() => {
     const { meetings } = crossSets(divs);
     const lab = (g: number) => divs.find((d) => d.group === g)?.label ?? `Group ${g}`;
     const size = (g: number) => divs.find((d) => d.group === g)?.units.length ?? 0;
-    return [...meetings.values()].flat().map(([x, y]) => `${lab(x)} ↔ ${lab(y)}: ${size(x) * size(y)} matches`);
+    const players = (g: number) => divs.find((d) => d.group === g)?.format.crossHow === "players";
+    return [...meetings.values()].flat().map(([x, y]) => players(x) || players(y) ? `${lab(x)} ↔ ${lab(y)}: selected player matchups` : `${lab(x)} ↔ ${lab(y)}: ${size(x)} × ${size(y)} = ${size(x) * size(y)} matches`);
   }, [divs]);
   const nm = (id: string | null) => (id ? names.get(id) ?? "Unknown" : "");
   const unitName = (id: string) => id.split("+").map(nm).join(" & ");
@@ -534,34 +640,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
               })()}
               {f.schedule.rule === "fixed" && <label className="space-y-0.5"><span className="text-muted-foreground">Round dates (comma-separated)</span><Input className="h-7" placeholder="2026-10-10, 2026-10-17" value={f.schedule.dates.join(", ")} onChange={(e) => apply({ schedule: { ...f.schedule, dates: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })} /></label>}
             </div>
-            {(f.kind === "cross" || f.kind === "round_robin") && (
-              <div className="space-y-1" role="radiogroup" aria-label={`${d.label} round robin matchups`}>
-                <span className="text-muted-foreground">Round robin — who plays whom ({unitParentOf(d.label)}):</span>
-                <div className="flex flex-wrap gap-1">
-                  <Button type="button" size="sm" variant={f.kind === "round_robin" ? "default" : "outline"} aria-pressed={f.kind === "round_robin"} onClick={() => setRrScope(i, "within")}>Within subcategories</Button>
-                  <Button type="button" size="sm" variant={rrScope(d) === "between" ? "default" : "outline"} aria-pressed={rrScope(d) === "between"} onClick={() => setRrScope(i, "between")}>Between subcategories</Button>
-                  <Button type="button" size="sm" variant={rrScope(d) === "custom" ? "default" : "outline"} aria-pressed={rrScope(d) === "custom"} onClick={() => setRrScope(i, "custom")}>Custom matchups</Button>
-                </div>
-                <span className="text-muted-foreground">{f.kind === "round_robin" ? `${d.label} plays only within itself.` : rrScope(d) === "between" ? `${d.label} plays only the other subcategories of ${unitParentOf(d.label)}: ${siblings(d).map((g) => seeded.find((o) => o.group === g)?.label).join(", ") || "none"}.` : ""}</span>
-              </div>
-            )}
-            {f.kind === "cross" && rrScope(d) !== "between" && (
-              <div className="space-y-1">
-                <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Cross-league matchups">
-                  <Button type="button" size="sm" variant={!f.crossVs ? "default" : "outline"} aria-pressed={!f.crossVs} onClick={() => setCrossMode(i, "all")}>All selected groups play each other</Button>
-                  <Button type="button" size="sm" variant={f.crossVs ? "default" : "outline"} aria-pressed={!!f.crossVs} onClick={() => setCrossMode(i, "chosen")}>Choose which groups play each other</Button>
-                </div>
-                <span className="text-muted-foreground">{f.crossVs ? `${d.label} plays only the groups ticked below (both groups are updated together; never its own group):` : "Plays against (every pair meets every pair of the other selected groups, never its own group):"}</span>
-                <div className="flex flex-wrap gap-1">{seeded.filter((o) => o.group !== d.group).map((o) => {
-                  const on = f.crossVs ? f.crossVs.includes(o.group) : f.crossGroups.includes(o.group);
-                  return <Button key={o.group} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => {
-                    if (f.crossVs) { togglePairing(i, o.group, !on); return; }
-                    const next = on ? f.crossGroups.filter((g) => g !== o.group) : [...new Set([...f.crossGroups, d.group, o.group])];
-                    apply({ crossGroups: next.length < 2 ? [] : next.sort((a, b) => a - b) });
-                  }}>{f.crossVs ? `v ${o.label}` : o.label}</Button>;
-                })}</div>
-              </div>
-            )}
+            {(f.kind === "cross" || f.kind === "round_robin") && crossSection(i, d)}
             {f.kind === "knockout" && proposals.has(d.group) && showProposal && round1Editor(d)}
             {d.playoffs.length > 0 && <p className="text-muted-foreground">Planned play-offs: {d.playoffs.join(" → ")} — kept as "Define later", created after this stage finishes.</p>}
             {d.notes.map((n) => <p key={n} className="text-muted-foreground">• {n}</p>)}

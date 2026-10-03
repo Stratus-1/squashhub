@@ -65,3 +65,24 @@ describe("setup chose cross-league without naming groups", () => {
     expect(games(d)).toHaveLength(36);
   });
 });
+
+describe("selected player matchups vs full round robin vs within", () => {
+  it("3 selected cross matches create exactly 3, never the 36 round robin; duplicates/same-group ignored", () => {
+    const a = grp(6, 6, { crossVs: [7], crossHow: "players", crossPlayerMatches: [["g6p1", "g7p1"], ["g6p2", "g7p3"], ["g6p3", "g7p2"], ["g7p1", "g6p1"], ["g6p1", "g6p2"]] });
+    const b = grp(7, 6, { crossVs: [6], crossHow: "players" });
+    const d = [a, b];
+    expect(d.flatMap((x) => divisionIssues(x, d))).toEqual([]);
+    expect(previewDraw("T", d, { start: null, end: null }).total).toBe(3);
+    const fx = games(d);
+    expect(fx).toHaveLength(3);
+    expect(new Set(fx.map((f) => key(f.a!, f.b!))).size).toBe(3);
+  });
+  it("players mode with no matchups is flagged", () => {
+    const d = [grp(6, 6, { crossVs: [7], crossHow: "players" }), grp(7, 6, { crossVs: [6], crossHow: "players" })];
+    expect(divisionIssues(d[0], d).join()).toMatch(/player matchup/);
+  });
+  it("within this group: 6 players = 15 matches", () => {
+    const d = [grp(6, 6, { kind: "round_robin" })];
+    expect(previewDraw("T", d, { start: null, end: null }).total).toBe(15);
+  });
+});

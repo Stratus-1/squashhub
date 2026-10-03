@@ -9,6 +9,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -29,11 +30,8 @@ type Div = { group: number; label: string; pools: string[][] | null; poolTarget:
 type PoolCtx = { index: number; members: Set<string>; target: number };
 const lead = (unit: string) => unit.split("+")[0];
 
-export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: string; plan: Record<string, any> | null | undefined }) {
-  const { data } = useQuery({
-    queryKey: ["step-ko-rounds", tournamentId],
-    refetchInterval: 30000,
-    queryFn: async () => {
+/** Shared loader for the knockout control panel and the Standings "What's next" shortcut. */
+export async function fetchKoRoundsData(tournamentId: string) {
       const [{ data: t }, { data: matches }, { data: regs }] = await Promise.all([
         fromExt("tournaments").select("builder_spec").eq("id", tournamentId).maybeSingle(),
         fromExt("club_champs_matches").select("*").eq("champ_id", tournamentId),
@@ -56,8 +54,23 @@ export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: 
         divs, matches: (matches ?? []) as any[], regs: (regs ?? []) as any[],
         members: new Map(((mem ?? []) as any[]).map((m) => [m.id, { name: m.name as string, ladder: (m.ladder_position ?? null) as number | null }])),
       };
-    },
+}
+export type KoRoundsData = Awaited<ReturnType<typeof fetchKoRoundsData>>;
+
+export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: string; plan: Record<string, any> | null | undefined }) {
+  const { data } = useQuery({
+    queryKey: ["step-ko-rounds", tournamentId],
+    refetchInterval: 30000,
+    queryFn: () => fetchKoRoundsData(tournamentId),
   });
+  // Deep link from Standings ("Review & approve next round"): scroll to ?ko=<group>.
+  const [params] = useSearchParams();
+  const focus = params.get("ko");
+  useEffect(() => {
+    if (!data || !focus) return;
+    const t = setTimeout(() => document.getElementById(`ko-div-${focus}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    return () => clearTimeout(t);
+  }, [!!data, focus]);
   if (!data || data.divs.length === 0) return null;
   return (
     <div className="space-y-3" data-testid="knockout-rounds">
@@ -69,6 +82,7 @@ export function StepKnockoutRoundsPanel({ tournamentId, plan }: { tournamentId: 
 }
 
 type Data = { matches: any[]; regs: any[]; members: Map<string, { name: string; ladder: number | null }> };
+export type { Div as KoDiv };
 
 /**
  * Knockout inside pools: each pool is eliminated down to its qualifiers (never round robin, never across pools).
@@ -84,7 +98,7 @@ function PooledDivision({ tournamentId, plan, div, data }: { tournamentId: strin
   });
   const poolsDone = remaining.every((n) => n <= (div.poolTarget ?? 1));
   return (
-    <div className="space-y-2 rounded-lg border border-border p-3" data-field={`ko-pooled-${div.group}`}>
+    <div id={`ko-div-${div.group}`} className="scroll-mt-20 space-y-2 rounded-lg border border-border p-3" data-field={`ko-pooled-${div.group}`}>
       <div className="text-sm font-medium">{div.label} · knockout in {pools.length} pools</div>
       <p className="text-xs text-muted-foreground">Each pool is knocked down to {div.poolTarget} — losers are eliminated within their pool; pools never play each other until the play-off. {poolsDone ? "All pools are complete — the play-off runs from the combined survivors below." : ""}</p>
       {poolsDone ? <DivisionRounds tournamentId={tournamentId} plan={plan} div={div} data={data} />
@@ -93,29 +107,25 @@ function PooledDivision({ tournamentId, plan, div, data }: { tournamentId: strin
   );
 }
 
-function DivisionRounds({ tournamentId, plan, div, data, pool }: {
-  tournamentId: string; plan: Record<string, any> | null | undefined; div: Div; data: Data; pool?: PoolCtx;
-}) {
-  const qc = useQueryClient();
+/**
+ * One knockout unit (category, or a pool inside it): active field, milestone and the single
+ * round state. Pure — shared by the Manage panel and the Standings shortcut so they cannot disagree.
+ */
+export function computeKoUnit({ plan, div, data, pool, today }: { plan: Record<string, any> | null | undefined; div: Div; data: Data; pool?: PoolCtx; today: string }) {
   const key = unitKeyOf(div.label);
   const fmt: any = plan?.formatOverrides?.[key] ?? plan?.formatOverrides?.[key.split("::")[0]] ?? plan?.format ?? {};
   // Missing values default to paced + progressive (the recommended knockout behaviour).
   const pace: KnockoutPace = fmt.koPace === "immediate" ? "immediate" : "paced";
   const pairing: KnockoutPairing = fmt.koPairing === "traditional" ? "traditional" : "progressive";
-  const nameOf = (id?: string | null) => (id ? data.members.get(id)?.name ?? "Player" : "—");
-
   const poolNo = pool ? pool.index + 1 : null;
-  const rows = useMemo(() => data.matches.filter((m) => Number(m.group_number) === div.group && (poolNo == null || Number(m.pool_number) === poolNo) && (m.player_a_member_id || m.player_b_member_id)), [data.matches, div.group, poolNo]);
-  const entrants: FieldEntry[] = useMemo(() => data.regs
+  const rows = data.matches.filter((m) => Number(m.group_number) === div.group && (poolNo == null || Number(m.pool_number) === poolNo) && (m.player_a_member_id || m.player_b_member_id));
+  const entrants: FieldEntry[] = data.regs
     .filter((r) => !INACTIVE_REG.has(String(r.status || "").toLowerCase()) && (pool ? pool.members.has(r.club_member_id) : (r.division_choices ?? []).map(Number).includes(div.group)))
-    .map((r) => ({ id: r.club_member_id, partnerId: r.partner_member_id ?? null })), [data.regs, div.group]);
-  const field = useMemo(() => {
-    const f = activeField(entrants, rows);
-    const rank = (e: FieldEntry) => ({ ...e, rank: data.members.get(e.id)?.ladder ?? null });
-    return { ...f, active: byRank(f.active.map(rank)), eliminated: f.eliminated };
-  }, [entrants, rows, data.members]);
-
-  const baseMilestone = useMemo(() => milestoneFor(plan as any, key), [plan, key]);
+    .map((r) => ({ id: r.club_member_id, partnerId: r.partner_member_id ?? null }));
+  const f = activeField(entrants, rows);
+  const rank = (e: FieldEntry) => ({ ...e, rank: data.members.get(e.id)?.ladder ?? null });
+  const field = { ...f, active: byRank(f.active.map(rank)), eliminated: f.eliminated };
+  const baseMilestone = milestoneFor(plan as any, key);
   // In a pool, the milestone is the pool's own qualifier count, paced over the same scheduling rounds.
   const milestone = pool ? { ...baseMilestone, label: `Pool ${String.fromCharCode(65 + pool.index)} down to ${pool.target}`, fieldSize: pool.target } : baseMilestone;
   const reached = milestone.fieldSize != null && field.active.length <= milestone.fieldSize;
@@ -124,8 +134,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const roundsLeft = reached ? null : roundsLeftFor(milestone, field.lastRound);
   const basePlan = pacePlan({ active: field.active.length, target, roundsLeft, pace, milestoneLabel: milestone.label });
   const nextRound = field.lastRound + 1;
-  const steps = useMemo(() => playoffSteps(plan as any, key), [plan, key]);
-  const today = new Date().toISOString().slice(0, 10);
+  const steps = playoffSteps(plan as any, key);
   // One state machine: reaching the field size never opens a play-off stage by itself.
   const ks: KoRoundState = pool
     ? (reached ? { kind: "no_elimination", label: `Round ${nextRound}` } : basePlan.thisRound > 0 ? { kind: "pre_round", label: `Round ${nextRound}`, count: basePlan.thisRound } : { kind: "no_elimination", label: `Round ${nextRound}` })
@@ -133,6 +142,45 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const pp = { ...basePlan, thisRound: ks.kind === "pre_round" || ks.kind === "playoff" ? ks.count : 0 };
   const nextLabel = ks.kind === "waiting_for_stage" ? ks.stage : ks.label;
   const playBy = ks.kind === "pre_round" ? milestone.roundDates[nextRound - 1] ?? null : ks.kind === "playoff" ? steps.find((s) => s.label === ks.label)?.date ?? null : null;
+  const winner = field.active.length === 1 && field.eliminated.length > 0 ? field.active[0] : null;
+  const openFixtures = field.roundOpen ? rows.filter((m) => Number(m.round_number) === field.lastRound && !m.is_bye && !isDecided(m)).length : 0;
+  return { pace, pairing, rows, field, milestone, reached, poolDone, target, roundsLeft, nextRound, steps, ks, pp, nextLabel, playBy, winner, openFixtures };
+}
+
+export type KoAction =
+  | { kind: "approve"; label: string; count: number; playBy: string | null }
+  | { kind: "results_outstanding"; round: number; open: number }
+  | { kind: "waiting_for_stage"; stage: string; date: string | null; fieldReady: boolean }
+  | { kind: "idle" }
+  | { kind: "decided" };
+
+/** What a category needs from the admin right now, using exactly the Manage panel's state machine. */
+export function koDivisionActions(data: KoRoundsData, plan: Record<string, any> | null | undefined, today: string): Array<{ group: number; label: string; unit: string; action: KoAction }> {
+  const out: Array<{ group: number; label: string; unit: string; action: KoAction }> = [];
+  const toAction = (u: ReturnType<typeof computeKoUnit>): KoAction =>
+    u.winner ? { kind: "decided" }
+      : u.field.roundOpen ? { kind: "results_outstanding", round: u.field.lastRound, open: u.openFixtures }
+      : u.ks.kind === "waiting_for_stage" ? { kind: "waiting_for_stage", stage: u.ks.stage, date: u.ks.date, fieldReady: u.ks.reason === "field_ready" }
+      : u.pp.thisRound > 0 && !u.poolDone ? { kind: "approve", label: u.nextLabel, count: u.pp.thisRound, playBy: u.playBy }
+      : { kind: "idle" };
+  for (const div of data.divs) {
+    if (div.pools) {
+      const ctxs: PoolCtx[] = div.pools.map((p, i) => ({ index: i, members: new Set(p.map(lead)), target: div.poolTarget ?? 1 }));
+      const units = ctxs.map((c) => computeKoUnit({ plan, div, data, pool: c, today }));
+      if (units.every((u) => u.reached)) out.push({ group: div.group, label: div.label, unit: div.label, action: toAction(computeKoUnit({ plan, div, data, today })) });
+      else units.forEach((u, i) => out.push({ group: div.group, label: div.label, unit: `${div.label} · Pool ${String.fromCharCode(65 + i)}`, action: toAction(u) }));
+    } else out.push({ group: div.group, label: div.label, unit: div.label, action: toAction(computeKoUnit({ plan, div, data, today })) });
+  }
+  return out;
+}
+
+function DivisionRounds({ tournamentId, plan, div, data, pool }: {
+  tournamentId: string; plan: Record<string, any> | null | undefined; div: Div; data: Data; pool?: PoolCtx;
+}) {
+  const qc = useQueryClient();
+  const u = useMemo(() => computeKoUnit({ plan, div, data, pool, today: new Date().toISOString().slice(0, 10) }), [plan, div, data, pool]);
+  const { pace, pairing, rows, field, milestone, reached, poolDone, target, roundsLeft, nextRound, steps, ks, pp, nextLabel, playBy } = u;
+  const nameOf = (id?: string | null) => (id ? data.members.get(id)?.name ?? "Player" : "—");
 
   const proposal = useMemo(() => proposePairings(field.active, pp.thisRound, pairing), [field.active, pp.thisRound, pairing]);
   const [pairs, setPairs] = useState<Array<[string, string]>>([]);
@@ -144,7 +192,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const dup = used.length !== new Set(used).size;
   const incomplete = pairs.some(([a, b]) => !a || !b || a === b);
   const waiting = field.active.filter((e) => !used.includes(e.id));
-  const winner = field.active.length === 1 && field.eliminated.length > 0 ? field.active[0] : null;
+  const winner = u.winner;
 
   const confirm = async () => {
     if (!pairs.length || dup || incomplete) return;
@@ -203,7 +251,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   };
 
   return (
-    <div className="rounded-lg border border-border p-3 space-y-2 text-sm" data-field={`ko-div-${div.group}`}>
+    <div id={pool ? undefined : `ko-div-${div.group}`} className="scroll-mt-20 rounded-lg border border-border p-3 space-y-2 text-sm" data-field={`ko-div-${div.group}`}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{pool ? `Pool ${String.fromCharCode(65 + pool.index)}` : div.label}</span>
         <Badge variant="outline" className={cn("border-0", badge[status].cls)}>{badge[status].text}</Badge>

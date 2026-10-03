@@ -1307,7 +1307,7 @@ export default function Tournaments() {
               title="Set or change the court, date and time for this match"
               onClick={(e) => { e.stopPropagation(); setScheduleMatch(m); }}
             >
-              <CalendarClock className="w-3 h-3" /> {scheduleActionShortLabel(m)}
+              <CalendarClock className="w-3 h-3" /> {scheduleActionShortLabel(m, { centrallyScheduled: isMatchCentrallyScheduled(m) })}
             </Button>
           );
         })()}

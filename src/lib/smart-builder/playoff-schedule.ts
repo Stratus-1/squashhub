@@ -13,6 +13,21 @@ import type { PlannedStage } from "@/lib/tournaments/contract";
 import { playoffSlotOrder, sortGamesForSlots, type SlotDivision } from "./playoff-slot-order";
 import { allocateSlots, type Busy } from "./playoff-chain";
 
+/** A stage-session court reservation made by "Book courts now" (sbs:…) covering this stage's own window. */
+export function isOwnStageReservation(b: { external_id?: string | null; start_time: string; end_time: string; court_id: number }, w: { from: string; to: string; courtIds: number[] }): boolean {
+  const hm = (t: string) => String(t).slice(0, 5);
+  return String(b.external_id ?? "").startsWith("sbs:") && w.courtIds.map(Number).includes(Number(b.court_id)) && hm(b.start_time) <= hm(w.from) && hm(b.end_time) >= hm(w.to);
+}
+
+/** Pure: the parts of a reservation left once a game slot is cut out of it (empty parts dropped). */
+export function carveReservation(block: { start: string; end: string }, slot: { start: string; end: string }): Array<{ start: string; end: string }> {
+  const hm = (t: string) => String(t).slice(0, 5);
+  const out: Array<{ start: string; end: string }> = [];
+  if (hm(block.start) < hm(slot.start)) out.push({ start: hm(block.start), end: hm(slot.start) });
+  if (hm(slot.end) < hm(block.end)) out.push({ start: hm(slot.end), end: hm(block.end) });
+  return out;
+}
+
 export interface ScheduleReport { booked: number; unplaced: Array<{ stage: string; reason: string }> }
 
 /** Draws with their gender + linked league levels, for the slot-order rule. */
@@ -58,12 +73,30 @@ export async function schedulePlannedPlayoffGames(champId: string): Promise<Sche
     if (plan.warnings.length) report.unplaced.push({ stage: s.name, reason: `Court order kept in draw order — ${plan.warnings.join("; ")}.` });
     const todo = sortGamesForSlots(open, plan.order, groupOf);
     const sch = s.schedule, date = String(sch.date).slice(0, 10), minutes = sch.matchMinutes ?? 45;
-    const { data: bk } = await fromExt("bookings").select("court_id, start_time, end_time").eq("date", date).eq("status", "active").in("court_id", sch.courtIds!);
-    const busy: Busy[] = ((bk ?? []) as any[]).map((b) => ({ courtId: b.court_id, start: b.start_time, end: b.end_time }));
-    const slots = allocateSlots(todo.length, { from: sch.timeFrom!, to: sch.timeTo!, courtIds: sch.courtIds!, minutes, busy });
+    const courtIds = sch.courtIds!.map(Number);
+    const win = { from: sch.timeFrom!, to: sch.timeTo!, courtIds };
+    const { data: bk } = await fromExt("bookings").select("id, club_id, court_id, start_time, end_time, external_id, source, guest_name, ops_note").eq("date", date).eq("status", "active").in("court_id", courtIds);
+    // The stage's own session reservation is the room these games go into — never a clash.
+    let reserved = ((bk ?? []) as any[]).filter((b) => isOwnStageReservation(b, win));
+    const busy: Busy[] = ((bk ?? []) as any[]).filter((b) => !reserved.includes(b)).map((b) => ({ courtId: b.court_id, start: b.start_time, end: b.end_time }));
+    const slots = allocateSlots(todo.length, { from: sch.timeFrom!, to: sch.timeTo!, courtIds, minutes, busy });
     for (const [i, m] of todo.entries()) {
       const sl = slots[i];
       if (!sl) { report.unplaced.push({ stage: s.name, reason: `No free court left between ${sch.timeFrom} and ${sch.timeTo} on ${date}.` }); continue; }
+      const slotEnd = (() => { const [h, mm] = sl.time.split(":").map(Number); const t = h * 60 + mm + minutes; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; })();
+      // Cut the game's slot out of the reservation so the court guard accepts it; the rest stays reserved.
+      const block = reserved.find((b) => Number(b.court_id) === sl.courtId && String(b.start_time).slice(0, 5) <= sl.time && String(b.end_time).slice(0, 5) >= slotEnd);
+      if (block) {
+        const rest = carveReservation({ start: block.start_time, end: block.end_time }, { start: sl.time, end: slotEnd });
+        const { error: de } = await fromExt("bookings").delete().eq("id", block.id);
+        if (de) { report.unplaced.push({ stage: s.name, reason: de.message }); continue; }
+        reserved = reserved.filter((b) => b !== block);
+        for (const r of rest) {
+          const row = { club_id: block.club_id, court_id: block.court_id, user_id: null, club_member_id: null, date, start_time: `${r.start}:00`, end_time: `${r.end}:00`, status: "active", is_friendly: false, guest_name: block.guest_name, source: block.source, external_id: `${String(block.external_id).split("@")[0]}@${r.start.replace(":", "")}`, ops_note: block.ops_note };
+          const { data: ins, error: ie } = await fromExt("bookings").insert(row as any).select("id, club_id, court_id, start_time, end_time, external_id, source, guest_name, ops_note").single();
+          if (!ie && ins) reserved.push(ins);
+        }
+      }
       const { error } = await rpcExt("self_schedule_champ_match", { p_match_id: m.id, p_court_id: sl.courtId, p_date: date, p_time: `${sl.time}:00`, p_duration_minutes: minutes });
       if (error) report.unplaced.push({ stage: s.name, reason: error.message });
       else report.booked++;

@@ -834,9 +834,27 @@ export default function Tournaments() {
       if (k === "final") return 2;
       return 3;
     };
+    // Date order first: a group's date is the earliest fixture date (or
+    // play-by deadline) among its games, so Semifinals (25 Oct) list before
+    // the Final (28 Oct). Undated groups fall back to stage/round order.
+    const groupDate = (key: string): string | null => {
+      const dates = (groups.get(key) || [])
+        .map((m: any) => {
+          const s = matchSchedule(m);
+          return m.date || (s.mode === "scheduled" ? s.date : null) || s.playBy || null;
+        })
+        .filter(Boolean)
+        .sort() as string[];
+      return dates[0] || null;
+    };
     const keys = Array.from(groups.keys()).sort((a, b) => {
       if (a === "\u0000pool") return 1;
       if (b === "\u0000pool") return -1;
+      const da = groupDate(a);
+      const db = groupDate(b);
+      if (da && db && da !== db) return da.localeCompare(db);
+      if (da && !db) return -1;
+      if (!da && db) return 1;
       return (
         stageRank(a) - stageRank(b) ||
         (order.get(a) ?? 0) - (order.get(b) ?? 0) ||

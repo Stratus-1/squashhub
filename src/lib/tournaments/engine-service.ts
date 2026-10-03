@@ -212,7 +212,7 @@ function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seed
     // Paced knockout: only this round's matches; nobody else is drawn or eliminated.
     const field = seeded.filter(Boolean).map((id, i) => ({ id: id as string, rank: i + 1 }));
     const { pairs } = proposePairings(field, st.paced.count, st.paced.pairing);
-    return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, slot: i + 1, a: a.id, b: b.id }));
+    return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, pacedRound: true, slot: i + 1, a: a.id, b: b.id }));
   }
   const size = st.drawSize ?? nextPow2(seeded.length);
   const order = bracketOrder(size);

@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { configuredKnockoutPools } from "@/lib/tournaments/active-draw";
 import { activeField, fieldSizeForStage, playoffSteps } from "@/lib/tournaments/paced-knockout";
-import { playoffResult } from "@/lib/tournaments/historical-pool-progress";
 import { tournamentSummary, type SummaryFixture } from "@/lib/tournaments/tournament-summary";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { divisionPools } from "@/lib/tournaments/active-draw";

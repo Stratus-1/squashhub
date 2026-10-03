@@ -910,7 +910,7 @@ export default function Tournaments() {
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
                  <span className="uppercase tracking-wider">{heading}</span>
-                 {koRound != null && <span className="font-medium min-w-0 break-words" title={koCategories.join(", ")}>{koCategories.length > 3 ? `${koCategories.length} categories` : koCategories.join(", ")}</span>}
+                 {koRound != null && <span className="font-medium min-w-0 break-words">{koCategories.length > 3 ? `${koCategories.length} categories` : koCategories.join(", ")}</span>}
                  {!isPool && playBy ? <span className="uppercase tracking-wider">· Play by {format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}</span> : allScheduled && schedDates[0] ? <span className="uppercase tracking-wider">· Scheduled {format(new Date(`${schedDates[0]}T00:00:00`), "EEE dd MMM yyyy")}</span> : null}
                 <span className="text-muted-foreground font-normal">
                   {all.length > 0 && outstanding > 0
@@ -961,6 +961,10 @@ export default function Tournaments() {
                   </span>
                 )}
               </summary>
+               {koCategories.length > 3 && <details className="border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+                 <summary className="cursor-pointer font-medium">Show categories</summary>
+                 <span className="block py-1 break-words">{koCategories.join(", ")}</span>
+               </details>}
               {notes.length > 0 && (
                 <p className="px-3 pt-2 text-[11px] text-muted-foreground">{notes.join(" · ")}</p>
               )}

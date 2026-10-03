@@ -211,7 +211,12 @@ function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seed
       throw new IntegrityError("pool_members", `${st.name}: the confirmed pools don't match the current entries — refresh the preview.`);
     let slot = 0;
     const confirmed = st.paced.poolPairs;
-    if (confirmed) assertConfirmedPairs(st.name, confirmed.flat(), (id, k) => st.poolMembers![confirmed.findIndex((ps) => ps.some((p) => p.includes(id)))]?.includes(id) ?? false);
+    if (confirmed) {
+      const poolOf = new Map(st.poolMembers.flatMap((m, pi) => m.map((id) => [id, pi] as [string, number])));
+      const tagged = confirmed.flatMap((ps, pi) => ps.map((p) => ({ p, pi })));
+      // Both players must belong to the pool the match sits in — pools never meet before the play-off.
+      assertConfirmedPairs(st.name, tagged.map((t) => t.p), (id, k) => poolOf.get(id) === tagged[Math.floor(k / 2)].pi);
+    }
     return st.poolMembers.flatMap((members, pi) => {
       const pairs: Array<[string, string]> = confirmed ? (confirmed[pi] ?? [])
         : proposePairings(members.map((id) => ({ id, rank: rank.get(id)! })), st.paced!.perPool![pi] ?? 0, st.paced!.pairing).pairs.map(([a, b]) => [a.id, b.id]);

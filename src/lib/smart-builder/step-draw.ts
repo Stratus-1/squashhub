@@ -52,7 +52,9 @@ export type DrawDivision = { group: number; label: string; doubles: boolean; uni
   /** Organiser accepted/adjusted the pools ("Decide after entries close" needs this before generating). */
   poolAccepted?: boolean;
   /** Play-off qualifiers from the pool rule: per pool (null = derived) and best runners-up. */
-  poolQualifiers?: { perPool: number | null; runnersUp: number } | null };
+  poolQualifiers?: { perPool: number | null; runnersUp: number } | null;
+  /** Paced knockout: organiser-reviewed Round 1 matches per pool (index 0 = whole field when there are no pools). Used exactly at Generate. */
+  koPairs?: Array<Array<[string, string]>> | null };
 
 /** Respect an explicit No even if a saved provisional format used several pools; absent rule keeps legacy format. */
 export function formatWithPoolRule(format: DivFormat, rule: PoolPlan | null, entrants: number): DivFormat {
@@ -431,6 +433,13 @@ function stageSchedule(s: DivSchedule, rounds: number | undefined, knockout = fa
 export function pooledKnockoutTarget(d: DrawDivision): number {
   return poolKnockoutTarget(d.format.ko?.target ?? null, d.format.pools, d.poolQualifiers?.perPool ?? null);
 }
+/** Attach the organiser's reviewed Round 1 matches so Generate saves exactly those (counts follow the edits). */
+function withConfirmedPairs<T extends { count: number; perPool?: number[] }>(p: T, pairs: DrawDivision["koPairs"], pooled: boolean): T & { pairs?: Array<[string, string]>; poolPairs?: Array<Array<[string, string]>> } {
+  if (!pairs) return p;
+  if (pooled) return { ...p, poolPairs: pairs, perPool: pairs.map((x) => x.length), count: pairs.reduce((s, x) => s + x.length, 0) };
+  return { ...p, pairs: pairs[0] ?? [], count: (pairs[0] ?? []).length };
+}
+
 function pooledPaced(d: DrawDivision, mode: PoolAllocationMode) {
   const pools = poolsFor(d, mode) ?? [];
   const ko = d.format.ko;
@@ -522,7 +531,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
         poolMembers: kind === "pools" || kind === "round_robin" || isPooledKnockout(f) ? poolsFor(d, mode) ?? undefined : undefined,
         swissRounds: kind === "swiss" ? f.swissRounds : undefined,
         drawSize: kind === "knockout" && !isPooledKnockout(f) ? nextPow2(n) : undefined,
-        paced: isPooledKnockout(f) ? pooledPaced(d, mode) : kind === "knockout" && f.paced ? (() => { const p = pacePlan({ active: n, target: f.paced.target, roundsLeft: f.paced.rounds, pace: "paced", milestoneLabel: f.paced.label }); return p.thisRound > 0 ? { count: p.thisRound, pairing: f.paced.pairing } : undefined; })() : undefined,
+        paced: isPooledKnockout(f) ? withConfirmedPairs(pooledPaced(d, mode), d.koPairs, true) : kind === "knockout" && f.paced ? (() => { const p = pacePlan({ active: n, target: f.paced.target, roundsLeft: f.paced.rounds, pace: "paced", milestoneLabel: f.paced.label }); return d.koPairs ? withConfirmedPairs({ count: p.thisRound, pairing: f.paced.pairing }, d.koPairs, false) : p.thisRound > 0 ? { count: p.thisRound, pairing: f.paced.pairing } : undefined; })() : undefined,
         discipline: d.doubles ? "doubles" : "singles",
         schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id), kind === "knockout"),
       } as any, version, d),

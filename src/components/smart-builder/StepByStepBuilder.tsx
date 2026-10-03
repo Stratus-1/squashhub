@@ -358,7 +358,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       {pp.mode === "auto" && <label className="flex flex-wrap items-center gap-2"><span>Preferred pool size</span><Input type="number" min={2} className="h-7 w-20" aria-label={`Preferred pool size for ${u.base}`} value={pp.target ?? "5"} onChange={(e) => setPoolRule(u.key, { target: e.target.value })} />
         <span className="text-muted-foreground">Balanced from actual entries{rec.length ? ` · with ${exp} expected: ${rec.length > 1 ? `${rec.length} pools (${rec.join(", ")})` : "one group"}` : ""}</span></label>}
       {pp.mode === "later" && <p className="text-muted-foreground">Review and accept the actual pools before generating fixtures.</p>}
-      {pp.mode !== "none" && !["pools", "later", null].includes(formatFor(u.key).kind) && <p className="text-destructive">Pools need a within-group round robin. Change the planned format before generating.</p>}
+      {pp.mode !== "none" && formatFor(u.key).kind === "knockout" && <p className="text-muted-foreground">Knockout inside each pool: losers are eliminated within their pool until it reaches its qualifiers, then the play-offs take over. No round robin is played.</p>}
+      {pp.mode !== "none" && formatFor(u.key).kind === "swiss" && <p className="text-destructive">Swiss pairs the whole field by results, so it can't run inside pools. Turn pools off or change the planned format.</p>}
     </div>;
   };
   const setDisc = (k: string, d: Disc) => setA({ ...a, disc: { ...a.disc, [k]: d } });

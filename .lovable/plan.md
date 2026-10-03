@@ -1,45 +1,40 @@
-# Diamond League: end-to-end reuse of the existing display and reporting
+# Paced knockout management (fresh engine)
 
-The Beta is only a new way into the existing Diamond League. Once a Diamond League is created, it must look and behave exactly like today's Diamond League, including the standings the user likes. This plan adds that protection and a check that proves it.
+## What you will get
+- **Builder (setup only):** a knockout category gets two new choices: **Knockout pace** (Paced across the rounds / Immediate) and **Pairing strategy** (Progressive closer-ranked / Traditional seeded 1v8, 2v7…). It no longer gets round-robin round counts or "this matchup needs N rounds" messages.
+- **Manage Tournament, new "Knockout rounds" panel** for each knockout league, week by week:
+  - Active players (still in), eliminated players (and the round they lost), byes shown as "through, still active".
+  - Target milestone (e.g. Quarter-finals by 14 Nov) and **eliminations still needed**.
+  - **On track / At risk** badge, with plain warnings such as "3 matches must now be completed in Round 3 to reach the Semi-finals on 21 Nov."
+  - **Proposed fixtures for the current round only**, built from pace + pairing strategy. The admin can swap players, remove a match (that player stays active) or add one, then **Confirm fixtures**.
+  - After results come in (or a round is postponed), everything recalculates. No future fixtures are ever created that assume a winner.
+- The existing draw screens move under Manage Tournament. The Builder keeps design only.
 
-## What is already in place (from the last change)
+## How pacing works
+- Inputs: active players now, the milestone field size (8 for QF, 4 for SF, 2 for Final), and the scheduling rounds left before that milestone.
+- Eliminations needed = active − milestone size. **Paced:** spread evenly over the remaining rounds (more early if uneven), e.g. 9 players → 8 for QF with 3 rounds left = 1 match in Round 1, others wait. **Immediate:** as many matches as the active field allows each round (normal halving).
+- A round can never have more matches than active players ÷ 2. If the remaining need exceeds what the remaining rounds allow, the panel shows At risk with the exact number required.
+- Odd counts: the unpaired player gets a bye and stays active. A bye never counts as an elimination.
 
-- The Beta's "Diamond League" button opens the current builder's own Diamond setup. It saves the same tournament and Diamond League records and the same fixtures the current builder does.
-- A Diamond League created this way never goes through the Beta's save-and-continue step. So it never gets the Beta's saved format, play-off chain or run overview.
+## Shared vs own semi-final/final (unchanged setting)
+- Uses the existing Club Champs "Stages & scheduling" setup as it is today: a league that falls under the shared playoff stages ("All categories (common date)", with playoff sync on) takes its milestone dates from those shared stages, and earlier rounds are paced to reach them.
+- A league that has its own playoff stages (stage set to that category, or sync off) paces against its own dates, or runs freely if it has none.
+- No new global rule is added.
 
-## How today's tournament pages pick the Diamond League display
+## Safety
+- Diamond League, pools, round robin, Swiss, cross-league and legacy tournaments are untouched (panel only shows for knockout categories, never for Diamond).
+- Confirming fixtures only creates rows for the current round through the existing match-creation path (same rows as today's next-round draw), so marking, results, standings and emails keep working.
+- Played or scored matches are never changed. Pace, strategy and any edited pairings are stored on the tournament's existing Beta settings (no schema change).
+- Nothing is published.
 
-- **Tournament page (`ClubChampsView`):** loads the tournament's Diamond League record. If there is one, it shows `DiamondStandings` and hides the generic winners, survivors, wooden spoon and pool standings cards.
-- **Tournaments list (`Tournaments.tsx`):** keeps a set of Diamond tournament ids and shows `DiamondStandings` for those.
-- **`TournamentProgressCard`:** already skips Diamond weeks ("progress lives in the Diamond manager").
-- **Structured panels:** `StructuredEnginePanel` and `StageProgressPanel` only appear when the tournament is saved in the structured format. A Diamond League created via the Beta is not, because it is saved the same way the current builder saves it.
-
-So a Diamond League created through the Beta already lands in the Diamond display. Nothing needs restyling.
-
-## Places that could accidentally override the Diamond display
-
-1. **Beta "Continue managing" (`StepTournamentManagement` → `StepRunOverview` → `StageProgressPanel`).** Only tournaments the Beta itself handed over appear there, and Diamond ones are not handed over. Risk: a future change could add Diamond tournaments to that list. Guard: if the tournament has a Diamond League record, show a link to the normal tournament page instead of the run overview.
-2. **Beta "Generate draw & fixtures" (`step-draw.ts`).** This would build a second set of structured fixtures and switch the tournament to the structured format, which would replace the Diamond display with generic panels. Guard: refuse when a Diamond League record exists.
-3. **`BetaTournamentOperate` page (`/beta-tournament/:id`).** Shows `StructuredEnginePanel` for structured tournaments only. Guard: for a Diamond tournament, send the user to the normal tournament page.
-4. **Play-off scheduling, slot order, stage bookings, Beta checks (`playoff-schedule.ts`, `stage-bookings.ts`, `consistency.ts`).** These would book or check generic play-off stages. Guard: do nothing for Diamond tournaments.
-5. **Generic tournament-page decisions keyed on structured format or pools.** These are already correct, because a Diamond tournament is not structured. Lock this in with a test so a later change can't flip it.
-6. **Old Beta drafts made with the retired Diamond model.** These are generic structured setups, not real Diamond Leagues. They already show the "retired" note and are never shown with `DiamondStandings`. No change needed.
-
-All guards use one shared check, `isDiamondTournament(tournamentId)` (does a Diamond League record exist for this tournament, read-only). The Diamond pages, standings, scoring and progression code are not edited at all.
-
-## What will not change
-
-`DiamondStandings`, `TeamLeagueManager`, the Diamond live summary and position points, Diamond scoring, the doubles seeding trigger, crossover and placing rules, the Diamond fixtures, the Bells marker, the tournament page's Diamond layout and the Tournaments list Diamond view. No existing tournament or result is touched, nothing changes in the database, and nothing is published.
-
-## Tests
-
-- **Display routing:** for a tournament with a Diamond League record, the tournament page shows `DiamondStandings` and none of the generic standings, survivors, wooden spoon or structured panels. The Tournaments list does the same.
-- **Guards:** Generate draw, play-off scheduling, stage bookings and the Beta checks refuse or skip a Diamond tournament. The Beta management screen and `/beta-tournament/:id` send the user to the normal tournament page.
-- **Unchanged files:** the existing Diamond tests (`diamond-*.test.ts`, `team-league.test.ts`) pass, and the Diamond standings and manager files are unchanged.
-- **Riverside preview:** open an existing Riverside Diamond League tournament and confirm the standings look as before. Open a Diamond draft started from the Beta (draft only, no invites sent) and confirm it shows the same Diamond display.
+## Assumptions (please correct if wrong)
+1. "The existing per-league option" = the shared-vs-per-category playoff stage choice in Stages & scheduling described above.
+2. Defaults: Paced + Progressive for new knockout categories. Existing tournaments behave as Immediate + Traditional so nothing already running changes.
+3. "Progressive" pairs neighbouring ranks from the bottom up (e.g. 8v9 first when only one match is needed), so the strongest players are spared early.
 
 ## Technical details
-
-- New `src/lib/tournaments/diamond-guard.ts` with `isDiamondTournament(id)`: a read-only, club-scoped select of `team_league_events.tournament_id`, cached with react-query under the same key `DiamondStandings` uses.
-- Guards are early returns in `step-draw.ts`, `playoff-schedule.ts`, `stage-bookings.ts` and `consistency.ts`. `StepTournamentManagement` and `BetaTournamentOperate` show a redirect card instead.
-- Add one rule to `src/components/smart-builder/AGENTS.md`: after creation, a Diamond League always uses the Diamond display and reporting, and Beta or structured screens must skip it.
+- New pure module `src/lib/tournaments/paced-knockout.ts`: `activeField(matches, group)` (re-using `active-draw.ts` elimination rules), `milestoneFor(category, plan)` (resolving shared vs own stage dates through `round-plan.ts` / `stage-schedule.ts`), `pacePlan({active, target, roundsLeft, pace})` → matches per round + risk, `proposePairings(active, ranks, strategy, count)` → pairs + byes.
+- Tests in `src/test/paced-knockout.test.ts`: pacing (9→8, 12→8, 20→8), immediate mode, odd fields/byes, both pairing strategies, risk warnings after a postponed round, shared vs own milestone resolution.
+- Builder: `FormatPlan` gains `koPace` and `koPairing` (device-local answers, persisted to `beta_lifecycle.format_plan`); `step-draw.ts` skips `roundShortfall`/`roundDeadlines` round-count errors for knockout and makes the knockout stage create only the first paced round.
+- Manage: new `StepKnockoutRoundsPanel.tsx` inside `StepTournamentManagement` / run overview; confirm writes via the existing `ConfirmDrawDialog` insert path; refuses if any match in that round already has a result.
+- Record the rule in `src/components/smart-builder/AGENTS.md`; log in the issue log.

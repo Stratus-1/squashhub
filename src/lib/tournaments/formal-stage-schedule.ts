@@ -139,8 +139,11 @@ export const allocateFixedStage = scheduleFormalStage;
 /** Run the allocator for every fixed stage of the tournament (used after any generation path). */
 export async function allocateAllFixedStages(champId: string) {
   const steps = (await loadPlanSteps(champId)).filter(isCentrallyScheduled);
-  const out: Array<{ label: string; scheduled: number; overflow: string[]; required: number; available: number }> = [];
+  const out: Array<{ label: string; scheduled: number; overflow: string[]; required: number; available: number; issues?: string[] }> = [];
   for (const s of steps) out.push({ label: s.label, ...(await scheduleFormalStage(champId, s)) });
+  // Fixed-date round-robin / cross-league rounds (incl. Bells): timed sessions per round.
+  const timed = await scheduleTimedRounds(champId);
+  if (timed) out.push(timed);
   return out;
 }
 
@@ -182,4 +185,122 @@ export async function reconcileFixedStages(champId: string) {
     out.push({ label: s.label, ...r });
   }
   return out;
+}
+
+// ───────────────────────── Timed round sessions (Bells / time-capped, fixed dates) ─────────────────────────
+
+export type TimedDay = { date: string; from: string; to: string; courtIds: number[] };
+export type TimedRound = { round: number; date?: string | null; games: string[] };
+export type TimedSlot = { id: string; date: string; time: string; courtId: number; round: number };
+
+/**
+ * Pure planner for fixed-date round sessions. Every game of a round starts at that round's bell
+ * on its own court; the next round starts one slot later (slot = the format's match/bell minutes
+ * + buffer). With `waves`, a round larger than the court count plays in consecutive waves;
+ * without it, too few courts is a capacity issue. Rounds with their own configured date start on
+ * that day; others follow sequentially and roll to the next configured day/session when the
+ * window is full. All-or-nothing: any issue means nothing should be written.
+ */
+export function planTimedRounds(o: { rounds: TimedRound[]; days: TimedDay[]; minutes: number; bufferMinutes?: number; busy?: Array<Busy & { date: string }>; waves?: boolean }) {
+  const step = Math.max(1, Number(o.minutes) || 0) + Math.max(0, o.bufferMinutes ?? 0);
+  const days = [...o.days].filter((d) => d.courtIds.length && toMin(d.to) > toMin(d.from)).sort((a, b) => a.date.localeCompare(b.date) || toMin(a.from) - toMin(b.from));
+  const taken: Array<Busy & { date: string }> = [...(o.busy ?? [])];
+  const slots: TimedSlot[] = [];
+  const issues: string[] = [];
+  const maxCourts = Math.max(0, ...days.map((d) => d.courtIds.length));
+  const required = o.rounds.reduce((n, r) => n + r.games.length, 0);
+  const available = days.reduce((n, d) => n + Math.floor((toMin(d.to) - toMin(d.from)) / step) * d.courtIds.length, 0);
+  if (!days.length) return { slots: [], issues: ["No fixed match date with a time window and courts is configured."], required, available: 0 };
+  const freeAt = (d: TimedDay, t: number) => d.courtIds.filter((c) => !taken.some((b) => b.date === d.date && b.courtId === c && toMin(b.start) < t + step && toMin(b.end) > t));
+  let di = 0;
+  let t = toMin(days[0].from);
+  for (const r of [...o.rounds].sort((a, b) => a.round - b.round)) {
+    if (!r.games.length) continue;
+    if (!o.waves && r.games.length > maxCourts) { issues.push(`Round ${r.round}: ${r.games.length} games start together at the bell but only ${maxCourts} court${maxCourts === 1 ? " is" : "s are"} selected (${r.games.length} needed).`); continue; }
+    if (r.date) {
+      const k = days.findIndex((d, i) => i >= di && d.date === r.date);
+      if (k < 0) { issues.push(`Round ${r.round}: its date ${r.date} has no time window/courts left in the plan.`); continue; }
+      if (k !== di) { di = k; t = toMin(days[k].from); }
+    }
+    let placed = false;
+    while (!placed && di < days.length) {
+      const d = days[di];
+      const waves: string[][] = [];
+      const per = o.waves ? d.courtIds.length : r.games.length;
+      for (let i = 0; i < r.games.length; i += per) waves.push(r.games.slice(i, i + per));
+      let cursor = t; const local: TimedSlot[] = []; let ok = true;
+      for (const w of waves) {
+        let courts = freeAt(d, cursor);
+        while (courts.length < w.length && cursor + step <= toMin(d.to)) { cursor += step; courts = freeAt(d, cursor); }
+        if (courts.length < w.length || cursor + step > toMin(d.to)) { ok = false; break; }
+        w.forEach((id, j) => local.push({ id, date: d.date, time: toHHMM(cursor), courtId: courts[j], round: r.round }));
+        cursor += step;
+      }
+      if (ok) {
+        for (const s of local) { slots.push(s); taken.push({ date: s.date, courtId: s.courtId, start: s.time, end: toHHMM(toMin(s.time) + step) }); }
+        t = cursor; placed = true;
+      } else if (r.date) { break; } else { di++; if (di < days.length) t = toMin(days[di].from); }
+    }
+    if (!placed) issues.push(`Round ${r.round}: no room left — ${required} games need ${Math.ceil(required / Math.max(1, maxCourts))} bell slot${required > maxCourts ? "s" : ""} on ${maxCourts} court${maxCourts === 1 ? "" : "s"} but only ${available} court slots fit in the configured time window${days.length > 1 ? "s" : ""}.`);
+  }
+  return { slots: issues.length ? [] : slots, issues, required, available };
+}
+
+/** Fixed-date sessions from the plan (`format_plan.days[].windows`, each day's own selected courts). */
+export function planDays(formatPlan: any): TimedDay[] {
+  const out: TimedDay[] = [];
+  for (const d of (formatPlan?.days ?? []) as any[]) {
+    const courtIds = ((d?.courtIds ?? []) as any[]).map(Number).filter(Number.isFinite);
+    for (const w of (d?.windows ?? []) as any[]) if (d?.date && w?.from && w?.to) out.push({ date: String(d.date).slice(0, 10), from: String(w.from).slice(0, 5), to: String(w.to).slice(0, 5), courtIds });
+  }
+  return out;
+}
+
+/**
+ * Schedule every unplayed, unbooked game of the tournament's FIXED-date (non-formal) stages into
+ * timed round sessions. Duration = the format's own slot (Bells cap via match_duration_minutes;
+ * break already inside the slot). Writes nothing when the plan does not fit.
+ */
+export async function scheduleTimedRounds(champId: string) {
+  const [{ data: t }, { data: rows }] = await Promise.all([
+    fromExt("tournaments").select("builder_spec, beta_lifecycle, match_duration_minutes, default_break_minutes, start_time").eq("id", champId).maybeSingle(),
+    fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id").eq("champ_id", champId),
+  ]);
+  const spec: any = (t as any)?.builder_spec;
+  const plan: any = (t as any)?.beta_lifecycle?.format_plan;
+  const fixedStages = ((spec?.divisions ?? []) as any[]).flatMap((d) => d.stages ?? []).filter((s: any) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
+  if (!fixedStages.length) return null;
+  const days = planDays(plan);
+  if (!days.length) return null;
+  const steps = planSteps(plan);
+  const roundDates: string[] = (fixedStages[0].schedule.roundDates ?? []).map((x: string) => String(x).slice(0, 10));
+  const movable = (m: any) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()) && m.player_a_member_id && m.player_b_member_id;
+  const own = ((rows ?? []) as any[]).filter((m) => movable(m) && !findStep(steps, String(m.stage_label ?? "")));
+  if (!own.length) return { label: "Round robin", scheduled: 0, overflow: [], required: 0, available: 0, issues: [] as string[] };
+  const ownIds = new Set(own.map((m) => m.id));
+  const dates = Array.from(new Set(days.map((d) => d.date)));
+  const courts = Array.from(new Set(days.flatMap((d) => d.courtIds)));
+  const minutes = Number((t as any)?.match_duration_minutes) || 30;
+  const [{ data: dayGames }, { data: bk }] = await Promise.all([
+    fromExt("club_champs_matches").select("id, court_id, scheduled_date, scheduled_time").in("scheduled_date", dates).in("court_id", courts),
+    fromExt("bookings").select("court_id, date, start_time, end_time, external_id").in("date", dates).eq("status", "active").in("court_id", courts),
+  ]);
+  const busy = [
+    ...((dayGames ?? []) as any[]).filter((m) => !ownIds.has(m.id) && m.scheduled_time).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM(toMin(m.scheduled_time) + minutes) })),
+    ...((bk ?? []) as any[]).filter((b) => !String(b.external_id ?? "").startsWith("sbs:")).map((b) => ({ date: String(b.date).slice(0, 10), courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) })),
+  ];
+  const byRound = new Map<number, any[]>();
+  for (const m of own) { const r = Number(m.round_number) || 1; byRound.set(r, [...(byRound.get(r) ?? []), m]); }
+  const rounds: TimedRound[] = [...byRound.entries()].map(([round, ms]) => ({
+    round, date: roundDates.length > 1 ? roundDates[round - 1] ?? null : null,
+    games: ms.sort((a, b) => (Number(a.group_number) - Number(b.group_number)) || (Number(a.bracket_position) || 0) - (Number(b.bracket_position) || 0)).map((m) => m.id),
+  }));
+  const res = planTimedRounds({ rounds, days, minutes, busy, waves: !!plan?.waves });
+  for (const s of res.slots) {
+    const { error } = await fromExt("club_champs_matches")
+      .update({ scheduled_date: s.date, scheduled_time: `${s.time}:00`, court_id: s.courtId, play_by: null } as any)
+      .eq("id", s.id).is("winner_member_id", null).is("booking_id", null);
+    if (error) throw new Error(error.message);
+  }
+  return { label: "Round robin", scheduled: res.slots.length, overflow: res.issues.length ? own.map((m) => m.id) : [], required: res.required, available: res.available, issues: res.issues };
 }

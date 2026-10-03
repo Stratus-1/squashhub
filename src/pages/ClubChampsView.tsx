@@ -3362,7 +3362,7 @@ export default function ClubChampsView() {
         if (summaryFirst) {
           // Summary tables first, fixtures for each league below them.
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={false} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3381,7 +3381,7 @@ export default function ClubChampsView() {
           }
         } else {
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={false} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3405,7 +3405,7 @@ export default function ClubChampsView() {
 
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
-          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={false}
+          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={isStructured}
             title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
           >
             {swissControlsFor(gn)}
@@ -3555,7 +3555,7 @@ export default function ClubChampsView() {
           />
         )}
 
-        <KnockoutCard
+        {!isStructured && <KnockoutCard
           champId={champId!}
           matches={matches as any[]}
           canManage={canManage}
@@ -3573,7 +3573,7 @@ export default function ClubChampsView() {
               parseMilestonesForDates((champ as any)?.milestone_play_by),
             )
           }
-        />
+        />}
         {playoffCard}
       </>
     );

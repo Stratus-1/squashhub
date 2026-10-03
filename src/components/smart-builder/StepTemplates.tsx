@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fromExt } from "@/lib/supabase-ext";
-import { emptyDefinition } from "@/lib/smart-builder/definition";
-import { diamondTemplate } from "@/lib/smart-builder/stage-builder";
 import type { StepAnswers } from "./StepByStepBuilder";
 import {
   PREBUILT_TEMPLATES, REVIEW_FIELDS, STEP_TEMPLATE_KEY, fromStepTemplate, hasPlanInProgress, toStepTemplate, type StepTemplate,
@@ -100,17 +98,9 @@ export function TemplatePicker({ clubId, mode, onStartStep, onOpenDraft, onClose
     const { error } = await fromExt("tournament_templates").delete().eq("id", r.id);
     if (error) toast.error(error.message); else setRows((x) => (x ?? []).filter((y) => y.id !== r.id));
   };
-  const startPrebuilt = async (key: string) => {
-    if (key !== "diamond_league") return;
-    setBusy(true);
-    const def = emptyDefinition("Diamond League");
-    diamondTemplate(def);
-    const { data, error } = await fromExt("smart_tournament_drafts")
-      .insert({ mode: "describe", title: "Diamond League", definition: def, conversation: [], owner_kind: "club", owner_id: clubId })
-      .select("id").single();
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    onOpenDraft(data.id as string);
+  const startPrebuilt = (key: string) => {
+    // Diamond League always opens the proven Diamond League setup — never a Beta stage model.
+    if (key === "diamond_league") onStartDiamond?.();
   };
 
   return (

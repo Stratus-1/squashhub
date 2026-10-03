@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
 import {
-  FORMAT_LABEL, setSameSession, addStage, copyPreviousStage, diamondTemplate, shapeChange, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
+  FORMAT_LABEL, setSameSession, addStage, copyPreviousStage, shapeChange, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
   type BuilderFormat,
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,6 @@ import { toast } from "sonner";
 import { cannotDefer, setDefineLater } from "@/lib/smart-builder/deferred";
 import { DIAMOND_KEY } from "@/lib/smart-builder/diamond-league";
 import { TransitionEditor } from "./TransitionEditor";
-import { DiamondLeaguePanel } from "./DiamondLeaguePanel";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { poolDisplay } from "@/lib/tournaments/transition";
 import { defaultSource, effectiveMapping, stageMappingIssues } from "@/lib/smart-builder/matchups";
@@ -66,7 +65,6 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
         <span className="font-semibold text-white">Custom / mixed format — stage builder</span>
         <span className="text-white/50">Build the stages in order. Each stage is set up on its own.</span>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="outline" className={btn} onClick={() => edit((x) => { diamondTemplate(x); setSelId(null); })}>Load Diamond League template</Button>
           <Button size="sm" variant="outline" className={btn} onClick={() => edit((x) => { x.quickPath = null; })}>Open full builder</Button>
         </div>
       </div>
@@ -85,7 +83,11 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
         )}
       </div>
 
-      <DiamondLeaguePanel def={def} edit={edit} clubId={(def.event as any)?.ownerId ?? null} />
+      {def.templateMeta?.key === DIAMOND_KEY && (
+        <div className="rounded-md border border-amber-400/30 bg-amber-400/5 p-3 text-white/80" data-field="diamond-retired">
+          Built with the retired Beta Diamond model. Diamond League now uses the proven Diamond League setup — start a new one from "Diamond League" on the Tournament Beta page.
+        </div>
+      )}
 
       <DivisionsPanel def={def} edit={edit} di={di} onSelect={(i) => { setDivIdx(i); setSelId(null); }} />
 
@@ -346,7 +348,7 @@ function DivisionsPanel({ def, edit, di, onSelect }: { def: TournamentDefinition
     <div className="rounded border border-white/10 p-2 space-y-2" data-field="divisions">
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-semibold text-white">Divisions ({def.divisions.length})</span>
-        {diamond && <span className="text-white/40">Change the number of divisions in the Diamond League settings above.</span>}
+        
       </div>
       {(
         <>

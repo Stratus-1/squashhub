@@ -2503,3 +2503,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Cause: `journal_fee_payment_received` posted Dr bank / Cr debtors whenever a fee flipped to paid, even when settled from wallet credit (top-up had already posted that).
 - Fix: `club_member_fee_payments.settled_from_wallet`; trigger skips it; set by `_shared/wallet-auto-settle.ts` and MyAccount "Credit" payment.
 - Data: removed 3 duplicate "Fee paid" pairs (GB R725, GB R120, NSC R150). Only cases club-wide.
+
+### 2026-10-03 — Paced knockout management
+- New pure engine `src/lib/tournaments/paced-knockout.ts` (active field, milestone from existing shared/own play-off stages, pace plan + risk warnings, progressive/traditional pairings) with tests in `src/test/paced-knockout.test.ts`.
+- Builder knockout format gains Knockout pace and Pairing strategy; Generate draw creates only the paced Round 1; Manage Tournament gets "Knockout rounds" to confirm each later round with editable pairings. Round-robin round-count errors no longer apply to knockout categories. Diamond League untouched.

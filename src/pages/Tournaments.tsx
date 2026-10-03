@@ -51,6 +51,7 @@ import { parseMilestones } from "@/lib/tournaments/round-definitions";
 import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
+import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
@@ -805,6 +806,8 @@ export default function Tournaments() {
    * not rounds. Play-off/knockout games keep their stage name.
    */
   const roundGroupKey = (m: any): string => {
+    const koRound = pacedKnockoutRound(m);
+    if (koRound != null) return `\u0001ko:${koRound}`;
     const st = String(m?.stage || "");
     if (isPlayoffGame(m) || (st && st !== "group" && st !== "pool")) return matchStageLabel(m);
     const row = String(matchRoundRow(m)?.label || "").trim();
@@ -879,7 +882,16 @@ export default function Tournaments() {
           });
           const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
           const outstanding = all.length - done;
-          const heading = isPool ? "Pool games" : key;
+          const koRound = key.startsWith("\u0001ko:") ? Number(key.slice(4)) : null;
+          const koItems = koRound == null ? [] : items;
+          const koCategories = knockoutCategoryNames(koItems, (m: any) => getGroupLabel(champById.get(m.champ_id), m.group_number));
+          const heading = isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : key;
+          const koCategoryGroups = new Map<string, any[]>();
+          koItems.forEach((m: any) => {
+            const categoryKey = `${m.champ_id}:${m.group_number ?? "-"}`;
+            if (!koCategoryGroups.has(categoryKey)) koCategoryGroups.set(categoryKey, []);
+            koCategoryGroups.get(categoryKey)?.push(m);
+          });
           const dates = Array.from(
             new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),
           ).sort() as string[];
@@ -897,7 +909,9 @@ export default function Tournaments() {
             <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
-                <span className="uppercase tracking-wider">{heading}{!isPool && playBy ? ` — Play by ${format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}` : allScheduled && schedDates[0] ? ` — Scheduled ${format(new Date(`${schedDates[0]}T00:00:00`), "EEE dd MMM yyyy")}` : ""}</span>
+                 <span className="uppercase tracking-wider">{heading}</span>
+                 {koRound != null && <span className="font-medium min-w-0 break-words">{koCategories.length > 3 ? `${koCategories.length} categories` : koCategories.join(", ")}</span>}
+                 {!isPool && playBy ? <span className="uppercase tracking-wider">· Play by {format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}</span> : allScheduled && schedDates[0] ? <span className="uppercase tracking-wider">· Scheduled {format(new Date(`${schedDates[0]}T00:00:00`), "EEE dd MMM yyyy")}</span> : null}
                 <span className="text-muted-foreground font-normal">
                   {all.length > 0 && outstanding > 0
                     ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
@@ -947,10 +961,21 @@ export default function Tournaments() {
                   </span>
                 )}
               </summary>
+               {koCategories.length > 3 && <details className="border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+                 <summary className="cursor-pointer font-medium">Show categories</summary>
+                 <span className="block py-1 break-words">{koCategories.join(", ")}</span>
+               </details>}
               {notes.length > 0 && (
                 <p className="px-3 pt-2 text-[11px] text-muted-foreground">{notes.join(" · ")}</p>
               )}
-              <div className="p-2 space-y-1.5">{items.map((m, i) => renderMatchRow(m, i, items))}</div>
+               <div className="p-2 space-y-1.5">{koRound == null ? items.map((m, i) => renderMatchRow(m, i, items)) : Array.from(koCategoryGroups.entries()).map(([categoryKey, categoryItems]) => (
+                 <div key={categoryKey} className="space-y-1.5">
+                   <div className="border-b border-border px-1 py-1 text-xs font-semibold text-foreground">
+                     {getGroupLabel(champById.get(categoryItems[0].champ_id), categoryItems[0].group_number)} · Knockout Round {koRound}
+                   </div>
+                   {categoryItems.map((m, i) => renderMatchRow(m, i, categoryItems))}
+                 </div>
+               ))}</div>
             </details>
           );
         })}

@@ -786,6 +786,8 @@ export default function Tournaments() {
     if (own) return String(own).slice(0, 10);
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const milestones = parseMilestones((champ as any)?.milestone_play_by);
+    // Structured stages own their schedule: a fixed-session stage has no play-by at all.
+    if (m?.stage_key && isPlayoffGame(m)) return null;
     // Play-off games only ever take their own play-off round's date.
     if (isPlayoffGame(m)) return playoffDeadline(milestones, m.stage_label, m.stage);
     return (

@@ -253,6 +253,50 @@ export function planTimedRounds(o: { rounds: TimedRound[]; days: TimedDay[]; min
   return { slots: issues.length ? [] : slots, issues, required, available };
 }
 
+/**
+ * Bells / time-capped packing: a bell slot is a WAVE of up to N games on the N courts free at that
+ * time; a logical round may span several waves. Games are taken in round order, skipping any game
+ * whose players are already in the wave (no player on two courts at once). Waves advance by the
+ * bell slot (cap + changeover) and roll across the configured days. Capacity is reported only after
+ * packing into every configured date/window/court. All-or-nothing.
+ */
+export function planBellsWaves(o: { rounds: TimedRound[]; days: TimedDay[]; minutes: number; bufferMinutes?: number; busy?: Array<Busy & { date: string }>; players?: Record<string, string[]> }) {
+  const step = Math.max(1, Number(o.minutes) || 0) + Math.max(0, o.bufferMinutes ?? 0);
+  const days = [...o.days].filter((d) => d.courtIds.length && toMin(d.to) > toMin(d.from)).sort((a, b) => a.date.localeCompare(b.date) || toMin(a.from) - toMin(b.from));
+  const queue = [...o.rounds].sort((a, b) => a.round - b.round).flatMap((r) => r.games.map((id) => ({ id, round: r.round })));
+  const required = queue.length;
+  const busy = o.busy ?? [];
+  let available = 0;
+  const slots: TimedSlot[] = [];
+  for (const d of days) {
+    for (let t = toMin(d.from); t + step <= toMin(d.to); t += step) {
+      const courts = d.courtIds.filter((c) => !busy.some((b) => b.date === d.date && b.courtId === c && toMin(b.start) < t + step && toMin(b.end) > t));
+      available += courts.length;
+      const inWave = new Set<string>();
+      let ci = 0;
+      for (let i = 0; i < queue.length && ci < courts.length; ) {
+        const ps = o.players?.[queue[i].id] ?? [];
+        if (ps.some((p) => inWave.has(p))) { i++; continue; }
+        ps.forEach((p) => inWave.add(p));
+        slots.push({ id: queue[i].id, date: d.date, time: toHHMM(t), courtId: courts[ci++], round: queue[i].round });
+        queue.splice(i, 1);
+      }
+    }
+  }
+  if (!days.length) return { slots: [], issues: ["No fixed match date with a time window and courts is configured."], required, available: 0 };
+  const issues = queue.length ? [`${required} games need a bell slot but only ${required - queue.length} could be placed (${available} court slots: ${days.map((d) => `${d.date} ${d.from}–${d.to} on ${d.courtIds.length} court${d.courtIds.length === 1 ? "" : "s"}`).join("; ")}, ${step} min per bell, no player on two courts at once). ${queue.length} game${queue.length === 1 ? "" : "s"} left over.`] : [];
+  return { slots: issues.length ? [] : slots, issues, required, available };
+}
+
+/** Bells/time-capped slot minutes from the synced plan (play + changeover, else the legacy cap). */
+export function bellsSlotMinutes(scoring: any): number | null {
+  if (scoring?.mode !== "time_capped_points") return null;
+  const play = Number(scoring.timeCapPlay);
+  if (Number.isFinite(play) && play > 0) return play + Math.max(0, Number(scoring.timeCapBreak) || 0);
+  const cap = Number(scoring.timeCapMinutes);
+  return Number.isFinite(cap) && cap > 0 ? cap : null;
+}
+
 /** Fixed-date sessions from the plan (`format_plan.days[].windows`, each day's own selected courts). */
 export function planDays(formatPlan: any): TimedDay[] {
   const out: TimedDay[] = [];
@@ -270,7 +314,7 @@ export function planDays(formatPlan: any): TimedDay[] {
  */
 export async function scheduleTimedRounds(champId: string, opts: { dryRun?: boolean } = {}) {
   const [{ data: t }, { data: rows }] = await Promise.all([
-    fromExt("tournaments").select("builder_spec, beta_lifecycle, match_duration_minutes, default_break_minutes, start_time").eq("id", champId).maybeSingle(),
+    fromExt("tournaments").select("builder_spec, beta_lifecycle, match_duration_minutes, default_break_minutes, start_time, rules:tournament_rules(scoring_mode)").eq("id", champId).maybeSingle(),
     fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id").eq("champ_id", champId),
   ]);
   const spec: any = (t as any)?.builder_spec;
@@ -287,7 +331,9 @@ export async function scheduleTimedRounds(champId: string, opts: { dryRun?: bool
   const ownIds = new Set(own.map((m) => m.id));
   const dates = Array.from(new Set(days.map((d) => d.date)));
   const courts = Array.from(new Set(days.flatMap((d) => d.courtIds)));
-  const minutes = Number((t as any)?.match_duration_minutes) || 30;
+  const rulesMode = ([] as any[]).concat((t as any)?.rules ?? [])[0]?.scoring_mode;
+  const bells = plan?.scoring?.mode === "time_capped_points" || rulesMode === "time_capped_points";
+  const minutes = (bells ? bellsSlotMinutes(plan?.scoring) : null) ?? (Number((t as any)?.match_duration_minutes) || 30);
   const [{ data: dayGames }, { data: bk }] = await Promise.all([
     fromExt("club_champs_matches").select("id, court_id, scheduled_date, scheduled_time").in("scheduled_date", dates).in("court_id", courts),
     fromExt("bookings").select("court_id, date, start_time, end_time, external_id").in("date", dates).eq("status", "active").in("court_id", courts),
@@ -303,7 +349,7 @@ export async function scheduleTimedRounds(champId: string, opts: { dryRun?: bool
     games: ms.sort((a, b) => (Number(a.group_number) - Number(b.group_number)) || (Number(a.bracket_position) || 0) - (Number(b.bracket_position) || 0)).map((m) => m.id),
   }));
   const players = Object.fromEntries(own.map((m) => [m.id, [m.player_a_member_id, m.player_b_member_id].filter(Boolean)]));
-  const res = planTimedRounds({ rounds, days, minutes, busy, waves: !!plan?.waves, players });
+  const res = bells ? planBellsWaves({ rounds, days, minutes, busy, players }) : planTimedRounds({ rounds, days, minutes, busy, waves: !!plan?.waves, players });
   for (const s of opts.dryRun ? [] : res.slots) {
     const { error } = await fromExt("club_champs_matches")
       .update({ scheduled_date: s.date, scheduled_time: `${s.time}:00`, court_id: s.courtId, play_by: null } as any)

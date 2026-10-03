@@ -123,11 +123,17 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
   const poolDone = !!pool && reached;
   const target = reached ? null : milestone.fieldSize;
   const roundsLeft = reached ? null : roundsLeftFor(milestone, field.lastRound);
-  const pp = pacePlan({ active: field.active.length, target, roundsLeft, pace: reached ? "immediate" : pace, milestoneLabel: milestone.label });
+  const basePlan = pacePlan({ active: field.active.length, target, roundsLeft, pace, milestoneLabel: milestone.label });
   const nextRound = field.lastRound + 1;
-  // Pool rounds are always "Round N"; play-off names only once the real milestone field is reached.
-  const nextLabel = pool ? `Round ${nextRound}` : reached || target == null && field.active.length <= 8 ? labelForActive(field.active.length) : `Round ${nextRound}`;
-  const playBy = !reached ? milestone.roundDates[nextRound - 1] ?? null : null;
+  const steps = useMemo(() => playoffSteps(plan as any, key), [plan, key]);
+  const today = new Date().toISOString().slice(0, 10);
+  // One state machine: reaching the field size never opens a play-off stage by itself.
+  const ks: KoRoundState = pool
+    ? (reached ? { kind: "no_elimination", label: `Round ${nextRound}` } : basePlan.thisRound > 0 ? { kind: "pre_round", label: `Round ${nextRound}`, count: basePlan.thisRound } : { kind: "no_elimination", label: `Round ${nextRound}` })
+    : koRoundState({ active: field.active.length, nextRound, milestone, steps, plan: basePlan, today });
+  const pp = { ...basePlan, thisRound: ks.kind === "pre_round" || ks.kind === "playoff" ? ks.count : 0 };
+  const nextLabel = ks.kind === "waiting_for_stage" ? ks.stage : ks.label;
+  const playBy = ks.kind === "pre_round" ? milestone.roundDates[nextRound - 1] ?? null : ks.kind === "playoff" ? steps.find((s) => s.label === ks.label)?.date ?? null : null;
 
   const proposal = useMemo(() => proposePairings(field.active, pp.thisRound, pairing), [field.active, pp.thisRound, pairing]);
   const [pairs, setPairs] = useState<Array<[string, string]>>([]);

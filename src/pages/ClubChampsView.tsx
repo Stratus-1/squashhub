@@ -26,6 +26,9 @@ import { classifyEntrant, type EntrantCategory } from "@/lib/tournaments/entrant
 import { cn } from "@/lib/utils";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { configuredKnockoutPools } from "@/lib/tournaments/active-draw";
+import { activeField, fieldSizeForStage, playoffSteps } from "@/lib/tournaments/paced-knockout";
+import { tournamentSummary, type SummaryFixture } from "@/lib/tournaments/tournament-summary";
+import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { divisionPools } from "@/lib/tournaments/active-draw";
 
 import { getTournamentFormat } from "@/lib/tournament-formats";
@@ -128,8 +131,8 @@ export default function ClubChampsView() {
   const { data: arch } = useQuery({
     queryKey: ["club-champ-arch", champId],
     queryFn: async () => {
-      const { data } = await fromExt("tournaments").select("builder_architecture,builder_spec").eq("id", champId!).maybeSingle();
-      return data as { builder_architecture?: string; builder_spec?: any } | null;
+      const { data } = await fromExt("tournaments").select("builder_architecture,builder_spec,beta_lifecycle").eq("id", champId!).maybeSingle();
+      return data as { builder_architecture?: string; builder_spec?: any; beta_lifecycle?: any } | null;
     },
     enabled: !!champId,
   });
@@ -1204,6 +1207,36 @@ export default function ClubChampsView() {
     (m.player_b_member_id
       ? (matchIsDoubles(m) ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b))
       : (m.placeholder_b || "TBD")) + hcLabel(m.handicap_b);
+
+  // Saved games, not pool rank/colour, determine the late-stage overview.
+  const structuredSummary = isStructured && !diamondEvent && arch?.builder_spec?.divisions?.length ? (() => {
+    const spec = arch.builder_spec;
+    const plan = arch.beta_lifecycle?.format_plan ?? null;
+    const categories = (spec.divisions as any[]).map((d: any) => {
+      const group = divisionGroup(spec, d);
+      const steps = playoffSteps(plan, unitKeyOf(d.label || ""));
+      const first = steps[0];
+      const firstStage = first ? /quarter|\bqf\b/i.test(first.label) ? "qf" as const : /semi|\bsf\b/i.test(first.label) ? "sf" as const : "final" as const : null;
+      const field = activeField(
+        (entries as any[]).filter((e: any) => Number(e.group_number) === group).map((e: any) => ({ id: e.club_member_id, partnerId: e.partner_member_id })),
+        (matches as any[]).filter((m: any) => Number(m.group_number) === group && (m.stage === "ko" || /knockout/i.test(m.stage || ""))),
+      );
+      return { group, label: d.label || getGroupLabel(champ, group), firstStage,
+        fieldReady: !!first && field.active.length > 0 && field.active.length <= (fieldSizeForStage(first.label) ?? 0) && !field.roundOpen };
+    });
+    return tournamentSummary(categories, matches as SummaryFixture[]);
+  })() : [];
+
+  const summaryMatch = (m: SummaryFixture) => {
+    const row = m as any;
+    const result = playoffResult(m);
+    return <div key={m.id} className="text-xs leading-5 break-words">
+      <span className={cn(result.winnerSide === "a" && "font-semibold")}>{getMatchTeamA(row)}</span>
+      <span className="text-muted-foreground"> vs </span>
+      <span className={cn(result.winnerSide === "b" && "font-semibold")}>{getMatchTeamB(row)}</span>
+      {(m.score || result.score) && <span className="text-muted-foreground"> · {m.score || result.score}</span>}
+    </div>;
+  };
 
   /**
    * The player/pair that actually receives a bye. Byes can be stored on either
@@ -3588,6 +3621,20 @@ export default function ClubChampsView() {
           </CardContent></Card>
         )}
         {summary}
+        {structuredSummary.length > 0 && <Card data-testid="tournament-summary">
+          <CardHeader className="py-3 px-4"><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4 text-primary" />Tournament Summary</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-3 pt-0">
+            <div className="hidden md:grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)] gap-3 border-b pb-1 text-xs text-muted-foreground font-medium">
+              <span>Category</span><span>Semifinals</span><span>Final</span><span>Winner</span>
+            </div>
+            {structuredSummary.map((r) => <div key={r.category.group} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)] gap-2 md:gap-3 border-b last:border-b-0 py-2.5 min-w-0">
+              <div className="min-w-0"><span className="font-semibold text-sm break-words">{r.category.label}</span><p className="text-xs text-muted-foreground">{r.status}</p></div>
+              <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Semifinals</span>{r.semifinals.length ? r.semifinals.map(summaryMatch) : <span className="text-xs text-muted-foreground">{r.quarterfinals.length ? "Quarterfinals in progress" : r.category.firstStage === "final" ? "Not configured" : r.category.fieldReady ? "Field ready" : "Awaiting qualification"}</span>}</div>
+              <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Final</span>{r.finals.length ? r.finals.map(summaryMatch) : <span className="text-xs text-muted-foreground">Awaiting finalists</span>}</div>
+              <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Winner</span>{r.champion ? <span className="inline-flex items-start gap-1 text-xs font-bold text-primary break-words"><Trophy className="h-3.5 w-3.5 shrink-0" />{playoffResult(r.champion).winnerSide === "a" ? getMatchTeamA(r.champion) : getMatchTeamB(r.champion)}</span> : <span className="text-xs text-muted-foreground">—</span>}</div>
+            </div>)}
+          </CardContent>
+        </Card>}
         {!isStructured && <TournamentNextActionBar
           champId={champId!}
           canManage={canManage}

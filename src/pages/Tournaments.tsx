@@ -931,7 +931,7 @@ export default function Tournaments() {
                               }
                               if (booked) toast.success(`Assigned ${booked} game${booked === 1 ? "" : "s"} to courts`);
                               if (notes.length) toast.warning(notes.join("\n"));
-                              queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+                              qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
                             } catch (err: any) { toast.error(err.message); }
                           }}
                         >

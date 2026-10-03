@@ -32,4 +32,8 @@ describe("tournament summary", () => {
     expect(rows[1].finals).toHaveLength(1);
     expect(rows[1].semifinals).toHaveLength(0);
   });
+  it("never names a champion from an unfinished Final, even with a winner id", () => {
+    const pending = { ...fixture(2, "Final", "a", "b", "a"), status: "in_progress" };
+    expect(tournamentSummary(cats, [pending])[0].champion).toBeNull();
+  });
 });

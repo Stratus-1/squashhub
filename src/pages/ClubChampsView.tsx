@@ -1234,8 +1234,7 @@ export default function ClubChampsView() {
       <span className={cn(result.winnerSide === "a" && "font-semibold")}>{getMatchTeamA(row)}</span>
       <span className="text-muted-foreground"> vs </span>
       <span className={cn(result.winnerSide === "b" && "font-semibold")}>{getMatchTeamB(row)}</span>
-      {result.score && <span className="text-muted-foreground"> · {result.score}</span>}
-      {result.winnerSide && <span className="text-muted-foreground"> · Winner: {result.winnerSide === "a" ? getMatchTeamA(row) : getMatchTeamB(row)}</span>}
+      {(m.score || result.score) && <span className="text-muted-foreground"> · {m.score || result.score}</span>}
     </div>;
   };
 

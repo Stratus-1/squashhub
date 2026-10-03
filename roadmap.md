@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Restore one read-only all-category Tournament Summary above detailed Standings, using formal playoff fixtures/results in configured category order; verified NSP Knock out on desktop and mobile without changing data.
+
 - [x] Keep exactly three tournament creation choices; Diamond League lives under Pre-built templates and hands off to the existing setup. Preview only.
 - [x] Remove orphaned Step-by-Step Continue managing cards by checking club tournaments; add confirmed local-only build removal and immediate refresh, preserving live tournament data.
 - [ ] Beta category type (Men's/Ladies/Open/Mixed) required at parent, inherited by subcategories; eligibility across admin/player entry, invites, grouping, doubles, and Diamond slots; server validation; historical data untouched.

@@ -14,6 +14,7 @@ import { recommendPools, type PoolPlan, type PoolReview } from "@/lib/smart-buil
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { poolAssignmentIssues } from "@/lib/tournaments/pool-boundaries";
 import { specDateIssues } from "@/lib/tournaments/date-window";
+import { milestoneFor, pacePlan, type KnockoutPairing } from "@/lib/tournaments/paced-knockout";
 
 export type DrawKind = "pools" | "round_robin" | "knockout" | "swiss" | "cross";
 export type DrawSeeding = "entry_order" | "random" | "ladder" | "ranking";
@@ -32,6 +33,8 @@ export type DivFormat = {
   crossGroups: number[];
   /** cross: "Choose which groups play each other" — the exact groups this one plays. null/undefined = all selected groups play each other. */
   crossVs?: number[] | null;
+  /** knockout: paced week-by-week plan (Builder "Knockout pace"). Absent = classic full first round. */
+  paced?: { pairing: KnockoutPairing; target: number | null; rounds: number | null; label: string | null } | null;
 };
 export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null };
 export type DrawUnit = { member: string; partner: string | null };
@@ -227,7 +230,13 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
     : kind && kind !== "knockout" && po.choice === "playoffs"
       ? (po.rounds === 1 ? ["Final"] : po.rounds === 2 ? ["Semi-final", "Final"] : ["Quarter-final", "Semi-final", "Final"]) : [];
   const playoffPlans = planned.length ? planned.map((s) => s.plan) : playoffs.map(() => null);
-  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
+  let paced: DivFormat["paced"] = null;
+  if (kind === "knockout" && f.koPace === "paced") {
+    const m = milestoneFor(plan as any, key);
+    paced = { pairing: f.koPairing === "traditional" ? "traditional" : "progressive", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
+    notes.push(m.source === "none" ? "Paced knockout without a play-off milestone: Round 1 plays a paced share; later rounds are confirmed week by week in Manage Tournament." : `Paced knockout towards ${m.label} (${m.source === "shared" ? "shared tournament stage" : "this category's own stage"}); only Round 1 is created now — later rounds are confirmed week by week in Manage Tournament.`);
+  }
+  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null, paced }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
 }
 
 /* ── pools preview (source of truth for Generate) ── */
@@ -448,6 +457,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
         poolMembers: kind === "pools" || kind === "round_robin" ? poolsFor(d, mode) ?? undefined : undefined,
         swissRounds: kind === "swiss" ? f.swissRounds : undefined,
         drawSize: kind === "knockout" ? nextPow2(n) : undefined,
+        paced: kind === "knockout" && f.paced ? (() => { const p = pacePlan({ active: n, target: f.paced.target, roundsLeft: f.paced.rounds, pace: "paced", milestoneLabel: f.paced.label }); return p.thisRound > 0 ? { count: p.thisRound, pairing: f.paced.pairing } : undefined; })() : undefined,
         discipline: d.doubles ? "doubles" : "singles",
         schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id)),
       } as any, version, d),
@@ -495,7 +505,8 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
       const rounds = Math.max(0, ...fx0.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1));
       const d = divs.find((x) => x.group === sd.groupNumber)!;
       for (const g of (sd as any).entryGroups ?? [sd.groupNumber]) out.roundsByGroup[g] = rounds;
-      if (d.format.schedule.rule === "play_by") { const e = roundDeadlines(d.format.schedule, rounds).error; if (e) errors.push(`${sd.label}: ${e}`); }
+      // Knockout categories are paced week by week in Manage Tournament — never judged by round-robin round counts.
+      if (d.format.schedule.rule === "play_by" && d.format.kind !== "knockout") { const e = roundDeadlines(d.format.schedule, rounds).error; if (e) errors.push(`${sd.label}: ${e}`); }
     }
     if (errors.length) return out;
     const spec = withEntrants(finalDrawSpec(name, divs, version, poolMode), divs);

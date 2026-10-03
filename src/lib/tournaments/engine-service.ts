@@ -2,6 +2,7 @@ import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
+import { proposePairings } from "./paced-knockout";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -191,6 +192,12 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
 }
 
 function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seeded: Array<string | null>): EngineFixture[] {
+  if (st.paced && st.paced.count > 0) {
+    // Paced knockout: only this round's matches; nobody else is drawn or eliminated.
+    const field = seeded.filter(Boolean).map((id, i) => ({ id: id as string, rank: i + 1 }));
+    const { pairs } = proposePairings(field, st.paced.count, st.paced.pairing);
+    return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, slot: i + 1, a: a.id, b: b.id }));
+  }
   const size = st.drawSize ?? nextPow2(seeded.length);
   const order = bracketOrder(size);
   const at = (seed: number) => seeded[seed - 1] ?? null;

@@ -71,7 +71,7 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
     const onVisible = () => { if (document.visibilityState === "visible") void refreshHandovers(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [clubId]);
+  }, [clubId, managing, stepByStepOpen]);
   const navigate = useNavigate();
   const [diamondOpen, setDiamondOpen] = useState(false);
 

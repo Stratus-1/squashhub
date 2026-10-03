@@ -141,6 +141,13 @@
       "when": 1791028325069,
       "tag": "0019_validate_beta_doubles_pair_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791028360854,
+      "tag": "0020_allow_invited_beta_partners_before_registration",
+      "breakpoints": true
     }
   ]
 }

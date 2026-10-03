@@ -495,7 +495,8 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
       const rounds = Math.max(0, ...fx0.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1));
       const d = divs.find((x) => x.group === sd.groupNumber)!;
       for (const g of (sd as any).entryGroups ?? [sd.groupNumber]) out.roundsByGroup[g] = rounds;
-      if (d.format.schedule.rule === "play_by") { const e = roundDeadlines(d.format.schedule, rounds).error; if (e) errors.push(`${sd.label}: ${e}`); }
+      // Knockout categories are paced week by week in Manage Tournament — never judged by round-robin round counts.
+      if (d.format.schedule.rule === "play_by" && d.format.kind !== "knockout") { const e = roundDeadlines(d.format.schedule, rounds).error; if (e) errors.push(`${sd.label}: ${e}`); }
     }
     if (errors.length) return out;
     const spec = withEntrants(finalDrawSpec(name, divs, version, poolMode), divs);

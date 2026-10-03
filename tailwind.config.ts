@@ -63,6 +63,8 @@ export default {
         "seed-top": "hsl(var(--seed-top))",
         "seed-lower": "hsl(var(--seed-lower))",
         "seed-out": "hsl(var(--seed-out))",
+        "pool-survivor": "hsl(var(--pool-survivor))",
+        "pool-eliminated": "hsl(var(--pool-eliminated))",
         loss: "hsl(var(--loss))",
         reschedule: {
           DEFAULT: "hsl(var(--reschedule))",

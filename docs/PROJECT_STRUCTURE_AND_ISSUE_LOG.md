@@ -2466,3 +2466,6 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Cause: Structured engine panel decided "stage exists" by stage key across ALL draws (keys repeat per draw), so once Men's A had Semifinals the other four draws lost their Start button; the manual start path also skipped booking the planned fixed session, leaving SFs with a date but no time/court (read as player-arranged). Tournaments page fell back to milestone play-off deadlines for structured play-offs.
 - Fix: per-draw existence check (stage_key + group_number); manual start/confirm now books the target stage's planned session; structured play-offs never take a fallback play-by. Tests: src/test/per-draw-semifinals.test.ts (5 draws → 10 SFs, partial readiness, SF scheduling from SF stage only).
 - River 2 Clubs: created SFs for the 4 missing draws via the normal engine; all 10 SFs booked on 25 Oct 16:25–20:25 per the Semifinal stage; earlier games unchanged.
+
+### 2026-10-03 — Historical pool survivor colours
+- Structured historical pool rows use theme-aware green for players still alive and light pink/red for eliminated players once progression is known. Eliminated names keep their strike-through; historical position and statistics are unchanged. Unresolved pre-progression tables stay neutral. No tournament records or notifications changed.

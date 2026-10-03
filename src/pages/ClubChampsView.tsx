@@ -773,6 +773,7 @@ export default function ClubChampsView() {
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
+    const hasProgress = opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
 
     return (
       <div className="overflow-x-auto">
@@ -818,7 +819,11 @@ export default function ClubChampsView() {
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={opts?.historical ? undefined : rowStyle} className={cn("border-b border-border/30", progress?.eliminated && "opacity-65", isMe && "font-semibold ring-2 ring-inset ring-primary/60")}>
+                <tr key={s.id} style={opts?.historical ? undefined : rowStyle} className={cn(
+                  "border-b border-border/30",
+                  hasProgress && (progress?.eliminated ? "bg-pool-eliminated" : "bg-pool-survivor"),
+                  isMe && "font-semibold ring-2 ring-inset ring-primary/60"
+                )}>
                   <td className="py-2 text-muted-foreground">{i + 1}</td>
                   <td className="py-2 font-medium min-w-24">
                     <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2 text-muted-foreground")}>{s.name}</span>

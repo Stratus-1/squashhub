@@ -2910,7 +2910,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const saveDraft = async () => {
     if (!clubId) return editingChampId;
     if (!champName.trim() && !editingChampId) return editingChampId;
-    const defaultName = `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
+    const defaultName = diamondMode ? `Diamond League ${new Date().getFullYear()}` : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
     const rawPayload: Record<string, any> = {
       name: champName || defaultName,
       gender,
@@ -5657,7 +5657,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
       let champId: string;
       const existingChampId = draftChampId || editingChampId;
-      const defaultName = `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
+      const defaultName = diamondMode ? `Diamond League ${new Date().getFullYear()}` : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (existingChampId) {
         // PHASE 3b GUARD: a locked draw is frozen — refuse to rebuild fixtures.
@@ -7159,7 +7159,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             action: "club-send",
             clubId,
             to: parsedEmail,
-            subject: `${champName || "Tournament"} — invitation (test)`,
+            subject: `${champName || (diamondMode ? "Diamond League" : "Tournament")} — invitation (test)`,
             body: buildInviteBody(),
             url: previewUrl,
             ctaLabel: "Accept / Register",
@@ -7270,7 +7270,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               action: "club-send",
               clubId,
               to: myEmail,
-              subject: `TEST — ${champName || "Tournament"} invitation`,
+              subject: `TEST — ${champName || (diamondMode ? "Diamond League" : "Tournament")} invitation`,
               body,
               url: testUrl,
               ctaLabel: "Accept / Register",
@@ -13879,7 +13879,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardHeader><CardTitle>Review & Generate</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
-              <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
+              <p><strong>Name:</strong> {champName || (diamondMode ? `Diamond League ${new Date().getFullYear()}` : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`)}</p>
               <p><strong>Type:</strong> {diamondMode ? "Diamond League team competition" : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"}`}</p>
               <p><strong>{diamondMode ? "Teams" : isDoubles ? "Pairs" : "Players"}:</strong> {diamondMode ? `${diamondDraft.teams.length} teams · ${diamondDraft.config.playersPerTeam} players per team · ${diamondDraft.teams.length * diamondDraft.config.playersPerTeam} places` : awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>

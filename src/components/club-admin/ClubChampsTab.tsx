@@ -545,13 +545,13 @@ function buildInviteDetailLines(opts: {
     new Set((opts.divisionFormats?.length ? opts.divisionFormats : [opts.roundFormat]).filter(Boolean))
   );
   const effective = formats.length ? formats : ["single_round_robin"];
-  lines.push(
-    `Draw format: ${effective.map((f) => FORMAT_LABELS[f] || f).join(" · ")}`
-  );
+  lines.push(opts.diamondLeague
+    ? "Draw format: Two team divisions · round-robin ties, followed by placing rounds"
+    : `Draw format: ${effective.map((f) => FORMAT_LABELS[f] || f).join(" · ")}`);
 
   // Byes only mean something where every entrant is scheduled against the
   // field — a knockout-only draw has no bye scoring rule to report.
-  if (effective.some((f) => f !== "knockout")) {
+  if (!opts.diamondLeague && effective.some((f) => f !== "knockout")) {
     const byeLabel =
       opts.byeHandling === "walkover_win"
         ? "Walkover win — full points"

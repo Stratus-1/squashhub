@@ -1,3 +1,4 @@
+import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
@@ -68,6 +69,9 @@ export interface EngineFixture extends FixtureRow {
   courtId?: number | null;
   /** mapped stages: the matchup in pool-position terms, e.g. "A1+A2 v B1+B2". */
   label?: string;
+  /** stage_winners stages: fixed feeder labels persisted as placeholders, e.g. "Winner QF1". */
+  placeholderA?: string | null;
+  placeholderB?: string | null;
 }
 
 const poolId = (div: string, stage: string, i: number) => `${div}:${stage}:pool${i + 1}`;
@@ -129,7 +133,11 @@ export function generateStage(tid: string, d: SpecDivision, st: PlannedStage): E
 export function mappedFixtures(tid: string, d: SpecDivision, st: PlannedStage, positions: string[][]): EngineFixture[] {
   const issues = mappingIssues(st.mapping, st.name);
   if (issues.length) throw new IntegrityError("mapping", issues.join("; "));
+  const src = st.mapping!.source === "stage_winners" ? d.stages.find((s) => s.id === st.mapping!.sourceStageId) : null;
+  const unitPos = new Map(st.mapping!.units.map((u) => [u.id, u.slots[0]?.position]));
+  const feeder = (u: string) => (src ? `Winner ${stageShort(src.name)}${unitPos.get(u)}` : null);
   return resolveMapping(st.mapping!, positions).map((x) => ({
+    ...(src ? { placeholderA: feeder(x.a), placeholderB: feeder(x.b) } : {}),
     tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "mapped" as const,
     roundId: `${st.id}:r${x.round}`, round: x.round, poolId: null, slot: x.order, a: x.aId, b: x.bId,
     // Play-off stages carry their real name (Semifinals / Final) so pages and result messages recognise them.

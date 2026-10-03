@@ -39,6 +39,32 @@ export interface HistoricalPoolStatus {
 export interface PlayoffDisplayMatch extends PlayoffMatchLike {
   displayId: string;
   projected: boolean;
+  /** Fixed feeder text for an empty slot, e.g. "Winner QF1". */
+  feederA?: string | null;
+  feederB?: string | null;
+  /** Where this game's winner goes, e.g. "Semifinals 1". */
+  feedsInto?: string | null;
+}
+
+/** Short stage prefix for feeder labels: Quarterfinals → QF, Semifinals → SF. */
+export function stageShort(name: string): string {
+  const n = name.toLowerCase();
+  if (n.startsWith("quarter")) return "QF";
+  if (n.startsWith("semi")) return "SF";
+  if (n.startsWith("final")) return "Final";
+  return name;
+}
+
+/**
+ * Fixed knockout feeder paths. For a `stage_winners` stage, returns per next-stage game the source
+ * game numbers (bracket positions) whose winners fill side A and side B. Never looks at results,
+ * standings or pools — the bracket alone decides who meets whom.
+ */
+export function knockoutFeeders(stage: StructuredStageLike): Array<{ order: number; a: number | null; b: number | null }> {
+  const m = stage.mapping;
+  if (m?.source !== "stage_winners") return [];
+  const pos = new Map((m.units ?? []).map((u) => [u.id, u.slots[0]?.position ?? null]));
+  return [...(m.matches ?? [])].sort((x, y) => x.order - y.order).map((x) => ({ order: x.order, a: pos.get(x.a) ?? null, b: pos.get(x.b) ?? null }));
 }
 
 export interface PlayoffDisplayStage {
@@ -105,35 +131,45 @@ export function historicalPoolStatuses(
   return out;
 }
 
-/** Existing play-off stages plus the next stage projected from decided winners. */
+/**
+ * Existing play-off stages plus the next stage projected through FIXED feeder paths. Slots whose
+ * feeder game is undecided show "Winner QF1"-style labels; decided slots show the actual winner.
+ */
 export function playoffDisplayStages(division: StructuredDivisionLike, matches: PlayoffMatchLike[]): PlayoffDisplayStage[] {
   const stages = [...division.stages].sort((a, b) => a.order - b.order).slice(1);
   const result: PlayoffDisplayStage[] = [];
-  for (const stage of stages) {
+  for (let i = 0; i < stages.length; i++) {
+    const stage = stages[i];
+    const next = stages[i + 1];
+    const feedsMap = new Map<number, string>();
+    if (next) knockoutFeeders(next).forEach((f) => { [f.a, f.b].forEach((p) => p != null && feedsMap.set(p, `${next.name} ${f.order}`)); });
     const existing = orderMatches(matches.filter((m) => m.stage_key === stage.id));
     if (existing.length) {
-      result.push({ id: stage.id, name: stage.name, projected: false, matches: existing.map((m, i) => ({ ...m, displayId: String(m.id ?? `${stage.id}-${i}`), projected: false })) });
+      result.push({ id: stage.id, name: stage.name, projected: false, matches: existing.map((m, k) => ({ ...m, displayId: String(m.id ?? `${stage.id}-${k}`), projected: false, feedsInto: feedsMap.get(Number(m.bracket_position) || k + 1) ?? null })) });
       continue;
     }
     const mapping = stage.mapping;
     if (mapping?.source !== "stage_winners" || !mapping.sourceStageId) break;
+    const srcStage = stages.find((s) => s.id === mapping.sourceStageId);
     const source = orderMatches(matches.filter((m) => m.stage_key === mapping.sourceStageId));
-    if (!source.length || !source.every(decided)) break;
-    const winners = source.map(winnerUnit);
-    const units = new Map((mapping.units ?? []).map((u) => [u.id, winners[(u.slots[0]?.position ?? 0) - 1] ?? []]));
-    const projected = [...(mapping.matches ?? [])].sort((a, b) => a.order - b.order).map((m) => {
-      const a = units.get(m.a) ?? [], b = units.get(m.b) ?? [];
+    if (!source.length) break;
+    const byPos = new Map(source.map((m, k) => [Number(m.bracket_position) || k + 1, m]));
+    const short = stageShort(srcStage?.name ?? "Game");
+    const side = (p: number | null) => {
+      const m = p == null ? undefined : byPos.get(p);
+      const ids = m && decided(m) ? winnerUnit(m) : [];
+      return { ids, label: p == null ? null : `Winner ${short}${p}` };
+    };
+    const projected = knockoutFeeders(stage).map((f) => {
+      const a = side(f.a), b = side(f.b);
       return {
-        displayId: `${stage.id}-${m.order}`,
-        stage_key: stage.id,
-        player_a_member_id: a[0] ?? null,
-        partner_a_member_id: a[1] ?? null,
-        player_b_member_id: b[0] ?? null,
-        partner_b_member_id: b[1] ?? null,
-        projected: true,
+        displayId: `${stage.id}-${f.order}`, stage_key: stage.id, bracket_position: f.order,
+        player_a_member_id: a.ids[0] ?? null, partner_a_member_id: a.ids[1] ?? null,
+        player_b_member_id: b.ids[0] ?? null, partner_b_member_id: b.ids[1] ?? null,
+        feederA: a.label, feederB: b.label, feedsInto: feedsMap.get(f.order) ?? null, projected: true,
       };
     });
-    if (!projected.length || projected.some((m) => !m.player_a_member_id || !m.player_b_member_id)) break;
+    if (!projected.length) break;
     result.push({ id: stage.id, name: stage.name, projected: true, matches: projected });
     break;
   }

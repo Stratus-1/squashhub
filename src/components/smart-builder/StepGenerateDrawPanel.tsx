@@ -324,7 +324,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const change = (pi: number, next: Array<[string, string]>) => setRound1(d.group, pools.map((_, k) => (k === pi ? next : groups[k] ?? [])));
     return (
       <div className="space-y-2 rounded border border-primary/40 bg-primary/5 p-2" aria-label={`Round 1 matches for ${d.label}`}>
-        <div className="font-medium">Round 1 matches — review before creating</div>
+        <div className="font-medium">Initial Round 1 proposal — review before creating</div>
         <p className="text-muted-foreground">Nothing is created until you press Generate below. Only these Round 1 matches are created; everyone not listed stays in (waiting is not a loss). Later rounds are proposed in Manage Tournament after results.</p>
         {pools.map((members, pi) => {
           const list = groups[pi] ?? [];
@@ -403,6 +403,25 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   };
 
   if (loading) return <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading current entries…</div>;
+
+  // Running tournament (any game played or started): setup never proposes, previews or creates fixtures again.
+  if (existing.played > 0) {
+    const q = new URLSearchParams({ tab: "champs", manage: tournamentId });
+    const club = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("club") : null;
+    if (club) q.set("club", club);
+    return (
+      <div className="space-y-2 rounded border border-primary/50 bg-primary/10 p-3 text-xs" data-testid="draw-running-notice">
+        <div className="font-medium">Tournament is running · {existing.games} game{existing.games === 1 ? "" : "s"} saved · {existing.played} played or started</div>
+        <p>Round pairings and fixture approvals are managed in Manage Tournament. Structural settings (pace, pairing strategy, pools, play-by dates, play-off stages) can still be reviewed here, but saving them never regenerates or deletes existing games. If a change would no longer fit the running draw, make it from Manage Tournament instead.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" asChild><Link to={`/club-admin?${q.toString()}`}>Go to Manage Tournament<ChevronRight className="ml-1 h-4 w-4" /></Link></Button>
+          <Button size="sm" variant="outline" asChild><Link to={`/club-champs/${tournamentId}`}>Open draw & results</Link></Button>
+        </div>
+      </div>
+    );
+  }
+  // A saved but unplayed draw is only re-proposed when the organiser explicitly chooses to replace it.
+  const showProposal = !hasDraw || rebuildOk;
 
   return (
     <div className="space-y-3 text-xs">
@@ -535,7 +554,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 })}</div>
               </div>
             )}
-            {f.kind === "knockout" && proposals.has(d.group) && round1Editor(d)}
+            {f.kind === "knockout" && proposals.has(d.group) && showProposal && round1Editor(d)}
             {d.playoffs.length > 0 && <p className="text-muted-foreground">Planned play-offs: {d.playoffs.join(" → ")} — kept as "Define later", created after this stage finishes.</p>}
             {d.notes.map((n) => <p key={n} className="text-muted-foreground">• {n}</p>)}
             {issues.length > 0 && <p className="text-destructive">Fix: {issues.join(" · ")}</p>}
@@ -589,7 +608,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <p className="text-muted-foreground">No other cross-group games and no games within a group.</p>
         </div>
       )}
-      {preview && errors.length === 0 && (
+      {preview && errors.length === 0 && showProposal && (
         <div className="rounded border border-border bg-muted/40 p-2">
           <div className="font-medium">Preview — {preview.total} games will be created</div>
           <ul className="mt-1 space-y-0.5">{preview.divisions.map((p) => (

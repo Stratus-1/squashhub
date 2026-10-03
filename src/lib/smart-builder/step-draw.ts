@@ -14,7 +14,7 @@ import { recommendPools, type PoolPlan, type PoolReview } from "@/lib/smart-buil
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { poolAssignmentIssues } from "@/lib/tournaments/pool-boundaries";
 import { specDateIssues } from "@/lib/tournaments/date-window";
-import { milestoneFor, pacePlan, type KnockoutPairing } from "@/lib/tournaments/paced-knockout";
+import { milestoneFor, pacePlan, poolKnockoutTarget, pooledRoundCounts, type KnockoutPairing } from "@/lib/tournaments/paced-knockout";
 
 export type DrawKind = "pools" | "round_robin" | "knockout" | "swiss" | "cross";
 export type DrawSeeding = "entry_order" | "random" | "ladder" | "ranking";
@@ -35,7 +35,13 @@ export type DivFormat = {
   crossVs?: number[] | null;
   /** knockout: paced week-by-week plan (Builder "Knockout pace"). Absent = classic full first round. */
   paced?: { pairing: KnockoutPairing; target: number | null; rounds: number | null; label: string | null } | null;
+  /** knockout: milestone + pace for knockout INSIDE pools (pools > 1). Pools are a partition; elimination, never round robin. */
+  ko?: { pace: "paced" | "immediate"; pairing: KnockoutPairing; target: number | null; rounds: number | null; label: string | null } | null;
 };
+/** Knockout tournament whose entrants are split into pools (each pool eliminates down to its qualifiers). */
+export const isPooledKnockout = (f: DivFormat) => f.kind === "knockout" && f.pools > 1;
+/** Formats whose pools are real partitions of the field. */
+const hasPools = (f: DivFormat) => f.kind === "pools" || isPooledKnockout(f);
 export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null };
 export type DrawUnit = { member: string; partner: string | null };
 export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; blockers?: string[];
@@ -55,6 +61,11 @@ export function formatWithPoolRule(format: DivFormat, rule: PoolPlan | null, ent
   if (rule.mode === "auto" && (format.kind === "pools" || format.kind === "round_robin")) {
     const count = Math.max(1, recommendPools(entrants, Number(rule.target) || 5).length);
     return { ...format, kind: count > 1 ? "pools" : "round_robin", pools: count };
+  }
+  // Knockout + pools: the pools only partition the field; the format stays knockout.
+  if (format.kind === "knockout") {
+    if (rule.mode === "none") return { ...format, pools: 1 };
+    if (rule.mode === "auto") return { ...format, pools: Math.max(1, recommendPools(entrants, Number(rule.target) || 5).length) };
   }
   return format;
 }
@@ -236,7 +247,12 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
     paced = { pairing: f.koPairing === "traditional" ? "traditional" : "progressive", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
     notes.push(m.source === "none" ? "Paced knockout without a play-off milestone: Round 1 plays a paced share; later rounds are confirmed week by week in Manage Tournament." : `Paced knockout towards ${m.label} (${m.source === "shared" ? "shared tournament stage" : "this category's own stage"}); only Round 1 is created now — later rounds are confirmed week by week in Manage Tournament.`);
   }
-  return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null, paced }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
+  let ko: DivFormat["ko"] = null;
+  if (kind === "knockout") {
+    const m = milestoneFor(plan as any, key);
+    ko = { pace: f.koPace === "paced" ? "paced" : "immediate", pairing: f.koPairing === "progressive" ? "progressive" : f.koPairing === "traditional" ? "traditional" : f.koPace === "paced" ? "progressive" : "traditional", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
+  }
+  return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
 }
 
 /* ── pools preview (source of truth for Generate) ── */
@@ -250,12 +266,12 @@ export function defaultPools(units: DrawUnit[], n: number, mode: PoolAllocationM
 }
 /** Pools shown and saved: the organiser's arrangement when they moved anyone, else the default. Null = format has no pools. */
 export function poolsFor(d: DrawDivision, mode: PoolAllocationMode = "snake"): string[][] | null {
-  if (d.format.kind === "pools") return d.manualPools ?? defaultPools(d.units, d.format.pools, mode);
+  if (hasPools(d.format)) return d.manualPools ?? defaultPools(d.units, d.format.pools, mode);
   if (d.format.kind === "round_robin") return [d.units.map(unitId)];
   return null;
 }
 function poolBlocks(d: DrawDivision): string[] {
-  if (d.format.kind !== "pools") return [];
+  if (!hasPools(d.format)) return [];
   const out: string[] = [];
   const pools = poolsFor(d);
   if (d.manualPools && d.manualPools.length !== d.format.pools) out.push("your pool changes no longer match the pool count — reset the pools");
@@ -275,12 +291,13 @@ export function poolWarnings(d: DrawDivision, mode: PoolAllocationMode = "snake"
 export function divisionIssues(d: DrawDivision): string[] {
   const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? []), ...poolBlocks(d)];
   if (d.poolReview?.needsDecision && !d.poolAccepted) out.push(`pools are "Decide after entries close" — review the recommended pools and accept or adjust them`);
-  if (d.poolReview && d.poolReview.mode !== "none" && f.kind !== "cross" && f.kind !== "pools" && f.kind !== "round_robin") out.push(`pools need a within-group round robin; choose Round robin / Pools for this group or turn pools off in setup`);
+  // Pools are a partition. Round robin and knockout both run inside pools; Swiss pairs one field by results.
+  if (d.poolReview && d.poolReview.mode !== "none" && f.kind === "swiss") out.push(`Swiss pairs the whole field by results, so it can't run inside pools — turn pools off for this group or choose Round robin / Knockout`);
   if (f.kind === "cross" && d.poolReview && d.poolReview.mode !== "none") out.push(`pools are set for a group that plays between subcategories — pool-to-pool cross play isn't supported, so choose "No pools" for it in setup (SquashHub won't guess which pools meet)`);
   const u = d.doubles ? "pairs" : "players";
   if (n < (f.kind === "cross" ? 1 : 2)) out.push(`needs at least ${f.kind === "cross" ? 1 : 2} ${u} (has ${n})`);
   if (!f.kind) out.push("choose a format");
-  if (f.kind === "pools" && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
+  if (hasPools(f) && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
   if (f.kind === "swiss" && (f.swissRounds < 1 || f.swissRounds > n - 1)) out.push(`Swiss rounds must be 1–${Math.max(1, n - 1)}`);
   if (f.kind === "cross" && crossOpponents(d).length < 1) out.push(f.crossVs ? "choose at least one group for this group to play" : "cross-league needs this group and at least one other group to play against");
   if (!f.schedule.rule) out.push("choose play-by date or fixed date");
@@ -405,6 +422,18 @@ function stageSchedule(s: DivSchedule, rounds: number | undefined) {
   return { rule: "fixed" as const, date: s.dates[0] ?? null, roundDates: s.dates.length ? [...s.dates] : undefined };
 }
 
+/** Survivors per pool for a pooled knockout (explicit per-pool qualifiers win, else the milestone split evenly). */
+export function pooledKnockoutTarget(d: DrawDivision): number {
+  return poolKnockoutTarget(d.format.ko?.target ?? null, d.format.pools, d.poolQualifiers?.perPool ?? null);
+}
+function pooledPaced(d: DrawDivision, mode: PoolAllocationMode) {
+  const pools = poolsFor(d, mode) ?? [];
+  const ko = d.format.ko;
+  const target = pooledKnockoutTarget(d);
+  const perPool = pooledRoundCounts(pools.map((p) => p.length), { target, roundsLeft: ko?.rounds ?? null, pace: ko?.pace ?? "immediate" });
+  return { count: perPool.reduce((s, x) => s + x, 0), pairing: ko?.pairing ?? "traditional", perPool, poolTarget: target };
+}
+
 export function buildDrawSpec(name: string, divs: DrawDivision[], version: string, opts: SpecOpts = {}): TournamentSpec {
   const mode = opts.poolMode ?? "snake";
   const { sets, meetings } = crossSets(divs);
@@ -452,12 +481,12 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
       placements: "champion", finalStandings: "last_stage", entrants: [],
       ...playoffStagesFor({
         id: `${version}-main`, order: 0, kind, name: kind === "knockout" ? "Knockout" : kind === "swiss" ? "Swiss rounds" : kind === "pools" ? "Pools" : "Round robin",
-        pools: kind === "pools" ? f.pools : undefined,
+        pools: kind === "pools" || isPooledKnockout(f) ? f.pools : undefined,
         poolSize: kind === "pools" ? Math.max(1, ...(poolsFor(d, mode) ?? [[]]).map((p) => p.length)) : undefined,
-        poolMembers: kind === "pools" || kind === "round_robin" ? poolsFor(d, mode) ?? undefined : undefined,
+        poolMembers: kind === "pools" || kind === "round_robin" || isPooledKnockout(f) ? poolsFor(d, mode) ?? undefined : undefined,
         swissRounds: kind === "swiss" ? f.swissRounds : undefined,
-        drawSize: kind === "knockout" ? nextPow2(n) : undefined,
-        paced: kind === "knockout" && f.paced ? (() => { const p = pacePlan({ active: n, target: f.paced.target, roundsLeft: f.paced.rounds, pace: "paced", milestoneLabel: f.paced.label }); return p.thisRound > 0 ? { count: p.thisRound, pairing: f.paced.pairing } : undefined; })() : undefined,
+        drawSize: kind === "knockout" && !isPooledKnockout(f) ? nextPow2(n) : undefined,
+        paced: isPooledKnockout(f) ? pooledPaced(d, mode) : kind === "knockout" && f.paced ? (() => { const p = pacePlan({ active: n, target: f.paced.target, roundsLeft: f.paced.rounds, pace: "paced", milestoneLabel: f.paced.label }); return p.thisRound > 0 ? { count: p.thisRound, pairing: f.paced.pairing } : undefined; })() : undefined,
         discipline: d.doubles ? "doubles" : "singles",
         schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id)),
       } as any, version, d),
@@ -524,7 +553,7 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
       const rd = f.schedule.rule === "play_by" ? roundDeadlines(f.schedule, rounds) : null;
       out.divisions.push({
         groups: (sd as any).entryGroups ?? [sd.groupNumber], label: sd.label, units: sd.entrants.length, games: real.length, byes: mine.length - real.length, rounds,
-        pools: f.kind === "pools" ? f.pools : f.kind === "cross" ? (sd.entryGroups?.length ?? 1) : 1,
+        pools: hasPools(f) ? f.pools : f.kind === "cross" ? (sd.entryGroups?.length ?? 1) : 1,
         schedule: f.schedule.rule === "play_by"
           ? (rd && rd.ranges.length > 1 ? rd.ranges.map((x) => `${x.from === x.to ? `Round ${x.from}` : `Rounds ${x.from}–${x.to}`} play by ${x.deadline}${x.proposed ? " (proposed split)" : ""}`).join("; ") : `Play by ${lastDeadline(f.schedule)}`)
           : `Fixed: ${f.schedule.dates.join(", ")} (times & courts set later)`,

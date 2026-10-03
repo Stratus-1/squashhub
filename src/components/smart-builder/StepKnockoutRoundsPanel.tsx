@@ -16,11 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
-import { labelForActive } from "@/lib/tournaments/active-draw";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import {
-  activeField, byRank, isDecided, milestoneFor, pacePlan, proposePairings, roundsLeftFor,
-  type FieldEntry, type KnockoutPace, type KnockoutPairing,
+  activeField, byRank, isDecided, koRoundState, milestoneFor, pacePlan, playoffSteps, proposePairings, roundsLeftFor,
+  type FieldEntry, type KoRoundState, type KnockoutPace, type KnockoutPairing,
 } from "@/lib/tournaments/paced-knockout";
 
 const INACTIVE_REG = new Set(["declined", "withdrawn", "cancelled", "removed"]);
@@ -178,7 +177,7 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
     } finally { setSaving(false); }
   };
 
-  const status = winner ? "done" : pp.status;
+  const status = winner ? "done" : ks.kind === "waiting_for_stage" ? "done" : pp.status;
   const badge: Record<string, { text: string; cls: string }> = {
     on_track: { text: "On track", cls: "bg-primary/10 text-primary" },
     at_risk: { text: "At risk", cls: "bg-accent text-accent-foreground" },
@@ -199,13 +198,14 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
         <div>
           {milestone.source === "none" ? "No play-off milestone — runs at its own pace" : `${milestone.label}${milestone.date ? ` on ${milestone.date}` : ""} (${milestone.source === "shared" ? "shared tournament stage" : "own stage"})`}
         </div>
-        {!reached && target != null && <div>Eliminations still needed: <span className="text-foreground font-medium">{pp.needed}</span>{roundsLeft != null ? ` over ${roundsLeft} round${roundsLeft === 1 ? "" : "s"}` : ""}</div>}
+        {!reached && target != null && ks.kind === "pre_round" && <div>Eliminations still needed: <span className="text-foreground font-medium">{pp.needed}</span>{roundsLeft != null ? ` over ${roundsLeft} round${roundsLeft === 1 ? "" : "s"}` : ""}</div>}
       </div>
       {pp.warning && !winner && <p className="rounded bg-accent/40 px-2 py-1 text-xs">{pp.warning}</p>}
 
       {poolDone ? <p className="text-xs">Pool complete — qualifiers: {field.active.map((e) => nameOf(e.id)).join(", ")}. Waiting for the other pools before the play-off.</p>
         : winner ? <p>Winner: <span className="font-medium">{nameOf(winner.id)}</span></p>
         : field.roundOpen ? <p className="text-xs">Round {field.lastRound} is in play — {rows.filter((m) => Number(m.round_number) === field.lastRound && !m.is_bye && !isDecided(m)).length} fixture(s) still to finish. The next round is proposed once its results are in.</p>
+        : ks.kind === "waiting_for_stage" ? <p className="text-xs" data-field="ko-waiting">{ks.reason === "field_ready" ? `${ks.stage} field ready` : `No elimination needed before ${ks.stage}`} — waiting for the {ks.stage} stage{ks.date ? ` on ${ks.date}` : ""}. Nothing is created until it opens.</p>
         : pp.thisRound === 0 ? <p className="text-xs text-muted-foreground">No elimination needed this round — everyone stays active.</p>
         : <div className="space-y-2">
             <div className="text-xs font-medium">Proposed {nextLabel}{playBy ? ` · play by ${playBy}` : ""} — {pp.thisRound} match{pp.thisRound === 1 ? "" : "es"}</div>

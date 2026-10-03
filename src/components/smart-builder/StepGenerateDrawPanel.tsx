@@ -119,6 +119,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const rule = poolPlanOf(plan, unitKeyOf(label));
       const review = reviewPools(rule, label.replace(/ · (Singles|Doubles)$/i, ""), r.units.length, doubles ? "pair" : "player");
       p.format = formatWithPoolRule(p.format, rule, r.units.length);
+      // Knockout never plays a round robin, so round-robin game-count warnings do not apply.
+      if (p.format.kind === "knockout") review.warnings = [];
       list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto",
         poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); const q = poolQualificationOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(q.perPool) || null, runnersUp: Number(q.runnersUp) || 0 } : null; })() });
     }

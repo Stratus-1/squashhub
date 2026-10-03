@@ -12,6 +12,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (table: str
 vi.mock("@/hooks/use-tournament-eligibility", () => ({ useOrgHierarchyLite: () => ({ data: null, isLoading: false }) }));
 vi.mock("@/hooks/use-association-tenant", () => ({ useAssociationTenant: () => ({ isAssociation: false, orgId: null }) }));
 vi.mock("@/pages/admin/SmartTournamentBuilder", () => ({ SmartTournamentBuilderCore: () => null }));
+vi.mock("@/components/club-admin/ClubChampsTab", () => ({ ClubChampsTab: ({ launchDiamond }: any) => <div data-testid="diamond-setup">{launchDiamond ? "existing Diamond setup" : "other"}</div> }));
 // Management screen stub: shows which tournament id it opened.
 vi.mock("@/components/smart-builder/StepTournamentManagement", () => ({
   StepTournamentManagement: ({ tournamentId, onBack }: any) => <div><div data-testid="managing">{tournamentId}</div><button onClick={onBack}>Back</button></div>,
@@ -33,6 +34,16 @@ const ui = () => render(<MemoryRouter><ClubTournamentBeta clubId="c1" clubName="
 
 describe("Tournament Beta landing: New vs Continue managing", () => {
   beforeEach(() => { localStorage.clear(); liveIds = [RIV]; lookupFails = false; });
+
+  it("offers exactly three start choices and hands the Diamond pre-built template to the existing setup", () => {
+    ui();
+    expect(screen.getByRole("button", { name: /Build your tournament step by step/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Use one of my templates/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Pre-built templates/ }));
+    expect(screen.getByText("Diamond League")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use template" }));
+    expect(screen.getByTestId("diamond-setup")).toHaveTextContent("existing Diamond setup");
+  });
 
   it("A) manage Riverside → back → Build step by step opens a fresh NEW setup, not Riverside", async () => {
     seed(); ui();

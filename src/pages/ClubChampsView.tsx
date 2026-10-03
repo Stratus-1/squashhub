@@ -50,6 +50,7 @@ import { hasKnockoutStage, winnerMemberIds, winnerRows, eliminatedMemberIds } fr
 
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { resolveFixtureSchedule, stageScheduleIndex } from "@/lib/tournaments/stage-schedule";
 import {
   canScheduleFixture,
   canUnscheduleFixture,
@@ -131,6 +132,9 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
   const isStructured = arch?.builder_architecture === "structured";
+  const stageSched = useMemo(() => stageScheduleIndex(arch?.builder_spec), [arch?.builder_spec]);
+  const centrallyScheduled = (m: any) =>
+    resolveFixtureSchedule(m, { stage: (m?.stage_key && stageSched.get(m.stage_key)) || null }).mode === "scheduled";
   // Beta "between subcategories" matchups: several entry groups share one set of games.
   const matchups = useMemo(() => (isStructured ? structuredMatchups(arch?.builder_spec) : []), [isStructured, arch?.builder_spec]);
 
@@ -2613,6 +2617,9 @@ export default function ClubChampsView() {
   function playByForMatch(m: any): string | null {
     const own = typeof m?.play_by === "string" ? m.play_by.slice(0, 10) : "";
     if (own) return own;
+    if (m?.stage_key && stageSched.get(m.stage_key)) {
+      return resolveFixtureSchedule(m, { stage: stageSched.get(m.stage_key), rows: champRounds as any[] }).playBy;
+    }
     // A fixed session (date + time) is not a play-by fixture; and a structured play-off
     // owns its schedule — never inherit the pool rounds' deadlines.
     if (m?.scheduled_date && m?.scheduled_time) return null;
@@ -2733,7 +2740,7 @@ export default function ClubChampsView() {
           if (completed) return null;
           const nudge = playByNudge(playByForMatch(m), format(new Date(), "yyyy-MM-dd"));
           if (!nudge) return null;
-          const canBook = canScheduleFixture(m, myMemberId, { canManage }).allowed;
+          const canBook = canScheduleFixture(m, myMemberId, { canManage, centrallyScheduled: centrallyScheduled(m) }).allowed;
           const date = playByForMatch(m)!.slice(0, 10);
           const nice = format(new Date(`${date}T00:00:00`), "d MMM");
           return (
@@ -2759,7 +2766,7 @@ export default function ClubChampsView() {
           // Court/date/time for THIS fixture — generated next rounds, semis and
           // finals included. Organisers can always override; players may
           // arrange their own match.
-          const perm = canScheduleFixture(m, myMemberId, { canManage });
+          const perm = canScheduleFixture(m, myMemberId, { canManage, centrallyScheduled: centrallyScheduled(m) });
           if (!perm.allowed) return null;
           const scheduled = fixtureScheduleState(m) === "scheduled";
           return (
@@ -3547,16 +3554,7 @@ export default function ClubChampsView() {
             document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         />}
-        {isStructured && arch?.builder_spec ? (
-          <CollapsibleCard defaultOpen={false} title="Tournament progress — what's next" contentClassName="space-y-2">
-            {arch.builder_spec.divisions.map((d: any) => (
-              <div key={d.divisionId} className="border border-border bg-muted/30 px-3 py-2 text-xs space-y-1">
-                <span className="font-medium">{d.label}</span>
-                <p>{structuredProgressHeadline(d, (matches as any[]).filter((m: any) => m.group_number === divisionGroup(arch.builder_spec, d)))}</p>
-              </div>
-            ))}
-          </CollapsibleCard>
-        ) : <TournamentProgressCard
+        {isStructured ? null : <TournamentProgressCard
 
 
           champId={champId!}

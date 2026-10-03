@@ -44,6 +44,7 @@ import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialo
 import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerButton";
 import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
+import { fixtureRoundRow, resolveFixtureSchedule, stageScheduleIndex, type StageScheduleInfo } from "@/lib/tournaments/stage-schedule";
 import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones } from "@/lib/tournaments/round-definitions";
 import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
@@ -151,6 +152,17 @@ export default function Tournaments() {
     },
     enabled: !!muChampIdsKey,
   });
+  // Target-stage schedules (structured tournaments): stage_key → planned rule/date/time/courts.
+  const { data: stageSchedByChamp } = useQuery({
+    queryKey: ["structured-stage-schedules", muChampIdsKey],
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("id,builder_architecture,builder_spec").in("id", muChampIdsKey.split(","));
+      const m = new Map<string, Map<string, StageScheduleInfo>>();
+      for (const t of (data || []) as any[]) if (t.builder_architecture === "structured") m.set(t.id, stageScheduleIndex(t.builder_spec));
+      return m;
+    },
+    enabled: !!muChampIdsKey,
+  });
   const champById = useMemo(
     () => new Map((allChamps as any[]).map((champ: any) => [champ.id, champ] as const)),
     [allChamps],
@@ -227,7 +239,7 @@ export default function Tournaments() {
     queryFn: async () => {
       if (!champIds.length) return [];
       const { data, error } = await fromExt("club_champs_rounds")
-        .select("champ_id, round_number, group_number, section_number, label, play_by")
+        .select("id, champ_id, round_number, group_number, section_number, label, play_by, stage_key")
         .in("champ_id", champIds);
       if (error) throw error;
       return (data || []) as any[];
@@ -732,19 +744,7 @@ export default function Tournaments() {
    * be at completely different stages (a pool round-5 game and a semi-final),
    * so a fixture must never read another section's row.
    */
-  const matchRoundRow = (m: any): any | undefined => {
-    const rows = roundsByChamp.get(m.champ_id) || [];
-    const sameRound = rows.filter((r: any) => Number(r.round_number) === Number(m.round_number));
-    return (
-      sameRound.find(
-        (r: any) =>
-          Number(r.group_number) === Number(m.group_number) &&
-          Number(r.section_number) === Number(m.section_number),
-      ) ||
-      sameRound.find((r: any) => Number(r.group_number) === Number(m.group_number)) ||
-      undefined
-    );
-  };
+  const matchRoundRow = (m: any): any | undefined => fixtureRoundRow(m, roundsByChamp.get(m.champ_id) || []);
 
   const isGenericRoundLabel = (s: string) => !s || /^round\s*\d+$/i.test(s.trim());
 
@@ -777,24 +777,25 @@ export default function Tournaments() {
    * between leagues, so position in the plan means nothing), and finally to the
    * positional plan entry.
    */
-  const matchPlayBy = (m: any): string | null => {
-    const mine = m?.play_by;
-    if (mine) return String(mine).slice(0, 10);
-    // A game with a fixed date + time is centrally scheduled: no booking deadline.
-    if (m?.scheduled_date && m?.scheduled_time) return null;
-    const own = matchRoundRow(m)?.play_by;
-    if (own) return String(own).slice(0, 10);
+  const matchStage = (m: any): StageScheduleInfo | null =>
+    (m?.stage_key && stageSchedByChamp?.get(m.champ_id)?.get(m.stage_key)) || null;
+  const matchSchedule = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const milestones = parseMilestones((champ as any)?.milestone_play_by);
-    // Structured stages own their schedule: a fixed-session stage has no play-by at all.
-    if (m?.stage_key && isPlayoffGame(m)) return null;
-    // Play-off games only ever take their own play-off round's date.
-    if (isPlayoffGame(m)) return playoffDeadline(milestones, m.stage_label, m.stage);
-    return (
-      deadlineForStage(roundPlan(m.champ_id), m.round_number, matchStageLabel(m), milestones) ??
-      roundMeta(m.champ_id, m.round_number).date
-    );
+    return resolveFixtureSchedule(m, {
+      stage: matchStage(m),
+      rows: roundsByChamp.get(m.champ_id) || [],
+      fallback: () => {
+        // Legacy (non-structured) tournaments only — structured stages never reach here.
+        if (m?.stage_key) return null;
+        if (isPlayoffGame(m)) return playoffDeadline(milestones, m.stage_label, m.stage);
+        return deadlineForStage(roundPlan(m.champ_id), m.round_number, matchStageLabel(m), milestones) ??
+          roundMeta(m.champ_id, m.round_number).date;
+      },
+    });
   };
+  const matchPlayBy = (m: any): string | null => matchSchedule(m).playBy;
+  const isMatchCentrallyScheduled = (m: any) => matchSchedule(m).mode === "scheduled";
 
   /**
    * "By round" container key. Round-robin/pool games group by their ACTUAL round
@@ -864,6 +865,12 @@ export default function Tournaments() {
             new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),
           ).sort() as string[];
           const playBy = dates[0] || null;
+          // Centrally scheduled stage: show the target stage's own date (no booking prompt).
+          const schedDates = Array.from(new Set(items.map((m: any) => {
+            const r = matchSchedule(m);
+            return r.mode === "scheduled" ? r.date : null;
+          }).filter(Boolean))).sort() as string[];
+          const allScheduled = !isPool && items.length > 0 && items.every((m: any) => matchSchedule(m).mode === "scheduled");
           const notes = Array.from(
             new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).notes).filter(Boolean)),
           );
@@ -871,7 +878,7 @@ export default function Tournaments() {
             <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
-                <span className="uppercase tracking-wider">{heading}{!isPool && playBy ? ` — Play by ${format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}` : ""}</span>
+                <span className="uppercase tracking-wider">{heading}{!isPool && playBy ? ` — Play by ${format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}` : allScheduled && schedDates[0] ? ` — Scheduled ${format(new Date(`${schedDates[0]}T00:00:00`), "EEE dd MMM yyyy")}` : ""}</span>
                 <span className="text-muted-foreground font-normal">
                   {all.length > 0 && outstanding > 0
                     ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
@@ -881,6 +888,11 @@ export default function Tournaments() {
                   <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/60 text-amber-700 dark:text-amber-300">
                     still outstanding
                   </Badge>
+                )}
+                {allScheduled && !playBy && (
+                  <span className="ml-auto font-normal text-[11px] text-muted-foreground">
+                    Scheduled by the organiser — no court booking needed
+                  </span>
                 )}
                 {playBy && (
                   <span className="ml-auto font-normal text-[11px] text-amber-700 dark:text-amber-300">
@@ -1060,7 +1072,7 @@ export default function Tournaments() {
       : null;
     const playBy = playByDeadline ? playByNudge(playByDeadline, todayISO()) : null;
     const playByText = playByDeadline
-      ? `${!isPlaceholder && canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin }).allowed ? "Book by" : "Play by"} ${format(new Date(`${playByDeadline.slice(0, 10)}T00:00:00`), "d MMM")}`
+      ? `${!isPlaceholder && canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin, centrallyScheduled: isMatchCentrallyScheduled(m) }).allowed ? "Book by" : "Play by"} ${format(new Date(`${playByDeadline.slice(0, 10)}T00:00:00`), "d MMM")}`
       : null;
 
 
@@ -1268,7 +1280,7 @@ export default function Tournaments() {
           // match and to club / tournament admins — same rule as the standings
           // page, so a player can arrange their own game from the games list.
           if (isPlaceholder) return null;
-          const perm = canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin });
+          const perm = canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin, centrallyScheduled: isMatchCentrallyScheduled(m) });
           if (!perm.allowed) return null;
           return (
             <Button

@@ -57,7 +57,7 @@ export interface FixtureSchedulePermission {
 export function canScheduleFixture(
   m: FixtureLike,
   memberId?: string | null,
-  opts: { canManage?: boolean } = {},
+  opts: { canManage?: boolean; centrallyScheduled?: boolean } = {},
 ): FixtureSchedulePermission {
   if (m.is_bye) return { allowed: false, reason: "This is a bye" };
   if (isMatchTerminal(m)) return { allowed: false, reason: "This match is already decided" };
@@ -65,7 +65,7 @@ export function canScheduleFixture(
     return { allowed: false, reason: "Waiting for both players to be known" };
   }
   if (opts.canManage) return { allowed: true };
-  if (isCentrallyScheduled(m)) return { allowed: false, reason: "The organiser has scheduled this match — no booking needed" };
+  if (opts.centrallyScheduled || isCentrallyScheduled(m)) return { allowed: false, reason: "The organiser has scheduled this match — no booking needed" };
   if (!isParticipant(m, memberId)) {
     return { allowed: false, reason: "Only the players in this match or an organiser can schedule it" };
   }

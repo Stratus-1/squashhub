@@ -40,3 +40,30 @@ describe("universal fixed-stage scheduler", () => {
     expect(stageScheduling(findStep(steps, "Finals"))).toBe("fixed");
   });
 });
+
+import { slotFitsStage } from "@/lib/tournaments/formal-stage-schedule";
+describe("per-stage court resources", () => {
+  const sf = { label: "Semifinals", mode: "scheduled", date: "2026-10-22", from: "07:42", to: "19:42", courtIds: ["1", "2", "3", "4"] };
+  const fin = { label: "Final", mode: "scheduled", date: "2026-10-26", from: "07:42", to: "18:42", courtIds: ["1", "2", "3"] };
+  it("SF courts 1-4, Final courts 1-3: Final never uses Court 4; top category latest", () => {
+    const games = [g("m1", 1), g("m2", 2), g("l", 3), g("b", 4), g("ma", 5)];
+    const r = planFormalStageSlots({ games, groupOrder: order, window: { date: fin.date, from: fin.from, to: fin.to, courtIds: fin.courtIds.map(Number) }, minutes: 30, busy: [] });
+    expect(r.slots.every((s) => s.courtId !== 4)).toBe(true);
+    expect(r.slots.map((s) => [s.id, s.courtId, s.time])).toEqual([
+      ["ma", 1, "07:42"], ["b", 2, "07:42"], ["l", 3, "07:42"], ["m2", 1, "08:12"], ["m1", 2, "08:12"],
+    ]);
+    const s4 = planFormalStageSlots({ games, groupOrder: order, window: { date: sf.date, from: sf.from, to: sf.to, courtIds: [1, 2, 3, 4] }, minutes: 30, busy: [] });
+    expect(s4.slots.some((s) => s.courtId === 4)).toBe(true);
+  });
+  it("a saved Final game on Court 4 is invalid for the Final but valid for the SF window rules", () => {
+    expect(slotFitsStage(fin, { scheduled_date: "2026-10-26", scheduled_time: "07:42", court_id: 4 }, 30)).toBe(false);
+    expect(slotFitsStage(fin, { scheduled_date: "2026-10-26", scheduled_time: "07:42", court_id: 3 }, 30)).toBe(true);
+    expect(slotFitsStage(fin, { scheduled_date: "2026-10-26", scheduled_time: "18:30", court_id: 3 }, 30)).toBe(false);
+  });
+  it("3 courts with a too-short window blocks via overflow instead of borrowing a court", () => {
+    const games = [g("a", 1), g("b", 2), g("c", 3), g("d", 4)];
+    const r = planFormalStageSlots({ games, groupOrder: order, window: { date: fin.date, from: "07:42", to: "08:12", courtIds: [1, 2, 3] }, minutes: 30, busy: [] });
+    expect(r).toMatchObject({ required: 4, available: 3 });
+    expect(r.overflow).toEqual(["a"]);
+  });
+});

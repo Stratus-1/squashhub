@@ -146,8 +146,7 @@ export function pacePlan(o: { active: number; target: number | null; roundsLeft:
   }
   const even = Math.ceil(needed / rounds);
   const thisRound = o.pace === "immediate" ? maxNow : Math.min(maxNow, Math.max(even, minimumNow));
-  const tight = minimumNow > 0 && minimumNow >= Math.min(maxNow, even) && minimumNow > Math.floor(needed / rounds);
-  const atRisk = minimumNow === maxNow && minimumNow > 0 || (tight && minimumNow > even - 1 && rounds > 1 && minimumNow > even);
+  const atRisk = minimumNow > 0 && (minimumNow > even || (minimumNow === maxNow && rounds > 1));
   return {
     needed, thisRound, minimumNow,
     status: atRisk ? "at_risk" : "on_track",
@@ -219,6 +218,6 @@ export function milestoneFor(plan: { stages?: PlanStage[]; playoffSync?: boolean
 
 /** Scheduling rounds left (including the next one), given rounds already created. */
 export function roundsLeftFor(m: Milestone, roundsCreated: number): number | null {
-  if (!m.roundDates.length) return m.fieldSize ? null : null;
+  if (!m.roundDates.length) return null;
   return Math.max(0, m.roundDates.length - roundsCreated);
 }

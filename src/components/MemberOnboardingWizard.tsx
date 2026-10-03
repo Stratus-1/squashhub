@@ -720,7 +720,33 @@ export function MemberOnboardingWizard({
 
       // Track whether this is a pre-existing member (admin-created, imported, or club founder)
       // vs a genuinely new member joining. Fees only apply to new members.
-      const isPreExistingMember = !!existingMember;
+      //
+      // A self-signup on a club page gets its club_members row created by the
+      // auth sign-up trigger moments before this wizard runs. That row must still
+      // count as NEW (otherwise the pro-rata membership + registration fee is never
+      // raised — Francois Steyn, Nelspruit, Oct 2026). It is recognised by: pending
+      // approval, or joined within minutes of the auth account being created, and
+      // no membership/registration/opening fee already on record (idempotent).
+      let isPreExistingMember = !!existingMember;
+      if (existingMember) {
+        const { data: rowInfo } = await fromExt("club_members")
+          .select("is_pending_approval, joined_at, user_id")
+          .eq("id", existingMember.id)
+          .maybeSingle();
+        const authCreated = (user as any)?.created_at ? new Date((user as any).created_at).getTime() : NaN;
+        const joined = rowInfo?.joined_at ? new Date(rowInfo.joined_at).getTime() : NaN;
+        const createdBySignup =
+          rowInfo?.user_id === user.id &&
+          (rowInfo?.is_pending_approval === true ||
+            (Number.isFinite(authCreated) && Number.isFinite(joined) && Math.abs(joined - authCreated) < 10 * 60 * 1000));
+        if (createdBySignup) {
+          const { count } = await fromExt("club_member_fee_payments")
+            .select("id", { count: "exact", head: true })
+            .eq("club_member_id", existingMember.id)
+            .in("fee_type", ["club", "registration", "opening_balance"]);
+          if (!count) isPreExistingMember = false;
+        }
+      }
 
       // Ladder placement: the `set_default_ladder_rank` DB trigger (SECURITY
       // DEFINER) will assign the bottom slot of the correct gender group on

@@ -3044,7 +3044,7 @@ export default function ClubChampsView() {
       ? (decidedFinal.winner_member_id === decidedFinal.player_a_member_id ? getMatchTeamA(decidedFinal) : getMatchTeamB(decidedFinal))
       : null;
 
-    const winnersCard = !koRunning && leagueWinners.length > 0 ? (
+    const winnersCard = !isStructured && !koRunning && leagueWinners.length > 0 ? (
       <CollapsibleCard key="winners" defaultOpen={false} className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5"
         title={
           <span className="flex items-center gap-2">
@@ -3158,7 +3158,7 @@ export default function ClubChampsView() {
       overallRows.slice().reverse().find((s: any) => (s.played || 0) > 0) ||
       overallRows[overallRows.length - 1] ||
       null;
-    const woodenSpoonsCard = !koRunning && leagueLosers.length > 0 ? (
+    const woodenSpoonsCard = !isStructured && !koRunning && leagueLosers.length > 0 ? (
       <CollapsibleCard key="wooden-spoons" defaultOpen={false} className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10"
         title={
           <span className="flex items-center gap-2">
@@ -3535,7 +3535,7 @@ export default function ClubChampsView() {
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />
-        {!diamondEvent && survivorsCard}
+        {!diamondEvent && !isStructured && survivorsCard}
         {diamondEvent ? <DiamondStandings tournamentId={champId!} canManage={canManage} /> : winnersCard}
 
         {!diamondEvent && woodenSpoonsCard}

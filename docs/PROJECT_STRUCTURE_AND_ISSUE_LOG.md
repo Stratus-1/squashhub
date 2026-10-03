@@ -2517,3 +2517,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-10-03 — Paced knockout: Round 1 created while organiser thought they were still choosing matches
 - NSP Knock out: all 8 Round 1 games were created in one Generate commit (16:41:47); the Generate step showed only pools/seeds, never the actual Round 1 matches, then closed straight into the next stage.
 - Fix: Generate draw now lists the proposed Round 1 matches per pool (same engine dry run, `proposedKnockoutRound1`) with editable players, remove/add and reset; Generate saves exactly those (`paced.pairs` / `paced.poolPairs`, validated in `engine-service` — same pool, distinct, real entrants) and asks for an explicit confirmation stating how many games are created. Edits reset when seeds, pools, pace or pairing change.
+
+### 2026-10-03 — Knockout pool colours before the first result
+- Cause: standings only passed pool status to the shared table after a completed elimination; Masters had results and turned green/red, while every other NSP Knock out category with no results stayed neutral.
+- Fix: all configured knockout pools always pass active/eliminated status to the same table. An unplayed match never eliminates anyone; no results or tournament records changed.

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { resolveAge, checkAgeGate } from "@/lib/member-age";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,7 +192,7 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
   const { data: clubSecrets } = useClubSecrets(clubId);
   const { activeMember } = useMemberContext();
   const d = device as any;
-  const navigate = useNavigate();
+
   const minAge = device.category === "access" ? Number(d.min_age) || null : null;
 
   /** Age-gate feedback: underage gets a plain refusal, unknown age a path to fix it. */
@@ -201,7 +200,7 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
     if (code === "age_unknown") {
       toast.error(
         message || "We don't have your age information yet. Please complete your ID/date-of-birth information in your profile to access this area.",
-        { duration: 10000, action: { label: "Complete profile", onClick: () => navigate("/profile") } },
+        { duration: 10000, action: { label: "Complete profile", onClick: () => window.location.assign("/profile") } },
       );
     } else {
       toast.error(message || `Access restricted. You must be ${minAge} or older to enter this area.`, { duration: 8000 });

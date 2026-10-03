@@ -29,16 +29,16 @@ export async function syncDiamondFixtures(opts: {
   if (courtError) throw courtError;
   const courtIds = opts.courtIds ?? ((courtRows || []) as any[]).map((c) => c.id as number);
   const { data: existing, error: exErr } = await fromExt("club_champs_matches")
-    .select("id, stage_key, status, score, scheduled_date, scheduled_time, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId).like("stage_key", "dl:%");
+    .select("id, stage_key, status, score, scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId).like("stage_key", "dl:%");
   if (exErr) throw exErr;
   const keep = new Set<string>();
   const savedByKey = new Map<string, ParticipantIds>();
-  const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null; participants: ParticipantIds; startedTie: boolean }>();
+  const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null; court_id: number | null; participants: ParticipantIds; startedTie: boolean }>();
   const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => String(m.stage_key).replace(/:\d+$/, "")));
   ((existing || []) as any[]).forEach((m) => {
     savedByKey.set(m.stage_key, { player_a_member_id: m.player_a_member_id, player_b_member_id: m.player_b_member_id, partner_a_member_id: m.partner_a_member_id, partner_b_member_id: m.partner_b_member_id });
     if (m.status === "scheduled" && !m.score) replaceable.set(m.stage_key, {
-      id: m.id, scheduled_date: m.scheduled_date, scheduled_time: m.scheduled_time,
+      id: m.id, scheduled_date: m.scheduled_date, scheduled_time: m.scheduled_time, court_id: m.court_id ?? null,
       participants: { player_a_member_id: m.player_a_member_id, player_b_member_id: m.player_b_member_id, partner_a_member_id: m.partner_a_member_id, partner_b_member_id: m.partner_b_member_id },
       startedTie: startedTies.has(String(m.stage_key).replace(/:\d+$/, "")),
     });
@@ -75,9 +75,14 @@ export async function syncDiamondFixtures(opts: {
       if (saved) {
         replaceable.delete(key);
         const patch: Record<string, unknown> = diamondPendingParticipantPatch(saved.participants, participants, saved.startedTie, tieReplacements);
-        if (!saved.startedTie && (saved.scheduled_date !== (w.date || null) || saved.scheduled_time?.slice(0, 5) !== time)) {
+        // Unstarted ties always take the CURRENT slot (date, time AND court):
+        // a team-count change reshuffles tie→court, so a stale court would
+        // double-book one court and leave another empty.
+        const court = courtIds[t.court - 1] ?? null;
+        if (!saved.startedTie && (saved.scheduled_date !== (w.date || null) || saved.scheduled_time?.slice(0, 5) !== time || saved.court_id !== court)) {
           patch.scheduled_date = w.date || null;
           patch.scheduled_time = time;
+          patch.court_id = court;
         }
         if (Object.keys(patch).length) updates.push({ id: saved.id, patch });
         return;

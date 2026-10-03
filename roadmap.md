@@ -21,3 +21,4 @@
 
 ## Mobile fixture deadline (done)
 - [x] Repeat round play/book-by deadline on every fixture card (Tournaments list + ClubChampsView renderMatchRow); "Book by" when viewer can book, read-only "Play by" otherwise; removed view-toggle gate that hid it in By round view; Mark Game unchanged; verified mobile 390px, 103 badges on Riverside fixtures
+- [x] Diamond re-save refreshes each game's court after team changes (Durbanville R1 Court 2 fixed)

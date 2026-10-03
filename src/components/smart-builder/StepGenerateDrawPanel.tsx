@@ -39,6 +39,14 @@ const fmtDay = (iso: string) => { const t = new Date(`${iso}T00:00:00`); return 
 export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revisiting }: {
   clubId: string; tournamentId: string; revisiting: boolean; onGenerated: (info: { games: number }) => void;
 }) {
+  const navigate = useNavigate();
+  // Canonical Fixtures/Tournament Games view for this tournament, preserving club context.
+  const fixturesUrl = () => {
+    const q = new URLSearchParams({ champ: tournamentId });
+    const club = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("club") : null;
+    if (club) q.set("club", club);
+    return `/tournaments?${q.toString()}`;
+  };
   const [loading, setLoading] = useState(true);
   const [planConflicts, setPlanConflicts] = useState<string[]>([]);
   const [meta, setMeta] = useState<{ name: string; start: string | null; end: string | null } | null>(null);
@@ -514,6 +522,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       setConfirmed(false); setRebuildOk(false);
       await load();
       onGenerated({ games });
+      // Success only: take the organiser straight to this tournament's fixtures/games view.
+      navigate(fixturesUrl());
     } catch (e: any) {
       toast.error(String(e.message ?? e).replace(/^.*?(draw_exists|results_exist|pair_integrity|stale_entry):\s*/, ""));
       await load();
@@ -730,7 +740,10 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         <>
           <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
           {<label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
-          <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
+            {hasDraw && <Button type="button" variant="outline" onClick={() => navigate(fixturesUrl())}>Go to Fixtures</Button>}
+          </div>
         </>
       )}
       {revisiting && null}

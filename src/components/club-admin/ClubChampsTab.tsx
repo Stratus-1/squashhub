@@ -6961,7 +6961,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const { data: sendRes, error: sendErr } = await (supabase as any).rpc("send_champ_invite_notifications", {
         p_champ_id: champId,
         p_recipients: recipients,
-        p_title: "Tournament invitation",
+        p_title: diamondMode ? "Diamond League invitation" : "Tournament invitation",
         p_message: msg,
         p_send_email: sendEmail,
         p_app_silent: !sendApp,
@@ -7248,7 +7248,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (wantsApp && (myMember as any)?.id) {
         const { error } = await fromExt("notifications").insert([{
           club_member_id: (myMember as any).id,
-          title: "TEST — Tournament invitation",
+          title: diamondMode ? "TEST — Diamond League invitation" : "TEST — Tournament invitation",
           message: body,
           type: "tournament_invite_test",
           url: testUrl,
@@ -14136,8 +14136,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         open={showInvitePreview}
         onOpenChange={setShowInvitePreview}
         clubId={clubId}
-        tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
+        tournamentName={champName || (diamondMode ? "Diamond League" : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`)}
         builtBody={buildInviteBody()}
+        diamondLeague={diamondMode}
         paymentRequired={paymentRequired}
         inviteShortMessage={inviteShortMessage}
         methods={inviteMethods}
@@ -14357,6 +14358,7 @@ function InvitePreviewDialog({
   clubId,
   tournamentName,
   builtBody,
+  diamondLeague,
   paymentRequired,
   inviteShortMessage,
   methods,
@@ -14372,6 +14374,7 @@ function InvitePreviewDialog({
   tournamentName: string;
   /** Exact body the send path (buildInviteBody) will use — preview must show this verbatim. */
   builtBody: string;
+  diamondLeague: boolean;
   paymentRequired: boolean;
   inviteShortMessage: boolean;
   methods: Set<"app" | "email" | "whatsapp">;
@@ -14464,7 +14467,7 @@ function InvitePreviewDialog({
                 <Trophy className="w-3.5 h-3.5" /> In-app notification
               </div>
               <div className="rounded-md border bg-background p-3">
-                <p className="text-sm font-semibold">Tournament invitation</p>
+                <p className="text-sm font-semibold">{diamondLeague ? "Diamond League invitation" : "Tournament invitation"}</p>
                 <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
                 <div className="flex gap-2 mt-3">
                   <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>

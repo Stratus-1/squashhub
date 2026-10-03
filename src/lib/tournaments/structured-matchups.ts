@@ -94,8 +94,12 @@ export function validateStandingsUnits(spec: any, entries: EntryLike[], matchups
       }
     });
     const drawn = new Set(positions.flat().map((u) => key(...(String(u).split("+") as [string, string]))));
+    // Partner checks apply only to real doubles units (pair draw or doubles discipline).
+    const disc = String(stage?.mapping?.discipline ?? stage?.discipline ?? d?.discipline ?? "").toLowerCase();
+    const pairUnits = disc === "doubles" || d?.unit === "pairs" || (disc !== "singles" && positions.flat().some((u) => String(u).includes("+")));
     for (const e of entries) {
       if (e.group_number == null || !m.entryGroups.includes(e.group_number)) continue;
+      if (!pairUnits) { if (!drawn.has(key(e.club_member_id, null))) issues.push({ level: "warning", message: "An entered player is not in the generated draw." }); continue; }
       if (!e.partner_member_id) issues.push({ level: "error", message: "A doubles entry has no partner." });
       else if (!drawn.has(key(e.club_member_id, e.partner_member_id))) issues.push({ level: "warning", message: "An entered pair is not in the generated draw." });
     }

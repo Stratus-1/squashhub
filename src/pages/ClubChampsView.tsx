@@ -1004,6 +1004,15 @@ export default function ClubChampsView() {
         (partner && (s.club_member_id === partner || s.partner_member_id === partner)));
       return hit?.name ?? "—";
     };
+    const playoffName = (id: string | null | undefined) => {
+      if (!id) return "—";
+      for (const m of divisionMatches) {
+        for (const side of ["player_a", "partner_a", "player_b", "partner_b"]) {
+          if (m[`${side}_member_id`] === id && m[side]?.name) return m[side].name as string;
+        }
+      }
+      return nameFor(id, null);
+    };
 
     return (
       <div className="space-y-4">
@@ -1077,11 +1086,11 @@ export default function ClubChampsView() {
                   {stage.matches.map((m) => (
                     <div key={m.displayId} className="border border-border rounded-sm p-2 text-xs min-w-0">
                       <div className="flex items-start gap-2 justify-between">
-                        <span className="font-medium min-w-0 break-words">{[m.player_a_member_id, m.partner_a_member_id].filter(Boolean).map((id) => nameFor(String(id), null)).join(" & ")}</span>
+                        <span className="font-medium min-w-0 break-words">{[m.player_a_member_id, m.partner_a_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ")}</span>
                         <span className="shrink-0 text-muted-foreground">vs</span>
-                        <span className="font-medium min-w-0 break-words text-right">{[m.player_b_member_id, m.partner_b_member_id].filter(Boolean).map((id) => nameFor(String(id), null)).join(" & ")}</span>
+                        <span className="font-medium min-w-0 break-words text-right">{[m.player_b_member_id, m.partner_b_member_id].filter(Boolean).map((id) => playoffName(String(id))).join(" & ")}</span>
                       </div>
-                      {m.winner_member_id && <div className="text-muted-foreground mt-1">Winner: {nameFor(m.winner_member_id, null)}</div>}
+                      {m.winner_member_id && <div className="text-muted-foreground mt-1">Winner: {playoffName(m.winner_member_id)}</div>}
                     </div>
                   ))}
                 </div>

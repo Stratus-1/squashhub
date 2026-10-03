@@ -143,3 +143,43 @@ export async function allocateAllFixedStages(champId: string) {
   for (const s of steps) out.push({ label: s.label, ...(await scheduleFormalStage(champId, s)) });
   return out;
 }
+
+/**
+ * Is a saved game's slot still valid for ITS OWN stage's resources (date, window, selected courts)?
+ * Courts are never inherited from another stage or the club's court list.
+ */
+export function slotFitsStage(step: FormalStep, m: { scheduled_date?: string | null; scheduled_time?: string | null; court_id?: number | string | null }, minutes = 45) {
+  if (!isCentrallyScheduled(step)) return true;
+  if (!m.scheduled_time || m.court_id == null || String(m.scheduled_date ?? "").slice(0, 10) !== step.date.slice(0, 10)) return false;
+  if (!(step.courtIds ?? []).map(String).includes(String(m.court_id))) return false;
+  const t = toMin(m.scheduled_time);
+  return t >= toMin(step.from) && t + Math.max(15, minutes) <= toMin(step.to);
+}
+
+/**
+ * After a stage's resources change in setup: re-slot any fixed stage whose unplayed, unbooked
+ * games no longer fit (e.g. a court removed from the Final). Valid stages are left untouched so
+ * times already shown to players don't move needlessly. Games that no longer fit anywhere lose
+ * their invalid court/time (never kept on a forbidden court) and are reported as overflow.
+ */
+export async function reconcileFixedStages(champId: string) {
+  const steps = (await loadPlanSteps(champId)).filter(isCentrallyScheduled);
+  if (!steps.length) return [];
+  const [{ data: t }, { data: rows }] = await Promise.all([
+    fromExt("tournaments").select("match_duration_minutes").eq("id", champId).maybeSingle(),
+    fromExt("club_champs_matches").select("id, stage_label, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time").eq("champ_id", champId),
+  ]);
+  const minutes = Number((t as any)?.match_duration_minutes) || 45;
+  const out: Array<{ label: string; scheduled: number; overflow: string[]; required: number; available: number }> = [];
+  for (const s of steps) {
+    const own = ((rows ?? []) as any[]).filter((m) => normLabel(m.stage_label) === normLabel(s.label) && !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()));
+    if (!own.some((m) => !slotFitsStage(s, m, minutes))) continue;
+    const r = await scheduleFormalStage(champId, s);
+    if (r.overflow.length) {
+      await fromExt("club_champs_matches").update({ scheduled_time: null, court_id: null } as any)
+        .in("id", r.overflow).is("winner_member_id", null).is("booking_id", null);
+    }
+    out.push({ label: s.label, ...r });
+  }
+  return out;
+}

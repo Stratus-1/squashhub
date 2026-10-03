@@ -1,3 +1,4 @@
+import { reconcileFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { milestoneFor, configuredPathText } from "@/lib/tournaments/paced-knockout";
@@ -438,6 +439,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const cur = await loadLifecycle(tid).catch(() => null);
       if (!cur || JSON.stringify(cur.format_plan ?? null) === drawPlanJson) return;
       await saveLifecycle(tid, { ...cur, format_plan: JSON.parse(drawPlanJson) }).catch(() => undefined);
+      // Each fixed stage schedules only on its OWN courts/window: re-slot games a setup change made invalid.
+      try {
+        for (const r of await reconcileFixedStages(tid)) {
+          if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit on its selected courts — widen the time window or add courts.`);
+          else toast.success(`${r.label} re-scheduled on its selected courts.`);
+        }
+      } catch { /* scheduling retried on next save/confirm */ }
       // Tie-break rules also apply to an already-generated draw (only stages not yet created are affected).
       await saveTieBreakRules(supabaseDb, tid, normaliseTieBreaks(JSON.parse(drawPlanJson).tieBreaks), (fn) => atomically(supabaseDb, tid, commitStructured, fn)).catch(() => undefined);
     }, 800);

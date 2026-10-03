@@ -65,6 +65,11 @@ export function saveHandover(h: Handover) {
   localStorage.setItem(hkey(h.clubId), JSON.stringify([h, ...all]));
 }
 
+/** Forget a device-local management entry; never deletes a tournament or its history. */
+export function removeHandover(clubId: string, tournamentId: string) {
+  localStorage.setItem(hkey(clubId), JSON.stringify(loadHandovers(clubId).filter((h) => h.tournamentId !== tournamentId)));
+}
+
 /** Deferred items that must be resolved before a stage's action can be taken. */
 export const blockersFor = (h: Pick<Handover, "deferred">, stage: LifecycleKey) => h.deferred.filter((d) => d.neededAt === stage);
 

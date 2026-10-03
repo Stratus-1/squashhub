@@ -1,5 +1,6 @@
 # Roadmap
 
+- [ ] Remove orphaned Step-by-Step Continue managing cards by checking club tournaments; add confirmed local-only build removal and immediate refresh, preserving live tournament data.
 - [ ] Beta category type (Men's/Ladies/Open/Mixed) required at parent, inherited by subcategories; eligibility across admin/player entry, invites, grouping, doubles, and Diamond slots; server validation; historical data untouched.
 - [ ] Protect existing Diamond League standings/reporting from generic Beta management and generation paths.
 - [x] Correct Diamond League invitation preview and shared outbound wording using the real Diamond event identity; retain all other details and normal formats; test preview. Do not publish.

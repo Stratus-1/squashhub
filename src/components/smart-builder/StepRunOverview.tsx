@@ -1,12 +1,12 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CalendarClock, CheckCircle2, PlayCircle } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabaseDb } from "@/lib/tournaments/structured-db";
 import { stageLifecycle, type StageStatus } from "@/lib/tournaments/progression";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
-import { derivedLifecycle, headline, needsOrganiser, runActions } from "@/lib/smart-builder/run-overview";
+import { derivedLifecycle } from "@/lib/smart-builder/run-overview";
 import type { LifecycleKey } from "@/lib/smart-builder/step-handover";
 import { StageProgressPanel } from "./StageProgressPanel";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,6 @@ export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle }: {
   const gameCount = data?.matches.length ?? 0;
   const implied = derivedLifecycle(states, gameCount);
   useEffect(() => { if (implied) onLifecycle(implied); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [implied]);
-  const actions = useMemo(() => runActions(states), [states]);
   const nameOf = (id: string | null) => (id ? data?.names.get(id) ?? "Player" : "TBD");
   const courtName = (id: number) => courts.find((c) => Number(c.id) === Number(id))?.name ?? `Court ${id}`;
 
@@ -59,19 +58,6 @@ export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle }: {
 
   return (
     <div className="space-y-3" data-testid="step-run-overview">
-      {gameCount > 0 && actions.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">What happens next</div>
-          {actions.map((a, i) => (
-            <a key={i} href="#stage-progress" className={cn("flex items-start gap-2 rounded-md border p-2 text-sm",
-              needsOrganiser(a) ? "border-destructive bg-destructive/10 font-semibold" : a.kind === "complete" ? "border-primary/50 bg-primary/5" : "border-border")}>
-              {needsOrganiser(a) ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /> : a.kind === "complete" ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <PlayCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
-              <span>{headline(a)}{"status" in a && a.kind !== "in_play" && a.kind !== "waiting" ? <span className="block text-xs font-normal text-muted-foreground">{a.status.detail}</span> : null}</span>
-            </a>
-          ))}
-        </div>
-      )}
-
       {ordered.length > 0 && (
         <div className="rounded-md border border-border p-2 text-xs" data-testid="planned-timeline">
           <div className="mb-1 flex items-center gap-1 font-semibold"><CalendarClock className="h-3.5 w-3.5" />Planned timeline</div>

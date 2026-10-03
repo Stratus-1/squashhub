@@ -9,6 +9,8 @@ export interface PlayoffMatchLike {
   bracket_position?: number | null;
   status?: string | null;
   winner_member_id?: string | null;
+  game_scores?: string | null;
+  score?: string | null;
   player_a_member_id?: string | null;
   partner_a_member_id?: string | null;
   player_b_member_id?: string | null;
@@ -44,6 +46,8 @@ export interface PlayoffDisplayMatch extends PlayoffMatchLike {
   feederB?: string | null;
   /** Where this game's winner goes, e.g. "Semifinals 1". */
   feedsInto?: string | null;
+  /** Saved fixture disagrees with a decided source game; never silently rewrite a played fixture. */
+  feederMismatch?: boolean;
 }
 
 /** Short stage prefix for feeder labels: Quarterfinals → QF, Semifinals → SF. */
@@ -84,6 +88,26 @@ const winnerUnit = (m: PlayoffMatchLike): string[] => {
   if (!winner) return [];
   return idsOn(m, "a").includes(winner) ? idsOn(m, "a") : idsOn(m, "b");
 };
+
+/** Read-only summary of the saved result, never inferred from pool standings. */
+export function playoffResult(m: PlayoffMatchLike): { winnerSide: "a" | "b" | null; score: string | null } {
+  const winnerSide = decided(m)
+    ? idsOn(m, "a").includes(String(m.winner_member_id)) ? "a" : idsOn(m, "b").includes(String(m.winner_member_id)) ? "b" : null
+    : null;
+  let score: string | null = null;
+  if (m.game_scores) {
+    try {
+      const parsed = JSON.parse(m.game_scores);
+      if (Array.isArray(parsed?.sets)) {
+        const sets = parsed.sets.filter((s: unknown): s is { a: number; b: number } =>
+          typeof s === "object" && s !== null &&
+          typeof (s as { a?: unknown }).a === "number" && typeof (s as { b?: unknown }).b === "number");
+        if (sets.length) score = sets.map((s) => `${s.a}–${s.b}`).join(" · ");
+      }
+    } catch { /* Legacy score field below. */ }
+  }
+  return { winnerSide, score: score ?? m.score ?? null };
+}
 
 /** Status beside a frozen historical pool row. */
 export function historicalPoolStatuses(
@@ -145,7 +169,24 @@ export function playoffDisplayStages(division: StructuredDivisionLike, matches: 
     if (next) knockoutFeeders(next).forEach((f) => { [f.a, f.b].forEach((p) => p != null && feedsMap.set(p, `${next.name} ${f.order}`)); });
     const existing = orderMatches(matches.filter((m) => m.stage_key === stage.id));
     if (existing.length) {
-      result.push({ id: stage.id, name: stage.name, projected: false, matches: existing.map((m, k) => ({ ...m, displayId: String(m.id ?? `${stage.id}-${k}`), projected: false, feedsInto: feedsMap.get(Number(m.bracket_position) || k + 1) ?? null })) });
+      const source = orderMatches(matches.filter((m) => m.stage_key === stage.mapping?.sourceStageId));
+      const sourceByPosition = new Map(source.map((m, k) => [Number(m.bracket_position) || k + 1, m]));
+      const feeders = new Map(knockoutFeeders(stage).map((f) => [f.order, f]));
+      result.push({ id: stage.id, name: stage.name, projected: false, matches: existing.map((m, k) => {
+        const position = Number(m.bracket_position) || k + 1;
+        const f = feeders.get(position);
+        const differs = (sourcePosition: number | null | undefined, side: "a" | "b") => {
+          const sourceMatch = sourcePosition == null ? undefined : sourceByPosition.get(sourcePosition);
+          if (!sourceMatch || !decided(sourceMatch)) return false;
+          const actual = winnerUnit(sourceMatch);
+          const saved = idsOn(m, side);
+          return actual.length !== saved.length || actual.some((id, index) => id !== saved[index]);
+        };
+        return { ...m, displayId: String(m.id ?? `${stage.id}-${k}`), projected: false,
+          feedsInto: feedsMap.get(position) ?? null,
+          feederMismatch: !!f && (differs(f.a, "a") || differs(f.b, "b")),
+        };
+      }) });
       continue;
     }
     const mapping = stage.mapping;

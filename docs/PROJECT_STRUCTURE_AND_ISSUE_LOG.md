@@ -1,3 +1,6 @@
+### 2026-10-03 — Played knockout history and one organiser next-action area
+- River 2 Clubs inspection: five independent groups each have four completed, scored QFs and two scheduled SFs; no Final yet. Bracket cards on the tournament page now render saved QF/SF set scores and a green winner side, while fixed feeder paths project pending stages from the stored winning member IDs; no tournament records were written.
+- Step-by-Step organiser overview no longer repeats the stage progress panel with a second “What happens next” list. The panel keeps its stage-specific generation/tie controls; the planned timeline remains separate.
 ## 2026-09-28 — Counter mode catalogue navigation
 - Counter tabs listed every product in plain text, with no fallback visual when a club had no uploaded product photo. The active tab now uses the same per-product visual fallback as the regular bar, plus a Bar/Shop choice, top category choices (specials separated), and a product search. Category switches preserve the basket and the existing tab, scan and settlement actions remain unchanged. Checked Uitsig's desktop and mobile counter against a real open tab; selecting Restaurant isolates prepared food and adding one item updates only the local basket, without posting a sale. No prices, stock, permissions or club data changed. Preview-only.
 

@@ -20,7 +20,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, defaultCrossAll, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -99,6 +99,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const p = proposeFormat(plan, label);
       units.push(r.units);
       const notes = [...p.notes];
+      if (p.format.kind === "cross" && !p.crossKeys.length && !p.crossByParent && !p.crossPairKeys) unspecifiedCross.add(g);
       if (p.format.kind === "cross") {
         const gs = p.crossKeys.map(groupOfKey);
         if (gs.some((x) => x == null)) notes.push("Some cross-league groups in your plan no longer match a category here — check the groups below.");
@@ -146,7 +147,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       if (dropped) toast.warning("Entries changed, so your manual seed/pool changes for that category were reset.");
       return kept;
     });
-    setBaseUnits(units); setDivs(list); setPairErrors(errs); setLoading(false);
+    setBaseUnits(units); setDivs(defaultCrossAll(list, unspecifiedCross)); setPairErrors(errs); setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tournamentId]);
 

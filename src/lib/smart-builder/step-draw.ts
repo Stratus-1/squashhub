@@ -311,6 +311,19 @@ export function divisionIssues(d: DrawDivision, all?: DrawDivision[]): string[] 
 }
 
 /** Groups this cross-league division plays: the chosen pairings, else every other group in its selected set. Never its own group. */
+/**
+ * Setup chose "Cross-league round robin" without naming groups: every cross group of the same discipline plays every
+ * other one ("All selected groups play each other"). Only fills groups with no selection of their own.
+ */
+export function defaultCrossAll(divs: DrawDivision[], unspecified: Set<number>): DrawDivision[] {
+  const open = divs.filter((d) => d.format.kind === "cross" && unspecified.has(d.group) && !d.format.crossVs && !(d.format.crossGroups ?? []).length);
+  return divs.map((d) => {
+    if (!open.includes(d)) return d;
+    const peers = open.filter((o) => o.doubles === d.doubles).map((o) => o.group).sort((a, b) => a - b);
+    return peers.length >= 2 ? { ...d, format: { ...d.format, crossGroups: peers } } : d;
+  });
+}
+
 /** The groups this division itself selected (its own side of the relationship; the division is always included). */
 function crossSelection(d: DrawDivision): { mode: "all" | "chosen"; groups: number[] } {
   const f = d.format;

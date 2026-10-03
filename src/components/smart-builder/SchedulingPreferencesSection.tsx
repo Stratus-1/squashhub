@@ -4,10 +4,10 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fromExt } from "@/lib/supabase-ext";
 import {
-  loadTimedContext, planTimedSchedule, prefsApplicable, scheduleTimedRounds, timedGameFromRow, type TimedContext, type TimedGame,
+  findStep, loadPlanSteps, loadTimedContext, planTimedSchedule, prefsApplicable, scheduleTimedRounds, timedGameFromRow, type TimedContext, type TimedGame,
 } from "@/lib/tournaments/formal-stage-schedule";
 import {
-  COURT_LABEL, DEFAULT_SCHEDULING_PREFS, REST_LABEL, type CategoryCourtRule, type CourtPref, type RestPref, type SchedulingPrefs,
+  COURT_LABEL, DEFAULT_SCHEDULING_PREFS, prefsActive, REST_LABEL, type CategoryCourtRule, type CourtPref, type RestPref, type SchedulingPrefs,
 } from "@/lib/tournaments/scheduling-prefs";
 
 const TERMINAL = ["completed", "forfeited", "walkover", "cancelled", "in_progress", "live", "confirmed"];
@@ -43,8 +43,9 @@ export function SchedulingPreferencesSection({ tournamentId, categories, preview
       const { data } = await fromExt("courts").select("id, name").in("id", ids);
       setCourtNames(new Map(((data ?? []) as any[]).map((r) => [Number(r.id), String(r.name ?? `Court ${r.id}`)])));
     }
+    const steps = await loadPlanSteps(tournamentId).catch(() => []);
     const { data: rows } = await fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, stage_label, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", tournamentId);
-    setSaved(((rows ?? []) as any[]).filter((m) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()) && m.player_a_member_id && m.player_b_member_id && !/final|semi|quarter|3rd/i.test(String(m.stage_label ?? ""))).map((m) => timedGameFromRow(m, c.entryGroup)));
+    setSaved(((rows ?? []) as any[]).filter((m) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()) && m.player_a_member_id && m.player_b_member_id && !findStep(steps, String(m.stage_label ?? ""))).map((m) => timedGameFromRow(m, c.entryGroup)));
   };
   useEffect(() => { void load(); }, [tournamentId]);
 
@@ -60,7 +61,7 @@ export function SchedulingPreferencesSection({ tournamentId, categories, preview
 
   const games = useSaved ? saved : previewGames;
   const plan = useMemo(() => (ctx && ctx.days.length && games.length ? planTimedSchedule({ ...ctx, prefs }, games) : null), [ctx, prefs, games]);
-  useEffect(() => { onFeasible?.(!plan || plan.issues.length === 0); }, [plan]);
+  useEffect(() => { onFeasible?.(!plan || plan.issues.length === 0 || !prefsActive(prefs)); }, [plan, prefs]);
 
   if (ctx === undefined) return <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Checking scheduling…</div>;
   if (!ctx || !ctx.days.length) return null; // no fixed date/window/courts: players book or games stay unscheduled

@@ -64,3 +64,41 @@ describe("player collisions", () => {
     expect(r.slots).toEqual([]); expect(r.issues[0]).toMatch(/36 games need 36 court slots but only 18 fit/);
   });
 });
+
+import { planBellsWaves, bellsSlotMinutes } from "@/lib/tournaments/formal-stage-schedule";
+describe("Bells waves", () => {
+  // Full 6x6 cross-league: round k pairs A(i) with B((i+k) % 6).
+  const rounds = Array.from({ length: 6 }, (_, k) => ({ round: k + 1, games: Array.from({ length: 6 }, (_, i) => `A${i}-B${(i + k) % 6}`) }));
+  const players = Object.fromEntries(rounds.flatMap((r) => r.games).map((id) => [id, id.split("-")]));
+  const noClash = (slots: any[]) => { const seen = new Set<string>(); for (const s of slots) for (const p of players[s.id]) { const k = `${s.date}${s.time}${p}`; if (seen.has(k)) return false; seen.add(k); } return true; };
+  it("3 courts: a 6-game round spans two bells, no per-round court error", () => {
+    const r = planBellsWaves({ rounds: rounds.slice(0, 1), days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }], minutes: 15, players });
+    expect(r.issues).toEqual([]);
+    expect([...new Set(r.slots.map((s) => s.time))]).toEqual(["18:00", "18:15"]);
+  });
+  it("4 courts: 4 then 2", () => {
+    const r = planBellsWaves({ rounds: rounds.slice(0, 1), days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [1, 2, 3, 4] }], minutes: 20, players });
+    expect(r.slots.filter((s) => s.time === "18:00")).toHaveLength(4);
+    expect(r.slots.filter((s) => s.time === "18:20")).toHaveLength(2);
+  });
+  it("all 36 games on 3 courts with 15-min bells fit exactly, no player clash, no court double-booking", () => {
+    const r = planBellsWaves({ rounds, days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }], minutes: 15, players });
+    expect(r.issues).toEqual([]); expect(r.slots).toHaveLength(36); expect(noClash(r.slots)).toBe(true);
+    const cells = r.slots.map((s) => `${s.time}${s.courtId}`); expect(new Set(cells).size).toBe(36);
+  });
+  it("reports capacity only after packing everything (30-min bells, one 3h evening)", () => {
+    const r = planBellsWaves({ rounds, days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }], minutes: 30, players });
+    expect(r.slots).toEqual([]); expect(r.issues[0]).toMatch(/36 games need a bell slot but only 18 could be placed/);
+    expect(r.issues.join(" ")).not.toMatch(/start together/);
+  });
+  it("continues onto a second date with its own courts", () => {
+    const r = planBellsWaves({ rounds, days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }, { date: "2026-10-13", from: "18:00", to: "21:00", courtIds: [20, 21, 24, 25] }], minutes: 30, players });
+    expect(r.issues).toEqual([]); expect(r.slots.filter((s) => s.date === "2026-10-13").length).toBe(18);
+    expect(r.slots.filter((s) => s.date === "2026-10-06").every((s) => [20, 21, 24].includes(s.courtId))).toBe(true);
+    expect(noClash(r.slots)).toBe(true);
+  });
+  it("bell slot = play + changeover", () => {
+    expect(bellsSlotMinutes({ mode: "time_capped_points", timeCapPlay: "12", timeCapBreak: "3" })).toBe(15);
+    expect(bellsSlotMinutes({ mode: "standard" })).toBeNull();
+  });
+});

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
-import { isCentrallyScheduled, planStageFromDb, scheduleFormalStage } from "@/lib/tournaments/formal-stage-schedule";
+import { capacityMessage, findStep, isCentrallyScheduled, loadPlanSteps, planStageFromDb, scheduleFormalStage } from "@/lib/tournaments/formal-stage-schedule";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import {
   activeField, byRank, isDecided, koRoundState, milestoneFor, pacePlan, playoffPairings, playoffSteps, proposePairings, roundsLeftFor,
@@ -234,11 +234,13 @@ function DivisionRounds({ tournamentId, plan, div, data, pool }: {
       // Formal stages only ever take players who are still active.
       const activeIds = new Set(field.active.map((e) => e.id));
       if (pairs.flat().some((id) => !activeIds.has(id))) throw new Error("Only qualified players who are still in can be paired.");
-      // Centrally scheduled formal stage: every game must get a real slot — block rather than leave TBD games.
-      const central = ks.kind === "playoff" && isCentrallyScheduled(u.step) ? u.step! : null;
+      // Universal fixed-stage rule: whichever round/stage this is (Round N, QF, SF, Final), if its
+      // configured stage has a fixed date + window + courts, every game gets a real slot — block rather than leave TBD.
+      const configured = findStep(await loadPlanSteps(tournamentId), nextLabel) ?? (ks.kind === "playoff" ? u.step ?? null : null);
+      const central = isCentrallyScheduled(configured) ? { ...configured!, label: nextLabel } : null;
       if (central) {
         const cap = await planStageFromDb(tournamentId, central, pairs.map((_, i) => ({ id: `new-${i}`, group: div.group, bracket: i + 1 })));
-        if (cap && cap.overflow.length) throw new Error(`Not enough court time for ${nextLabel}: ${cap.overflow.length} game${cap.overflow.length === 1 ? "" : "s"} would not fit on ${central.date} between ${central.from} and ${central.to} on the selected courts. Widen the time window or add courts in setup.`);
+        if (cap && cap.overflow.length) throw new Error(capacityMessage(central, cap));
       }
       const template: any = { ...(rows[0] ?? {}) };
       const partner = (id: string) => field.active.find((e) => e.id === id)?.partnerId ?? null;

@@ -1,3 +1,4 @@
+import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import React from "react";
 import { PageHeader } from "@/components/PageHeader";
@@ -913,7 +914,13 @@ export default function Tournaments() {
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
                  <span className="uppercase tracking-wider">{heading}</span>
                  {koRound != null && <span className="font-medium min-w-0 break-words">{koCategories.length > 3 ? `${koCategories.length} categories` : koCategories.join(", ")}</span>}
-                 {!isPool && playBy ? <span className="uppercase tracking-wider">· Play by {format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}</span> : allScheduled && schedDates[0] ? <span className="uppercase tracking-wider">· Scheduled {format(new Date(`${schedDates[0]}T00:00:00`), "EEE dd MMM yyyy")}</span> : null}
+                 {!isPool && playBy ? <span className="uppercase tracking-wider">· Play by {format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}</span> : allScheduled && schedDates[0] ? (() => {
+                   const times = Array.from(new Set(items.map((m: any) => m.scheduled_time ? String(m.scheduled_time).slice(0, 5) : null))).filter(Boolean) as string[];
+                   const own = Array.from(new Set(items.map((m: any) => m.scheduled_date).filter(Boolean))).sort() as string[];
+                   const day = own.length === 1 ? own[0] : schedDates[0];
+                   const bell = times.length === 1 && items.every((m: any) => m.scheduled_time) ? ` · ${times[0]}` : "";
+                   return <span className="uppercase tracking-wider">· {format(new Date(`${day}T00:00:00`), "EEE dd MMM")}{bell}</span>;
+                 })() : null}
                 <span className="text-muted-foreground font-normal">
                   {all.length > 0 && outstanding > 0
                     ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
@@ -944,6 +951,7 @@ export default function Tournaments() {
                               for (const id of champIdsHere) {
                                 const r = await schedulePlannedPlayoffGames(id);
                                 booked += r.booked; notes.push(...r.unplaced.map((u) => `${u.stage}: ${u.reason}`));
+                                for (const a of await allocateAllFixedStages(id)) { booked += a.scheduled; notes.push(...(a.issues ?? [])); }
                               }
                               if (booked) toast.success(`Assigned ${booked} game${booked === 1 ? "" : "s"} to courts`);
                               if (notes.length) toast.warning(notes.join("\n"));

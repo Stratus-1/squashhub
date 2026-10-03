@@ -500,7 +500,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       toast.success(`Draw saved — ${games} games created`);
       // Universal fixed-stage rule: games of any fixed date/window/courts stage get real slots before any notice.
       for (const r of await allocateAllFixedStages(tournamentId)) {
-        if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit — widen the time window or add courts.`);
+        if (r.issues?.length) toast.error(`Games not given times — ${r.issues.join(" ")} Add courts, widen the time window or add a match date.`);
+        else if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit — widen the time window or add courts.`);
       }
       if (notifyDraw) {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.

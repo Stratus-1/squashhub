@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { resolveAge, checkAgeGate } from "@/lib/member-age";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -191,6 +193,20 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
   const { data: clubSecrets } = useClubSecrets(clubId);
   const { activeMember } = useMemberContext();
   const d = device as any;
+  const navigate = useNavigate();
+  const minAge = device.category === "access" ? Number(d.min_age) || null : null;
+
+  /** Age-gate feedback: underage gets a plain refusal, unknown age a path to fix it. */
+  const showAgeDenied = (code: string, message?: string) => {
+    if (code === "age_unknown") {
+      toast.error(
+        message || "We don't have your age information yet. Please complete your ID/date-of-birth information in your profile to access this area.",
+        { duration: 10000, action: { label: "Complete profile", onClick: () => navigate("/profile") } },
+      );
+    } else {
+      toast.error(message || `Access restricted. You must be ${minAge} or older to enter this area.`, { duration: 8000 });
+    }
+  };
 
   // The switch flips immediately so it feels responsive, but any fresh reading
   // from the relay wins — otherwise a device that reported a different state
@@ -216,6 +232,16 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
     if (device.category !== "access" || !secrets.ble_fallback_enabled) {
       toast.error(cloudError);
       return;
+    }
+    // The offline Bluetooth path can't reach the server, so the age gate is
+    // checked here from the member's own ID/DOB before pulsing.
+    if (minAge) {
+      const m: any = activeMember || {};
+      const gate = checkAgeGate(minAge, resolveAge({ dob: m.date_of_birth ?? null, idNumbers: [m.id_number] }));
+      if (!gate.allowed) {
+        showAgeDenied(gate.reason === "underage" ? "age_restricted" : "age_unknown");
+        return;
+      }
     }
     setBleBusy(true);
     try {
@@ -267,6 +293,11 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
     } catch (e) {
       setOptimistic(null);
       const msg = e instanceof Error ? e.message : `Could not switch ${device.name}`;
+      const code = (e as any)?.code;
+      if (code === "age_restricted" || code === "age_unknown") {
+        showAgeDenied(code, msg);
+        return;
+      }
       if (action === "pulse" && device.category === "access") {
         await bleRescue(msg, trigger);
         return;

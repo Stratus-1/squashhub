@@ -1,3 +1,4 @@
+import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import React from "react";
 import { PageHeader } from "@/components/PageHeader";

@@ -33,6 +33,10 @@ export type DivFormat = {
   crossGroups: number[];
   /** cross: "Choose which groups play each other" — the exact groups this one plays. null/undefined = all selected groups play each other. */
   crossVs?: number[] | null;
+  /** cross: "full" = every player meets every player of the related groups; "players" = only `crossPlayerMatches`. */
+  crossHow?: "full" | "players";
+  /** cross "players": organiser-chosen individual matches [unitId, unitId] (canonical, de-duplicated across groups). */
+  crossPlayerMatches?: Array<[string, string]>;
   /** knockout: paced week-by-week plan (Builder "Knockout pace"). Absent = classic full first round. */
   paced?: { pairing: KnockoutPairing; target: number | null; rounds: number | null; label: string | null } | null;
   /** knockout: milestone + pace for knockout INSIDE pools (pools > 1). Pools are a partition; elimination, never round robin. */
@@ -302,6 +306,11 @@ export function divisionIssues(d: DrawDivision, all?: DrawDivision[]): string[] 
   if (hasPools(f) && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
   if (f.kind === "swiss" && (f.swissRounds < 1 || f.swissRounds > n - 1)) out.push(`Swiss rounds must be 1–${Math.max(1, n - 1)}`);
   if (f.kind === "cross" && crossOpponents(d, all).length < 1) out.push(f.crossVs ? "choose at least one group for this group to play" : "cross-league needs this group and at least one other group to play against");
+  if (f.kind === "cross" && f.crossHow === "players" && all && crossOpponents(d, all).length) {
+    const rel = all.filter((x) => x.group === d.group || crossOpponents(d, all).includes(x.group));
+    const mine = new Set(d.units.map(unitId));
+    if (!crossPlayerMatchesFor(rel, crossEdges(all)).some(([a, b]) => mine.has(a) || mine.has(b))) out.push("add at least one player matchup");
+  }
   if (!f.schedule.rule) out.push("choose play-by date or fixed date");
   if (f.schedule.rule === "play_by" && !f.schedule.deadlines.filter(Boolean).length) out.push("set the play-by date");
   if (f.schedule.rule === "play_by" && f.schedule.deadlines.some((x) => !x)) out.push("a play-by round has no date");
@@ -323,6 +332,23 @@ export function defaultCrossAll(divs: DrawDivision[], unspecified: Set<number>):
     return peers.length >= 2 ? { ...d, format: { ...d.format, crossGroups: peers } } : d;
   });
 }
+
+/** Canonical, de-duplicated selected player matches for a cross set (only pairs of units in two DIFFERENT related groups). */
+export function crossPlayerMatchesFor(members: DrawDivision[], edges: Array<[number, number]>): Array<[string, string]> {
+  const groupOf = new Map<string, number>();
+  members.forEach((m) => m.units.forEach((u) => groupOf.set(unitId(u), m.group)));
+  const ok = new Set(edges.map(([x, y]) => `${x}-${y}`));
+  const seen = new Map<string, [string, string]>();
+  for (const m of members) for (const [a, b] of m.format.crossPlayerMatches ?? []) {
+    const ga = groupOf.get(a), gb = groupOf.get(b);
+    if (ga == null || gb == null || ga === gb || !ok.has(`${Math.min(ga, gb)}-${Math.max(ga, gb)}`)) continue;
+    const [x, y] = ga < gb ? [a, b] : [b, a];
+    seen.set(`${x}|${y}`, [x, y]);
+  }
+  return [...seen.values()];
+}
+/** Whether any group of a cross set chose "Selected player matchups". */
+export const crossUsesPlayers = (members: DrawDivision[]) => members.some((m) => m.format.kind === "cross" && m.format.crossHow === "players");
 
 /** The groups this division itself selected (its own side of the relationship; the division is always included). */
 function crossSelection(d: DrawDivision): { mode: "all" | "chosen"; groups: number[] } {
@@ -389,6 +415,19 @@ export function crossSets(divs: DrawDivision[]): { sets: number[][]; meetings: M
  * meeting-rounds so no group plays two meetings at once; within a meeting, a circle schedule so nobody plays twice in
  * one round. Pool index = group order in the set, position = seed within the group.
  */
+/** Selected player matchups → slot matches; rounds assigned so nobody plays twice in one round. */
+function selectedMatchups(members: DrawDivision[], picked: Array<[string, string]>): Array<{ round: number; order: number; a: string; b: string; tie: string }> {
+  const slot = new Map<string, string>();
+  members.forEach((m, gi) => m.units.forEach((u, i) => slot.set(unitId(u), `${String.fromCharCode(65 + gi)}${i + 1}`)));
+  const busy = new Map<number, Set<string>>();
+  return picked.map(([a, b]) => {
+    const sa = slot.get(a)!, sb = slot.get(b)!;
+    let r = 1; while (busy.get(r)?.has(sa) || busy.get(r)?.has(sb)) r++;
+    busy.set(r, new Set([...(busy.get(r) ?? []), sa, sb]));
+    return { round: r, order: busy.get(r)!.size / 2, a: sa, b: sb, tie: `${sa[0]}v${sb[0]}` };
+  });
+}
+
 export function crossMatchups(sizes: number[], meetings?: Array<[number, number]>): Array<{ round: number; order: number; a: string; b: string; tie: string }> {
   const letter = (i: number) => String.fromCharCode(65 + i);
   let sched: Array<{ a: number; b: number; round: number }>;
@@ -530,7 +569,8 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
       const idx = (g: number) => set.indexOf(g);
       const mt = (meetings.get(set.join()) ?? []).map(([x, y]) => [idx(x), idx(y)] as [number, number]);
       const allMeet = mt.length === (set.length * (set.length - 1)) / 2;
-      const matches = crossMatchups(sizes, allMeet ? undefined : mt);
+      const picked = crossUsesPlayers(members) ? crossPlayerMatchesFor(members, meetings.get(set.join()) ?? []) : null;
+      const matches = picked ? selectedMatchups(members, picked) : crossMatchups(sizes, allMeet ? undefined : mt);
       const slotIds = [...new Set(matches.flatMap((m) => [m.a, m.b]))];
       out.push({
         divisionId: id, label: allMeet ? members.map((m) => m.label).join(" v ") : (meetings.get(set.join()) ?? []).map(([x, y]) => `${byGroup.get(x)!.label} v ${byGroup.get(y)!.label}`).join("; "), unit: d.doubles ? "pairs" : "players",

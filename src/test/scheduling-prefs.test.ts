@@ -30,7 +30,7 @@ describe("scheduling preferences", () => {
   });
   it("2. avoid back-to-back: avoided when room, falls back softly when tight", () => {
     const g = cross();
-    const roomy = planPrefWaves({ games: g, days: day([1, 2, 3]), minutes: 13, prefs: P({ rest: "avoid" }), keyOf });
+    const roomy = planPrefWaves({ games: g, days: day([1, 2, 3], "22:30"), minutes: 13, prefs: P({ rest: "avoid" }), keyOf });
     expect(roomy.issues).toEqual([]); expect(restGaps(roomy.slots, g, 13)).toBeGreaterThanOrEqual(2);
     const tight = planPrefWaves({ games: g, days: day([1, 2, 3], "20:36"), minutes: 13, prefs: P({ rest: "avoid" }), keyOf }); // 12 slots × 3 = 36
     expect(tight.issues).toEqual([]); expect(tight.slots).toHaveLength(36);

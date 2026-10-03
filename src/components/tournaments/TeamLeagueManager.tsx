@@ -78,7 +78,7 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
             <Gem className="w-4 h-4 text-primary" />
             <div>
               <div className="text-sm font-semibold">Diamond League (teams)</div>
-              <p className="text-[11px] text-muted-foreground">Set up a new one in Plan New Tournament → Structure → Diamond League (teams). Open one here to create the weeks, enter scores and see the tables.</p>
+              <p className="text-[11px] text-muted-foreground">Set up a new one from Tournaments → Diamond League. Open one here to create the weeks, enter scores and see the tables.</p>
             </div>
           </div>
         </div>

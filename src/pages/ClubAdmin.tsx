@@ -8,10 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown, Info, Megaphone, Wand2 } from "lucide-react";
-import { useClubHasTournamentBeta } from "@/hooks/use-tournament-beta";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown, Info, Megaphone } from "lucide-react";
 import { ClubTournamentBeta } from "@/components/smart-builder/ClubTournamentBeta";
-import { CLUB_BETA_TILE_LABEL } from "@/lib/smart-builder/access";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 import { RulesTab } from "@/components/club-admin/RulesTab";
@@ -129,7 +127,7 @@ export default function ClubAdmin() {
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "features");
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t) setActiveTab(t);
+    if (t) setActiveTab(t === "champs_beta" ? "champs" : t);
   }, [searchParams]);
 
   const baseClub = data?.club;
@@ -153,9 +151,6 @@ export default function ClubAdmin() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
-  // Tournament Beta: opt-in per club (Super Admin switch), shown next to the
-  // unchanged legacy Tournaments tile — never replaces it.
-  const { data: clubHasTournamentBeta = false } = useClubHasTournamentBeta(club?.id);
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get
   // seeded capability rows by a DB trigger, so "no rows" is never true — the
@@ -203,11 +198,8 @@ export default function ClubAdmin() {
   // Capability filter — core tabs (no capability) are always visible.
   const capFilter = (tab: AdminTab) => isTabVisible(tab, enabledCaps, hasCapRows);
   const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
-  const opsTabs = clubHasTournamentBeta
-    ? OPERATIONS_TABS.flatMap((t) => t.value === "champs"
-        ? [t, { value: "champs_beta", label: CLUB_BETA_TILE_LABEL, icon: Wand2, permission: "champs" as PermissionSlug, color: "amber", noStatus: true, capability: "tournaments" as Capability }]
-        : [t])
-    : OPERATIONS_TABS;
+  // The Step-by-Step builder now lives on the single Tournaments page; no separate Beta tile.
+  const opsTabs = OPERATIONS_TABS;
   const visibleOps = opsTabs.filter(permFilter).filter(capFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];
 
@@ -231,8 +223,10 @@ export default function ClubAdmin() {
       case "ladder": return <LadderTab clubId={club.id} />;
       case "ranking-points": return <RankingPointsTab clubId={club.id} />;
       case "leagues": return <LeaguesTab clubId={club.id} />;
-      case "champs": return <TournamentPlanner mode="club" clubId={club.id} />;
-      case "champs_beta": return <ClubTournamentBeta clubId={club.id} clubName={(club as any)?.name} />;
+      case "champs":
+      case "champs_beta":
+        return <ClubTournamentBeta clubId={club.id} clubName={(club as any)?.name}
+          renderList={(manage) => <TournamentPlanner mode="club" clubId={club.id} hideCreateButton onManageBeta={manage} />} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
       // IoT owns device registration end to end: each door/gate/gadget keeps

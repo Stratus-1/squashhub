@@ -26,9 +26,13 @@ interface TournamentPlannerProps {
   clubId?: string;
   /** Light-on-dark chrome (Super Admin shell). */
   dark?: boolean;
+  /** Hide the list's own "Plan New Tournament" button (creation lives in the consolidated start section). */
+  hideCreateButton?: boolean;
+  /** Manage handler for tournaments built with the Step-by-Step builder. */
+  onManageBeta?: (tournamentId: string) => void;
 }
 
-export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlannerProps) {
+export function TournamentPlanner({ mode, clubId, dark = false, hideCreateButton = false, onManageBeta }: TournamentPlannerProps) {
   const { data: orgs = [] } = useOwnerOrganisations();
   const { data: clubs = [] } = useHostClubs();
   const isSuperAdmin = useIsSuperAdmin();
@@ -268,6 +272,8 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
             eligibilityOrgId={mode === "club" ? assoc.orgId : null}
             scope={scope}
              participatingClubIds={Array.from(extraClubIds).filter((id) => venueChoices.some((c) => c.id === id))}
+            hideCreateButton={hideCreateButton}
+            onManageBeta={onManageBeta}
           />
         </div>
       ) : (

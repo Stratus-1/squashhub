@@ -236,6 +236,6 @@ export function poolKnockoutTarget(milestoneField: number | null, pools: number,
 }
 
 /** First-round match counts per pool from the pace rules. */
-export function pooledRoundCounts(poolSizes: number[], o: { target: number; roundsLeft: number | null; pace: KnockoutPace; hasMilestone: boolean }): number[] {
-  return poolSizes.map((n) => pacePlan({ active: n, target: o.hasMilestone ? o.target : o.target > 1 ? o.target : null, roundsLeft: o.roundsLeft, pace: o.pace }).thisRound);
+export function pooledRoundCounts(poolSizes: number[], o: { target: number; roundsLeft: number | null; pace: KnockoutPace }): number[] {
+  return poolSizes.map((n) => pacePlan({ active: n, target: o.target, roundsLeft: o.roundsLeft, pace: o.pace }).thisRound);
 }

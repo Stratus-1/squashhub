@@ -774,7 +774,7 @@ export default function ClubChampsView() {
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus>; koStatus?: boolean }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus>; koStatus?: boolean; plain?: boolean }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
     const poolLabels = opts?.poolLabels;
@@ -786,7 +786,8 @@ export default function ClubChampsView() {
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
-    const hasProgress = opts?.koStatus ? !!opts.statuses : opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
+    const anyPlayed = standings.some((s: any) => (s.played || 0) > 0);
+    const hasProgress = opts?.plain ? false : opts?.koStatus ? !!opts.statuses : opts?.historical && Array.from(opts.statuses?.values() ?? []).some((status) => status.eliminated || status.label);
 
     return (
       <div className="overflow-x-auto">
@@ -832,7 +833,7 @@ export default function ClubChampsView() {
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={opts?.historical || opts?.koStatus ? undefined : rowStyle} className={cn(
+                <tr key={s.id} style={opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed) ? undefined : rowStyle} className={cn(
                   "border-b border-border/30",
                   hasProgress && (progress?.eliminated ? "bg-pool-eliminated" : "bg-pool-survivor"),
                   isMe && "font-semibold ring-2 ring-inset ring-primary/60"
@@ -1053,6 +1054,9 @@ export default function ClubChampsView() {
           if (!poolLabels.has(mid)) poolLabels.set(mid, poolLabel(p));
         });
     });
+    // Between-group round robins (e.g. League A v League B) are tables, not knockouts:
+    // no active/eliminated colouring; rank tint only once results exist.
+    if (matchupForGroup(matchups, gn)) return renderStandingsTable(getGroupStandings(gn), { poolLabels, plain: true });
     if (pc <= 1 || isCrossLeague) {
       const specDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
       const rows = getGroupStandings(gn);

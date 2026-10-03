@@ -1,4 +1,4 @@
-import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
+import { allocateAllFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
 import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import React from "react";
 import { PageHeader } from "@/components/PageHeader";
@@ -165,6 +165,19 @@ export default function Tournaments() {
       return m;
     },
     enabled: !!muChampIdsKey,
+  });
+  // Fixed-date rounds that cannot be given times/courts: say why (admins only), never silent TBD.
+  const { data: timedIssues } = useQuery({
+    queryKey: ["timed-round-capacity", muChampIdsKey],
+    queryFn: async () => {
+      const out: Array<{ champId: string; issues: string[] }> = [];
+      for (const id of muChampIdsKey.split(",")) {
+        const r = await scheduleTimedRounds(id, { dryRun: true }).catch(() => null);
+        if (r?.issues?.length) out.push({ champId: id, issues: r.issues });
+      }
+      return out;
+    },
+    enabled: !!muChampIdsKey && (isClubAdmin || canManageChamps),
   });
   const champById = useMemo(
     () => new Map((allChamps as any[]).map((champ: any) => [champ.id, champ] as const)),
@@ -1861,6 +1874,13 @@ export default function Tournaments() {
 
               <Card ref={gamesCardRef} className="scroll-mt-4">
                 <CardHeader className="pb-2">
+                  {(isClubAdmin || canManageChamps) && (timedIssues ?? []).map((t) => (
+                    <div key={t.champId} role="alert" className="mb-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      <div className="font-semibold">{(champById.get(t.champId) as any)?.name ?? "Tournament"}: fixed rounds can't be given times and courts</div>
+                      <ul className="list-disc pl-4 mt-1 space-y-0.5">{t.issues.slice(0, 4).map((x, i) => <li key={i}>{x}</li>)}</ul>
+                      <div className="mt-1">Add courts, widen the time window or add a match date in setup, then press "Assign courts &amp; times".</div>
+                    </div>
+                  ))}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> Tournament Games

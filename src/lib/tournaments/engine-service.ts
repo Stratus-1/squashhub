@@ -195,6 +195,13 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
   return swissFixtures(tid, d, st, last + 1, table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
 }
 
+/** Organiser-confirmed pairings must be real, distinct entrants of the right field/pool — never guessed or repaired. */
+function assertConfirmedPairs(stage: string, pairs: Array<[string, string]>, allowed: (id: string, k: number) => boolean) {
+  const used = pairs.flat();
+  if (used.some((id) => !id) || pairs.some(([a, b]) => a === b) || new Set(used).size !== used.length || used.some((id, k) => !allowed(id, k)))
+    throw new IntegrityError("pool_members", `${stage}: the Round 1 matches you confirmed don't match the current entries or pools — refresh and check them.`);
+}
+
 function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seeded: Array<string | null>): EngineFixture[] {
   if (st.paced?.perPool && st.poolMembers?.length) {
     // Knockout inside pools: elimination within each pool only — never round robin, never across pools.
@@ -203,16 +210,21 @@ function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seed
     if (all.length !== rank.size || new Set(all).size !== all.length || all.some((x) => !rank.has(x)))
       throw new IntegrityError("pool_members", `${st.name}: the confirmed pools don't match the current entries — refresh the preview.`);
     let slot = 0;
+    const confirmed = st.paced.poolPairs;
+    if (confirmed) assertConfirmedPairs(st.name, confirmed.flat(), (id, k) => st.poolMembers![confirmed.findIndex((ps) => ps.some((p) => p.includes(id)))]?.includes(id) ?? false);
     return st.poolMembers.flatMap((members, pi) => {
-      const { pairs } = proposePairings(members.map((id) => ({ id, rank: rank.get(id)! })), st.paced!.perPool![pi] ?? 0, st.paced!.pairing);
-      return pairs.map(([a, b]) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, koPool: pi + 1, pacedRound: true, slot: ++slot, a: a.id, b: b.id }));
+      const pairs: Array<[string, string]> = confirmed ? (confirmed[pi] ?? [])
+        : proposePairings(members.map((id) => ({ id, rank: rank.get(id)! })), st.paced!.perPool![pi] ?? 0, st.paced!.pairing).pairs.map(([a, b]) => [a.id, b.id]);
+      return pairs.map(([a, b]) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, koPool: pi + 1, pacedRound: true, slot: ++slot, a, b }));
     });
   }
-  if (st.paced && st.paced.count > 0) {
+  if (st.paced && (st.paced.count > 0 || st.paced.pairs)) {
     // Paced knockout: only this round's matches; nobody else is drawn or eliminated.
     const field = seeded.filter(Boolean).map((id, i) => ({ id: id as string, rank: i + 1 }));
-    const { pairs } = proposePairings(field, st.paced.count, st.paced.pairing);
-    return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, pacedRound: true, slot: i + 1, a: a.id, b: b.id }));
+    const ids = new Set(field.map((f) => f.id));
+    if (st.paced.pairs) assertConfirmedPairs(st.name, st.paced.pairs, (id) => ids.has(id));
+    const pairs: Array<[string, string]> = st.paced.pairs ?? proposePairings(field, st.paced.count, st.paced.pairing).pairs.map(([a, b]) => [a.id, b.id]);
+    return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, pacedRound: true, slot: i + 1, a, b }));
   }
   const size = st.drawSize ?? nextPow2(seeded.length);
   const order = bracketOrder(size);

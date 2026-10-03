@@ -2540,3 +2540,4 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 
 ### 2026-10-03 — Cross-league round robin blocked ("needs at least one other group")
 Cause: per-group validation read only each group's own selection; a setup "Cross-league" with no named groups left both empty. Fix: canonical edge graph (`crossEdges`), `divisionIssues(d, all)`, `defaultCrossAll`; preview lists "A ↔ B: N matches". Tests: `src/test/cross-league-edges.test.ts`. Also removed club-facing "Beta" labels (identifiers unchanged).
+- 2026-10-03: Who-plays-whom UX reworked (Within this group / Against other groups → Full cross-group round robin or Selected player matchups); tests in cross-league-edges.test.ts.

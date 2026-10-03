@@ -91,8 +91,10 @@ export function scheduleActionLabel(m: FixtureLike): string {
   return fixtureScheduleState(m) === "scheduled" ? "Reschedule your court booking" : "Make your court booking";
 }
 
-export function scheduleActionShortLabel(m: FixtureLike): string {
-  return fixtureScheduleState(m) === "scheduled" ? "Reschedule" : "Book court";
+export function scheduleActionShortLabel(m: FixtureLike, opts: { centrallyScheduled?: boolean } = {}): string {
+  if (fixtureScheduleState(m) === "scheduled") return "Reschedule";
+  // Organiser-run stage: the admin assigns a court/time; players never "book".
+  return opts.centrallyScheduled ? "Assign court" : "Book court";
 }
 
 /** What the date/time columns of a fixture row should read. */

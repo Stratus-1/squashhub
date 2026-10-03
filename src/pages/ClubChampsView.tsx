@@ -2780,7 +2780,7 @@ export default function ClubChampsView() {
                 title={scheduled ? "Move this fixture to another court or time" : "Allocate a court, date and time to this fixture"}
               >
                 <CalendarClock className="h-3 w-3 mr-1" />
-                {scheduleActionShortLabel(m)}
+                {scheduleActionShortLabel(m, { centrallyScheduled: centrallyScheduled(m) })}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

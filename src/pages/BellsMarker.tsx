@@ -135,11 +135,13 @@ export default function BellsMarker() {
   const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
   const [dServe, setDServe] = useState<DoublesServeState | null>(null);
   const { data: servingMethodRow = null } = useQuery({
-    queryKey: ["tournament-doubles-serving", match?.champ_id],
+    queryKey: ["tournament-doubles-serving", match?.champ_id, (match as any)?.group_number],
     queryFn: async () => {
-      const { data, error } = await fromExt("tournaments").select("doubles_serving_method").eq("id", match!.champ_id).maybeSingle();
+      // Per-division method first (league_doubles_serving_methods), tournament-wide fallback.
+      const { data, error } = await fromExt("tournaments").select("doubles_serving_method, league_doubles_serving_methods").eq("id", match!.champ_id).maybeSingle();
       if (error) throw error;
-      return ((data as any)?.doubles_serving_method ?? null) as string | null;
+      const per = (data as any)?.league_doubles_serving_methods?.[String((match as any)?.group_number)];
+      return ((per ?? (data as any)?.doubles_serving_method) ?? null) as string | null;
     },
     enabled: !!match?.champ_id && !!match?.partner_a,
   });

@@ -415,22 +415,32 @@ export default function MatchMarker() {
       ]);
       if (cancelled || !tournamentData) return;
       const effective = effectiveTournamentSettings({ ...(rulesData as any), ...(tournamentData as any) }, row.group_number);
+      // Time-capped (Bells) divisions are always marked on the Bells marker.
+      if (effective.scoringMode === "time_capped_points") {
+        navigate(`/bells-marker/${config.sourceId}`, { replace: true });
+        return;
+      }
       const ppg = Number(effective.pointsPerGame);
       const scoringFormat: MarkerConfig["scoringFormat"] = ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
       const bestOf: MarkerConfig["bestOf"] = Number(effective.bestOf) === 5 ? 5 : 3;
       const playAllGames = effective.playAllGames;
       const deuceRule: MarkerConfig["deuceRule"] = effective.winCondition === "sudden_death" ? "sudden_death" : "win_by_2";
+      // Doubles serving always follows the division's configured method.
+      const wantServing = config.isDoubles && config.partnerA && config.partnerB
+        ? { pairA: [config.playerA.name, config.partnerA.name] as [string, string], pairB: [config.playerB.name, config.partnerB.name] as [string, string], ...(config.doublesServing ?? {}), method: effective.doublesServingMethod }
+        : config.doublesServing ?? undefined;
 
       if (
         config.scoringFormat !== scoringFormat ||
         config.bestOf !== bestOf ||
         !!config.playAllGames !== playAllGames ||
         config.deuceRule !== deuceRule ||
+        (!!wantServing !== !!config.doublesServing) ||
         (config.doublesServing && (config.doublesServing.method ?? null) !== effective.doublesServingMethod)
       ) {
         setConfig({
           ...config, scoringFormat, bestOf, playAllGames, deuceRule,
-          ...(config.doublesServing ? { doublesServing: { ...config.doublesServing, method: effective.doublesServingMethod } } : {}),
+          ...(wantServing ? { doublesServing: wantServing } : {}),
         });
       }
     };

@@ -201,7 +201,7 @@ export type TimedSlot = { id: string; date: string; time: string; courtId: numbe
  * that day; others follow sequentially and roll to the next configured day/session when the
  * window is full. All-or-nothing: any issue means nothing should be written.
  */
-export function planTimedRounds(o: { rounds: TimedRound[]; days: TimedDay[]; minutes: number; bufferMinutes?: number; busy?: Array<Busy & { date: string }>; waves?: boolean }) {
+export function planTimedRounds(o: { rounds: TimedRound[]; days: TimedDay[]; minutes: number; bufferMinutes?: number; busy?: Array<Busy & { date: string }>; waves?: boolean; players?: Record<string, string[]> }) {
   const step = Math.max(1, Number(o.minutes) || 0) + Math.max(0, o.bufferMinutes ?? 0);
   const days = [...o.days].filter((d) => d.courtIds.length && toMin(d.to) > toMin(d.from)).sort((a, b) => a.date.localeCompare(b.date) || toMin(a.from) - toMin(b.from));
   const taken: Array<Busy & { date: string }> = [...(o.busy ?? [])];
@@ -227,7 +227,13 @@ export function planTimedRounds(o: { rounds: TimedRound[]; days: TimedDay[]; min
       const d = days[di];
       const waves: string[][] = [];
       const per = o.waves ? d.courtIds.length : r.games.length;
-      for (let i = 0; i < r.games.length; i += per) waves.push(r.games.slice(i, i + per));
+      // A player is never on two courts at once: each wave holds a player at most once.
+      for (const id of r.games) {
+        const ps = o.players?.[id] ?? [];
+        const w = waves.find((x) => x.length < per && !x.some((y) => (o.players?.[y] ?? []).some((p) => ps.includes(p))));
+        if (w) w.push(id); else waves.push([id]);
+      }
+      if (!o.waves && waves.length > 1) { issues.push(`Round ${r.round}: a player appears in two games of the same round, so they cannot all start at the bell.`); break; }
       let cursor = t; const local: TimedSlot[] = []; let ok = true;
       for (const w of waves) {
         let courts = freeAt(d, cursor);
@@ -243,6 +249,7 @@ export function planTimedRounds(o: { rounds: TimedRound[]; days: TimedDay[]; min
     }
     if (!placed) issues.push(`Round ${r.round}: no room left — ${required} games need ${Math.ceil(required / Math.max(1, maxCourts))} bell slot${required > maxCourts ? "s" : ""} on ${maxCourts} court${maxCourts === 1 ? "" : "s"} but only ${available} court slots fit in the configured time window${days.length > 1 ? "s" : ""}.`);
   }
+  if (issues.length && required > available) issues.unshift(`${required} games need ${required} court slots but only ${available} fit (${days.map((d) => `${d.date} ${d.from}–${d.to} on ${d.courtIds.length} court${d.courtIds.length === 1 ? "" : "s"}`).join("; ")}, ${step} min per game).`);
   return { slots: issues.length ? [] : slots, issues, required, available };
 }
 
@@ -261,7 +268,7 @@ export function planDays(formatPlan: any): TimedDay[] {
  * timed round sessions. Duration = the format's own slot (Bells cap via match_duration_minutes;
  * break already inside the slot). Writes nothing when the plan does not fit.
  */
-export async function scheduleTimedRounds(champId: string) {
+export async function scheduleTimedRounds(champId: string, opts: { dryRun?: boolean } = {}) {
   const [{ data: t }, { data: rows }] = await Promise.all([
     fromExt("tournaments").select("builder_spec, beta_lifecycle, match_duration_minutes, default_break_minutes, start_time").eq("id", champId).maybeSingle(),
     fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id").eq("champ_id", champId),
@@ -295,8 +302,9 @@ export async function scheduleTimedRounds(champId: string) {
     round, date: roundDates.length > 1 ? roundDates[round - 1] ?? null : null,
     games: ms.sort((a, b) => (Number(a.group_number) - Number(b.group_number)) || (Number(a.bracket_position) || 0) - (Number(b.bracket_position) || 0)).map((m) => m.id),
   }));
-  const res = planTimedRounds({ rounds, days, minutes, busy, waves: !!plan?.waves });
-  for (const s of res.slots) {
+  const players = Object.fromEntries(own.map((m) => [m.id, [m.player_a_member_id, m.player_b_member_id].filter(Boolean)]));
+  const res = planTimedRounds({ rounds, days, minutes, busy, waves: !!plan?.waves, players });
+  for (const s of opts.dryRun ? [] : res.slots) {
     const { error } = await fromExt("club_champs_matches")
       .update({ scheduled_date: s.date, scheduled_time: `${s.time}:00`, court_id: s.courtId, play_by: null } as any)
       .eq("id", s.id).is("winner_member_id", null).is("booking_id", null);

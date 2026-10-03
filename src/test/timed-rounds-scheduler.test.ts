@@ -48,3 +48,19 @@ describe("timed round sessions (Bells / fixed dates)", () => {
     expect(planDays(plan)).toEqual([{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }]);
   });
 });
+
+describe("player collisions", () => {
+  it("never puts a player on two courts in the same slot", () => {
+    const players = { a: ["p1", "p2"], b: ["p1", "p3"], c: ["p4", "p5"] };
+    const r = planTimedRounds({ rounds: [{ round: 1, games: ["a", "b", "c"] }], days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [1, 2, 3] }], minutes: 30, waves: true, players });
+    const ta = r.slots.find((s) => s.id === "a")!.time, tb = r.slots.find((s) => s.id === "b")!.time;
+    expect(ta).not.toBe(tb);
+    const blocked = planTimedRounds({ rounds: [{ round: 1, games: ["a", "b"] }], days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [1, 2, 3] }], minutes: 30, players });
+    expect(blocked.slots).toEqual([]); expect(blocked.issues[0]).toMatch(/two games/);
+  });
+  it("explains total capacity for the 6th/7th case", () => {
+    const g = (r: number) => Array.from({ length: 6 }, (_, i) => `r${r}g${i}`);
+    const r = planTimedRounds({ rounds: [1, 2, 3, 4, 5, 6].map((n) => ({ round: n, games: g(n) })), days: [{ date: "2026-10-06", from: "18:00", to: "21:00", courtIds: [20, 21, 24] }], minutes: 30 });
+    expect(r.slots).toEqual([]); expect(r.issues[0]).toMatch(/36 games need 36 court slots but only 18 fit/);
+  });
+});

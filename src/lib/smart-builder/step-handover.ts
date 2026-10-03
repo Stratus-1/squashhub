@@ -211,6 +211,12 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     const serving = Object.fromEntries(i.divisions.flatMap((d, n) => d.matchType === "doubles" && d.serving ? [[String(n + 1), d.serving]] : []));
     const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), league_sources: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.leagueIds ?? []])), league_source_modes: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), "selected"])), league_genders: Object.fromEntries(i.divisions.flatMap((d, n) => d.gender === "mens" ? [[String(n + 1), "men"]] : d.gender === "ladies" ? [[String(n + 1), "ladies"]] : [])), ...(i.divisions.some((d) => d.serving !== undefined) ? { league_doubles_serving_methods: Object.keys(serving).length ? serving : null } : {}), ...divisionScoringColumns(i.divisions) }).eq("id", tid);
     if (error) throw error;
+    // Screens/server checks that read the tournament-wide mode must agree when every category uses the same scoring.
+    const modes = [...new Set(i.divisions.map((d) => d.scoring?.mode).filter(Boolean))];
+    if (modes.length === 1 && i.divisions.every((d) => d.scoring)) {
+      const { error: rErr } = await fromExt("tournament_rules").update({ scoring_mode: modes[0] }).eq("tournament_id", tid);
+      if (rErr) throw rErr;
+    }
   }
   if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);
   if (i.partnerPay !== undefined) {

@@ -142,10 +142,10 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
     <div className="dark rounded-xl bg-background p-4 text-foreground">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Wand2 className="w-5 h-5 text-amber-300" /> {home ? "Tournaments" : "Tournament Beta"}
+          <Wand2 className="w-5 h-5 text-amber-300" /> Tournaments
         </h2>
         {!home && <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1">
-          <FlaskConical className="w-3 h-3" />Beta testing · {clubName ?? "this club"}
+          {clubName ?? "this club"}
         </span>}
       </div>
       <p className="mt-4 max-w-xl text-xs text-white/60">

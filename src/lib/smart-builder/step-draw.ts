@@ -290,7 +290,7 @@ export function poolWarnings(d: DrawDivision, mode: PoolAllocationMode = "snake"
 
 /* ── validation + spec ── */
 
-export function divisionIssues(d: DrawDivision): string[] {
+export function divisionIssues(d: DrawDivision, all?: DrawDivision[]): string[] {
   const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? []), ...poolBlocks(d)];
   if (d.poolReview?.needsDecision && !d.poolAccepted) out.push(`pools are "Decide after entries close" — review the recommended pools and accept or adjust them`);
   // Pools are a partition. Round robin and knockout both run inside pools; Swiss pairs one field by results.
@@ -301,7 +301,7 @@ export function divisionIssues(d: DrawDivision): string[] {
   if (!f.kind) out.push("choose a format");
   if (hasPools(f) && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
   if (f.kind === "swiss" && (f.swissRounds < 1 || f.swissRounds > n - 1)) out.push(`Swiss rounds must be 1–${Math.max(1, n - 1)}`);
-  if (f.kind === "cross" && crossOpponents(d).length < 1) out.push(f.crossVs ? "choose at least one group for this group to play" : "cross-league needs this group and at least one other group to play against");
+  if (f.kind === "cross" && crossOpponents(d, all).length < 1) out.push(f.crossVs ? "choose at least one group for this group to play" : "cross-league needs this group and at least one other group to play against");
   if (!f.schedule.rule) out.push("choose play-by date or fixed date");
   if (f.schedule.rule === "play_by" && !f.schedule.deadlines.filter(Boolean).length) out.push("set the play-by date");
   if (f.schedule.rule === "play_by" && f.schedule.deadlines.some((x) => !x)) out.push("a play-by round has no date");
@@ -311,15 +311,53 @@ export function divisionIssues(d: DrawDivision): string[] {
 }
 
 /** Groups this cross-league division plays: the chosen pairings, else every other group in its selected set. Never its own group. */
-export function crossOpponents(d: DrawDivision): number[] {
+/**
+ * Setup chose "Cross-league round robin" without naming groups: every cross group of the same discipline plays every
+ * other one ("All selected groups play each other"). Only fills groups with no selection of their own.
+ */
+export function defaultCrossAll(divs: DrawDivision[], unspecified: Set<number>): DrawDivision[] {
+  const open = divs.filter((d) => d.format.kind === "cross" && unspecified.has(d.group) && !d.format.crossVs && !(d.format.crossGroups ?? []).length);
+  return divs.map((d) => {
+    if (!open.includes(d)) return d;
+    const peers = open.filter((o) => o.doubles === d.doubles).map((o) => o.group).sort((a, b) => a - b);
+    return peers.length >= 2 ? { ...d, format: { ...d.format, crossGroups: peers } } : d;
+  });
+}
+
+/** The groups this division itself selected (its own side of the relationship; the division is always included). */
+function crossSelection(d: DrawDivision): { mode: "all" | "chosen"; groups: number[] } {
   const f = d.format;
-  const xs = f.crossVs ? f.crossVs : f.crossGroups.length >= 2 && f.crossGroups.includes(d.group) ? f.crossGroups : [];
-  return [...new Set(xs)].filter((g) => g !== d.group).sort((a, b) => a - b);
+  if (f.crossVs) return { mode: "chosen", groups: [...new Set(f.crossVs)].filter((g) => g !== d.group) };
+  const gs = [...new Set(f.crossGroups ?? [])];
+  // "All selected groups play each other": the division is always part of its own selection.
+  return { mode: "all", groups: gs.length ? [...new Set([d.group, ...gs])] : [] };
 }
 
 /**
- * Cross-league sets = connected groups that play each other, with the exact group-vs-group meetings.
- * Pairings must be reciprocal; nothing beyond the configured meetings is inferred.
+ * Canonical cross-league relationship graph: unordered group pairs, built from EVERY cross division's selection.
+ * A↔B is one edge whether A, B or both selected it — never duplicated, never requires configuring twice.
+ */
+export function crossEdges(divs: DrawDivision[]): Array<[number, number]> {
+  const edges = new Map<string, [number, number]>();
+  const add = (a: number, b: number) => { if (a === b) return; const [x, y] = a < b ? [a, b] : [b, a]; edges.set(`${x}-${y}`, [x, y]); };
+  for (const d of divs) {
+    if (d.format.kind !== "cross") continue;
+    const sel = crossSelection(d);
+    if (sel.mode === "chosen") sel.groups.forEach((g) => add(d.group, g));
+    else for (let i = 0; i < sel.groups.length; i++) for (let j = i + 1; j < sel.groups.length; j++) add(sel.groups[i], sel.groups[j]);
+  }
+  return [...edges.values()].sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+}
+
+/** Opponent groups of d through the canonical relationship graph (pass all divisions); falls back to d's own selection. */
+export function crossOpponents(d: DrawDivision, all?: DrawDivision[]): number[] {
+  const edges = crossEdges(all && all.some((x) => x.group === d.group) ? all : [d, ...(all ?? [])]);
+  return [...new Set(edges.flatMap(([x, y]) => (x === d.group ? [y] : y === d.group ? [x] : [])))].sort((a, b) => a - b);
+}
+
+/**
+ * Cross-league sets = connected groups that play each other, with the exact group-vs-group meetings (canonical edges).
+ * Nothing beyond the configured meetings is inferred.
  */
 export function crossSets(divs: DrawDivision[]): { sets: number[][]; meetings: Map<string, Array<[number, number]>>; errors: string[] } {
   const errors: string[] = [];
@@ -328,19 +366,14 @@ export function crossSets(divs: DrawDivision[]): { sets: number[][]; meetings: M
   const parent = new Map<number, number>();
   const find = (x: number): number => { while (parent.get(x)! !== x) x = parent.get(x)!; return x; };
   for (const d of divs) if (d.format.kind === "cross") parent.set(d.group, d.group);
-  for (const d of divs) {
-    if (d.format.kind !== "cross") continue;
-    for (const g of crossOpponents(d)) {
-      const o = byGroup.get(g);
-      if (!o) { errors.push(`${d.label}: cross-league group ${g} doesn't exist in this tournament.`); continue; }
-      if (o.format.kind !== "cross") { errors.push(`${d.label}: plays cross-league against ${o.label}, but ${o.label} is set to a different format. Make both cross-league or remove ${o.label} from the pairing.`); continue; }
-      if (!crossOpponents(o).includes(d.group)) { errors.push(`${d.label} is set to play ${o.label}, but ${o.label} isn't set to play ${d.label} — make the pairing match on both groups.`); continue; }
-      if (JSON.stringify(o.format.schedule) !== JSON.stringify(d.format.schedule)) errors.push(`${d.label} and ${o.label} play each other but have different dates — give them the same schedule.`);
-      if (o.doubles !== d.doubles) errors.push(`${d.label} and ${o.label} can't play each other: one is singles, the other doubles.`);
-      const [x, y] = d.group < g ? [d.group, g] : [g, d.group];
-      edges.set(`${x}-${y}`, [x, y]);
-      parent.set(find(x), find(y));
-    }
+  for (const [a, b] of crossEdges(divs)) {
+    const d = byGroup.get(a), o = byGroup.get(b);
+    if (!d || !o) { errors.push(`${(d ?? o)?.label ?? "A group"}: cross-league group ${!d ? a : b} doesn't exist in this tournament.`); continue; }
+    if (d.format.kind !== "cross" || o.format.kind !== "cross") { const [c, x] = d.format.kind === "cross" ? [d, o] : [o, d]; errors.push(`${c.label}: plays cross-league against ${x.label}, but ${x.label} is set to a different format. Make both cross-league or remove ${x.label} from the pairing.`); continue; }
+    if (JSON.stringify(o.format.schedule) !== JSON.stringify(d.format.schedule)) errors.push(`${d.label} and ${o.label} play each other but have different dates — give them the same schedule.`);
+    if (o.doubles !== d.doubles) errors.push(`${d.label} and ${o.label} can't play each other: one is singles, the other doubles.`);
+    edges.set(`${a}-${b}`, [a, b]);
+    parent.set(find(a), find(b));
   }
   const comp = new Map<number, number[]>();
   for (const g of parent.keys()) { const r = find(g); comp.set(r, [...(comp.get(r) ?? []), g]); }
@@ -592,7 +625,7 @@ export function proposedKnockoutRound1(name: string, divs: DrawDivision[], poolM
 }
 
 export function previewDraw(name: string, divs: DrawDivision[], window: { start: string | null; end: string | null }, version = "preview", poolMode: PoolAllocationMode = "snake"): DrawPreview {
-  const errors = divs.flatMap((d) => divisionIssues(d).map((m) => `${d.label}: ${m}`));
+  const errors = divs.flatMap((d) => divisionIssues(d, divs).map((m) => `${d.label}: ${m}`));
   errors.push(...crossSets(divs).errors);
   const out: DrawPreview = { divisions: [], total: 0, errors, roundsByGroup: {} };
   if (errors.length) return out;

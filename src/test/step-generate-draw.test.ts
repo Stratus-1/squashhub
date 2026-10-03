@@ -77,9 +77,11 @@ describe("Step-by-Step generate draw", () => {
     const fx = generateFromSpec(withEntrants(finalDrawSpec("T", d, "v1"), d), "t");
     const grp = (u: string) => Number(u[1]);
     for (const f of fx) expect(vs[grp(f.a!)]).toBe(grp(f.b!));
-    // one-sided pairing is refused, not inferred
-    const bad = d.map((x) => x.group === 2 ? { ...x, format: { ...x.format, crossVs: [3], crossGroups: [2, 3] } } : x);
-    expect(previewDraw("T", bad, { start: null, end: null }).errors.join()).toMatch(/isn't set to play/);
+    // a one-sided selection is one canonical edge (A selects B is enough): edges 1-2, 2-3, 3-4
+    const one = d.map((x) => x.group === 2 ? { ...x, format: { ...x.format, crossVs: [3], crossGroups: [2, 3] } } : x);
+    const op = previewDraw("T", one, { start: null, end: null });
+    expect(op.errors).toEqual([]);
+    expect(op.total).toBe(75);
     // plan keys map through proposeFormat
     const pr = proposeFormat({ format: { kind: "cross", crossUnits: ["Mens::A", "Mens::B"], crossMode: "chosen", crossPairs: [["Mens::A", "Mens::B"]] } }, "Mens › A · Doubles");
     expect(pr.crossPairKeys).toEqual([["Mens::A", "Mens::B"]]);

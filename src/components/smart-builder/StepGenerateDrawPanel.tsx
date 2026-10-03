@@ -20,7 +20,7 @@ import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllo
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, defaultCrossAll, finalDrawSpec, isPooledKnockout, knockoutNeedText, withKnockoutChoice, pooledKnockoutTarget, formatWithPoolRule, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -88,6 +88,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const plan = readStepPlan(clubId, tournamentId) ?? ((tt as any)?.beta_lifecycle?.format_plan ?? null);
     const errs: string[] = [];
     const list: DrawDivision[] = [];
+    const unspecifiedCross = new Set<number>();
     const units: DrawDivision["units"][] = [];
     const labels = Array.from({ length: n }, (_, k) => tt?.group_labels?.[String(k + 1)] ?? `Division ${k + 1}`);
     const groupOfKey = (key: string) => { const i = labels.findIndex((l) => unitKeyOf(l) === key || unitKeyOf(l).split("::")[0] === key); return i < 0 ? null : i + 1; };
@@ -99,6 +100,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const p = proposeFormat(plan, label);
       units.push(r.units);
       const notes = [...p.notes];
+      if (p.format.kind === "cross" && !p.crossKeys.length && !p.crossByParent && !p.crossPairKeys) unspecifiedCross.add(g);
       if (p.format.kind === "cross") {
         const gs = p.crossKeys.map(groupOfKey);
         if (gs.some((x) => x == null)) notes.push("Some cross-league groups in your plan no longer match a category here — check the groups below.");
@@ -146,7 +148,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       if (dropped) toast.warning("Entries changed, so your manual seed/pool changes for that category were reset.");
       return kept;
     });
-    setBaseUnits(units); setDivs(list); setPairErrors(errs); setLoading(false);
+    setBaseUnits(units); setDivs(defaultCrossAll(list, unspecifiedCross)); setPairErrors(errs); setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tournamentId]);
 
@@ -242,7 +244,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const crossPairs = useMemo(() => {
     const { meetings } = crossSets(divs);
     const lab = (g: number) => divs.find((d) => d.group === g)?.label ?? `Group ${g}`;
-    return [...meetings.values()].flat().map(([x, y]) => `${lab(x)} v ${lab(y)}`);
+    const size = (g: number) => divs.find((d) => d.group === g)?.units.length ?? 0;
+    return [...meetings.values()].flat().map(([x, y]) => `${lab(x)} ↔ ${lab(y)}: ${size(x) * size(y)} matches`);
   }, [divs]);
   const nm = (id: string | null) => (id ? names.get(id) ?? "Unknown" : "");
   const unitName = (id: string) => id.split("+").map(nm).join(" & ");
@@ -451,7 +454,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         const targets = fam.map((o) => seeded.indexOf(o));
         const apply = (patch: Partial<DivFormat>) => (block ? targets : [i]).forEach((j) => setFmt(j, patch));
         const applySch = (patch: Partial<DivSchedule>) => apply({ schedule: { ...d.format.schedule, ...patch } });
-        const issues = block ? [...new Set(fam.flatMap((o) => divisionIssues(o)))] : divisionIssues(d);
+        const issues = block ? [...new Set(fam.flatMap((o) => divisionIssues(o, divs)))] : divisionIssues(d, divs);
         const f = d.format;
         const pr = d.poolReview;
         const controls = (

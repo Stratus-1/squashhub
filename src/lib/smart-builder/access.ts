@@ -29,4 +29,4 @@ export function canUseSmartBuilder(ctx: SmartBuilderAccessContext): boolean {
 
 export const SMART_BUILDER_LABEL = "Smart Tournament Builder — BETA";
 export const SMART_BUILDER_SUBLABEL = "Super Admin testing only";
-export const CLUB_BETA_TILE_LABEL = "Tournament Beta";
+export const CLUB_BETA_TILE_LABEL = "Tournaments";

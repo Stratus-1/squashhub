@@ -96,7 +96,7 @@ export default function BetaTournamentOperate() {
   if (isLoading || !t) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   if (t.diamond) return <div className="max-w-3xl mx-auto p-6 text-sm">Diamond League keeps its existing results and standings. <Link className="underline" to={`/club-champs/${champId}`}>Open tournament</Link>.</div>;
   if (t.arch?.builder_architecture !== "structured") {
-    return <div className="max-w-3xl mx-auto p-6 text-sm">This tournament wasn't built with Tournament Beta. <Link className="underline" to={`/club-champs/${champId}`}>Open it here</Link>.</div>;
+    return <div className="max-w-3xl mx-auto p-6 text-sm">This tournament wasn't built with the step-by-step setup. <Link className="underline" to={`/club-champs/${champId}`}>Open it here</Link>.</div>;
   }
   const champ = t.champ;
   const fmt = getTournamentFormat(champ?.scoring_mode);
@@ -124,7 +124,7 @@ export default function BetaTournamentOperate() {
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-1" />Back</Button>
         <h1 className="text-xl font-bold font-heading">{champ?.name}</h1>
-        <Badge variant="secondary">Tournament Beta</Badge>
+        
         <span className="text-muted-foreground">{fmtDate(champ?.start_date)} – {fmtDate(champ?.end_date)} · {entries.length} entries · {played}/{matches.length} games played</span>
       </div>
 

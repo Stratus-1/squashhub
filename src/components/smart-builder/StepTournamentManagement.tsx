@@ -72,7 +72,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   useEffect(() => { if (h?.feeDue) loadConfirmNeedsPay(tournamentId).then(setNeedPay).catch(() => {}); }, [tournamentId, h?.feeDue]);
   if (diamond !== false) return diamond ? <div className="text-sm">Diamond League keeps its existing tournament view. <Link className="underline" to={`/club-champs/${tournamentId}`}>Open tournament</Link></div> : null;
   if (!h && rebuilding) return <div className="text-sm text-muted-foreground">Loading tournament…</div>;
-  if (!h) return <div className="text-sm">This tournament's Beta management record isn't on this device. <Button variant="link" onClick={onBack}>Back</Button></div>;
+  if (!h) return <div className="text-sm">This tournament's management record isn't on this device. <Button variant="link" onClick={onBack}>Back</Button></div>;
   const advance = (from: LifecycleKey, to: LifecycleKey) => {
     const n = { ...h, stage: to, completed: [...new Set([...h.completed, from])] as LifecycleKey[] };
     saveHandover(n); setH(n); setView(null);
@@ -101,7 +101,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         <div>
           <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" />Tournaments</Button>
           <h2 className="text-lg font-semibold">{h.name}</h2>
-          <p className="text-xs text-muted-foreground">Tournament management (Beta) · {h.kind === "period" ? "Club Championships" : "Once-off / weekend"}</p>
+          <p className="text-xs text-muted-foreground">Tournament management · {h.kind === "period" ? "Club Championships" : "Once-off / weekend"}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => askEdit()}><Pencil className="mr-1 h-4 w-4" />Edit tournament setup</Button>
       </div>

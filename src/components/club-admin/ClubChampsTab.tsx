@@ -487,6 +487,7 @@ function buildInviteDetailLines(opts: {
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   diamondLeague?: boolean;
+  diamondFinalsPoints?: "carry" | "reset";
   scoringMode: string;
   roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
@@ -523,11 +524,15 @@ function buildInviteDetailLines(opts: {
   if (opts.tournamentName?.trim()) lines.push(`Tournament: ${opts.tournamentName.trim()}`);
   lines.push(...inviteCompetitionLines(!!opts.diamondLeague, GENDER_LABELS[opts.gender], opts.matchType));
 
-  try {
-    const fmt = getTournamentFormat(opts.scoringMode);
-    lines.push(`Scoring format: ${fmt.label}`);
-  } catch {
-    /* unknown format key — skip */
+  if (opts.diamondLeague) {
+    lines.push("Scoring format: Time-capped points (singles and doubles team ties)");
+  } else {
+    try {
+      const fmt = getTournamentFormat(opts.scoringMode);
+      lines.push(`Scoring format: ${fmt.label}`);
+    } catch {
+      /* unknown format key — skip */
+    }
   }
 
   if (opts.scoringMode === "standard" && opts.pointsPerGame && opts.bestOf) {
@@ -546,7 +551,7 @@ function buildInviteDetailLines(opts: {
   );
   const effective = formats.length ? formats : ["single_round_robin"];
   lines.push(opts.diamondLeague
-    ? "Draw format: Two team divisions · round-robin ties, followed by placing rounds"
+    ? `Draw format: Two team divisions · round-robin ties, followed by placing rounds${opts.diamondFinalsPoints === "carry" ? " (points carry forward)" : opts.diamondFinalsPoints === "reset" ? " (points reset)" : ""}`
     : `Draw format: ${effective.map((f) => FORMAT_LABELS[f] || f).join(" · ")}`);
 
   // Byes only mean something where every entrant is scheduled against the
@@ -3602,7 +3607,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
    */
   const autoDetailBlock = useMemo(() => {
     const lines = buildInviteDetailLines({
-      gender, matchType, diamondLeague: diamondMode, scoringMode, roundFormat, byeHandling, partnerMode,
+      gender, matchType, diamondLeague: diamondMode, diamondFinalsPoints: diamondDraft.config.finalsPoints ?? "reset", scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,
@@ -3621,7 +3626,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
     registrationOpensAt, registrationClosesAt, entryFeeRand, pointsPerGame, bestOf,
     registrationRequired, registrationMode, champName, schedulingMode, roundDeadlines,
-    divisionFormatsKey, inviteExtraDetails, diamondMode,
+    divisionFormatsKey, inviteExtraDetails, diamondMode, diamondDraft.config.finalsPoints,
   ]);
 
   useEffect(() => {
@@ -6647,7 +6652,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
       : "";
     const detailLines = descHasDetails ? [] : buildInviteDetailLines({
-      gender, matchType, diamondLeague: diamondMode, scoringMode, roundFormat, byeHandling, partnerMode,
+      gender, matchType, diamondLeague: diamondMode, diamondFinalsPoints: diamondDraft.config.finalsPoints ?? "reset", scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
       registrationOpensAt, registrationClosesAt, entryFeeRand,
       pointsPerGame, bestOf,

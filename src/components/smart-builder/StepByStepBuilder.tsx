@@ -12,7 +12,7 @@ import { saveTieBreakRules } from "@/lib/tournaments/progression";
 import { atomically } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
-import { inferCategory } from "@/lib/leagues/category";
+import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
 import { ConflictPanel } from "./ConflictPanel";
@@ -108,6 +108,8 @@ export type StepAnswers = {
   scoring: MatchScoring | null;
   scoringOverrides: Record<string, MatchScoring>;
   categories: string[];
+  /** Explicit main-category type; subcategories inherit. */
+  categoryTypes?: Record<string, CompetitionCategory>;
   /** Optional subcategories per category name; missing/empty = no subcategories. */
   subcats: Record<string, string[]>;
   days: DayAvail[];
@@ -338,7 +340,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: `${c} › ${x}` })) : [{ key: c, base: c }];
   }).map((u) => {
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
-    return { ...u, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
+    return { ...u, categoryType: a.categoryTypes?.[u.key.split("::")[0]] ?? null, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const poolRule = (k: string): PoolPlan => poolPlanOf(a, k) ?? { mode: "none" };
@@ -455,6 +457,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;
   const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
   const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
+  const fits = (id: string, key: string) => isPlayerEligibleForCategory(genderByMember.get(id), units.find((u) => u.key === key)?.categoryType);
   const autoPlace = (id: string) => placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
@@ -609,11 +612,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
-  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0) && (!pairMode || pickIds.every((id) => !!a.picks[id]));
+  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && pickIds.every((id) => !a.picks[id] || (units.some((u) => u.key === a.picks[id]) && fits(id, a.picks[id]))) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0 && pairsFor(u.key).every(([x, y]) => validatePairComposition([genderByMember.get(x), genderByMember.get(y)], u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid)) && (!pairMode || pickIds.every((id) => !!a.picks[id]));
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
-  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c])), Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
@@ -718,7 +721,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         drawChannels: msg.channels.filter(chAvail),
         drawNotify: a.drawNotify !== false,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
-        divisions: units.map((u) => ({ leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: inferCategory(u.base), label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null })),
+        categoryTypes: units.map((u) => u.categoryType ?? "open"),
+        divisions: units.map((u) => ({ leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null })),
       });
       const prev = loadHandover(clubId, tid);
       saveHandover({
@@ -848,8 +852,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <Q t="What categories will you have? (subcategories will be next)" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
               <div className="space-y-2">
                 {a.categories.map((c, i) => (
-                  <div key={i} className="flex gap-2">
+                  <div key={i} className="flex flex-wrap gap-2">
                     <Input aria-label={`Category ${i + 1}`} value={c} placeholder={`Category ${i + 1}`} onChange={(e) => setA({ ...a, categories: a.categories.map((x, j) => (j === i ? e.target.value : x)) })} />
+                    <select aria-label={`Category ${i + 1} type`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={a.categoryTypes?.[c] ?? ""} onChange={(e) => setA({ ...a, categoryTypes: { ...a.categoryTypes, [c]: e.target.value as CompetitionCategory } })}><option value="">Category type required</option>{COMPETITION_CATEGORIES.map((type) => <option key={type} value={type}>{CATEGORY_LABELS[type]}</option>)}</select>
                     <Button variant="ghost" size="icon" aria-label="Remove category" disabled={a.categories.length === 1} onClick={() => setA({ ...a, categories: a.categories.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
@@ -981,10 +986,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible members can still enter themselves, so the total stays provisional until entries close.</div>}
               {units.some((u) => u.disc === "doubles" && !adminPairKeys.has(u.key)) && <div className="text-xs text-muted-foreground">{pairMode ? "In doubles groups where players choose their own partner, picked players are paired by the players themselves." : "Doubles groups take players who will be paired up — partners are matched later."} A player placed in a Singles group is not counted as a doubles entry.</div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
-              {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).length;
+              {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(q)).length;
                 return <div className="text-xs text-muted-foreground">{n} of {members.length} members available{q ? " matching your search" : ""}</div>; })()}
               <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
-                {members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(memberSearch.trim().toLowerCase())).map((m) => (
+                {members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(memberSearch.trim().toLowerCase())).map((m) => (
                   <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
                     onClick={() => setA({ ...a, picks: { ...a.picks, [m.id]: autoPlace(m.id) } })}>
                     {m.name}<Plus className="h-3 w-3" />
@@ -1004,7 +1009,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       <select aria-label={`Place ${memberName(id)}`} className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={a.picks[id]}
                         onChange={(e) => setA({ ...a, picks: { ...a.picks, [id]: e.target.value } })}>
                         <option value="">Not placed yet</option>
-                        {units.map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
+                        {units.filter((u) => fits(id, u.key)).map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
                       </select>
                       <Button variant="ghost" size="icon" aria-label="Remove player" onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-4 w-4" /></Button>
                     </div>
@@ -1016,11 +1021,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 const placedUnpaired = unpairedIn(u.key);
                 // Players not yet placed in a group can be paired straight into this doubles group.
                 const unplaced = pickIds.filter((id) => !a.picks[id]);
-                const candidates = [...placedUnpaired, ...unplaced];
+                const candidates = [...placedUnpaired, ...unplaced.filter((id) => fits(id, u.key))];
                 const sel = (pairDraft[u.key] ?? []).filter((id) => candidates.includes(id));
                 const toggle = (id: string) => setPairDraft({ ...pairDraft, [u.key]: sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id].slice(-2) });
                 const createPair = () => {
-                  if (sel.length !== 2) return;
+                  if (sel.length !== 2 || !validatePairComposition(sel.map((id) => genderByMember.get(id)), u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid) return;
                   const [x, y] = sel;
                   setA({ ...a, picks: { ...a.picks, [x]: u.key, [y]: u.key }, pairs: { ...(a.pairs ?? {}), [u.key]: [...prs, [x, y]] } });
                   setPairDraft({ ...pairDraft, [u.key]: [] });
@@ -1040,7 +1045,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                               className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs", sel.includes(id) ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>
                               {sel.includes(id) && <Check className="h-3 w-3" />}{memberName(id)}{!a.picks[id] && <span className="opacity-70"> (not placed)</span>}
                             </button>))}</div>
-                          <Button type="button" size="sm" disabled={sel.length !== 2} onClick={createPair}>
+                          <Button type="button" size="sm" disabled={sel.length !== 2 || !validatePairComposition(sel.map((id) => genderByMember.get(id)), u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid} onClick={createPair}>
                             <Plus className="mr-1 h-3 w-3" />Create pair{sel.length === 2 ? `: ${memberName(sel[0])} + ${memberName(sel[1])}` : ` (${sel.length}/2 chosen)`}
                           </Button>
                         </>

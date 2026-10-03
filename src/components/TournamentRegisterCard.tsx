@@ -19,6 +19,7 @@ import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/paym
 import { GroupEntryCard } from "@/components/tournaments/GroupEntryCard";
 import { isAdminEnteredRegistration } from "@/lib/tournaments/admin-entry";
 import { entrantStatusLabel } from "@/lib/tournaments/entrant-status";
+import { isPlayerEligibleForCategory, validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
 
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
@@ -131,6 +132,30 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const cardReady = acceptsCard && isSupportedGateway(paymentGateway);
   const isDoubles = champ?.match_type === "doubles";
   const partnerByPlayers = champ?.partner_mode === "players";
+  const { data: categoryRecord, isLoading: categoriesLoading } = useQuery({
+    queryKey: ["tournament-category-types", champ?.id, clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champ.id).eq("club_id", clubId).maybeSingle();
+      if (error) throw error;
+      return (data as any)?.beta_lifecycle?.category_types as Record<string, CompetitionCategory> | undefined;
+    },
+    enabled: !!champ?.id && !!clubId,
+  });
+  const typedCategories = categoryRecord ?? null;
+  const [chosenDivision, setChosenDivision] = useState("");
+  const { data: divisionOptions = [] } = useQuery({
+    queryKey: ["champ-division-options", champ?.id, memberId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("tournament_division_options", { p_champ_id: champ.id, p_member_id: memberId });
+      if (error) throw error;
+      return (data ?? []) as Array<{ group_number: number; label: string; match_type: string }>;
+    },
+    enabled: !!typedCategories && !!memberId,
+  });
+  const activeDivision = Number(chosenDivision || (divisionOptions.length === 1 ? divisionOptions[0].group_number : 0));
+  const selectedType = typedCategories?.[String(activeDivision)];
+  const memberGender = (members as any[]).find((m) => m.id === memberId)?.gender;
+  const canEnterTyped = !categoriesLoading && (!typedCategories || (activeDivision > 0 && divisionOptions.some((d) => Number(d.group_number) === activeDivision) && isPlayerEligibleForCategory(memberGender, selectedType)));
 
   const { data: myReg, refetch } = useQuery({
     queryKey: ["my-champ-reg", champ.id, memberId],
@@ -203,10 +228,12 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const register = useMutation({
     mutationFn: async () => {
+      if (!canEnterTyped) throw new Error("Select an eligible category first");
       const status = paymentRequired ? "pending_payment" : "paid";
       const { data, error } = await fromExt("club_champs_registrations").insert({
         champ_id: champ.id,
         club_member_id: memberId,
+        ...(typedCategories ? { division_choices: [activeDivision] } : {}),
         status,
       }).select("id").single();
       if (error) throw error;
@@ -262,6 +289,9 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const choosePartner = useMutation({
     mutationFn: async () => {
       if (!partnerId) throw new Error("Pick a partner");
+      if (typedCategories) throw new Error("Choose a partner through the category entry form");
+      if (!canEnterTyped) throw new Error("Select an eligible category first");
+      if (typedCategories && !validatePairComposition([memberGender, (members as any[]).find((m) => m.id === partnerId)?.gender], selectedType, { requireMixedPair: selectedType === "mixed" }).valid) throw new Error("This pair is not eligible for the selected category");
       const { error } = await (supabase as any).rpc("register_doubles_pair", {
         _champ_id: champ.id,
         _member_id: memberId,
@@ -312,6 +342,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     let list = members.filter((m: any) => m.id !== memberId && !takenIds.has(m.id));
     if (g === "men") list = list.filter((m: any) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()));
     else if (g === "ladies") list = list.filter((m: any) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()));
+    if (typedCategories) list = [];
     // Where an entry fee applies, a partner must have registered and paid first.
     if (paymentRequired) list = list.filter((m: any) => registeredPaid.has(m.id));
     return list;
@@ -362,7 +393,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         size="sm"
         className="h-8 text-xs shrink-0"
         onClick={() => choosePartner.mutate()}
-        disabled={!partnerId || choosePartner.isPending}
+        disabled={!partnerId || !canEnterTyped || choosePartner.isPending}
       >
         {choosePartner.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
         {ctaLabel}
@@ -405,6 +436,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
       {!myReg && (
         <div className="space-y-2">
+          {typedCategories && <select aria-label="Entry category" className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs" value={chosenDivision || (divisionOptions.length === 1 ? String(divisionOptions[0].group_number) : "")} onChange={(e) => { setChosenDivision(e.target.value); setPartnerId(""); }}><option value="">Select category</option>{divisionOptions.map((d) => <option key={d.group_number} value={d.group_number}>{d.label}</option>)}</select>}
           {notYetOpen ? (
             <p className="text-xs text-muted-foreground">Registration opens {opensAt?.toLocaleString()}</p>
           ) : isClosed ? (
@@ -412,7 +444,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           ) : (
             <>
               <div className="flex items-center gap-2">
-                <Button size="sm" className="text-xs h-8" onClick={() => register.mutate()} disabled={register.isPending}>
+                <Button size="sm" className="text-xs h-8" onClick={() => register.mutate()} disabled={register.isPending || !canEnterTyped}>
                   {register.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
                   {entryFee > 0 ? `Register · Pay ${money(entryFee)}` : "Register"}
                 </Button>
@@ -541,7 +573,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {!notYetOpen && !isClosed && !adminEntered && (
+      {!notYetOpen && !isClosed && !adminEntered && !typedCategories && (
         <div className="mt-2 pt-2 border-t border-border/60">
           <GroupEntryCard champ={champ} clubId={clubId} memberId={memberId} paymentGateway={paymentGateway} />
         </div>

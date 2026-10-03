@@ -4,9 +4,9 @@
  * league registration. Only an unambiguous single match is used; a gendered
  * category (by its name) never takes a player of the other gender.
  */
-import { inferCategory, isPlayerEligibleForCategory } from "@/lib/leagues/category";
+import { inferCategory, isPlayerEligibleForCategory, type CompetitionCategory } from "@/lib/leagues/category";
 
-export interface PlacementUnit { key: string; base: string }
+export interface PlacementUnit { key: string; base: string; categoryType?: CompetitionCategory | null }
 export interface PlacementElig { mode: string; leagueIds: string[] }
 
 export function placeByLeague(args: {
@@ -17,14 +17,14 @@ export function placeByLeague(args: {
   genderByMember: Map<string, string | null>;
 }): string {
   const { memberId, units, eligOf, leaguesByMember, genderByMember } = args;
-  if (units.length === 1) return units[0].key;
+  if (units.length === 1) return isPlayerEligibleForCategory(genderByMember.get(memberId), units[0].categoryType ?? inferCategory(units[0].base)) ? units[0].key : "";
   const mine = new Set(leaguesByMember.get(memberId) ?? []);
   if (mine.size === 0) return "";
   const gender = genderByMember.get(memberId) ?? null;
   const hits = units.filter((u) => {
     const e = eligOf(u.key);
     if (e.mode !== "leagues" || !e.leagueIds.some((id) => mine.has(id))) return false;
-    const cat = inferCategory(u.base);
+    const cat = u.categoryType ?? inferCategory(u.base);
     return cat === "mens" || cat === "ladies" ? isPlayerEligibleForCategory(gender, cat) : true;
   });
   return hits.length === 1 ? hits[0].key : "";

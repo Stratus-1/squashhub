@@ -8,6 +8,7 @@
  * have a court/booking are skipped, so reloads and retries never double-book.
  */
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { divisionGroup, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import type { PlannedStage } from "@/lib/tournaments/contract";
 import { playoffSlotOrder, sortGamesForSlots, type SlotDivision } from "./playoff-slot-order";
@@ -54,6 +55,7 @@ export async function playoffSlotPlan(champId: string, spec: TournamentSpec) {
 }
 
 export async function schedulePlannedPlayoffGames(champId: string): Promise<ScheduleReport> {
+  await assertNotDiamondTournament(champId);
   const report: ScheduleReport = { booked: 0, unplaced: [] };
   const { data: t } = await fromExt("tournaments").select("builder_spec").eq("id", champId).maybeSingle();
   const spec = (t as any)?.builder_spec as TournamentSpec | null;

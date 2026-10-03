@@ -100,6 +100,8 @@ export type CreateInput = {
   /** Step-by-Step categories/subcategories, in order — become the tournament's divisions (group 1..n). */
   divisions?: Array<{ leagueIds?: string[]; gender?: string | null; label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null }>;
   existingId?: string | null;
+  /** Beta-only explicit division types, applied by the server registration guard. */
+  categoryTypes?: string[];
   /** undefined = not decided (leave as is); null = no group; object = organiser's invite link. */
   waGroup?: { url: string; include: boolean; name: string } | null;
   /** undefined = leave as is; maps to the Current Builder's tournaments.result_notify_scope / _channels. */
@@ -163,6 +165,10 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     const cur = (await loadLifecycle(tid!)) ?? ({ stage: "invite", completed: ["planning"] } as BetaLifecycle);
     await saveLifecycle(tid!, { ...cur, draw_notify: i.drawNotify });
   }
+  if (i.categoryTypes?.length) {
+    const current = (await loadLifecycle(tid)) ?? ({ stage: "invite", completed: ["planning"] } as BetaLifecycle);
+    await saveLifecycle(tid, { ...current, category_types: Object.fromEntries(i.categoryTypes.map((type, index) => [String(index + 1), type])) });
+  }
   if (i.entrants.length) {
     const nDiv = Math.max(1, i.divisions?.length ?? 1);
     const missing = i.entrants.filter((e) => nDiv > 1 && !(e.division && e.division >= 1 && e.division <= nDiv));
@@ -209,6 +215,7 @@ export type BetaLifecycle = {
   draw_notify?: boolean;
   /** Draw-relevant setup answers (format incl. within/between/custom matchups, seeding, stages, play-offs) so Generate draw works on any device. */
   format_plan?: Record<string, unknown> | null;
+  category_types?: Record<string, string>;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };
 };
 
@@ -220,7 +227,7 @@ export async function loadLifecycle(tournamentId: string): Promise<BetaLifecycle
 export async function saveLifecycle(tournamentId: string, l: BetaLifecycle) {
   // Never drop the saved setup (format_plan) when a caller holds an older lifecycle copy without it.
   let next = l;
-  if (l.format_plan === undefined) { const cur = await loadLifecycle(tournamentId).catch(() => null); if (cur?.format_plan) next = { ...l, format_plan: cur.format_plan }; }
+  if (l.format_plan === undefined || l.category_types === undefined) { const cur = await loadLifecycle(tournamentId).catch(() => null); next = { ...l, ...(l.format_plan === undefined && cur?.format_plan ? { format_plan: cur.format_plan } : {}), ...(l.category_types === undefined && cur?.category_types ? { category_types: cur.category_types } : {}) }; }
   const { error } = await fromExt("tournaments").update({ beta_lifecycle: next }).eq("id", tournamentId);
   if (error) throw error;
 }

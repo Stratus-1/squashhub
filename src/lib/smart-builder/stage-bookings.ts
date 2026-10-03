@@ -10,6 +10,7 @@
  * - Club-scoped: only the club's own courts, written into that club's diary.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 
 export type BookableStage = { id: string; name: string; mode: string; date: string; from: string; to: string; courtIds: string[] };
 export type StageSlot = { stageId: string; stageName: string; courtId: number; date: string; start: string; end: string; externalId: string };
@@ -69,6 +70,7 @@ export async function findConflicts(clubId: string, slots: StageSlot[]): Promise
 
 /** Books free slots, skips conflicts, removes this plan's reservations no longer in the schedule. */
 export async function bookPlanSlots(clubId: string, planId: string, label: string, slots: StageSlot[]) {
+  await assertNotDiamondTournament(planId);
   const conflicts = await findConflicts(clubId, slots);
   const blocked = new Set(conflicts.map((c) => c.externalId));
   const free = slots.filter((s) => !blocked.has(s.externalId));
@@ -93,6 +95,7 @@ export async function bookPlanSlots(clubId: string, planId: string, label: strin
 }
 
 export async function releasePlanBookings(clubId: string, planId: string) {
+  await assertNotDiamondTournament(planId);
   const { error } = await supabase.from("bookings").delete().eq("club_id", clubId).eq("source", "club_event").like("external_id", `${planPrefix(planId)}%`);
   if (error) throw error;
 }

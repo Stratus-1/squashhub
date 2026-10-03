@@ -3553,6 +3553,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const createDiamond = useMutation({
     mutationFn: async () => {
       if (!startDate || !endDate) throw new Error("Add a start and end date on the Courts step first.");
+      const ineligible = diamondDraft.teams.flatMap((t) => t.players).filter((id) => id && !memberMatchesTournamentGender((allSelectablePlayers as any[]).find((m) => m.id === id)?.gender, gender));
+      if (launchDiamond && ineligible.length) throw new Error("One or more Diamond team players are not eligible for this category.");
       const empty = diamondDraft.teams.filter((t) => t.players.some((p) => !p));
       if (empty.length) throw new Error(`Fill every team slot first: ${empty.map((t) => t.name).join(", ")}`);
       const id = await saveDraft();
@@ -7616,8 +7618,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   /** The Players step may only offer people who have not withdrawn/declined. */
   const availablePlayers = useMemo(
-    () => (allSelectablePlayers as any[]).filter((m: any) => !withdrawnMemberIds.has(String(m.id))),
-    [allSelectablePlayers, withdrawnMemberIds],
+    () => (allSelectablePlayers as any[]).filter((m: any) => !withdrawnMemberIds.has(String(m.id)) && (!(launchDiamond && diamondMode) || memberMatchesTournamentGender(m.gender, gender))),
+    [allSelectablePlayers, withdrawnMemberIds, diamondMode, gender, launchDiamond],
   );
 
 
@@ -12833,8 +12835,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               players={(() => {
                 const ladder = genderMembers.map((m) => m.id);
                 const order = playerOrder.length ? [...playerOrder, ...ladder.filter((id) => !playerOrder.includes(id))] : ladder;
-                const rest = Array.from(selectedPlayerIds).filter((id) => !order.includes(id));
-                return [...order.filter((id) => selectedPlayerIds.has(id)), ...rest];
+                const rest = Array.from(selectedPlayerIds).filter((id) => !order.includes(id) && availablePlayers.some((m) => m.id === id));
+                return [...order.filter((id) => selectedPlayerIds.has(id) && availablePlayers.some((m) => m.id === id)), ...rest];
               })()}
               nameOf={(id) => (members as any[]).find((m) => m.id === id)?.name || "Player"}
             />

@@ -1194,11 +1194,11 @@ export default function Tournaments() {
     const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a ?? m.n_a);
     const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b ?? m.n_b);
 
-    // Play-off heading — e.g. "Play-off · League 1 · Semi-final — Pool A #1 vs Pool B #2"
+    // Play-off heading always names its event, e.g. "Men's Singles · Semi-final 1 · Pool A #1 vs Pool B #2"
     const isPlayoffMatch = typeof m.stage === "string" && m.stage.startsWith("playoff");
     const seedPair = m.placeholder_a && m.placeholder_b ? `${m.placeholder_a} vs ${m.placeholder_b}` : null;
     const playoffHeading = isPlayoffMatch
-      ? ["Play-off", m.stage_label, seedPair].filter(Boolean).join(" · ")
+      ? playoffHeadingText(m.group_number != null ? getGroupLabel(champ, m.group_number) : null, m.stage_label, seedPair)
       : null;
     // Provisional only while outstanding pool games can still change who plays here.
     // Fixed (no tag) when: match is done, that league's pool games are all played,

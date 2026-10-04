@@ -50,7 +50,7 @@ describe("planInviteRows", () => {
   it("declined/cancelled members are re-invited, clearing their decline", () => {
     const plan = planInviteRows({
       memberIds: ["a"],
-      existing: [{ club_member_id: "a", status: "declined", declined_at: "2026-01-01" }],
+      existing: [{ club_member_id: "a", status: "declined" }],
       feeCents: 0, paymentRequired: false,
     });
     expect(plan.reopen).toEqual(["a"]);

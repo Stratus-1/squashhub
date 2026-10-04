@@ -391,6 +391,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     setA({ ...a, playType: p, disc });
   };
   const dblUnits = units.filter((u) => u.disc === "doubles");
+  const isBellsUnit = (k: string) => { const sc = a.scoringOverrides?.[k] ?? a.scoringOverrides?.[k.split("::")[0]] ?? a.scoring; return sc?.mode === "time_capped_points"; };
   const scoring = a.scoring ? { ...DEFAULT_SCORING, ...a.scoring } : null;
   const scoringFor = (key: string) => a.scoringOverrides?.[key] ?? a.scoringOverrides?.[key.split("::")[0]] ?? scoring;
   const scoringOk = (s: MatchScoring | null) => !!s && (s.mode === "standard" || slotMinutes(s) > 0);
@@ -1398,8 +1399,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Scheduling assumptions">
                 <div><div className="font-semibold">Scheduling assumptions</div>
                   <p className="text-xs text-muted-foreground">Used by "Assign courts &amp; times" to draft the timetable. These are court-time estimates for planning only — they don't change scoring or time-capped rules.</p></div>
+                {units.some((u) => isBellsUnit(u.key)) && <p className="text-xs text-muted-foreground">Time-capped / Bells {units.every((u) => isBellsUnit(u.key)) ? "games use" : "categories use"} their own slot time from the match format ({[...new Set(units.filter((u) => isBellsUnit(u.key)).map((u) => slotMinutes(scoringFor(u.key)!)))].join(" / ")} min incl. changeover) — no estimate needed here.</p>}
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles")], ["doubles", "Court time per Doubles match", dblUnits.length > 0], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
+                  {(([["singles", "Court time per Singles match (Standard format)", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match (Standard format)", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
                     <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
                       <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] ?? ""}
                         onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />

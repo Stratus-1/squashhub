@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allowedCourts, missingAssumptions, planAssumedSchedule, type AssumeGame } from "@/lib/tournaments/assumed-schedule";
+import { bellsMinutesFor, allowedCourts, missingAssumptions, planAssumedSchedule, type AssumeGame } from "@/lib/tournaments/assumed-schedule";
 
 const day = { date: "2026-10-10", from: "09:00", to: "12:00", courtIds: [1, 2] };
 const g = (id: string, people: string[], doubles = false, unitKey = "Men", round = 1): AssumeGame => ({ id, round, pool: null, unitKey, doubles, people });
@@ -36,5 +36,18 @@ describe("planAssumedSchedule", () => {
     expect(m.join(" ")).toMatch(/tick which club courts/);
     expect(m.join(" ")).toMatch(/Singles/);
     expect(m.join(" ")).toMatch(/Doubles/);
+  });
+  it("Bells games use their own slot; Standard uses the estimate (mixed tournament)", () => {
+    const plan = { scoring: { mode: "standard" }, scoringOverrides: { Bells: { mode: "time_capped_points", timeCapPlay: "10", timeCapBreak: "3" } } };
+    expect(bellsMinutesFor(plan, "Bells::A")).toBe(13);
+    expect(bellsMinutesFor(plan, "Men")).toBeNull();
+    const games = [{ ...g("b1", ["a", "b"], false, "Bells::A"), bellsMinutes: 13 }, { ...g("b2", ["a", "c"], false, "Bells::A"), bellsMinutes: 13 }, g("s1", ["x", "y"])];
+    const r = planAssumedSchedule({ games, days: [{ ...day, courtIds: [1] }], singles: 40, doubles: 50, rest: 0 });
+    const at = Object.fromEntries(r.slots.map((s) => [s.id, s.time]));
+    expect(at.b1).toBe("09:00"); expect(at.b2).toBe("09:13"); expect(at.s1).toBe("09:26");
+  });
+  it("does not ask for a Singles/Doubles estimate when every game is Bells", () => {
+    const m = missingAssumptions({ days: [{ date: "2026-10-10", courtIds: [1], windows: [{ from: "09:00", to: "12:00" }] }], scheduling: { rest: "0" } }, [{ doubles: false, bellsMinutes: 13 }, { doubles: true, bellsMinutes: 13 }]);
+    expect(m).toEqual([]);
   });
 });

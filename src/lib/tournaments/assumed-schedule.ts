@@ -9,13 +9,24 @@
  */
 import { fromExt } from "@/lib/supabase-ext";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
-import { planDays, type TimedDay } from "./formal-stage-schedule";
+import { bellsSlotMinutes, planDays, type TimedDay } from "./formal-stage-schedule";
 
 export type SchedAssume = { singles?: string | number; doubles?: string | number; rest?: string | number };
 /** key = category or "Cat::Sub" ("" = every category); optional round / pool narrow it further. */
 export type CourtRule = { key: string; courtIds: Array<string | number>; round?: number | string | null; pool?: number | string | null };
 
-export type AssumeGame = { id: string; round: number; pool: number | null; unitKey: string; doubles: boolean; people: string[] };
+/** `bellsMinutes` set = Time-capped/Bells game: its own configured slot (play + changeover) is authoritative. */
+export type AssumeGame = { id: string; round: number; pool: number | null; unitKey: string; doubles: boolean; people: string[]; bellsMinutes?: number | null };
+
+/** Scoring that applies to a unit key (subcategory override → category override → tournament default). */
+export function scoringForKey(plan: any, key: string) {
+  const o = plan?.scoringOverrides ?? {};
+  return o[key] ?? o[key.split("::")[0]] ?? plan?.scoring ?? null;
+}
+/** Bells slot minutes for this unit, or null when it plays Standard format. */
+export function bellsMinutesFor(plan: any, key: string): number | null {
+  return bellsSlotMinutes(scoringForKey(plan, key));
+}
 export type Interval = { date: string; courtId: number; start: number; end: number; people?: string[] };
 export type AssumeSlot = { id: string; date: string; time: string; courtId: number };
 export type AssumePlan = { slots: AssumeSlot[]; issues: string[]; relaxed: string[] };
@@ -38,7 +49,7 @@ export function allowedCourts(g: Pick<AssumeGame, "unitKey" | "round" | "pool">,
 }
 
 /** What is still missing before automatic scheduling can run (empty = ready). */
-export function missingAssumptions(plan: any, games: Array<Pick<AssumeGame, "doubles">>): string[] {
+export function missingAssumptions(plan: any, games: Array<Pick<AssumeGame, "doubles" | "bellsMinutes">>): string[] {
   const out: string[] = [];
   const days: any[] = plan?.days ?? [];
   if (!days.length) out.push("No tournament dates are set (Dates step).");
@@ -49,8 +60,10 @@ export function missingAssumptions(plan: any, games: Array<Pick<AssumeGame, "dou
     if (!(d?.windows ?? []).some((w: any) => w?.from && w?.to && w.from < w.to)) out.push(`${label}: add a start and end time for when courts are free.`);
   }
   const s = plan?.scheduling ?? {};
-  if (games.some((g) => !g.doubles) && !(num(s.singles) > 0)) out.push("Scheduling assumptions: estimated court time per Singles match (minutes).");
-  if (games.some((g) => g.doubles) && !(num(s.doubles) > 0)) out.push("Scheduling assumptions: estimated court time per Doubles match (minutes).");
+  // Bells/time-capped games use their own configured slot — never a Courts & Dates estimate.
+  const std = games.filter((g) => !(Number(g.bellsMinutes) > 0));
+  if (std.some((g) => !g.doubles) && !(num(s.singles) > 0)) out.push("Scheduling assumptions: estimated court time per Singles match (minutes).");
+  if (std.some((g) => g.doubles) && !(num(s.doubles) > 0)) out.push("Scheduling assumptions: estimated court time per Doubles match (minutes).");
   if (!(num(s.rest) >= 0)) out.push("Scheduling assumptions: minimum rest between matches for the same player/pair (minutes, 0 allowed).");
   return out;
 }
@@ -59,7 +72,7 @@ export function planAssumedSchedule(o: {
   games: AssumeGame[]; days: TimedDay[]; singles: number; doubles: number; rest: number;
   rules?: CourtRule[]; busy?: Interval[]; step?: number;
 }): AssumePlan {
-  const step = o.step ?? 5;
+  const step = o.step ?? (o.games.some((g) => Number(g.bellsMinutes) > 0) ? 1 : 5); // Bells waves run back-to-back on their exact slot
   const days = [...o.days].filter((d) => d.courtIds.length && toMin(d.to) > toMin(d.from))
     .sort((a, b) => a.date.localeCompare(b.date) || toMin(a.from) - toMin(b.from));
   const taken: Interval[] = [...(o.busy ?? [])];
@@ -83,7 +96,7 @@ export function planAssumedSchedule(o: {
   };
 
   for (const g of games) {
-    const dur = g.doubles ? o.doubles : o.singles;
+    const dur = Number(g.bellsMinutes) > 0 ? Number(g.bellsMinutes) : g.doubles ? o.doubles : o.singles;
     const allowed = allowedCourts(g, o.rules ?? []);
     if (allowed && !days.some((d) => d.courtIds.some((c) => allowed.includes(c)))) { unplaced.push({ g, why: "its court restriction allows no court that is available on the tournament dates" }); continue; }
     let hit = fits(g, allowed, dur, o.rest);
@@ -132,15 +145,17 @@ export async function loadAssumed(champId: string): Promise<AssumeLoad> {
   const people = (m: any) => [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
   const isDbl = (m: any) => !!(m.partner_a_member_id || m.partner_b_member_id);
   const movable = (m: any) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase());
+  const keyOf = (m: any) => unitKeyOf(String(labels[String(m.group_number)] ?? ""));
+  const durOf = (m: any) => bellsMinutesFor(plan, keyOf(m)) ?? (isDbl(m) ? doubles : singles || 30);
   const games: AssumeGame[] = all.filter(movable).map((m) => ({
     id: m.id, round: Number(m.round_number) || 1, pool: m.pool_number != null ? Number(m.pool_number) : null,
-    unitKey: unitKeyOf(String(labels[String(m.group_number)] ?? "")), doubles: isDbl(m), people: people(m),
+    unitKey: keyOf(m), doubles: isDbl(m), people: people(m), bellsMinutes: bellsMinutesFor(plan, keyOf(m)),
   }));
   const days = planDays(plan);
   // Played/started/booked games of this tournament keep their slot and block court + players.
   const busy: Interval[] = all.filter((m) => !movable(m) && m.scheduled_date && m.scheduled_time && m.court_id).map((m) => {
     const st = toMin(m.scheduled_time);
-    return { date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: st, end: st + (isDbl(m) ? doubles : singles || 30), people: people(m) };
+    return { date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: st, end: st + durOf(m), people: people(m) };
   });
   const dates = Array.from(new Set(days.map((d) => d.date)));
   const courts = Array.from(new Set(days.flatMap((d) => d.courtIds)));

@@ -47,38 +47,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
   const [managing, setManaging] = useState<string | null>(() => searchParams.get("manage"));
   const [picker, setPicker] = useState<"mine" | "prebuilt" | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
-  const [handovers, setHandovers] = useState<Handover[]>([]);
-  const [loadingHandovers, setLoadingHandovers] = useState(true);
-  const [handoverError, setHandoverError] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | "draft" | null>(null);
-  const refreshHandovers = async () => {
-    setLoadingHandovers(true);
-    setHandoverError(false);
-    const saved = loadHandovers(clubId);
-    if (!saved.length) { setHandovers([]); setLoadingHandovers(false); return; }
-    try {
-      // Local handovers survive a real tournament deletion. The club-scoped server
-      // rows, not localStorage, are authoritative for whether a run still exists.
-      const { data, error } = await fromExt("tournaments").select("id").eq("club_id", clubId).in("id", saved.map((h) => h.tournamentId));
-      if (error) throw error;
-      const live = new Set(((data ?? []) as Array<{ id: string }>).map((t) => t.id));
-      saved.filter((h) => !live.has(h.tournamentId)).forEach((h) => {
-        removeHandover(clubId, h.tournamentId);
-        clearTournamentPlan(h.tournamentId);
-      });
-      setHandovers(loadHandovers(clubId));
-    } catch {
-      // A network/permissions error is not evidence of deletion; keep saved data.
-      setHandovers([]);
-      setHandoverError(true);
-    } finally { setLoadingHandovers(false); }
-  };
-  useEffect(() => {
-    void refreshHandovers();
-    const onVisible = () => { if (document.visibilityState === "visible") void refreshHandovers(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [clubId, managing, stepByStepOpen]);
   const navigate = useNavigate();
   const [diamondOpen, setDiamondOpen] = useState(false);
 
@@ -196,21 +165,6 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
             </Button>
             <Button variant="ghost" size="icon" title="Remove unfinished draft" aria-label="Remove unfinished draft" onClick={() => setRemoveTarget("draft")}><Trash2 className="h-4 w-4" /></Button>
           </div>
-        </div>
-      )}
-      {loadingHandovers && <div className="mt-4 text-xs text-white/60">Checking saved tournaments…</div>}
-      {handoverError && <div className="mt-4 text-xs text-white/60">Could not check saved tournaments. <Button size="sm" variant="link" onClick={() => void refreshHandovers()}>Try again</Button></div>}
-      {handovers.length > 0 && (
-        <div className="mt-4 max-w-md space-y-1">
-          <div className="text-xs text-white/60">Continue managing</div>
-          {handovers.map((h) => (
-            <div key={h.tournamentId} className="flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1">
-              <Button variant="ghost" className="min-w-0 flex-1 justify-between text-white" onClick={() => setManaging(h.tournamentId)}>
-                <span className="truncate">{h.name}</span><ArrowRight className="h-4 w-4 shrink-0 text-amber-200" />
-              </Button>
-              <Button variant="ghost" size="icon" title={`Remove build for ${h.name}`} aria-label={`Remove build for ${h.name}`} onClick={() => setRemoveTarget({ id: h.tournamentId, name: h.name })}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
         </div>
       )}
       <AlertDialog open={removeTarget !== null} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>

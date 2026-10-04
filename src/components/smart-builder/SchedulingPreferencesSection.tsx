@@ -78,7 +78,7 @@ export function SchedulingPreferencesSection({ tournamentId, categories, preview
   return (
     <div className="space-y-2 rounded border border-border p-2" aria-label="Scheduling preferences" data-testid="scheduling-preferences">
       <div className="font-medium">Scheduling preferences</div>
-      <p className="text-muted-foreground">How SquashHub places games on the dates, times and courts you set earlier. A slot here is {step} minutes. No player is ever on two courts at once.</p>
+      <p className="text-muted-foreground">How SquashHub places games on the dates, times and courts you set earlier. {ctx.bells ? `A bell slot here is ${step} minutes (from the Bells match format).` : `Standard format: about ${step} minutes per game.`} No player is ever on two courts at once.</p>
       {!applicable ? (
         <p className="text-muted-foreground">Not applicable: each round starts together at its bell, so rest and court rotation can't be adjusted here.</p>
       ) : (

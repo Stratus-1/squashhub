@@ -232,6 +232,13 @@
       "when": 1791106048530,
       "tag": "0032_bulletproof_activation_cta",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791106341177,
+      "tag": "0033_rounded_activation_cta_vml",
+      "breakpoints": true
     }
   ]
 }

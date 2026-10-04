@@ -1,3 +1,4 @@
+import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
 
@@ -111,8 +112,20 @@ export function TournamentInviteActions({ notification, champId, registrationId,
     enabled: !!champ?.club_id,
   });
 
-  const entryFeeCents = Number(champ?.entry_fee_cents || 0);
-  const paymentRequired = !!champ?.payment_required && entryFeeCents > 0;
+
+  // Fee per event (server-authoritative once the entry exists; local estimate while choosing events).
+  const { data: feeBreakdown } = useQuery({
+    queryKey: ["champ-fee-breakdown", registration?.id, (registration as any)?.division_choices, (registration as any)?.status],
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("champ_registration_fee_breakdown", { p_registration_id: registration.id });
+      return data as { event_fee_cents: number; events: number; own_events: number; own_due_cents: number } | null;
+    },
+    enabled: !!registration?.id,
+  });
+  const eventFeeCents = Number(champ?.entry_fee_cents || 0);
+  const entryFeeCents = (registration as any)?.confirmed_at && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, (registration as any)?.division_choices);
+  const feeEvents = (registration as any)?.confirmed_at && feeBreakdown ? Number(feeBreakdown.own_events || 0) : ownEvents((registration as any)?.division_choices);
+  const paymentRequired = !!champ?.payment_required && eventFeeCents > 0;
   const paymentMethods = (champ?.payment_methods || []) as string[];
   const acceptsCard = paymentMethods.includes("card");
   const acceptsEft = paymentMethods.includes("eft");
@@ -304,9 +317,9 @@ export function TournamentInviteActions({ notification, champId, registrationId,
       `${GENDER_LABELS[champ.gender] || champ.gender} ${champ.match_type === "doubles" ? "Doubles" : "Singles"}`,
       `${champ.start_date} to ${champ.end_date}`,
       ...scheduleRows,
-      paymentRequired ? `${formatMoney(entryFeeCents)} entry fee${acceptsEft ? " · EFT accepted" : ""}` : "No entry fee",
+      paymentRequired ? `${feeBreakdownLabel(eventFeeCents, feeEvents, formatMoney)} entry fee${acceptsEft ? " · EFT accepted" : ""}` : "No entry fee",
     ].filter(Boolean);
-  }, [acceptsEft, champ, entryFeeCents, paymentRequired]);
+  }, [acceptsEft, champ, entryFeeCents, eventFeeCents, feeEvents, paymentRequired]);
 
 
   if (champLoading || regLoading) {

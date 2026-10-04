@@ -36,3 +36,8 @@
 - [x] Published
 - [x] Campaign audience "Members not yet registered" (active + no login, re-checked at send) with counts summary; onboarding default
 - [x] Members page activation panel: send/resend/bulk, sent date/status, missing-email prompt
+
+## Playoff gating + labels (in progress)
+- [x] Weekend playoffs start only after ALL qualifying games end (+gap / fixed later); conflict warning; Schedule Maths same rule
+- [x] Provisional playoff rows show event/category name; one semifinal scheme per event
+- [x] Per-event entry fee + partner pays per event

@@ -147,10 +147,13 @@ export function planAssumedSchedule(o: {
     let nb = periodStart, dl = Infinity;
     if (ph(g) === 0) {
       if (o.pace === "spread" && qualEnd > periodStart) nb = periodStart + Math.floor(((g.round - 1) / maxRound) * (qualEnd - periodStart));
-      if (fixedAbs != null && firstPO.has(g.unitKey)) dl = fixedAbs;
+      // Global gate: with any play-offs, ALL qualifying games must finish before the fixed play-off start.
+      if (fixedAbs != null && firstPO.size) dl = fixedAbs;
     } else {
       // A play-off game can't start before every earlier game of its unit can have finished.
-      const feeders = o.games.filter((x) => x.unitKey === g.unitKey && ph(x) < ph(g));
+      // The play-off phase is gated by completion of EVERY qualifying game in the tournament (all categories),
+      // then by this unit's own earlier play-off stages.
+      const feeders = o.games.filter((x) => ph(x) === 0 || (x.unitKey === g.unitKey && ph(x) < ph(g)));
       if (feeders.some((x) => !endAbs.has(x.id))) { unplaced.push({ g, why: "its earlier games could not be placed" }); continue; }
       const dep = Math.max(periodStart, ...feeders.map((x) => endAbs.get(x.id)!));
       const isFirst = firstPO.get(g.unitKey) === ph(g);
@@ -160,7 +163,7 @@ export function planAssumedSchedule(o: {
     let hit = fits(g, allowed, dur, o.rest, nb, dl);
     if (!hit && o.rest > 0) { hit = fits(g, allowed, dur, 0, nb, dl); if (hit) relaxed.push(g.id); }
     if (!hit) {
-      const why = ph(g) > 0 ? "no court time left after its qualifiers/feeder games finish" : dl !== Infinity ? "no court time left before the playoff start time" : allowed ? "no free time on its restricted courts" : "no free court time left";
+      const why = ph(g) > 0 ? "no court time left after its qualifiers/feeder games finish" : dl !== Infinity ? "qualifying cannot finish before the fixed playoff start time (move the playoff start later or add court time)" : allowed ? "no free time on its restricted courts" : "no free court time left";
       unplaced.push({ g, why }); continue;
     }
     taken.push({ date: hit.date, courtId: hit.c, start: hit.t, end: hit.t + dur, people: g.people });

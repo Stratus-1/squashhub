@@ -3458,6 +3458,7 @@ export type Database = {
           confirmation_source: string | null
           confirmed_at: string | null
           confirmed_by: string | null
+          covered_events: Json
           created_at: string
           declined_at: string | null
           division_choices: number[]
@@ -3494,6 +3495,7 @@ export type Database = {
           confirmation_source?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
+          covered_events?: Json
           created_at?: string
           declined_at?: string | null
           division_choices?: number[]
@@ -3530,6 +3532,7 @@ export type Database = {
           confirmation_source?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
+          covered_events?: Json
           created_at?: string
           declined_at?: string | null
           division_choices?: number[]
@@ -16855,6 +16858,10 @@ export type Database = {
       }
     }
     Functions: {
+      _champ_fee_adjust: {
+        Args: { p_fee_id: string; p_new_amount: number; p_note: string }
+        Returns: string
+      }
       _champ_row_unlocked: {
         Args: { m: Database["public"]["Tables"]["club_champs_matches"]["Row"] }
         Returns: boolean
@@ -17461,9 +17468,23 @@ export type Database = {
         Returns: boolean
       }
       champ_entry_fee_cents: { Args: { p_champ_id: string }; Returns: number }
+      champ_event_covered_by_other: {
+        Args: { p_group: number; p_reg_id: string }
+        Returns: boolean
+      }
       champ_is_family_doubles: {
         Args: { p_champ_id: string }
         Returns: boolean
+      }
+      champ_mark_event_cover: {
+        Args: {
+          p_group: number
+          p_partner_reg_id: string
+          p_payer: string
+          p_ref: string
+          p_via: string
+        }
+        Returns: undefined
       }
       champ_member_accepted: {
         Args: {
@@ -17471,6 +17492,10 @@ export type Database = {
           p_group_number: number
           p_member_id: string
         }
+        Returns: boolean
+      }
+      champ_member_event_paid: {
+        Args: { p_champ_id: string; p_group: number; p_member_id: string }
         Returns: boolean
       }
       champ_member_fee_paid: {
@@ -17491,6 +17516,13 @@ export type Database = {
       }
       champ_pair_settle: { Args: { p_pair_id: string }; Returns: string }
       champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
+      champ_reg_groups: { Args: { p_choices: number[] }; Returns: number[] }
+      champ_reg_own_due_cents: { Args: { p_reg_id: string }; Returns: number }
+      champ_reg_own_events: { Args: { p_reg_id: string }; Returns: number }
+      champ_registration_fee_breakdown: {
+        Args: { p_registration_id: string }
+        Returns: Json
+      }
       champ_result_stage_rule: {
         Args: {
           p_champion_scope: string
@@ -17501,6 +17533,10 @@ export type Database = {
           p_stage_label: string
         }
         Returns: string
+      }
+      champ_shared_group: {
+        Args: { p_partner_reg_id: string; p_payer: string }
+        Returns: number
       }
       champ_sync_pair_entries: {
         Args: {
@@ -18962,6 +18998,10 @@ export type Database = {
         Returns: string
       }
       refresh_stale_member_stats: { Args: { _limit?: number }; Returns: number }
+      refresh_tournament_entry_fee: {
+        Args: { p_registration_id: string }
+        Returns: string
+      }
       register_doubles_pair: {
         Args: {
           _champ_id: string

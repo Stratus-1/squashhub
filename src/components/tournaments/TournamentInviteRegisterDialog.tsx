@@ -1,3 +1,4 @@
+import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -116,8 +117,22 @@ export function TournamentInviteRegisterDialog({
 
 
 
-  const entryFeeCents = Number(champ?.entry_fee_cents || 0);
-  const paymentRequired = !!champ?.payment_required && entryFeeCents > 0;
+
+  // Fee per event (server-authoritative once the entry exists; local estimate while choosing events).
+  const { data: feeBreakdown } = useQuery({
+    queryKey: ["champ-fee-breakdown", registration?.id, (registration as any)?.division_choices, (registration as any)?.status],
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("champ_registration_fee_breakdown", { p_registration_id: registration.id });
+      return data as { event_fee_cents: number; events: number; own_events: number; own_due_cents: number } | null;
+    },
+    enabled: !!registration?.id,
+  });
+  const eventFeeCents = Number(champ?.entry_fee_cents || 0);
+  const localEvents = chosenDivisions.length ? chosenDivisions : (registration as any)?.division_choices;
+  const confirmedEntry = !!(registration as any)?.confirmed_at;
+  const entryFeeCents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, localEvents);
+  const feeEvents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_events || 0) : ownEvents(localEvents);
+  const paymentRequired = !!champ?.payment_required && eventFeeCents > 0;
   const methods = (champ?.payment_methods || []) as string[];
   const acceptsCard = methods.includes("card");
   // If the organiser configured nothing, fall back to EFT so members always have a way to pay.
@@ -330,7 +345,7 @@ export function TournamentInviteRegisterDialog({
     selfScheduled
       ? "Players arrange their own games — no fixed court times"
       : `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
-    paymentRequired ? `${money(entryFeeCents)} entry fee` : "No entry fee — just accept",
+    paymentRequired ? `${feeBreakdownLabel(eventFeeCents, feeEvents, money)} entry fee${feeEvents > 1 ? "" : " (per event)"}` : "No entry fee — just accept",
   ];
 
   return (

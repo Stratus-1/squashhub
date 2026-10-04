@@ -1,3 +1,4 @@
+import { entryDueCents } from "@/lib/tournaments/entry-fee";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
@@ -144,7 +145,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
       const { error } = await fromExt("club_champs_registrations")
         .update({
           status: "paid",
-          fee_paid_cents: Math.round(entryFee * 100),
+          fee_paid_cents: entryDueCents(Math.round(entryFee * 100), (reg as any).division_choices),
           paid_at: new Date().toISOString(),
           payment_ref: `EFT-${Date.now()}`,
         })
@@ -343,7 +344,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
               </Badge>
             )}
             <Badge variant="secondary">
-              Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)}` : "Free"}
+              Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)} per event` : "Free"}
             </Badge>
             {champ?.payment_required && entryFee > 0 && <Badge variant="outline">Payment required</Badge>}
             {champ?.entries_locked && <Badge><Lock className="w-3 h-3 mr-1" />Entries locked</Badge>}

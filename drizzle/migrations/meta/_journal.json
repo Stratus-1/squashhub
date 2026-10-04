@@ -281,6 +281,13 @@
       "when": 1791146701259,
       "tag": "0039_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791148848372,
+      "tag": "0040_tournament_per_division_fees",
+      "breakpoints": true
     }
   ]
 }

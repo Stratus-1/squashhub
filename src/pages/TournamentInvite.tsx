@@ -18,7 +18,7 @@ import {
   afterAcceptPath,
   defaultDivisionSelection,
   inviteDivisions,
-  inviteFeeCents,
+  inviteTotalFeeCents,
   inviteLoginPath,
   inviteSignupPath,
   inviteState,
@@ -128,7 +128,6 @@ export default function TournamentInvite() {
 
 
   const state = inviteState(data);
-  const feeCents = inviteFeeCents(data);
   const verificationKind = inviteVerificationKind(data);
   const partnerNeedsVerify = !isTest && verificationKind !== "none";
   const partnerVerifyReady = isInviteVerificationComplete(verificationKind, verify);
@@ -137,6 +136,8 @@ export default function TournamentInvite() {
   // Bells runs every league at the same time, so only one entry is possible.
   const multiDivisionAllowed = allowsMultipleDivisions(data);
   const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
+  // Total follows the ticked events — events may be priced differently.
+  const feeCents = useMemo(() => inviteTotalFeeCents(data, chosenDivisions), [data, chosenDivisions]);
   const [divisionError, setDivisionError] = useState("");
 
   // Pre-tick what the invitee already chose (or the only division on offer).
@@ -713,6 +714,9 @@ export default function TournamentInvite() {
                   onCheckedChange={() => toggleDivision(d.group_number)}
                 />
                 <span className="flex-1">{d.label}</span>
+                {d.fee_cents != null && d.fee_cents > 0 && (
+                  <span className="text-xs text-muted-foreground">{money(d.fee_cents)}</span>
+                )}
                 {d.match_type === "doubles" && (
                   <Badge variant="outline" className="text-[9px] h-4 px-1">Doubles</Badge>
                 )}

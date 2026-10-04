@@ -49,6 +49,8 @@ export type InviteDivision = {
   gender?: string | null;
   format?: string | null;
   match_type?: string | null;
+  /** This event's entry fee (null = use the tournament's flat fee). */
+  fee_cents?: number | null;
 };
 
 export type InvitePayload = {
@@ -145,6 +147,7 @@ export function inviteDivisions(payload: InvitePayload | null | undefined): Invi
       gender: (d as any)?.gender ?? null,
       format: (d as any)?.format ?? null,
       match_type: (d as any)?.match_type ?? null,
+      fee_cents: (d as any)?.fee_cents == null ? null : Math.max(0, Number((d as any).fee_cents) || 0),
     }))
     .filter((d) => Number.isFinite(d.group_number) && d.group_number > 0);
 }
@@ -264,6 +267,25 @@ export function buildInviteTestUrl(champId: string, subdomain?: string | null): 
 export function inviteFeeCents(payload: InvitePayload | null | undefined): number {
   if (!payload?.payment_required) return 0;
   return Math.max(0, Number(payload.entry_fee_cents || 0));
+}
+
+/**
+ * Total entry fee for the divisions the invitee has ticked. Events may be
+ * priced differently (division fee_cents); otherwise the flat fee applies per
+ * event. Mirrors the server's champ_reg_own_due_cents (partner-covered doubles
+ * events are excluded server-side — the invitee always pays for what they tick).
+ */
+export function inviteTotalFeeCents(payload: InvitePayload | null | undefined, chosen: number[]): number {
+  const flat = inviteFeeCents(payload);
+  if (!payload?.payment_required) return 0;
+  const divs = inviteDivisions(payload);
+  if (!divs.length) return flat;
+  const picks = chosen.length ? chosen : divs.map((d) => d.group_number);
+  if (!divs.some((d) => d.fee_cents != null)) return flat * picks.length;
+  return picks.reduce((sum, g) => {
+    const d = divs.find((x) => x.group_number === g);
+    return sum + Math.max(0, Number(d?.fee_cents ?? flat));
+  }, 0);
 }
 
 /** Where to send the visitor after a successful accept. */

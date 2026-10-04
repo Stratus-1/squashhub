@@ -157,7 +157,7 @@ export type CreateInput = {
   /** Admin-entered players (pairs carry a partner). */
   entrants: Array<{ memberId: string; partnerId?: string | null; division?: number | null }>;
   /** Step-by-Step categories/subcategories, in order — become the tournament's divisions (group 1..n). */
-  divisions?: Array<{ leagueIds?: string[]; gender?: string | null; label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null; scoring?: DivisionScoring | null }>;
+  divisions?: Array<{ leagueIds?: string[]; gender?: string | null; label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null; scoring?: DivisionScoring | null; feeCents?: number | null }>;
   existingId?: string | null;
   /** Beta-only explicit division types, applied by the server registration guard. */
   categoryTypes?: string[];
@@ -215,7 +215,8 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   if (i.divisions?.length) {
     // league_match_types lives only on the base table (not the club_champs view).
     const serving = Object.fromEntries(i.divisions.flatMap((d, n) => d.matchType === "doubles" && d.serving ? [[String(n + 1), d.serving]] : []));
-    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), league_sources: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.leagueIds ?? []])), league_source_modes: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), "selected"])), league_genders: Object.fromEntries(i.divisions.flatMap((d, n) => d.gender === "mens" ? [[String(n + 1), "men"]] : d.gender === "ladies" ? [[String(n + 1), "ladies"]] : [])), ...(i.divisions.some((d) => d.serving !== undefined) ? { league_doubles_serving_methods: Object.keys(serving).length ? serving : null } : {}), ...divisionScoringColumns(i.divisions) }).eq("id", tid);
+    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), league_sources: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.leagueIds ?? []])), league_source_modes: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), "selected"])), league_genders: Object.fromEntries(i.divisions.flatMap((d, n) => d.gender === "mens" ? [[String(n + 1), "men"]] : d.gender === "ladies" ? [[String(n + 1), "ladies"]] : [])), ...(i.divisions.some((d) => d.serving !== undefined) ? { league_doubles_serving_methods: Object.keys(serving).length ? serving : null } : {}), // Per-event pricing: each division keeps its own fee; the flat entry_fee_cents stays the max as fallback.
+      ...(i.divisions.some((d) => d.feeCents != null) ? { division_fees: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), Math.max(0, Math.round(d.feeCents ?? 0))])) } : {}), ...divisionScoringColumns(i.divisions) }).eq("id", tid);
     if (error) throw error;
     // Screens/server checks that read the tournament-wide mode must agree when every category uses the same scoring.
     const modes = [...new Set(i.divisions.map((d) => d.scoring?.mode).filter(Boolean))];

@@ -1182,6 +1182,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 </div>
                 {a.entriesOpen && a.entriesClose && a.entriesClose < a.entriesOpen && <p className="text-xs text-destructive">Entries can't close before they open.</p>}
               </div>
+            </>
+          )}
+
+          {cur === "Messaging" && (
             <>
               {notifyOnly
                 ? <Q t="Inform selected players of their participation" h="This is a notification, not an invitation — you entered these players, so nobody has to accept. Setup only — nothing is sent from here; you send it once entries and pairs are final, and can use tournament messaging later." />

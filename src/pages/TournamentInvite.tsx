@@ -546,71 +546,24 @@ export default function TournamentInvite() {
           <p className="text-xs text-muted-foreground">Your {money(feeCents)} entry fee is charged to your member account — settle it with the club as usual.</p>
         )}
         {partnerSection}
-        {!isTest && data?.champ_id && (
-          <PartnerFeeOptions token={token} verify={verify.trim() || null}
-            ready={!!user || !payNeedsVerify || payVerifyReady}
-            busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)}
-            onCharged={() => refetch?.()}
-            verifyField={!user && payNeedsVerify ? payVerifyField : null} />
-        )}
-        {data?.champ_id && (
-          <Button className="w-full" onClick={() => navigate(`/club-champs/${data.champ_id}`)}>
-            View tournament
-          </Button>
-        )}
-        {data?.champ_id && <JoinWhatsAppGroupButton champId={data.champ_id} className="w-full" size="default" />}
-        {withdrawSection}
-
-      </>,
-    );
-  }
-
-
-  if (state === "payment_pending") {
-    return shell(
-      <>
-        {header}
-        {detailList}
-        <Badge variant="secondary">{adminEntered ? "Entered · Payment outstanding" : "Accepted — entry fee outstanding"}</Badge>
-        {partnerSection}
-        {!hasDoublesChoice && (isTest ? (
-          <Button className="w-full" disabled>
-            <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
-          </Button>
-        ) : user ? (
-          <div className="space-y-2">
-            <Button
-              className="w-full"
-              onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
-            >
+        {isTest ? (
+          !hasDoublesChoice && (
+            <Button className="w-full" disabled>
               <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
             </Button>
-            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready
-              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
-          </div>
+          )
         ) : (
           <div className="space-y-2">
-            {payNeedsVerify && !hasDoublesChoice && payVerifyField}
-            <Button
-              className="w-full"
-              disabled={payNow.isPending || (payNeedsVerify && !payVerifyReady)}
-              onClick={() => payNow.mutate(undefined)}
-            >
-              {payNow.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
-                </>
-              )}
-            </Button>
-            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!payNeedsVerify || payVerifyReady}
+            {payChooser}
+            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!!user || !payNeedsVerify || payVerifyReady}
               busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
-            <p className="text-[11px] text-muted-foreground text-center">
-              You can pay straight from this invitation — no login needed.
-            </p>
+            {!user && (
+              <p className="text-[11px] text-muted-foreground text-center">
+                You can pay straight from this invitation — no login needed.
+              </p>
+            )}
           </div>
-        ))}
+        )}
 
         {withdrawSection}
       </>,

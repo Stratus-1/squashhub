@@ -502,6 +502,21 @@ export function tournamentNextAction(
     }
 
     const ready = pools.find((p) => p.action === "generate");
+    if (ready && poolOnlyPlan && pools.every((p) => p.complete)) {
+      const total = pools.reduce((n, p) => n + p.total, 0);
+      return {
+        stage: "complete",
+        status: "All games played",
+        headline: `All ${total} games are played. Close the tournament when you are ready.`,
+        ctaLabel: null,
+        action: "none",
+        disabled: false,
+        blockedReason: null,
+        groupNumber: null,
+        section: null,
+        complete: true,
+      };
+    }
     if (ready) {
       return {
         stage: "pool_complete",

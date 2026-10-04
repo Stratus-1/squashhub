@@ -216,7 +216,7 @@ export async function sendInvites(i: {
   const closingText = closesAt
     ? new Date(closesAt).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
     : "to be confirmed";
-  const template = String(i.template || "").replace(/{{\s*closing_date\s*}}/g, closingText);
+  const template = String(i.template || "").replace(/{{\s*closing_date\s*}}|\[set later\]/g, closingText);
   const memberVars: Record<string, Record<string, string>> = {};
   for (const r of i.recipients) {
     const text = personaliseInvite(template, r.name, links[r.memberId]);

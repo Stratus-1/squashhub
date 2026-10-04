@@ -14,7 +14,7 @@ import { scheduleWithAssumptions } from "@/lib/tournaments/assumed-schedule";
 type Champ = { id: string; name?: string | null };
 type State =
   | { kind: "missing"; champ: Champ; items: string[] }
-  | { kind: "confirm"; champ: Champ; total: number; relaxed: number }
+  | { kind: "confirm"; champ: Champ; total: number; relaxed: number; provisional: Array<{ date: string; time: string; courtId: number; label?: string; unitKey?: string }> }
   | { kind: "conflict"; champ: Champ; items: string[] }
   | null;
 
@@ -50,7 +50,7 @@ export function AssignCourtsTimesButton({ champs: all, className }: { champs: Ch
       if (r.missing.length) setState({ kind: "missing", champ, items: r.missing });
       else if (r.total === 0) toast.info("There are no unplayed games to schedule.");
       else if (r.issues.length) setState({ kind: "conflict", champ, items: r.issues });
-      else setState({ kind: "confirm", champ, total: r.total, relaxed: r.relaxed.length });
+      else setState({ kind: "confirm", champ, total: r.total, relaxed: r.relaxed.length, provisional: r.slots.filter((x) => x.provisional) });
     } catch (e: any) { toast.error(e?.message ?? String(e)); } finally { setBusy(null); }
   };
   const apply = async (champ: Champ) => {
@@ -59,7 +59,7 @@ export function AssignCourtsTimesButton({ champs: all, className }: { champs: Ch
       const r = await scheduleWithAssumptions(champ.id);
       if (r.issues.length) { setState({ kind: "conflict", champ, items: r.issues }); return; }
       setState(null);
-      toast.success(`Assigned ${r.scheduled} game${r.scheduled === 1 ? "" : "s"} to courts and times`);
+      toast.success(`Assigned ${r.scheduled} game${r.scheduled === 1 ? "" : "s"} to courts and times${r.provisional ? ` (incl. ${r.provisional} provisional play-off slot${r.provisional === 1 ? "" : "s"})` : ""}`);
       if (r.relaxed.length) toast.warning(`${r.relaxed.length} game${r.relaxed.length === 1 ? "" : "s"} needed less than the minimum rest to fit.`);
       qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
       qc.invalidateQueries({ queryKey: ["timed-round-capacity"] });
@@ -107,6 +107,12 @@ export function AssignCourtsTimesButton({ champs: all, className }: { champs: Ch
                 {state.total} unplayed game{state.total === 1 ? "" : "s"} will get a court and start time. Any times already set on these games are replaced. Played or court-booked games are not moved, and you can still change any single game afterwards.
               </DialogDescription>
             </DialogHeader>
+            {state.provisional.length > 0 && <div className="text-sm space-y-1">
+              <p className="font-medium">Includes {state.provisional.length} play-off slot{state.provisional.length === 1 ? "" : "s"} (players TBD) — reserved on the court diary:</p>
+              <ul className="max-h-48 overflow-auto rounded border border-border p-2 text-xs space-y-0.5">
+                {state.provisional.map((p, i) => <li key={i}>{p.date} {p.time} · Court {p.courtId} · {p.unitKey ? `${p.unitKey.replace(/::/g, " › ")} · ` : ""}{p.label}</li>)}
+              </ul>
+            </div>}
             {state.relaxed > 0 && <p className="text-sm text-muted-foreground">{state.relaxed} game{state.relaxed === 1 ? "" : "s"} will have less than the minimum rest — there is no other free slot.</p>}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setState(null)}>Cancel</Button>

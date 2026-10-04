@@ -490,6 +490,21 @@ export default function TournamentInvite() {
               </div>
   );
 
+  const payChooser =
+    !isTest && token ? (
+      <InvitePaymentChooser
+        ref={payChooserRef}
+        token={token}
+        verify={verify.trim() || null}
+        ready={!!user || !payNeedsVerify || payVerifyReady}
+        verifyField={!user && payNeedsVerify && !hasDoublesChoice ? payVerifyField : null}
+        cardBusy={payNow.isPending}
+        onCard={() => payNow.mutate(undefined)}
+        onSettled={() => refetch?.()}
+      />
+    ) : null;
+
+
   const header = (
     <div className="space-y-1">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">

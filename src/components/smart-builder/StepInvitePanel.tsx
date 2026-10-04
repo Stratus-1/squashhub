@@ -76,6 +76,9 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
   const savedCh = (h.channels.filter((c) => (ALL as string[]).includes(c)) as InformChannel[]);
   const [picked, setChannels] = useState<InformChannel[]>(savedCh.length ? savedCh : ["in_app"]);
   const [avail, setAvail] = useState<Record<InformChannel, boolean> | null>(null);
+  const [entOpen, setEntOpen] = useState("");
+  const [entClose, setEntClose] = useState("");
+  const [datesMsg, setDatesMsg] = useState<string | null>(null);
 
   const wide = scope === "association" || scope === "open";
 
@@ -84,7 +87,7 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
     let active = true;
     (async () => {
       const [t, gov, mem, leagues] = await Promise.all([
-        fromExt("club_champs").select("entry_fee_cents, payment_required, payment_timing, gender").eq("id", h.tournamentId).maybeSingle(),
+        fromExt("club_champs").select("entry_fee_cents, payment_required, payment_timing, gender, registration_opens_at, registration_closes_at").eq("id", h.tournamentId).maybeSingle(),
         fromExt("tournament_governance").select("eligibility_scope").eq("tournament_id", h.tournamentId).maybeSingle(),
         supabase.from("club_members").select("id, name, status, role, billing_exempt, gender").eq("club_id", h.clubId),
         fromExt("leagues").select("id, name, association_id, season_year, level, is_reserve").eq("club_id", h.clubId).is("archived_at", null).order("name"),
@@ -94,6 +97,8 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
       setFeeCents(Number(td?.entry_fee_cents ?? 0));
       setPayFirst(((td?.payment_timing ?? "on_entry") !== "after_acceptance") && !!td?.payment_required && Number(td?.entry_fee_cents ?? 0) > 0);
       setGender(td?.gender ?? null);
+      setEntOpen(td?.registration_opens_at ? String(td.registration_opens_at).slice(0, 10) : "");
+      setEntClose(td?.registration_closes_at ? String(td.registration_closes_at).slice(0, 10) : "");
       setScope(String((gov.data as any)?.eligibility_scope ?? "club"));
       setMembers((mem.data ?? []) as PoolMember[]);
       const lg = (leagues.data ?? []) as any[];
@@ -245,7 +250,17 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
   });
 
   const modes = audienceModesForScope(scope);
-  const previewText = personaliseInvite(h.invitePreview || h.messageTemplate, nameOf(sel[0] ?? ids[0] ?? ""), "https://…/i/their-personal-link");
+  const saveDates = async (o: string, c: string) => {
+    setEntOpen(o); setEntClose(c); setDatesMsg("Saving…");
+    const { error } = await fromExt("club_champs").update({
+      registration_opens_at: o ? `${o}T00:00:00` : null,
+      registration_closes_at: c ? `${c}T23:59:59` : null,
+    }).eq("id", h.tournamentId);
+    setDatesMsg(error ? `Not saved: ${error.message}` : "Saved");
+  };
+  const closeLabel = entClose ? new Date(`${entClose}T12:00:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "2-digit", month: "short", year: "numeric" }) : "to be confirmed";
+  const tpl = (h.invitePreview || h.messageTemplate).replace(/\{\{\s*closing_date\s*\}\}|\[set later\]/g, closeLabel);
+  const previewText = personaliseInvite(tpl, nameOf(sel[0] ?? ids[0] ?? ""), "https://…/i/their-personal-link");
 
   return (
     <div className="space-y-3 text-sm">
@@ -340,6 +355,22 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
             className={cn("rounded-full border px-2.5 py-0.5", on ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border text-muted-foreground", !ok && "line-through opacity-60")}>{CH_LABEL[c]}</button>;
         })}</div>
         {avail && <p className="mt-1 text-muted-foreground">{ALL.filter((c) => !avail[c]).map((c) => `${CH_LABEL[c]} not connected`).join(" · ") || "All channels connected."}{wide ? " Cross-club contact details are checked at send time — unreachable players show as Not reached below." : ""}</p>}
+      </div>
+
+      {/* Entry window */}
+      <div className="rounded border border-border p-2 text-xs">
+        <div className="mb-1 font-semibold">Entry dates</div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-0.5">Entries open
+            <input type="date" value={entOpen} onChange={(e) => saveDates(e.target.value, entClose)} className="rounded border border-border bg-background px-2 py-1" />
+          </label>
+          <label className="flex flex-col gap-0.5">Entries close
+            <input type="date" value={entClose} min={entOpen || undefined} onChange={(e) => saveDates(entOpen, e.target.value)} className="rounded border border-border bg-background px-2 py-1" />
+          </label>
+          {datesMsg && <span className="text-muted-foreground">{datesMsg}</span>}
+        </div>
+        {entOpen && entClose && entClose < entOpen && <p className="mt-1 text-destructive">Entries close before they open.</p>}
+        <p className="mt-1 text-muted-foreground">Optional. Blank = entries stay open. Entries are refused after the close date.</p>
       </div>
 
       {/* 3. Preview */}

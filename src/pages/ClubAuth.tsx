@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SEO } from "@/components/SEO";
 import { CheckEmailPanel, savePendingVerify, readPendingVerify, clearPendingVerify } from "@/components/auth/CheckEmailPanel";
 import { toast } from "sonner";
+import { getTenantAwareAuthRedirect } from "@/lib/site";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
@@ -962,7 +963,7 @@ export default function ClubAuth() {
               onChangeEmail={() => {
                 setSignupDone(false);
                 setExistingEmail(""); setExistingPassword("");
-                setActiveTab(existingStatus !== undefined && activeTab === "new" ? "new" : "existing");
+                setNewEmail(""); setNewPassword(""); setNewConfirm("");
               }}
               changeEmailHint="Using a different address only changes your login email — your existing club membership and history are kept, never duplicated. It must match the email your club has on file (or ask your club admin to update it)."
             />

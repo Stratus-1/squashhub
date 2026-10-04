@@ -38,6 +38,6 @@
 - [x] Members page activation panel: send/resend/bulk, sent date/status, missing-email prompt
 
 ## Playoff gating + labels (in progress)
-- [ ] Weekend playoffs start only after ALL qualifying games end (+gap / fixed later); conflict warning; Schedule Maths same rule
-- [ ] Provisional playoff rows show event/category name; one semifinal scheme per event
+- [x] Weekend playoffs start only after ALL qualifying games end (+gap / fixed later); conflict warning; Schedule Maths same rule
+- [x] Provisional playoff rows show event/category name; one semifinal scheme per event
 - [ ] Per-event entry fee + partner pays per event (plan awaiting approval)

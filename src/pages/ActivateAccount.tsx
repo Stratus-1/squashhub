@@ -8,6 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
 import { getTenantAwareAuthRedirect } from "@/lib/site";
 import { toast } from "sonner";
+import { CheckEmailPanel, savePendingVerify, readPendingVerify, clearPendingVerify } from "@/components/auth/CheckEmailPanel";
+
+function activationRedirect(): string {
+  const redirect = new URL(getTenantAwareAuthRedirect("/auth/callback"));
+  redirect.searchParams.set("redirectTo", "/activate");
+  return redirect.toString();
+}
 
 /**
  * Personal activation link for an existing (imported) club member.
@@ -59,6 +66,7 @@ export default function ActivateAccount() {
     const status = error ? "error" : (data as any)?.status;
     if (status === "claimed") {
       clearToken();
+      clearPendingVerify();
       toast.success("Your SquashHub account is active and linked to your existing membership.");
       navigate("/", { replace: true });
       return;
@@ -84,8 +92,14 @@ export default function ActivateAccount() {
       const { data: u } = await supabase.auth.getUser();
       if (cancelled) return;
       if (u?.user) {
+        clearPendingVerify();
         setSignedInEmail(u.user.email ?? null);
         if ((data as Info)?.status === "valid") await claim();
+      } else {
+        // Keep the check-email state across reload / Back — never drop back to the form.
+        const pending = readPendingVerify();
+        const em = (data as Info)?.email;
+        if (pending && em && pending.email.trim().toLowerCase() === em.trim().toLowerCase()) setMode("confirm");
       }
     })();
     return () => { cancelled = true; };
@@ -97,10 +111,8 @@ export default function ActivateAccount() {
     if (password.length < 8) { toast.error("Password must be at least 8 characters"); return; }
     if (password !== password2) { toast.error("Passwords don't match"); return; }
     setBusy(true);
-    const redirect = new URL(getTenantAwareAuthRedirect("/auth/callback"));
-    redirect.searchParams.set("redirectTo", "/activate");
     const { data, error } = await supabase.auth.signUp({
-      email: info.email, password, options: { emailRedirectTo: redirect.toString() },
+      email: info.email, password, options: { emailRedirectTo: activationRedirect() },
     });
     setBusy(false);
     if (error) {
@@ -113,6 +125,7 @@ export default function ActivateAccount() {
       return;
     }
     if (data.session) { await claim(); return; }
+    savePendingVerify(info.email, activationRedirect());
     setMode("confirm");
   };
 
@@ -171,9 +184,12 @@ export default function ActivateAccount() {
     );
   } else if (mode === "confirm") {
     body = (
-      <p className="text-sm">
-        Check your email ({info.email}) and click the confirmation link. Your existing membership will be linked as soon as you confirm.
-      </p>
+      <CheckEmailPanel
+        email={info.email || ""}
+        redirect={activationRedirect()}
+        onSignIn={() => { clearPendingVerify(); setPassword(""); setMode("signin"); }}
+        changeEmailHint={`Wrong email address? Ask ${info.club_name || "your club"} to update it on your membership and resend your personal link — your membership and history stay the same. You can also activate with this address now and change it later.`}
+      />
     );
   } else {
     body = (

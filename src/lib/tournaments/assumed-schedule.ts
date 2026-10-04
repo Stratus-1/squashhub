@@ -72,7 +72,7 @@ export function planAssumedSchedule(o: {
   games: AssumeGame[]; days: TimedDay[]; singles: number; doubles: number; rest: number;
   rules?: CourtRule[]; busy?: Interval[]; step?: number;
 }): AssumePlan {
-  const step = o.step ?? 5;
+  const step = o.step ?? (o.games.some((g) => Number(g.bellsMinutes) > 0) ? 1 : 5); // Bells waves run back-to-back on their exact slot
   const days = [...o.days].filter((d) => d.courtIds.length && toMin(d.to) > toMin(d.from))
     .sort((a, b) => a.date.localeCompare(b.date) || toMin(a.from) - toMin(b.from));
   const taken: Interval[] = [...(o.busy ?? [])];

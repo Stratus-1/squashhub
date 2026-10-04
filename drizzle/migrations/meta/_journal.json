@@ -260,6 +260,13 @@
       "when": 1791125936031,
       "tag": "0036_entry_fee_per_event",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791145815923,
+      "tag": "0037_allow_invite_rows_without_category",
+      "breakpoints": true
     }
   ]
 }

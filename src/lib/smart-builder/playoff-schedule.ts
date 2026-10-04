@@ -13,6 +13,7 @@ import { divisionGroup, type TournamentSpec } from "@/lib/tournaments/engine-ser
 import type { PlannedStage } from "@/lib/tournaments/contract";
 import { playoffSlotOrder, sortGamesForSlots, type SlotDivision } from "./playoff-slot-order";
 import { allocateSlots, type Busy } from "./playoff-chain";
+import { adoptProvisionalSlots } from "@/lib/tournaments/assumed-schedule";
 
 /** A stage-session court reservation made by "Book courts now" (sbs:…) covering this stage's own window. */
 export function isOwnStageReservation(b: { external_id?: string | null; start_time: string; end_time: string; court_id: number }, w: { from: string; to: string; courtIds: number[] }): boolean {
@@ -57,6 +58,9 @@ export async function playoffSlotPlan(champId: string, spec: TournamentSpec) {
 export async function schedulePlannedPlayoffGames(champId: string): Promise<ScheduleReport> {
   await assertNotDiamondTournament(champId);
   const report: ScheduleReport = { booked: 0, unplaced: [] };
+  // New play-off fixtures first take over the slots reserved for them by "Assign courts & times".
+  const adopted = await adoptProvisionalSlots(champId).catch(() => ({ adopted: 0, clashes: [] as string[] }));
+  for (const c of adopted.clashes) report.unplaced.push({ stage: "Play-offs", reason: c });
   const { data: t } = await fromExt("tournaments").select("builder_spec").eq("id", champId).maybeSingle();
   const spec = (t as any)?.builder_spec as TournamentSpec | null;
   if (!spec?.divisions?.length) return report;

@@ -3603,7 +3603,7 @@ export default function ClubChampsView() {
           );
           if (groupMatches.length > 0) {
             fixtureCards.push(
-              <CollapsibleCard key={`f-${gn}`} defaultOpen={false} headerClassName="pb-3"
+              <CollapsibleCard key={`f-${gn}`} defaultOpen={singleCurrentTournament} headerClassName="pb-3"
                 title={`${getGroupLabel(champ, gn)} — Fixtures & Results`}
               >
                 {fixtureBody}
@@ -3612,7 +3612,7 @@ export default function ClubChampsView() {
           }
         } else {
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured || singleCurrentTournament} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3636,7 +3636,7 @@ export default function ClubChampsView() {
 
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
-          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={isStructured}
+          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={isStructured || singleCurrentTournament}
             title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
           >
             {swissControlsFor(gn)}

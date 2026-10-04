@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CollapsibleCard, CollapsibleSection } from "@/components/ui/collapsible-card";
+import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
+
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Settings2 } from "lucide-react";
@@ -215,6 +217,25 @@ export default function ClubChampsView() {
     },
     enabled: !!champ?.club_id,
   });
+
+  // Sections on this page open by default only when the club runs a single
+  // current tournament; with several championships/leagues running, they stay
+  // collapsed so the page stays navigable (uses the shared lifecycle rules).
+  const { data: clubChampLifecycle = [] } = useQuery({
+    queryKey: ["club-champs-lifecycle-count", champ?.club_id],
+    queryFn: async () => {
+      const { data } = await fromExt("club_champs")
+        .select("id,status,start_date,end_date")
+        .eq("club_id", champ!.club_id!);
+      return (data || []) as { id?: string; status?: string | null; start_date?: string | null; end_date?: string | null }[];
+    },
+    enabled: !!champ?.club_id,
+  });
+  const singleCurrentTournament = useMemo(() => {
+    const { current } = splitTournamentsByLifecycle(clubChampLifecycle);
+    return current.length === 1 && current[0].id === champId;
+  }, [clubChampLifecycle, champId]);
+
 
   const { data: registrations = [] } = useQuery({
     queryKey: ["club-champ-registrations", champId],
@@ -3481,7 +3502,7 @@ export default function ClubChampsView() {
         const muMatches = sortMatchesChrono(matches.filter((m: any) =>
           (m.stage || "group") === "group" && m.group_number === mu.groupNumber));
         standingsCards.push(
-          <CollapsibleCard key={`mu-${mu.groupNumber}`} defaultOpen={false}
+          <CollapsibleCard key={`mu-${mu.groupNumber}`} defaultOpen={singleCurrentTournament}
             title={heading} titleClassName="text-lg" contentClassName="space-y-4"
           >
             <p className="text-xs text-muted-foreground">Between subcategories — these groups play each other only.</p>
@@ -3572,7 +3593,7 @@ export default function ClubChampsView() {
         if (summaryFirst) {
           // Summary tables first, fixtures for each league below them.
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured || singleCurrentTournament} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3582,7 +3603,7 @@ export default function ClubChampsView() {
           );
           if (groupMatches.length > 0) {
             fixtureCards.push(
-              <CollapsibleCard key={`f-${gn}`} defaultOpen={false} headerClassName="pb-3"
+              <CollapsibleCard key={`f-${gn}`} defaultOpen={singleCurrentTournament} headerClassName="pb-3"
                 title={`${getGroupLabel(champ, gn)} — Fixtures & Results`}
               >
                 {fixtureBody}
@@ -3591,7 +3612,7 @@ export default function ClubChampsView() {
           }
         } else {
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured || singleCurrentTournament} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3615,7 +3636,7 @@ export default function ClubChampsView() {
 
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
-          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={isStructured}
+          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={isStructured || singleCurrentTournament}
             title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
           >
             {swissControlsFor(gn)}
@@ -3640,7 +3661,7 @@ export default function ClubChampsView() {
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <CollapsibleCard key="cross-fixtures" defaultOpen={false} title="Fixtures & Results" titleClassName="text-lg">
+      <CollapsibleCard key="cross-fixtures" defaultOpen={singleCurrentTournament} title="Fixtures & Results" titleClassName="text-lg">
         <div className="space-y-1.5">
           {sortMatchesChrono(matches).map((m: any) => renderMatchRow(m))}
         </div>

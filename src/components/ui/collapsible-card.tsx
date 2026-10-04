@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -25,6 +25,16 @@ export function CollapsibleCard({
   defaultOpen = true,
 }: CollapsibleCardProps) {
   const [open, setOpen] = useState(defaultOpen);
+  // defaultOpen can resolve late (e.g. an async count decides expansion) —
+  // follow the change so cards don't stay stuck collapsed. Manual toggles
+  // afterwards still win.
+  const prevDefault = useRef(defaultOpen);
+  useEffect(() => {
+    if (defaultOpen !== prevDefault.current) {
+      prevDefault.current = defaultOpen;
+      setOpen(defaultOpen);
+    }
+  }, [defaultOpen]);
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card className={className}>
@@ -67,6 +77,14 @@ export function CollapsibleSection({
   defaultOpen = true,
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  // Same late-resolving defaultOpen handling as CollapsibleCard.
+  const prevDefault = useRef(defaultOpen);
+  useEffect(() => {
+    if (defaultOpen !== prevDefault.current) {
+      prevDefault.current = defaultOpen;
+      setOpen(defaultOpen);
+    }
+  }, [defaultOpen]);
   return (
     <Collapsible open={open} onOpenChange={setOpen} className={className}>
       <CollapsibleTrigger asChild>

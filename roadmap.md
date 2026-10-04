@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Make invitation event lists factual rather than implying every recipient qualifies; retain existing links and entry eligibility. Preview only.
+
 - [x] Restore one read-only all-category Tournament Summary above detailed Standings, using formal playoff fixtures/results in configured category order; verified NSP Knock out on desktop and mobile without changing data.
 
 - [x] Keep exactly three tournament creation choices; Diamond League lives under Pre-built templates and hands off to the existing setup. Preview only.

@@ -33,13 +33,19 @@ export const EMPTY_INVITE_AUDIENCE: StepInviteAudience = {
 const HI_LINE = /^Hi\s+[^,\n]+,/m;
 const ENTRY_LINK_PLACEHOLDER = /\[entry link added when the tournament is created\]/g;
 
+/** Older saved invitations list every event under "You can enter", even when
+ * the recipient is only eligible for one. Keep the list factual, not a promise. */
+export function neutraliseInviteCategories(template: string): string {
+  return template.replace(/^([ \t]*)You can enter:[ \t]*/gim, "$1Categories in this tournament are: ");
+}
+
 /**
  * Personalise the shared invite message for one recipient: swap the sample
  * greeting for their first name and drop in their personal entry link.
  */
 export function personaliseInvite(template: string, name: string, entryLink?: string | null): string {
   const first = String(name || "").trim().split(/\s+/)[0] || "there";
-  let out = String(template || "");
+  let out = neutraliseInviteCategories(String(template || ""));
   out = HI_LINE.test(out) ? out.replace(HI_LINE, `Hi ${first},`) : `Hi ${first},\n\n${out}`;
   const linkText = entryLink || "open the tournament in SquashHub (you may need to sign in)";
   out = out.replace(ENTRY_LINK_PLACEHOLDER, linkText);

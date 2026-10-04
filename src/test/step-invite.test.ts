@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   EMPTY_INVITE_AUDIENCE, emailEntryButton, inviteRowStatus, memberMatchesTournamentGender,
-  personaliseInvite, personaliseInviteEmailHtml, planInviteRows, type StepInviteAudience,
+  neutraliseInviteCategories, personaliseInvite, personaliseInviteEmailHtml, planInviteRows, type StepInviteAudience,
 } from "@/lib/smart-builder/step-invite";
 import { resolveInviteAudience, type AudienceMemberRow } from "@/lib/tournaments/invite-audience";
 
@@ -26,6 +26,25 @@ describe("personaliseInvite", () => {
 
   it("keeps the template intact when the greeting line is absent", () => {
     expect(personaliseInvite("No greeting here", "Dan")).toContain("No greeting here");
+  });
+});
+
+describe("invitation category wording", () => {
+  it("does not promise that a recipient can enter every category in an older saved invite", () => {
+    const old = "Hi there,\n\nYou can enter: A - Mens 1st 2nd · Singles, B - Mens 3rd 4th · Singles, Ladies - 1st 4th · Singles.\n\nEnter here: [entry link added when the tournament is created]";
+    const text = personaliseInvite(old, "Willem", "https://example.com/i/token");
+    expect(text).toContain("Categories in this tournament are: A - Mens 1st 2nd · Singles, B - Mens 3rd 4th · Singles, Ladies - 1st 4th · Singles.");
+    expect(text).not.toContain("You can enter:");
+    const html = personaliseInviteEmailHtml(old, "Willem", "https://example.com/i/token");
+    expect(html).toContain("Categories in this tournament are:");
+    expect(html).toContain(emailEntryButton("https://example.com/i/token", "Enter here"));
+  });
+
+  it("keeps unrelated custom wording and already-neutral invitations unchanged", () => {
+    const custom = "Hi there,\n\nAsk the organiser which group applies to you.";
+    expect(neutraliseInviteCategories(custom)).toBe(custom);
+    const neutral = "Categories in this tournament are: Group A, Group B.";
+    expect(neutraliseInviteCategories(neutral)).toBe(neutral);
   });
 });
 

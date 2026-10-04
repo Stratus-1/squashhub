@@ -1,16 +1,14 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, FlaskConical, Gem, Layers, ListChecks, Trash2, Wand2 } from "lucide-react";
 import { SmartTournamentBuilderCore, type BuilderNav } from "@/pages/admin/SmartTournamentBuilder";
 import { StepByStepBuilder } from "./StepByStepBuilder";
-import { clearDraft, clearTournamentPlan, readDraft } from "@/lib/smart-builder/step-storage";
+import { clearDraft, readDraft } from "@/lib/smart-builder/step-storage";
 import { StepTournamentManagement } from "./StepTournamentManagement";
 import { TemplatePicker } from "./StepTemplates";
-import { loadHandovers, removeHandover, type Handover } from "@/lib/smart-builder/step-handover";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
-import { fromExt } from "@/lib/supabase-ext";
 
 /**
  * Club-context host for the Tournament Beta.
@@ -47,38 +45,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
   const [managing, setManaging] = useState<string | null>(() => searchParams.get("manage"));
   const [picker, setPicker] = useState<"mine" | "prebuilt" | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
-  const [handovers, setHandovers] = useState<Handover[]>([]);
-  const [loadingHandovers, setLoadingHandovers] = useState(true);
-  const [handoverError, setHandoverError] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | "draft" | null>(null);
-  const refreshHandovers = async () => {
-    setLoadingHandovers(true);
-    setHandoverError(false);
-    const saved = loadHandovers(clubId);
-    if (!saved.length) { setHandovers([]); setLoadingHandovers(false); return; }
-    try {
-      // Local handovers survive a real tournament deletion. The club-scoped server
-      // rows, not localStorage, are authoritative for whether a run still exists.
-      const { data, error } = await fromExt("tournaments").select("id").eq("club_id", clubId).in("id", saved.map((h) => h.tournamentId));
-      if (error) throw error;
-      const live = new Set(((data ?? []) as Array<{ id: string }>).map((t) => t.id));
-      saved.filter((h) => !live.has(h.tournamentId)).forEach((h) => {
-        removeHandover(clubId, h.tournamentId);
-        clearTournamentPlan(h.tournamentId);
-      });
-      setHandovers(loadHandovers(clubId));
-    } catch {
-      // A network/permissions error is not evidence of deletion; keep saved data.
-      setHandovers([]);
-      setHandoverError(true);
-    } finally { setLoadingHandovers(false); }
-  };
-  useEffect(() => {
-    void refreshHandovers();
-    const onVisible = () => { if (document.visibilityState === "visible") void refreshHandovers(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [clubId, managing, stepByStepOpen]);
+  const [removeTarget, setRemoveTarget] = useState<"draft" | null>(null);
   const navigate = useNavigate();
   const [diamondOpen, setDiamondOpen] = useState(false);
 
@@ -198,43 +165,21 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
           </div>
         </div>
       )}
-      {loadingHandovers && <div className="mt-4 text-xs text-white/60">Checking saved tournaments…</div>}
-      {handoverError && <div className="mt-4 text-xs text-white/60">Could not check saved tournaments. <Button size="sm" variant="link" onClick={() => void refreshHandovers()}>Try again</Button></div>}
-      {handovers.length > 0 && (
-        <div className="mt-4 max-w-md space-y-1">
-          <div className="text-xs text-white/60">Continue managing</div>
-          {handovers.map((h) => (
-            <div key={h.tournamentId} className="flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1">
-              <Button variant="ghost" className="min-w-0 flex-1 justify-between text-white" onClick={() => setManaging(h.tournamentId)}>
-                <span className="truncate">{h.name}</span><ArrowRight className="h-4 w-4 shrink-0 text-amber-200" />
-              </Button>
-              <Button variant="ghost" size="icon" title={`Remove build for ${h.name}`} aria-label={`Remove build for ${h.name}`} onClick={() => setRemoveTarget({ id: h.tournamentId, name: h.name })}><Trash2 className="h-4 w-4" /></Button>
-            </div>
-          ))}
-        </div>
-      )}
       <AlertDialog open={removeTarget !== null} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{removeTarget === "draft" ? "Remove unfinished draft?" : "Remove this builder card?"}</AlertDialogTitle>
+            <AlertDialogTitle>Remove unfinished draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              {removeTarget === "draft"
-                ? "This deletes only the unfinished setup saved on this device. No tournament will be deleted."
-                : `This removes the Step-by-Step build for ${removeTarget?.name ?? "this tournament"} from this device. The real tournament, its fixtures, results and history will NOT be deleted. To delete the tournament itself, use the separate Delete tournament action in tournament management.`}
+              This deletes only the unfinished setup saved on this device. No tournament will be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              if (removeTarget === "draft") clearDraft(clubId);
-              else if (removeTarget) {
-                removeHandover(clubId, removeTarget.id);
-                clearTournamentPlan(removeTarget.id);
-                setHandovers(loadHandovers(clubId));
-              }
+              clearDraft(clubId);
               setRemoveTarget(null);
               setBuilderKey((k) => k + 1);
-            }}>{removeTarget === "draft" ? "Remove draft" : "Remove builder card only"}</AlertDialogAction>
+            }}>Remove draft</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

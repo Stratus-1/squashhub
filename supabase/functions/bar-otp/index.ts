@@ -19,11 +19,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
+const json = (body: unknown, status = 200) => {
+  if (status >= 400) console.warn("bar-otp refused", status, (body as any)?.error);
+  return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+};
 
 function maskPhone(raw: string) {
   const digits = String(raw).replace(/\D/g, "");

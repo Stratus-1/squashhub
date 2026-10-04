@@ -493,7 +493,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;
   const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
   const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
-  const fits = (id: string, key: string) => isPlayerEligibleForCategory(genderByMember.get(id), units.find((u) => u.key === key)?.categoryType);
+  // Eligibility = gender category +, when the event is scoped to leagues, actual
+  // league registration. A 7th-league player can never tick the 6th-league event.
+  const fits = (id: string, key: string) => {
+    if (!isPlayerEligibleForCategory(genderByMember.get(id), units.find((u) => u.key === key)?.categoryType)) return false;
+    const e = eligOf(key);
+    if (e.mode === "leagues" && e.leagueIds.length > 0) {
+      const memberLeagues = leaguesByMember.get(id) ?? [];
+      if (!memberLeagues.some((l) => e.leagueIds.includes(l))) return false;
+    }
+    return true;
+  };
   const autoPlace = (id: string) => placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);

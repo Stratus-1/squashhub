@@ -71,7 +71,7 @@ export function TournamentInviteRegisterDialog({
   const [waGroupOptIn, setWaGroupOptIn] = useState<boolean>(registration?.whatsapp_group_opt_in !== false);
 
   // Divisions this member may enter — the invitee ticks the ones they want.
-  const { data: divisionOptions = [] } = useQuery({
+  const { data: divisionOptions = [], isLoading: divisionsLoading } = useQuery({
     queryKey: ["champ-division-options", champ?.id, memberId],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("tournament_division_options", {
@@ -401,7 +401,22 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
-          {/* WhatsApp group opt-in — chosen at entry, applies from the draw onwards */}
+          {/* Auto-assigned event — the player's league registration picks it for them */}
+          {divisionOptions.length === 1 && !accepted && (
+            <div className="flex items-center gap-2 rounded-md border p-2 text-xs">
+              <span className="text-muted-foreground">You'll play in:</span>
+              <span className="font-medium">{divisionOptions[0].label}</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">Assigned from your league</span>
+            </div>
+          )}
+
+          {/* No eligible event — league registration doesn't match anything offered */}
+          {!divisionsLoading && divisionOptions.length === 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive">
+              None of this tournament's events matches your league registration — please contact the organiser.
+            </div>
+          )}
+
           {!accepted && (
             <label className="flex items-start gap-2 rounded-md border p-2 text-xs cursor-pointer">
               <Checkbox
@@ -427,7 +442,7 @@ export function TournamentInviteRegisterDialog({
                   <span className="font-medium text-foreground"> Step 2:</span> select your doubles partner — you can do it right here if you've already agreed with someone, or come back later any time before the draw.
                 </p>
               )}
-              <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
+              <Button className="w-full h-9 text-xs" disabled={accept.isPending || (categoryTypes && !divisionsLoading && divisionOptions.length === 0)} onClick={() => {
                 if ((mustChooseDivision || categoryTypes) && chosenDivisions.length === 0) {
                   setDivisionError(singleDivisionOnly
                     ? "Please choose the league you want to play in."

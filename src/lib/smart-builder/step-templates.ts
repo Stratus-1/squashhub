@@ -57,6 +57,9 @@ export function toStepTemplate(a: StepAnswers): StepTemplate {
 export function fromStepTemplate(t: StepTemplate): Partial<StepAnswers> {
   const c = clone(t.answers) as Partial<StepAnswers>;
   delete c.createdTournamentId;
+  // Older saved definitions may contain event-specific registration dates.
+  c.entriesOpen = "";
+  c.entriesClose = "";
   c.planId = rid();
   c.stages = (c.stages ?? []).map((s) => ({ ...s, id: rid() }));
   return c;

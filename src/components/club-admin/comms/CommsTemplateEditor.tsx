@@ -267,11 +267,19 @@ export function useCommsTemplates(clubId: string) {
   return useQuery({
     queryKey: ["comms-templates", clubId],
     queryFn: async (): Promise<TemplateRecord[]> => {
-      const [{ data: templates, error }, { data: versions }] = await Promise.all([
-        supabase.from("comms_templates").select("*").eq("club_id", clubId).order("updated_at", { ascending: false }),
-        supabase.from("comms_template_versions").select("*"),
-      ]);
+      const { data: templates, error } = await supabase
+        .from("comms_templates").select("*").eq("club_id", clubId).order("updated_at", { ascending: false });
       if (error) throw error;
+      // Load versions ONLY for this club's templates. An unfiltered select is capped at 1000 rows,
+      // so platform admins (who can read every club's versions) silently lost channel content.
+      const ids = (templates ?? []).map((t: any) => t.id);
+      const versions: any[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data, error: vErr } = await supabase
+          .from("comms_template_versions").select("*").in("template_id", ids.slice(i, i + 100));
+        if (vErr) throw vErr;
+        versions.push(...(data ?? []));
+      }
       const byTemplate = new Map<string, Partial<Record<CommsChannel, TemplateVersion>>>();
       for (const v of versions ?? []) {
         const bucket = byTemplate.get((v as any).template_id) ?? {};

@@ -211,6 +211,13 @@
       "when": 1791102564715,
       "tag": "0029_rename_activate_template_unregistered_members",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791102707560,
+      "tag": "0030_onboarding_template_lookup_by_action_key",
+      "breakpoints": true
     }
   ]
 }

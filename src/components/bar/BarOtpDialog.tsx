@@ -86,7 +86,11 @@ export function BarOtpDialog({
           tab_token: tabToken ?? null,
         },
       });
-      if (error) throw error;
+      if (error) {
+        // Show the server's real reason instead of a generic "edge function" error.
+        const body = await (error as any)?.context?.json?.().catch(() => null);
+        throw new Error(body?.error || "Could not send a verification code");
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       setDigits("");
       setSentTo((data as any)?.sent_to || "their registered number");

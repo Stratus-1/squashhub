@@ -1,3 +1,4 @@
+import { useChampEntrySummary } from "@/hooks/use-champ-entry-summary";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
@@ -301,6 +302,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
     onError: (e: any) => toast.error(e.message || "Could not update invite"),
   });
 
+  const entrySummary = useChampEntrySummary(champ, registration, formatMoney);
   const detailRows = useMemo(() => {
     if (!champ) return [];
     const selfScheduled = String(champ.scheduling_mode || "") === "self";
@@ -313,13 +315,16 @@ export function TournamentInviteActions({ notification, champId, registrationId,
       : [
           `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
         ];
+    const useTotal = entrySummary.totalDueCents != null && entrySummary.eventLabels.length > 0;
     return [
-      `${GENDER_LABELS[champ.gender] || champ.gender} ${champ.match_type === "doubles" ? "Doubles" : "Singles"}`,
+      entrySummary.eventLabels.length ? entrySummary.eventLabels.join(" · ") : `${GENDER_LABELS[champ.gender] || champ.gender} ${champ.match_type === "doubles" ? "Doubles" : "Singles"}`,
       `${champ.start_date} to ${champ.end_date}`,
       ...scheduleRows,
-      paymentRequired ? `${feeBreakdownLabel(eventFeeCents, feeEvents, formatMoney)} entry fee${acceptsEft ? " · EFT accepted" : ""}` : "No entry fee",
+      paymentRequired
+        ? `${useTotal ? `Total due: ${formatMoney(entrySummary.totalDueCents!)}` : `${feeBreakdownLabel(eventFeeCents, feeEvents, formatMoney)} entry fee`}${acceptsEft ? " · EFT accepted" : ""}`
+        : "No entry fee",
     ].filter(Boolean);
-  }, [acceptsEft, champ, entryFeeCents, eventFeeCents, feeEvents, paymentRequired]);
+  }, [acceptsEft, champ, entryFeeCents, eventFeeCents, feeEvents, paymentRequired, entrySummary.eventLabels.join("|"), entrySummary.totalDueCents]);
 
 
   if (champLoading || regLoading) {
@@ -442,7 +447,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
             <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
               <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
                 {status === "pending_payment" || status === "pending_eft"
-                  ? "You're in — one more step: settle your entry fee."
+                  ? "Accepted — not entered yet. Pay your entry fee to confirm your place."
                   : "You're in — one more step: select your doubles partner. If you've agreed with someone, pick them now; otherwise come back and do it any time before the draw."}
               </p>
               <Button size="sm" className="h-8 text-xs w-full" onClick={() => setRegisterOpen(true)}>

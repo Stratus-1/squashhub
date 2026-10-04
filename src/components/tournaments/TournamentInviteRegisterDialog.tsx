@@ -1,3 +1,4 @@
+import { useChampEntrySummary } from "@/hooks/use-champ-entry-summary";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -316,6 +317,7 @@ export function TournamentInviteRegisterDialog({
     await refresh();
   };
 
+  const entrySummary = useChampEntrySummary(champ, registration, money);
   const choosePartner = useMutation({
     mutationFn: async () => {
       if (!partnerId) throw new Error("Pick a partner");
@@ -340,12 +342,14 @@ export function TournamentInviteRegisterDialog({
 
   const selfScheduled = String((champ as any).scheduling_mode || "") === "self";
   const detailRows = [
-    `${GENDER_LABELS[champ.gender] || champ.gender} ${isDoubles ? "Doubles" : "Singles"}`,
+    entrySummary.eventLabels.length ? entrySummary.eventLabels.join(" · ") : `${GENDER_LABELS[champ.gender] || champ.gender} ${isDoubles ? "Doubles" : "Singles"}`,
     `${champ.start_date} to ${champ.end_date}`,
     selfScheduled
       ? "Players arrange their own games — no fixed court times"
       : `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
-    paymentRequired ? `${feeBreakdownLabel(eventFeeCents, feeEvents, money)} entry fee${feeEvents > 1 ? "" : " (per event)"}` : "No entry fee — just accept",
+    !paymentRequired ? "No entry fee — just accept"
+      : entrySummary.totalDueCents != null && entrySummary.eventLabels.length ? `Total due: ${money(entrySummary.totalDueCents)}`
+      : `${feeBreakdownLabel(eventFeeCents, feeEvents, money)} entry fee${feeEvents > 1 ? "" : " (per event)"}`,
   ];
 
   return (

@@ -331,11 +331,13 @@ function DivisionPartner({
   division,
   locked,
   feeCents,
+  totalDueCents = 0,
   pair,
   auth,
   onChanged,
   onPay,
 }: {
+  totalDueCents?: number;
   champId: string;
   clubId?: string | null;
   division: InviteDivision;

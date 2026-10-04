@@ -51,11 +51,12 @@ export async function sendActivationEmails(clubId: string, members: Member[], id
     return null;
   }
   try {
-    // Look up the standard onboarding template by name (current name first, legacy name as fallback).
+    // Look up the standard onboarding template by name (current name first, older names as fallback).
+    const NAMES = ["Activate SquashHub Account – Unregistered Members", "Activate SquashHub Account", "Welcome to SquashHub"];
     const { data: tpls } = await supabase.from("comms_templates").select("id, name")
-      .eq("club_id", clubId).in("name", ["Activate SquashHub Account", "Welcome to SquashHub"]);
-    const tpl = (tpls ?? []).find((t) => t.name === "Activate SquashHub Account") ?? (tpls ?? [])[0];
-    if (!tpl) throw new Error("The club's 'Activate SquashHub Account' template is missing.");
+      .eq("club_id", clubId).in("name", NAMES);
+    const tpl = NAMES.map((n) => (tpls ?? []).find((t) => t.name === n)).find(Boolean);
+    if (!tpl) throw new Error("The club's 'Activate SquashHub Account – Unregistered Members' template is missing.");
     const { data: ver } = await supabase.from("comms_template_versions").select("subject,body")
       .eq("template_id", tpl.id).eq("channel", "email").maybeSingle();
     if (!ver) throw new Error("The welcome template has no email version.");

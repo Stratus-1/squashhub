@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DOMPurify from "dompurify";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,7 @@ import { buildMergeVars } from "@/lib/comms/merge-fields";
 import { renderChannel } from "@/lib/comms/render";
 import { validateCampaign, CHANNEL_LABEL } from "@/lib/comms/validation";
 import { dispatchCampaign, upsertCampaign } from "@/lib/comms/send";
+import { summariseUnlinkedAudience } from "@/lib/comms/onboarding-audience";
 import { CommsActionPicker } from "./CommsActionPicker";
 import type { TemplateRecord } from "./CommsTemplateEditor";
 

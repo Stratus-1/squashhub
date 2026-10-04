@@ -447,7 +447,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
             <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
               <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
                 {status === "pending_payment" || status === "pending_eft"
-                  ? "You're in — one more step: settle your entry fee."
+                  ? "Accepted — not entered yet. Pay your entry fee to confirm your place."
                   : "You're in — one more step: select your doubles partner. If you've agreed with someone, pick them now; otherwise come back and do it any time before the draw."}
               </p>
               <Button size="sm" className="h-8 text-xs w-full" onClick={() => setRegisterOpen(true)}>

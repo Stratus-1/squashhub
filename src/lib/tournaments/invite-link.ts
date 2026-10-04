@@ -147,6 +147,7 @@ export function inviteDivisions(payload: InvitePayload | null | undefined): Invi
       gender: (d as any)?.gender ?? null,
       format: (d as any)?.format ?? null,
       match_type: (d as any)?.match_type ?? null,
+      fee_cents: (d as any)?.fee_cents == null ? null : Math.max(0, Number((d as any).fee_cents) || 0),
     }))
     .filter((d) => Number.isFinite(d.group_number) && d.group_number > 0);
 }

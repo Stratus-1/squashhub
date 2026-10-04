@@ -94,7 +94,7 @@ export function planAssumedSchedule(o: {
   const durOf = (g: AssumeGame) => (Number(g.bellsMinutes) > 0 ? Number(g.bellsMinutes) : g.doubles ? o.doubles : o.singles);
   const ph = (g: AssumeGame) => g.phase ?? 0;
   const ps = o.playoffStart ?? {};
-  const gap = Math.max(0, Number(ps.gap) || 0);
+  const gap = ps.gap == null || ps.gap === "" ? 30 : Math.max(0, Number(ps.gap) || 0); // UI default: 30 min after qualifying
   const fixedAbs = ps.mode === "fixed" && ps.date && ps.time && dateIdx.has(ps.date) ? abs(ps.date, toMin(ps.time)) : null;
   const firstPO = new Map<string, number>();
   for (const g of o.games) if (ph(g) > 0) firstPO.set(g.unitKey, Math.min(firstPO.get(g.unitKey) ?? Infinity, ph(g)));

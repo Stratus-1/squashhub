@@ -17710,6 +17710,10 @@ export type Database = {
           registration_id: string
         }[]
       }
+      existing_member_signup_status: {
+        Args: { _club_id: string; _email: string }
+        Returns: string
+      }
       family_add_member: {
         Args: {
           _email: string

@@ -2543,3 +2543,7 @@ Cause: per-group validation read only each group's own selection; a setup "Cross
 - 2026-10-03: Who-plays-whom UX reworked (Within this group / Against other groups → Full cross-group round robin or Selected player matchups); tests in cross-league-edges.test.ts.
 
 - 2026-10-03: 6th/7th Standings — singles between-group draw falsely raised "doubles entry has no partner" (partner check now only for pair units); 7th table rank-tinted with 0 played (between-group tables now plain until results); added configurable Standings & awards (team outcome, top scorer, wooden spoon).
+
+### 2026-10-04 — Existing-member signup said "not found" for members who already have a login
+- Cause: `lookup_existing_member_for_signup` only returns unclaimed rows (`user_id IS NULL`), and ClubAuth showed one generic "couldn't find a member" message for every empty result.
+- Fix: new `existing_member_signup_status(club_id, email)` (status word only: already_linked / verification_mismatch / not_found, email lower+trim). ClubAuth calls it only when the lookup is empty: already_linked shows Sign in with Google / Sign in / Reset password; mismatch shows a specific number/phone message. Regression case: Riverside + HKFTservices@gmail.com. Test: `src/test/existing-member-signup-status.test.ts`.

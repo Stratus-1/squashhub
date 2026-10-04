@@ -64,6 +64,7 @@ export default function ClubAuth() {
     Array<{ id: string; masked_name: string; has_number: boolean; has_phone: boolean }>
   >([]);
   const [chosenMemberId, setChosenMemberId] = useState<string>("");
+  const [existingStatus, setExistingStatus] = useState<null | "already_linked" | "verification_mismatch" | "not_found">(null);
 
   // League-number signup (CSIR & similar imported-member clubs)
   const [leagueNumber, setLeagueNumber] = useState("");
@@ -414,12 +415,29 @@ export default function ClubAuth() {
         has_phone: boolean;
       }>;
       if (rows.length === 0) {
-        toast.error(
-          "We couldn't find a member matching that email and number/phone. Please contact your club admin."
-        );
+        // Explain why: already has a login, wrong number/phone, or truly unknown.
+        const { data: status } = await (supabase as any).rpc("existing_member_signup_status", {
+          _club_id: club.id,
+          _email: email,
+        });
+        const s = (status as string) || "not_found";
+        setExistingStatus(s as typeof existingStatus);
+        if (s === "already_linked") {
+          setLoginEmail(email);
+          setResetEmail(email);
+        } else if (s === "verification_mismatch") {
+          toast.error(
+            hideMemberNumberField
+              ? "That email is on the club's list, but the cell phone number doesn't match what the club has on file."
+              : "That email is on the club's list, but the member/league number or cell phone doesn't match what the club has on file."
+          );
+        } else {
+          toast.error("We couldn't find a club member with that email. Please check it or contact your club admin.");
+        }
         setLoading(false);
         return;
       }
+      setExistingStatus(null);
       if (rows.length > 1) {
         // Show chooser inline; user picks then re-submits
         setMemberChoices(rows);
@@ -1360,6 +1378,17 @@ export default function ClubAuth() {
                     <div className="mb-4 space-y-2">
                       <GoogleSignInButton label="Register or sign in with Google" showHint />
                       <GoogleAuthDivider text="or register with email and password" />
+                    </div>
+                  )}
+                  {existingStatus === "already_linked" && (
+                    <div role="status" data-testid="existing-account-panel" className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                      <p className="text-[13px] font-semibold">This email is already linked to a SquashHub account.</p>
+                      <p className="text-[12px] text-muted-foreground">You don't need to register again — sign in to your existing account.</p>
+                      {!hideGoogleAuth && <GoogleSignInButton label="Sign in with Google" showHint={false} />}
+                      <div className="flex gap-2">
+                        <Button type="button" className="flex-1" onClick={() => { setLoginEmail(existingEmail.trim()); setActiveTab("login"); }}>Sign in</Button>
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => { setResetEmail(existingEmail.trim()); setShowReset(true); }}>Reset password</Button>
+                      </div>
                     </div>
                   )}
                   <form onSubmit={handleExistingMemberSignup} className="space-y-3">

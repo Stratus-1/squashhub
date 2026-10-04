@@ -82,10 +82,11 @@ export function htmlToPlainText(html: string): string {
 
 export function actionButtonHtml(action: ResolvedAction): string {
   if (!action.hasAction || !action.webUrl) return "";
-  // Email-client-proof CTA: colour is set on the anchor AND an inner span (both
-  // !important) so Gmail/Outlook/webmail cannot recolour the label as a visited
-  // or default link. Keep in sync with welcome_template_email_body().
-  return `<div style="margin:26px 0"><a href="${escapeHtml(action.webUrl)}" style="display:inline-block;background:#1E3A5F;background-color:#1E3A5F;color:#ffffff !important;text-decoration:none;padding:16px 36px;border-radius:10px;font-weight:700;font-size:16px;line-height:1.4;font-family:Arial,Helvetica,sans-serif;border:2px solid #1E3A5F"><span style="color:#ffffff !important">${escapeHtml(action.label || "Open")}</span></a></div>`;
+  // Bulletproof email CTA: table cell with bgcolor attribute (Outlook/desktop
+  // clients ignore background on inline anchors) plus white label on the anchor
+  // AND an inner span so no client can recolour it as a visited/default link.
+  // Keep in sync with welcome_template_email_body().
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0"><tr><td bgcolor="#1E3A5F" style="background-color:#1E3A5F;border-radius:10px"><a href="${escapeHtml(action.webUrl)}" style="display:inline-block;padding:16px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;line-height:1.4;color:#ffffff;text-decoration:none;border-radius:10px"><span style="color:#ffffff">${escapeHtml(action.label || "Open")}</span></a></td></tr></table>`;
 }
 
 export function renderChannel(

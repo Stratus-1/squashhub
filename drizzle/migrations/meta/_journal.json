@@ -225,6 +225,13 @@
       "when": 1791104990132,
       "tag": "0031_activation_cta_button_styling",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791106048530,
+      "tag": "0032_bulletproof_activation_cta",
+      "breakpoints": true
     }
   ]
 }

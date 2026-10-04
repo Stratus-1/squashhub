@@ -32,6 +32,7 @@ import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialo
 import { eliminatedMemberIds } from "@/lib/tournaments/survivors";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
+import { playoffHeadingText } from "@/lib/smart-builder/playoff-placeholders";
 import { structuredMatchups, matchupForMatchGroup, matchupHeading, type StructuredMatchup } from "@/lib/tournaments/structured-matchups";
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
 import { entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";

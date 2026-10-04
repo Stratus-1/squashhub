@@ -156,3 +156,10 @@ export async function adoptPlaceholderRows(champId: string): Promise<number> {
   }
   return plan.length;
 }
+
+/** Pure: play-off row heading that always names its event, e.g. "Men's Singles · Semi-final 1 · #1 vs #4".
+ *  The "Mens Singles · Singles" style label is shortened to its category part. */
+export function playoffHeadingText(eventLabel: string | null | undefined, stageLabel: string | null | undefined, seedPair: string | null | undefined): string {
+  const ev = String(eventLabel ?? "").split(" · ")[0].trim();
+  return [ev || "Play-off", stageLabel, seedPair].filter(Boolean).join(" · ");
+}

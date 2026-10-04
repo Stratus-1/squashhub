@@ -148,10 +148,13 @@ export const COMMS_ACTIONS: CommsActionDef[] = [
     // Direct link to the EXISTING member sign-up form (not the new-member
     // application) — used by club onboarding/welcome messages.
     key: "register_existing_member",
-    label: "Register as an existing member",
+    // Sending replaces this per recipient with a single-use personal activation
+    // link (or the sign-in page for members who already have a login). Previews
+    // only ever show this clearly-fake sample, so nothing real is issued.
+    label: "Activate my SquashHub account (personal link)",
     group: "Club",
-    defaultLabel: "Register as an existing member",
-    path: () => "/auth?intent=existing",
+    defaultLabel: "Activate my SquashHub account",
+    path: () => "/activate?t=SAMPLE-PERSONAL-LINK",
   },
   {
     key: "external",

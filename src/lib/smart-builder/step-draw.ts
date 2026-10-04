@@ -246,7 +246,15 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   const playoffs = planned.length ? planned.map((s) => s.name)
     : kind && kind !== "knockout" && po.choice === "playoffs"
       ? (po.rounds === 1 ? ["Final"] : po.rounds === 2 ? ["Semi-final", "Final"] : ["Quarter-final", "Semi-final", "Final"]) : [];
-  const playoffPlans = planned.length ? planned.map((s) => s.plan) : playoffs.map(() => null);
+  // Whole-weekend tournaments (Courts & Dates scheduling assumptions, no stage timeline): the play-offs are
+  // real predefined stages on the last tournament day, timed later by "Assign courts & times" (fixed or
+  // rest-after-qualifying start). Pairing comes only from the Playoffs answer — never inferred.
+  const weekendDays = [...new Set<string>((plan?.days ?? []).map((d: any) => d?.date).filter(Boolean))].sort();
+  const weekend = !planned.length && playoffs.length > 0 && !!plan?.scheduling && weekendDays.length > 0;
+  const firstPairing = po.pairing === "cross_pools" ? "crossover" : po.pairing === "seeded" ? "seeded" : po.pairing === "same_position" ? "same_position" : "later";
+  const playoffPlans: Array<PlannedPlayoff | null> = planned.length ? planned.map((s) => s.plan)
+    : weekend ? playoffs.map((_, i) => ({ pairing: i === 0 ? firstPairing : "winners", mode: "scheduled", date: weekendDays[weekendDays.length - 1], deadline: null, from: null, to: null, courtIds: [], trigger: "confirm" } as any))
+      : playoffs.map(() => null);
   let paced: DivFormat["paced"] = null;
   if (kind === "knockout" && f.koPace !== "immediate") {
     const m = milestoneFor(plan as any, key);

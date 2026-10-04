@@ -82,7 +82,10 @@ export function htmlToPlainText(html: string): string {
 
 export function actionButtonHtml(action: ResolvedAction): string {
   if (!action.hasAction || !action.webUrl) return "";
-  return `<div style="margin:22px 0"><a href="${escapeHtml(action.webUrl)}" style="display:inline-block;background:#1E3A5F;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;font-size:14px">${escapeHtml(action.label || "Open")}</a></div>`;
+  // Email-client-proof CTA: colour is set on the anchor AND an inner span (both
+  // !important) so Gmail/Outlook/webmail cannot recolour the label as a visited
+  // or default link. Keep in sync with welcome_template_email_body().
+  return `<div style="margin:26px 0"><a href="${escapeHtml(action.webUrl)}" style="display:inline-block;background:#1E3A5F;background-color:#1E3A5F;color:#ffffff !important;text-decoration:none;padding:16px 36px;border-radius:10px;font-weight:700;font-size:16px;line-height:1.4;font-family:Arial,Helvetica,sans-serif;border:2px solid #1E3A5F"><span style="color:#ffffff !important">${escapeHtml(action.label || "Open")}</span></a></div>`;
 }
 
 export function renderChannel(

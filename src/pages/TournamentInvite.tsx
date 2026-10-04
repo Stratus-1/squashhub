@@ -546,7 +546,10 @@ export default function TournamentInvite() {
           <CheckCircle2 className="w-3 h-3 mr-1" /> You're entered
         </Badge>
         {(data?.fee_settled_via === "account" || data?.fee_status === "on_account") && (
-          <p className="text-xs text-muted-foreground">Your entry fee is charged to your member account — settle it with the club as usual.</p>
+          <p className="text-xs text-muted-foreground">Entry fee charged to your member account.</p>
+        )}
+        {(data?.fee_status === "paid" || data?.fee_settled_via === "card" || data?.fee_settled_via === "eft" || data?.fee_settled_via === "cash") && (
+          <p className="text-xs font-medium text-emerald-600">Entry fee paid — thank you.</p>
         )}
         {partnerSection}
         {isTest ? (

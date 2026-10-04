@@ -404,7 +404,12 @@ export function tournamentNextAction(
   opts: { selfScheduled?: boolean; status?: string | null; championScope?: ChampionScope } = {},
 ): TournamentNextAction {
   const ko = (matches as any[]).filter((m) => (m.stage || "") === "ko") as KnockoutMatchLike[];
-  const divisions = divisionControls(ko, rounds, opts);
+  // Round-robin rounds are pool scheduling rounds, not a knockout plan —
+  // progress for them comes from the games actually played, never dates.
+  const isRR = (r: ChampRound) => String((r as any).round_type || "") === "round_robin";
+  const koRounds = rounds.filter((r) => !isRR(r));
+  const poolOnlyPlan = rounds.length > 0 && koRounds.length === 0;
+  const divisions = divisionControls(ko, koRounds, opts);
   const sections = divisions.flatMap((d) => d.sections);
 
   if (String(opts.status || "").toLowerCase() === "completed") {
@@ -497,6 +502,21 @@ export function tournamentNextAction(
     }
 
     const ready = pools.find((p) => p.action === "generate");
+    if (ready && poolOnlyPlan && pools.every((p) => p.complete)) {
+      const total = pools.reduce((n, p) => n + p.total, 0);
+      return {
+        stage: "complete",
+        status: "All games played",
+        headline: `All ${total} games are played. Close the tournament when you are ready.`,
+        ctaLabel: null,
+        action: "none",
+        disabled: false,
+        blockedReason: null,
+        groupNumber: null,
+        section: null,
+        complete: true,
+      };
+    }
     if (ready) {
       return {
         stage: "pool_complete",

@@ -119,7 +119,7 @@ export type StepAnswers = {
   subcats: Record<string, string[]>;
   days: DayAvail[];
   /** Courts & Dates scheduling-slot estimates (minutes) — never scoring/time-cap rules. */
-  scheduling?: { singles: string; doubles: string; rest: string };
+  scheduling?: { singles: string; doubles: string; rest: string; pace?: "fast" | "spread"; playoffStart?: { mode: "after" | "fixed"; gap?: string; date?: string; time?: string } };
   /** Courts & Dates court restrictions: unit key ("" = all), optional round/pool → allowed court ids. */
   courtRules?: Array<{ key: string; round: string; pool: string; courtIds: string[] }>;
   /** How players get in: organiser picks, self-entry, or both. */
@@ -1408,6 +1408,35 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         <span className="text-xs text-muted-foreground">min</span></span></label>
                   ))}
                 </div>
+                {(() => {
+                  const sc = { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}) } as NonNullable<StepAnswers["scheduling"]>;
+                  const setSc = (patch: Partial<NonNullable<StepAnswers["scheduling"]>>) => setA({ ...a, scheduling: { ...sc, ...patch } });
+                  const ps = sc.playoffStart ?? { mode: "after", gap: "30" };
+                  const opt = (on: boolean, label: string, click: () => void) => (
+                    <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={on} onChange={click} className="h-4 w-4 accent-primary" />{label}</label>
+                  );
+                  return (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5" aria-label="Pacing"><div className="text-sm font-medium">Pacing</div>
+                        {opt((sc.pace ?? "fast") === "fast", "Start matches and finish as quickly as possible", () => setSc({ pace: "fast" }))}
+                        {opt(sc.pace === "spread", "Spread matches across the available tournament period", () => setSc({ pace: "spread" }))}
+                      </div>
+                      <div className="space-y-1.5" aria-label="Playoff start"><div className="text-sm font-medium">Playoff start <span className="text-xs font-normal text-muted-foreground">(when playoffs are planned)</span></div>
+                        {opt(ps.mode !== "fixed", "A set time after the last qualifying match finishes", () => setSc({ playoffStart: { ...ps, mode: "after" } }))}
+                        {ps.mode !== "fixed" && <span className="ml-6 flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[90px]" aria-label="Minutes after the last qualifying match" value={ps.gap ?? ""} onChange={(e) => setSc({ playoffStart: { ...ps, gap: e.target.value } })} /><span className="text-xs text-muted-foreground">min later</span></span>}
+                        {opt(ps.mode === "fixed", "At a specific day and time", () => setSc({ playoffStart: { ...ps, mode: "fixed" } }))}
+                        {ps.mode === "fixed" && <span className="ml-6 flex flex-wrap items-center gap-2">
+                          <select aria-label="Playoff day" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={ps.date ?? ""} onChange={(e) => setSc({ playoffStart: { ...ps, date: e.target.value } })}>
+                            <option value="">Choose day…</option>
+                            {a.days.filter((d) => d.date).map((d) => <option key={d.date} value={d.date}>{new Date(`${d.date}T00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</option>)}
+                          </select>
+                          <Input type="time" step={300} className="max-w-[120px]" aria-label="Playoff start time" value={ps.time ?? ""} onChange={(e) => setSc({ playoffStart: { ...ps, time: e.target.value } })} />
+                        </span>}
+                        <p className="text-xs text-muted-foreground">Playoff games (players still TBD) are scheduled in the same run, so their courts are kept free.</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               {clubCourts.length > 0 && (
                 <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Court restrictions">

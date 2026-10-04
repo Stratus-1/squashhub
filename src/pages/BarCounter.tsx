@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
+import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 import { toast } from "sonner";
 import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -597,6 +598,29 @@ export default function BarCounter() {
 
           <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
+            {activeTab.status === "closing" && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
+                <p className="flex-1 text-xs">Waiting for an online card payment. If the customer stopped or it got stuck, cancel it and choose another way to pay.</p>
+                <Button
+                  size="sm" variant="outline" className="h-9 shrink-0" disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const result = await cancelTabCardPayment(activeTab.tab_id, (activeTab as any).token);
+                      toast.success(cancelTabCardMessage[result]);
+                      await refetch();
+                      invalidate();
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Could not cancel the card payment");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Cancel card payment
+                </Button>
+              </div>
+            )}
             <Button className="w-full h-12 gap-2" disabled={cartTotal <= 0 || busy} onClick={addRound}>
               <Receipt className="w-4 h-4" />
               Add {money(cartTotal)} to {activeTab.guest_name}'s tab

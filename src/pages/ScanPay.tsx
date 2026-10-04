@@ -25,6 +25,7 @@ import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
+import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";

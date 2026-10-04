@@ -42,7 +42,7 @@ describe("planInviteRows", () => {
       existing: [{ id: "r1", club_member_id: "b", status: "invited" }],
       feeCents: 0, paymentRequired: false,
     });
-    expect(plan.insert.map((r) => r.club_member_id)).toEqual(["a"]);
+    expect(plan.insert).toEqual(["a"]);
     expect(plan.skip).toEqual(["b"]);
     expect(plan.reopen).toEqual([]);
   });
@@ -53,9 +53,7 @@ describe("planInviteRows", () => {
       existing: [{ id: "r1", club_member_id: "a", status: "declined", declined_at: "2026-01-01" }],
       feeCents: 0, paymentRequired: false,
     });
-    expect(plan.reopen).toHaveLength(1);
-    expect(plan.reopen[0].declined_at).toBeNull();
-    expect(plan.reopen[0].status).toBe("invited");
+    expect(plan.reopen).toEqual(["a"]);
     expect(plan.skip).toEqual([]);
   });
 

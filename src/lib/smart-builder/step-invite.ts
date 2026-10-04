@@ -51,6 +51,7 @@ export function memberMatchesTournamentGender(memberGender: string | null | unde
   const g = String(tournamentGender || "").toLowerCase();
   if (!g || g === "mixed" || g === "open") return true;
   const normalized = String(memberGender || "").toLowerCase();
+  if (!normalized) return true; // unknown gender is never excluded (legacy behaviour)
   const matchValues = g === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
   return matchValues.includes(normalized);
 }

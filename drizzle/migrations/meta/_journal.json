@@ -288,6 +288,13 @@
       "when": 1791148848372,
       "tag": "0040_tournament_per_division_fees",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791149949982,
+      "tag": "0041_per_event_fees_in_pair_payment",
+      "breakpoints": true
     }
   ]
 }

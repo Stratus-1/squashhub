@@ -117,7 +117,8 @@ export function DoublesPartnerPicker({ champId, divisions, token, verify, enable
           clubId={clubId}
           division={d}
           locked={!!state?.locked}
-          feeCents={Number(state?.entry_fee_cents || 0)}
+          feeCents={Number(pairForDivision(state?.pairs || [], d.group_number)?.fee_cents ?? state?.entry_fee_cents ?? 0)}
+          totalDueCents={Number(state?.amount_due_cents || 0)}
           pair={pairForDivision(state?.pairs || [], d.group_number)}
           auth={auth}
           onChanged={refresh}
@@ -330,11 +331,13 @@ function DivisionPartner({
   division,
   locked,
   feeCents,
+  totalDueCents = 0,
   pair,
   auth,
   onChanged,
   onPay,
 }: {
+  totalDueCents?: number;
   champId: string;
   clubId?: string | null;
   division: InviteDivision;
@@ -397,11 +400,11 @@ function DivisionPartner({
 
   const busy = act.isPending;
   const paymentLine = pairPaymentLabel(pair, feeCents, (r) => `R${r.toFixed(2)}`);
+  // Pay button settles everything this player owes (all their events plus any
+  // partner fees they cover), as the server calculates it.
   const iOwe =
     !!pair && hasFee && !pair.my_fee_paid && !pair.covered_by_partner
-      ? pair.payer_is_me && pair.pays_for_partner
-        ? feeCents * 2
-        : feeCents
+      ? Math.max(totalDueCents || 0, pair.payer_is_me && pair.pays_for_partner ? feeCents * 2 : feeCents)
       : 0;
 
   const choose = (o: PartnerOption) => {

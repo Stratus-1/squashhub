@@ -17466,6 +17466,10 @@ export type Database = {
         Args: { p_payment_ref?: string; p_registration_id: string }
         Returns: Json
       }
+      champ_division_fee_cents: {
+        Args: { p_champ_id: string; p_group: number }
+        Returns: number
+      }
       champ_division_is_doubles: {
         Args: { p_champ_id: string; p_group_number: number }
         Returns: boolean

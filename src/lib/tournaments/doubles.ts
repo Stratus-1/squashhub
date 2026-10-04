@@ -55,6 +55,7 @@ export type MyPair = {
   partner_club: string | null;
   /** The proposer promised to pay both entry fees. */
   pays_for_partner?: boolean;
+  fee_cents?: number;
   payer_is_me?: boolean;
   covered_by_partner?: boolean;
   my_fee_paid?: boolean;
@@ -184,7 +185,7 @@ export function pairPaymentLabel(pair: MyPair | null, feeCents: number, money: (
   if (pair.my_fee_paid && pair.partner_fee_paid) return "Both entry fees are paid.";
   if (!pair.my_fee_paid && pair.covered_by_partner) return `${who} is paying your ${fee} entry fee.`;
   if (!pair.my_fee_paid && pair.payer_is_me && pair.pays_for_partner)
-    return `You chose to pay for both entries — ${money((feeCents * 2) / 100)} due.`;
+    return `You chose to pay for both entries in this event — ${money((feeCents * 2) / 100)}.`;
   if (!pair.my_fee_paid) return `Your ${fee} entry fee is still to pay.`;
   if (!pair.partner_fee_paid) return `Waiting for ${who} to pay their ${fee} entry fee.`;
   return null;

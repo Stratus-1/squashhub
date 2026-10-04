@@ -62,8 +62,8 @@ export function EnterResultDialog({
   const isBells = scoringMode === "time_capped_points";
   const [winner, setWinner] = useState<Side>("a");
   const [games, setGames] = useState<GameScore[]>(() => defaultGameScores("a", gamesToWin(bo), 0, target));
-  const [bellsA, setBellsA] = useState<string>("0");
-  const [bellsB, setBellsB] = useState<string>("0");
+  const [bellsA, setBellsA] = useState<string>("");
+  const [bellsB, setBellsB] = useState<string>("");
   const [saving, setSaving] = useState(false);
   // Generated once per submission attempt so a retry can never duplicate the row.
   const resultIdRef = useRef<string | null>(null);
@@ -72,8 +72,8 @@ export function EnterResultDialog({
     if (open) {
       setWinner("a");
       setGames(defaultGameScores("a", gamesToWin(bo), 0, target));
-      setBellsA("0");
-      setBellsB("0");
+      setBellsA("");
+      setBellsB("");
       resultIdRef.current = null;
     }
   }, [open, bo, target]);

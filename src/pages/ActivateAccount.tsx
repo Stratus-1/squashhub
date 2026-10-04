@@ -111,22 +111,33 @@ export default function ActivateAccount() {
     if (password.length < 8) { toast.error("Password must be at least 8 characters"); return; }
     if (password !== password2) { toast.error("Passwords don't match"); return; }
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({
-      email: info.email, password, options: { emailRedirectTo: activationRedirect() },
+    // The valid personal link already proves control of this email, so the
+    // login is created pre-confirmed (no second activation email), then we
+    // sign in and link the existing membership.
+    const { data, error } = await supabase.functions.invoke("activate-member-password", {
+      body: { token, password },
     });
-    setBusy(false);
-    if (error) {
-      if (/already/i.test(error.message)) {
-        toast.message("This email already has a SquashHub login — sign in instead.");
-        setMode("signin");
-        return;
-      }
-      toast.error(error.message);
+    const st = error ? "error" : (data as any)?.status;
+    if (st === "already_registered") {
+      setBusy(false);
+      toast.message("This email already has a SquashHub login — sign in instead.");
+      setMode("signin");
       return;
     }
-    if (data.session) { await claim(); return; }
-    savePendingVerify(info.email, activationRedirect());
-    setMode("confirm");
+    if (st !== "created") {
+      setBusy(false);
+      if (st === "expired" || st === "revoked" || st === "invalid" || st === "claimed") {
+        setInfo((prev) => ({ ...(prev || {}), status: st }) as Info);
+      } else {
+        toast.error((data as any)?.message || "We couldn't activate your account. Please try again.");
+      }
+      return;
+    }
+    const { error: sErr } = await supabase.auth.signInWithPassword({ email: info.email, password });
+    setBusy(false);
+    if (sErr) { toast.error(sErr.message); setMode("signin"); return; }
+    clearPendingVerify();
+    await claim();
   };
 
   const handleSignIn = async (e: React.FormEvent) => {

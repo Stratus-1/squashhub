@@ -301,6 +301,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         clubId={clubId}
         clubName={club.name}
         subdomain={(club as any).subdomain}
+        posterClub={club}
       />
 
       <BarQrLabelsDialog

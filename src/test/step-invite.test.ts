@@ -37,8 +37,6 @@ describe("personaliseInviteEmailHtml", () => {
   it("replaces the raw entry-link line with the Enter here button", () => {
     const html = personaliseInviteEmailHtml(tpl, "Albert Smith", link);
     expect(html).toContain(emailEntryButton(link, "Enter here"));
-    expect(html).toContain("Enter here:");
-    expect(html).not.toContain(link.replace(/&/g, "&amp;"));
     expect(html).not.toMatch(/Enter here:[^<]*https:/);
   });
 

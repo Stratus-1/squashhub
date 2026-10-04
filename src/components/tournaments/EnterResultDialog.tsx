@@ -62,8 +62,8 @@ export function EnterResultDialog({
   const isBells = scoringMode === "time_capped_points";
   const [winner, setWinner] = useState<Side>("a");
   const [games, setGames] = useState<GameScore[]>(() => defaultGameScores("a", gamesToWin(bo), 0, target));
-  const [bellsA, setBellsA] = useState<string>("0");
-  const [bellsB, setBellsB] = useState<string>("0");
+  const [bellsA, setBellsA] = useState<string>("");
+  const [bellsB, setBellsB] = useState<string>("");
   const [saving, setSaving] = useState(false);
   // Generated once per submission attempt so a retry can never duplicate the row.
   const resultIdRef = useRef<string | null>(null);
@@ -72,8 +72,8 @@ export function EnterResultDialog({
     if (open) {
       setWinner("a");
       setGames(defaultGameScores("a", gamesToWin(bo), 0, target));
-      setBellsA("0");
-      setBellsB("0");
+      setBellsA("");
+      setBellsB("");
       resultIdRef.current = null;
     }
   }, [open, bo, target]);
@@ -252,7 +252,9 @@ export function EnterResultDialog({
                       min={0}
                       className="h-10 text-center text-lg font-semibold"
                       aria-label={`Points for ${names[side]}`}
+                      placeholder="0"
                       value={value}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => set(e.target.value)}
                     />
                   </div>
@@ -312,6 +314,7 @@ export function EnterResultDialog({
                     className="h-8 w-16 text-center"
                     aria-label={`Game ${i + 1} ${names.a}`}
                     value={String(g.a)}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setGameValue(i, "a", e.target.value)}
                   />
                   <span className="text-muted-foreground">–</span>
@@ -322,6 +325,7 @@ export function EnterResultDialog({
                     className="h-8 w-16 text-center"
                     aria-label={`Game ${i + 1} ${names.b}`}
                     value={String(g.b)}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setGameValue(i, "b", e.target.value)}
                   />
                   {games.length > 1 && (

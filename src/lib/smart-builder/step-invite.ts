@@ -46,6 +46,42 @@ export function personaliseInvite(template: string, name: string, entryLink?: st
   return finaliseMessage(out);
 }
 
+const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * Bulletproof email CTA — the same table + VML roundrect markup the server's
+ * action buttons use (rounded navy button, white label, Outlook-safe).
+ */
+export function emailEntryButton(url: string, label: string): string {
+  const u = escHtml(url), l = escHtml(label);
+  return `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${u}" style="height:48px;v-text-anchor:middle;width:280px;" arcsize="20%" stroke="f" fillcolor="#1E3A5F"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;">${l}</center></v:roundrect><![endif]--><!--[if !mso]><!-- --><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0"><tr><td bgcolor="#1E3A5F" style="background-color:#1E3A5F;border-radius:10px"><a href="${u}" style="display:inline-block;padding:12px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;line-height:1.4;color:#ffffff;text-decoration:none;border-radius:10px"><span style="color:#ffffff">${l}</span></a></td></tr></table><!--<![endif]-->`;
+}
+
+/**
+ * Email body HTML for one invitee: the personalised message, with the line that
+ * carried the raw entry link replaced by the no-login "Enter here" button.
+ * Plain-text channels keep the raw link — only the email gets the button.
+ */
+export function personaliseInviteEmailHtml(template: string, name: string, entryLink?: string | null): string {
+  const text = personaliseInvite(template, name, entryLink);
+  const blocks: Array<{ kind: "text" | "button"; text: string }> = [];
+  let cur: string[] = [];
+  for (const line of text.split("\n")) {
+    if (entryLink && line.includes(entryLink)) {
+      if (cur.length) { blocks.push({ kind: "text", text: cur.join("\n") }); cur = []; }
+      blocks.push({ kind: "button", text: emailEntryButton(entryLink, "Enter here") });
+      continue;
+    }
+    cur.push(line);
+  }
+  if (cur.length) blocks.push({ kind: "text", text: cur.join("\n") });
+  return blocks.map((b) =>
+    b.kind === "button"
+      ? b.text
+      : `<p style="margin:0 0 14px">${escHtml(b.text).replace(/\n/g, "<br>")}</p>`,
+  ).join("");
+}
+
 /** Gender filter identical to the legacy builder's memberMatchesTournamentGender. */
 export function memberMatchesTournamentGender(memberGender: string | null | undefined, tournamentGender: string | null | undefined): boolean {
   const g = String(tournamentGender || "").toLowerCase();
@@ -179,14 +215,14 @@ export async function sendInvites(i: {
     const text = personaliseInvite(i.template, r.name, links[r.memberId]);
     memberVars[r.memberId] = {
       personal_message: text,
-      personal_message_html: text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>"),
+      personal_message_html: personaliseInviteEmailHtml(i.template, r.name, links[r.memberId]),
     };
   }
   const subject = `You're invited: ${i.name}`;
   const content: Record<string, { subject?: string; body?: string }> = {};
   for (const ch of i.channels) {
     content[ch] = ch === "email"
-      ? { subject, body: '<p>{{personal_message_html}}</p>' }
+      ? { subject, body: "{{personal_message_html}}" }
       : { subject, body: "{{personal_message}}" };
   }
   const { campaignId } = await sendComms({
@@ -194,7 +230,7 @@ export async function sendInvites(i: {
     name: `${i.name} — invitation${i.resend ? " (sent again)" : ""}`,
     channels: i.channels,
     content,
-    action: { key: "tournament_view", label: "View tournament & enter", params: { tournament_id: i.tournamentId } } as any,
+    action: { key: "tournament_view", label: "Go to Tournament", params: { tournament_id: i.tournamentId } } as any,
     audience: { type: "selected", memberIds },
     memberVars,
     meta: { tournament_id: i.tournamentId, purpose: i.resend ? "step_beta_invite_resend" : "step_beta_invite" },

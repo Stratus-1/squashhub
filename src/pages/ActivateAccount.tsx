@@ -136,7 +136,7 @@ export default function ActivateAccount() {
     <div className="grid gap-2">
       <Button onClick={() => navigate("/auth")}>Sign in</Button>
       <Button variant="outline" onClick={() => navigate("/auth?intent=existing")}>Register with my member details</Button>
-      <Button variant="ghost" onClick={() => navigate("/reset-password")}>Forgot / reset password</Button>
+      <Button variant="ghost" onClick={() => navigate("/auth")}>Forgot password? (use Reset on the sign-in page)</Button>
     </div>
   );
 
@@ -205,7 +205,7 @@ export default function ActivateAccount() {
             <Label htmlFor="act-si">Password</Label>
             <Input id="act-si" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in and activate"}</Button>
-            <Button type="button" variant="link" className="w-full" onClick={() => navigate("/reset-password")}>Forgot password?</Button>
+            <Button type="button" variant="link" className="w-full" onClick={() => navigate("/auth")}>Forgot password?</Button>
           </form>
         )}
       </div>

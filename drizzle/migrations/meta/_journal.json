@@ -309,6 +309,13 @@
       "when": 1791150585638,
       "tag": "0043_invite_payment_methods",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791150727420,
+      "tag": "0044_fix_champ_payment_methods_append",
+      "breakpoints": true
     }
   ]
 }

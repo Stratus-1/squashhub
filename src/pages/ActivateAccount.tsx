@@ -66,6 +66,7 @@ export default function ActivateAccount() {
     const status = error ? "error" : (data as any)?.status;
     if (status === "claimed") {
       clearToken();
+      clearPendingVerify();
       toast.success("Your SquashHub account is active and linked to your existing membership.");
       navigate("/", { replace: true });
       return;

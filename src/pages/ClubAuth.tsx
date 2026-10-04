@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
+import { CheckEmailPanel, savePendingVerify, readPendingVerify, clearPendingVerify } from "@/components/auth/CheckEmailPanel";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Building2 } from "lucide-react";
@@ -44,7 +45,16 @@ export default function ClubAuth() {
   const hideGoogleAuth = isGoogleAuthDisabled();
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
-  const [signupDone, setSignupDone] = useState(false);
+  const [signupDone, setSignupDoneRaw] = useState<boolean>(() => !!readPendingVerify());
+  const [verifyEmail, setVerifyEmail] = useState<string>(() => readPendingVerify()?.email || "");
+  const setSignupDone = (done: boolean, email?: string) => {
+    if (done && email) {
+      savePendingVerify(email, getTenantAwareAuthRedirect("/auth/callback"));
+      setVerifyEmail(email);
+    }
+    if (!done) clearPendingVerify();
+    setSignupDoneRaw(done);
+  };
   const [showPassword, setShowPassword] = useState(false);
   const captchaRef = useRef<HCaptchaHandle>(null);
 
@@ -478,7 +488,7 @@ export default function ClubAuth() {
     if (error) {
       handleSignupError(error, email);
     } else {
-      setSignupDone(true);
+      setSignupDone(true, email);
     }
     setLoading(false);
   };
@@ -731,7 +741,7 @@ export default function ClubAuth() {
     if (error) {
       handleSignupError(error, email);
     } else {
-      setSignupDone(true);
+      setSignupDone(true, email);
     }
     setLoading(false);
   };
@@ -944,19 +954,18 @@ export default function ClubAuth() {
         <BackToHomeLink />
         <SEO title={`Registration Complete | ${clubName}`} description="Account created." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="p-6 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-              <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-bold font-heading">Registration Complete! 🎉</h2>
-            <p className="text-sm text-muted-foreground">
-              Your account has been created successfully. A welcome email has been sent to your inbox. You can now log in.
-            </p>
-            <Button variant="outline" className="w-full" onClick={() => setSignupDone(false)}>
-              Back to Login
-            </Button>
+          <Card className="p-6">
+            <CheckEmailPanel
+              email={verifyEmail}
+              redirect={getTenantAwareAuthRedirect("/auth/callback")}
+              onSignIn={() => { setSignupDone(false); setActiveTab("login"); setLoginEmail(verifyEmail); }}
+              onChangeEmail={() => {
+                setSignupDone(false);
+                setExistingEmail(""); setExistingPassword("");
+                setActiveTab(existingStatus !== undefined && activeTab === "new" ? "new" : "existing");
+              }}
+              changeEmailHint="Using a different address only changes your login email — your existing club membership and history are kept, never duplicated. It must match the email your club has on file (or ask your club admin to update it)."
+            />
           </Card>
           <PoweredBySquashHub />
         </motion.div>

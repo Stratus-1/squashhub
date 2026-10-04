@@ -3461,6 +3461,7 @@ export type Database = {
           created_at: string
           declined_at: string | null
           division_choices: number[]
+          division_partners: Json | null
           fee_paid_cents: number
           fee_payment_id: string | null
           fee_settled_via: string | null
@@ -3496,6 +3497,7 @@ export type Database = {
           created_at?: string
           declined_at?: string | null
           division_choices?: number[]
+          division_partners?: Json | null
           fee_paid_cents?: number
           fee_payment_id?: string | null
           fee_settled_via?: string | null
@@ -3531,6 +3533,7 @@ export type Database = {
           created_at?: string
           declined_at?: string | null
           division_choices?: number[]
+          division_partners?: Json | null
           fee_paid_cents?: number
           fee_payment_id?: string | null
           fee_settled_via?: string | null
@@ -18970,6 +18973,13 @@ export type Database = {
       register_players_for_champ: {
         Args: { p_champ_id: string; p_entries: Json; p_payer_member_id: string }
         Returns: Json
+      }
+      registration_partner_for: {
+        Args: {
+          p_group: number
+          r: Database["public"]["Tables"]["club_champs_registrations"]["Row"]
+        }
+        Returns: string
       }
       reject_club_claim: {
         Args: { _reason: string; _request_id: string }

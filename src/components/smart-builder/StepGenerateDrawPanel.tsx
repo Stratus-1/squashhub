@@ -86,7 +86,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setVenueErr(venueBlocker(kind === "regional" ? "regional" : "club", (hosts as string[] | null) ?? []));
     const [{ data: t }, { data: regs }, { data: ms }] = await Promise.all([
       fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
-      fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
+      fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices, division_partners").eq("champ_id", tournamentId),
       fromExt("club_champs_matches").select("id, status, winner_member_id").eq("champ_id", tournamentId),
     ]);
     const tt = t as any;
@@ -141,7 +141,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto",
         poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); const q = poolQualificationOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(q.perPool) || null, runnersUp: Number(q.runnersUp) || 0 } : null; })() });
     }
-    const ids = [...new Set(((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id]).filter(Boolean))];
+    const ids = [...new Set(((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id, ...Object.values(r.division_partners ?? {})]).filter(Boolean))];
     const { data: mem } = ids.length ? await supabase.from("club_members").select("id, name, ladder_position, ranking_points").in("id", ids) : { data: [] as any[] };
     setPoints(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.ranking_points ?? null])));
     setScope(plan?.scope ?? null);
@@ -492,7 +492,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const version = `v${Date.now().toString(36)}`;
       // Re-check against the freshest entries right before saving (server re-validates pairs too).
       await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
-      const { data: fresh } = await fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId);
+      const { data: fresh } = await fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices, division_partners").eq("champ_id", tournamentId);
       const n = seeded.length;
       const drift = seeded.some((d) => unitsFor((fresh ?? []) as RegLite[], d.group, n, d.doubles).units.length !== d.units.length);
       if (drift) { toast.error("Entries changed since this preview — the preview has been refreshed. Check it and generate again."); await load(); return; }

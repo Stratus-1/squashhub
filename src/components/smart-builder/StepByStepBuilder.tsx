@@ -16,6 +16,7 @@ import { saveTieBreakRules } from "@/lib/tournaments/progression";
 import { atomically } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
+import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
@@ -126,8 +127,8 @@ export type StepAnswers = {
   source: Source;
   /** Per category/subcategory ("Cat" or "Cat::Sub") eligibility + placement. */
   elig: Record<string, Elig>;
-  /** Organiser-selected players → category/subcategory key ("" = not placed yet). */
-  picks: Record<string, string>;
+  /** Organiser-selected players → the events (category/subcategory keys) they enter. Legacy drafts hold one key string ("" = not placed). */
+  picks: Record<string, string | string[]>;
   invite: Invite;
   /** Discipline per unit key ("Cat" or "Cat::Sub"). Inherited from playType unless it is "both". */
   disc: Record<string, Disc>;
@@ -496,6 +497,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const autoPlace = (id: string) => placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
+  const placesFor = (id: string) => placesOf(a.picks, id);
+  const inUnit = (id: string, k: string) => placesFor(id).includes(k);
+  /** Bells/time-capped: every event plays at the same time, so a person can enter only one. */
+  const singleEvent = units.length > 0 && units.every((u) => (scoringFor(u.key) ?? scoring)?.mode === "time_capped_points");
+  const counts = pickCounts(a.picks);
   const anyManual = units.some((u) => eligOf(u.key).mode === "manual");
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
@@ -504,11 +510,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const adminPairKeys = new Set(adminPairUnits.map((u) => u.key));
   const pairMode = adminPairUnits.length > 0;
   /** Only pairs whose both players are still picked into that group count. */
-  const pairsFor = (k: string): [string, string][] => (a.pairs?.[k] ?? []).filter(([x, y]) => a.picks[x] === k && a.picks[y] === k);
-  const unpairedIn = (k: string) => { const used = new Set(pairsFor(k).flat()); return pickIds.filter((id) => a.picks[id] === k && !used.has(id)); };
+  const pairsFor = (k: string): [string, string][] => (a.pairs?.[k] ?? []).filter(([x, y]) => inUnit(x, k) && inUnit(y, k));
+  const unpairedIn = (k: string) => { const used = new Set(pairsFor(k).flat()); return pickIds.filter((id) => inUnit(id, k) && !used.has(id)); };
   const setPairs = (k: string, p: [string, string][]) => setA({ ...a, pairs: { ...(a.pairs ?? {}), [k]: p } });
   /** Competitive entries: a pair counts once in admin-paired doubles groups. */
-  const entryCount = pickIds.filter((id) => !adminPairKeys.has(a.picks[id])).length + adminPairUnits.reduce((n, u) => n + pairsFor(u.key).length + unpairedIn(u.key).length, 0);
+  const entryCount = pickIds.reduce((n, id) => n + placesFor(id).filter((k) => !adminPairKeys.has(k)).length, 0) + adminPairUnits.reduce((n, u) => n + pairsFor(u.key).length + unpairedIn(u.key).length, 0);
 
   /** Admin picks everyone (no self-entry): players are notified, not invited. */
   const notifyOnly = !selfEntry && showPick;
@@ -657,7 +663,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
-  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && pickIds.every((id) => !a.picks[id] || (units.some((u) => u.key === a.picks[id]) && fits(id, a.picks[id]))) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0 && pairsFor(u.key).every(([x, y]) => validatePairComposition([genderByMember.get(x), genderByMember.get(y)], u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid)) && (!pairMode || pickIds.every((id) => !!a.picks[id]));
+  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && pickIds.every((id) => placesFor(id).every((k) => units.some((u) => u.key === k) && fits(id, k)) && (!singleEvent || placesFor(id).length <= 1)) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0 && pairsFor(u.key).every(([x, y]) => validatePairComposition([genderByMember.get(x), genderByMember.get(y)], u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid)) && (!pairMode || pickIds.every((id) => placesFor(id).length > 0));
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
@@ -687,8 +693,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return n + (2 ** p.rounds - 1) * (s.mode === "time_capped_points" ? slotMinutes(s) : s.bestOf === 3 ? 35 : 55);
   }, 0);
   const capacityEstimateValid = units.filter((u) => playoffActive(u.key)).every((u) => scoringOk(scoringFor(u.key) ?? scoring));
-  const provisional = !knownField || pickIds.some((id) => !units.some((u) => u.key === a.picks[id])) || selfEntry;
-  const groupCount = (key: string) => Object.values(a.picks).filter((k) => k === key).length;
+  const provisional = !knownField || pickIds.some((id) => !placesFor(id).some((k) => units.some((u) => u.key === k))) || selfEntry;
+  const groupCount = (key: string) => pickIds.filter((id) => inUnit(id, key)).length;
 
   const discText = (k: string) => { const d = units.find((u) => u.key === k)?.disc; return d ? PLAY_LABEL[d] : "?"; };
   const eligText = (k: string) => {
@@ -735,10 +741,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return out;
   })();
   const renderMsg = (vars: Record<string, string>) => msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => vars[k] ?? previewVars[k] ?? m) + waLine;
-  const entrantMessages: EntrantMessage[] = pickIds.filter((id) => !!a.picks[id]).map((id) => {
-    const k = a.picks[id]; const u = units.find((x) => x.key === k);
-    const partner = adminPairKeys.has(k) ? pairsFor(k).find((p) => p.includes(id))?.find((x) => x !== id) : undefined;
-    const text = renderMsg({ first_name: memberName(id).split(" ")[0] || "there", category: u?.label ?? "", partner_name: partner ? memberName(partner) : "[partner to be confirmed]", amount_due: dueText(u) || "" });
+  const pairPartner = (id: string, k: string) => adminPairKeys.has(k) ? pairsFor(k).find((p) => p.includes(id))?.find((x) => x !== id) ?? null : null;
+  const entrantMessages: EntrantMessage[] = pickIds.filter((id) => placesFor(id).length > 0).map((id) => {
+    const ks = placesFor(id); const us = ks.map((k) => units.find((x) => x.key === k)).filter(Boolean) as typeof units;
+    const partners = ks.filter((k) => adminPairKeys.has(k)).map((k) => { const p = pairPartner(id, k); return p ? (ks.length > 1 ? `${memberName(p)} (${unitLabel(k)})` : memberName(p)) : null; }).filter(Boolean);
+    const text = renderMsg({ first_name: memberName(id).split(" ")[0] || "there", category: us.map((u) => u.label).join(", "), partner_name: partners.length ? partners.join(", ") : "[partner to be confirmed]", amount_due: dueText(us[0]) || "" });
     return { memberId: id, name: memberName(id), text, status: fee.has ? "Entered · Payment outstanding" : "Entered" };
   });
   const [completing, setCompleting] = useState(false);
@@ -752,12 +759,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const amounts = units.map((u) => Number(feeFor(u.key)) || 0);
       const feeCents = fee.has ? Math.round(Math.max(0, ...amounts) * 100) : 0;
       const pms = dblUnits.map((u) => partnerOf(u.key)).filter((p): p is "admin" | "players" => p === "admin" || p === "players");
-      const entrants = notifyOnly || showPick ? pickIds.filter((id) => !!a.picks[id]).map((id) => {
-        const k = a.picks[id];
-        const partner = adminPairKeys.has(k) ? pairsFor(k).find((p) => p.includes(id))?.find((x) => x !== id) ?? null : null;
-        const div = units.findIndex((u) => u.key === k);
-        return { memberId: id, partnerId: partner, division: div >= 0 ? div + 1 : null };
-      }) : [];
+      // One entry per person per event; the person (registration) is never duplicated.
+      const entrants = notifyOnly || showPick ? entrantsFromPicks(a.picks, units.map((u) => u.key), pairPartner) : [];
       const tid = await persistStepTournament({
         clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
         startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,
@@ -1042,7 +1045,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
                 {members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(memberSearch.trim().toLowerCase())).map((m) => (
                   <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
-                    onClick={() => setA({ ...a, picks: { ...a.picks, [m.id]: autoPlace(m.id) } })}>
+                    onClick={() => { const k = autoPlace(m.id); setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] } }); }}>
                     {m.name}<Plus className="h-3 w-3" />
                   </button>
                 ))}
@@ -1050,35 +1053,47 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               </div>
               {pickIds.length > 0 && (
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between"><Label>Picked ({pickIds.length})</Label>
-                    {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.some((id) => !a.picks[id]) && (
-                      <Button size="sm" variant="outline" onClick={() => { const n = { ...a.picks }; pickIds.forEach((id) => { if (!n[id]) n[id] = autoPlace(id); }); setA({ ...a, picks: n }); }}>Place by league</Button>)}
+                  <div className="flex items-center justify-between"><Label>Picked: {counts.uniquePlayers} unique player{counts.uniquePlayers === 1 ? "" : "s"} · {counts.totalEntries} total entr{counts.totalEntries === 1 ? "y" : "ies"}</Label>
+                    {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.some((id) => placesFor(id).length === 0) && (
+                      <Button size="sm" variant="outline" onClick={() => { const n = { ...a.picks }; pickIds.forEach((id) => { if (placesFor(id).length === 0) { const k = autoPlace(id); n[id] = k ? [k] : []; } }); setA({ ...a, picks: n }); }}>Place by league</Button>)}
                   </div>
-                  {pickIds.map((id) => (
-                    <div key={id} className="flex items-center gap-2 text-xs">
-                      <span className="flex-1">{memberName(id)}</span>
-                      <select aria-label={`Place ${memberName(id)}`} className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={a.picks[id]}
-                        onChange={(e) => setA({ ...a, picks: { ...a.picks, [id]: e.target.value } })}>
-                        <option value="">Not placed yet</option>
-                        {units.filter((u) => fits(id, u.key)).map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
-                      </select>
-                      <Button variant="ghost" size="icon" aria-label="Remove player" onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  ))}
+                  <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Tap an event to add or remove it. A player stays picked even with no events."}</div>
+                  <div className="max-h-[28rem] space-y-1 overflow-auto">
+                  {pickIds.filter((id) => memberName(id).toLowerCase().includes(memberSearch.trim().toLowerCase())).map((id) => {
+                    const mine = placesFor(id);
+                    return (
+                    <div key={id} className="flex flex-wrap items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-xs" data-testid={`pick-row-${id}`}>
+                      <span className="min-w-[8rem] flex-1 font-medium">{memberName(id)} <span className="font-normal text-muted-foreground">· {mine.length ? `${mine.length} event${mine.length === 1 ? "" : "s"}` : "no events yet"}</span></span>
+                      <div className="flex flex-wrap gap-1" role="group" aria-label={`Events for ${memberName(id)}`}>
+                        {units.map((u) => {
+                          const on = mine.includes(u.key);
+                          const why = blockedReason(fits(id, u.key), u.categoryType);
+                          return (
+                            <button key={u.key} type="button" aria-pressed={on} disabled={!!why && !on} title={why ?? undefined}
+                              onClick={() => setA({ ...a, picks: togglePlace(a.picks, id, u.key, singleEvent) })}
+                              className={cn("flex items-center gap-1 rounded-full border px-2 py-0.5", on ? "border-primary bg-primary text-primary-foreground" : why ? "cursor-not-allowed border-dashed border-border text-muted-foreground opacity-60" : "border-border hover:bg-muted", on && why && "border-destructive bg-destructive text-destructive-foreground")}>
+                              {on && <Check className="h-3 w-3" />}{u.label}{why && <span className="opacity-80"> · {why}</span>}
+                            </button>);
+                        })}
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Remove ${memberName(id)}`} onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-4 w-4" /></Button>
+                    </div>);
+                  })}
+                  </div>
                 </div>
               )}
               {adminPairUnits.map((u) => {
                 const prs = pairsFor(u.key);
                 const placedUnpaired = unpairedIn(u.key);
                 // Players not yet placed in a group can be paired straight into this doubles group.
-                const unplaced = pickIds.filter((id) => !a.picks[id]);
+                const unplaced = pickIds.filter((id) => placesFor(id).length === 0);
                 const candidates = [...placedUnpaired, ...unplaced.filter((id) => fits(id, u.key))];
                 const sel = (pairDraft[u.key] ?? []).filter((id) => candidates.includes(id));
                 const toggle = (id: string) => setPairDraft({ ...pairDraft, [u.key]: sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id].slice(-2) });
                 const createPair = () => {
                   if (sel.length !== 2 || !validatePairComposition(sel.map((id) => genderByMember.get(id)), u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid) return;
                   const [x, y] = sel;
-                  setA({ ...a, picks: { ...a.picks, [x]: u.key, [y]: u.key }, pairs: { ...(a.pairs ?? {}), [u.key]: [...prs, [x, y]] } });
+                  setA({ ...a, picks: addPlace(addPlace(a.picks, x, u.key, singleEvent), y, u.key, singleEvent), pairs: { ...(a.pairs ?? {}), [u.key]: [...prs, [x, y]] } });
                   setPairDraft({ ...pairDraft, [u.key]: [] });
                 };
                 return (
@@ -1094,7 +1109,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                           <div className="flex flex-wrap gap-1.5">{candidates.map((id) => (
                             <button key={id} type="button" aria-pressed={sel.includes(id)} onClick={() => toggle(id)}
                               className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs", sel.includes(id) ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>
-                              {sel.includes(id) && <Check className="h-3 w-3" />}{memberName(id)}{!a.picks[id] && <span className="opacity-70"> (not placed)</span>}
+                              {sel.includes(id) && <Check className="h-3 w-3" />}{memberName(id)}{placesFor(id).length === 0 && <span className="opacity-70"> (not placed)</span>}
                             </button>))}</div>
                            <Button type="button" size="sm" disabled={sel.length !== 2 || !validatePairComposition(sel.map((id) => genderByMember.get(id)), u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid} onClick={createPair}>
                             <Plus className="mr-1 h-3 w-3" />Create pair{sel.length === 2 ? `: ${memberName(sel[0])} + ${memberName(sel[1])}` : ` (${sel.length}/2 chosen)`}
@@ -1125,7 +1140,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   </div>
                 );
               })}
-              {pairMode && pickIds.some((id) => !a.picks[id]) && <div className="text-xs text-destructive">Place every picked player in a group (or pair them above) before continuing.</div>}
+              {pairMode && pickIds.some((id) => placesFor(id).length === 0) && <div className="text-xs text-destructive">Place every picked player in a group (or pair them above) before continuing.</div>}
             </>
           )}
 
@@ -1743,7 +1758,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{eligText(u.key)}</span></li>)}</ul>
               </SummaryRow>
               {pickIds.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label={pairMode ? "Selected & paired players" : "Picked players"} onEdit={() => go("Pick")}>
-                <ul className="space-y-0.5">{pickIds.filter((id) => !adminPairKeys.has(a.picks[id])).map((id) => <li key={id}>{memberName(id)} <span className="text-muted-foreground">— {unitLabel(a.picks[id])}</span></li>)}</ul>
+                <ul className="space-y-0.5">{pickIds.filter((id) => placesFor(id).some((k) => !adminPairKeys.has(k)) || placesFor(id).length === 0).map((id) => <li key={id}>{memberName(id)} <span className="text-muted-foreground">— {placesFor(id).filter((k) => !adminPairKeys.has(k)).map(unitLabel).join(", ") || "Not placed yet"}</span></li>)}</ul>
                 {adminPairUnits.map((u) => pairsFor(u.key).length > 0 || unpairedIn(u.key).length > 0 ? (
                   <ul key={u.key} className="mt-1 space-y-0.5">
                     {pairsFor(u.key).map(([x, y]) => <li key={x + y}>{memberName(x)} &amp; {memberName(y)} <span className="text-muted-foreground">— {u.label} (pair)</span></li>)}

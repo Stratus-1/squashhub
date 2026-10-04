@@ -2561,3 +2561,6 @@ Cause: per-group validation read only each group's own selection; a setup "Cross
 ### 2026-10-04 — Bar: no way to cancel an online card payment on a tab
 - Symptom: after "Pay online" the tab stayed "awaiting payment" with no cancel option (counter or guest), so it stayed stuck.
 - Fix: `bar-card-verify` accepts `{tab_id, tab_token, cancelled:true}`; checks the gateway first (paid is kept), otherwise reopens the tab and returns lines to it. Only tabs closing via `online` are affected. "Cancel card payment" button added in `BarCounter.tsx` and `ScanPay.tsx` (helper `src/lib/bar/cancel-tab-card-payment.ts`); guest page now keeps an awaiting-payment tab after reload.
+
+### 2026-10-04 — Pick players allowed only one event per person
+Cause: builder stored one event per picked player; saving wrote one division and one partner; draw rejected a person appearing twice. Fix: event chips per player, `division_partners` per-event partner column, per-event draw validation and category guard. Entry fee stays one per registration (unchanged).

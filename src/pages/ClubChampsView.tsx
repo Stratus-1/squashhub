@@ -3502,7 +3502,7 @@ export default function ClubChampsView() {
         const muMatches = sortMatchesChrono(matches.filter((m: any) =>
           (m.stage || "group") === "group" && m.group_number === mu.groupNumber));
         standingsCards.push(
-          <CollapsibleCard key={`mu-${mu.groupNumber}`} defaultOpen={false}
+          <CollapsibleCard key={`mu-${mu.groupNumber}`} defaultOpen={singleCurrentTournament}
             title={heading} titleClassName="text-lg" contentClassName="space-y-4"
           >
             <p className="text-xs text-muted-foreground">Between subcategories — these groups play each other only.</p>
@@ -3593,7 +3593,7 @@ export default function ClubChampsView() {
         if (summaryFirst) {
           // Summary tables first, fixtures for each league below them.
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} defaultOpen={isStructured || singleCurrentTournament} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -3661,7 +3661,7 @@ export default function ClubChampsView() {
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <CollapsibleCard key="cross-fixtures" defaultOpen={false} title="Fixtures & Results" titleClassName="text-lg">
+      <CollapsibleCard key="cross-fixtures" defaultOpen={singleCurrentTournament} title="Fixtures & Results" titleClassName="text-lg">
         <div className="space-y-1.5">
           {sortMatchesChrono(matches).map((m: any) => renderMatchRow(m))}
         </div>

@@ -55,6 +55,7 @@ export type MyPair = {
   partner_club: string | null;
   /** The proposer promised to pay both entry fees. */
   pays_for_partner?: boolean;
+  fee_cents?: number;
   payer_is_me?: boolean;
   covered_by_partner?: boolean;
   my_fee_paid?: boolean;

@@ -146,20 +146,13 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         {shown === "invite" && h.mode === "inform" && life && blockersFor(h, "invite").length === 0 && (
           <StepInformPanel h={h} lifecycle={life} onLifecycle={setLifecycle} onAddGroup={() => askEdit("Messaging")} />
         )}
-        {shown === "invite" && h.mode !== "inform" && (
-          <>
-            {!open
-              ? <Button disabled={blockersFor(h, "invite").length > 0} onClick={() => setOpen(true)}>Invite players<ChevronRight className="ml-1 h-4 w-4" /></Button>
-              : <div className="space-y-2">
-                  <pre className="whitespace-pre-wrap rounded border border-border p-2 font-sans text-xs">{h.invitePreview}</pre>
-                  <Button disabled title="Not connected yet">Send invitations</Button>
-                  <p className="text-xs text-muted-foreground">Sending invitations from here isn't connected yet — nothing is sent by this page.</p>
-                  {!h.completed.includes("invite") && <Button variant="outline" onClick={() => { if (confirm("Record that you invited players yourself, outside SquashHub? SquashHub sends NOTHING for this.")) advance("invite", "registrations"); }}>
-                    Record: I invited them outside SquashHub (sends nothing)
-                  </Button>}
-                </div>}
-          </>
-        )}
+      {shown === "invite" && h.mode !== "inform" && (
+        <>
+          {!open
+            ? <Button disabled={blockersFor(h, "invite").length > 0} onClick={() => setOpen(true)}>Invite players<ChevronRight className="ml-1 h-4 w-4" /></Button>
+            : <StepInvitePanel h={h} lifecycle={life} onLifecycle={setLifecycle} onSent={loadRegs} />}
+        </>
+      )}
         {shown === "registrations" && (
           <div className="space-y-2 text-xs">
             {life?.inform && <p className="text-muted-foreground">Players {life.inform.method === "sent" ? "notified through SquashHub" : "recorded as told outside SquashHub"} {new Date(life.inform.at).toLocaleString()}{life.inform.note ? ` · ${life.inform.note}` : ""}.</p>}

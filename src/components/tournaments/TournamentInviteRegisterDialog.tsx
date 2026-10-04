@@ -71,7 +71,7 @@ export function TournamentInviteRegisterDialog({
   const [waGroupOptIn, setWaGroupOptIn] = useState<boolean>(registration?.whatsapp_group_opt_in !== false);
 
   // Divisions this member may enter — the invitee ticks the ones they want.
-  const { data: divisionOptions = [] } = useQuery({
+  const { data: divisionOptions = [], isLoading: divisionsLoading } = useQuery({
     queryKey: ["champ-division-options", champ?.id, memberId],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("tournament_division_options", {

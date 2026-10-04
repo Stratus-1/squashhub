@@ -15,19 +15,25 @@ export function StandingsAwardsSection({ tournamentId, onSaved }: { tournamentId
   const [cfg, setCfg] = useState<StandingsAwards | null>(null);
   const [saved, setSaved] = useState(false);
   const [open, setOpen] = useState(false);
+  const [live, setLive] = useState<"completed" | "running" | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const { data } = await fromExt("tournaments").select("beta_lifecycle, builder_spec, match_type").eq("id", tournamentId).maybeSingle();
+      const { data } = await fromExt("tournaments").select("beta_lifecycle, builder_spec, match_type, status").eq("id", tournamentId).maybeSingle();
       const t: any = data ?? {};
       const existing = readStandingsAwards(t.beta_lifecycle);
       setSaved(!!existing);
       const doubles = (t.builder_spec?.divisions ?? []).some((d: any) => d?.unit === "pairs") || t.match_type === "doubles";
+      const { count } = await fromExt("club_champs_matches").select("id", { count: "exact", head: true })
+        .eq("champ_id", tournamentId).eq("status", "completed");
+      const st = String(t.status ?? "").toLowerCase();
+      setLive(st === "completed" ? "completed" : (count ?? 0) > 0 ? "running" : null);
       setCfg(existing ?? defaultStandingsAwards({ doubles, betweenGroups: structuredMatchups(t.builder_spec).length > 0 }));
     })();
   }, [tournamentId]);
 
   const save = async (next: StandingsAwards) => {
+    if (live && !window.confirm(standingsChangeWarning(live))) return;
     setCfg(next);
     const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
     const bl: any = (data as any)?.beta_lifecycle ?? {};
@@ -68,4 +74,11 @@ export function StandingsAwardsSection({ tournamentId, onSaved }: { tournamentId
       </>}
     </div>
   );
+}
+
+/** Confirmation text when awards change on a tournament with results already in. */
+export function standingsChangeWarning(live: "completed" | "running"): string {
+  return live === "completed"
+    ? "This tournament is completed. Changing Standings & awards changes which winners and awards are shown on its results. Continue?"
+    : "Results have already been entered. Changing Standings & awards changes the winners and awards shown on the standings. Continue?";
 }

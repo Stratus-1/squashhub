@@ -294,7 +294,7 @@ export default function HonestyBar() {
       <PageHeader title="Bar / POS" backTo="/" />
 
       <div className="px-4 space-y-4 mt-2">
-        {canSeeVisitors && (
+        {canSeeVisitors && cardSwipeEnabled && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

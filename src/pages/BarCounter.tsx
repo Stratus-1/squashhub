@@ -602,22 +602,28 @@ export default function BarCounter() {
               <Receipt className="w-4 h-4" />
               Add {money(cartTotal)} to {activeTab.guest_name}'s tab
             </Button>
-            <div className="grid grid-cols-2 gap-2">
+            {(board.cash_enabled || board.card_enabled) && (
+            <div className={`grid gap-2 ${board.cash_enabled && board.card_enabled ? "grid-cols-2" : "grid-cols-1"}`}>
+              {board.cash_enabled && (
               <Button
                 variant="outline" className="h-11 gap-2"
-                disabled={busy || !board.cash_enabled || activeTab.total <= 0}
+                disabled={busy || activeTab.total <= 0}
                 onClick={() => settle("cash")}
               >
                 <Banknote className="w-4 h-4" /> Paid cash
               </Button>
+              )}
+              {board.card_enabled && (
               <Button
                 variant="outline" className="h-11 gap-2"
-                disabled={busy || !board.card_enabled || activeTab.total <= 0}
+                disabled={busy || activeTab.total <= 0}
                 onClick={() => settle("terminal")}
               >
                 <CreditCard className="w-4 h-4" /> Card machine
               </Button>
+              )}
             </div>
+            )}
             {(board.account_enabled !== false || onlineAvailable) && (
               <div className={`grid gap-2 ${board.account_enabled !== false && onlineAvailable ? "grid-cols-2" : "grid-cols-1"}`}>
                 {onlineAvailable && (

@@ -22,6 +22,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { MemberActivationPanel } from "./MemberActivationPanel";
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
@@ -1010,6 +1011,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
       </div>
 
       <PendingApplicationsPanel clubId={clubId} />
+      <MemberActivationPanel clubId={clubId} members={allMembersRaw as any} />
 
       <BulkMembershipTypesDialog clubId={clubId} open={bulkTypesOpen} onOpenChange={setBulkTypesOpen} members={members} feeCategories={feeCategories} />
 

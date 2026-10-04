@@ -34,3 +34,5 @@
 - [x] Two new paragraphs in standard all-clubs onboarding template
 - [x] Tests D (claim links+consumes, reuse safe), F (set-password path), J (other campaigns unchanged); E (live Google) verified by code path only
 - [x] Published
+- [x] Campaign audience "Members not yet registered" (active + no login, re-checked at send) with counts summary; onboarding default
+- [x] Members page activation panel: send/resend/bulk, sent date/status, missing-email prompt

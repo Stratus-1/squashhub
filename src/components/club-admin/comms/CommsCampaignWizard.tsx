@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DOMPurify from "dompurify";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,10 +18,11 @@ import { buildMergeVars } from "@/lib/comms/merge-fields";
 import { renderChannel } from "@/lib/comms/render";
 import { validateCampaign, CHANNEL_LABEL } from "@/lib/comms/validation";
 import { dispatchCampaign, upsertCampaign } from "@/lib/comms/send";
+import { summariseUnlinkedAudience } from "@/lib/comms/onboarding-audience";
 import { CommsActionPicker } from "./CommsActionPicker";
 import type { TemplateRecord } from "./CommsTemplateEditor";
 
-type AudienceType = "all" | "selected" | "league" | "skills";
+type AudienceType = "all" | "unlinked" | "selected" | "league" | "skills";
 
 const STEPS = ["Template", "Recipients", "Channels", "Preview", "Send"];
 
@@ -57,13 +58,18 @@ export function CommsCampaignWizard({
   const [previewChannel, setPreviewChannel] = useState<CommsChannel>("email");
 
   const action = actionOverride ?? template?.action ?? { key: "none" };
+  const isOnboarding = action.key === "register_existing_member";
+  // Onboarding campaigns default to the safe "not yet registered" audience.
+  useEffect(() => {
+    if (isOnboarding) setAudienceType((a) => (a === "all" ? "unlinked" : a));
+  }, [isOnboarding]);
 
   const { data: members = [] } = useQuery({
     queryKey: ["comms-members", clubId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")
-        .select("id,name,email,phone,user_id,club_member_number,skills,volunteer_willing")
+        .select("id,name,email,phone,user_id,status,club_member_number,skills,volunteer_willing")
         .eq("club_id", clubId)
         .order("name");
       if (error) throw error;
@@ -95,7 +101,13 @@ export function CommsCampaignWizard({
     [skillText],
   );
 
+  const unlinkedSummary = useMemo(
+    () => summariseUnlinkedAudience(members as any, channels.length === 0 || channels.every((c) => c === "email")),
+    [members, channels],
+  );
+
   const recipients = useMemo(() => {
+    if (audienceType === "unlinked") return unlinkedSummary.included;
     if (audienceType === "selected") return members.filter((m: any) => selectedIds.includes(m.id));
     if (audienceType === "league") return members.filter((m: any) => leagueMemberIds.includes(m.id));
     if (audienceType === "skills") {
@@ -109,7 +121,7 @@ export function CommsCampaignWizard({
       });
     }
     return members;
-  }, [audienceType, members, selectedIds, leagueMemberIds, volunteersOnly, wantedSkills]);
+  }, [audienceType, members, selectedIds, leagueMemberIds, volunteersOnly, wantedSkills, unlinkedSummary]);
 
   const warnings = useMemo(
     () =>
@@ -152,7 +164,9 @@ export function CommsCampaignWizard({
               ? { type: "league", leagueId }
               : audienceType === "skills"
                 ? { type: "skills", filter: { skills: wantedSkills, volunteer_willing: volunteersOnly } }
-                : { type: "all" },
+                : audienceType === "unlinked"
+                  ? { type: "unlinked" }
+                  : { type: "all" },
         scheduledFor: mode === "schedule" ? new Date(scheduleFor).toISOString() : null,
         draft: mode === "draft",
       });
@@ -237,6 +251,7 @@ export function CommsCampaignWizard({
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All members</SelectItem>
+                  <SelectItem value="unlinked">Members not yet registered (no SquashHub login){isOnboarding ? " — recommended" : ""}</SelectItem>
                   <SelectItem value="selected">Selected members</SelectItem>
                   <SelectItem value="league">A league</SelectItem>
                   <SelectItem value="skills">Skills / volunteers</SelectItem>
@@ -290,7 +305,16 @@ export function CommsCampaignWizard({
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground">{recipients.length} recipient(s) match.</p>
+            {audienceType === "unlinked" ? (
+              <UnlinkedSummary s={unlinkedSummary} />
+            ) : (
+              <p className="text-xs text-muted-foreground">{recipients.length} recipient(s) match.</p>
+            )}
+            {isOnboarding && audienceType !== "unlinked" && (
+              <p className="text-[11px] rounded border border-border bg-muted/50 p-2">
+                This is an activation email. "Members not yet registered" is recommended so members who already have a login don't get it.
+              </p>
+            )}
           </div>
         )}
 
@@ -418,5 +442,21 @@ export function CommsCampaignWizard({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function UnlinkedSummary({ s }: { s: ReturnType<typeof summariseUnlinkedAudience> }) {
+  return (
+    <div className="rounded border border-border p-2 text-xs space-y-0.5">
+      <p className="font-medium">{s.included.length} member{s.included.length === 1 ? "" : "s"} will receive this</p>
+      <p className="text-muted-foreground">{s.linked} already registered (linked to a login) excluded</p>
+      {s.noEmail > 0 && <p className="text-muted-foreground">{s.noEmail} excluded because they have no usable email address</p>}
+      {s.inactive > 0 && <p className="text-muted-foreground">{s.inactive} suspended/resigned members excluded</p>}
+      <p className="text-[11px] text-muted-foreground pt-1">
+        Checked again at the moment of sending: anyone who registers before then is skipped automatically. Members sent an activation
+        link before stay included while they remain unregistered (a new campaign sends again; a retry of the same campaign never repeats).
+        Each member gets their own personal link.
+      </p>
+    </div>
   );
 }

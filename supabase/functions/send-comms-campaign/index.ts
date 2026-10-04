@@ -70,6 +70,9 @@ async function expandRecipients(clubId: string, campaign: any) {
     const ids = (regs ?? []).map((r: any) => r.club_member_id).filter(Boolean);
     if (!ids.length) return [];
     q = q.in("id", ids);
+  } else if (audience === "unlinked") {
+    // Authoritative: active memberships with NO linked login, evaluated now (at send time).
+    q = q.is("user_id", null).eq("status", "active");
   }
 
   const { data } = await q;
@@ -257,6 +260,22 @@ Deno.serve(async (req) => {
       // members get a single-use personal activation code (only its hash is stored);
       // members who already have a login get the plain sign-in page. Other actions
       // keep the shared club URL unchanged.
+      // Onboarding audiences re-check linked state right before each send: anyone who
+      // activated after the audience was previewed (or mid-send) is excluded.
+      const recheckLinked = campaign.audience_type === "unlinked" || campaign.audience_filter?.purpose === "activation";
+      if (recheckLinked) {
+        const { data: fresh } = await admin.from("club_members").select("user_id,status").eq("id", m.id).maybeSingle();
+        if (!fresh || fresh.user_id || (campaign.audience_type === "unlinked" && fresh.status !== "active")) {
+          for (const ch of channels) {
+            if (alreadySent.has(`${m.id}:${ch}`)) continue;
+            skipped++;
+            await logDelivery({ campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id, channel: ch,
+              recipient_name: m.name ?? null, target: null, status: "skipped", error_message: "Already linked to a SquashHub account" });
+          }
+          continue;
+        }
+      }
+
       let recipientAction = action;
       if (action.key === "register_existing_member" && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) {
         try {

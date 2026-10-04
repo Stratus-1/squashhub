@@ -1,0 +1,2 @@
+ALTER TABLE public.comms_campaigns DROP CONSTRAINT IF EXISTS comms_campaigns_audience_type_check;
+ALTER TABLE public.comms_campaigns ADD CONSTRAINT comms_campaigns_audience_type_check CHECK (audience_type = ANY (ARRAY['all','selected','league','skills','unlinked']));

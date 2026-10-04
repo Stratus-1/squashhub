@@ -21,6 +21,7 @@ export type SendCommsOptions = {
   action?: CommsAction | null;
   audience:
     | { type: "all" }
+    | { type: "unlinked" }
     | { type: "selected"; memberIds: string[] }
     | { type: "league"; leagueId: string }
     | { type: "skills"; filter: Record<string, unknown> };

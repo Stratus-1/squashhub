@@ -562,7 +562,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     pay_link: chosenMethods.length ? `tap the Pay button on this message, or open the tournament in SquashHub (${methodText})` : "[choose accepted payment methods in Fees & Payment]",
     partner_name: firstPair ? memberName(firstPair.p![1]) : "[assigned partner]",
     entry_link: "[entry link added when the tournament is created]",
-    closing_date: "[set later]",
+    closing_date: a.entriesClose ? fmtDay(a.entriesClose) : "[set later]",
     dates: a.kind === "period" ? (a.periodStart ? `from ${fmtDay(a.periodStart)}, running until the last planned stage` : "[start date set in Basics]") : a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const wa = a.waGroup ?? { use: null, url: "", include: true };
@@ -777,6 +777,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const tid = await persistStepTournament({
         clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
         startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,
+        entriesOpen: a.entriesOpen || null, entriesClose: a.entriesClose || null,
         feeCents, confirmNeedsPay: fee.has ? fee.confirmNeedsPay !== false : undefined, partnerPay: fee.has && dblUnits.length ? fee.doublesCover : undefined, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         drawChannels: msg.channels.filter(chAvail),

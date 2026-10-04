@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { CollapsibleCard, CollapsibleSection } from "@/components/ui/collapsible-card";
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Settings2 } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -85,6 +85,7 @@ import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
+import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwardsSection";
 import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
@@ -1380,6 +1381,7 @@ export default function ClubChampsView() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(true);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const [resultMatch, setResultMatch] = useState<any | null>(null);
@@ -2061,6 +2063,43 @@ export default function ClubChampsView() {
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
           <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="w-4 h-4 mr-1" /> Print / PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportCSV}>
+              <FileSpreadsheet className="w-4 h-4 mr-1" /> Export CSV
+            </Button>
+          </div>
+        </div>
+
+
+        <div className="text-center">
+          <h1 className="text-2xl md:text-3xl font-bold font-heading">{champ.name}</h1>
+          <p className="text-muted-foreground">
+            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"} Tournament · {champ.start_date} to {champ.end_date}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {String((champ as any).scheduling_mode || "") === "self"
+              ? "Players arrange their own games — no fixed court times"
+              : `${(champ.play_days as number[])?.map((d: number) => DAY_NAMES[d]).join(", ")} · ${champ.start_time?.slice(0, 5)} – ${champ.end_time?.slice(0, 5)}`}
+          </p>
+        </div>
+
+        {canManage && (
+          <Card className="print:hidden border-primary/40" data-testid="tournament-admin">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings2 className="w-4 h-4" /> Tournament Administration
+                <Badge variant="outline" className="text-[10px]">Admin only</Badge>
+                <Button size="sm" variant="ghost" className="ml-auto h-7 px-2" onClick={() => setAdminOpen((v) => !v)}
+                  aria-label={adminOpen ? "Hide tournament administration" : "Show tournament administration"}>
+                  {adminOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            {adminOpen && (
+              <CardContent className="space-y-4">
+                <div className="flex gap-2 flex-wrap">
             {canManage && unassignedCount > 0 && (
               <Button
                 variant="default"
@@ -2107,49 +2146,33 @@ export default function ClubChampsView() {
               </Button>
 
             )}
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="w-4 h-4 mr-1" /> Print / PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportCSV}>
-              <FileSpreadsheet className="w-4 h-4 mr-1" /> Export CSV
-            </Button>
-          </div>
-        </div>
-
-        {isStructured && (
-          <div className="rounded border border-primary/40 bg-primary/5 px-3 py-2 text-sm flex flex-wrap items-center gap-2">
-            This tournament uses step-by-step management.
-            <Button size="sm" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the tournament control page</Button>
-          </div>
-        )}
-        {canManage && isStructured && <KnockoutNextActions champId={champId!} />}
-        {canManage && isStructured && arch?.builder_spec && (
-          <StructuredEnginePanel
-            collapsibleStageProgress
-            champId={champId!}
-            spec={arch.builder_spec}
-            matches={matches as any[]}
-            nameOf={(id) => {
-              const e: any = (entries as any[]).find((x: any) => x.club_member_id === id || x.partner_member_id === id);
-              if (!e) return "Player";
-              return e.club_member_id === id ? (e.club_members?.name || "Player") : (e.partner?.name || "Player");
-            }}
-          />
-        )}
-
-        <div className="text-center">
-          <h1 className="text-2xl md:text-3xl font-bold font-heading">{champ.name}</h1>
-          <p className="text-muted-foreground">
-            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"} Tournament · {champ.start_date} to {champ.end_date}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {String((champ as any).scheduling_mode || "") === "self"
-              ? "Players arrange their own games — no fixed court times"
-              : `${(champ.play_days as number[])?.map((d: number) => DAY_NAMES[d]).join(", ")} · ${champ.start_time?.slice(0, 5)} – ${champ.end_time?.slice(0, 5)}`}
-          </p>
-        </div>
-
-
+                  {isStructured && (
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the tournament control page</Button>
+                  )}
+                </div>
+                {isStructured && <KnockoutNextActions champId={champId!} />}
+                {isStructured && arch?.builder_spec && (
+                  <StructuredEnginePanel
+                    collapsibleStageProgress
+                    champId={champId!}
+                    spec={arch.builder_spec}
+                    matches={matches as any[]}
+                    nameOf={(id) => {
+                      const e: any = (entries as any[]).find((x: any) => x.club_member_id === id || x.partner_member_id === id);
+                      if (!e) return "Player";
+                      return e.club_member_id === id ? (e.club_members?.name || "Player") : (e.partner?.name || "Player");
+                    }}
+                  />
+                )}
+                {isStructured && !diamondEvent && (
+                  <div className="space-y-1">
+                    <StandingsAwardsSection
+                      tournamentId={champId!}
+                      onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-arch", champId] })}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Same settings as Setup → Standings &amp; awards — changes here are saved to the tournament and show there too.</p>
+                  </div>
+                )}
         {canManage && allRegistrations.length > 0 && (() => {
           const hasFee = Number((champ as any)?.entry_fee_cents || 0) > 0;
           const DECLINED = new Set(["cancelled"]);
@@ -2287,6 +2310,10 @@ export default function ClubChampsView() {
             </Card>
           );
         })()}
+              </CardContent>
+            )}
+          </Card>
+        )}
 
 
         {/* Entered players: the tournament WhatsApp group stays one tap away (hidden when none). */}

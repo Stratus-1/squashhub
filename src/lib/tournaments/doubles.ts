@@ -182,7 +182,7 @@ export function pairPaymentLabel(pair: MyPair | null, feeCents: number, money: (
   if (!pair || feeCents <= 0) return null;
   const fee = money(feeCents / 100);
   const who = pair.partner_name || "your partner";
-  if (pair.my_fee_paid && pair.partner_fee_paid) return "Both entry fees are paid.";
+  if (pair.my_fee_paid && pair.partner_fee_paid) return "Both entry fees are settled.";
   if (!pair.my_fee_paid && pair.covered_by_partner) return `${who} is paying your ${fee} entry fee.`;
   if (!pair.my_fee_paid && pair.payer_is_me && pair.pays_for_partner)
     return `You chose to pay for both entries in this event — ${money((feeCents * 2) / 100)}.`;

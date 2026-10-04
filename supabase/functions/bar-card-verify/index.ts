@@ -27,8 +27,11 @@ Deno.serve(async (req) => {
     // The tab's secret token is the authority — same one the payment link uses.
     if (!sale_id && tabId && tabToken) {
       const { data: tabRow } = await admin.from("bar_guest_tabs")
-        .select("id, token, status").eq("id", tabId).maybeSingle();
+        .select("id, token, status, settled_method").eq("id", tabId).maybeSingle();
       if (!tabRow || String(tabRow.token) !== tabToken) return json({ error: "Tab not found" });
+      if (tabRow.status !== "closing" || tabRow.settled_method !== "online") {
+        return json({ status: tabRow.status === "settled" ? "paid" : "not_card", tab_status: tabRow.status });
+      }
       const { data: pendingRow } = await admin.from("bar_visitor_sales")
         .select("id, payment_reference")
         .eq("guest_tab_id", tabId).eq("payment_status", "pending")

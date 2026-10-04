@@ -59,8 +59,7 @@ BEGIN
     v_label := COALESCE(NULLIF(v_champ.group_labels ->> v_group::text, ''), 'League ' || v_group::text);
   END IF;
 
-  v_divisions := (SELECT coalesce(jsonb_agg(to_jsonb(o) order by o.group_number), '[]'::jsonb)
-                    FROM public.tournament_division_options(v_reg.champ_id, v_reg.club_member_id) o);
+  v_divisions := public.tournament_division_options(v_reg.champ_id, v_reg.club_member_id);
 
   v_name := NULLIF(trim(COALESCE(v_member.name, '')), '');
   IF v_name IS NOT NULL AND position(' ' IN v_name) > 0 THEN

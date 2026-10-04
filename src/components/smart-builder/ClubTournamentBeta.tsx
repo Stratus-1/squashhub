@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, FlaskConical, Gem, Layers, ListChecks, Trash2, Wand2 } from "lucide-react";
 import { SmartTournamentBuilderCore, type BuilderNav } from "@/pages/admin/SmartTournamentBuilder";
@@ -6,7 +6,7 @@ import { StepByStepBuilder } from "./StepByStepBuilder";
 import { clearDraft, clearTournamentPlan, readDraft } from "@/lib/smart-builder/step-storage";
 import { StepTournamentManagement } from "./StepTournamentManagement";
 import { TemplatePicker } from "./StepTemplates";
-import { loadHandovers, removeHandover, type Handover } from "@/lib/smart-builder/step-handover";
+import { removeHandover } from "@/lib/smart-builder/step-handover";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";

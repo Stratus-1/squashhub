@@ -323,6 +323,13 @@
       "when": 1791150770736,
       "tag": "0045_fix_champ_member_event_paid_null",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791151552121,
+      "tag": "0046_champ_total_due_and_pair_notice",
+      "breakpoints": true
     }
   ]
 }

@@ -185,10 +185,12 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const { data: serverDueCents } = useQuery({
     queryKey: ["my-champ-reg-due", myReg?.id, myReg?.division_choices, myReg?.partner_member_id, myReg?.status],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("champ_reg_own_due_cents", { p_reg_id: myReg.id });
+      // Total I owe: my own events plus any partner shares I promised to cover.
+      const { data, error } = await (supabase as any).rpc("champ_member_total_due_cents", { p_champ_id: champ.id, p_member_id: memberId });
       if (error) throw error;
       return Number(data ?? 0);
     },
+    refetchOnWindowFocus: true,
     enabled: !!myReg?.id,
   });
   const entryFee = (serverDueCents ?? entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;

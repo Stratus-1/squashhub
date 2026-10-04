@@ -82,11 +82,14 @@ export function htmlToPlainText(html: string): string {
 
 export function actionButtonHtml(action: ResolvedAction): string {
   if (!action.hasAction || !action.webUrl) return "";
-  // Bulletproof email CTA: table cell with bgcolor attribute (Outlook/desktop
-  // clients ignore background on inline anchors) plus white label on the anchor
-  // AND an inner span so no client can recolour it as a visited/default link.
+  // Bulletproof email CTA: table cell with bgcolor attribute plus a VML
+  // roundrect for Outlook/desktop clients (they ignore border-radius and
+  // background on inline anchors). White label on anchor + inner span so no
+  // client recolours it as a visited/default link.
   // Keep in sync with welcome_template_email_body().
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0"><tr><td bgcolor="#1E3A5F" style="background-color:#1E3A5F;border-radius:10px"><a href="${escapeHtml(action.webUrl)}" style="display:inline-block;padding:16px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;line-height:1.4;color:#ffffff;text-decoration:none;border-radius:10px"><span style="color:#ffffff">${escapeHtml(action.label || "Open")}</span></a></td></tr></table>`;
+  const url = escapeHtml(action.webUrl);
+  const label = escapeHtml(action.label || "Open");
+  return `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:54px;v-text-anchor:middle;width:340px;" arcsize="20%" stroke="f" fillcolor="#1E3A5F"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;">${label}</center></v:roundrect><![endif]--><!--[if !mso]><!-- --><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0"><tr><td bgcolor="#1E3A5F" style="background-color:#1E3A5F;border-radius:10px"><a href="${url}" style="display:inline-block;padding:16px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;line-height:1.4;color:#ffffff;text-decoration:none;border-radius:10px"><span style="color:#ffffff">${label}</span></a></td></tr></table><!--<![endif]-->`;
 }
 
 export function renderChannel(

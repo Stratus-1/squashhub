@@ -2547,3 +2547,8 @@ Cause: per-group validation read only each group's own selection; a setup "Cross
 ### 2026-10-04 — Existing-member signup said "not found" for members who already have a login
 - Cause: `lookup_existing_member_for_signup` only returns unclaimed rows (`user_id IS NULL`), and ClubAuth showed one generic "couldn't find a member" message for every empty result.
 - Fix: new `existing_member_signup_status(club_id, email)` (status word only: already_linked / verification_mismatch / not_found, email lower+trim). ClubAuth calls it only when the lookup is empty: already_linked shows Sign in with Google / Sign in / Reset password; mismatch shows a specific number/phone message. Regression case: Riverside + HKFTservices@gmail.com. Test: `src/test/existing-member-signup-status.test.ts`.
+
+### 2026-10-04 — Onboarding template showed blank Email / "No Email version" (fixed)
+- Symptom: Edit Template showed empty subject/body; Send Campaign > Channels said "No Email version in this template".
+- Root cause: `useCommsTemplates` loaded `comms_template_versions` with no filter. Platform admins can read every club's versions (~6,400 rows across 799 clubs) and the API caps responses at 1,000 rows, so the club's own versions were silently dropped. Data was intact. Stale cached name came from a session opened before the rename.
+- Fix: load versions filtered by the club's template IDs; activation sender and `seed_club_welcome_template` now identify the template by action key `register_existing_member`; email subject normalised to "Activate your SquashHub account – {{club_name}}" for all clubs.

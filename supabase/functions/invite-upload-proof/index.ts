@@ -78,8 +78,8 @@ Deno.serve(async (req) => {
     if (member?.user_id === authedUserId) verified = true
     if (!verified) {
       const { data: isDelegate } = await admin.rpc('member_is_delegate_of', {
-        p_member_id: reg.club_member_id,
-        p_user_id: authedUserId,
+        p_grantor: reg.club_member_id,
+        p_user: authedUserId,
       })
       verified = !!isDelegate
     }

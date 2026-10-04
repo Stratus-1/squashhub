@@ -176,6 +176,20 @@
       "when": 1791101051296,
       "tag": "0024_member_activation_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791101487335,
+      "tag": "0025_allow_activation_claim_user_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791101560907,
+      "tag": "0026_welcome_template_email_change_wording",
+      "breakpoints": true
     }
   ]
 }

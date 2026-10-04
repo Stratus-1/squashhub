@@ -215,14 +215,14 @@ export async function sendInvites(i: {
     const text = personaliseInvite(i.template, r.name, links[r.memberId]);
     memberVars[r.memberId] = {
       personal_message: text,
-      personal_message_html: text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>"),
+      personal_message_html: personaliseInviteEmailHtml(i.template, r.name, links[r.memberId]),
     };
   }
   const subject = `You're invited: ${i.name}`;
   const content: Record<string, { subject?: string; body?: string }> = {};
   for (const ch of i.channels) {
     content[ch] = ch === "email"
-      ? { subject, body: '<p>{{personal_message_html}}</p>' }
+      ? { subject, body: "{{personal_message_html}}" }
       : { subject, body: "{{personal_message}}" };
   }
   const { campaignId } = await sendComms({
@@ -230,7 +230,7 @@ export async function sendInvites(i: {
     name: `${i.name} — invitation${i.resend ? " (sent again)" : ""}`,
     channels: i.channels,
     content,
-    action: { key: "tournament_view", label: "View tournament & enter", params: { tournament_id: i.tournamentId } } as any,
+    action: { key: "tournament_view", label: "Go to Tournament", params: { tournament_id: i.tournamentId } } as any,
     audience: { type: "selected", memberIds },
     memberVars,
     meta: { tournament_id: i.tournamentId, purpose: i.resend ? "step_beta_invite_resend" : "step_beta_invite" },

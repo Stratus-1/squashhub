@@ -190,6 +190,13 @@
       "when": 1791101560907,
       "tag": "0026_welcome_template_email_change_wording",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791101808119,
+      "tag": "0027_comms_audience_unlinked",
+      "breakpoints": true
     }
   ]
 }

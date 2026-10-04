@@ -172,7 +172,34 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     },
     enabled: !!champ?.id && !!memberId,
   });
-  const entryFee = (entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
+  // Per-event prices (tournaments.division_fees) — the server is authoritative for what I owe.
+  const { data: divisionFees } = useQuery({
+    queryKey: ["champ-division-fees", champ?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("tournaments").select("division_fees").eq("id", champ.id).maybeSingle();
+      if (error) throw error;
+      return ((data as any)?.division_fees ?? null) as Record<string, number> | null;
+    },
+    enabled: !!champ?.id,
+  });
+  const { data: serverDueCents } = useQuery({
+    queryKey: ["my-champ-reg-due", myReg?.id, myReg?.division_choices, myReg?.partner_member_id, myReg?.status],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("champ_reg_own_due_cents", { p_reg_id: myReg.id });
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    enabled: !!myReg?.id,
+  });
+  const entryFee = (serverDueCents ?? entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
+  const myEventLabels = (() => {
+    const groups = Array.isArray(myReg?.division_choices) ? Array.from(new Set((myReg.division_choices as any[]).map(Number))) : [];
+    const labels = (champ?.group_labels || {}) as Record<string, string>;
+    return groups.map((g) => {
+      const cents = divisionFees?.[String(g)] ?? Math.round(eventFee * 100);
+      return `${labels[String(g)] || `Event ${g}`}${cents > 0 ? ` (${money(cents / 100)})` : ""}`;
+    });
+  })();
 
   const verifiedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -425,8 +452,10 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
             <Trophy className="w-3.5 h-3.5" /> {champ.name}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
-            {eventFee > 0 && <> · {money(eventFee)} entry fee per event</>}
+            {myEventLabels.length > 0
+              ? myEventLabels.join(" · ")
+              : <>{GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
+                  {eventFee > 0 && !divisionFees && <> · {money(eventFee)} entry fee per event</>}</>}
             {closesAt && <> · Closes {closesAt.toLocaleDateString()}</>}
           </p>
         </div>

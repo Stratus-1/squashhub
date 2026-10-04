@@ -31,9 +31,10 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
   const [searchParams] = useSearchParams();
   const legacy = searchParams.get("legacy") === "1";
   const [legacyOpen, setLegacyOpen] = useState(false);
-  const [stepByStepOpen, setStepByStepOpen] = useState(false);
+  const [stepByStepOpen, setStepByStepOpen] = useState(() => !!searchParams.get("setup"));
   /** Which setup the builder opens: a NEW tournament (null) or an existing tournament's setup. Never inferred. */
-  const [editTid, setEditTid] = useState<string | null>(null);
+  // ?setup=<id>&step=Courts deep-links into an existing tournament's setup (e.g. from "Assign courts & times").
+  const [editTid, setEditTid] = useState<string | null>(() => searchParams.get("setup"));
   const [builderKey, setBuilderKey] = useState(0);
   const openNew = (fresh: boolean) => {
     if (fresh) clearDraft(clubId);
@@ -41,7 +42,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
   };
   const draft = readDraft(clubId);
   const [askDraft, setAskDraft] = useState(false);
-  const [editAt, setEditAt] = useState<"Summary" | "Messaging" | null>(null);
+  const [editAt, setEditAt] = useState<"Summary" | "Messaging" | "Courts" | null>(() => (searchParams.get("setup") && searchParams.get("step") === "Courts" ? "Courts" : null));
   // ?manage=<id> deep-links straight into Manage (e.g. Standings "Review & approve next round").
   const [managing, setManaging] = useState<string | null>(() => searchParams.get("manage"));
   const [picker, setPicker] = useState<"mine" | "prebuilt" | null>(null);

@@ -933,7 +933,7 @@ export default function ScanPay() {
                   <span>{formatMoney(total, currency)}</span>
                 </div>
 
-                {(!member || !club.account_tab_enabled) && !tab && (
+                {(!member || club.account_tab_enabled === false) && !tab && (
                   <div className="space-y-1">
                     <Label htmlFor="visitor-name" className="text-xs">Your name</Label>
                     <Input

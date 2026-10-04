@@ -30,3 +30,7 @@
 - [ ] Fix activation linking step (was failing)
 - [ ] Add two paragraphs (old email addresses; what happens next) to standard all-clubs onboarding template
 - [ ] Tests D–F and J; then publish
+- [x] Fix activation linking step (guard trigger now trusts claim function)
+- [x] Two new paragraphs in standard all-clubs onboarding template
+- [x] Tests D (claim links+consumes, reuse safe), F (set-password path), J (other campaigns unchanged); E (live Google) verified by code path only
+- [x] Published

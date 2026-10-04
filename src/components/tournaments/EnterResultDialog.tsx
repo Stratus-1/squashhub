@@ -252,7 +252,9 @@ export function EnterResultDialog({
                       min={0}
                       className="h-10 text-center text-lg font-semibold"
                       aria-label={`Points for ${names[side]}`}
+                      placeholder="0"
                       value={value}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => set(e.target.value)}
                     />
                   </div>
@@ -312,6 +314,7 @@ export function EnterResultDialog({
                     className="h-8 w-16 text-center"
                     aria-label={`Game ${i + 1} ${names.a}`}
                     value={String(g.a)}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setGameValue(i, "a", e.target.value)}
                   />
                   <span className="text-muted-foreground">–</span>
@@ -322,6 +325,7 @@ export function EnterResultDialog({
                     className="h-8 w-16 text-center"
                     aria-label={`Game ${i + 1} ${names.b}`}
                     value={String(g.b)}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setGameValue(i, "b", e.target.value)}
                   />
                   {games.length > 1 && (

@@ -153,9 +153,25 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
+  // Bar switches save through a bar-scoped server function so members with
+  // Bar rights (not only full admins) can change them — and nothing else.
+  const [barSaving, setBarSaving] = useState(false);
+  const setBarSwitch = async (key: string, value: boolean) => {
+    setBarSaving(true);
+    try {
+      const { error } = await supabase.rpc("set_club_bar_switch" as any, { _club_id: club.id, _key: key, _value: value });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["club"] });
+      await qc.invalidateQueries({ queryKey: ["my-club"] });
+      await qc.invalidateQueries();
+    } finally {
+      setBarSaving(false);
+    }
+  };
+
   const toggleBarEnabled = async () => {
     try {
-      await updateClub.mutateAsync({ id: club.id, honesty_bar_enabled: !club.honesty_bar_enabled });
+      await setBarSwitch("honesty_bar_enabled", !club.honesty_bar_enabled);
       toast.success(club.honesty_bar_enabled ? "Self-service bar disabled" : "Self-service bar enabled");
     } catch (err: any) {
       toast.error(err.message);
@@ -234,11 +250,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                 <p className="text-[11px] text-muted-foreground leading-tight">{opt.hint}</p>
               </div>
               <Switch
-                disabled={updateClub.isPending}
+                disabled={barSaving}
                 checked={opt.defaultOff ? (club as any)?.[opt.key] === true : (club as any)?.[opt.key] !== false}
                 onCheckedChange={async (v) => {
                   try {
-                    await updateClub.mutateAsync({ id: club.id, [opt.key]: v } as any);
+                    await setBarSwitch(opt.key, v);
                     toast.success(`${opt.label} ${v ? "switched on" : "switched off"}`);
                   } catch (err: any) {
                     toast.error(err?.message || `Could not change "${opt.label}"`);

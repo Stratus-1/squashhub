@@ -239,6 +239,13 @@
       "when": 1791106341177,
       "tag": "0033_rounded_activation_cta_vml",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791111776625,
+      "tag": "0034_bar_managers_set_bar_switches",
+      "breakpoints": true
     }
   ]
 }

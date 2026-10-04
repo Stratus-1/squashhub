@@ -36,7 +36,7 @@ export async function fetchKoRoundsData(tournamentId: string) {
       const [{ data: t }, { data: matches }, { data: regs }] = await Promise.all([
         fromExt("tournaments").select("builder_spec, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
         fromExt("club_champs_matches").select("*").eq("champ_id", tournamentId),
-        fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
+        fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices, division_partners").eq("champ_id", tournamentId),
       ]);
       const spec: any = (t as any)?.builder_spec;
       const divs: Div[] = ((spec?.divisions ?? []) as any[])
@@ -47,7 +47,7 @@ export async function fetchKoRoundsData(tournamentId: string) {
           return { group: Number(d.groupNumber ?? i + 1), label: String(d.label ?? `Division ${i + 1}`), pools, poolTarget: pools ? Number(st.paced.poolTarget) || 1 : null };
         });
       const ids = [...new Set([
-        ...((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id]),
+        ...((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id, ...Object.values(r.division_partners ?? {})]),
         ...((matches ?? []) as any[]).flatMap((m) => [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id]),
       ].filter(Boolean))];
       const { data: mem } = ids.length ? await supabase.from("club_members").select("id, name, ladder_position").in("id", ids) : { data: [] as any[] };
@@ -96,7 +96,7 @@ function PooledDivision({ tournamentId, plan, div, data }: { tournamentId: strin
   const ctxs: PoolCtx[] = pools.map((p, i) => ({ index: i, members: new Set(p.map(lead)), target: div.poolTarget ?? 1 }));
   const remaining = ctxs.map((c) => {
     const rows = data.matches.filter((m) => Number(m.group_number) === div.group && Number(m.pool_number) === c.index + 1);
-    const ents = data.regs.filter((r) => c.members.has(r.club_member_id) && !INACTIVE_REG.has(String(r.status || "").toLowerCase())).map((r) => ({ id: r.club_member_id, partnerId: r.partner_member_id ?? null }));
+    const ents = data.regs.filter((r) => c.members.has(r.club_member_id) && !INACTIVE_REG.has(String(r.status || "").toLowerCase())).map((r) => ({ id: r.club_member_id, partnerId: partnerIn(r as RegLite, div.group) }));
     return activeField(ents, rows).active.length;
   });
   const poolsDone = remaining.every((n) => n <= (div.poolTarget ?? 1));
@@ -124,7 +124,7 @@ export function computeKoUnit({ plan, div, data, pool, today }: { plan: Record<s
   const rows = data.matches.filter((m) => Number(m.group_number) === div.group && (poolNo == null || Number(m.pool_number) === poolNo) && (m.player_a_member_id || m.player_b_member_id));
   const entrants: FieldEntry[] = data.regs
     .filter((r) => !INACTIVE_REG.has(String(r.status || "").toLowerCase()) && (pool ? pool.members.has(r.club_member_id) : (r.division_choices ?? []).map(Number).includes(div.group)))
-    .map((r) => ({ id: r.club_member_id, partnerId: r.partner_member_id ?? null }));
+    .map((r) => ({ id: r.club_member_id, partnerId: partnerIn(r as RegLite, div.group) }));
   const f = activeField(entrants, rows);
   const rank = (e: FieldEntry) => ({ ...e, rank: data.members.get(e.id)?.ladder ?? null });
   const field = { ...f, active: byRank(f.active.map(rank)), eliminated: f.eliminated };

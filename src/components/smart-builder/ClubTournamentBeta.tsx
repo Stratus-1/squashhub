@@ -10,7 +10,6 @@ import { removeHandover } from "@/lib/smart-builder/step-handover";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
-import { fromExt } from "@/lib/supabase-ext";
 
 /**
  * Club-context host for the Tournament Beta.

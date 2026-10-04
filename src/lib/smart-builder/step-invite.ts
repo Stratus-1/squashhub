@@ -210,12 +210,19 @@ export async function sendInvites(i: {
 
   // Personal entry links (same secure tokens the legacy invite page uses).
   const links = await entryPayLinks(i.clubId, i.tournamentId);
+  // Fill {{closing_date}} from the tournament's entry window so it never goes out literally.
+  const { data: champ } = await fromExt("club_champs").select("registration_closes_at").eq("id", i.tournamentId).maybeSingle();
+  const closesAt = (champ as any)?.registration_closes_at as string | null | undefined;
+  const closingText = closesAt
+    ? new Date(closesAt).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+    : "to be confirmed";
+  const template = String(i.template || "").replace(/{{\s*closing_date\s*}}/g, closingText);
   const memberVars: Record<string, Record<string, string>> = {};
   for (const r of i.recipients) {
-    const text = personaliseInvite(i.template, r.name, links[r.memberId]);
+    const text = personaliseInvite(template, r.name, links[r.memberId]);
     memberVars[r.memberId] = {
       personal_message: text,
-      personal_message_html: personaliseInviteEmailHtml(i.template, r.name, links[r.memberId]),
+      personal_message_html: personaliseInviteEmailHtml(template, r.name, links[r.memberId]),
     };
   }
   const subject = `You're invited: ${i.name}`;

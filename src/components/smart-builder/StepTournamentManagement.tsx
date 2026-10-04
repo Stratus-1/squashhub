@@ -9,6 +9,7 @@ import {
   nextAction, loadConfirmNeedsPay, rebuildHandoverFromServer, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
 } from "@/lib/smart-builder/step-handover";
 import { StepInformPanel } from "./StepInformPanel";
+import { StepInvitePanel } from "./StepInvitePanel";
 import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
 import { StepRunOverview } from "./StepRunOverview";
 import { StepKnockoutRoundsPanel } from "./StepKnockoutRoundsPanel";

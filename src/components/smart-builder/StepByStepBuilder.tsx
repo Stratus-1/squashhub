@@ -118,6 +118,10 @@ export type StepAnswers = {
   /** Optional subcategories per category name; missing/empty = no subcategories. */
   subcats: Record<string, string[]>;
   days: DayAvail[];
+  /** Courts & Dates scheduling-slot estimates (minutes) — never scoring/time-cap rules. */
+  scheduling?: { singles: string; doubles: string; rest: string };
+  /** Courts & Dates court restrictions: unit key ("" = all), optional round/pool → allowed court ids. */
+  courtRules?: Array<{ key: string; round: string; pool: string; courtIds: string[] }>;
   /** How players get in: organiser picks, self-entry, or both. */
   source: Source;
   /** Per category/subcategory ("Cat" or "Cat::Sub") eligibility + placement. */
@@ -1391,6 +1395,50 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   </div>
                 ))}
               </div>
+              <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Scheduling assumptions">
+                <div><div className="font-semibold">Scheduling assumptions</div>
+                  <p className="text-xs text-muted-foreground">Used by "Assign courts &amp; times" to draft the timetable. These are court-time estimates for planning only — they don't change scoring or time-capped rules.</p></div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles")], ["doubles", "Court time per Doubles match", dblUnits.length > 0], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
+                    <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
+                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] ?? ""}
+                        onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />
+                        <span className="text-xs text-muted-foreground">min</span></span></label>
+                  ))}
+                </div>
+              </div>
+              {clubCourts.length > 0 && (
+                <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Court restrictions">
+                  <div><div className="font-semibold">Court restrictions (optional)</div>
+                    <p className="text-xs text-muted-foreground">By default games may use any court ticked above. Pin a category, league, pool or round to specific courts only when needed.</p></div>
+                  {(a.courtRules ?? []).map((r, ri) => {
+                    const upd = (p: Partial<typeof r>) => setA({ ...a, courtRules: (a.courtRules ?? []).map((x, j) => (j === ri ? { ...x, ...p } : x)) });
+                    return (
+                      <div key={ri} className="space-y-2 rounded-md bg-muted/40 p-2">
+                        <div className="flex flex-wrap items-end gap-2">
+                          <label className="space-y-1 text-xs"><span className="block">Applies to</span>
+                            <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" aria-label="Applies to" value={r.key} onChange={(e) => upd({ key: e.target.value })}>
+                              <option value="">All categories</option>
+                              {[...new Set(cats)].map((c) => <option key={c} value={c}>{c}</option>)}
+                              {units.filter((u) => u.key.includes("::")).map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
+                            </select></label>
+                          <label className="space-y-1 text-xs"><span className="block">Round (optional)</span><Input type="number" min={1} className="h-9 w-24" aria-label="Round" value={r.round} onChange={(e) => upd({ round: e.target.value })} /></label>
+                          <label className="space-y-1 text-xs"><span className="block">Pool (optional)</span><Input type="number" min={1} className="h-9 w-24" aria-label="Pool" value={r.pool} onChange={(e) => upd({ pool: e.target.value })} /></label>
+                          <Button variant="ghost" size="icon" aria-label="Remove restriction" onClick={() => setA({ ...a, courtRules: (a.courtRules ?? []).filter((_, j) => j !== ri) })}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                        <div className="flex flex-wrap gap-x-5 gap-y-2">
+                          {clubCourts.map((c) => { const on = r.courtIds.includes(c.id); return (
+                            <label key={c.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                              <Checkbox checked={on} aria-label={`Restriction court ${c.name}`} onCheckedChange={() => upd({ courtIds: on ? r.courtIds.filter((x) => x !== c.id) : [...r.courtIds, c.id] })} />
+                              <span>{c.name}</span></label>); })}
+                        </div>
+                        {r.courtIds.length === 0 && <p className="text-xs text-muted-foreground">Tick at least one court, otherwise this restriction is ignored.</p>}
+                      </div>
+                    );
+                  })}
+                  <Button variant="outline" size="sm" onClick={() => setA({ ...a, courtRules: [...(a.courtRules ?? []), { key: "", round: "", pool: "", courtIds: [] }] })}><Plus className="mr-1 h-4 w-4" />Add court restriction</Button>
+                </div>
+              )}
             </>
           )}
 

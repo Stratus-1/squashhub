@@ -204,6 +204,13 @@
       "when": 1791102505400,
       "tag": "0028_rename_welcome_template_to_activate_account",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791102564715,
+      "tag": "0029_rename_activate_template_unregistered_members",
+      "breakpoints": true
     }
   ]
 }

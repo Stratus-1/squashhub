@@ -253,6 +253,13 @@
       "when": 1791124443363,
       "tag": "0035_multi_event_admin_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791125936031,
+      "tag": "0036_entry_fee_per_event",
+      "breakpoints": true
     }
   ]
 }

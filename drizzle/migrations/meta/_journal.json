@@ -302,6 +302,27 @@
       "when": 1791150294045,
       "tag": "0042_doubles_partner_optional_pay_both",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791150585638,
+      "tag": "0043_invite_payment_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791150727420,
+      "tag": "0044_fix_champ_payment_methods_append",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791150770736,
+      "tag": "0045_fix_champ_member_event_paid_null",
+      "breakpoints": true
     }
   ]
 }

@@ -41,3 +41,9 @@
 - [x] Weekend playoffs start only after ALL qualifying games end (+gap / fixed later); conflict warning; Schedule Maths same rule
 - [x] Provisional playoff rows show event/category name; one semifinal scheme per event
 - [x] Per-event entry fee + partner pays per event
+
+## Tournament invite payments (2026-10-04)
+- [x] Optional "pay for partner" when picking a doubles partner
+- [x] Fix partner share missing from total (R250)
+- [x] Invite page offers the tournament's payment methods (card / EFT / member account / cash) the club accepts
+- [x] Fees step already lists every method the club allows (Club Admin → Banking)

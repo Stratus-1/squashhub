@@ -16865,10 +16865,16 @@ export type Database = {
         Args: { p_fee_id: string; p_new_amount: number; p_note: string }
         Returns: string
       }
+      _champ_payment_methods: {
+        Args: { p_champ_id: string }
+        Returns: string[]
+      }
       _champ_row_unlocked: {
         Args: { m: Database["public"]["Tables"]["club_champs_matches"]["Row"] }
         Returns: boolean
       }
+      _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
+      _invite_reg_id: { Args: { p_token: string }; Returns: string }
       _match_rollups_for_member: {
         Args: { target_member_id: string }
         Returns: {
@@ -18340,6 +18346,11 @@ export type Database = {
       help_center_verify_dispatch: {
         Args: { p_token: string }
         Returns: boolean
+      }
+      invite_payment_options: { Args: { p_token: string }; Returns: Json }
+      invite_settle_entry: {
+        Args: { p_method: string; p_token: string; p_verify: string }
+        Returns: Json
       }
       invite_verification_kind: {
         Args: { p_member_id: string }

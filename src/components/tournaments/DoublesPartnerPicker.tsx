@@ -74,7 +74,7 @@ export function DoublesPartnerPicker({ champId, divisions, token, verify, enable
   // "How do you want to pay R…" total stays stale after switching options.
   const refresh = () => {
     qc.invalidateQueries({ queryKey: stateKey });
-    qc.invalidateQueries({ queryKey: ["invite-pay-options"] });
+    qc.invalidateQueries({ queryKey: ["invite-pay-options"] }); qc.invalidateQueries({ queryKey: ["my-champ-reg-due"] });
   };
 
   if (divisions.length === 0) return null;

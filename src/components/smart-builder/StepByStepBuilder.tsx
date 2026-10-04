@@ -345,7 +345,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: `${c} › ${x}` })) : [{ key: c, base: c }];
   }).map((u) => {
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
-    return { ...u, categoryType: a.categoryTypes?.[u.key.split("::")[0]] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === u.key.split("::")[0])?.[1] ?? null, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
+    const catName = u.key.split("::")[0].trim().toLowerCase();
+    const categoryType = a.categoryTypes?.[u.key.split("::")[0]]
+      ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim().toLowerCase() === catName)?.[1]
+      ?? null;
+    return { ...u, categoryType, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const poolRule = (k: string): PoolPlan => poolPlanOf(a, k) ?? { mode: "none" };
@@ -1079,9 +1083,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                               className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs", sel.includes(id) ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>
                               {sel.includes(id) && <Check className="h-3 w-3" />}{memberName(id)}{!a.picks[id] && <span className="opacity-70"> (not placed)</span>}
                             </button>))}</div>
-                          <Button type="button" size="sm" disabled={sel.length !== 2 || !validatePairComposition(sel.map((id) => genderByMember.get(id)), u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid} onClick={createPair}>
+                           <Button type="button" size="sm" disabled={sel.length !== 2 || !validatePairComposition(sel.map((id) => genderByMember.get(id)), u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid} onClick={createPair}>
                             <Plus className="mr-1 h-3 w-3" />Create pair{sel.length === 2 ? `: ${memberName(sel[0])} + ${memberName(sel[1])}` : ` (${sel.length}/2 chosen)`}
                           </Button>
+                          {sel.length === 2 && (() => {
+                            const v = validatePairComposition(sel.map((id) => genderByMember.get(id)), u.categoryType, { requireMixedPair: u.categoryType === "mixed" });
+                            return !v.valid && v.reason ? <div className="text-xs text-destructive">{v.reason}</div> : null;
+                          })()}
                         </>
                       )}
                     </div>

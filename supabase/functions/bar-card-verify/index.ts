@@ -17,7 +17,43 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { sale_id, cancelled = false } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    let { sale_id } = body as { sale_id?: string };
+    const cancelled = body?.cancelled === true;
+    const tabId = typeof body?.tab_id === "string" ? body.tab_id : null;
+    const tabToken = typeof body?.tab_token === "string" ? body.tab_token : null;
+
+    // Cancel an online card payment for a whole tab (guest or counter staff).
+    // The tab's secret token is the authority — same one the payment link uses.
+    if (!sale_id && tabId && tabToken) {
+      const { data: tabRow } = await admin.from("bar_guest_tabs")
+        .select("id, token, status, settled_method").eq("id", tabId).maybeSingle();
+      if (!tabRow || String(tabRow.token) !== tabToken) return json({ error: "Tab not found" });
+      if (tabRow.status !== "closing" || tabRow.settled_method !== "online") {
+        return json({ status: tabRow.status === "settled" ? "paid" : "not_card", tab_status: tabRow.status });
+      }
+      const { data: pendingRow } = await admin.from("bar_visitor_sales")
+        .select("id, payment_reference")
+        .eq("guest_tab_id", tabId).eq("payment_status", "pending")
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (!pendingRow) {
+        if (cancelled && tabRow.status === "closing") {
+          // Nothing is pending at a gateway any more — just reopen the tab.
+          await admin.from("bar_guest_tabs").update({ status: "open", settled_method: null })
+            .eq("id", tabId).eq("status", "closing");
+        }
+        return json({ status: "failed" });
+      }
+      if (!pendingRow.payment_reference && cancelled) {
+        // Checkout never reached the gateway: safe to put the lines straight back.
+        await admin.from("bar_visitor_sales")
+          .update({ payment_method: "tab", payment_status: "on_tab", note: "Open bar tab" })
+          .eq("guest_tab_id", tabId).eq("payment_status", "pending");
+        await admin.from("bar_guest_tabs").update({ status: "open", settled_method: null }).eq("id", tabId);
+        return json({ status: "failed" });
+      }
+      sale_id = pendingRow.id;
+    }
     if (!sale_id) return json({ error: "Missing sale" });
 
     const { data: sale } = await admin
@@ -26,7 +62,13 @@ Deno.serve(async (req) => {
       .eq("id", sale_id).maybeSingle();
     if (!sale) return json({ error: "Sale not found" });
     if (sale.payment_status === "paid") return json({ status: "paid" });
-    if (!sale.payment_reference) return json({ status: sale.payment_status || "pending" });
+    if (!sale.payment_reference) {
+      if (cancelled && sale.payment_status === "pending") {
+        await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).eq("id", sale.id);
+        return json({ status: "failed" });
+      }
+      return json({ status: sale.payment_status || "pending" });
+    }
 
     // PayFast: the ITN is the only authority. A checkout abandoned for over
     // 30 minutes is released so a tab goes back to open.
@@ -62,7 +104,10 @@ Deno.serve(async (req) => {
     }
     const paid = ["PAID", "COMPLETE", "COMPLETED", "SUCCESSFUL", "PAYMENTINITIATIONREQUESTCOMPLETED"].includes(state);
 
-    const failed = ["EXPIRED", "CANCELLED", "CANCELED", "FAILED", "PAYMENTINITIATIONREQUESTCANCELLED", "PAYMENTINITIATIONREQUESTEXPIRED"].includes(state);
+    // The gateway is checked first: a payment that already went through is never
+    // undone. Otherwise a customer/staff "Cancel card payment" releases it.
+    const failed = ["EXPIRED", "CANCELLED", "CANCELED", "FAILED", "PAYMENTINITIATIONREQUESTCANCELLED", "PAYMENTINITIATIONREQUESTEXPIRED"].includes(state)
+      || (cancelled && !paid);
 
     const next = paid ? "paid" : failed ? "failed" : "pending";
     if (next !== sale.payment_status) {

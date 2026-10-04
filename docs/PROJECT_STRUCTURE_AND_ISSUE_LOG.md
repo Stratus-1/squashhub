@@ -2557,3 +2557,7 @@ Cause: per-group validation read only each group's own selection; a setup "Cross
 - Symptom: members buying at the bar (e.g. Nelspruit) still saw "I swiped at the card machine" and other methods the club had switched off.
 - Root cause: `ClubContext` restricted-column select did not load `bar_account_tab_enabled`, `bar_pay_online_enabled`, `bar_card_swipe_enabled`, `bar_cash_enabled`; `HonestyBar.tsx` treats a missing flag as enabled (`!== false`), so every option showed.
 - Fix: added the four bar flags to `RESTRICTED_CLUB_COLS`. Server-side RPCs already refuse disabled methods.
+
+### 2026-10-04 — Bar: no way to cancel an online card payment on a tab
+- Symptom: after "Pay online" the tab stayed "awaiting payment" with no cancel option (counter or guest), so it stayed stuck.
+- Fix: `bar-card-verify` accepts `{tab_id, tab_token, cancelled:true}`; checks the gateway first (paid is kept), otherwise reopens the tab and returns lines to it. Only tabs closing via `online` are affected. "Cancel card payment" button added in `BarCounter.tsx` and `ScanPay.tsx` (helper `src/lib/bar/cancel-tab-card-payment.ts`); guest page now keeps an awaiting-payment tab after reload.

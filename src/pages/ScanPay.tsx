@@ -25,6 +25,7 @@ import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
+import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -284,7 +285,8 @@ export default function ScanPay() {
         _tab_id: saved!.tab_id, _token: saved!.token,
       });
       const payload = data as any;
-      if (!payload?.found || payload.status !== "open") {
+      // Keep a tab that is awaiting payment so its card payment can still be cancelled.
+      if (!payload?.found || payload.status === "settled") {
         localStorage.removeItem(tabKey);
         return;
       }
@@ -716,6 +718,32 @@ export default function ScanPay() {
                     ? "Keep ordering all evening, then settle the whole tab once."
                     : "This tab is awaiting payment — settle it below."}
                 </p>
+                {tab.status === "closing" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-1.5"
+                    disabled={submitting}
+                    onClick={async () => {
+                      setSubmitting(true);
+                      try {
+                        const result = await cancelTabCardPayment(tab.tab_id, tab.token);
+                        localStorage.removeItem(PENDING_SALE_KEY);
+                        setVerifying(false);
+                        toast.success(cancelTabCardMessage[result]);
+                        const { data } = await (supabase as any).rpc("get_bar_guest_tab", { _tab_id: tab.tab_id, _token: tab.token });
+                        if ((data as any)?.status === "settled") { localStorage.removeItem(tabKey); setTab(null); }
+                        else applyTabPayload(data);
+                      } catch (e: any) {
+                        toast.error(e?.message || "Could not cancel the card payment");
+                      } finally {
+                        setSubmitting(false);
+                      }
+                    }}
+                  >
+                    <X className="w-3.5 h-3.5" /> Cancel card payment
+                  </Button>
+                )}
                 <div className="space-y-2">
                   {club.account_tab_enabled !== false && (
                     <div className="space-y-2">

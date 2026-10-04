@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
 import { getTenantAwareAuthRedirect } from "@/lib/site";
 import { toast } from "sonner";
-import { CheckEmailPanel, savePendingVerify, readPendingVerify, clearPendingVerify } from "@/components/auth/CheckEmailPanel";
+import { CheckEmailPanel, readPendingVerify, clearPendingVerify } from "@/components/auth/CheckEmailPanel";
 
 function activationRedirect(): string {
   const redirect = new URL(getTenantAwareAuthRedirect("/auth/callback"));

@@ -87,3 +87,41 @@ describe("provisional play-offs in the same scheduling run", () => {
     expect(r.slots.find((s) => s.id === "b")?.time).toBe("10:30");
   });
 });
+
+import { adoptionPlan, playoffAbbr } from "@/lib/tournaments/assumed-schedule";
+describe("whole-weekend play-off scenarios", () => {
+  const q = (id: string, ppl: string[], round: number, unitKey = "Men", doubles = false): AssumeGame => ({ id, round, pool: 1, unitKey, doubles, people: ppl, phase: 0 });
+  const po = (id: string, phase: number, unitKey = "Men"): AssumeGame => ({ id, round: 1, pool: null, unitKey, doubles: false, people: [], phase, provisional: true });
+  const fri = { date: "2026-10-09", from: "18:00", to: "21:00", courtIds: [1, 2] };
+  const sat = { date: "2026-10-10", from: "09:00", to: "17:00", courtIds: [1, 2] };
+  it("pools -> QF -> SF -> Final across Friday and Saturday, each stage after the previous", () => {
+    const games = [q("a", ["1", "2"], 1), q("b", ["3", "4"], 1), ...[1, 2, 3, 4].map((i) => po(`qf${i}`, 11)), po("sf1", 12), po("sf2", 12), po("f", 13)];
+    const r = planAssumedSchedule({ games, days: [fri, sat], singles: 45, doubles: 45, rest: 15, playoffStart: { mode: "fixed", date: "2026-10-10", time: "09:00" } });
+    expect(r.issues).toEqual([]);
+    const at = Object.fromEntries(r.slots.map((s) => [s.id, `${s.date} ${s.time}`]));
+    expect(at.a.startsWith("2026-10-09")).toBe(true);
+    expect(at.qf1).toBe("2026-10-10 09:00"); expect(at.qf3).toBe("2026-10-10 09:45");
+    expect(at.sf1).toBe("2026-10-10 10:45"); expect(at.f).toBe("2026-10-10 11:45");
+    expect(provisionalPlayoffs({ playoff: { choice: "playoffs", rounds: 3, pairing: "cross_pools" } }, "Men", 2)).toHaveLength(7);
+  });
+  it("compact finishes earlier than spread", () => {
+    const games = [1, 2, 3].map((r) => q(`r${r}`, ["1", "2"], r));
+    const c = planAssumedSchedule({ games, days: [sat], singles: 30, doubles: 30, rest: 0, pace: "fast" });
+    const s = planAssumedSchedule({ games, days: [sat], singles: 30, doubles: 30, rest: 0, pace: "spread" });
+    expect(c.slots.find((x) => x.id === "r3")!.time < s.slots.find((x) => x.id === "r3")!.time).toBe(true);
+  });
+  it("a player in both Singles and Doubles never overlaps and gets rest", () => {
+    const r = planAssumedSchedule({ games: [q("s", ["p", "x"], 1, "Singles"), q("d", ["p", "y", "z", "w"], 1, "Doubles", true)], days: [sat], singles: 30, doubles: 40, rest: 20 });
+    const at = Object.fromEntries(r.slots.map((x) => [x.id, x.time]));
+    expect(at.s).toBe("09:00"); expect(at.d).toBe("09:50");
+  });
+  it("real play-off rows take over their reserved slots in bracket order (no players invented)", () => {
+    expect(playoffAbbr("playoff_sf", "League 1 · Semi-final")).toBe("SF");
+    expect(playoffAbbr("playoff_final", "Pos 1 · 1st/2nd Place Play-off")).toBe("place");
+    expect(playoffAbbr("group", "A1 v B1")).toBeNull();
+    const pre = "sbs:T:po:";
+    const holds = [{ id: "h1", externalId: `${pre}Men|SF|1`, date: "2026-10-10", start: "11:00", courtId: 1 }, { id: "h2", externalId: `${pre}Men|SF|2`, date: "2026-10-10", start: "11:00", courtId: 2 }, { id: "h3", externalId: `${pre}Men|Final|1`, date: "2026-10-10", start: "12:00", courtId: 1 }];
+    const plan = adoptionPlan("T", holds, [{ id: "m2", unitKey: "Men", abbr: "SF", order: 2 }, { id: "m1", unitKey: "Men", abbr: "SF", order: 1 }]);
+    expect(plan.map((p) => [p.rowId, p.hold.id])).toEqual([["m1", "h1"], ["m2", "h2"]]);
+  });
+});

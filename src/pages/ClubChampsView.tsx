@@ -1382,6 +1382,7 @@ export default function ClubChampsView() {
   const navigate = useNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(true);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const [resultMatch, setResultMatch] = useState<any | null>(null);

@@ -11,7 +11,7 @@ import {
  * (`beta_lifecycle.standings_awards`); nothing changes for tournaments that never save it.
  * The winner source stays the tournament's own progression (final / playoffs / last-stage table).
  */
-export function StandingsAwardsSection({ tournamentId }: { tournamentId: string }) {
+export function StandingsAwardsSection({ tournamentId, onSaved }: { tournamentId: string; onSaved?: () => void }) {
   const [cfg, setCfg] = useState<StandingsAwards | null>(null);
   const [saved, setSaved] = useState(false);
   const [open, setOpen] = useState(false);
@@ -32,7 +32,7 @@ export function StandingsAwardsSection({ tournamentId }: { tournamentId: string 
     const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
     const bl: any = (data as any)?.beta_lifecycle ?? {};
     const { error } = await fromExt("tournaments").update({ beta_lifecycle: { ...bl, standings_awards: next } } as any).eq("id", tournamentId);
-    if (error) toast.error(`Standings & awards not saved: ${error.message}`); else setSaved(true);
+    if (error) toast.error(`Standings & awards not saved: ${error.message}`); else { setSaved(true); onSaved?.(); }
   };
 
   if (!cfg) return null;

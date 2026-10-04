@@ -628,7 +628,7 @@ export default function Challenges() {
             </div>
             <div>
               <Label className="text-xs">Time</Label>
-              <Input type="time" value={counterTime} onChange={(e) => setCounterTime(e.target.value)} className="mt-1" />
+              <Input type="time" step={300} value={counterTime} onChange={(e) => setCounterTime(e.target.value)} className="mt-1" />
             </div>
             {courts.length > 0 && (
               <div>

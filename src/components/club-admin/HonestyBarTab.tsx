@@ -828,8 +828,8 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
           <div className="grid grid-cols-2 gap-2">
             <div><Label className="text-[11px]">From date</Label><Input type="date" value={form.valid_from} onChange={e => setForm(p => ({ ...p, valid_from: e.target.value }))} /></div>
             <div><Label className="text-[11px]">To date</Label><Input type="date" value={form.valid_to} onChange={e => setForm(p => ({ ...p, valid_to: e.target.value }))} /></div>
-            <div><Label className="text-[11px]">From time</Label><Input type="time" value={form.valid_start_time} onChange={e => setForm(p => ({ ...p, valid_start_time: e.target.value }))} /></div>
-            <div><Label className="text-[11px]">To time</Label><Input type="time" value={form.valid_end_time} onChange={e => setForm(p => ({ ...p, valid_end_time: e.target.value }))} /></div>
+            <div><Label className="text-[11px]">From time</Label><Input type="time" step={300} value={form.valid_start_time} onChange={e => setForm(p => ({ ...p, valid_start_time: e.target.value }))} /></div>
+            <div><Label className="text-[11px]">To time</Label><Input type="time" step={300} value={form.valid_end_time} onChange={e => setForm(p => ({ ...p, valid_end_time: e.target.value }))} /></div>
           </div>
           <div className="flex flex-wrap gap-1">
             {WEEKDAYS.map((d, i) => {

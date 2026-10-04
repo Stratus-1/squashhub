@@ -918,7 +918,7 @@ export default function Ladder() {
             <div>
               <Label className="text-xs">Proposed Time</Label>
               <Input
-                type="time"
+                type="time" step={300}
                 value={proposedTime}
                 onChange={(e) => setProposedTime(e.target.value)}
                 className="mt-1"

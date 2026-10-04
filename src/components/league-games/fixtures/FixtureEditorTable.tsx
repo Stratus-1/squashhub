@@ -131,7 +131,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
           <div>
             <Label className="text-[11px] text-muted-foreground">Default start</Label>
             <Input
-              type="time"
+              type="time" step={300}
               className="h-8 w-28"
               value={bulkStart}
               onChange={(e) => setBulkStart(e.target.value)}
@@ -140,7 +140,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
           <div>
             <Label className="text-[11px] text-muted-foreground">Default end</Label>
             <Input
-              type="time"
+              type="time" step={300}
               className="h-8 w-28"
               value={bulkEnd}
               onChange={(e) => setBulkEnd(e.target.value)}
@@ -300,7 +300,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                 </td>
                 <td className="p-1">
                   <Input
-                    type="time"
+                    type="time" step={300}
                     className="h-8"
                     value={f.start_time ?? ""}
                     onChange={(e) => update(i, { start_time: e.target.value || null })}
@@ -308,7 +308,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                 </td>
                 <td className="p-1">
                   <Input
-                    type="time"
+                    type="time" step={300}
                     className="h-8"
                     value={f.end_time ?? ""}
                     onChange={(e) => update(i, { end_time: e.target.value || null })}

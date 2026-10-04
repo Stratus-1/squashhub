@@ -9269,11 +9269,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-sm">Evening start time</Label>
-                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                    <Input type="time" step={300} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                   </div>
                   <div>
                     <Label className="text-sm">Latest court time</Label>
-                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                    <Input type="time" step={300} value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -9298,11 +9298,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-sm">Daily start time</Label>
-                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                    <Input type="time" step={300} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                   </div>
                   <div>
                     <Label className="text-sm">Daily end time</Label>
-                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                    <Input type="time" step={300} value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                   </div>
                 </div>
 
@@ -9564,7 +9564,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               <div>
                                 <Label className="text-xs">Start</Label>
                                 <Input
-                                  type="time"
+                                  type="time" step={300}
                                   value={d.start_time}
                                   onChange={(e) => {
                                     const v = e.target.value;
@@ -9576,7 +9576,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               <div>
                                 <Label className="text-xs">End</Label>
                                 <Input
-                                  type="time"
+                                  type="time" step={300}
                                   value={d.end_time}
                                   onChange={(e) => {
                                     const v = e.target.value;

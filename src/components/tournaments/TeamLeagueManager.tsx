@@ -294,8 +294,8 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
            <div><Label className="text-xs">Doubles break (min)</Label><Input className="h-8" type="number" min={0} step={1} value={cfg.doublesBreakMinutes ?? 0} onChange={num("doublesBreakMinutes")} /></div>
           <div><Label className="text-xs">Win bonus</Label><Input className="h-8" type="number" value={cfg.winBonus} onChange={num("winBonus")} /></div>
           <div><Label className="text-xs">Courts</Label><Input className="h-8" type="number" value={cfg.courts} onChange={num("courts")} /></div>
-          <div><Label className="text-xs">Start</Label><Input className="h-8" type="time" value={cfg.startTime} onChange={(e) => setCfg({ ...cfg, startTime: e.target.value })} /></div>
-          <div><Label className="text-xs">End</Label><Input className="h-8" type="time" value={cfg.endTime} onChange={(e) => setCfg({ ...cfg, endTime: e.target.value })} /></div>
+          <div><Label className="text-xs">Start</Label><Input className="h-8" type="time" step={300} value={cfg.startTime} onChange={(e) => setCfg({ ...cfg, startTime: e.target.value })} /></div>
+          <div><Label className="text-xs">End</Label><Input className="h-8" type="time" step={300} value={cfg.endTime} onChange={(e) => setCfg({ ...cfg, endTime: e.target.value })} /></div>
           <div className="col-span-2"><Label className="text-xs">Level tie (same points)</Label>
             <select className="w-full h-8 rounded border border-input bg-background px-2" value={cfg.drawRule} onChange={(e) => setCfg({ ...cfg, drawRule: e.target.value as DrawRule })}>
               {Object.entries(DRAW_RULE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

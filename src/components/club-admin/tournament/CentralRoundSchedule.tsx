@@ -313,7 +313,7 @@ export function CentralRoundSchedule({
                         <div>
                           <Label className="text-xs">First game at</Label>
                           <Input
-                            type="time"
+                            type="time" step={300}
                             value={plan?.start_time ?? ""}
                             onChange={(e) => patchStage(key, { start_time: e.target.value || null })}
                             className="h-8"

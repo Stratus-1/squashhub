@@ -52,10 +52,13 @@ describe("personaliseInviteEmailHtml", () => {
     expect(html).toContain(`href="${link}"`);
   });
 
-  it("escapes message text but keeps the button markup", () => {
+  it("escapes message text; no button when the message carries no entry link", () => {
     const html = personaliseInviteEmailHtml("A<b>", "Dan", link);
     expect(html).toContain("A&lt;b&gt;");
-    expect(html).toContain("v:roundrect");
+    expect(html).not.toContain("v:roundrect");
+    // a message without a link line falls back to the sign-in hint, still no raw button
+    const hinted = personaliseInviteEmailHtml(tpl, "Dan", null);
+    expect(hinted).not.toContain("v:roundrect");
   });
 });
 

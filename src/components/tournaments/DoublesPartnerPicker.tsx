@@ -532,12 +532,24 @@ function DivisionPartner({
           <AlertDialogHeader>
             <AlertDialogTitle>Enter with {feeAsk?.display_name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              The entry fee is {money(feeCents)} per player, so you pay {money(feeCents * 2)} for the pair.
-              {feeAsk?.display_name || "Your partner"} is entered straight away and does not need to confirm.
+              The entry fee is {money(feeCents)} per player. You can pay for both of you ({money(feeCents * 2)}),
+              or pay only your own ({money(feeCents)}) and {feeAsk?.display_name || "your partner"} is asked to pay
+              theirs. The pair is confirmed once both fees are paid.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const o = feeAsk;
+                if (!o) return;
+                setFeeAsk(null);
+                act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: false });
+              }}
+            >
+              Pay only mine
+            </Button>
             <AlertDialogAction
               onClick={() => {
                 const o = feeAsk;
@@ -546,7 +558,7 @@ function DivisionPartner({
                 act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: true });
               }}
             >
-              Pay {money(feeCents * 2)}
+              Pay both · {money(feeCents * 2)}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

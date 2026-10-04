@@ -345,7 +345,7 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     The member types just the digits of their membership number (the club prefix is matched
-                    automatically), then approves the charge with their Bar PIN — the PIN on its own is never
+                    automatically), then approves the charge with a one-time code sent to their phone — the code on its own is never
                     used to identify anybody.
                   </p>
                 </div>
@@ -370,7 +370,7 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                     <p className="text-sm font-medium truncate">{selected.name}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {selected.club_member_number || "No membership number"} ·{" "}
-                      {selected.has_pin ? "Bar PIN set" : "No Bar PIN — will verify by code"}
+                      Will verify by SMS / WhatsApp code
                     </p>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>Change</Button>
@@ -389,7 +389,7 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                       <p className="text-sm font-medium">{m.name}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {m.club_member_number || "No membership number"}
-                        {m.has_pin ? "" : " · no Bar PIN yet"}
+                        
                       </p>
                     </button>
                   ))}

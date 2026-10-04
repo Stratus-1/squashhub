@@ -604,7 +604,7 @@ export default function ScanPay() {
       {/* Neutral strip — this page never assumes who is holding the phone */}
       <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-[11px]">
         <span className="truncate flex-1 text-muted-foreground">
-          Members: charge to your account with your membership number and Bar PIN. Visitors: pay by card or open a tab.
+          Members: charge to your account with your membership number and a one-time code sent to your phone. Visitors: pay by card or open a tab.
         </span>
         <Button
           type="button"
@@ -660,7 +660,7 @@ export default function ScanPay() {
                 <p className="text-sm">
                   <span className="font-medium">Member of {club.name}?</span>{" "}
                   No login needed — tap items, then choose <span className="font-medium">Add to my member account</span> and
-                  confirm with your membership number and your six-digit Bar PIN. Visitors just pay by card.
+                  confirm with your membership number and a one-time code sent to your phone. Visitors just pay by card.
                 </p>
                 <Button className="w-full" onClick={continueAsGuest}>
                   Got it — start ordering
@@ -747,7 +747,7 @@ export default function ScanPay() {
                             onChange={(e) => setMemberNumber(e.target.value)}
                           />
                           <p className="text-[11px] text-muted-foreground">
-                            You&apos;ll approve the full tab with your own six-digit Bar PIN.
+                            You&apos;ll approve the full tab with a one-time code sent to your phone.
                           </p>
                           <div className="flex gap-2">
                             <Button
@@ -982,7 +982,7 @@ export default function ScanPay() {
                             onChange={(e) => setMemberNumber(e.target.value)}
                           />
                           <p className="text-[11px] text-muted-foreground">
-                            You&apos;ll confirm with your own six-digit Bar PIN — nothing is charged before that.
+                            You&apos;ll confirm with a one-time code sent to your phone — nothing is charged before that.
                           </p>
                           <div className="flex gap-2">
                             <Button

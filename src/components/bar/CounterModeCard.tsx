@@ -122,7 +122,7 @@ export function CounterModeCard({ clubId }: { clubId?: string | null }) {
       <p className="text-xs text-muted-foreground">
         Give each person who works the bar their own PIN (up to {MAX_OPERATORS}). They scan the club menu QR code,
         open “Counter mode” and enter their PIN — no SquashHub login needed — and every tab they open is recorded
-        against their name. Charging a member's account still needs that member's own Bar PIN.
+        against their name. Charging a member's account is approved by a one-time code sent to that member's phone.
       </p>
 
       {operators.length === 0 ? (

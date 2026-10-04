@@ -564,7 +564,42 @@ export default function TournamentInvite() {
             )}
           </div>
         )}
+        {data?.champ_id && (
+          <Button className="w-full" onClick={() => navigate(`/club-champs/${data.champ_id}`)}>
+            View tournament
+          </Button>
+        )}
+        {data?.champ_id && <JoinWhatsAppGroupButton champId={data.champ_id} className="w-full" size="default" />}
+        {withdrawSection}
+      </>,
+    );
+  }
 
+  if (state === "payment_pending") {
+    return shell(
+      <>
+        {header}
+        {detailList}
+        <Badge variant="secondary">{adminEntered ? "Entered · Payment outstanding" : "Accepted — entry fee outstanding"}</Badge>
+        {partnerSection}
+        {isTest ? (
+          !hasDoublesChoice && (
+            <Button className="w-full" disabled>
+              <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
+            </Button>
+          )
+        ) : (
+          <div className="space-y-2">
+            {payChooser}
+            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!!user || !payNeedsVerify || payVerifyReady}
+              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
+            {!user && (
+              <p className="text-[11px] text-muted-foreground text-center">
+                You can pay straight from this invitation — no login needed.
+              </p>
+            )}
+          </div>
+        )}
         {withdrawSection}
       </>,
     );

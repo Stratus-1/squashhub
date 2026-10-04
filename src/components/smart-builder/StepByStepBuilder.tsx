@@ -345,7 +345,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: `${c} › ${x}` })) : [{ key: c, base: c }];
   }).map((u) => {
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
-    return { ...u, categoryType: a.categoryTypes?.[u.key.split("::")[0]] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === u.key.split("::")[0])?.[1] ?? null, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
+    const catName = u.key.split("::")[0].trim().toLowerCase();
+    const categoryType = a.categoryTypes?.[u.key.split("::")[0]]
+      ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim().toLowerCase() === catName)?.[1]
+      ?? null;
+    return { ...u, categoryType, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const poolRule = (k: string): PoolPlan => poolPlanOf(a, k) ?? { mode: "none" };

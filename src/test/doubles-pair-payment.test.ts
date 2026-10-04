@@ -44,7 +44,7 @@ describe("doubles pair payment states", () => {
     expect(
       pairPaymentLabel({ ...p, payer_is_me: true, pays_for_partner: true, partner_fee_paid: false }, 15000, money),
     ).toBe("You chose to pay for both entries in this event — R300.00.");
-    expect(pairPaymentLabel({ ...p, my_fee_paid: true }, 15000, money)).toBe("Both entry fees are paid.");
+    expect(pairPaymentLabel({ ...p, my_fee_paid: true }, 15000, money)).toBe("Both entry fees are settled.");
   });
 
   it("says nothing about money for free tournaments", () => {

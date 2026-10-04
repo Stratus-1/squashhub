@@ -8,8 +8,9 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Copy, Share2, MessageCircle } from "lucide-react";
+import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
+import { buildBarPoster, loadImageAsDataUrl } from "@/lib/bar/bar-poster";
+import { Loader2, Copy, Share2, MessageCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { buildScanUrl } from "@/lib/qr-shortcodes";
@@ -20,9 +21,12 @@ interface Props {
   clubId?: string;
   clubName?: string | null;
   subdomain?: string | null;
+  /** Admin view: pass the club row to enable the printable A4 poster. */
+  posterClub?: any;
 }
 
-export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomain }: Props) {
+export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomain, posterClub }: Props) {
+  const [posterBusy, setPosterBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
 
@@ -62,6 +66,32 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
     void copy();
   };
 
+  const downloadPoster = async () => {
+    if (!url || !posterClub) return;
+    setPosterBusy(true);
+    try {
+      const canvas = document.getElementById("bar-poster-qr") as HTMLCanvasElement | null;
+      if (!canvas) throw new Error("QR not ready");
+      const logo = posterClub.logo_url ? await loadImageAsDataUrl(posterClub.logo_url) : null;
+      const doc = buildBarPoster({
+        clubName: clubName || posterClub.name || "Club",
+        url,
+        qrDataUrl: canvas.toDataURL("image/png"),
+        logoDataUrl: logo,
+        accountEnabled: posterClub.bar_account_tab_enabled !== false,
+        cardOnlineEnabled: posterClub.bar_pay_online_enabled !== false,
+        swipeEnabled: posterClub.bar_card_swipe_enabled !== false,
+        cashEnabled: posterClub.bar_cash_enabled === true,
+      });
+      const safe = (clubName || "Club").replace(/[^a-z0-9]+/gi, "_");
+      doc.save(`${safe}_Bar_Usage_Poster.pdf`);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not create the poster");
+    } finally {
+      setPosterBusy(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
@@ -99,6 +129,15 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
                   <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                 </Button>
               </div>
+              {posterClub && (
+                <>
+                  <div className="hidden"><QRCodeCanvas id="bar-poster-qr" value={url} size={1024} marginSize={1} /></div>
+                  <Button size="sm" className="w-full gap-1" onClick={downloadPoster} disabled={posterBusy}>
+                    {posterBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                    Download A4 poster (PDF)
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>

@@ -69,7 +69,13 @@ export function DoublesPartnerPicker({ champId, divisions, token, verify, enable
     retry: false,
   });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: stateKey });
+  // Pairing changes alter what this player owes (own fee vs both fees), so the
+  // invitation's payment chooser amount must be refetched too — otherwise the
+  // "How do you want to pay R…" total stays stale after switching options.
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: stateKey });
+    qc.invalidateQueries({ queryKey: ["invite-pay-options"] });
+  };
 
   if (divisions.length === 0) return null;
   if (!enabled) return null;

@@ -106,3 +106,6 @@ verify_jwt = false
 
 [functions.help-center-case-context]
 verify_jwt = false
+
+[functions.activate-member-password]
+verify_jwt = false

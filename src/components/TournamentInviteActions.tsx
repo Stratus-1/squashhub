@@ -313,13 +313,16 @@ export function TournamentInviteActions({ notification, champId, registrationId,
       : [
           `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
         ];
+    const useTotal = entrySummary.totalDueCents != null && entrySummary.eventLabels.length > 0;
     return [
-      `${GENDER_LABELS[champ.gender] || champ.gender} ${champ.match_type === "doubles" ? "Doubles" : "Singles"}`,
+      entrySummary.eventLabels.length ? entrySummary.eventLabels.join(" · ") : `${GENDER_LABELS[champ.gender] || champ.gender} ${champ.match_type === "doubles" ? "Doubles" : "Singles"}`,
       `${champ.start_date} to ${champ.end_date}`,
       ...scheduleRows,
-      paymentRequired ? `${feeBreakdownLabel(eventFeeCents, feeEvents, formatMoney)} entry fee${acceptsEft ? " · EFT accepted" : ""}` : "No entry fee",
+      paymentRequired
+        ? `${useTotal ? `Total due: ${formatMoney(entrySummary.totalDueCents!)}` : `${feeBreakdownLabel(eventFeeCents, feeEvents, formatMoney)} entry fee`}${acceptsEft ? " · EFT accepted" : ""}`
+        : "No entry fee",
     ].filter(Boolean);
-  }, [acceptsEft, champ, entryFeeCents, eventFeeCents, feeEvents, paymentRequired]);
+  }, [acceptsEft, champ, entryFeeCents, eventFeeCents, feeEvents, paymentRequired, entrySummary.eventLabels.join("|"), entrySummary.totalDueCents]);
 
 
   if (champLoading || regLoading) {

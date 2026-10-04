@@ -2564,3 +2564,9 @@ Cause: per-group validation read only each group's own selection; a setup "Cross
 
 ### 2026-10-04 — Pick players allowed only one event per person
 Cause: builder stored one event per picked player; saving wrote one division and one partner; draw rejected a person appearing twice. Fix: event chips per player, `division_partners` per-event partner column, per-event draw validation and category guard. Entry fee stays one per registration (unchanged).
+
+
+### 2026-10-04 — Weekend play-offs before qualifying finished; ambiguous play-off rows; fee per event
+- Cause: assumed-schedule gated each event's play-offs only by its own qualifying games; play-off headings omitted the event.
+- Fix: first play-off stage of every event waits for ALL qualifying games (+gap / later fixed start; earlier fixed start = conflict); headings lead with the event (`playoffHeadingText`). Tests: `playoff-global-gate.test.ts`.
+- Entry fee now per event; partner payment covers only the shared doubles event (migration `0036_entry_fee_per_event`). Tests: `entry-fee-per-event.test.ts`.

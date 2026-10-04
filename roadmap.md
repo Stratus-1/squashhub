@@ -40,4 +40,4 @@
 ## Playoff gating + labels (in progress)
 - [x] Weekend playoffs start only after ALL qualifying games end (+gap / fixed later); conflict warning; Schedule Maths same rule
 - [x] Provisional playoff rows show event/category name; one semifinal scheme per event
-- [ ] Per-event entry fee + partner pays per event (plan awaiting approval)
+- [x] Per-event entry fee + partner pays per event

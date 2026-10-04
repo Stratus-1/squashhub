@@ -148,6 +148,9 @@ export type CreateInput = {
   name: string;
   startDate: string | null;
   endDate: string | null;
+  /** Entry window (YYYY-MM-DD or null) → tournaments.registration_opens_at/_closes_at. */
+  entriesOpen?: string | null;
+  entriesClose?: string | null;
   feeCents: number | null;
   paymentMethods: string[];
   partnerMode: "admin" | "players" | null;
@@ -183,6 +186,9 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     name: i.name.trim(),
     start_date: i.startDate || null,
     end_date: i.endDate || null,
+    // Date-only entry window: open at start of day, close at end of day (local).
+    ...(i.entriesOpen !== undefined ? { registration_opens_at: i.entriesOpen ? `${i.entriesOpen}T00:00:00` : null } : {}),
+    ...(i.entriesClose !== undefined ? { registration_closes_at: i.entriesClose ? `${i.entriesClose}T23:59:59` : null } : {}),
     entry_fee_cents: i.feeCents ?? 0,
     payment_required: (i.feeCents ?? 0) > 0,
     ...(i.confirmNeedsPay !== undefined ? { payment_timing: i.confirmNeedsPay ? "on_entry" : "after_acceptance" } : {}),

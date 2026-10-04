@@ -346,7 +346,9 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
       <div>
         <div className="mb-1 text-xs text-muted-foreground">Preview — what each invitee receives (greeting and entry link are personal)</div>
         <pre className="whitespace-pre-wrap rounded border border-border bg-muted/30 p-2 font-sans text-xs">{previewText}</pre>
+        <p className="mt-1 text-xs text-muted-foreground">In emails the entry link is sent as a large "Enter here" button, with a second "Go to Tournament" button below.</p>
       </div>
+
 
       {/* 4. Recipients */}
       {ids.length > 0 && (

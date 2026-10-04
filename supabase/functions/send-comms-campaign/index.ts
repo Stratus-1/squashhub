@@ -259,7 +259,17 @@ Deno.serve(async (req) => {
       // keep the shared club URL unchanged.
       let recipientAction = action;
       if (action.key === "register_existing_member" && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) {
-        recipientAction = await personalOnboardingAction(action, m, club?.subdomain, campaignId);
+        try {
+          recipientAction = await personalOnboardingAction(action, m, club?.subdomain, campaignId);
+        } catch (err) {
+          for (const ch of channels) {
+            if (alreadySent.has(`${m.id}:${ch}`)) continue;
+            failed++;
+            await logDelivery({ campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id, channel: ch,
+              recipient_name: m.name ?? null, target: null, status: "failed", error_message: String((err as Error)?.message || err).slice(0, 500) });
+          }
+          continue;
+        }
       }
 
       for (const ch of channels) {
@@ -348,8 +358,8 @@ Deno.serve(async (req) => {
                 campaign_id: campaignId,
                 action_key: action.key,
                 action_label: action.label,
-                action_url: action.webUrl,
-                app_path: action.appPath,
+                action_url: recipientAction.webUrl,
+                app_path: recipientAction.appPath,
                 // Per-recipient buttons (e.g. Pay now, Join WhatsApp group) from member_vars.
                 actions: (() => {
                   const mv = (memberVars[m.id] ?? {}) as Record<string, unknown>;

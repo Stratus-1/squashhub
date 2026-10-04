@@ -534,7 +534,10 @@ export default function TournamentInvite() {
     </div>
   );
 
-  if (state === "registered" || done === "accepted") {
+  // Accepting only records the entry; when a fee is due it stays unconfirmed
+  // until paid, so never show "You're entered" for an unpaid acceptance.
+  const owesAfterAccept = done === "accepted" && state !== "registered" && feeCents > 0 && data?.payment_required !== false;
+  if (state === "registered" || (done === "accepted" && !owesAfterAccept)) {
     return shell(
       <>
         {header}
@@ -575,12 +578,12 @@ export default function TournamentInvite() {
     );
   }
 
-  if (state === "payment_pending") {
+  if (state === "payment_pending" || owesAfterAccept) {
     return shell(
       <>
         {header}
         {detailList}
-        <Badge variant="secondary">{adminEntered ? "Entered · Payment outstanding" : "Accepted — entry fee outstanding"}</Badge>
+        <Badge variant="secondary">{adminEntered ? "Entered · Payment outstanding" : "Not entered yet — pay your entry fee to confirm"}</Badge>
         {partnerSection}
         {isTest ? (
           !hasDoublesChoice && (

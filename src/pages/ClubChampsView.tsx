@@ -796,31 +796,31 @@ export default function ClubChampsView() {
         <table className="w-full text-xs sm:text-sm">
           <thead>
             <tr className="border-b text-left">
-              <th className="pb-2 font-medium">#</th>
+              <th className="pb-2 font-medium w-7">#</th>
               <th className="pb-2 font-medium">
                 {isDoubles || standings.some((s: any) => !!s.partner_member_id) ? "Team" : "Player"}
               </th>
-              {showPool && <th className="pb-2 font-medium text-center" title="Pool / section">Pool</th>}
+              {showPool && <th className="pb-2 font-medium text-center w-10" title="Pool / section">Pool</th>}
 
               {isBells ? (
                 <>
-                  <th className="pb-2 font-medium text-center" title="Games played">GP</th>
-                  <th className="pb-2 font-medium text-center" title="Games won">W</th>
-                  <th className="pb-2 font-medium text-center" title="Games lost">L</th>
-                  <th className="pb-2 font-medium text-center" title="Points for (scored) — used for ranking">PF</th>
-                  <th className="pb-2 font-medium text-center" title="Points against (conceded)">PA</th>
-                  <th className="pb-2 font-medium text-center" title="Points difference">+/-</th>
+                  <th className="pb-2 font-medium text-center w-10" title="Games played">GP</th>
+                  <th className="pb-2 font-medium text-center w-10" title="Games won">W</th>
+                  <th className="pb-2 font-medium text-center w-10" title="Games lost">L</th>
+                  <th className="pb-2 font-medium text-center w-10" title="Points for (scored) — used for ranking">PF</th>
+                  <th className="pb-2 font-medium text-center w-10" title="Points against (conceded)">PA</th>
+                  <th className="pb-2 font-medium text-center w-10" title="Points difference">+/-</th>
                   {Array.from({ length: maxGames }).map((_, gi) => (
-                    <th key={`g${gi}`} className="pb-2 font-medium text-center text-muted-foreground" title={`Game ${gi + 1} points scored`}>G{gi + 1}</th>
+                    <th key={`g${gi}`} className="pb-2 font-medium text-center text-muted-foreground w-9" title={`Game ${gi + 1} points scored`}>G{gi + 1}</th>
                   ))}
                 </>
               ) : (
                 <>
-                  <th className="pb-2 font-medium text-center">P</th>
-                  <th className="pb-2 font-medium text-center">W</th>
-                  <th className="pb-2 font-medium text-center">L</th>
+                  <th className="pb-2 font-medium text-center w-10">P</th>
+                  <th className="pb-2 font-medium text-center w-10">W</th>
+                  <th className="pb-2 font-medium text-center w-10">L</th>
                   {!opts?.koStatus && standingsColumns.map((col) => (
-                    <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
+                    <th key={col.key} className="pb-2 font-medium text-center w-10" title={col.title}>{col.label}</th>
                   ))}
                 </>
               )}

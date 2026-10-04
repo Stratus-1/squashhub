@@ -19240,6 +19240,10 @@ export type Database = {
         }
         Returns: number
       }
+      set_club_bar_switch: {
+        Args: { _club_id: string; _key: string; _value: boolean }
+        Returns: undefined
+      }
       set_club_billing_frequency: {
         Args: { _billing_option: string; _club_id: string }
         Returns: string

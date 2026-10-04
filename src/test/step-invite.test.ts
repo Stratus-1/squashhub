@@ -39,7 +39,7 @@ describe("planInviteRows", () => {
   it("new members get insert rows; already-invited members are skipped", () => {
     const plan = planInviteRows({
       memberIds: ["a", "b"],
-      existing: [{ id: "r1", club_member_id: "b", status: "invited" }],
+      existing: [{ club_member_id: "b", status: "invited" }],
       feeCents: 0, paymentRequired: false,
     });
     expect(plan.insert).toEqual(["a"]);
@@ -50,7 +50,7 @@ describe("planInviteRows", () => {
   it("declined/cancelled members are re-invited, clearing their decline", () => {
     const plan = planInviteRows({
       memberIds: ["a"],
-      existing: [{ id: "r1", club_member_id: "a", status: "declined", declined_at: "2026-01-01" }],
+      existing: [{ club_member_id: "a", status: "declined", declined_at: "2026-01-01" }],
       feeCents: 0, paymentRequired: false,
     });
     expect(plan.reopen).toEqual(["a"]);
@@ -61,8 +61,8 @@ describe("planInviteRows", () => {
     const plan = planInviteRows({
       memberIds: ["a", "b"],
       existing: [
-        { id: "r1", club_member_id: "a", status: "paid", confirmed_at: "2026-01-01" },
-        { id: "r2", club_member_id: "b", status: "waived", paid_at: "2026-01-01" },
+        { club_member_id: "a", status: "paid", confirmed_at: "2026-01-01" },
+        { club_member_id: "b", status: "waived", paid_at: "2026-01-01" },
       ],
       feeCents: 15000, paymentRequired: true,
     });

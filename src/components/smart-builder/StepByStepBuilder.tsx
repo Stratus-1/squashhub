@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
@@ -240,6 +241,13 @@ const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles"
 
 const fmtDay = (d: string) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "No date";
+
+// Splits a date into a long weekday ("Friday") and "9 October" for the framed day header.
+const dayParts = (d: string) => {
+  if (!d) return { wd: "No date", rest: "" };
+  const dt = new Date(d + "T00:00:00");
+  return { wd: dt.toLocaleDateString(undefined, { weekday: "long" }), rest: dt.toLocaleDateString(undefined, { day: "numeric", month: "long" }) };
+};
 
 export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, tournamentId }: { clubId: string; clubName?: string; onCompleted?: (tournamentId: string) => void; initialStep?: StepKey;
   /** Editing an existing tournament's setup. Absent = a NEW tournament (the club's unfinished draft only, never an existing tournament). */
@@ -1337,24 +1345,34 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <Q t="Where and when are courts available?" h="Each day can be different — e.g. Friday evening only, Saturday all day." />
               <div className="space-y-3">
                 {a.days.map((d, i) => (
-                  <div key={i} className="space-y-2 rounded-lg border border-border p-3">
-                    <div className="text-sm font-semibold">{fmtDay(d.date)}</div>
-                    <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
-                      <div className="space-y-1"><Label>Venue / club</Label><Input value={d.venue} onChange={(e) => updDay(i, { venue: e.target.value })} placeholder="e.g. Riverside Squash Club" /></div>
-                      <div className="space-y-1"><Label>Courts</Label><div className="flex h-9 items-center rounded-md border border-border bg-muted/50 px-3 text-sm font-semibold" aria-live="polite">{d.courtIds?.length ? d.courtIds.length : "—"}</div><p className="text-xs text-muted-foreground">Set by clicking the courts below.</p></div>
+                  <div key={i} className="space-y-3 rounded-lg border border-border p-3">
+                    <div className="flex items-center gap-3 rounded-md border-l-4 border-l-primary bg-muted/40 px-4 py-2.5">
+                      <CalendarDays className="h-6 w-6 shrink-0 text-primary" />
+                      <div className="leading-tight">
+                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{dayParts(d.date).wd}</div>
+                        <div className="text-xl font-bold">{dayParts(d.date).rest || "No date"}</div>
+                      </div>
+                      <div className="ml-auto text-right">
+                        <div className="text-lg font-bold leading-tight" aria-live="polite">{d.courtIds?.length ? d.courtIds.length : "—"}</div>
+                        <div className="text-xs text-muted-foreground">courts selected</div>
+                      </div>
                     </div>
+                    <div className="space-y-1"><Label>Venue / club</Label><Input value={d.venue} onChange={(e) => updDay(i, { venue: e.target.value })} placeholder="e.g. Riverside Squash Club" /></div>
                     {clubCourts.length > 0 && (
                       <div className="space-y-1">
                         <Label>Which of your club's courts? (optional)</Label>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-x-5 gap-y-2 py-1">
                           {clubCourts.map((c) => {
                             const on = d.courtIds?.includes(c.id);
                             return (
-                              <button key={c.id} type="button" aria-pressed={!!on}
-                                onClick={() => { const ids = on ? (d.courtIds ?? []).filter((x) => x !== c.id) : [...(d.courtIds ?? []), c.id]; updDay(i, { courtIds: ids, courts: String(ids.length) }); }}
-                                 className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition-colors", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground hover:border-primary/50")}>
-                                {c.name}
-                              </button>
+                              <label key={c.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                                <Checkbox
+                                  checked={!!on}
+                                  aria-label={c.name}
+                                  onCheckedChange={() => { const ids = on ? (d.courtIds ?? []).filter((x) => x !== c.id) : [...(d.courtIds ?? []), c.id]; updDay(i, { courtIds: ids, courts: String(ids.length) }); }}
+                                />
+                                <span className={cn(on && "font-medium")}>{c.name}</span>
+                              </label>
                             );
                           })}
                         </div>

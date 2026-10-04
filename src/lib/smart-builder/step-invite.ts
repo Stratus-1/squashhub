@@ -182,6 +182,7 @@ export async function sendInvites(i: {
         club_member_id: memberId,
         status,
         invited_by_admin: true,
+        invited_at: new Date().toISOString(),
         fee_paid_cents: 0,
       })),
       { onConflict: "champ_id,club_member_id", ignoreDuplicates: true } as any,
@@ -190,11 +191,24 @@ export async function sendInvites(i: {
   }
   if (plan.reopen.length) {
     const { error } = await fromExt("club_champs_registrations")
-      .update({ status, declined_at: null, confirmed_at: null, confirmed_by: null, confirmation_source: null })
+      .update({ status, declined_at: null, confirmed_at: null, confirmed_by: null, confirmation_source: null, invited_at: new Date().toISOString() })
       .eq("champ_id", i.tournamentId)
       .in("club_member_id", plan.reopen)
       .in("status", ["cancelled", "declined"]);
     if (error) throw error;
+  }
+  // Anyone being (re)sent an invite counts as invited — this is what lets
+  // them be picked as a doubles partner.
+  {
+    const ids = [...plan.insert, ...plan.reopen, ...plan.reopenUnanswered];
+    if (ids.length) {
+      const { error } = await fromExt("club_champs_registrations")
+        .update({ invited_at: new Date().toISOString() })
+        .eq("champ_id", i.tournamentId)
+        .in("club_member_id", ids)
+        .is("invited_at", null);
+      if (error) throw error;
+    }
   }
   if (plan.reopenUnanswered.length) {
     const { error } = await fromExt("club_champs_registrations")

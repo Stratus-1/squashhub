@@ -16,7 +16,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { unitKeyOf } from "@/lib/smart-builder/step-draw";
+import { unitKeyOf, partnerIn, type RegLite } from "@/lib/smart-builder/step-draw";
 import { capacityMessage, findStep, isCentrallyScheduled, loadPlanSteps, planStageFromDb, scheduleFormalStage } from "@/lib/tournaments/formal-stage-schedule";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import {

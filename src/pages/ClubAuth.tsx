@@ -1380,6 +1380,17 @@ export default function ClubAuth() {
                       <GoogleAuthDivider text="or register with email and password" />
                     </div>
                   )}
+                  {existingStatus === "already_linked" && (
+                    <div role="status" data-testid="existing-account-panel" className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                      <p className="text-[13px] font-semibold">This email is already linked to a SquashHub account.</p>
+                      <p className="text-[12px] text-muted-foreground">You don't need to register again — sign in to your existing account.</p>
+                      {!hideGoogleAuth && <GoogleSignInButton label="Sign in with Google" showHint={false} />}
+                      <div className="flex gap-2">
+                        <Button type="button" className="flex-1" onClick={() => { setLoginEmail(existingEmail.trim()); setActiveTab("login"); }}>Sign in</Button>
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => { setResetEmail(existingEmail.trim()); setShowReset(true); }}>Reset password</Button>
+                      </div>
+                    </div>
+                  )}
                   <form onSubmit={handleExistingMemberSignup} className="space-y-3">
                     <div>
                       <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>

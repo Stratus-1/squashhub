@@ -54,9 +54,9 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
 
   // Header band
   doc.setFillColor(...NAVY);
-  doc.rect(0, 0, W, 62, "F");
+  doc.rect(0, 0, W, 58, "F");
   doc.setFillColor(...AMBER);
-  doc.rect(0, 62, W, 2.5, "F");
+  doc.rect(0, 58, W, 2.5, "F");
 
   let textX = M;
   if (o.logoDataUrl) {
@@ -79,8 +79,8 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
   doc.text("Bar usage", textX, nameLines.length > 1 ? 50 : 42);
 
   // QR
-  const qrSize = 100;
-  const qrX = (W - qrSize) / 2, qrY = 74;
+  const qrSize = 88;
+  const qrX = (W - qrSize) / 2, qrY = 70;
   doc.setDrawColor(...NAVY);
   doc.setLineWidth(1.2);
   doc.roundedRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 4, 4, "S");

@@ -131,7 +131,12 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   const acceptsCard = paymentMethods.includes("card");
   const acceptsEft = paymentMethods.includes("eft");
   const yocoReady = acceptsCard && clubInfo?.payment_gateway === "yoco";
-  const status = String(registration?.status || "");
+  // A fee charged to the member account (or otherwise settled) counts as entered,
+  // even if the row's status still says pending_payment.
+  const feeSettled = ["account", "card", "eft", "cash"].includes(String((registration as any)?.fee_settled_via || ""))
+    || ["paid", "on_account", "waived"].includes(String((registration as any)?.fee_status || ""));
+  const rawStatus = String(registration?.status || "");
+  const status = feeSettled && (rawStatus === "pending_payment" || rawStatus === "pending_eft") ? "registered" : rawStatus;
   // Acceptance is an explicit user action (confirmed_at set via RSVP). Admin
   // pre-marking someone as Paid must NOT flip the invite to Accepted.
   const hasRsvp = !!registration?.confirmed_at;

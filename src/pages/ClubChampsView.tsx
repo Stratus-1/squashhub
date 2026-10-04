@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CollapsibleCard, CollapsibleSection } from "@/components/ui/collapsible-card";
+import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
+
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Settings2 } from "lucide-react";
@@ -215,6 +217,25 @@ export default function ClubChampsView() {
     },
     enabled: !!champ?.club_id,
   });
+
+  // Sections on this page open by default only when the club runs a single
+  // current tournament; with several championships/leagues running, they stay
+  // collapsed so the page stays navigable (uses the shared lifecycle rules).
+  const { data: clubChampLifecycle = [] } = useQuery({
+    queryKey: ["club-champs-lifecycle-count", champ?.club_id],
+    queryFn: async () => {
+      const { data } = await fromExt("club_champs")
+        .select("id,status,start_date,end_date")
+        .eq("club_id", champ!.club_id!);
+      return (data || []) as { id?: string; status?: string | null; start_date?: string | null; end_date?: string | null }[];
+    },
+    enabled: !!champ?.club_id,
+  });
+  const singleCurrentTournament = useMemo(() => {
+    const { current } = splitTournamentsByLifecycle(clubChampLifecycle);
+    return current.length === 1 && current[0].id === champId;
+  }, [clubChampLifecycle, champId]);
+
 
   const { data: registrations = [] } = useQuery({
     queryKey: ["club-champ-registrations", champId],

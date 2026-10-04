@@ -32,7 +32,7 @@ const ACTIONS: Record<string, { defaultLabel: string; path: (p: any) => string; 
   ladder: { defaultLabel: "View the ladder", path: () => "/ladder" },
   notifications: { defaultLabel: "Open notifications", path: () => "/notifications" },
   club_landing: { defaultLabel: "Visit our club page", path: () => "/" },
-  register_existing_member: { defaultLabel: "Register as an existing member", path: () => "/auth?intent=existing" },
+  register_existing_member: { defaultLabel: "Activate my SquashHub account", path: () => "/activate" },
   external: { defaultLabel: "Open link", path: (p) => String(p.url ?? ""), external: true },
 };
 

@@ -169,6 +169,13 @@
       "when": 1791100297090,
       "tag": "0023_existing_member_signup_status",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791101051296,
+      "tag": "0024_member_activation_invites",
+      "breakpoints": true
     }
   ]
 }

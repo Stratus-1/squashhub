@@ -12,13 +12,15 @@ interface Props {
   preserveClub?: boolean;
   /** Explain that an existing membership is matched by its club-held email. */
   showHint?: boolean;
+  /** Same-origin path to return to after Google sign-in (e.g. "/activate"). */
+  redirectPath?: string;
 }
 
 export function isGoogleAuthDisabled(): boolean {
   return String(import.meta.env.VITE_DISABLE_GOOGLE_AUTH || "").toLowerCase() === "true";
 }
 
-export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true, showHint = true }: Props) {
+export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true, showHint = true, redirectPath }: Props) {
   if (isGoogleAuthDisabled()) return null;
 
   const [loading, setLoading] = useState(false);
@@ -33,6 +35,7 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
       const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
       if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
       if (sub) callback.searchParams.set("club", sub);
+      if (redirectPath?.startsWith("/") && !redirectPath.startsWith("//")) callback.searchParams.set("redirectTo", redirectPath);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",

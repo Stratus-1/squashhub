@@ -10392,6 +10392,63 @@ export type Database = {
           },
         ]
       }
+      member_activation_invites: {
+        Row: {
+          campaign_id: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          issued_by: string | null
+          revoked_at: string | null
+          token_hash: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          issued_by?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issued_by?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_activation_invites_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_activation_invites_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_association_affiliations: {
         Row: {
           active: boolean
@@ -17533,6 +17590,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_member_activation: { Args: { _token: string }; Returns: Json }
       claim_member_by_league_number: {
         Args: {
           _club_id?: string
@@ -18299,6 +18357,15 @@ export type Database = {
       }
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
       is_rankable_member: { Args: { _member_id: string }; Returns: boolean }
+      issue_member_activation_token: {
+        Args: {
+          _campaign_id?: string
+          _club_member_id: string
+          _days?: number
+          _issued_by?: string
+        }
+        Returns: string
+      }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
       join_club_event: {
         Args: { _club_member_id: string; _event_id: string }
@@ -18962,6 +19029,7 @@ export type Database = {
         Returns: string
       }
       resolve_invite_short_code: { Args: { p_code: string }; Returns: string }
+      resolve_member_activation: { Args: { _token: string }; Returns: Json }
       resolve_qr_short_code: { Args: { _code: string }; Returns: Json }
       respond_doubles_pair: {
         Args: {
@@ -19631,6 +19699,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      welcome_template_email_body: { Args: never; Returns: string }
       whatsapp_rate: {
         Args: { _category?: string; _club_id: string }
         Returns: number

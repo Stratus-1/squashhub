@@ -337,6 +337,12 @@ export function CommsCampaignWizard({
               return (
                 <TabsContent key={c} value={c} className="mt-3">
                   <div className="rounded border border-border p-3 space-y-2">
+                    {resolved.key === "register_existing_member" && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Preview shows a SAMPLE link. On sending, each member without a login gets their own single-use
+                        activation link (valid 14 days); members who already have a login get the sign-in page.
+                      </p>
+                    )}
                     {c !== "whatsapp" && <p className="text-sm font-semibold">{rendered.subject}</p>}
                     {c === "email" ? (
                       <div

@@ -44,6 +44,7 @@ const EventDetail = lazy(() => import("./pages/EventDetail"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ActivateAccount = lazy(() => import("./pages/ActivateAccount"));
 const SetPassword = lazy(() => import("./pages/SetPassword"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const PayReturn = lazy(() => import("./pages/PayReturn"));
@@ -518,6 +519,7 @@ function AppRoutes() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/mobile-billing" element={<MobileBillingBridge />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/activate" element={<ActivateAccount />} />
         <Route path="/set-password" element={<SetPassword />} />
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
         <Route path="/pay/stitch" element={<ProtectedRoute><StitchPaymentBridge /></ProtectedRoute>} />

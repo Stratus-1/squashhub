@@ -10,7 +10,7 @@
 // Only the ticked channels are ever used. Every recipient/channel attempt is
 // written to comms_deliveries (the delivery log) and is idempotent.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-import { renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
+import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,6 +124,16 @@ async function mergeVarsFor(member: any, club: any, leagueId: string | null) {
     action_label: "",
     action_url: "",
   } as Record<string, string>;
+}
+
+async function personalOnboardingAction(action: any, m: any, subdomain: string | null | undefined, campaignId: string) {
+  const base = clubWebBase(subdomain);
+  if (m.user_id) return { ...action, appPath: "/auth", webUrl: `${base}/auth` };
+  const { data: token, error } = await admin.rpc("issue_member_activation_token", {
+    _club_member_id: m.id, _campaign_id: campaignId, _issued_by: null, _days: 14,
+  });
+  if (error || !token) throw new Error("Could not create a personal activation link");
+  return { ...action, appPath: "/activate", webUrl: `${base}/activate?t=${encodeURIComponent(String(token))}` };
 }
 
 async function logDelivery(row: {
@@ -243,9 +253,28 @@ Deno.serve(async (req) => {
         if (/^[a-z_]{1,40}$/.test(k) && (typeof v === "string" || typeof v === "number")) vars[k] = String(v).slice(0, 4000);
       }
 
+      // Existing-member onboarding: every recipient gets their OWN link. Unclaimed
+      // members get a single-use personal activation code (only its hash is stored);
+      // members who already have a login get the plain sign-in page. Other actions
+      // keep the shared club URL unchanged.
+      let recipientAction = action;
+      if (action.key === "register_existing_member" && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) {
+        try {
+          recipientAction = await personalOnboardingAction(action, m, club?.subdomain, campaignId);
+        } catch (err) {
+          for (const ch of channels) {
+            if (alreadySent.has(`${m.id}:${ch}`)) continue;
+            failed++;
+            await logDelivery({ campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id, channel: ch,
+              recipient_name: m.name ?? null, target: null, status: "failed", error_message: String((err as Error)?.message || err).slice(0, 500) });
+          }
+          continue;
+        }
+      }
+
       for (const ch of channels) {
         if (alreadySent.has(`${m.id}:${ch}`)) { sent++; continue; }
-        const rendered = renderChannel(ch, content[ch] ?? {}, vars, action);
+        const rendered = renderChannel(ch, content[ch] ?? {}, vars, recipientAction);
         const base = {
           campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id,
           channel: ch, recipient_name: m.name ?? null,
@@ -329,8 +358,8 @@ Deno.serve(async (req) => {
                 campaign_id: campaignId,
                 action_key: action.key,
                 action_label: action.label,
-                action_url: action.webUrl,
-                app_path: action.appPath,
+                action_url: recipientAction.webUrl,
+                app_path: recipientAction.appPath,
                 // Per-recipient buttons (e.g. Pay now, Join WhatsApp group) from member_vars.
                 actions: (() => {
                   const mv = (memberVars[m.id] ?? {}) as Record<string, unknown>;

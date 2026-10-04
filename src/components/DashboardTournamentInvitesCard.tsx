@@ -18,7 +18,7 @@ export function DashboardTournamentInvitesCard() {
     queryFn: async () => {
       if (memberIds.length === 0) return [];
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, champ_id, status, partner_confirmed, invited_by_admin, invited_at, champ:champ_id(id, name, status)")
+        .select("id, champ_id, status, fee_status, fee_settled_via, partner_confirmed, invited_by_admin, invited_at, champ:champ_id(id, name, status)")
         .in("club_member_id", memberIds)
         .eq("invited_by_admin", true)
         // Only invitations the organiser actually sent — a prepared audience
@@ -30,6 +30,9 @@ export function DashboardTournamentInvitesCard() {
         const champStatus = String(r?.champ?.status || "").toLowerCase();
         if (["completed", "cancelled", "archived"].includes(champStatus)) return false;
         const s = String(r.status || "").toLowerCase();
+        // Fee already charged to account / paid → entered, nothing left to do.
+        if (["account", "card", "eft", "cash"].includes(String(r.fee_settled_via || ""))) return false;
+        if (["paid", "on_account", "waived"].includes(String(r.fee_status || ""))) return false;
         // Awaiting reply: still in invited / pending_payment state
         return ["invited", "pending", "pending_payment"].includes(s);
       });

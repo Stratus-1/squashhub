@@ -542,7 +542,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   ].join("\n\n") : [
     "Hi {{first_name}},",
     "You are invited to enter {{tournament_name}} at {{club_name}}.",
-    "You can enter: {{categories}}.",
+    "Categories in this tournament are: {{categories}}.",
     "Enter here: {{entry_link}}",
     "Entries close: {{closing_date}}",
     a.kind === "period" ? "Championship dates: {{dates}}" : "Tournament days: {{dates}}",

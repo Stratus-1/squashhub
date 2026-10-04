@@ -1,3 +1,6 @@
+### 2026-10-04 — Tournament invitation implied all listed events were eligible
+- The Step-by-Step invitation's default "You can enter" listed every tournament event, including categories the recipient could not enter. New invitations describe them as tournament categories; older saved invitations get the same neutral wording at personalisation time. Links, audience, eligibility and tournament data are unchanged. Focused wording tests cover saved messages and email rendering. Preview only.
+
 ### 2026-10-03 — Player-booked knockout court slots mistaken for fixed organiser sessions
 - Cause: a saved date and time alone classified a fixture as centrally scheduled, hiding participant Reschedule and its round deadline even when the players made the booking.
 - Fix: structured fixed-stage rules remain authoritative; legacy organiser slots require club scheduling mode and no linked player booking. Player-booked slots continue to resolve the fixture's own round/play-off deadline and retain participant rescheduling. No existing bookings or match data changed; focused schedule and permission tests cover both paths.

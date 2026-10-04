@@ -47,3 +47,6 @@
 - [x] Fix partner share missing from total (R250)
 - [x] Invite page offers the tournament's payment methods (card / EFT / member account / cash) the club accepts
 - [x] Fees step already lists every method the club allows (Club Admin → Banking)
+## Invite payment: POP upload + change method
+- EFT option on invite: bank details + required POP upload (reuse EftPaymentPanel/payment-proofs)
+- Allow changing payment method after choosing (eft/account/cash/card)

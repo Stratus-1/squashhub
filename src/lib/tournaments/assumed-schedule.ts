@@ -11,6 +11,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { bellsSlotMinutes, planDays, type TimedDay } from "./formal-stage-schedule";
 import { provisionalPlayoffs } from "./provisional-playoffs";
+import { adoptPlaceholderRows } from "@/lib/smart-builder/playoff-placeholders";
 
 /** pace: "fast" = start early and finish as soon as possible; "spread" = spread qualifying rounds over the period.
  *  playoffStart: "after" = gap minutes after the unit's last qualifying game; "fixed" = not before date + time. */
@@ -329,11 +330,13 @@ export function adoptionPlan(champId: string, holds: ProvisionalHold[], rows: Ad
  * admin should look at (the slot is still kept — players are the engine's authoritative qualifiers).
  */
 export async function adoptProvisionalSlots(champId: string): Promise<{ adopted: number; clashes: string[] }> {
+  // Provisional play-off FIXTURES (placeholders) hand their slot to the real stage games first.
+  const fromRows = await adoptPlaceholderRows(champId).catch(() => 0);
   const { data: t } = await fromExt("tournaments").select("club_id, group_labels").eq("id", champId).maybeSingle();
-  const clubId = (t as any)?.club_id; if (!clubId) return { adopted: 0, clashes: [] };
+  const clubId = (t as any)?.club_id; if (!clubId) return { adopted: fromRows, clashes: [] };
   const { data: hb } = await fromExt("bookings").select("id, external_id, date, start_time, court_id").eq("club_id", clubId).eq("source", "club_event").eq("status", "active").like("external_id", `${provisionalPrefix(champId)}%`);
   const holds: ProvisionalHold[] = ((hb ?? []) as any[]).map((b) => ({ id: b.id, externalId: b.external_id, date: String(b.date).slice(0, 10), start: String(b.start_time).slice(0, 5), courtId: Number(b.court_id) }));
-  if (!holds.length) return { adopted: 0, clashes: [] };
+  if (!holds.length) return { adopted: fromRows, clashes: [] };
   const { data: ms } = await fromExt("club_champs_matches").select("id, group_number, stage, stage_label, bracket_position, round_number, created_at, scheduled_date, scheduled_time, winner_member_id, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId);
   const labels: Record<string, string> = ((t as any)?.group_labels ?? {}) as any;
   const all = (ms ?? []) as any[];
@@ -353,5 +356,5 @@ export async function adoptProvisionalSlots(champId: string): Promise<{ adopted:
     if (who.length && all.some((m) => m.id !== p.rowId && String(m.scheduled_date ?? "").slice(0, 10) === p.hold.date && String(m.scheduled_time ?? "").slice(0, 5) === p.hold.start && ppl(m).some((x) => who.includes(x))))
       clashes.push(`${me?.stage_label ?? "Play-off game"} on ${p.hold.date} ${p.hold.start}: a player is already in another game at that time.`);
   }
-  return { adopted: plan.length, clashes };
+  return { adopted: plan.length + fromRows, clashes };
 }

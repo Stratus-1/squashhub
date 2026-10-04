@@ -29,6 +29,38 @@ describe("personaliseInvite", () => {
   });
 });
 
+/* ── email body: entry link becomes a button ── */
+describe("personaliseInviteEmailHtml", () => {
+  const tpl = "Hi there,\n\nYou are invited to Open S D at CSIR.\n\nEnter here: [entry link added when the tournament is created]\n\nRegards";
+  const link = "https://csi.squashhub.co.za/i/abc";
+
+  it("replaces the raw entry-link line with the Enter here button", () => {
+    const html = personaliseInviteEmailHtml(tpl, "Albert Smith", link);
+    expect(html).toContain(emailEntryButton(link, "Enter here"));
+    expect(html).toContain("Enter here:");
+    expect(html).not.toContain(link.replace(/&/g, "&amp;"));
+    expect(html).not.toMatch(/Enter here:[^<]*https:/);
+  });
+
+  it("keeps the rest of the message as paragraphs", () => {
+    const html = personaliseInviteEmailHtml(tpl, "Ben", link);
+    expect(html).toContain("You are invited to Open S D at CSIR.");
+    expect(html).toContain("Regards");
+    expect(html).toContain("Hi Ben,");
+  });
+
+  it("button links to the recipient's personal link", () => {
+    const html = personaliseInviteEmailHtml(tpl, "Cara", link);
+    expect(html).toContain(`href="${link}"`);
+  });
+
+  it("escapes message text but keeps the button markup", () => {
+    const html = personaliseInviteEmailHtml("A<b>", "Dan", link);
+    expect(html).toContain("A&lt;b&gt;");
+    expect(html).toContain("v:roundrect");
+  });
+});
+
 /* ── inviteRowStatus / planInviteRows ── */
 describe("planInviteRows", () => {
   it("fee + pay-first tournaments invite as pending_payment", () => {

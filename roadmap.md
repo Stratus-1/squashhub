@@ -48,5 +48,5 @@
 - [x] Invite page offers the tournament's payment methods (card / EFT / member account / cash) the club accepts
 - [x] Fees step already lists every method the club allows (Club Admin → Banking)
 ## Invite payment: POP upload + change method
-- EFT option on invite: bank details + required POP upload (reuse EftPaymentPanel/payment-proofs)
-- Allow changing payment method after choosing (eft/account/cash/card)
+- [x] EFT option on invite: bank details + required POP upload (invite-upload-proof fn, payment-proofs)
+- [x] Change payment method until money moved (invite_change_payment_method RPC)

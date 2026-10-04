@@ -46,7 +46,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
   const [managing, setManaging] = useState<string | null>(() => searchParams.get("manage"));
   const [picker, setPicker] = useState<"mine" | "prebuilt" | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | "draft" | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<"draft" | null>(null);
   const navigate = useNavigate();
   const [diamondOpen, setDiamondOpen] = useState(false);
 
@@ -169,25 +169,18 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
       <AlertDialog open={removeTarget !== null} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{removeTarget === "draft" ? "Remove unfinished draft?" : "Remove this builder card?"}</AlertDialogTitle>
+            <AlertDialogTitle>Remove unfinished draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              {removeTarget === "draft"
-                ? "This deletes only the unfinished setup saved on this device. No tournament will be deleted."
-                : `This removes the Step-by-Step build for ${removeTarget?.name ?? "this tournament"} from this device. The real tournament, its fixtures, results and history will NOT be deleted. To delete the tournament itself, use the separate Delete tournament action in tournament management.`}
+              This deletes only the unfinished setup saved on this device. No tournament will be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              if (removeTarget === "draft") clearDraft(clubId);
-              else if (removeTarget) {
-                removeHandover(clubId, removeTarget.id);
-                clearTournamentPlan(removeTarget.id);
-                setHandovers(loadHandovers(clubId));
-              }
+              clearDraft(clubId);
               setRemoveTarget(null);
               setBuilderKey((k) => k + 1);
-            }}>{removeTarget === "draft" ? "Remove draft" : "Remove builder card only"}</AlertDialogAction>
+            }}>Remove draft</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

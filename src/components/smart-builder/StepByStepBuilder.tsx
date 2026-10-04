@@ -22,7 +22,7 @@ import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
 import { ConflictPanel } from "./ConflictPanel";
 import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
-import { SaveAsTemplateButton } from "./StepTemplates";
+import { SaveAsTemplateButton, TemplateReviewBanner } from "./StepTemplates";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -841,6 +841,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
       <div className="space-y-4">
+        {!tournamentId && <TemplateReviewBanner clubId={clubId} />}
         {/* progress */}
         <ol className="flex flex-wrap gap-1.5">
           {steps.map((s, i) => (

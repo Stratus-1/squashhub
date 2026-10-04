@@ -1,3 +1,6 @@
+### 2026-10-04 — Saved club championship template appeared empty on opening
+- CSIR's saved template contains three categories, league eligibility, a pools format and seven ordered stages. The builder opened on Basics, where the intentionally blank new-event name/start date obscured that saved structure. My templates now opens the copied plan on Summary and displays the template review checklist; it never changes the master or creates a tournament. New templates also clear entry-window dates for review. Tested structural round-trip in the landing suite; no club data changed.
+
 ### 2026-10-04 — Tournament invitation implied all listed events were eligible
 - The Step-by-Step invitation's default "You can enter" listed every tournament event, including categories the recipient could not enter. New invitations describe them as tournament categories; older saved invitations get the same neutral wording at personalisation time. Links, audience, eligibility and tournament data are unchanged. Focused wording tests cover saved messages and email rendering. Preview only.
 

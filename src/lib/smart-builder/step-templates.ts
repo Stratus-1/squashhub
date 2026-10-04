@@ -16,7 +16,7 @@ export type StepTemplate = { v: number; answers: Partial<StepAnswers> };
 /** Fields the organiser must review for the new event (shown as a checklist). */
 export const REVIEW_FIELDS = [
   "Tournament name",
-  "Dates",
+  "Dates and entry window",
   "Days, venues & courts",
   "Expected entries",
   "Picked players & pairs",
@@ -37,6 +37,8 @@ export function toStepTemplate(a: StepAnswers): StepTemplate {
   c.periodStart = "";
   c.periodEnd = "";
   c.syncCutoff = "";
+  c.entriesOpen = "";
+  c.entriesClose = "";
   c.entries = "";
   c.unitEntries = {};
   c.days = [];
@@ -55,6 +57,9 @@ export function toStepTemplate(a: StepAnswers): StepTemplate {
 export function fromStepTemplate(t: StepTemplate): Partial<StepAnswers> {
   const c = clone(t.answers) as Partial<StepAnswers>;
   delete c.createdTournamentId;
+  // Older saved definitions may contain event-specific registration dates.
+  c.entriesOpen = "";
+  c.entriesClose = "";
   c.planId = rid();
   c.stages = (c.stages ?? []).map((s) => ({ ...s, id: rid() }));
   return c;

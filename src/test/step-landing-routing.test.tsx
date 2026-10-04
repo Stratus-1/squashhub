@@ -88,6 +88,31 @@ describe("Tournament landing: creation choices only; management lives on the nor
     expect(toStepTemplate({ ...rivPlan } as any)).toEqual(def);
   });
 
+  it("retains categories, format, eligibility and ordered stages while clearing only event-specific details", () => {
+    const source = {
+      kind: "period", name: "CSIR CC", createdTournamentId: "tid", planId: "original",
+      categories: ["A", "B", "Ladies"], categoryTypes: { A: "mens", B: "mens", Ladies: "ladies" },
+      format: { kind: "pools" }, poolPlan: { A: { mode: "auto" } },
+      elig: { B: { mode: "leagues", leagueIds: ["league-7"] } },
+      entriesOpen: "2026-09-01", entriesClose: "2026-09-30",
+      periodStart: "2026-10-01", picks: { player: ["B"] },
+      stages: [
+        { id: "round", name: "Round 1", phase: "main", mode: "play_by", deadline: "2026-10-07", unit: "", courtIds: [] },
+        { id: "final", name: "Final", phase: "playoff", mode: "scheduled", date: "2026-10-30", from: "17:00", to: "20:00", courtIds: ["court"] },
+      ],
+    } as any;
+    const saved = toStepTemplate(source);
+    const restored = fromStepTemplate(saved);
+    expect(restored).toMatchObject({ categories: source.categories, categoryTypes: source.categoryTypes, format: source.format, poolPlan: source.poolPlan, elig: source.elig });
+    expect(restored.stages?.map((s) => [s.name, s.phase, s.mode])).toEqual([["Round 1", "main", "play_by"], ["Final", "playoff", "scheduled"]]);
+    expect(restored.stages?.[1].id).not.toBe("final");
+    expect(restored.stages?.[1].date).toBe("");
+    expect(restored.entriesOpen).toBe("");
+    expect(restored.entriesClose).toBe("");
+    expect(restored.createdTournamentId).toBeUndefined();
+    expect(source.stages[1].date).toBe("2026-10-30");
+  });
+
   it("removes an unfinished draft separately after confirmation", async () => {
     localStorage.setItem(draftKey("c1"), JSON.stringify({ kind: "once_off", name: "Test build" }));
     ui();

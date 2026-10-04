@@ -261,7 +261,8 @@ export function planTimedRounds(o: { rounds: TimedRound[]; days: TimedDay[]; min
  * bell slot (cap + changeover) and roll across the configured days. Capacity is reported only after
  * packing into every configured date/window/court. All-or-nothing.
  */
-export function planBellsWaves(o: { rounds: TimedRound[]; days: TimedDay[]; minutes: number; bufferMinutes?: number; busy?: Array<Busy & { date: string }>; players?: Record<string, string[]> }) {
+export function planBellsWaves(o: { rounds: TimedRound[]; days: TimedDay[]; minutes: number; bufferMinutes?: number; busy?: Array<Busy & { date: string }>; players?: Record<string, string[]>; standard?: boolean }) {
+  const slotWord = o.standard ? "court slot" : "bell slot";
   const step = Math.max(1, Number(o.minutes) || 0) + Math.max(0, o.bufferMinutes ?? 0);
   const days = [...o.days].filter((d) => d.courtIds.length && toMin(d.to) > toMin(d.from)).sort((a, b) => a.date.localeCompare(b.date) || toMin(a.from) - toMin(b.from));
   const queue = [...o.rounds].sort((a, b) => a.round - b.round).flatMap((r) => r.games.map((id) => ({ id, round: r.round })));
@@ -285,7 +286,7 @@ export function planBellsWaves(o: { rounds: TimedRound[]; days: TimedDay[]; minu
     }
   }
   if (!days.length) return { slots: [], issues: ["No fixed match date with a time window and courts is configured."], required, available: 0 };
-  const issues = queue.length ? [`${required} games need a bell slot but only ${required - queue.length} could be placed (${available} court slots: ${days.map((d) => `${d.date} ${d.from}–${d.to} on ${d.courtIds.length} court${d.courtIds.length === 1 ? "" : "s"}`).join("; ")}, ${step} min per bell, no player on two courts at once). ${queue.length} game${queue.length === 1 ? "" : "s"} left over.`] : [];
+  const issues = queue.length ? [`${required} games need a ${slotWord} but only ${required - queue.length} could be placed (${available} court slots: ${days.map((d) => `${d.date} ${d.from}–${d.to} on ${d.courtIds.length} court${d.courtIds.length === 1 ? "" : "s"}`).join("; ")}, ${step} min per ${o.standard ? "game" : "bell"}, no player on two courts at once). ${queue.length} game${queue.length === 1 ? "" : "s"} left over.`] : [];
   return { slots: issues.length ? [] : slots, issues, required, available };
 }
 
@@ -331,8 +332,8 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
   const fixed = ((spec?.divisions ?? []) as any[]).flatMap((d) => d.stages ?? []).filter((s: any) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
   const days = planDays(plan);
   const rulesMode = ([] as any[]).concat((t as any).rules ?? [])[0]?.scoring_mode;
-  const bells = plan?.scoring?.mode === "time_capped_points" || rulesMode === "time_capped_points";
-  const minutes = (bells ? bellsSlotMinutes(plan?.scoring) : null) ?? (Number((t as any).match_duration_minutes) || 30);
+  const fmt = resolveTimedFormat({ plan, labels: ((t as any).group_labels ?? {}) as Record<string, string>, rulesMode, matchMinutes: Number((t as any).match_duration_minutes) || null });
+  const { bells, minutes } = fmt;
   const entryGroup = new Map<string, number>();
   for (const e of (entries ?? []) as any[]) { entryGroup.set(e.club_member_id, Number(e.group_number)); if (e.partner_member_id) entryGroup.set(e.partner_member_id, Number(e.group_number)); }
   const dates = Array.from(new Set(days.map((d) => d.date)));
@@ -356,8 +357,32 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
   };
 }
 
-/** Preferences apply only where games pack into court-sized waves (Bells/time-capped, or waves enabled). */
-export const prefsApplicable = (ctx: Pick<TimedContext, "bells" | "waves">) => ctx.bells || ctx.waves;
+/**
+ * Play format for the timed planner, from the authoritative plan scoring (category/subcategory
+ * override → tournament default). The legacy `tournament_rules.scoring_mode` is only a fallback
+ * when the plan carries no scoring at all, so a tournament switched Bells → Standard never keeps
+ * stale Bells behaviour. `bells` = EVERY category plays Bells; Standard/mixed never use bell timing
+ * for Standard games (they use the Standard estimate / match duration).
+ */
+export function resolveTimedFormat(o: { plan: any; labels: Record<string, string>; rulesMode?: string | null; matchMinutes?: number | null }) {
+  const plan = o.plan ?? {};
+  const hasPlanScoring = !!plan.scoring || Object.keys(plan.scoringOverrides ?? {}).length > 0;
+  const keys = Object.values(o.labels ?? {}).filter(Boolean);
+  const resolve = (k: string) => (plan.scoringOverrides ?? {})[k] ?? (plan.scoringOverrides ?? {})[k.split("::")[0]] ?? plan.scoring ?? null;
+  const scorings = hasPlanScoring ? (keys.length ? keys.map(resolve) : [plan.scoring]) : [o.rulesMode === "time_capped_points" ? { mode: "time_capped_points" } : null];
+  const bellSlots = scorings.map((x) => bellsSlotMinutes(x));
+  const bellsFlags = scorings.map((x) => x?.mode === "time_capped_points");
+  const bells = bellsFlags.length > 0 && bellsFlags.every(Boolean);
+  const mixed = bellsFlags.some(Boolean) && !bells;
+  const sch = plan.scheduling ?? {};
+  const stdEst = Math.max(0, Number(sch.singles) || 0, Number(sch.doubles) || 0) || Number(o.matchMinutes) || 30;
+  const bellMax = Math.max(0, ...bellSlots.map((x) => Number(x) || 0));
+  const minutes = bells ? (bellMax || Number(o.matchMinutes) || 30) : mixed ? Math.max(stdEst, bellMax) : stdEst;
+  return { bells, mixed, minutes };
+}
+
+/** Preferences apply to every packed schedule (Bells waves and Standard court packing alike). */
+export const prefsApplicable = (_ctx: Pick<TimedContext, "bells" | "waves">) => true;
 
 /**
  * THE timed planner used by both the Generate Draw & Fixtures preview and the real allocation.
@@ -374,7 +399,10 @@ export function planTimedSchedule(ctx: Omit<TimedContext, "entryGroup" | "fixedS
   for (const g of sorted) byRound.set(g.round, [...(byRound.get(g.round) ?? []), g.id]);
   const rounds: TimedRound[] = [...byRound.entries()].map(([round, ids]) => ({ round, date: ctx.roundDates.length > 1 ? ctx.roundDates[round - 1] ?? null : null, games: ids }));
   const players = Object.fromEntries(sorted.map((g) => [g.id, g.people]));
-  const r = ctx.bells ? planBellsWaves({ rounds, days: ctx.days, minutes: ctx.minutes, busy, players }) : planTimedRounds({ rounds, days: ctx.days, minutes: ctx.minutes, busy, waves: ctx.waves, players });
+  // Bells packs rounds into bell waves; Standard packs games onto free courts at its own match
+  // length. Neither forces a whole round to start together ("same bell") — that lockstep rule
+  // previously leaked into Standard tournaments through planTimedRounds.
+  const r = planBellsWaves({ rounds, days: ctx.days, minutes: ctx.minutes, busy, players, standard: !ctx.bells });
   return { ...r, notes: [] as string[], backToBack: 0 };
 }
 

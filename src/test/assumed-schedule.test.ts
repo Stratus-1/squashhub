@@ -100,8 +100,8 @@ describe("whole-weekend play-off scenarios", () => {
     expect(r.issues).toEqual([]);
     const at = Object.fromEntries(r.slots.map((s) => [s.id, `${s.date} ${s.time}`]));
     expect(at.a.startsWith("2026-10-09")).toBe(true);
-    expect(at.qf1).toBe("2026-10-10 09:00"); expect(at.qf3).toBe("2026-10-10 10:00");
-    expect(at.sf1).toBe("2026-10-10 11:00"); expect(at.f).toBe("2026-10-10 12:00");
+    expect(at.qf1).toBe("2026-10-10 09:00"); expect(at.qf3).toBe("2026-10-10 09:45");
+    expect(at.sf1).toBe("2026-10-10 10:45"); expect(at.f).toBe("2026-10-10 11:45");
     expect(provisionalPlayoffs({ playoff: { choice: "playoffs", rounds: 3, pairing: "cross_pools" } }, "Men", 2)).toHaveLength(7);
   });
   it("compact finishes earlier than spread", () => {

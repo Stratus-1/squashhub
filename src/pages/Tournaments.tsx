@@ -58,6 +58,8 @@ import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 import { useHasPermission } from "@/hooks/use-club-permissions";
+import { AssignCourtsTimesButton } from "@/components/tournaments/AssignCourtsTimesButton";
+import { hasAssumptions, scheduleWithAssumptions } from "@/lib/tournaments/assumed-schedule";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -966,6 +968,14 @@ export default function Tournaments() {
                             try {
                               let booked = 0; const notes: string[] = [];
                               for (const id of champIdsHere) {
+                                // Weekend setups with Courts & Dates scheduling assumptions use that planner.
+                                if (await hasAssumptions(id)) {
+                                  const w = await scheduleWithAssumptions(id);
+                                  if (w.missing.length) { toast.error(`Courts & Dates is missing: ${w.missing.join(" ")}`, { action: { label: "Open Courts & Dates", onClick: () => navigate(`/club-admin?tab=champs&setup=${id}&step=Courts`) } }); continue; }
+                                  booked += w.scheduled; notes.push(...w.issues);
+                                  if (w.relaxed.length) notes.push(`${w.relaxed.length} game(s) needed less than the minimum rest.`);
+                                  continue;
+                                }
                                 const r = await schedulePlannedPlayoffGames(id);
                                 booked += r.booked; notes.push(...r.unplaced.map((u) => `${u.stage}: ${u.reason}`));
                                 for (const a of await allocateAllFixedStages(id)) { booked += a.scheduled; notes.push(...(a.issues ?? [])); }
@@ -1901,6 +1911,9 @@ export default function Tournaments() {
                         >
                           <Plus className="w-3.5 h-3.5" /> Add slot
                         </Button>
+                      )}
+                      {(isClubAdmin || canManageChamps) && champs.length > 0 && (
+                        <AssignCourtsTimesButton champs={(champFilter !== "all" ? champs.filter((c: any) => c.id === champFilter) : champs) as any} />
                       )}
                       {(isClubAdmin || canManageChamps) && champs.length > 0 && (
                         <WithdrawPlayerButton champs={champs} />

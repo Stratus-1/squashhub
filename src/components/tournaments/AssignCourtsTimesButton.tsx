@@ -33,7 +33,7 @@ export function AssignCourtsTimesButton({ champs: all, className }: { champs: Ch
     enabled: !!ids,
     queryFn: async () => {
       const { data } = await fromExt("tournaments").select("id, beta_lifecycle").in("id", ids.split(","));
-      return new Set(((data ?? []) as any[]).filter((t) => Array.isArray(t.beta_lifecycle?.format_plan?.days) && t.beta_lifecycle.format_plan.days.length && t.beta_lifecycle?.format_plan?.format?.kind !== undefined).map((t) => t.id as string));
+      return new Set(((data ?? []) as any[]).filter((t) => Array.isArray(t.beta_lifecycle?.format_plan?.days) && t.beta_lifecycle.format_plan.days.length).map((t) => t.id as string));
     },
   });
   const champs = all.filter((c) => eligible?.has(c.id));

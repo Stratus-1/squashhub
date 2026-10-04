@@ -171,9 +171,13 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
   }, [search, h.tournamentId, h.clubId, scope]);
 
   /* ── Audience resolution (fail-closed, tested rules) ── */
+  // Broad audiences follow the tournament gender; members the admin picks by
+  // name are always kept (events such as Mixed Doubles may suit them — event
+  // eligibility is still enforced when they enter).
   const pool = useMemo(
-    () => members.filter((m) => memberMatchesTournamentGender(m.gender, gender)),
-    [members, gender],
+    () => members.filter((m) =>
+      aud.individualIds.includes(m.id) || memberMatchesTournamentGender(m.gender, gender)),
+    [members, gender, aud.individualIds],
   );
   const trusted = useMemo(() => {
     const s = new Set<string>();

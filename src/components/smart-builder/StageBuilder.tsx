@@ -227,7 +227,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               </label>
             )}
             {sel0.kind === "cross_pool_league" && !sel0.sameSessionAs && (
-              <Q label="Session start time (each date)"><Input type="time" className={f} value={sel0.tieFormat?.startTime ?? ""} onChange={(e) => editStage((s) => { if (s.tieFormat) s.tieFormat.startTime = e.target.value || null; })} /></Q>
+              <Q label="Session start time (each date)"><Input type="time" step={300} className={f} value={sel0.tieFormat?.startTime ?? ""} onChange={(e) => editStage((s) => { if (s.tieFormat) s.tieFormat.startTime = e.target.value || null; })} /></Q>
             )}
             {prev && <Progression def={def} prev={prev} cur={sel0} editDiv={editDiv} />}
             {!prev && <div className="text-[11px] text-white/50">Stage 1 takes the entries.</div>}

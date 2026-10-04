@@ -301,7 +301,7 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2"><TournamentDatesDisplay def={def} /></div>
           <Field label="Day" tag="Optional"><select className={cn(sel, "w-full")} value={d.weekday ?? ""} onChange={(e) => setD({ weekday: e.target.value === "" ? null : Number(e.target.value) })}><option value="">Any</option>{DAYS.map((x, i) => <option key={x} value={i}>{x}</option>)}</select></Field>
-          <Field label="Start time" tag="Optional"><Input type="time" className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
+          <Field label="Start time" tag="Optional"><Input type="time" step={300} className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
           <VenuePicker def={def} field="defaults.venues" ids={(d as any).venueClubIds} names={d.venueNames} tag="Optional"
             onChange={(ids, names) => setD({ venueClubIds: ids, venueNames: names } as any)} />
           <CourtPoolSummary def={def} venueIds={(d as any).venueClubIds} />

@@ -350,7 +350,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
             <div>
               <Label>Start</Label>
               <Input
-                type="time"
+                type="time" step={300}
                 value={draft.start_time}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -365,7 +365,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
             <div>
               <Label>End</Label>
               <Input
-                type="time"
+                type="time" step={300}
                 value={draft.end_time}
                 onChange={(e) => {
                   const v = e.target.value;

@@ -340,7 +340,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
             <div>
               <Label className="text-xs">Default start time</Label>
               <Input
-                type="time"
+                type="time" step={300}
                 value={defaultStart}
                 onChange={(e) => setDefaultStart(e.target.value)}
                 className="h-9 mt-1 text-xs"
@@ -349,7 +349,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
             <div>
               <Label className="text-xs">Default end time</Label>
               <Input
-                type="time"
+                type="time" step={300}
                 value={defaultEnd}
                 onChange={(e) => setDefaultEnd(e.target.value)}
                 className="h-9 mt-1 text-xs"
@@ -419,7 +419,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
                         </div>
                         <div className="col-span-3 sm:col-span-2">
                           <Input
-                            type="time"
+                            type="time" step={300}
                             value={row.startTime}
                             onChange={(e) => updateRow(idx, { startTime: e.target.value })}
                             className="h-8 text-xs"
@@ -427,7 +427,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
                         </div>
                         <div className="col-span-3 sm:col-span-2">
                           <Input
-                            type="time"
+                            type="time" step={300}
                             value={row.endTime}
                             onChange={(e) => updateRow(idx, { endTime: e.target.value })}
                             className="h-8 text-xs"

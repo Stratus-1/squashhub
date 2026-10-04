@@ -1137,7 +1137,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                           <div className="space-y-1.5">
                             <Label>Turn on</Label>
                             <Input
-                              type="time"
+                              type="time" step={300}
                               value={form.schedule_on_time}
                               onChange={(e) => set("schedule_on_time", e.target.value)}
                             />
@@ -1145,7 +1145,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                           <div className="space-y-1.5">
                             <Label>Turn off</Label>
                             <Input
-                              type="time"
+                              type="time" step={300}
                               value={form.schedule_off_time}
                               onChange={(e) => set("schedule_off_time", e.target.value)}
                             />

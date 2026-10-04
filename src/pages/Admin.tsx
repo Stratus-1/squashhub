@@ -3149,7 +3149,7 @@ export default function Admin() {
               <div className="space-y-1.5">
                 <Label>Start time</Label>
                 <Input
-                  type="time"
+                  type="time" step={300}
                   value={schedule.startTime}
                   onChange={(e) => setSchedule((s) => ({ ...s, startTime: e.target.value }))}
                 />
@@ -3157,7 +3157,7 @@ export default function Admin() {
               <div className="space-y-1.5">
                 <Label>End time</Label>
                 <Input
-                  type="time"
+                  type="time" step={300}
                   value={schedule.endTime}
                   onChange={(e) => setSchedule((s) => ({ ...s, endTime: e.target.value }))}
                 />
@@ -3430,7 +3430,7 @@ export default function Admin() {
               <div className="space-y-1.5">
                 <Label>Start time</Label>
                 <Input
-                  type="time"
+                  type="time" step={300}
                   step={1800}
                   value={courtBlock.startTime}
                   onChange={(e) => setCourtBlock((s) => ({ ...s, startTime: e.target.value }))}
@@ -3439,7 +3439,7 @@ export default function Admin() {
               <div className="space-y-1.5">
                 <Label>End time</Label>
                 <Input
-                  type="time"
+                  type="time" step={300}
                   step={1800}
                   value={courtBlock.endTime}
                   onChange={(e) => setCourtBlock((s) => ({ ...s, endTime: e.target.value }))}

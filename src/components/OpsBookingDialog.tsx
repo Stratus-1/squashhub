@@ -209,7 +209,7 @@ export function OpsBookingDialog({
             </div>
             <div>
               <Label>Start</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <Input type="time" step={300} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
             <div>
               <Label>Duration</Label>

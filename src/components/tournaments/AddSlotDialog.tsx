@@ -141,7 +141,7 @@ export function AddSlotDialog({ open, onOpenChange, champs, allMatches, invalida
             </div>
             <div>
               <Label className="text-xs">Time</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-9 text-sm mt-1" />
+              <Input type="time" step={300} value={time} onChange={(e) => setTime(e.target.value)} className="h-9 text-sm mt-1" />
             </div>
           </div>
           <div>

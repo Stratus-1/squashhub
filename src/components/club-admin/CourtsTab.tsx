@@ -268,7 +268,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
               <div className="space-y-1">
                 <Label className="text-[11px] text-muted-foreground">First slot (courts open)</Label>
                 <Input
-                  type="time"
+                  type="time" step={300}
                   className="h-8 text-xs"
                   value={rulesForm.booking_open_time}
                   onChange={e => setRulesForm(p => ({ ...p, booking_open_time: e.target.value }))}
@@ -277,7 +277,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
               <div className="space-y-1">
                 <Label className="text-[11px] text-muted-foreground">Last slot starts</Label>
                 <Input
-                  type="time"
+                  type="time" step={300}
                   className="h-8 text-xs"
                   value={rulesForm.booking_last_slot_time}
                   onChange={e => setRulesForm(p => ({ ...p, booking_last_slot_time: e.target.value }))}
@@ -342,10 +342,10 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
               <div className="space-y-1 rounded-lg border p-2">
                 <Label className="text-[11px] font-semibold">Weekday (Mon–Fri)</Label>
                 <div className="flex items-center gap-1">
-                  <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekday_start}
+                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekday_start}
                     onChange={e => setRulesForm(p => ({ ...p, peak_weekday_start: e.target.value }))} />
                   <span className="text-[10px] text-muted-foreground">to</span>
-                  <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekday_end}
+                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekday_end}
                     onChange={e => setRulesForm(p => ({ ...p, peak_weekday_end: e.target.value }))} />
                 </div>
               </div>
@@ -353,10 +353,10 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
               <div className="space-y-1 rounded-lg border p-2">
                 <Label className="text-[11px] font-semibold">Weekend (Sat–Sun)</Label>
                 <div className="flex items-center gap-1">
-                  <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekend_start}
+                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekend_start}
                     onChange={e => setRulesForm(p => ({ ...p, peak_weekend_start: e.target.value }))} />
                   <span className="text-[10px] text-muted-foreground">to</span>
-                  <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekend_end}
+                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekend_end}
                     onChange={e => setRulesForm(p => ({ ...p, peak_weekend_end: e.target.value }))} />
                 </div>
               </div>

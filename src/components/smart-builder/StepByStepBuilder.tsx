@@ -616,8 +616,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       {s.mode === "scheduled" && <div className="space-y-2">
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1"><Label>Date</Label><Input type="date" aria-label="Scheduled date" value={s.date} onChange={(e) => updStage(s.id, { date: e.target.value })} /></div>
-          <div className="space-y-1"><Label>From</Label><Input type="time" aria-label="Session from" value={s.from} onChange={(e) => updStage(s.id, { from: e.target.value })} /></div>
-          <div className="space-y-1"><Label>To</Label><Input type="time" aria-label="Session to" value={s.to} onChange={(e) => updStage(s.id, { to: e.target.value })} /></div>
+          <div className="space-y-1"><Label>From</Label><Input type="time" step={300} aria-label="Session from" value={s.from} onChange={(e) => updStage(s.id, { from: e.target.value })} /></div>
+          <div className="space-y-1"><Label>To</Label><Input type="time" step={300} aria-label="Session to" value={s.to} onChange={(e) => updStage(s.id, { to: e.target.value })} /></div>
         </div>
         <Label>{s.phase === "playoff" && a.playoffSync === true && !s.unit ? "Courts reserved centrally for this date" : "Courts for this stage"}</Label>
         {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
@@ -1363,9 +1363,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     <Label>Times courts are free</Label>
                     {d.windows.map((w, k) => (
                       <div key={k} className="flex items-center gap-2">
-                        <Input type="time" className="max-w-[130px]" aria-label="From" value={w.from} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, from: e.target.value } : x)) })} />
+                        <Input type="time" step={300} className="max-w-[130px]" aria-label="From" value={w.from} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, from: e.target.value } : x)) })} />
                         <span className="text-xs text-muted-foreground">to</span>
-                        <Input type="time" className="max-w-[130px]" aria-label="To" value={w.to} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, to: e.target.value } : x)) })} />
+                        <Input type="time" step={300} className="max-w-[130px]" aria-label="To" value={w.to} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, to: e.target.value } : x)) })} />
                         <Button variant="ghost" size="icon" aria-label="Remove time" disabled={d.windows.length === 1} onClick={() => updDay(i, { windows: d.windows.filter((_, j) => j !== k) })}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}

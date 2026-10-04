@@ -25,6 +25,16 @@ export function CollapsibleCard({
   defaultOpen = true,
 }: CollapsibleCardProps) {
   const [open, setOpen] = useState(defaultOpen);
+  // defaultOpen can resolve late (e.g. an async count decides expansion) —
+  // follow the change so cards don't stay stuck collapsed. Manual toggles
+  // afterwards still win.
+  const prevDefault = useRef(defaultOpen);
+  useEffect(() => {
+    if (defaultOpen !== prevDefault.current) {
+      prevDefault.current = defaultOpen;
+      setOpen(defaultOpen);
+    }
+  }, [defaultOpen]);
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card className={className}>

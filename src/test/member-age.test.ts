@@ -12,6 +12,11 @@ describe("member age gate", () => {
     expect(resolveAge({ dob: "2008-10-03" }, now)).toBe(18);
     expect(resolveAge({ dob: "2008-10-04" }, now)).toBe(17);
   });
+  it("accepts a bare 6-digit YYMMDD birth date", () => {
+    expect(resolveAge({ idNumbers: ["800101"] }, now)).toBe(46);
+    expect(resolveAge({ idNumbers: ["101010"] }, now)).toBe(15);
+    expect(dobFromSaId("801332", now)).toBeNull();
+  });
   it("returns null for missing/invalid data, never underage", () => {
     expect(resolveAge({ idNumbers: [null, "123"] }, now)).toBeNull();
     expect(dobFromSaId("8013325009087", now)).toBeNull();

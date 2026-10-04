@@ -5,7 +5,8 @@
  */
 export function dobFromSaId(id: string | null | undefined, now = new Date()): Date | null {
   const digits = String(id ?? "").replace(/\D/g, "");
-  if (digits.length !== 13) return null;
+  // Accept a full 13-digit SA ID or a bare 6-digit YYMMDD birth date.
+  if (digits.length !== 13 && digits.length !== 6) return null;
   const yy = Number(digits.slice(0, 2)), mm = Number(digits.slice(2, 4)), dd = Number(digits.slice(4, 6));
   const curYY = now.getUTCFullYear() % 100;
   const year = (yy > curYY ? 1900 : 2000) + yy;

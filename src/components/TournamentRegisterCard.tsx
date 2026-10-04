@@ -1,3 +1,4 @@
+import { entryDueCents } from "@/lib/tournaments/entry-fee";
 import { PartnerFeeOptions, type PartnerPayScope } from "@/components/tournaments/PartnerFeeOptions";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -121,8 +122,10 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     toast.success("Bank details copied");
   };
 
-  const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
-  const paymentRequired = !!champ?.payment_required && entryFee > 0;
+  const eventFee = Number(champ?.entry_fee_cents || 0) / 100;
+  // Fee per event: an entry in several events owes the event fee once per event.
+  const entryFee = (entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
+  const paymentRequired = !!champ?.payment_required && eventFee > 0;
   const configuredMethods: string[] = Array.isArray(champ?.payment_methods) ? champ.payment_methods : [];
   const hasMethodConfig = configuredMethods.length > 0;
   const acceptsCard = configuredMethods.includes("card");
@@ -423,7 +426,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           </p>
           <p className="text-[11px] text-muted-foreground">
             {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
-            {entryFee > 0 && <> · {money(entryFee)} entry fee</>}
+            {eventFee > 0 && <> · {money(eventFee)} entry fee per event</>}
             {closesAt && <> · Closes {closesAt.toLocaleDateString()}</>}
           </p>
         </div>

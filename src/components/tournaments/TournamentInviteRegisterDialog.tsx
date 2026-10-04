@@ -1,3 +1,4 @@
+import { useChampEntrySummary } from "@/hooks/use-champ-entry-summary";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -316,6 +317,7 @@ export function TournamentInviteRegisterDialog({
     await refresh();
   };
 
+  const entrySummary = useChampEntrySummary(champ, registration, money);
   const choosePartner = useMutation({
     mutationFn: async () => {
       if (!partnerId) throw new Error("Pick a partner");

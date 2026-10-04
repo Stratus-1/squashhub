@@ -1,3 +1,4 @@
+import { useChampEntrySummary } from "@/hooks/use-champ-entry-summary";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
@@ -301,6 +302,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
     onError: (e: any) => toast.error(e.message || "Could not update invite"),
   });
 
+  const entrySummary = useChampEntrySummary(champ, registration, formatMoney);
   const detailRows = useMemo(() => {
     if (!champ) return [];
     const selfScheduled = String(champ.scheduling_mode || "") === "self";

@@ -21,6 +21,96 @@ export function activationState(inv: Invite | undefined, now = Date.now()) {
   return "open";
 }
 
+export function useActivationInvites(clubId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["activation-invites", clubId],
+    enabled: enabled && !!clubId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("member_activation_invites")
+        .select("club_member_id,created_at,expires_at,used_at,revoked_at")
+        .eq("club_id", clubId).order("created_at", { ascending: false }).limit(5000);
+      const latest: Record<string, Invite> = {};
+      for (const r of (data ?? []) as Invite[]) if (!latest[r.club_member_id]) latest[r.club_member_id] = r;
+      return latest;
+    },
+  });
+}
+
+/**
+ * Sends the club's standard "Welcome to SquashHub" email with a personal activation link per recipient.
+ * The server re-checks linked state per recipient and issues/rotates a unique token; tokens never reach the browser.
+ */
+export async function sendActivationEmails(clubId: string, members: Member[], ids: string[]) {
+  const chosen = members.filter((m) => ids.includes(m.id));
+  const linked = chosen.filter((m) => !!m.user_id).length;
+  const targets = chosen.filter((m) => isUnlinkedEligible(m) && hasUsableEmail(m));
+  const missing = chosen.filter((m) => !m.user_id && !hasUsableEmail(m)).length;
+  if (!targets.length) {
+    toast.error(missing ? "No usable email address — edit the member to add or update their email first." : "Selected members are already registered.");
+    return null;
+  }
+  try {
+    const { data: tpl } = await supabase.from("comms_templates").select("id")
+      .eq("club_id", clubId).eq("name", "Welcome to SquashHub").maybeSingle();
+    if (!tpl) throw new Error("The club's 'Welcome to SquashHub' template is missing.");
+    const { data: ver } = await supabase.from("comms_template_versions").select("subject,body")
+      .eq("template_id", tpl.id).eq("channel", "email").maybeSingle();
+    if (!ver) throw new Error("The welcome template has no email version.");
+    const { dispatched } = await sendComms({
+      clubId, name: `Activation email (${targets.length})`, templateId: tpl.id, channels: ["email"],
+      content: { email: { subject: ver.subject ?? "", body: ver.body ?? "" } },
+      action: { key: "register_existing_member", label: "Activate my SquashHub account" } as any,
+      audience: { type: "selected", memberIds: targets.map((m) => m.id) },
+      meta: { purpose: "activation" },
+    });
+    const parts = [`${dispatched?.sent ?? 0} sent`];
+    if (dispatched?.skipped) parts.push(`${dispatched.skipped} skipped (already linked at send time)`);
+    if (linked) parts.push(`${linked} already registered skipped`);
+    if (missing) parts.push(`${missing} without email skipped`);
+    toast.success(`Activation emails: ${parts.join(", ")}`);
+    return dispatched ?? {};
+  } catch (e: any) {
+    toast.error(e?.message ?? "Could not send activation emails");
+    return null;
+  }
+}
+
+/** Compact per-row Send/Resend activation action for the Members list (unlinked members only). */
+export function MemberActivationButton({ clubId, member, onEdit }: { clubId: string; member: Member; onEdit?: () => void }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const { data: invites = {} } = useActivationInvites(clubId, !member.user_id);
+  if (member.user_id || (member.status && member.status !== "active")) return null;
+  const inv = invites[member.id];
+  if (!hasUsableEmail(member)) {
+    return (
+      <button type="button" className="text-[9px] text-amber-600 underline" title="Add or update this member's email to send an activation email"
+        onClick={(e) => { e.stopPropagation(); toast.info("Add or update this member's email first, then send the activation email."); onEdit?.(); }}>
+        Add email to activate
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Button variant="outline" size="sm" disabled={busy}
+        className="h-5 px-1.5 text-[9px] gap-1 border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
+        title={inv ? "Send a new personal activation link (replaces the previous one)" : "Email this member their personal activation link"}
+        onClick={async (e) => {
+          e.stopPropagation(); setBusy(true);
+          const r = await sendActivationEmails(clubId, [member], [member.id]);
+          setBusy(false);
+          if (r) qc.invalidateQueries({ queryKey: ["activation-invites", clubId] });
+        }}>
+        <Send className="w-2.5 h-2.5" />
+        <span className="hidden sm:inline">{inv ? "Resend activation email" : "Send activation email"}</span>
+        <span className="sm:hidden">{inv ? "Resend" : "Activate"}</span>
+      </Button>
+      {inv && <span className="text-[9px]">Sent {new Date(inv.created_at).toLocaleDateString()}</span>}
+    </span>
+  );
+}
+
 /** Send / resend personal activation links to members without a SquashHub login (club admins only). */
 export function MemberActivationPanel({ clubId, members }: { clubId: string; members: Member[] }) {
   const qc = useQueryClient();
@@ -31,44 +121,14 @@ export function MemberActivationPanel({ clubId, members }: { clubId: string; mem
 
   const unlinked = useMemo(() => members.filter(isUnlinkedEligible), [members]);
 
-  const { data: invites = {} } = useQuery({
-    queryKey: ["activation-invites", clubId],
-    enabled: open && !!clubId,
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("member_activation_invites")
-        .select("club_member_id,created_at,expires_at,used_at,revoked_at")
-        .eq("club_id", clubId).order("created_at", { ascending: false }).limit(5000);
-      const latest: Record<string, Invite> = {};
-      for (const r of (data ?? []) as Invite[]) if (!latest[r.club_member_id]) latest[r.club_member_id] = r;
-      return latest;
-    },
-  });
+  const { data: invites = {} } = useActivationInvites(clubId, open);
+
 
   const send = async (ids: string[]) => {
-    const targets = unlinked.filter((m) => ids.includes(m.id) && hasUsableEmail(m));
-    const missing = ids.length - targets.length;
-    if (!targets.length) { toast.error("No selected member has a usable email address. Edit the member to add one first."); return; }
     setBusy(true);
     try {
-      const { data: tpl } = await supabase.from("comms_templates").select("id,name,action")
-        .eq("club_id", clubId).eq("name", "Welcome to SquashHub").maybeSingle();
-      if (!tpl) throw new Error("The club's 'Welcome to SquashHub' template is missing.");
-      const { data: ver } = await supabase.from("comms_template_versions").select("subject,body")
-        .eq("template_id", tpl.id).eq("channel", "email").maybeSingle();
-      if (!ver) throw new Error("The welcome template has no email version.");
-      const { dispatched } = await sendComms({
-        clubId, name: `Activation link (${targets.length})`, templateId: tpl.id, channels: ["email"],
-        content: { email: { subject: ver.subject ?? "", body: ver.body ?? "" } },
-        action: { key: "register_existing_member", label: "Activate my SquashHub account" } as any,
-        audience: { type: "selected", memberIds: targets.map((m) => m.id) },
-        meta: { purpose: "activation" },
-      });
-      toast.success(`Activation links: ${dispatched?.sent ?? 0} sent, ${dispatched?.skipped ?? 0} skipped${missing ? `, ${missing} without email not sent` : ""}`);
-      setSelected([]);
-      qc.invalidateQueries({ queryKey: ["activation-invites", clubId] });
-      qc.invalidateQueries({ queryKey: ["comms-campaigns", clubId] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not send activation links");
+      const r = await sendActivationEmails(clubId, members, ids);
+      if (r) { setSelected([]); qc.invalidateQueries({ queryKey: ["activation-invites", clubId] }); }
     } finally { setBusy(false); }
   };
 
@@ -89,7 +149,7 @@ export function MemberActivationPanel({ clubId, members }: { clubId: string; mem
           <div className="flex gap-2">
             <Input className="h-7 text-xs" placeholder="Search…" value={filter} onChange={(e) => setFilter(e.target.value)} />
             <Button size="sm" className="h-7 text-xs" disabled={busy || !selected.length} onClick={() => send(selected)}>
-              <Send className="w-3 h-3 mr-1" />Send to selected ({selected.length})
+              <Send className="w-3 h-3 mr-1" />Send activation emails ({selected.length})
             </Button>
           </div>
           <div className="max-h-72 overflow-y-auto divide-y divide-border">

@@ -16,6 +16,7 @@ import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule"
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { proposedKnockoutRound1, previewTimedGames } from "@/lib/smart-builder/step-draw";
 import { SchedulingPreferencesSection } from "./SchedulingPreferencesSection";
+import { syncPlayoffPlaceholders } from "@/lib/smart-builder/playoff-placeholders";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { venueBlocker } from "@/lib/tournaments/bookable-courts";
@@ -509,6 +510,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const rows = await atomically(supabaseDb, tournamentId, commitStructured, (db) => generateStructuredTournament(db, tournamentId));
       const games = Array.isArray(rows) ? rows.filter((r: any) => r.player_a_member_id && r.player_b_member_id).length : preview?.total ?? 0;
       toast.success(`Draw saved — ${games} games created`);
+      // Complete structure: predefined play-off stages get provisional TBD fixtures now (placeholders, no players).
+      try { const ph = await syncPlayoffPlaceholders(tournamentId); if (ph.created) toast.success(`${ph.created} play-off fixtures added (players to be decided)`); }
+      catch (e: any) { toast.error(`Play-off fixtures not added: ${e.message ?? e}`); }
       // Universal fixed-stage rule: games of any fixed date/window/courts stage get real slots before any notice.
       for (const r of await allocateAllFixedStages(tournamentId)) {
         if (r.issues?.length) toast.error(`Games not given times — ${r.issues.join(" ")} Add courts, widen the time window or add a match date.`);

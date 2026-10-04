@@ -279,6 +279,15 @@ export type BetaLifecycle = {
   format_plan?: Record<string, unknown> | null;
   category_types?: Record<string, string>;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };
+  /** Invite mode: the organiser's audience choice + send log (see step-invite.ts). */
+  invite?: {
+    audience?: { mode: string; leagueIds: string[]; clubIds: string[]; individualIds: string[] };
+    method?: "sent" | "manual";
+    campaign_id?: string | null;
+    at?: string;
+    note?: string;
+    resend_campaign_ids?: string[];
+  };
 };
 
 /** Lifecycle is persisted on the tournament (tournaments.beta_lifecycle), not just this device. */

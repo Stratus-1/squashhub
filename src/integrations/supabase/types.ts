@@ -15852,6 +15852,7 @@ export type Database = {
           day_schedules: Json
           default_break_minutes: number
           description: string | null
+          division_fees: Json | null
           division_follows: Json
           division_pairing_method: Json
           division_seed_source: Json
@@ -15964,6 +15965,7 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          division_fees?: Json | null
           division_follows?: Json
           division_pairing_method?: Json
           division_seed_source?: Json
@@ -16076,6 +16078,7 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          division_fees?: Json | null
           division_follows?: Json
           division_pairing_method?: Json
           division_seed_source?: Json

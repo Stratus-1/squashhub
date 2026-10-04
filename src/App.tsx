@@ -152,11 +152,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) {
-    // On club subdomains, redirect to club landing page (root) instead of auth
-    if (clubSubdomain) {
+    // Always keep the page the person was trying to open (e.g. an email's
+    // "Go to Tournament" link) so sign-in returns them there — on club
+    // subdomains too, where /auth renders the club sign-in page.
+    const redirectTo = `${location.pathname}${location.search || ""}`;
+    if (clubSubdomain && (redirectTo === "/" || redirectTo === "")) {
       return <Navigate to="/" replace />;
     }
-    const redirectTo = `${location.pathname}${location.search || ""}`;
     return <Navigate to={`/auth?redirectTo=${encodeURIComponent(redirectTo)}`} replace />;
   }
   return <>{children}</>;

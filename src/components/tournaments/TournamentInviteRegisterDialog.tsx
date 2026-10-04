@@ -401,7 +401,22 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
-          {/* WhatsApp group opt-in — chosen at entry, applies from the draw onwards */}
+          {/* Auto-assigned event — the player's league registration picks it for them */}
+          {divisionOptions.length === 1 && !accepted && (
+            <div className="flex items-center gap-2 rounded-md border p-2 text-xs">
+              <span className="text-muted-foreground">You'll play in:</span>
+              <span className="font-medium">{divisionOptions[0].label}</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">Assigned from your league</span>
+            </div>
+          )}
+
+          {/* No eligible event — league registration doesn't match anything offered */}
+          {!divisionsLoading && divisionOptions.length === 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive">
+              None of this tournament's events matches your league registration — please contact the organiser.
+            </div>
+          )}
+
           {!accepted && (
             <label className="flex items-start gap-2 rounded-md border p-2 text-xs cursor-pointer">
               <Checkbox

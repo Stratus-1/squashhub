@@ -25,3 +25,8 @@
 - [x] Repeat round play/book-by deadline on every fixture card (Tournaments list + ClubChampsView renderMatchRow); "Book by" when viewer can book, read-only "Play by" otherwise; removed view-toggle gate that hid it in By round view; Mark Game unchanged; verified mobile 390px, 103 badges on Riverside fixtures
 - [x] Diamond re-save refreshes each game's court after team changes (Durbanville R1 Court 2 fixed)
 - [x] Access device age restriction (Nelspruit Bar door = 18) — server function not yet deployed
+
+## Activation links (in progress)
+- [ ] Fix activation linking step (was failing)
+- [ ] Add two paragraphs (old email addresses; what happens next) to standard all-clubs onboarding template
+- [ ] Tests D–F and J; then publish

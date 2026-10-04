@@ -2570,3 +2570,8 @@ Cause: builder stored one event per picked player; saving wrote one division and
 - Cause: assumed-schedule gated each event's play-offs only by its own qualifying games; play-off headings omitted the event.
 - Fix: first play-off stage of every event waits for ALL qualifying games (+gap / later fixed start; earlier fixed start = conflict); headings lead with the event (`playoffHeadingText`). Tests: `playoff-global-gate.test.ts`.
 - Entry fee now per event; partner payment covers only the shared doubles event (migration `0036_entry_fee_per_event`). Tests: `entry-fee-per-event.test.ts`.
+
+### 2026-10-04 — Invite payment total and payment methods
+- `champ_member_event_paid` returned NULL for a partner event covered by an unpaid "pay for both" promise, so the partner share dropped out of the amount owed (R150 instead of R250). Now always true/false.
+- Invite page now offers the tournament's chosen payment methods that the club can accept (card / EFT / member account / cash) via `invite_payment_options` + `invite_settle_entry`; card still goes through Stitch.
+- Picking a doubles partner can now be "Pay both" or "Pay only mine" (`propose_doubles_partner` honours `p_pay_for_partner`).

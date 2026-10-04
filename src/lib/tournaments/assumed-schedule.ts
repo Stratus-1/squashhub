@@ -11,6 +11,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { bellsSlotMinutes, planDays, type TimedDay } from "./formal-stage-schedule";
 import { provisionalPlayoffs } from "./provisional-playoffs";
+import { adoptPlaceholderRows } from "@/lib/smart-builder/playoff-placeholders";
 
 /** pace: "fast" = start early and finish as soon as possible; "spread" = spread qualifying rounds over the period.
  *  playoffStart: "after" = gap minutes after the unit's last qualifying game; "fixed" = not before date + time. */

@@ -124,7 +124,6 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const eventFee = Number(champ?.entry_fee_cents || 0) / 100;
   // Fee per event: an entry in several events owes the event fee once per event.
-  const entryFee = (entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
   const paymentRequired = !!champ?.payment_required && eventFee > 0;
   const configuredMethods: string[] = Array.isArray(champ?.payment_methods) ? champ.payment_methods : [];
   const hasMethodConfig = configuredMethods.length > 0;
@@ -173,6 +172,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     },
     enabled: !!champ?.id && !!memberId,
   });
+  const entryFee = (entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
 
   const verifiedRef = useRef<string | null>(null);
   useEffect(() => {

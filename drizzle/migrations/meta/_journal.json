@@ -295,6 +295,13 @@
       "when": 1791149949982,
       "tag": "0041_per_event_fees_in_pair_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791150294045,
+      "tag": "0042_doubles_partner_optional_pay_both",
+      "breakpoints": true
     }
   ]
 }

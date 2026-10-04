@@ -442,7 +442,7 @@ export function TournamentInviteRegisterDialog({
                   <span className="font-medium text-foreground"> Step 2:</span> select your doubles partner — you can do it right here if you've already agreed with someone, or come back later any time before the draw.
                 </p>
               )}
-              <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
+              <Button className="w-full h-9 text-xs" disabled={accept.isPending || (categoryTypes && !divisionsLoading && divisionOptions.length === 0)} onClick={() => {
                 if ((mustChooseDivision || categoryTypes) && chosenDivisions.length === 0) {
                   setDivisionError(singleDivisionOnly
                     ? "Please choose the league you want to play in."

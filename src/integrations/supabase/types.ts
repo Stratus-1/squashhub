@@ -17527,6 +17527,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      champ_member_total_due_cents: {
+        Args: { p_champ_id: string; p_member_id: string }
+        Returns: number
+      }
       champ_pair_settle: { Args: { p_pair_id: string }; Returns: string }
       champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
       champ_reg_groups: { Args: { p_choices: number[] }; Returns: number[] }

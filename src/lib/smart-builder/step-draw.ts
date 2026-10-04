@@ -46,7 +46,12 @@ export type DivFormat = {
 export const isPooledKnockout = (f: DivFormat) => f.kind === "knockout" && f.pools > 1;
 /** Formats whose pools are real partitions of the field. */
 const hasPools = (f: DivFormat) => f.kind === "pools" || isPooledKnockout(f);
-export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null };
+export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null;
+  /** Per-event doubles partner ({"<group>": memberId}); null/absent = legacy single partner for every event. */
+  division_partners?: Record<string, string | null> | null };
+/** The doubles partner of a registration in one event (per-event partner, legacy fallback). */
+export const partnerIn = (r: RegLite, group: number): string | null =>
+  r.division_partners ? (r.division_partners[String(group)] || null) : r.partner_member_id;
 export type DrawUnit = { member: string; partner: string | null };
 export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; blockers?: string[];
   /** Organiser-adjusted pools (unit ids per pool). When set, this IS what Generate saves. */
@@ -91,9 +96,10 @@ export function unitsFor(regs: RegLite[], group: number, nGroups: number, double
   const units: DrawUnit[] = [];
   for (const r of mine) {
     if (used.has(r.club_member_id)) continue;
-    if (!r.partner_member_id) { errors.push("an entry has no doubles partner"); continue; }
-    const p = byMember.get(r.partner_member_id);
-    if (!p || p.partner_member_id !== r.club_member_id) { errors.push("a partner's entry does not point back to the same pair"); continue; }
+    const pid = partnerIn(r, group);
+    if (!pid) { errors.push("an entry has no doubles partner"); continue; }
+    const p = byMember.get(pid);
+    if (!p || partnerIn(p, group) !== r.club_member_id) { errors.push("a partner's entry does not point back to the same pair"); continue; }
     if (!inDiv(p)) { errors.push("a pair's partners are in different categories"); continue; }
     if (used.has(p.club_member_id)) { errors.push("a player is claimed by two pairs"); continue; }
     used.add(r.club_member_id); used.add(p.club_member_id);

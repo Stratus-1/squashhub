@@ -18351,6 +18351,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: boolean
       }
+      invite_change_payment_method: {
+        Args: { p_token: string; p_verify: string }
+        Returns: Json
+      }
       invite_payment_options: { Args: { p_token: string }; Returns: Json }
       invite_settle_entry: {
         Args: { p_method: string; p_token: string; p_verify: string }

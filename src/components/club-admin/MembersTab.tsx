@@ -1010,6 +1010,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
       </div>
 
       <PendingApplicationsPanel clubId={clubId} />
+      <MemberActivationPanel clubId={clubId} members={allMembersRaw as any} />
 
       <BulkMembershipTypesDialog clubId={clubId} open={bulkTypesOpen} onOpenChange={setBulkTypesOpen} members={members} feeCategories={feeCategories} />
 

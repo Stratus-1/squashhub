@@ -77,6 +77,14 @@ export function CollapsibleSection({
   defaultOpen = true,
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  // Same late-resolving defaultOpen handling as CollapsibleCard.
+  const prevDefault = useRef(defaultOpen);
+  useEffect(() => {
+    if (defaultOpen !== prevDefault.current) {
+      prevDefault.current = defaultOpen;
+      setOpen(defaultOpen);
+    }
+  }, [defaultOpen]);
   return (
     <Collapsible open={open} onOpenChange={setOpen} className={className}>
       <CollapsibleTrigger asChild>

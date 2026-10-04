@@ -18,7 +18,7 @@ import {
   afterAcceptPath,
   defaultDivisionSelection,
   inviteDivisions,
-  inviteFeeCents,
+  inviteTotalFeeCents,
   inviteLoginPath,
   inviteSignupPath,
   inviteState,

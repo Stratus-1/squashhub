@@ -157,7 +157,7 @@ export type CreateInput = {
   /** Admin-entered players (pairs carry a partner). */
   entrants: Array<{ memberId: string; partnerId?: string | null; division?: number | null }>;
   /** Step-by-Step categories/subcategories, in order — become the tournament's divisions (group 1..n). */
-  divisions?: Array<{ leagueIds?: string[]; gender?: string | null; label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null; scoring?: DivisionScoring | null }>;
+  divisions?: Array<{ leagueIds?: string[]; gender?: string | null; label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null; scoring?: DivisionScoring | null; feeCents?: number | null }>;
   existingId?: string | null;
   /** Beta-only explicit division types, applied by the server registration guard. */
   categoryTypes?: string[];

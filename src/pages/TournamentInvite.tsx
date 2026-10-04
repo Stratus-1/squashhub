@@ -1,5 +1,6 @@
 import { PartnerFeeOptions, type PartnerPayScope } from "@/components/tournaments/PartnerFeeOptions";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { InvitePaymentChooser } from "@/components/tournaments/InvitePaymentChooser";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -254,11 +255,12 @@ export default function TournamentInvite() {
 
   /**
    * Always settle from the invitation itself: it knows the full amount owed
-   * (every pair this payer covers). Sending a signed-in member to the club
-   * tournament page loses that context and offers only a single entry fee.
+   * (every pair this payer covers). Pay buttons lead to the payment choice
+   * (card / EFT / member account / cash — whatever this tournament allows).
    */
+  const payChooserRef = useRef<HTMLDivElement>(null);
   const goPay = (_champId: string) => {
-    payNow.mutate();
+    payChooserRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
 

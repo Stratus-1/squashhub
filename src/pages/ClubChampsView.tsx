@@ -71,7 +71,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog } from "lucide-react";
+import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog, Star, Utensils, Info } from "lucide-react";
 import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolsFromGames, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
@@ -1278,9 +1278,20 @@ export default function ClubChampsView() {
       </>;
     };
     if (cfg.outcome === "team" && matchups.length) {
+      type AwardCard = { key: string; icon: any; title: string; name: string; value?: string; note?: string; highlight?: boolean; muted?: boolean };
+      const AwardTile = ({ a }: { a: AwardCard }) => {
+        const Icon = a.icon;
+        return <div data-testid={`award-${a.key}`} className={cn("min-w-0 rounded-md border px-3 py-2.5 bg-muted/30", a.highlight && "border-primary/50 bg-primary/5")}>
+          <div className={cn("flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider", a.highlight ? "text-primary" : "text-muted-foreground")}>
+            <Icon className="h-3.5 w-3.5 shrink-0" />{a.title}
+          </div>
+          <div className={cn("mt-1 text-sm font-semibold leading-snug break-words", a.muted && "font-normal text-muted-foreground")}>{a.name}</div>
+          {(a.value || a.note) && <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">{a.value}{a.value && a.note ? " · " : ""}{a.note}</div>}
+        </div>;
+      };
       return <Card data-testid="tournament-summary" data-outcome="team">
         <CardHeader className="py-3 px-4"><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4 text-primary" />Tournament Summary</CardTitle></CardHeader>
-        <CardContent className="px-4 pb-3 pt-0 space-y-3">
+        <CardContent className="px-4 pb-3 pt-0 space-y-4">
           {matchups.map((mu) => {
             const groups = mu.entryGroups.map((g, i) => ({ group: g, label: (mu.labels[i] || "").trim() || getGroupLabel(champ, g) }));
             const rows = groups.flatMap((g) => getGroupStandings(g.group).map(toOutcomeRow(g.group)));
@@ -1288,22 +1299,52 @@ export default function ClubChampsView() {
             const complete = fixturesComplete(scoped);
             const done = scoped.filter((m: any) => m.status === "completed").length;
             const t = teamOutcome(groups, rows, complete);
-            return <div key={mu.groupNumber} className="space-y-1.5 border-b last:border-b-0 pb-2">
-              <div className="flex flex-wrap items-baseline gap-2 text-sm">
-                {t.teams.map((tm, i) => <Fragment key={tm.group}>
-                  {i > 0 && <span className="text-muted-foreground">vs</span>}
-                  <span className={cn("font-semibold", t.leader?.group === tm.group && "text-primary")}>{tm.label} <span className="tabular-nums">{tm.points}</span></span>
-                </Fragment>)}
-                <span className="text-xs text-muted-foreground">· {done}/{scoped.length} games played</span>
+            const ind = individualAwards(rows, complete);
+            const isWinner = (g: number) => !t.tied && t.leader?.group === g && t.state !== "pending";
+            const cards: AwardCard[] = [];
+            if (cfg.champion) {
+              cards.push(t.state === "pending"
+                ? { key: "champion", icon: Trophy, title: "Team Champion", name: "Pending", muted: true }
+                : t.tied
+                ? { key: "champion", icon: Trophy, title: "Team Champion", name: t.state === "final" ? "Tied" : "Level", value: `${t.teams[0]?.points ?? 0} pts each` }
+                : { key: "champion", icon: Trophy, title: t.state === "final" ? "Team Champion" : "Team Leader", name: t.leader!.label, value: `${t.leader!.points} pts`, note: t.state === "current" ? "current leader" : undefined, highlight: t.state === "final" });
+            }
+            if (cfg.topScorer) cards.push(ind.topScorer
+              ? { key: "top-scorer", icon: Star, title: "Top Points Scorer", name: awardNames(ind.topScorer.rows), value: `${ind.topScorer.rows[0].pointsFor} pts`, note: ind.topScorer.state === "current" ? "current leader" : undefined }
+              : { key: "top-scorer", icon: Star, title: "Top Points Scorer", name: "Pending", muted: true });
+            if (cfg.woodenSpoon) cards.push(ind.woodenSpoon
+              ? { key: "wooden-spoon", icon: Utensils, title: "Wooden Spoon", name: awardNames(ind.woodenSpoon.rows), value: `${ind.woodenSpoon.rows[0].pointsFor} pts` }
+              : { key: "wooden-spoon", icon: Utensils, title: "Wooden Spoon", name: "Awarded when all games are complete", muted: true });
+            return <div key={mu.groupNumber} className="space-y-3 border-b last:border-b-0 pb-4 last:pb-0">
+              <div data-testid="summary-hero" className="rounded-lg border bg-muted/20 px-3 py-4 sm:px-6">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-6">
+                  {t.teams.slice(0, 2).map((tm, i) => <Fragment key={tm.group}>
+                    {i > 0 && <span className="text-xl sm:text-3xl font-light text-muted-foreground">—</span>}
+                    <div className={cn("min-w-0", i === 0 ? "text-right" : "text-left")}>
+                      <div className={cn("flex items-center gap-1.5 text-xs sm:text-sm font-medium break-words", i === 0 ? "justify-end" : "justify-start", isWinner(tm.group) ? "text-primary" : "text-muted-foreground")}>
+                        {isWinner(tm.group) && t.state === "final" && i === 0 && <Trophy className="h-3.5 w-3.5 shrink-0" />}
+                        <span className="min-w-0">{tm.label}</span>
+                        {isWinner(tm.group) && t.state === "final" && i === 1 && <Trophy className="h-3.5 w-3.5 shrink-0" />}
+                      </div>
+                      <div className={cn("text-4xl sm:text-5xl font-bold tabular-nums leading-tight", isWinner(tm.group) ? "text-primary" : "text-foreground")}>{tm.points}</div>
+                    </div>
+                  </Fragment>)}
+                </div>
+                {t.teams.length > 2 && <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
+                  {t.teams.slice(2).map((tm) => <span key={tm.group} className={cn(isWinner(tm.group) && "text-primary font-semibold")}>{tm.label} <span className="tabular-nums font-bold">{tm.points}</span></span>)}
+                </div>}
+                <div className="mt-3 flex justify-center">
+                  {complete
+                    ? <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] text-muted-foreground"><CheckCircle2 className="h-3 w-3 text-primary" />Completed · {done}/{scoped.length} games</span>
+                    : <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] text-muted-foreground"><Clock className="h-3 w-3" />In progress · {done}/{scoped.length} games</span>}
+                </div>
               </div>
-              {cfg.champion && <div className="text-xs"><span className="text-muted-foreground">Team Winner: </span>{t.state === "pending"
-                ? <span className="text-muted-foreground">pending</span>
-                : t.tied ? <span>{t.state === "final" ? "Tied" : "Level"}</span>
-                : <span className="inline-flex items-center gap-1 font-semibold text-primary">{t.state === "final" && <Trophy className="h-3.5 w-3.5" />}{t.leader!.label}{t.state === "current" ? " (current leader)" : ""}</span>}</div>}
-              {awardLines(rows, complete)}
+              {cards.length > 0 && <div className={cn("grid gap-2 grid-cols-1", cards.length === 2 && "sm:grid-cols-2", cards.length >= 3 && "sm:grid-cols-3")}>
+                {cards.map((a) => <AwardTile key={a.key} a={a} />)}
+              </div>}
             </div>;
           })}
-          <p className="text-[11px] text-muted-foreground">Team result = each group's total points scored in these games. Player tables below show each contribution.</p>
+          <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground/80"><Info className="h-3 w-3 mt-0.5 shrink-0" />Team result = each group's total points scored in these games. Player tables below show each contribution.</p>
         </CardContent>
       </Card>;
     }

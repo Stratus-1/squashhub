@@ -330,6 +330,13 @@
       "when": 1791151552121,
       "tag": "0046_champ_total_due_and_pair_notice",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791152563415,
+      "tag": "0047_champ_fee_labels_use_event_names",
+      "breakpoints": true
     }
   ]
 }

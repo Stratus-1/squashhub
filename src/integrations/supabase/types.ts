@@ -17485,6 +17485,10 @@ export type Database = {
         Args: { p_group: number; p_reg_id: string }
         Returns: boolean
       }
+      champ_group_label: {
+        Args: { p_champ_id: string; p_group: number }
+        Returns: string
+      }
       champ_is_family_doubles: {
         Args: { p_champ_id: string }
         Returns: boolean
@@ -19378,9 +19382,9 @@ export type Database = {
       step_charge_pair_to_account: {
         Args: {
           p_registration_id: string
-          p_scope?: string
-          p_token?: string
-          p_verify?: string
+          p_scope: string
+          p_token: string
+          p_verify: string
         }
         Returns: Json
       }

@@ -262,6 +262,7 @@ export async function loadAssumed(champId: string): Promise<AssumeLoad> {
 
 /** Plan (dryRun) or plan + write the draft timetable. Writes nothing when anything is missing or conflicts. */
 export async function scheduleWithAssumptions(champId: string, opts: { dryRun?: boolean } = {}) {
+  if (!opts.dryRun) await adoptProvisionalSlots(champId).catch(() => null);
   const L = await loadAssumed(champId);
   const provisionalCount = L.games.filter((g) => g.provisional).length;
   const base = { relaxed: [] as string[], scheduled: 0, total: L.games.length, provisional: provisionalCount, slots: [] as AssumeSlot[] };
@@ -292,4 +293,65 @@ export async function scheduleWithAssumptions(champId: string, opts: { dryRun?: 
     }
   }
   return { ...base, missing: [] as string[], issues: res.issues, relaxed: res.relaxed, scheduled: res.slots.length, slots: res.slots };
+}
+
+/* ------------------------------------------------------------------ */
+/* When results arrive: real play-off fixtures take over their reserved slots. */
+
+export type ProvisionalHold = { id: string; externalId: string; date: string; start: string; courtId: number };
+export type AdoptRow = { id: string; unitKey: string; abbr: string; order: number };
+
+/** Which bracket slot a real play-off row is: "QF" | "SF" | "Final" | "place" | null (not a play-off row). */
+export function playoffAbbr(stage: string | null | undefined, label: string | null | undefined): string | null {
+  const t = `${stage ?? ""} ${label ?? ""}`.toLowerCase();
+  if (!/playoff|play-off|final|semi|quarter|place/.test(t)) return null;
+  if (/pos \d|place play|placement|\d(st|nd|rd|th)\//.test(t)) return "place";
+  if (/quarter|_qf/.test(t)) return "QF";
+  if (/semi|_sf/.test(t)) return "SF";
+  if (/final/.test(t)) return "Final";
+  return null;
+}
+
+/** Pure: pair real rows with holds `<unit>|<abbr>|<n>` in bracket order. Never invents players — only moves the slot. */
+export function adoptionPlan(champId: string, holds: ProvisionalHold[], rows: AdoptRow[]) {
+  const pre = provisionalPrefix(champId);
+  const byKey = new Map(holds.map((h) => [h.externalId.slice(pre.length), h]));
+  const groups = new Map<string, AdoptRow[]>();
+  for (const r of rows) { const k = `${r.unitKey}|${r.abbr}`; groups.set(k, [...(groups.get(k) ?? []), r]); }
+  const out: Array<{ rowId: string; hold: ProvisionalHold }> = [];
+  for (const [k, rs] of groups) rs.sort((a, b) => a.order - b.order).forEach((r, i) => { const h = byKey.get(`${k}|${i + 1}`); if (h) out.push({ rowId: r.id, hold: h }); });
+  return out;
+}
+
+/**
+ * Moves each new, unscheduled play-off fixture into its reserved slot (same date/time/court) and releases the hold.
+ * Played or already-timed fixtures are never touched. Returns how many were adopted and any player clashes the
+ * admin should look at (the slot is still kept — players are the engine's authoritative qualifiers).
+ */
+export async function adoptProvisionalSlots(champId: string): Promise<{ adopted: number; clashes: string[] }> {
+  const { data: t } = await fromExt("tournaments").select("club_id, group_labels").eq("id", champId).maybeSingle();
+  const clubId = (t as any)?.club_id; if (!clubId) return { adopted: 0, clashes: [] };
+  const { data: hb } = await fromExt("bookings").select("id, external_id, date, start_time, court_id").eq("club_id", clubId).eq("source", "club_event").eq("status", "active").like("external_id", `${provisionalPrefix(champId)}%`);
+  const holds: ProvisionalHold[] = ((hb ?? []) as any[]).map((b) => ({ id: b.id, externalId: b.external_id, date: String(b.date).slice(0, 10), start: String(b.start_time).slice(0, 5), courtId: Number(b.court_id) }));
+  if (!holds.length) return { adopted: 0, clashes: [] };
+  const { data: ms } = await fromExt("club_champs_matches").select("id, group_number, stage, stage_label, bracket_position, round_number, created_at, scheduled_date, scheduled_time, winner_member_id, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId);
+  const labels: Record<string, string> = ((t as any)?.group_labels ?? {}) as any;
+  const all = (ms ?? []) as any[];
+  const rows: AdoptRow[] = all.filter((m) => !m.scheduled_time && !m.winner_member_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()))
+    .map((m) => ({ m, abbr: playoffAbbr(m.stage, m.stage_label) })).filter((x) => x.abbr)
+    .map(({ m, abbr }) => ({ id: m.id, unitKey: unitKeyOf(String(labels[String(m.group_number)] ?? "")), abbr: abbr!, order: Number(m.bracket_position) || Number(new Date(m.created_at)) }));
+  const plan = adoptionPlan(champId, holds, rows);
+  const clashes: string[] = [];
+  const ppl = (m: any) => [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
+  for (const p of plan) {
+    const { error } = await fromExt("club_champs_matches").update({ scheduled_date: p.hold.date, scheduled_time: `${p.hold.start}:00`, court_id: p.hold.courtId, play_by: null } as any)
+      .eq("id", p.rowId).is("winner_member_id", null).is("scheduled_time", null);
+    if (error) throw new Error(error.message);
+    await fromExt("bookings").delete().eq("id", p.hold.id);
+    const me = all.find((m) => m.id === p.rowId);
+    const who = me ? ppl(me) : [];
+    if (who.length && all.some((m) => m.id !== p.rowId && String(m.scheduled_date ?? "").slice(0, 10) === p.hold.date && String(m.scheduled_time ?? "").slice(0, 5) === p.hold.start && ppl(m).some((x) => who.includes(x))))
+      clashes.push(`${me?.stage_label ?? "Play-off game"} on ${p.hold.date} ${p.hold.start}: a player is already in another game at that time.`);
+  }
+  return { adopted: plan.length, clashes };
 }

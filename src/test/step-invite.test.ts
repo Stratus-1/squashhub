@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
-  EMPTY_INVITE_AUDIENCE, inviteRowStatus, memberMatchesTournamentGender,
-  personaliseInvite, planInviteRows, type StepInviteAudience,
+  EMPTY_INVITE_AUDIENCE, emailEntryButton, inviteRowStatus, memberMatchesTournamentGender,
+  personaliseInvite, personaliseInviteEmailHtml, planInviteRows, type StepInviteAudience,
 } from "@/lib/smart-builder/step-invite";
 import { resolveInviteAudience, type AudienceMemberRow } from "@/lib/tournaments/invite-audience";
+
 
 /* ── personaliseInvite ── */
 describe("personaliseInvite", () => {

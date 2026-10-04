@@ -22,7 +22,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { MemberActivationPanel } from "./MemberActivationPanel";
+import { MemberActivationPanel, MemberActivationButton } from "./MemberActivationPanel";
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
@@ -326,6 +326,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
         <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
           {isLinked ? "✓ Reg" : "✗ Unreg"}
         </Badge>
+        {!isLinked && m.club_id && <MemberActivationButton clubId={m.club_id} member={m as any} onEdit={onEdit} />}
         {affiliations.map((aff) => {
           if (aff.active) {
             return (

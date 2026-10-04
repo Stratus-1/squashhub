@@ -120,14 +120,59 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
-  const generateSignature = () => {
+  // Email signatures need a genuinely small logo file: some mail clients ignore
+  // width/height attributes and render the image at its natural size. So whenever
+  // the signature is generated we downscale the club logo to a fixed email-safe
+  // size (240px wide = 2x the 120px display size, for crisp retina rendering) and
+  // store it as a separate copy — the original logo and website/app are untouched.
+  const EMAIL_LOGO_WIDTH = 240;
+
+  const buildEmailLogoUrl = async (logoUrl: string): Promise<string> => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("logo load failed"));
+      img.src = logoUrl;
+    });
+    const scale = Math.min(1, EMAIL_LOGO_WIDTH / (img.naturalWidth || EMAIL_LOGO_WIDTH));
+    const w = Math.max(1, Math.round((img.naturalWidth || EMAIL_LOGO_WIDTH) * scale));
+    const h = Math.max(1, Math.round((img.naturalHeight || EMAIL_LOGO_WIDTH) * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("canvas unavailable");
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("logo encode failed"))), "image/png"),
+    );
+    const path = `${clubId}/logo-email.png`;
+    const { error } = await supabase.storage
+      .from("club-logos")
+      .upload(path, blob, { upsert: true, contentType: "image/png" });
+    if (error) throw error;
+    const { data } = supabase.storage.from("club-logos").getPublicUrl(path);
+    return `${data.publicUrl}?t=${Date.now()}`;
+  };
+
+  const generateSignature = async () => {
     const c: any = club;
     const name = c.name || "";
     const contact = c.contact_person_name || "";
     const email = c.email || "";
     const phone = c.phone || "";
     const address = c.address || "";
-    const logo = c.logo_url || "";
+    let logo = c.logo_url || "";
+    if (logo) {
+      try {
+        logo = await buildEmailLogoUrl(logo);
+      } catch {
+        // Fall back to the original logo URL — the width/height limits in the
+        // markup below still constrain it in most mail clients.
+        toast.warning("Could not resize the logo automatically — using the original image");
+      }
+    }
     // NOTE: disclaimer intentionally not embedded here — it is appended once
     // by the send pipeline (email-notifications / send-club-campaign) so it
     // doesn't appear twice in the final email.

@@ -295,7 +295,6 @@ export default function BarCounter() {
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
       if (!row?.id) throw new Error("No active member with that number at this club.");
-      if (!row.has_pin) throw new Error("That member has no Bar PIN yet — they can set one in the app under Bar PIN.");
       setIdentified({ id: row.id, display_name: row.display_name });
       setMemberOpen(false);
       setPinOpen(true);
@@ -677,7 +676,7 @@ export default function BarCounter() {
               <DialogHeader>
                 <DialogTitle>Charge to a member account</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Enter the member's number. They then approve {money(activeTab.total)} with their own six-digit Bar PIN — staff cannot approve it.
+                  Enter the member's number. They then approve {money(activeTab.total)} with a one-time code sent to their phone by SMS or WhatsApp — staff cannot approve it.
                 </DialogDescription>
               </DialogHeader>
               <Input

@@ -57,6 +57,6 @@
 - [x] Recurring: one combined debit (membership + outstanding component), components tracked separately; drops back when outstanding plan ends
 - [x] Tournament Match Day links open the real Tournaments/standings/marker/live screens (interim page retired). Preview only.
 
-- [ ] Forensic trace of Sue.kraffor+NSC@gmail.com failed Nelspruit application (evidence only, no changes) and add to regression tests
-- [ ] E2E test of new-member application fix (safe test data, cleanup)
-- [ ] Separate preloaded-member activation from genuine new application; check Durbanville category-lock regression; 5 regression tests
+- [x] Forensic trace of Sue.kraffor+NSC@gmail.com failed Nelspruit application (evidence only, no changes) and add to regression tests
+- [x] E2E test of new-member application fix (safe test data, cleanup)
+- [x] Separate preloaded-member activation from genuine new application; check Durbanville category-lock regression; 5 regression tests

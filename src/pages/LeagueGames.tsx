@@ -250,6 +250,7 @@ export default function LeagueGames() {
       <SEO title="League Games" description="Upcoming league fixtures, lineups & standings" path="/league-games" noIndex />
       <PageHeader
         title={md ? md.name : "League Games"}
+        showBack={md ? false : undefined}
         subtitle={md ? `${md.clubName} · Match Day${md.court != null ? ` · ${md.courts.find((c) => c.id === md.court)?.name ?? `Court ${md.court}`}` : " · All courts"}` : "Fixtures, lineups & standings"}
       />
 

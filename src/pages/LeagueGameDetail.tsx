@@ -2863,7 +2863,7 @@ export default function LeagueGameDetail() {
   return (
     <div className="bottom-nav-safe">
       <SEO title="League Scorecard" description="League fixture scorecard" path={`/league-games/${fixtureId}`} noIndex />
-      <PageHeader title="League Scorecard" subtitle={`${homeCode} vs ${awayCode}`} />
+      <PageHeader title="League Scorecard" subtitle={`${homeCode} vs ${awayCode}`} backTo={md ? leagueGamesHome : undefined} />
 
       <div className="px-3 pt-2 flex justify-end">
         <RotateToggle />

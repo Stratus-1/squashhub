@@ -484,6 +484,13 @@
       "when": 1791229010502,
       "tag": "0068_guard_members_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1791229029560,
+      "tag": "0069_guard_self_fields_member_manager",
+      "breakpoints": true
     }
   ]
 }

@@ -498,6 +498,13 @@
       "when": 1791230804315,
       "tag": "0070_applicant_first_fee_category",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1791231135772,
+      "tag": "0071_notify_application_when_complete",
+      "breakpoints": true
     }
   ]
 }

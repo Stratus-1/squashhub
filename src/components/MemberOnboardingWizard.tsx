@@ -1057,7 +1057,12 @@ export function MemberOnboardingWizard({
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const canProceed = () => {
-    if (step === 1) return name.trim().length >= 2;
+    if (step === 1) {
+      if (name.trim().length < 2) return false;
+      // New applicants must give everything the club needs to place them.
+      if (!isExistingMember) return !!phone.trim() && !!gender && detectedAge !== null;
+      return true;
+    }
     if (step === 2) return categoryLocked || feeCategories.length === 0 || !!feeCategoryId;
     if (currentStepId === "rules") return !rulesRequireAcceptance || rulesAccepted;
     if (currentStepId === "family") return !familyDraftError(familyPrimaryCat, familyDrafts);
@@ -1153,7 +1158,7 @@ export function MemberOnboardingWizard({
                   {/* Date of birth fallback when no valid age from ID */}
                   {(idNumber.length < 6 || getAgeFromSAId(idNumber) === null) && (
                     <div>
-                      <Label htmlFor="onb-dob">Date of Birth {!idNumber ? <span className="text-destructive">*</span> : ""}</Label>
+                      <Label htmlFor="onb-dob">Date of Birth {(!idNumber || !isExistingMember) ? <span className="text-destructive">*</span> : ""}</Label>
                       <Input
                         id="onb-dob"
                         type="date"
@@ -1171,7 +1176,7 @@ export function MemberOnboardingWizard({
                   )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Gender Group</Label>
+                      <Label>Gender Group {!isExistingMember && <span className="text-destructive">*</span>}</Label>
                       <Select value={gender} onValueChange={setGender}>
                         <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent>
@@ -1181,7 +1186,7 @@ export function MemberOnboardingWizard({
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="onb-phone">Phone</Label>
+                      <Label htmlFor="onb-phone">Phone {!isExistingMember && <span className="text-destructive">*</span>}</Label>
                       <Input id="onb-phone" value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} placeholder="+27 82 123 4567" />
                     </div>
                   </div>
@@ -1237,7 +1242,7 @@ export function MemberOnboardingWizard({
 
                   {feeCategories.length > 0 ? (
                     <div>
-                      <Label>Membership Category</Label>
+                      <Label>Membership Category <span className="text-destructive">*</span></Label>
                       {categoryLocked && feeCategoryId ? (
                         <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
                           <span className="text-sm font-medium">

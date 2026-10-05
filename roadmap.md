@@ -56,3 +56,6 @@
 - [x] Sent manually from main domain (managed fallback added to send-comms-campaign for clubs without SMTP); campaign ab442f3b sent 2026-10-05, 1 sent
 - [x] Recurring: one combined debit (membership + outstanding component), components tracked separately; drops back when outstanding plan ends
 - [x] Tournament Match Day links open the real Tournaments/standings/marker/live screens (interim page retired). Preview only.
+
+- [ ] Forensic trace of Sue.kraffor+NSC@gmail.com failed Nelspruit application (evidence only, no changes) and add to regression tests
+- [ ] E2E test of new-member application fix (safe test data, cleanup)

@@ -22,6 +22,7 @@ import { triggerShellyLights } from "@/lib/shelly-lights";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { markDoorOpened, wasDoorOpenedForBooking } from "@/lib/door-open-state";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
+import { courtHasLightDevice } from "@/lib/devices";
 
 
 
@@ -299,8 +300,13 @@ export function LiveSessionBanner() {
     ? Math.round(((elapsedMin / 60) * Number(displaySession.fee_per_hour || 0)) * 100) / 100
     : 0;
 
-  // Lights UI only makes sense once the booking has actually started.
-  const lightsNotOn = currentBooking && bookingHasStarted && !displaySession;
+  // Lights UI only makes sense once the booking has actually started, and only
+  // when this specific court has a configured light relay.
+  const courtHasLights = !!currentBooking && courtHasLightDevice(
+    lightsIntegrationEnabled,
+    courtsData?.find((c) => c.id === currentBooking.court_id),
+  );
+  const lightsNotOn = currentBooking && bookingHasStarted && !displaySession && courtHasLights;
 
   // "Open Door" prompt rules (per user spec):
   //  • Show from 15 min before start until pressed.

@@ -145,6 +145,18 @@ export function PageHeader({
 
         {user && (
           <div className="ml-auto flex items-center gap-1.5 shrink-0">
+            {isClubAdminArea && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden sm:inline-flex h-8 shrink-0"
+                onClick={() => navigate("/dashboard")}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Back to Dashboard
+              </Button>
+            )}
             <TenantSwitcher />
             <ThemeToggle />
             {isStandalonePWA() && (

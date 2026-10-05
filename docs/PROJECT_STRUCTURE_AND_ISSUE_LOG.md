@@ -2595,3 +2595,8 @@ Cause: builder stored one event per picked player; saving wrote one division and
 ### 2026-10-05 — League scorecard "Replace player" silently ignored (Nelspruit, Dual Machines)
 - Cause: two unplayed rubbers carried a leftover `participants_locked_at` (set 2026-09-28 when a result/forfeit was briefly recorded then undone). `freeze_league_rubber_participants` trigger silently restored the old players on every save.
 - Fix: trigger now releases the lock when the rubber has no winner, no game scores and no forfeit; played rubbers stay frozen. No data edited directly.
+
+### 2026-10-05 — Match Day links opened a duplicate scoring page
+- Symptom: secure league link showed a separate "Match Day" page with a simplified score form instead of League Games.
+- Root cause: League Games screens require a member login (RLS), so the first version rebuilt them behind `md_*` functions. Courts were never wrong (fixtures carry `court_id`; only the bye has none).
+- Fix: `/md/*` now renders the existing `LeagueGames` / `LeagueGameDetail` inside `MatchDayDeviceContext`; requests go as anon + `x-match-day-token`, scoped by `md_hdr_*` RLS policies; device writes audited. `md_save_league_rubber` revoked. Tournaments still on interim page.

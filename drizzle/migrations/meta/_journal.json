@@ -414,6 +414,13 @@
       "when": 1791208369648,
       "tag": "0058_match_day_league_fixture_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791209413065,
+      "tag": "0059_match_day_device_scope",
+      "breakpoints": true
     }
   ]
 }

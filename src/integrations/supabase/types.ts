@@ -18648,6 +18648,35 @@ export type Database = {
       md_admin_revoke: { Args: { _id: string; _kind: string }; Returns: Json }
       md_can_manage: { Args: { _id: string; _kind: string }; Returns: string }
       md_context: { Args: { _token: string }; Returns: Json }
+      md_device_info: { Args: { _token: string }; Returns: Json }
+      md_hdr_assoc_ids: { Args: never; Returns: string[] }
+      md_hdr_club: { Args: never; Returns: string }
+      md_hdr_court: { Args: never; Returns: number }
+      md_hdr_fixture_ids: { Args: never; Returns: string[] }
+      md_hdr_league_ids: { Args: never; Returns: string[] }
+      md_hdr_writable_fixture_ids: { Args: never; Returns: string[] }
+      md_header_access: {
+        Args: never
+        Returns: {
+          club_id: string
+          competition_id: string
+          competition_kind: string
+          created_at: string
+          created_by: string | null
+          id: string
+          regenerated_from: string | null
+          revoked_at: string | null
+          status: string
+          token: string
+          token_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "match_day_access"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       md_resolve: {
         Args: { _token: string }
         Returns: {

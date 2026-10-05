@@ -88,6 +88,7 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwardsSection";
+import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
@@ -2212,6 +2213,7 @@ export default function ClubChampsView() {
                     <Button size="sm" variant="outline" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the tournament control page</Button>
                   )}
                 </div>
+                <MatchDayAccessCard kind="tournament" competitionId={champId!} competitionName={String((champ as any)?.name || "Tournament")} subdomain={(club as any)?.subdomain} />
                 {isStructured && <KnockoutNextActions champId={champId!} />}
                 {isStructured && arch?.builder_spec && (
                   <StructuredEnginePanel

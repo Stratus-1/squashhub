@@ -255,6 +255,10 @@ export function MemberOnboardingWizard({
    *  (admin-created, CSV-imported, or matched via the trigger on signup).
    *  Pre-existing members keep their assigned numbers and are NEVER auto-numbered. */
   const [isExistingMember, setIsExistingMember] = useState(false);
+  /** Set only for a genuine self-application: its row receives step progress. */
+  const [applicationRowId, setApplicationRowId] = useState<string | null>(null);
+  const pendingResume = useRef<ApplicationProgress | null>(null);
+  const [resumeApplied, setResumeApplied] = useState(false);
 
   // Pre-populate fields from existing member record (for pre-existing / imported members)
   useEffect(() => {
@@ -340,6 +344,17 @@ export function MemberOnboardingWizard({
           freshApplicant = !count;
         }
         setIsExistingMember(!freshApplicant);
+        if (freshApplicant) {
+          setApplicationRowId(member.id);
+          // Resume an unfinished application where it stopped (any device).
+          try {
+            const { data: saved } = await (supabase as any).rpc("get_my_application_progress", { _club_member_id: member.id });
+            const restored = parseApplicationProgress(saved);
+            if (restored) pendingResume.current = restored;
+          } catch (e) {
+            console.warn("[Wizard] could not load saved application progress", e);
+          }
+        }
         // Always use the member's real name when one exists and the current value is empty or a lookup code
         if (member.name && !looksLikeLookupCode(member.name) && (!name || currentNameIsLookup)) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);

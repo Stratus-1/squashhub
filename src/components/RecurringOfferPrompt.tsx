@@ -58,7 +58,7 @@ export default function RecurringOfferPrompt({ club, clubMemberId }: { club: any
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : dismiss())}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Pay your outstanding balance monthly</DialogTitle>
           <DialogDescription>
@@ -69,7 +69,7 @@ export default function RecurringOfferPrompt({ club, clubMemberId }: { club: any
             {settings?.arrears_until ? ` Offer open until ${settings.arrears_until}.` : ""}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <Button variant="ghost" onClick={dismiss}>Dismiss</Button>
           <Button variant="outline" onClick={() => go("/my-account")}>Go to My Account</Button>
           <Button onClick={() => go("/my-account#recurring-payments")}>

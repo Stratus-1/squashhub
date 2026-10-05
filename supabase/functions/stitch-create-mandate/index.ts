@@ -252,7 +252,10 @@ Deno.serve(async (req) => {
     // `redirect_url` query param on a fresh hosted link, provided the host is
     // the club's whitelisted tenant subdomain (apex/`www` → 404 after paying).
     // Body-level redirect keys are silently dropped, so append it here too.
-    const authUrl = appendExpressRedirectUrl(stitchUrl, safeReturn);
+    // Recurring (subscribe/consent) hosted links 404 when any query param is
+    // appended (verified 5 Oct 2026). Use the link exactly as Stitch returned it;
+    // the return URL is passed in the create body.
+    const authUrl = stitchUrl;
 
 
 

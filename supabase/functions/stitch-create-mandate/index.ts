@@ -255,7 +255,9 @@ Deno.serve(async (req) => {
     // Recurring (subscribe/consent) hosted links 404 when any query param is
     // appended (verified 5 Oct 2026). Use the link exactly as Stitch returned it;
     // the return URL is passed in the create body.
-    const authUrl = stitchUrl;
+    // Probe instead: keep `redirect_url` when Stitch serves the page (nsc 200),
+    // fall back to the bare link where that club hasn't whitelisted the host.
+    const authUrl = await appendRedirectIfReachable(stitchUrl, safeReturn);
 
 
 
@@ -280,6 +282,18 @@ function appendExpressRedirectUrl(link: string, returnUrl: string) {
     const sep = link.includes("?") ? "&" : "?";
     return `${link}${sep}redirect_url=${encodeURIComponent(returnUrl)}`;
   }
+}
+
+async function appendRedirectIfReachable(link: string, returnUrl: string) {
+  const candidate = appendExpressRedirectUrl(link, returnUrl);
+  try {
+    const r = await fetch(candidate, { method: "GET", redirect: "follow" });
+    if (r.ok) return candidate;
+    console.warn(`[stitch-create-mandate] redirect probe rejected (${r.status}) for ${returnUrl}`);
+  } catch (e) {
+    console.warn("[stitch-create-mandate] redirect probe failed", e);
+  }
+  return link;
 }
 
 function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {

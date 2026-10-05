@@ -109,3 +109,6 @@ verify_jwt = false
 
 [functions.activate-member-password]
 verify_jwt = false
+
+[functions.match-day-qr]
+verify_jwt = false

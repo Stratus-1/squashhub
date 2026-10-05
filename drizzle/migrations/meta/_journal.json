@@ -477,6 +477,13 @@
       "when": 1791228990470,
       "tag": "0067_members_permission_holders",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1791229010502,
+      "tag": "0068_guard_members_permission",
+      "breakpoints": true
     }
   ]
 }

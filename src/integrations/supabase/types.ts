@@ -18773,6 +18773,10 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      is_club_member_manager: {
+        Args: { _club_id: string; _target_user: string; _user_id: string }
+        Returns: boolean
+      }
       is_club_secrets_admin: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean

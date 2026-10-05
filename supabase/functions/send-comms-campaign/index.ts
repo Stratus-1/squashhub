@@ -319,8 +319,8 @@ Deno.serve(async (req) => {
             if (useManagedEmail) {
               // Main SquashHub domain (managed sending): suppression and rate
               // limits are enforced server-side; a suppressed recipient is skipped.
-              let managedSent = false;
-              for (let attempt = 0; attempt < 3 && !managedSent; attempt++) {
+              let outcome: "sent" | "skipped" | null = null;
+              for (let attempt = 0; attempt < 3 && !outcome; attempt++) {
                 try {
                   await sendLovableEmail({
                     to: m.email,
@@ -333,22 +333,22 @@ Deno.serve(async (req) => {
                     label: `comms-${campaignId}`,
                     idempotency_key: `${campaignId}:${m.id}:email`,
                   }, { apiKey: Deno.env.get("LOVABLE_API_KEY")!, sendUrl: Deno.env.get("LOVABLE_SEND_URL") });
-                  managedSent = true;
+                  outcome = "sent";
                 } catch (e) {
                   if (e instanceof EmailAPIError && e.code === "recipient_suppressed") {
-                    skipped++; await logDelivery({ ...base, target: m.email, status: "skipped", error_message: "Recipient suppressed (unsubscribed/bounced)" });
-                    managedSent = true; // handled — do not retry
-                    continue;
+                    outcome = "skipped";
+                    break;
                   }
                   const wait = e instanceof EmailAPIError && e.status === 429 ? Math.min(e.retryAfterSeconds ?? 60, 30) : 0;
                   if (wait && attempt < 2) { await new Promise((r) => setTimeout(r, wait * 1000)); continue; }
                   throw e;
                 }
               }
-              if (managedSent && !alreadySent.has(`${m.id}:email`)) {
-                // skipped recipients already logged above
+              if (outcome === "skipped") {
+                skipped++; await logDelivery({ ...base, target: m.email, status: "skipped", error_message: "Recipient suppressed (unsubscribed/bounced)" });
+              } else {
+                sent++; await logDelivery({ ...base, target: m.email, status: "sent" });
               }
-              if (managedSent) { sent++; await logDelivery({ ...base, target: m.email, status: "sent" }); }
             } else {
               await transporter.sendMail({
                 from: fromHeader, to: m.email, subject: rendered.subject, html,

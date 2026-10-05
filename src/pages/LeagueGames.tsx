@@ -21,6 +21,7 @@ import { format, startOfWeek, addDays } from "date-fns";
 import { buildTeamNameIndex } from "@/lib/leagues/fixture-display";
 import { useLeagueSeasons } from "@/hooks/use-league-seasons";
 import { pickSeasonScoped } from "@/lib/leagues/seasons";
+import { useMatchDayDevice } from "@/contexts/MatchDayDevice";
 
 
 type AssocRow = {
@@ -36,10 +37,13 @@ type AssocRow = {
 };
 
 export default function LeagueGames() {
-  const { activeMember } = useMemberContext();
+  // Match Day secure link: same page, scoped to the link's club + association, no member.
+  const md = useMatchDayDevice();
+  const { activeMember: memberCtxActive } = useMemberContext();
+  const activeMember = md ? null : memberCtxActive;
   const { data: clubData } = useMyClub();
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(activeMember?.id);
-  const clubId = clubData?.club?.id;
+  const clubId = md ? md.clubId : clubData?.club?.id;
 
   // Fetch club's configured squash week start day + fill-up-leagues toggle.
   const { data: clubSettings } = useQuery({
@@ -88,7 +92,10 @@ export default function LeagueGames() {
     enabled: !!clubId,
   });
 
-  const associations = clubAssociations || [];
+  const associations = useMemo(
+    () => (clubAssociations || []).filter((a) => !md || a.id === md.associationId),
+    [clubAssociations, md],
+  );
 
   // Selected association (segmented pills). Persisted per-user in localStorage.
   const storageKey = `league-games:selected-assoc:${clubId || "none"}`;
@@ -225,7 +232,7 @@ export default function LeagueGames() {
   // Falls back to the legacy NIL hardcode only if the club row is still loading.
   // Per-association override wins; otherwise fall back to the club default.
   const assocFillUp = (selectedAssoc as any)?.fill_up_leagues_enabled as boolean | null | undefined;
-  const hideFillUp = assocFillUp === true
+  const hideFillUp = md ? true : assocFillUp === true
     ? false
     : assocFillUp === false
       ? true
@@ -241,7 +248,11 @@ export default function LeagueGames() {
   return (
     <div className="bottom-nav-safe">
       <SEO title="League Games" description="Upcoming league fixtures, lineups & standings" path="/league-games" noIndex />
-      <PageHeader title="League Games" subtitle="Fixtures, lineups & standings" />
+      <PageHeader
+        title={md ? md.name : "League Games"}
+        showBack={md ? false : undefined}
+        subtitle={md ? `${md.clubName} · Match Day${md.court != null ? ` · ${md.courts.find((c) => c.id === md.court)?.name ?? `Court ${md.court}`}` : " · All courts"}` : "Fixtures, lineups & standings"}
+      />
 
       <div className="px-4 pb-8">
         {showSwitcher && (
@@ -392,7 +403,7 @@ export default function LeagueGames() {
         )}
       </div>
 
-      <BackToDashboard />
+      {!md && <BackToDashboard />}
     </div>
   );
 }

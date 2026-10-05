@@ -7,7 +7,8 @@ export function Breadcrumbs({ className }: { className?: string }) {
   const location = useLocation();
   const crumbs = getBreadcrumbs(location.pathname || "/");
 
-  if (!crumbs || crumbs.length <= 1) return null;
+  // Secure Match Day links carry the access token in the path — never echo it.
+  if (!crumbs || crumbs.length <= 1 || (location.pathname || "").startsWith("/md/")) return null;
 
   return (
     <nav aria-label="Breadcrumb" className={cn("flex items-center gap-1 text-[11px] text-muted-foreground", className)}>

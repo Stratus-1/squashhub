@@ -16,6 +16,7 @@ import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, U
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMatchDayDevice, useLeagueGamesHome } from "@/contexts/MatchDayDevice";
 import { useIsClubAdmin } from "@/hooks/use-club";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import { parseServingMethod } from "@/lib/marker/doubles-serving";
@@ -269,8 +270,13 @@ export default function LeagueGameDetail() {
   const [markerLocks, setMarkerLocks] = useState<Record<string, { user_id: string; user_name: string; heartbeat_at: string }>>({});
   const [markerLocksFresh, setMarkerLocksFresh] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const { activeMember } = useMemberContext();
+  // Match Day secure link: same screen, scoped device identity (no member, no admin).
+  const md = useMatchDayDevice();
+  const leagueGamesHome = useLeagueGamesHome();
+  const { user: authUser } = useAuth();
+  const { activeMember: memberCtxActive } = useMemberContext();
+  const user = (md ? md.deviceUser : authUser) as typeof authUser;
+  const activeMember = md ? null : memberCtxActive;
   const [nsaDialogOpen, setNsaDialogOpen] = useState(false);
   const [nsaPromptOpen, setNsaPromptOpen] = useState(false);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
@@ -329,7 +335,8 @@ export default function LeagueGameDetail() {
   const [savingCorrectedTotals, setSavingCorrectedTotals] = useState(false);
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
-  const isClubAdmin = useIsClubAdmin();
+  const isClubAdminRaw = useIsClubAdmin();
+  const isClubAdmin = md ? false : isClubAdminRaw;
   // Admin manual adjustment to original-player count (e.g. unrecorded sub).
   // Stored as a signed delta applied on top of the computed count.
   const [originalCountAdj, setOriginalCountAdj] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
@@ -2356,7 +2363,7 @@ export default function LeagueGameDetail() {
         return;
       }
       if (window.history.length > 1) navigate(-1);
-      else navigate("/league-games");
+      else navigate(leagueGamesHome);
 
     } catch (err: any) {
       toast.error(err.message || "Failed to submit");
@@ -2499,7 +2506,7 @@ export default function LeagueGameDetail() {
             <Button variant="ghost" size="sm" onClick={() => setViewingPosition(null)}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+            <Button variant="outline" size="sm" onClick={() => navigate(md ? leagueGamesHome : "/")}>
               Exit to Dashboard
             </Button>
             <Badge variant="outline" className="text-xs">
@@ -2780,7 +2787,7 @@ export default function LeagueGameDetail() {
   // - The team captain of either side (matched by club_member_id)
   const isHomeCaptain = !!(activeMember?.id && homeCaptainMemberId && activeMember.id === homeCaptainMemberId);
   const isAwayCaptain = !!(activeMember?.id && awayCaptainMemberId && activeMember.id === awayCaptainMemberId);
-  const canEditLineup = !isSubmitted && (isClubAdmin || isHomeCaptain || isAwayCaptain);
+  const canEditLineup = !isSubmitted && (isClubAdmin || isHomeCaptain || isAwayCaptain || (!!md && md.scoringOpen));
   /**
    * Per-rubber edit authority.
    *  - Not yet played → captain/admin may keep replacing players; latest save wins.
@@ -2856,7 +2863,7 @@ export default function LeagueGameDetail() {
   return (
     <div className="bottom-nav-safe">
       <SEO title="League Scorecard" description="League fixture scorecard" path={`/league-games/${fixtureId}`} noIndex />
-      <PageHeader title="League Scorecard" subtitle={`${homeCode} vs ${awayCode}`} />
+      <PageHeader title="League Scorecard" subtitle={`${homeCode} vs ${awayCode}`} backTo={md ? leagueGamesHome : undefined} />
 
       <div className="px-3 pt-2 flex justify-end">
         <RotateToggle />
@@ -4081,7 +4088,7 @@ export default function LeagueGameDetail() {
             // Prefer browser history so admin returns to the same league
             // (e.g. the 3rd league standings they were drilling into).
             if (window.history.length > 1) navigate(-1);
-            else navigate("/league-games");
+            else navigate(leagueGamesHome);
           }}
         >
           <ChevronLeft className="w-4 h-4 mr-1.5" />
@@ -4174,7 +4181,7 @@ export default function LeagueGameDetail() {
               onClick={() => {
                 setNsaPromptOpen(false);
                 if (window.history.length > 1) navigate(-1);
-                else navigate("/league-games");
+                else navigate(leagueGamesHome);
               }}
             >
               Not now

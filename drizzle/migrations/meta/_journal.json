@@ -414,6 +414,34 @@
       "when": 1791208369648,
       "tag": "0058_match_day_league_fixture_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791209413065,
+      "tag": "0059_match_day_device_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791209448235,
+      "tag": "0060_match_day_member_policy_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1791209673057,
+      "tag": "0061_retire_md_league_rubber_rpc",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1791209740043,
+      "tag": "0062_md_device_submit_with_signatures",
+      "breakpoints": true
     }
   ]
 }

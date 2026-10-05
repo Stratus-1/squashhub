@@ -256,7 +256,9 @@ export function LineupSwapDialog({
       for (const r of filteredRegs) {
         const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
         const isReserve = reserveLeagueIdSet.has(r.league_id);
-        const byeFrom = !isReserve ? sameTierTeamLeagueIdToCode.get(r.league_id) : undefined;
+        // Only label "Bye" when that team truly has no fixture this week —
+        // otherwise the player is also playing for their own team tonight.
+        const byeFrom = !isReserve && byeLeagueIds.includes(r.league_id) ? sameTierTeamLeagueIdToCode.get(r.league_id) : undefined;
         const alsoFrom = !isReserve && allowMultiFixturePerNight ? associationTeamLeagueIdToCode.get(r.league_id) : undefined;
         const existing = regInfo.get(r.club_member_id);
         if (existing) {

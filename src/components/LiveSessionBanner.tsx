@@ -376,7 +376,7 @@ export function LiveSessionBanner() {
                     </span>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {getCourtName(currentBooking!.court_id)}
-                      {bookingHasStarted ? " · Lights are off" : ` · Starts at ${currentBooking!.start_time.slice(0, 5)}`}
+                      {bookingHasStarted ? (courtHasLights ? " · Lights are off" : "") : ` · Starts at ${currentBooking!.start_time.slice(0, 5)}`}
                     </p>
                   </>
                 )}

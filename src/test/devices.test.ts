@@ -130,3 +130,19 @@ describe("describeDeviceBehaviour", () => {
     ).toBe("Pulses for 3s");
   });
 });
+
+import { courtHasLightDevice } from "@/lib/devices";
+describe("courtHasLightDevice", () => {
+  it("no relay on court -> no light prompts (Nelspruit, paid or free)", () => {
+    expect(courtHasLightDevice(false, { relay_device_id: null })).toBe(false);
+    expect(courtHasLightDevice(true, { relay_device_id: null })).toBe(false);
+    expect(courtHasLightDevice(true, { relay_device_id: "  " })).toBe(false);
+  });
+  it("active relay on court -> controls available regardless of fees", () => {
+    expect(courtHasLightDevice(true, { relay_device_id: "abc123" })).toBe(true);
+  });
+  it("integration disabled or court unknown -> hidden", () => {
+    expect(courtHasLightDevice(false, { relay_device_id: "abc123" })).toBe(false);
+    expect(courtHasLightDevice(true, undefined)).toBe(false);
+  });
+});

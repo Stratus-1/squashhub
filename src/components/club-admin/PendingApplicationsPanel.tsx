@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { UserPlus, Check, X } from "lucide-react";
 import { useState } from "react";
+import { applicationStatus, type ApplicationStatus } from "@/lib/membership-application";
 
 interface Props {
   clubId: string;
@@ -18,7 +19,15 @@ interface PendingApplicant {
   phone: string | null;
   gender: string | null;
   applied_at: string | null;
+  fee_category_id: string | null;
+  status: ApplicationStatus;
 }
+
+const STATUS_LABEL: Record<ApplicationStatus, string> = {
+  incomplete: "Incomplete — details/category not finished",
+  awaiting_payment: "Awaiting payment",
+  awaiting_approval: "Ready for approval",
+};
 
 /**
  * Membership applications that came in from the public landing page / QR code.
@@ -33,12 +42,28 @@ export function PendingApplicationsPanel({ clubId }: Props) {
     queryKey: ["pending-applications", clubId],
     queryFn: async () => {
       const { data, error } = await (supabase.from as any)("club_members")
-        .select("id, name, email, phone, gender, applied_at")
+        .select("id, name, email, phone, gender, applied_at, fee_category_id, role, billing_exempt")
         .eq("club_id", clubId)
         .eq("is_pending_approval", true)
         .order("applied_at", { ascending: true });
       if (error) throw error;
-      return (data || []) as PendingApplicant[];
+      const rows = (data || []) as any[];
+      const ids = rows.map((r) => r.id);
+      const unpaid = new Map<string, number>();
+      if (ids.length) {
+        const { data: fees } = await (supabase.from as any)("club_member_fee_payments")
+          .select("club_member_id, paid")
+          .in("club_member_id", ids)
+          .in("fee_type", ["club", "registration"]);
+        for (const f of (fees || []) as any[]) {
+          if (f.paid) continue;
+          unpaid.set(f.club_member_id, (unpaid.get(f.club_member_id) || 0) + 1);
+        }
+      }
+      return rows.map((r) => ({
+        ...r,
+        status: applicationStatus(r, { unpaidJoiningFees: unpaid.get(r.id) || 0 }),
+      })) as PendingApplicant[];
     },
     enabled: !!clubId,
   });
@@ -88,11 +113,15 @@ export function PendingApplicationsPanel({ clubId }: Props) {
             <span className="text-[12px] font-medium truncate flex-1 min-w-[120px]">{p.name || "—"}</span>
             <span className="text-[10px] text-muted-foreground truncate">{p.email || ""}</span>
             <span className="text-[10px] text-muted-foreground truncate">{p.phone || ""}</span>
+            <Badge variant={p.status === "awaiting_approval" ? "default" : "outline"} className="text-[10px]">
+              {STATUS_LABEL[p.status]}
+            </Badge>
             <div className="flex gap-1 ml-auto">
               <Button
                 size="sm"
                 className="h-6 text-[11px] gap-1"
-                disabled={busyId === p.id}
+                disabled={busyId === p.id || p.status === "incomplete"}
+                title={p.status === "incomplete" ? "The applicant hasn't finished their details and membership category yet" : undefined}
                 onClick={() => review(p, true)}
               >
                 <Check className="w-3 h-3" /> Approve

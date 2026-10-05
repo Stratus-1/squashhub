@@ -63,35 +63,10 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Outstanding-balance plan: add this month's extra, never more than is
-      // left on the plan or still owed. Plans close themselves when done.
-      let plan: any = null;
-      let extra = 0;
-      {
-        const { data: p } = await admin
-          .from("mandate_arrears_plans")
-          .select("*")
-          .eq("mandate_id", m.id)
-          .eq("status", "active")
-          .maybeSingle();
-        if (p) {
-          const { data: fees } = await admin
-            .from("club_member_fee_payments")
-            .select("amount")
-            .eq("club_member_id", m.club_member_id)
-            .eq("paid", false);
-          const owed = (fees || []).reduce((s: number, f: any) => s + Math.max(0, Number(f.amount || 0)), 0);
-          const left = Math.max(0, Number(p.total_amount) - Number(p.amount_collected));
-          extra = Math.round(Math.max(0, Math.min(Number(p.monthly_extra), left, owed)) * 100) / 100;
-          if (extra <= 0 || Number(p.months_charged) >= Number(p.months_total)) {
-            await admin.from("mandate_arrears_plans").update({ status: "completed" }).eq("id", p.id).eq("status", "active");
-            extra = 0;
-          } else {
-            plan = p;
-          }
-        }
-      }
-      const chargeAmount = Math.round((amount + extra) * 100) / 100;
+      // The fee-structure plan is charged at its own fixed amount. An
+      // outstanding-balance plan is a separate arrangement charged separately
+      // below (same card, own collection/session/settlement), never added here.
+      const chargeAmount = Math.round(amount * 100) / 100;
 
       // Idempotency: one collection per mandate per due date.
       const { data: collection, error: colErr } = await admin
@@ -194,18 +169,7 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", m.id);
-        if (plan && extra > 0) {
-          const monthsCharged = Number(plan.months_charged) + 1;
-          const collected = Math.round((Number(plan.amount_collected) + extra) * 100) / 100;
-          const done = monthsCharged >= Number(plan.months_total) || collected >= Number(plan.total_amount) - 0.005;
-          // Guarded on months_charged so a retried run can't double-count.
-          await admin
-            .from("mandate_arrears_plans")
-            .update({ months_charged: monthsCharged, amount_collected: collected, status: done ? "completed" : "active" })
-            .eq("id", plan.id)
-            .eq("months_charged", plan.months_charged);
-        }
-        results.push({ mandate: m.id, paid: chargeAmount, arrears_extra: extra });
+        results.push({ mandate: m.id, paid: chargeAmount });
       } else {
         if (session) {
           await admin
@@ -237,6 +201,7 @@ Deno.serve(async (req) => {
           .eq("id", m.id);
         results.push({ mandate: m.id, failed: charge.message });
       }
+      results.push(await chargeOutstandingPlan(admin, m, dueDate, creds, isSandboxCreds(creds)));
     }
 
     return json({ processed: results.length, results });

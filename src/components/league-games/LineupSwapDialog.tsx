@@ -432,16 +432,20 @@ export function LineupSwapDialog({
               {filtered.map((c) => {
                 const isCurrent = !!currentCode && c.code.toUpperCase() === currentCode.toUpperCase();
                 const elsewhere = c.inUse && !(c.inUse.side === side && c.inUse.position === position);
-                // One player, one rubber per fixture: in doubles a player already
+                // One player, one rubber per fixture: in doubles a team player already
                 // in another pair on this side can't also fill this pair.
-                const blocked = !!pairPlayers && !!elsewhere && c.inUse!.side === side;
+                // Reserves are the exception: they may play a second pair.
+                const doubleUp = !!pairPlayers && !!elsewhere && c.inUse!.side === side;
+                const blocked = doubleUp && !c.reserve;
                 return (
                   <button
                     key={c.memberId}
                     disabled={isCurrent || blocked}
                     title={blocked ? `Already playing in pair ${c.inUse!.position}` : undefined}
                     onClick={() => {
-                      if (elsewhere) {
+                      if (doubleUp && c.reserve) {
+                        toast.info(`${c.name} will also play in pair ${c.inUse!.position}.`);
+                      } else if (elsewhere) {
                         toast.warning(`${c.name} is in ${c.inUse!.side === "home" ? "Home" : "Visitors"} #${c.inUse!.position} — they will be moved.`);
                       }
                       setPending(c);

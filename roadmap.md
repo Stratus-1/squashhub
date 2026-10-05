@@ -59,3 +59,4 @@
 
 - [ ] Forensic trace of Sue.kraffor+NSC@gmail.com failed Nelspruit application (evidence only, no changes) and add to regression tests
 - [ ] E2E test of new-member application fix (safe test data, cleanup)
+- [ ] Separate preloaded-member activation from genuine new application; check Durbanville category-lock regression; 5 regression tests

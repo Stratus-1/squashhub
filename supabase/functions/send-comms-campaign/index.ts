@@ -12,6 +12,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js@0.1.0";
 import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
+import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

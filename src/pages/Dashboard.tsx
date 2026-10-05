@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder, useMyRoles } from "@/hooks/use-data";
+import RecurringOfferPrompt from "@/components/RecurringOfferPrompt";
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
@@ -657,6 +658,9 @@ export default function Dashboard() {
           }}
         />
         <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
+        {!isViewingAs && effectiveClub && myClubMember?.id && (
+          <RecurringOfferPrompt club={effectiveClub} clubMemberId={myClubMember.id} />
+        )}
 
         <PageHeader
           title={effectiveClub?.name || "SquashHub"}

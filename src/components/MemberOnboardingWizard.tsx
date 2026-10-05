@@ -1197,7 +1197,7 @@ export function MemberOnboardingWizard({
                           {[...feeCategories]
                             // Hide the internal seeded "Standard Membership" placeholder;
                             // paying categories first, then free ones (Visitor, Honorary…)
-                            .filter((c: any) => (c.fee_class ?? "club_income") !== "standard")
+                            .filter((c: any) => !((c.fee_class ?? "club_income") === "standard" && String(c.name ?? "").trim().toLowerCase() === "standard membership"))
                             .sort((a, b) => (Number(b.annual_fee) > 0 ? 1 : 0) - (Number(a.annual_fee) > 0 ? 1 : 0))
                             .map((cat) => (
                               <SelectItem key={cat.id} value={cat.id}>

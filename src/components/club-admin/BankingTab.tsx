@@ -867,7 +867,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       {step === "recurring" && (
         <RecurringPaymentSettingsCard clubId={clubId} club={club as any} />
       )}
-      <SetupStepNav steps={steps} value={step} onChange={setStep} />
+      {step === "recurring" ? (
+        <Button variant="ghost" size="sm" onClick={() => setStep("gateway")}>Back to online payments</Button>
+      ) : (
+        <SetupStepNav steps={steps} value={step} onChange={setStep} />
+      )}
     </div>
   );
 }

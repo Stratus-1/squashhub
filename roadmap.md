@@ -53,4 +53,4 @@
 - [x] EFT option on invite: bank details + required POP upload (invite-upload-proof fn, payment-proofs)
 - [x] Change payment method until money moved (invite_change_payment_method RPC)
 ## Theo Engelbrecht activation email (Durbanville)
-- [ ] Send manually from main domain — PAUSED: user says Durbanville not set up yet; draft campaign ab442f3b-80a4-406c-8da0-e088824e0958 prepared, awaiting go/discard decision
+- [x] Sent manually from main domain (managed fallback added to send-comms-campaign for clubs without SMTP); campaign ab442f3b sent 2026-10-05, 1 sent

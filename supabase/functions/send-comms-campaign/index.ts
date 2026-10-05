@@ -10,6 +10,7 @@
 // Only the ticked channels are ever used. Every recipient/channel attempt is
 // written to comms_deliveries (the delivery log) and is idempotent.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js@0.1.0";
 import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
 
 const corsHeaders = {
@@ -211,8 +212,12 @@ Deno.serve(async (req) => {
     }).eq("id", campaignId);
 
     // ---- Email transport (only when email is ticked) ----
+    // Clubs with their own SMTP send from their own address. Clubs without one
+    // fall back to the main SquashHub email domain (managed sending), so
+    // activation and other comms still reach members before the club sets up email.
     let transporter: any = null;
     let fromHeader = "";
+    let useManagedEmail = false;
     let sigBlock = "", disclaimerBlock = "";
     if (channels.includes("email")) {
       const { data: secrets } = await admin
@@ -220,19 +225,24 @@ Deno.serve(async (req) => {
         .select("smtp_host,smtp_port,smtp_user,smtp_pass,sender_name,sender_email")
         .eq("club_id", campaign.club_id).maybeSingle();
       if (!secrets?.smtp_host || !secrets?.smtp_user || !secrets?.smtp_pass || !secrets?.sender_email) {
-        await admin.from("comms_campaigns").update({
-          status: "failed", last_error: "Club SMTP not configured",
-        }).eq("id", campaignId);
-        return json({ error: "Club email (SMTP) is not configured. Set it up in Club Settings, or untick Email." }, 400);
+        if (!Deno.env.get("LOVABLE_API_KEY")) {
+          await admin.from("comms_campaigns").update({
+            status: "failed", last_error: "Club SMTP not configured",
+          }).eq("id", campaignId);
+          return json({ error: "Club email (SMTP) is not configured. Set it up in Club Settings, or untick Email." }, 400);
+        }
+        useManagedEmail = true;
       }
-      const port = Number(secrets.smtp_port) || 587;
-      if (!ALLOWED_SMTP_PORTS.has(port)) return json({ error: `SMTP port ${port} not allowed` }, 400);
-      const nodemailer = await import("npm:nodemailer@6.9.14");
-      transporter = nodemailer.default.createTransport({
-        host: secrets.smtp_host, port, secure: port === 465, requireTLS: port === 587,
-        auth: { user: secrets.smtp_user, pass: secrets.smtp_pass },
-      });
-      fromHeader = `${secrets.sender_name || club?.name || "Club"} <${secrets.sender_email}>`;
+      if (!useManagedEmail) {
+        const port = Number(secrets?.smtp_port) || 587;
+        if (!ALLOWED_SMTP_PORTS.has(port)) return json({ error: `SMTP port ${port} not allowed` }, 400);
+        const nodemailer = await import("npm:nodemailer@6.9.14");
+        transporter = nodemailer.default.createTransport({
+          host: secrets.smtp_host, port, secure: port === 465, requireTLS: port === 587,
+          auth: { user: secrets.smtp_user, pass: secrets.smtp_pass },
+        });
+        fromHeader = `${secrets.sender_name || club?.name || "Club"} <${secrets.sender_email}>`;
+      }
       sigBlock = club?.email_signature_html
         ? `<div style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:14px">${club.email_signature_html}</div>` : "";
       disclaimerBlock = club?.email_disclaimer
@@ -306,12 +316,47 @@ Deno.serve(async (req) => {
               continue;
             }
             const html = `${rendered.body}${sigBlock}${disclaimerBlock}`;
-            await transporter.sendMail({
-              from: fromHeader, to: m.email, subject: rendered.subject, html,
-              text: rendered.text,
-            });
-            sent++; await logDelivery({ ...base, target: m.email, status: "sent" });
-            await new Promise((r) => setTimeout(r, 250)); // pace the mailbox
+            if (useManagedEmail) {
+              // Main SquashHub domain (managed sending): suppression and rate
+              // limits are enforced server-side; a suppressed recipient is skipped.
+              let outcome: "sent" | "skipped" | null = null;
+              for (let attempt = 0; attempt < 3 && !outcome; attempt++) {
+                try {
+                  await sendLovableEmail({
+                    to: m.email,
+                    from: `SquashHub <noreply@squashhub.co.za>`,
+                    sender_domain: "reg.squashhub.co.za",
+                    subject: rendered.subject,
+                    html,
+                    text: rendered.text,
+                    purpose: "transactional",
+                    label: `comms-${campaignId}`,
+                    idempotency_key: `${campaignId}:${m.id}:email`,
+                  }, { apiKey: Deno.env.get("LOVABLE_API_KEY")!, sendUrl: Deno.env.get("LOVABLE_SEND_URL") });
+                  outcome = "sent";
+                } catch (e) {
+                  if (e instanceof EmailAPIError && e.code === "recipient_suppressed") {
+                    outcome = "skipped";
+                    break;
+                  }
+                  const wait = e instanceof EmailAPIError && e.status === 429 ? Math.min(e.retryAfterSeconds ?? 60, 30) : 0;
+                  if (wait && attempt < 2) { await new Promise((r) => setTimeout(r, wait * 1000)); continue; }
+                  throw e;
+                }
+              }
+              if (outcome === "skipped") {
+                skipped++; await logDelivery({ ...base, target: m.email, status: "skipped", error_message: "Recipient suppressed (unsubscribed/bounced)" });
+              } else {
+                sent++; await logDelivery({ ...base, target: m.email, status: "sent" });
+              }
+            } else {
+              await transporter.sendMail({
+                from: fromHeader, to: m.email, subject: rendered.subject, html,
+                text: rendered.text,
+              });
+              sent++; await logDelivery({ ...base, target: m.email, status: "sent" });
+              await new Promise((r) => setTimeout(r, 250)); // pace the mailbox
+            }
           } else if (ch === "whatsapp") {
             const phone = normalisePhone(m.phone);
             if (!phone) {

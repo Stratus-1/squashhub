@@ -52,11 +52,11 @@ export function PendingApplicationsPanel({ clubId }: Props) {
       const unpaid = new Map<string, number>();
       if (ids.length) {
         const { data: fees } = await (supabase.from as any)("club_member_fee_payments")
-          .select("club_member_id, status")
+          .select("club_member_id, paid")
           .in("club_member_id", ids)
           .in("fee_type", ["club", "registration"]);
         for (const f of (fees || []) as any[]) {
-          if (String(f.status || "").toLowerCase() === "paid") continue;
+          if (f.paid) continue;
           unpaid.set(f.club_member_id, (unpaid.get(f.club_member_id) || 0) + 1);
         }
       }

@@ -315,7 +315,21 @@ Deno.serve(async (req) => {
               skipped++; await logDelivery({ ...base, target: null, status: "skipped", error_message: "No email address" });
               continue;
             }
-            const html = `${rendered.body}${sigBlock}${disclaimerBlock}`;
+            // Match Day Access: fixture/round emails for a competition with access
+            // enabled get an "Open scoring" button + QR (persistent token, deep-linked
+            // to the recipient's match/court when member_vars carry md_match_id/md_court).
+            let mdBlock = "";
+            const af = campaign.audience_filter || {};
+            const mdKind = af.league_season_id ? "league_season" : af.tournament_id ? "tournament" : null;
+            if (mdKind && !String(af.purpose || "").includes("invite")) {
+              const mv: any = memberVars[m.id] ?? {};
+              const links = await matchDayLinks(admin, {
+                kind: mdKind, competitionId: String(af.league_season_id || af.tournament_id),
+                subdomain: club?.subdomain, court: mv.md_court != null ? Number(mv.md_court) : null, matchId: mv.md_match_id ?? null,
+              }).catch(() => null);
+              if (links) mdBlock = matchDayEmailBlock(links);
+            }
+            const html = `${rendered.body}${mdBlock}${sigBlock}${disclaimerBlock}`;
             if (useManagedEmail) {
               // Main SquashHub domain (managed sending): suppression and rate
               // limits are enforced server-side; a suppressed recipient is skipped.

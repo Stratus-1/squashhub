@@ -247,6 +247,9 @@ export function MemberOnboardingWizard({
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);
+  // True when the member's record already has a fee category (e.g. imported
+  // members activating their account) — the category is locked, not selectable.
+  const [categoryLocked, setCategoryLocked] = useState(false);
   /** True when the wizard found an existing club_members row for this user
    *  (admin-created, CSV-imported, or matched via the trigger on signup).
    *  Pre-existing members keep their assigned numbers and are NEVER auto-numbered. */
@@ -342,6 +345,7 @@ export function MemberOnboardingWizard({
         if (member.fee_category_id) {
           setFeeCategoryId(member.fee_category_id);
           setCategoryAutoSet(true);
+          setCategoryLocked(true);
         }
         if (member.plays_league) setPlaysLeague(member.plays_league);
 

@@ -8457,6 +8457,7 @@ export type Database = {
       league_match_results: {
         Row: {
           away_games_won: number
+          away_lineup_explicit: boolean | null
           away_player_code: string | null
           away_player_member_id: string | null
           away_player_name: string | null
@@ -8469,6 +8470,7 @@ export type Database = {
           forfeit_side: string | null
           game_scores: Json | null
           home_games_won: number
+          home_lineup_explicit: boolean | null
           home_player_code: string | null
           home_player_member_id: string | null
           home_player_name: string | null
@@ -8487,6 +8489,7 @@ export type Database = {
         }
         Insert: {
           away_games_won?: number
+          away_lineup_explicit?: boolean | null
           away_player_code?: string | null
           away_player_member_id?: string | null
           away_player_name?: string | null
@@ -8499,6 +8502,7 @@ export type Database = {
           forfeit_side?: string | null
           game_scores?: Json | null
           home_games_won?: number
+          home_lineup_explicit?: boolean | null
           home_player_code?: string | null
           home_player_member_id?: string | null
           home_player_name?: string | null
@@ -8517,6 +8521,7 @@ export type Database = {
         }
         Update: {
           away_games_won?: number
+          away_lineup_explicit?: boolean | null
           away_player_code?: string | null
           away_player_member_id?: string | null
           away_player_name?: string | null
@@ -8529,6 +8534,7 @@ export type Database = {
           forfeit_side?: string | null
           game_scores?: Json | null
           home_games_won?: number
+          home_lineup_explicit?: boolean | null
           home_player_code?: string | null
           home_player_member_id?: string | null
           home_player_name?: string | null

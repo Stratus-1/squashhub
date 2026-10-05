@@ -18654,6 +18654,7 @@ export type Database = {
       md_hdr_court: { Args: never; Returns: number }
       md_hdr_fixture_ids: { Args: never; Returns: string[] }
       md_hdr_league_ids: { Args: never; Returns: string[] }
+      md_hdr_member_ids: { Args: never; Returns: string[] }
       md_hdr_writable_fixture_ids: { Args: never; Returns: string[] }
       md_header_access: {
         Args: never

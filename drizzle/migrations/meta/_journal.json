@@ -421,6 +421,13 @@
       "when": 1791209413065,
       "tag": "0059_match_day_device_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791209448235,
+      "tag": "0060_match_day_member_policy_fix",
+      "breakpoints": true
     }
   ]
 }

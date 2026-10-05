@@ -435,6 +435,13 @@
       "when": 1791209673057,
       "tag": "0061_retire_md_league_rubber_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1791209740043,
+      "tag": "0062_md_device_submit_with_signatures",
+      "breakpoints": true
     }
   ]
 }

@@ -94,7 +94,10 @@ export default function ActivateAccount() {
       if (u?.user) {
         clearPendingVerify();
         setSignedInEmail(u.user.email ?? null);
-        if ((data as Info)?.status === "valid") await claim();
+        // "claimed" may mean THIS login was already auto-linked by email on
+        // sign-in; claim confirms it (and retires the link) or explains otherwise.
+        const st = (data as Info)?.status;
+        if (st === "valid" || st === "claimed") await claim();
       } else {
         // Keep the check-email state across reload / Back — never drop back to the form.
         const pending = readPendingVerify();

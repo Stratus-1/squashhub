@@ -2356,7 +2356,7 @@ export default function LeagueGameDetail() {
         return;
       }
       if (window.history.length > 1) navigate(-1);
-      else navigate("/league-games");
+      else navigate(leagueGamesHome);
 
     } catch (err: any) {
       toast.error(err.message || "Failed to submit");
@@ -2499,7 +2499,7 @@ export default function LeagueGameDetail() {
             <Button variant="ghost" size="sm" onClick={() => setViewingPosition(null)}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+            <Button variant="outline" size="sm" onClick={() => navigate(md ? leagueGamesHome : "/")}>
               Exit to Dashboard
             </Button>
             <Badge variant="outline" className="text-xs">
@@ -4081,7 +4081,7 @@ export default function LeagueGameDetail() {
             // Prefer browser history so admin returns to the same league
             // (e.g. the 3rd league standings they were drilling into).
             if (window.history.length > 1) navigate(-1);
-            else navigate("/league-games");
+            else navigate(leagueGamesHome);
           }}
         >
           <ChevronLeft className="w-4 h-4 mr-1.5" />
@@ -4174,7 +4174,7 @@ export default function LeagueGameDetail() {
               onClick={() => {
                 setNsaPromptOpen(false);
                 if (window.history.length > 1) navigate(-1);
-                else navigate("/league-games");
+                else navigate(leagueGamesHome);
               }}
             >
               Not now

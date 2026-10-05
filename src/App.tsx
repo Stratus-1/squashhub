@@ -49,7 +49,7 @@ const SetPassword = lazy(() => import("./pages/SetPassword"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const PayReturn = lazy(() => import("./pages/PayReturn"));
 const ScanPay = lazy(() => import("./pages/ScanPay"));
-const MatchDay = lazy(() => import("./pages/MatchDay"));
+const MatchDay = lazy(() => import("./pages/MatchDayShell"));
 const BarCounter = lazy(() => import("./pages/BarCounter"));
 const BarPaymentSuccess = lazy(() => import("./pages/BarPaymentSuccess"));
 const StitchPaymentBridge = lazy(() => import("./pages/StitchPaymentBridge"));
@@ -530,6 +530,8 @@ function AppRoutes() {
         <Route path="/s/:code" element={<ScanPay />} />
         <Route path="/md/:token" element={<MatchDay />} />
         <Route path="/md/:token/court/:court" element={<MatchDay />} />
+        <Route path="/md/:token/game/:fixtureId" element={<MatchDay />} />
+        <Route path="/md/:token/court/:court/game/:fixtureId" element={<MatchDay />} />
         <Route path="/s/:code/counter" element={<BarCounter />} />
         <Route path="/c/:subdomain/s/:code/counter" element={<BarCounter />} />
         <Route path="/bar/counter" element={<ProtectedRoute><BarCounter /></ProtectedRoute>} />

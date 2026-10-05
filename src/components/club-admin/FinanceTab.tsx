@@ -37,10 +37,10 @@ import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club
 /* ─── Chart of Accounts definition ─── */
 
 type GLAccount =
-  | "debtors" | "creditors" | "bank_current" | "cash"
+  | "debtors" | "creditors" | "bank_current" | "cash" | "bar_stock_on_hand"
   | "opening_balance_equity" | "member_credits" | "association_payable"
-  | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income"
-  | "bar_expense" | "league_fees_expense" | "national_body_expense"
+  | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income" | "bar_stock_gain"
+  | "bar_expense" | "league_fees_expense" | "national_body_expense" | "bar_stock_loss"
   | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "cleaning_services" | "security" | "general_expense";
 
 interface AccountMeta {
@@ -55,6 +55,7 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   bank_current:      { label: "Current Account",     type: "BS", category: "Asset",     normal: "Dr" },
   cash:              { label: "Petty Cash",          type: "BS", category: "Asset",     normal: "Dr" },
   debtors:           { label: "Accounts Receivable", type: "BS", category: "Asset",     normal: "Dr" },
+  bar_stock_on_hand: { label: "Bar Stock Adjustments", type: "BS", category: "Asset",   normal: "Dr" },
   // Balance Sheet – Liabilities / Equity
   creditors:         { label: "Accounts Payable",     type: "BS", category: "Liability", normal: "Cr" },
   member_credits:    { label: "Member Credits",       type: "BS", category: "Liability", normal: "Cr" },
@@ -64,6 +65,7 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   fee_income:        { label: "Fee Income — General",     type: "IS", category: "Income",    normal: "Cr" },
   membership_income: { label: "Fee Income — Membership",  type: "IS", category: "Income",    normal: "Cr" },
   bar_income:        { label: "Bar Sales Income",         type: "IS", category: "Income",    normal: "Cr" },
+  bar_stock_gain:    { label: "Bar Profits (stock take)", type: "IS", category: "Income",    normal: "Cr" },
   league_fees_income:      { label: "Fee Income — League",        type: "IS", category: "Income",  normal: "Cr" },
   national_body_income:    { label: "Fee Income — National Body", type: "IS", category: "Income", normal: "Cr" },
   tournament_income:       { label: "Fee Income — Tournament",    type: "IS", category: "Income", normal: "Cr" },
@@ -71,6 +73,7 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   wifi_income:             { label: "Fee Income — Wi-Fi",         type: "IS", category: "Income", normal: "Cr" },
   // Expenses
   bar_expense:             { label: "Bar Stock Purchases",       type: "IS", category: "Expense", normal: "Dr" },
+  bar_stock_loss:          { label: "Bar Losses (stock take)",   type: "IS", category: "Expense", normal: "Dr" },
   league_fees_expense:     { label: "League Fees Payouts",       type: "IS", category: "Expense", normal: "Dr" },
   national_body_expense:   { label: "National Body Fees Paid",   type: "IS", category: "Expense", normal: "Dr" },
   maintenance:             { label: "Maintenance",               type: "IS", category: "Expense", normal: "Dr" },

@@ -463,6 +463,13 @@
       "when": 1791211881139,
       "tag": "0065_md_profiles_column_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1791215171626,
+      "tag": "0066_bar_stocktake_post_variance",
+      "breakpoints": true
     }
   ]
 }

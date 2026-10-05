@@ -169,24 +169,37 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
     }
   }
 
-  async function finalise(adjust: boolean) {
+  async function finalise(adjust: boolean, post = false) {
     if (!take?.id) return;
     setBusy(true);
     try {
       if (Object.keys(counts).length || Object.keys(opens).length) await saveCounts();
       const { error } = await supabase.rpc("bar_stock_take_finalise", {
-        _take_id: take.id, _adjust: adjust,
+        _take_id: take.id, _adjust: adjust, _post: post,
       } as any);
       if (error) throw error;
       await refetchTake();
       qc.invalidateQueries({ queryKey: ["bar-items"] });
       qc.invalidateQueries({ queryKey: ["bar-stock-levels"] });
-      toast.success(adjust ? "Stock take finalised — stock corrected to the counted figures" : "Stock take finalised");
+      qc.invalidateQueries({ queryKey: ["income-statement"] });
+      toast.success(
+        post
+          ? `Stock corrected and ${varianceValue < 0 ? "loss" : "profit"} of ${money(Math.abs(varianceValue), 2)} posted to the income statement`
+          : adjust ? "Stock corrected to the counted figures (nothing posted)" : "Stock take finalised",
+      );
     } catch (e: any) {
       toast.error(e.message ?? "Could not finalise the stock take");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function startNewTake() {
+    setCounts({});
+    setOpens({});
+    setNotes("");
+    await qc.invalidateQueries({ queryKey: ["bar-stock-levels"] });
+    await startTake();
   }
 
   function downloadSheet() {
@@ -266,10 +279,17 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
             <Button className="h-9" disabled={busy || isLoading} onClick={startTake}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Prepare stock take"}
             </Button>
+          ) : finalised ? (
+            <>
+              <Badge variant="secondary" className="h-9 px-3 flex items-center">
+                Finalised{take?.posted_to_ledger ? ` · ${Number(take.variance_value) < 0 ? "loss" : "profit"} posted` : ""}
+              </Badge>
+              <Button className="h-9" disabled={busy} onClick={startNewTake}>
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start new stock take"}
+              </Button>
+            </>
           ) : (
-            <Badge variant={finalised ? "secondary" : "default"} className="h-9 px-3 flex items-center">
-              {finalised ? "Finalised" : "Stock take in progress"}
-            </Badge>
+            <Badge variant="default" className="h-9 px-3 flex items-center">Stock take in progress</Badge>
           )}
         </div>
       </Card>
@@ -290,11 +310,11 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
           <Button size="sm" variant="secondary" disabled={busy || !(Object.keys(counts).length || Object.keys(opens).length)} onClick={saveCounts}>
             Save counts
           </Button>
-          <Button size="sm" disabled={busy || counted.length === 0} onClick={() => finalise(true)}>
-            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Finalise &amp; correct stock
+          <Button size="sm" disabled={busy || counted.length === 0 || Math.abs(varianceValue) < 0.005} onClick={() => finalise(true, true)}>
+            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Correct stock &amp; post {varianceValue < 0 ? "loss" : "profit"} ({money(Math.abs(varianceValue), 2)})
           </Button>
-          <Button size="sm" variant="ghost" disabled={busy || counted.length === 0} onClick={() => finalise(false)}>
-            Finalise without changing stock
+          <Button size="sm" variant="outline" disabled={busy || counted.length === 0} onClick={() => finalise(true, false)}>
+            Correct stock only (don't post)
           </Button>
         </Card>
       )}

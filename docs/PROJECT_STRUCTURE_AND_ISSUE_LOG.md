@@ -2586,3 +2586,8 @@ Cause: builder stored one event per picked player; saving wrote one division and
 - Problem: outstanding-balance plan was added onto the membership monthly charge and sized from all unpaid charges (double-financing membership).
 - Fix: `member_outstanding_breakdown` RPC, rewritten `start_arrears_plan` (stores covered charges, never touches the mandate), separate collection per plan in `payfast-charge-mandates` (purpose `fee` against plan charges only), member UI copy updated.
 - Follow-up (same day): reverted to ONE combined debit (fee amount + plan instalment) with split settlement: fee part as before, plan part as separate 'fee' session against covered_fee_ids.
+
+## 2026-10-05 — Nelspruit doubles scorecard showed old pairs; Edit / Select Players did nothing
+- Cause 1: a single reserve swap (27 Sep) saved all 5 rubber rows with `lineup_set_at`; saved rows were treated as authoritative, so later `league_team_pairs` changes (new pairs effective 5 Oct) never showed. Singles fixtures were unaffected (no pre-saved rows on upcoming singles fixtures).
+- Cause 2: the button set `setupDone=false`, but the saved-rows load effect re-ran on every poll/realtime refetch and forced `setupDone=true` again.
+- Fix: `league_match_results.home/away_lineup_explicit` (true = chosen for this match, false = default copy, NULL = legacy). Unstarted fixtures refresh default copies and legacy doubles pairs that are superseded on the fixture date; explicit picks and started/locked rubbers are kept. Edit flow guarded by a ref; button limited to captains/admins and disabled once scoring starts.

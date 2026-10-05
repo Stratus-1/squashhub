@@ -3629,7 +3629,7 @@ export default function LeagueGameDetail() {
                               <Button
                                 size="lg"
                                 className="text-sm font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:opacity-95 transition-all h-12 px-5 mx-auto flex"
-                                onClick={() => {
+                                onClick={() => { console.log("DBGEDIT", nsaLive, setupDone);
                                   // Go straight to the tap-to-pick wizard; only fall back to the
                                   // manual setup grid when no NSA roster is available.
                                   if (nsaLive) {

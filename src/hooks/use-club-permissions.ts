@@ -154,7 +154,7 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
   // Club-level full admin gets everything except super-admin-only slugs.
   const clubWide = allSlugs.filter(s => !SUPER_ADMIN_ONLY_SLUGS.includes(s));
 
-  if (isSuperAdmin) return { permissions: new Set(allSlugs), isLoading: false };
+  if (isSuperAdmin) return { permissions: new Set(allSlugs), isLoading: false, isFullAdmin: true };
 
   const perms = new Set<string>();
   // Explicit grants first (these may include restricted slugs granted by a super admin).

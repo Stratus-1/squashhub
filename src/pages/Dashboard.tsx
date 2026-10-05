@@ -759,10 +759,12 @@ export default function Dashboard() {
           isVisitor={(myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor"}
           eventsSlot={<CreateClubEvent />}
           statsSlot={
-            <div className="space-y-3">
-              <MyStatsCard memberId={myMemberId} />
-              <MyRankingsCard clubId={clubId} memberId={myMemberId} />
-            </div>
+            isPendingApplicant ? null : (
+              <div className="space-y-3">
+                <MyStatsCard memberId={myMemberId} />
+                <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+              </div>
+            )
           }
         />
       </div>
@@ -983,10 +985,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="px-4 mt-3 space-y-3">
-        <MyStatsCard memberId={myMemberId} />
-        <MyRankingsCard clubId={clubId} memberId={myMemberId} />
-      </div>
+      {!isPendingApplicant && (
+        <div className="px-4 mt-3 space-y-3">
+          <MyStatsCard memberId={myMemberId} />
+          <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+        </div>
+      )}
 
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />

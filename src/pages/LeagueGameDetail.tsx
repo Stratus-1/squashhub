@@ -2787,7 +2787,9 @@ export default function LeagueGameDetail() {
   // - The team captain of either side (matched by club_member_id)
   const isHomeCaptain = !!(activeMember?.id && homeCaptainMemberId && activeMember.id === homeCaptainMemberId);
   const isAwayCaptain = !!(activeMember?.id && awayCaptainMemberId && activeMember.id === awayCaptainMemberId);
-  const canEditLineup = !isSubmitted && (isClubAdmin || isHomeCaptain || isAwayCaptain || (!!md && md.scoringOpen));
+  // Match Day device links are scoring/viewing only — player replacement
+  // requires a signed-in captain or admin.
+  const canEditLineup = !isSubmitted && !md && (isClubAdmin || isHomeCaptain || isAwayCaptain);
   /**
    * Per-rubber edit authority.
    *  - Not yet played → captain/admin may keep replacing players; latest save wins.

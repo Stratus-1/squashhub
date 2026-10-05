@@ -2608,3 +2608,7 @@ Cause: builder stored one event per picked player; saving wrote one division and
 
 - 2026-10-05 Nelspruit got club-wide "Fill up your league teams" notices from a stale deployed `reminders` function (club `fill_top_down_enabled`). Redeployed repo version: per-league `fill_up_reminder_enabled` + fixture within 14 days, captains only.
 - 2026-10-05 Barry Christie (Nelspruit) not charged joining fee: newness check compared row to the saving user (fails in 'Viewing as'); now compares row joined_at to the row owner's profile created_at. Fees R875+R350 added manually.
+
+### 2026-10-05 — New member application skipped details/category/fees (Nelspruit)
+Root cause: clubs with auto member numbering assign a number when the applicant's account is created; the dashboard only opened the signup steps when the member number was missing, so applicants (e.g. "Susan Toets", NSC400) landed straight on the dashboard and admins approved an empty application. Also the self-update guard blocked an applicant from saving their first fee category, and signup rows were treated as "existing" so the once-off registration fee was hidden.
+Fix: `src/lib/membership-application.ts` (incomplete = own signup row without fee category); Dashboard resumes the steps; wizard treats fresh signup rows as new (registration fee shown, never re-charged once joining fees exist) and requires a category; DB guard allows an applicant's FIRST category only; admin panel shows Incomplete / Awaiting payment / Ready for approval and blocks approving incomplete ones.

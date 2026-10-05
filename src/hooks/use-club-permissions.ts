@@ -131,7 +131,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
 /**
  * Get all effective permissions for the current member.
  */
-export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading: boolean } {
+export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading: boolean; isFullAdmin?: boolean } {
   const { activeMember, isAdmin } = useMemberContext();
   const { isSuperAdmin, isLoading: superAdminLoading } = useSuperAdminStatus();
   const memberId = activeMember?.id;
@@ -167,6 +167,7 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
 
   return {
     permissions: perms,
+    isFullAdmin: !!impliedFull,
     isLoading: superAdminLoading || (!!memberId && (memberRolePending || permissionQuery.isPending)),
   };
 

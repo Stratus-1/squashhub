@@ -353,18 +353,34 @@ export function MemberOnboardingWizard({
         // so existing league players (e.g. CSIR/NSA) see their league pre-ticked
         // with their existing number filled in.
         try {
-          const { data: affiliations } = await fromExt("member_association_affiliations")
+          const { data: affRows } = await fromExt("member_association_affiliations")
             .select("association_id, league_association_number, active")
             .eq("club_member_id", member.id)
             .eq("active", true);
-          if (affiliations && affiliations.length > 0) {
+          const affiliations: any[] = [...(affRows || [])];
+          // Also include leagues the member is already placed in (team
+          // registrations from imports/SportyHQ) so they only need to confirm.
+          const { data: regs } = await fromExt("member_league_registrations")
+            .select("league_association_number, leagues(association_id)")
+            .eq("club_member_id", member.id);
+          for (const r of (regs || []) as any[]) {
+            const assocId = r?.leagues?.association_id;
+            if (!assocId) continue;
+            const existing = affiliations.find((a) => a.association_id === assocId);
+            if (existing) {
+              if (!existing.league_association_number && r.league_association_number) existing.league_association_number = r.league_association_number;
+            } else {
+              affiliations.push({ association_id: assocId, league_association_number: r.league_association_number || null });
+            }
+          }
+          if (affiliations.length > 0) {
             setPlaysLeague(true);
             // Resolve label/fee from this club's league_associations rows
             const { data: clubLeagues } = await fromExt("league_associations")
               .select("id, name, abbreviation, fee_annual, scope, platform_association_id")
               .eq("club_id", clubId);
             const nextSelections: Record<string, LeagueSelection> = {};
-            for (const aff of affiliations as any[]) {
+            for (const aff of affiliations) {
               // Try to find a matching league_associations row in this club:
               // 1) Direct id match (when affiliation.association_id IS the league_associations.id)
               // 2) Match via platform_association_id

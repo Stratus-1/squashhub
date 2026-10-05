@@ -1441,10 +1441,13 @@ export type Database = {
           finalised_at: string | null
           finalised_by: string | null
           id: string
+          journal_ref: string | null
           notes: string | null
+          posted_to_ledger: boolean
           status: string
           take_date: string
           updated_at: string
+          variance_value: number | null
         }
         Insert: {
           adjusted?: boolean
@@ -1454,10 +1457,13 @@ export type Database = {
           finalised_at?: string | null
           finalised_by?: string | null
           id?: string
+          journal_ref?: string | null
           notes?: string | null
+          posted_to_ledger?: boolean
           status?: string
           take_date?: string
           updated_at?: string
+          variance_value?: number | null
         }
         Update: {
           adjusted?: boolean
@@ -1467,10 +1473,13 @@ export type Database = {
           finalised_at?: string | null
           finalised_by?: string | null
           id?: string
+          journal_ref?: string | null
           notes?: string | null
+          posted_to_ledger?: boolean
           status?: string
           take_date?: string
           updated_at?: string
+          variance_value?: number | null
         }
         Relationships: [
           {
@@ -17720,7 +17729,7 @@ export type Database = {
         Returns: Json
       }
       bar_stock_take_finalise: {
-        Args: { _adjust?: boolean; _take_id: string }
+        Args: { _adjust?: boolean; _post?: boolean; _take_id: string }
         Returns: Json
       }
       bar_stock_take_save: {
@@ -20323,6 +20332,9 @@ export type Database = {
         | "wifi_income"
         | "security"
         | "visitor_income"
+        | "bar_stock_loss"
+        | "bar_stock_gain"
+        | "bar_stock_on_hand"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -20501,6 +20513,9 @@ export const Constants = {
         "wifi_income",
         "security",
         "visitor_income",
+        "bar_stock_loss",
+        "bar_stock_gain",
+        "bar_stock_on_hand",
       ],
       integration_provider: [
         "strava",

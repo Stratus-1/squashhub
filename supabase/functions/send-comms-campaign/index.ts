@@ -10,6 +10,7 @@
 // Only the ticked channels are ever used. Every recipient/channel attempt is
 // written to comms_deliveries (the delivery log) and is idempotent.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js@0.1.0";
 import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
 
 const corsHeaders = {
@@ -211,8 +212,12 @@ Deno.serve(async (req) => {
     }).eq("id", campaignId);
 
     // ---- Email transport (only when email is ticked) ----
+    // Clubs with their own SMTP send from their own address. Clubs without one
+    // fall back to the main SquashHub email domain (managed sending), so
+    // activation and other comms still reach members before the club sets up email.
     let transporter: any = null;
     let fromHeader = "";
+    let useManagedEmail = false;
     let sigBlock = "", disclaimerBlock = "";
     if (channels.includes("email")) {
       const { data: secrets } = await admin
@@ -220,12 +225,15 @@ Deno.serve(async (req) => {
         .select("smtp_host,smtp_port,smtp_user,smtp_pass,sender_name,sender_email")
         .eq("club_id", campaign.club_id).maybeSingle();
       if (!secrets?.smtp_host || !secrets?.smtp_user || !secrets?.smtp_pass || !secrets?.sender_email) {
-        await admin.from("comms_campaigns").update({
-          status: "failed", last_error: "Club SMTP not configured",
-        }).eq("id", campaignId);
-        return json({ error: "Club email (SMTP) is not configured. Set it up in Club Settings, or untick Email." }, 400);
+        if (!Deno.env.get("LOVABLE_API_KEY")) {
+          await admin.from("comms_campaigns").update({
+            status: "failed", last_error: "Club SMTP not configured",
+          }).eq("id", campaignId);
+          return json({ error: "Club email (SMTP) is not configured. Set it up in Club Settings, or untick Email." }, 400);
+        }
+        useManagedEmail = true;
       }
-      const port = Number(secrets.smtp_port) || 587;
+      const port = Number(secrets?.smtp_port) || 587;
       if (!ALLOWED_SMTP_PORTS.has(port)) return json({ error: `SMTP port ${port} not allowed` }, 400);
       const nodemailer = await import("npm:nodemailer@6.9.14");
       transporter = nodemailer.default.createTransport({

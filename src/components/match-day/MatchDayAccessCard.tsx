@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Copy, Loader2, Printer, QrCode, RefreshCw, ShieldOff, Smartphone } from "lucide-react";
+import { Copy, Loader2, Printer, QrCode, RefreshCw, Share2, ShieldOff, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { matchDayUrl, courtsUsed, type MatchDayKind } from "@/lib/match-day/access";
 
@@ -59,6 +59,15 @@ export function MatchDayAccessCard({ kind, competitionId, competitionName, subdo
   const courtUrl = (id: number) => (token ? matchDayUrl(token, { court: id, subdomain }) : "");
 
   const copy = async (u: string) => { await navigator.clipboard.writeText(u); toast.success("Link copied"); };
+
+  const share = async (label: string, u: string) => {
+    const text = `${competitionName} – ${label}: ${u}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: `${competitionName} – ${label}`, text }); } catch { /* user cancelled */ }
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+    }
+  };
 
   const print = () => {
     if (!token) return;

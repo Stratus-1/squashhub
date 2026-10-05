@@ -2213,7 +2213,7 @@ export default function ClubChampsView() {
                     <Button size="sm" variant="outline" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the tournament control page</Button>
                   )}
                 </div>
-                <MatchDayAccessCard kind="tournament" competitionId={champId!} competitionName={String((champ as any)?.name || "Tournament")} subdomain={(club as any)?.subdomain} />
+                <MatchDayAccessCard kind="tournament" competitionId={champId!} competitionName={String((champ as any)?.name || "Tournament")} />
                 {isStructured && <KnockoutNextActions champId={champId!} />}
                 {isStructured && arch?.builder_spec && (
                   <StructuredEnginePanel

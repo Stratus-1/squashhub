@@ -737,6 +737,7 @@ export default function Dashboard() {
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}
           clubId={clubId}
           firstName={firstName}
+          hideDeviceControls={isPendingApplicant}
           played={played}
           wins={wins}
           losses={losses}

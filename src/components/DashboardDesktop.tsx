@@ -22,6 +22,8 @@ interface DashboardDesktopProps {
   clubLogoUrl?: string | null;
   clubId?: string;
   firstName: string;
+  /** Pending applicant — hide door/device controls until approved. */
+  hideDeviceControls?: boolean;
   // stats props kept for callers; personal My Stats/My Rankings render in the page above
   played: number;
   wins: number;
@@ -87,7 +89,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
       {/* Club Controls — same grouped section the mobile admin dashboard renders */}
       <div className="px-8 space-y-3">
-        <DashboardDeviceControls />
+        {!props.hideDeviceControls && <DashboardDeviceControls />}
         <DashboardWifiCard />
         <DashboardRouterCard />
       </div>

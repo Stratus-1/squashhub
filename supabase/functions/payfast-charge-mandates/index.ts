@@ -77,8 +77,17 @@ Deno.serve(async (req) => {
           const { data: fees } = ids.length
             ? await admin.from("club_member_fee_payments").select("id, amount").in("id", ids).eq("paid", false)
             : { data: [] as any[] };
-          // Only the plan's own charges count — never membership or newer debt.
-          const owed = (fees || []).reduce((s: number, f: any) => s + Math.max(0, Number(f.amount || 0)), 0);
+          // Cap by what is still owed on the account (bar, lights, shop, opening balance…),
+          // excluding unpaid membership fees the fee plan itself covers.
+          const { data: je } = await admin.from("club_journal_entries").select("debit, credit")
+            .eq("club_member_id", m.club_member_id).in("account", ["debtors", "member_credits"]);
+          const accountOwing = (je || []).reduce((s: number, r: any) => s + Number(r.debit || 0) - Number(r.credit || 0), 0);
+          const { data: memFees } = await admin.from("club_member_fee_payments").select("amount, fee_type")
+            .eq("club_member_id", m.club_member_id).eq("paid", false);
+          const membershipDue = (memFees || []).filter((f: any) =>
+            ["club", "renewal", "registration", "membership", "club_membership"].includes(String(f.fee_type || "").toLowerCase()))
+            .reduce((s: number, f: any) => s + Math.max(0, Number(f.amount || 0)), 0);
+          const owed = Math.max(0, accountOwing - membershipDue);
           const left = Math.max(0, Number(p.total_amount) - Number(p.amount_collected));
           extra = Math.round(Math.max(0, Math.min(Number(p.monthly_extra), left, owed)) * 100) / 100;
           if (extra <= 0 || Number(p.months_charged) >= Number(p.months_total)) {

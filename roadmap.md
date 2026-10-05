@@ -54,3 +54,4 @@
 - [x] Change payment method until money moved (invite_change_payment_method RPC)
 ## Theo Engelbrecht activation email (Durbanville)
 - [x] Sent manually from main domain (managed fallback added to send-comms-campaign for clubs without SMTP); campaign ab442f3b sent 2026-10-05, 1 sent
+- [ ] Recurring: one combined debit (membership + outstanding component), components tracked separately; drops back when outstanding plan ends

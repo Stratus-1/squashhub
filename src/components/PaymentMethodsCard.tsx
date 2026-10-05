@@ -77,16 +77,19 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const [addBusy, setAddBusy] = useState(false);
 
   const { data: recurring } = useClubRecurringSettings(clubId);
-  const { data: outstanding = 0 } = useQuery({
+  // Uncovered debt only: excludes charges already covered by a fee-structure
+  // plan or an existing outstanding-balance plan, after the club's floating-balance rule.
+  const { data: breakdown } = useQuery({
     queryKey: ["member-outstanding", clubMemberId],
     enabled: !!clubMemberId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("club_member_fee_payments").select("amount")
-        .eq("club_member_id", clubMemberId).eq("paid", false);
-      return (data || []).reduce((s: number, f: any) => s + Math.max(0, Number(f.amount || 0)), 0);
+      const { data, error } = await (supabase as any).rpc("member_outstanding_breakdown", { p_club_member_id: clubMemberId });
+      if (error) throw error;
+      return data as { uncovered: number; fee_plan_covered: number; has_fee_plan: boolean } | null;
     },
   });
+  const outstanding = Number(breakdown?.uncovered || 0);
+  const feePlanCovered = Number(breakdown?.fee_plan_covered || 0);
   const { data: arrearsPlans = [] } = useQuery({
     queryKey: ["arrears-plans", clubMemberId],
     enabled: !!clubMemberId,
@@ -445,26 +448,26 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       const { data, error } = await (supabase as any).rpc("start_arrears_plan", { p_mandate_id: m.id, p_months: n });
       if (error) throw error;
       if (data?.status === "needs_reauth") {
-        // Bank-capped rail: the higher monthly total must be re-approved.
-        toast.info(`Your new monthly total is ${money(Number(data.new_total))}. Please approve the higher amount.`);
+        // Bank-capped rail: the combined monthly total must be re-approved.
+        toast.info(`New monthly total ${money(Number(data.new_total))} (${money(Number(data.fee_plan_monthly))} membership + ${money(Number(data.monthly_instalment))} outstanding balance). Please approve the higher amount.`);
         openSetup(categories.find((c) => c.id === m.fee_category_id) || GENERAL_CATEGORY);
         setMonths(String(n));
         setAmount(Number(data.new_total).toFixed(2));
         setAmountTouched(true);
         return;
       }
-      toast.success(`Added ${money(Number(data.monthly_extra))} per month for ${n} months`);
+      toast.success(`Monthly payment now ${money(Number(data.new_total))}: ${money(Number(data.fee_plan_monthly))} membership + ${money(Number(data.monthly_instalment))} outstanding balance for ${n} months`);
       qc.invalidateQueries({ queryKey: ["arrears-plans", clubMemberId] });
       setAddMonths("");
     } catch (e: any) {
-      toast.error(e?.message || "Could not add your outstanding balance");
+      toast.error(e?.message || "Could not start the outstanding-balance plan");
     } finally {
       setAddBusy(false);
     }
   }
 
   async function cancelArrears(planId: string) {
-    if (!confirm("Stop adding your outstanding balance to this monthly payment?")) return;
+    if (!confirm("Stop the outstanding-balance part? Your membership payment continues unchanged.")) return;
     const { error } = await (supabase as any).rpc("cancel_arrears_plan", { p_plan_id: planId });
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["arrears-plans", clubMemberId] });
@@ -712,8 +715,8 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                       return (
                         <div className="mt-1 flex items-center gap-2 flex-wrap">
                           <p className="text-[11px] text-primary leading-snug">
-                            + {money(Number(plan.monthly_extra))} / month towards your outstanding balance
-                            ({plan.months_charged} of {plan.months_total} paid, ends {formatDate(new Date(`${plan.ends_on}T00:00:00`))}).
+                            Monthly total {money(m.max_amount_cents / 100 + Number(plan.monthly_extra))} = {money(m.max_amount_cents / 100)} membership + {money(Number(plan.monthly_extra))} outstanding balance
+                            ({money(Math.max(0, Number(plan.total_amount) - Number(plan.amount_collected)))} left · {plan.months_charged} of {plan.months_total} paid, ends {formatDate(new Date(`${plan.ends_on}T00:00:00`))}; then back to {money(m.max_amount_cents / 100)}).
                           </p>
                           <button type="button" className="text-[11px] text-muted-foreground underline" onClick={() => cancelArrears(plan.id)}>Stop</button>
                         </div>
@@ -726,6 +729,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     return (
                       <div className="mt-2 space-y-1 rounded-md border p-2">
                         <p className="text-[11px] font-medium">Add your {money(outstanding)} outstanding balance to this monthly payment</p>
+                        {feePlanCovered > 0 && (
+                          <p className="text-[10px] text-muted-foreground">{money(feePlanCovered)} in membership fees is already covered by your fee payment and isn't included.</p>
+                        )}
                         <div className="flex items-center gap-2 flex-wrap">
                           <Select value={addMonths} onValueChange={setAddMonths}>
                             <SelectTrigger className="h-7 w-32 text-xs"><SelectValue placeholder="Months" /></SelectTrigger>
@@ -741,7 +747,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                         </div>
                         {n > 0 && (
                           <p className="text-[11px] text-muted-foreground">
-                            Now {money(base)} + {money(extra)} extra = <strong>{money(base + extra)}</strong> per month for {n} months, then back to {money(base)}.
+                            {money(base)} membership + {money(extra)} outstanding balance = <strong>{money(base + extra)}</strong> per month for {n} months, then back to {money(base)}.
                             {needsReapprovalToIncrease(m.gateway) ? " You'll be asked to approve the higher amount." : ""}
                           </p>
                         )}

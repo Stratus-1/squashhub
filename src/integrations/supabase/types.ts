@@ -10023,9 +10023,12 @@ export type Database = {
           amount_collected: number
           club_id: string
           club_member_id: string
+          covered_fee_ids: string[]
           created_at: string
           created_by: string | null
+          credit_applied: number
           ends_on: string
+          fee_plan_excluded: number
           id: string
           mandate_id: string
           monthly_extra: number
@@ -10040,9 +10043,12 @@ export type Database = {
           amount_collected?: number
           club_id: string
           club_member_id: string
+          covered_fee_ids?: string[]
           created_at?: string
           created_by?: string | null
+          credit_applied?: number
           ends_on: string
+          fee_plan_excluded?: number
           id?: string
           mandate_id: string
           monthly_extra: number
@@ -10057,9 +10063,12 @@ export type Database = {
           amount_collected?: number
           club_id?: string
           club_member_id?: string
+          covered_fee_ids?: string[]
           created_at?: string
           created_by?: string | null
+          credit_applied?: number
           ends_on?: string
+          fee_plan_excluded?: number
           id?: string
           mandate_id?: string
           monthly_extra?: number
@@ -14348,6 +14357,7 @@ export type Database = {
           approval_required: boolean
           approved_at: string | null
           approved_by: string | null
+          arrears_plan_id: string | null
           attempt_number: number
           club_id: string
           club_member_id: string
@@ -14372,6 +14382,7 @@ export type Database = {
           approval_required?: boolean
           approved_at?: string | null
           approved_by?: string | null
+          arrears_plan_id?: string | null
           attempt_number?: number
           club_id: string
           club_member_id: string
@@ -14396,6 +14407,7 @@ export type Database = {
           approval_required?: boolean
           approved_at?: string | null
           approved_by?: string | null
+          arrears_plan_id?: string | null
           attempt_number?: number
           club_id?: string
           club_member_id?: string
@@ -14416,6 +14428,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "stitch_collections_arrears_plan_id_fkey"
+            columns: ["arrears_plan_id"]
+            isOneToOne: false
+            referencedRelation: "mandate_arrears_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stitch_collections_mandate_id_fkey"
             columns: ["mandate_id"]
@@ -18417,6 +18436,7 @@ export type Database = {
         Returns: boolean
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
+      is_membership_fee_type: { Args: { p_type: string }; Returns: boolean }
       is_national_admin: { Args: { _user_id: string }; Returns: boolean }
       is_person_self: { Args: { _person_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
@@ -18602,6 +18622,10 @@ export type Database = {
       member_is_delegate_of: {
         Args: { p_grantor: string; p_user: string }
         Returns: boolean
+      }
+      member_outstanding_breakdown: {
+        Args: { p_club_member_id: string }
+        Returns: Json
       }
       merge_people: {
         Args: { _dup_id: string; _keep_id: string }

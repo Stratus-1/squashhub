@@ -124,8 +124,8 @@ export default function Dashboard() {
   // Capability gating — a club only sees the modules it actually uses.
   const { enabled: clubCaps, hasRows: hasCapRows } = useCapabilities(clubId);
   const capOn = (slug: string) => !hasCapRows || clubCaps.has(slug);
-  const isPendingApplicant = usePendingApplicant();
-  const bookingsEnabled = capOn("bookings") && !isPendingApplicant;
+  const pendingApplicantRow = usePendingApplicant();
+  const bookingsEnabled = capOn("bookings") && !pendingApplicantRow;
   const ladderEnabled = capOn("ladder");
   const tournamentsEnabled = capOn("tournaments");
   const eventsEnabled = capOn("events");

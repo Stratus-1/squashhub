@@ -18624,6 +18624,10 @@ export type Database = {
         Args: { p_club_member_id: string }
         Returns: boolean
       }
+      has_club_permission: {
+        Args: { _club_id: string; _slug: string; _user_id: string }
+        Returns: boolean
+      }
       has_org_role: {
         Args: {
           _org_id: string

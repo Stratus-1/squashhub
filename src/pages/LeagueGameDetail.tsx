@@ -1530,7 +1530,8 @@ export default function LeagueGameDetail() {
         const newLabel = half === 0 ? `${c.name} & ${pair[1]}` : `${pair[0]} & ${c.name}`;
         // If the substitute already plays in another pair on this side, move
         // the outgoing player into their old spot so nobody is listed twice.
-        next.forEach((p, i) => {
+        // Reserves may deliberately fill two pairs in one match: keep both.
+        if (!c.reserve) next.forEach((p, i) => {
           if (i === idx) return;
           const other = splitPairLabelDisplay(p[targetNameKey]);
           if (!other) return;

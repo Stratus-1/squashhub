@@ -753,12 +753,27 @@ export function MemberOnboardingWizard({
           .select("is_pending_approval, joined_at, user_id")
           .eq("id", existingMember.id)
           .maybeSingle();
-        const authCreated = (user as any)?.created_at ? new Date((user as any).created_at).getTime() : NaN;
+        // Judge the ROW, not whoever is saving: an admin completing the steps in
+        // "Viewing as" mode (Barry Christie, Nelspruit, Oct 2026) must still raise
+        // the joining fee. The row counts as created by signup when it was inserted
+        // together with its owner's account (profile created in the same moment).
+        let ownerCreated = NaN;
+        if (rowInfo?.user_id) {
+          if (rowInfo.user_id === user.id && (user as any)?.created_at) {
+            ownerCreated = new Date((user as any).created_at).getTime();
+          } else {
+            const { data: ownerProfile } = await fromExt("profiles")
+              .select("created_at")
+              .eq("id", rowInfo.user_id)
+              .maybeSingle();
+            if ((ownerProfile as any)?.created_at) ownerCreated = new Date((ownerProfile as any).created_at).getTime();
+          }
+        }
         const joined = rowInfo?.joined_at ? new Date(rowInfo.joined_at).getTime() : NaN;
         const createdBySignup =
-          rowInfo?.user_id === user.id &&
+          !!rowInfo?.user_id &&
           (rowInfo?.is_pending_approval === true ||
-            (Number.isFinite(authCreated) && Number.isFinite(joined) && Math.abs(joined - authCreated) < 10 * 60 * 1000));
+            (Number.isFinite(ownerCreated) && Number.isFinite(joined) && Math.abs(joined - ownerCreated) < 10 * 60 * 1000));
         if (createdBySignup) {
           const { count } = await fromExt("club_member_fee_payments")
             .select("id", { count: "exact", head: true })

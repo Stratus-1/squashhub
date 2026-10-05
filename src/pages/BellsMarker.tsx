@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
@@ -40,12 +41,16 @@ import { DoublesServeSetup } from "@/components/marker/DoublesServeSetup";
  */
 export default function BellsMarker() {
   const { matchId } = useParams<{ matchId: string }>();
-  const navigate = useNavigate();
+  const md = useMatchDayDevice();
+  const navigate = useMdNavigate();
   const qc = useQueryClient();
   const isSuperAdmin = useIsSuperAdmin();
-  const { isAdmin, activeMember } = useMemberContext();
+  const memberCtx = useMemberContext();
+  const isAdmin = md ? false : memberCtx.isAdmin;
+  const activeMember = md ? null : memberCtx.activeMember;
   const canAdminEdit = isSuperAdmin || isAdmin;
-  const { user } = useAuth();
+  const { user: sessionUser } = useAuth();
+  const user = md ? (md.deviceUser as any) : sessionUser;
 
   // Marker presence: keeps the LIVE chip honest — it falls away as soon as
   // whoever is running the bell leaves this screen.

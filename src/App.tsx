@@ -532,6 +532,14 @@ function AppRoutes() {
         <Route path="/md/:token/court/:court" element={<MatchDay />} />
         <Route path="/md/:token/game/:fixtureId" element={<MatchDay />} />
         <Route path="/md/:token/court/:court/game/:fixtureId" element={<MatchDay />} />
+        <Route path="/md/:token/t" element={<MatchDay />} />
+        <Route path="/md/:token/mark" element={<MatchDay />} />
+        <Route path="/md/:token/live/:matchId" element={<MatchDay />} />
+        <Route path="/md/:token/bells/:matchId" element={<MatchDay />} />
+        <Route path="/md/:token/court/:court/t" element={<MatchDay />} />
+        <Route path="/md/:token/court/:court/mark" element={<MatchDay />} />
+        <Route path="/md/:token/court/:court/live/:matchId" element={<MatchDay />} />
+        <Route path="/md/:token/court/:court/bells/:matchId" element={<MatchDay />} />
         <Route path="/s/:code/counter" element={<BarCounter />} />
         <Route path="/c/:subdomain/s/:code/counter" element={<BarCounter />} />
         <Route path="/bar/counter" element={<ProtectedRoute><BarCounter /></ProtectedRoute>} />

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -34,9 +35,12 @@ const nameOf = (p: any) => p?.name || p?.profiles?.name || null;
  */
 export default function TournamentMatchLive() {
   const { matchId } = useParams<{ matchId: string }>();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { activeMember } = useMemberContext();
+  const md = useMatchDayDevice();
+  const navigate = useMdNavigate();
+  const { user: sessionUser } = useAuth();
+  const user = md ? (md.deviceUser as any) : sessionUser;
+  const { activeMember: sessionMember } = useMemberContext();
+  const activeMember = md ? null : sessionMember;
   const [match, setMatch] = useState<any>(null);
   const [champ, setChamp] = useState<any>(null);
   const [loading, setLoading] = useState(true);

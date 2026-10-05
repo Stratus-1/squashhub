@@ -1,4 +1,5 @@
 import { KnockoutNextActions } from "@/components/smart-builder/KnockoutNextActions";
+import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
 import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -93,7 +94,9 @@ import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, O
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
-  const { champId } = useParams<{ champId: string }>();
+  const md = useMatchDayDevice();
+  const { champId: routeChampId } = useParams<{ champId: string }>();
+  const champId = md?.kind === "tournament" ? md.competitionId : routeChampId;
   // Diamond League (team) tournaments show team standings only — the
   // per-player league tables don't apply. Shares DiamondStandings' cache key.
   const { data: diamondEvent } = useQuery({
@@ -105,7 +108,8 @@ export default function ClubChampsView() {
     },
     enabled: !!champId,
   });
-  const { activeMember } = useMemberContext();
+  const { activeMember: sessionMember } = useMemberContext();
+  const activeMember = md ? null : sessionMember;
   const myMemberId = activeMember?.id;
 
   const { data: champ, isLoading } = useQuery({
@@ -1440,9 +1444,9 @@ export default function ClubChampsView() {
 
   const hasChampsPermission = useHasPermission("champs");
   const isClubAdminUser = useIsClubAdmin();
-  const canManage = hasChampsPermission || isClubAdminUser;
+  const canManage = !md && (hasChampsPermission || isClubAdminUser);
   const qc = useQueryClient();
-  const navigate = useNavigate();
+  const navigate = useMdNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(true);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);

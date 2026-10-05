@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { hasActiveMarkerSession, MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { PageHeader } from "@/components/PageHeader";
@@ -89,10 +90,13 @@ export default function MatchMarker() {
       return null;
     }
   });
-  const { user } = useAuth();
-  const navigate = useNavigate();
+  const md = useMatchDayDevice();
+  const { user: sessionUser } = useAuth();
+  const user = md ? (md.deviceUser as any) : sessionUser;
+  const navigate = useMdNavigate();
   const queryClient = useQueryClient();
-  const { activeMember } = useMemberContext();
+  const { activeMember: sessionMember } = useMemberContext();
+  const activeMember = md ? null : sessionMember;
   const markerName = (activeMember as any)?.name || user?.email || "A marker";
 
   // ---- Tournament marker presence + hand-over ----

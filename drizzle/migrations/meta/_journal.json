@@ -351,6 +351,13 @@
       "when": 1791193349383,
       "tag": "0049_secrets_admin_honours_role_full_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791198199143,
+      "tag": "0050_separate_outstanding_balance_plans",
+      "breakpoints": true
     }
   ]
 }

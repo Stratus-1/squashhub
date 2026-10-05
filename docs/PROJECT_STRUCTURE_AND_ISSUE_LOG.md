@@ -2591,3 +2591,7 @@ Cause: builder stored one event per picked player; saving wrote one division and
 - Cause 1: a single reserve swap (27 Sep) saved all 5 rubber rows with `lineup_set_at`; saved rows were treated as authoritative, so later `league_team_pairs` changes (new pairs effective 5 Oct) never showed. Singles fixtures were unaffected (no pre-saved rows on upcoming singles fixtures).
 - Cause 2: the button set `setupDone=false`, but the saved-rows load effect re-ran on every poll/realtime refetch and forced `setupDone=true` again.
 - Fix: `league_match_results.home/away_lineup_explicit` (true = chosen for this match, false = default copy, NULL = legacy). Unstarted fixtures refresh default copies and legacy doubles pairs that are superseded on the fixture date; explicit picks and started/locked rubbers are kept. Edit flow guarded by a ref; button limited to captains/admins and disabled once scoring starts.
+
+### 2026-10-05 — League scorecard "Replace player" silently ignored (Nelspruit, Dual Machines)
+- Cause: two unplayed rubbers carried a leftover `participants_locked_at` (set 2026-09-28 when a result/forfeit was briefly recorded then undone). `freeze_league_rubber_participants` trigger silently restored the old players on every save.
+- Fix: trigger now releases the lock when the rubber has no winner, no game scores and no forfeit; played rubbers stay frozen. No data edited directly.

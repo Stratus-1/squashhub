@@ -365,6 +365,13 @@
       "when": 1791198372428,
       "tag": "0051_combined_debit_outstanding_component",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791198843096,
+      "tag": "0052_outstanding_breakdown_full_account",
+      "breakpoints": true
     }
   ]
 }

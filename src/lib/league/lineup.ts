@@ -206,3 +206,49 @@ export function rubberEditRights(opts: {
   return { canCaptainEdit: false, canAdminCorrect: opts.isClubAdmin };
 }
 
+
+/**
+ * CURRENT TEAM ROSTER vs MATCH-SPECIFIC LINEUP.
+ *
+ * For an upcoming (unstarted) fixture the current team roster is the default.
+ * A saved side only stays authoritative when it was explicitly chosen for
+ * this match, or once the match has started / the rubber is locked.
+ *
+ * `explicit`: true = chosen for this match, false = saved copy of the default
+ * roster, null/undefined = legacy row (unknown). Legacy rows are only
+ * refreshed when the saved value is a KNOWN superseded default (e.g. a doubles
+ * pair that is no longer official on the fixture date) — otherwise they could
+ * be a legitimate reserve and are kept.
+ */
+export function shouldUseCurrentDefault(opts: {
+  saved: LineupSlot;
+  local: LineupSlot;
+  current: LineupSlot | undefined;
+  explicit: boolean | null | undefined;
+  rowLocked: boolean;
+  matchStarted: boolean;
+  staleDefaults?: Set<string>;
+}): boolean {
+  const norm = (v?: string | null) => (v || "").trim().toUpperCase().replace(/\s+/g, " ");
+  const { saved, local, current, explicit, rowLocked, matchStarted, staleDefaults } = opts;
+  if (!current || (!current.name && !current.code)) return false;
+  if (matchStarted || rowLocked) return false;
+  // Local unsaved edit in progress — never overwrite it.
+  if (norm(local.name) !== norm(saved.name) || norm(local.code) !== norm(saved.code)) return false;
+  if (!saved.name && !saved.code) return true;
+  if (norm(saved.name) === norm(current.name) && norm(saved.code) === norm(current.code)) return false;
+  if (explicit === true) return false;
+  if (explicit === false) return true;
+  return !!staleDefaults && staleDefaults.has(norm(saved.name));
+}
+
+/** Is a saved side different from the team's current default roster slot? */
+export function sideIsExplicit(chosen: LineupSlot, current: LineupSlot | undefined): boolean {
+  const norm = (v?: string | null) => (v || "").trim().toUpperCase().replace(/\s+/g, " ");
+  if (!chosen.name && !chosen.code) return false;
+  if (!current || (!current.name && !current.code)) return true;
+  if (current.code && chosen.code) return norm(current.code) !== norm(chosen.code) || norm(current.name) !== norm(chosen.name);
+  return norm(current.name) !== norm(chosen.name);
+}
+
+export const normalizeLineupName = (v?: string | null) => (v || "").trim().toUpperCase().replace(/\s+/g, " ");

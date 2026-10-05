@@ -18693,6 +18693,46 @@ export type Database = {
         }
         Returns: Json
       }
+      md_season_fixtures: {
+        Args: { _season: string }
+        Returns: {
+          association_id: string
+          away_team_code: string
+          away_team_id: string | null
+          away_team_name_snapshot: string | null
+          booking_id: string | null
+          court_id: number | null
+          created_at: string
+          division: string
+          end_time: string | null
+          external_id: string | null
+          fixture_date: string
+          game_scores: string | null
+          home_team_code: string
+          home_team_id: string | null
+          home_team_name_snapshot: string | null
+          id: string
+          notes: string | null
+          nsa_fixture_id: number | null
+          nsa_submission_notes: string | null
+          nsa_submitted_at: string | null
+          nsa_submitted_by: string | null
+          round_id: string | null
+          score: string | null
+          season_id: string | null
+          start_time: string | null
+          status: string
+          updated_at: string
+          venue_name: string
+          winner_team_code: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "platform_league_fixtures"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       md_window: {
         Args: { _id: string; _kind: string }
         Returns: Record<string, unknown>

@@ -1058,6 +1058,13 @@ export function MemberOnboardingWizard({
       queryClient.invalidateQueries({ queryKey: ["club-members"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      if (applicationRowId) {
+        try {
+          await (supabase as any).rpc("save_my_application_progress", { _club_member_id: applicationRowId, _progress: null });
+        } catch (e) {
+          console.warn("[Wizard] could not clear application progress", e);
+        }
+      }
       toast.success("Registration complete! Welcome to the club 🎉");
       onComplete();
     } catch (err: any) {
@@ -1068,11 +1075,59 @@ export function MemberOnboardingWizard({
     }
   };
 
+  // Genuine applications only: remember the step reached + answers on the
+  // server so the applicant can resume on any device. Nothing is charged and
+  // no category is assigned until the final step is saved.
+  const saveProgress = (stepId: string) => {
+    if (!applicationRowId || isExistingMember) return;
+    const progress = buildApplicationProgress(stepId, {
+      name, phone, idNumber, dateOfBirth, gender, address, skillLevel,
+      feeCategoryId, playsLeague, leagueSelections: leagueSelections as any,
+      rulesAccepted, familyDrafts: familyDrafts as any,
+    });
+    (supabase as any)
+      .rpc("save_my_application_progress", { _club_member_id: applicationRowId, _progress: progress })
+      .then(({ error }: any) => { if (error) console.warn("[Wizard] progress save failed", error); });
+  };
+
+  // Restore saved answers first, then (once dependent steps such as Family
+  // exist) jump to the saved step.
+  const [resumeStepId, setResumeStepId] = useState<string | null>(null);
+  useEffect(() => {
+    const p = pendingResume.current;
+    if (!p || resumeApplied || !applicationRowId) return;
+    const a = p.answers;
+    if (a.name) setName(a.name);
+    if (a.phone) setPhone(a.phone);
+    if (a.idNumber) setIdNumber(a.idNumber);
+    if (a.dateOfBirth) setDateOfBirth(a.dateOfBirth);
+    if (a.gender) setGender(a.gender);
+    if (a.address) setAddress(a.address);
+    if (a.skillLevel) setSkillLevel(a.skillLevel);
+    if (a.feeCategoryId) { setFeeCategoryId(a.feeCategoryId); setCategoryAutoSet(true); }
+    if (typeof a.playsLeague === "boolean") setPlaysLeague(a.playsLeague);
+    if (a.leagueSelections) setLeagueSelections(a.leagueSelections as any);
+    if (a.rulesAccepted) setRulesAccepted(true);
+    if (Array.isArray(a.familyDrafts)) setFamilyDrafts(a.familyDrafts as any);
+    setResumeStepId(p.stepId);
+    setResumeApplied(true);
+  }, [applicationRowId, resumeApplied]);
+  useEffect(() => {
+    if (!resumeStepId) return;
+    const ids = STEPS.map((s) => s.id);
+    if (resumeStepId === "family" && !ids.includes("family")) return; // wait for category → family step
+    setStep(resumeStepIndex(ids, resumeStepId));
+    setResumeStepId(null);
+    if (resumeStepId !== "welcome") toast.info("Welcome back — continuing your application where you left off.");
+  }, [resumeStepId, STEPS]);
+
   const next = () => {
     if (step === STEPS.length - 1) {
       handleSave();
     } else {
-      setStep((s) => Math.min(s + 1, STEPS.length - 1));
+      const to = Math.min(step + 1, STEPS.length - 1);
+      saveProgress(STEPS[to].id);
+      setStep(to);
     }
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));

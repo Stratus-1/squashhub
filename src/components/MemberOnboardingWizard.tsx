@@ -1132,6 +1132,11 @@ export function MemberOnboardingWizard({
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
+  // Each step must open at the top — otherwise long steps (e.g. Skills) appear to open halfway down.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+  }, [step]);
+
   const canProceed = () => {
     if (step === 1) {
       if (name.trim().length < 2) return false;

@@ -115,8 +115,10 @@ export default function ClubAdmin() {
   const { user } = useAuth();
   const { data, isLoading } = useMyClub();
   const { subdomain, club: contextClub, isLoading: clubContextLoading } = useClubContext();
-  const isAdmin = useIsClubAdmin();
-  const { permissions: myPermissions, isLoading: permissionsLoading } = useMyPermissionsStatus();
+  const isClubAdmin = useIsClubAdmin();
+  const { permissions: myPermissions, isLoading: permissionsLoading, isFullAdmin } = useMyPermissionsStatus();
+  // Members holding a "Full Admin" permission role see every tile, like role=admin.
+  const isAdmin = isClubAdmin || !!isFullAdmin;
   // On a club subdomain wait only for the tenant club itself to resolve. Never
   // wait on the membership query — a super-admin with no member row there would
   // otherwise hang on a spinner forever.

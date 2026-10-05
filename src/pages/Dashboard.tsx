@@ -552,12 +552,15 @@ export default function Dashboard() {
     const legacyNeedsOnboarding =
       !profile.name || profile.name === "" || profile.name === "New Player";
 
-    // Only show onboarding if the member hasn't been assigned a member number yet
-    // (member number is assigned during the onboarding wizard completion)
+    // Show onboarding when the member has no number yet, OR when their own
+    // signup application was never finished. Clubs can auto-number applicants
+    // at account creation, so the number alone must not mark the application
+    // complete (Nelspruit, Oct 2026: details/category/fees were skipped).
     const missingMemberData =
       hasClub &&
       myClubMember &&
-      !myClubMember.club_member_number;
+      (!myClubMember.club_member_number ||
+        isApplicationIncomplete(myClubMember as any, (user as any)?.created_at));
 
     // If no club member record at all but club exists, they may need to register.
     // BUT: if this user already has a `club_members` row at some OTHER club

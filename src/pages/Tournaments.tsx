@@ -1847,7 +1847,7 @@ export default function Tournaments() {
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               {regOpen && <Badge variant="default" className="text-[10px]">Open</Badge>}
-                              <Badge variant="secondary" className="text-[10px]">{champ.status}</Badge>}
+                              <Badge variant="secondary" className="text-[10px]">{champ.status}</Badge>
                               <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                             </div>
                           </div>

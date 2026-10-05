@@ -63,10 +63,34 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // The fee-structure plan is charged at its own fixed amount. An
-      // outstanding-balance plan is a separate arrangement charged separately
-      // below (same card, own collection/session/settlement), never added here.
-      const chargeAmount = Math.round(amount * 100) / 100;
+      // One combined debit, two components: the fee-plan amount (unchanged) plus
+      // the outstanding-balance plan instalment. Each component is settled and
+      // tracked separately; the plan part drops off once its debt/term ends.
+      let plan: any = null;
+      let extra = 0;
+      let planFeeIds: string[] = [];
+      {
+        const { data: p } = await admin.from("mandate_arrears_plans").select("*")
+          .eq("mandate_id", m.id).eq("status", "active").maybeSingle();
+        if (p) {
+          const ids: string[] = p.covered_fee_ids || [];
+          const { data: fees } = ids.length
+            ? await admin.from("club_member_fee_payments").select("id, amount").in("id", ids).eq("paid", false)
+            : { data: [] as any[] };
+          // Only the plan's own charges count — never membership or newer debt.
+          const owed = (fees || []).reduce((s: number, f: any) => s + Math.max(0, Number(f.amount || 0)), 0);
+          const left = Math.max(0, Number(p.total_amount) - Number(p.amount_collected));
+          extra = Math.round(Math.max(0, Math.min(Number(p.monthly_extra), left, owed)) * 100) / 100;
+          if (extra <= 0 || Number(p.months_charged) >= Number(p.months_total)) {
+            await admin.from("mandate_arrears_plans").update({ status: "completed" }).eq("id", p.id).eq("status", "active");
+            extra = 0;
+          } else {
+            plan = p;
+            planFeeIds = (fees || []).map((f: any) => f.id);
+          }
+        }
+      }
+      const chargeAmount = Math.round((amount + extra) * 100) / 100;
 
       // Idempotency: one collection per mandate per due date.
       const { data: collection, error: colErr } = await admin
@@ -121,10 +145,10 @@ Deno.serve(async (req) => {
           club_id: m.club_id,
           club_member_id: m.club_member_id,
           user_id: m.user_id,
-          amount: chargeAmount,
+          amount,
           currency: (club as any)?.currency_code || "ZAR",
           purpose: "topup",
-          description: "Monthly card payment",
+          description: "Monthly card payment — membership fee plan",
           status: "created",
           mandate_id: m.id,
         })
@@ -149,6 +173,25 @@ Deno.serve(async (req) => {
         if (await claimPayfastSession(admin, session.id)) {
           await settlePayfastSession(admin, { ...session, payfast_payment_id: charge.paymentId });
         }
+        // Outstanding-balance component: its own session, settled only against the plan's charges.
+        if (plan && extra > 0) {
+          const { data: obSession } = await admin.from("payfast_payment_sessions").insert({
+            club_id: m.club_id, club_member_id: m.club_member_id, user_id: m.user_id, amount: extra,
+            currency: (club as any)?.currency_code || "ZAR", purpose: "fee", fee_ids: planFeeIds,
+            description: "Monthly card payment — outstanding balance plan", status: "created", mandate_id: m.id,
+            payfast_payment_id: `${charge.paymentId}-OB`,
+          }).select("*").single();
+          if (obSession && await claimPayfastSession(admin, obSession.id)) {
+            await settlePayfastSession(admin, obSession);
+          }
+          const monthsCharged = Number(plan.months_charged) + 1;
+          const collected = Math.round((Number(plan.amount_collected) + extra) * 100) / 100;
+          const done = monthsCharged >= Number(plan.months_total) || collected >= Number(plan.total_amount) - 0.005;
+          // Guarded on months_charged so a retried run can't double-count.
+          await admin.from("mandate_arrears_plans")
+            .update({ months_charged: monthsCharged, amount_collected: collected, status: done ? "completed" : "active" })
+            .eq("id", plan.id).eq("months_charged", plan.months_charged);
+        }
         await admin
           .from("stitch_collections")
           .update({
@@ -169,7 +212,7 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", m.id);
-        results.push({ mandate: m.id, paid: chargeAmount });
+        results.push({ mandate: m.id, paid: chargeAmount, fee_plan: amount, outstanding_plan: extra });
       } else {
         if (session) {
           await admin
@@ -203,19 +246,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Separate pass: outstanding-balance plans are their own arrangements and
-    // are charged independently of how the fee-structure plan fared.
-    for (const m of mandates || []) {
-      if (m.status !== "active" || m.suspended_at) continue;
-      let creds = credsCache.get(m.club_id);
-      if (!creds) {
-        const { data: secrets } = await admin.from("club_secrets").select("payment_gateway_credentials").eq("club_id", m.club_id).maybeSingle();
-        creds = resolveGatewayCreds(secrets?.payment_gateway_credentials, "payfast");
-        credsCache.set(m.club_id, creds);
-      }
-      const r = await chargeOutstandingPlan(admin, m, String(m.next_charge_date || today), creds);
-      if (r) results.push(r);
-    }
+
 
     return json({ processed: results.length, results });
   } catch (e: any) {
@@ -223,65 +254,6 @@ Deno.serve(async (req) => {
     return json({ error: e.message || "Unexpected error" }, 500);
   }
 });
-
-async function chargeOutstandingPlan(admin: any, m: any, dueDate: string, creds: Record<string, string>) {
-  const { data: plan } = await admin.from("mandate_arrears_plans").select("*")
-    .eq("mandate_id", m.id).eq("status", "active").maybeSingle();
-  if (!plan) return null;
-  const ids: string[] = plan.covered_fee_ids || [];
-  const { data: fees } = ids.length
-    ? await admin.from("club_member_fee_payments").select("id, amount").in("id", ids).eq("paid", false)
-    : { data: [] };
-  // Only the plan's own charges count — never membership or newer debt.
-  const owed = (fees || []).reduce((s: number, f: any) => s + Math.max(0, Number(f.amount || 0)), 0);
-  const left = Math.max(0, Number(plan.total_amount) - Number(plan.amount_collected));
-  const extra = Math.round(Math.max(0, Math.min(Number(plan.monthly_extra), left, owed)) * 100) / 100;
-  if (extra <= 0 || Number(plan.months_charged) >= Number(plan.months_total)) {
-    await admin.from("mandate_arrears_plans").update({ status: "completed" }).eq("id", plan.id).eq("status", "active");
-    return { arrears_plan: plan.id, completed: true };
-  }
-  const merchantId = (creds.merchant_id || "").trim();
-  if (!merchantId) return { arrears_plan: plan.id, failed: "no credentials" };
-
-  const { data: collection, error: colErr } = await admin.from("stitch_collections").insert({
-    club_id: m.club_id, mandate_id: null, arrears_plan_id: plan.id, club_member_id: m.club_member_id,
-    amount_cents: Math.round(extra * 100), due_date: dueDate, status: "submitted", approval_required: false,
-    gateway: "payfast", submitted_at: new Date().toISOString(),
-  }).select("id").single();
-  if (colErr || !collection) return { arrears_plan: plan.id, skipped: colErr?.message || "already collected" };
-
-  const { data: club } = await admin.from("clubs").select("name, currency_code").eq("id", m.club_id).maybeSingle();
-  const { data: session } = await admin.from("payfast_payment_sessions").insert({
-    club_id: m.club_id, club_member_id: m.club_member_id, user_id: m.user_id, amount: extra,
-    currency: (club as any)?.currency_code || "ZAR", purpose: "fee", fee_ids: (fees || []).map((f: any) => f.id),
-    description: "Outstanding balance plan instalment", status: "created", mandate_id: m.id,
-  }).select("*").single();
-
-  const charge = await pfAdhocCharge({
-    token: m.payfast_token, merchantId, passphrase: creds.passphrase, sandbox: isSandboxCreds(creds),
-    amount: extra, itemName: `${club?.name || "Club"} — outstanding balance plan`,
-    reference: session?.id || `${plan.id}-${dueDate}`,
-  });
-  if (charge.ok && session) {
-    await admin.from("payfast_payment_sessions").update({ payfast_payment_id: charge.paymentId }).eq("id", session.id);
-    if (await claimPayfastSession(admin, session.id)) {
-      await settlePayfastSession(admin, { ...session, payfast_payment_id: charge.paymentId });
-    }
-    await admin.from("stitch_collections").update({
-      status: "paid", settled_at: new Date().toISOString(), posted_at: new Date().toISOString(), payfast_payment_id: charge.paymentId,
-    }).eq("id", collection.id);
-    const monthsCharged = Number(plan.months_charged) + 1;
-    const collected = Math.round((Number(plan.amount_collected) + extra) * 100) / 100;
-    const done = monthsCharged >= Number(plan.months_total) || collected >= Number(plan.total_amount) - 0.005;
-    await admin.from("mandate_arrears_plans")
-      .update({ months_charged: monthsCharged, amount_collected: collected, status: done ? "completed" : "active" })
-      .eq("id", plan.id).eq("months_charged", plan.months_charged);
-    return { arrears_plan: plan.id, paid: extra };
-  }
-  if (session) await admin.from("payfast_payment_sessions").update({ status: "failed" }).eq("id", session.id).neq("status", "completed");
-  await admin.from("stitch_collections").update({ status: "failed", failed_reason: String(charge.message || "").slice(0, 500) }).eq("id", collection.id);
-  return { arrears_plan: plan.id, failed: charge.message };
-}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

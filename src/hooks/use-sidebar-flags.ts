@@ -4,6 +4,7 @@ import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useCapabilities } from "@/hooks/use-club-capabilities";
+import { usePendingApplicant } from "@/hooks/use-pending-applicant";
 
 /**
  * Visibility flags used by the desktop AppSidebar.
@@ -15,6 +16,7 @@ export function useSidebarFlags() {
   const { data: clubData } = useMyClub();
   const isClubAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
+  const isPendingApplicant = usePendingApplicant();
 
   const effectiveClub = clubData?.club || contextClub;
   const clubId = effectiveClub?.id;
@@ -67,7 +69,7 @@ export function useSidebarFlags() {
     honestyBarEnabled: cap("bar") && !!(effectiveClub as any)?.honesty_bar_enabled,
     hasAnyAdminAccess: isClubAdmin || myPermissions.size > 0,
     isAssociation,
-    bookingsEnabled: cap("bookings"),
+    bookingsEnabled: cap("bookings") && !isPendingApplicant,
     ladderEnabled: cap("ladder"),
     tournamentsEnabled: cap("tournaments"),
     eventsEnabled: cap("events"),

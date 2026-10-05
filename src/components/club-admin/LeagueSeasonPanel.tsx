@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useLeagueSeasons } from "@/hooks/use-league-seasons";
 import { nextSeasonYear, seasonLabel } from "@/lib/leagues/seasons";
 import { isClubLeagueScope } from "@/lib/leagues/terminology";
+import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 
 interface Props {
   association: any;
@@ -196,6 +197,13 @@ export function LeagueSeasonPanel({ association, teamYears, onCreateTeams }: Pro
           );
         })}
       </div>
+      {currentSeason?.id && (
+        <MatchDayAccessCard
+          kind="league_season"
+          competitionId={currentSeason.id}
+          competitionName={`${name ?? "League"} ${seasonLabel(currentSeason)}`}
+        />
+      )}
     </Card>
   );
 }

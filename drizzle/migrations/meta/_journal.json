@@ -512,6 +512,13 @@
       "when": 1791232165390,
       "tag": "0072_club_member_application_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791232198229,
+      "tag": "0073_application_progress_rpcs",
+      "breakpoints": true
     }
   ]
 }

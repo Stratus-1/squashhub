@@ -18551,6 +18551,10 @@ export type Database = {
           won: number
         }[]
       }
+      get_my_application_progress: {
+        Args: { _club_member_id: string }
+        Returns: Json
+      }
       get_next_member_number: { Args: { _club_id: string }; Returns: string }
       get_or_create_venue_qr_code: {
         Args: { _club_id: string }
@@ -19740,6 +19744,10 @@ export type Database = {
           _winner_member_id: string
         }
         Returns: string
+      }
+      save_my_application_progress: {
+        Args: { _club_member_id: string; _progress: Json }
+        Returns: boolean
       }
       scope_eligible_club_ids: {
         Args: { _club_id: string; _owner_org_id: string; _scope: string }

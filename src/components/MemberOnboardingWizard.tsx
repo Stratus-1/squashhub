@@ -1116,7 +1116,7 @@ export function MemberOnboardingWizard({
     if (!resumeStepId) return;
     const ids = STEPS.map((s) => s.id);
     if (resumeStepId === "family" && !ids.includes("family") && feeCategories.length === 0) return; // wait for categories → family step
-    setStep(resumeStepIndex(ids, resumeStepId));
+    setStep(resumeStepIndex(ids, ids.includes(resumeStepId) ? resumeStepId : "fees"));
     setResumeStepId(null);
     if (resumeStepId !== "welcome") toast.info("Welcome back — continuing your application where you left off.");
   }, [resumeStepId, STEPS, feeCategories.length]);

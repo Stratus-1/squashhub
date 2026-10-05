@@ -2616,3 +2616,6 @@ Fix: `src/lib/membership-application.ts` (incomplete = own signup row without fe
 ### 2026-10-05 — Application resume restarted at step 1; activation link showed "already linked"
 Root cause: signup steps saved nothing until the last step; and a preloaded member auto-linked by email on sign-in saw "already linked" on their activation link (link never marked used).
 Fix: server-side `club_members.application_progress` + owner-only RPCs; wizard saves step/answers on Next and resumes on any device. ActivateAccount now calls claim when the link resolves as claimed, confirming the signed-in owner and retiring the link. Verified end-to-end with temporary Nelspruit records (removed).
+
+### 2026-10-05 — Second-club membership applications
+Existing members at another club only saw 'Register as a visitor'. Added RPC `apply_to_club_as_existing_person` + warn/confirm dialog in `NoClubAccess.tsx`; the new pending row flows through the normal application wizard (fees at final save, admin alerts on completion).

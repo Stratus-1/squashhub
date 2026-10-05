@@ -519,6 +519,13 @@
       "when": 1791232198229,
       "tag": "0073_application_progress_rpcs",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1791234259163,
+      "tag": "0074_apply_to_club_as_existing_person",
+      "breakpoints": true
     }
   ]
 }

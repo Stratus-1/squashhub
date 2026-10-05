@@ -2603,3 +2603,5 @@ Cause: builder stored one event per picked player; saving wrote one division and
 
 ## 2026-10-05 Match Day tournament links
 - Tournament QR links showed an empty "Standings appear once results are in" because they used a separate interim page with its own simplified standings. Fix: links now open the real member Tournaments, tournament (standings), marker and live screens in device mode; interim MatchDay.tsx removed. Verified on Riverside 6th 7th and Open S D.
+
+- 2026-10-05 Booking banner showed "Turn On Lights" at clubs without court relays (e.g. Nelspruit) because the banner rendered for door access and the lights button ignored device config. Now gated per court by `courtHasLightDevice` (lights integration on + courts.relay_device_id).

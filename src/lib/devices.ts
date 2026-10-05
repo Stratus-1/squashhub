@@ -208,3 +208,16 @@ export function describeDeviceSchedule(
 export function defaultShowOnDashboard(category: DeviceCategory): boolean {
   return category === "access";
 }
+
+/**
+ * True only when this court has a working court-light relay the app can
+ * switch: the club's lights integration is on AND the court carries a relay
+ * id (the same field `court-lights` requires). Booking fees, Court Bookings
+ * and door/gadget devices never imply a light device.
+ */
+export function courtHasLightDevice(
+  lightsIntegrationEnabled: boolean | null | undefined,
+  court: { relay_device_id?: string | null } | null | undefined,
+): boolean {
+  return !!lightsIntegrationEnabled && !!court?.relay_device_id?.trim();
+}

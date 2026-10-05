@@ -1,3 +1,4 @@
+import { usePendingApplicant } from "@/hooks/use-pending-applicant";
 import { PageHeader } from "@/components/PageHeader";
 import { useCapabilities } from "@/hooks/use-club-capabilities";
 import { fromExt } from "@/lib/supabase-ext";
@@ -124,7 +125,8 @@ export default function Dashboard() {
   // Capability gating — a club only sees the modules it actually uses.
   const { enabled: clubCaps, hasRows: hasCapRows } = useCapabilities(clubId);
   const capOn = (slug: string) => !hasCapRows || clubCaps.has(slug);
-  const bookingsEnabled = capOn("bookings");
+  const pendingApplicantRow = usePendingApplicant();
+  const bookingsEnabled = capOn("bookings") && !pendingApplicantRow;
   const ladderEnabled = capOn("ladder");
   const tournamentsEnabled = capOn("tournaments");
   const eventsEnabled = capOn("events");

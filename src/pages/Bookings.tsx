@@ -456,6 +456,20 @@ export default function Bookings() {
   const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
   // Visitors pay through their visitor pass, not a per-booking court fee.
   const { data: myVisitorPass } = useMyVisitorPass(activeMember?.id);
+  // Pending applicants can't read the club's courts (server only shows them to
+  // approved members), so the "no courts" notice would be misleading for them.
+  const { data: isPendingApplicant } = useQuery({
+    queryKey: ["bookings-pending-applicant", activeMember?.id],
+    enabled: !!activeMember?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("club_members")
+        .select("is_pending_approval")
+        .eq("id", activeMember!.id)
+        .maybeSingle();
+      return !!(data as any)?.is_pending_approval;
+    },
+  });
   const { data: visitorPassOptions } = useVisitorPassOptions((myClub as any)?.id);
   // If the club sells no pass, the pass cannot be the gate for visitor bookings.
   const visitorPassesOffered = visitorPassOptions
@@ -1914,8 +1928,29 @@ export default function Bookings() {
         </div>
       )}
 
+      {/* Pending applicant: courts are hidden until the club approves them */}
+      {isPendingApplicant && (
+        <div className="px-4 mt-3">
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <Info className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Court bookings open once your membership is approved</p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  Your application to {(myClub as any)?.name || "the club"} is still waiting for approval.
+                  Pay your joining and membership fees under Account, then the club will approve you and
+                  you can book courts here.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* No courts configured yet */}
-      {!bookingProviderActive && courts.length === 0 && (
+      {!isPendingApplicant && !bookingProviderActive && courts.length === 0 && (
         <div className="px-4 mt-3">
           <Card className="border-amber-500/40 bg-amber-500/10">
             <CardContent className="p-3 flex items-start gap-3">

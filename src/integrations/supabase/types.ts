@@ -17459,6 +17459,10 @@ export type Database = {
         Args: { p_registration_id: string }
         Returns: undefined
       }
+      apply_to_club_as_existing_person: {
+        Args: { p_club_id: string }
+        Returns: string
+      }
       approve_club_claim: { Args: { _request_id: string }; Returns: string }
       approve_ladder_move_pending: {
         Args: { _pending_id: string }

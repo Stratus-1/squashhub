@@ -281,6 +281,8 @@ export default function LeagueGameDetail() {
   /** True while the user is in the Edit players setup grid — background
    *  refetches (polling/realtime) must not flip the page back to scoring. */
   const editingLineupRef = useRef(false);
+  /** Bumped whenever saved rows are (re)loaded so roster refresh re-applies. */
+  const [positionsLoadTick, setPositionsLoadTick] = useState(0);
   /** Timestamp of the last successful lineup persist (drives the saved badge). */
   const [lineupSavedAt, setLineupSavedAt] = useState<string | null>(null);
   /** Lineup as last read from / written to the server — used for stale detection. */
@@ -916,6 +918,7 @@ export default function LeagueGameDetail() {
       if (existingResultFetched && !hasOriginalSnapshot(savedSnapshot ?? null) && !hasOriginalSnapshot(originalLineupSnapshot)) {
         setOriginalLineupSnapshot(buildOriginalSnapshot(loaded));
       }
+      setPositionsLoadTick((t) => t + 1);
       if (!editingLineupRef.current) setSetupDone(true);
     }
   }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode, doublesRubbers]);
@@ -1202,7 +1205,7 @@ export default function LeagueGameDetail() {
       }
       return next;
     });
-  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount, doublesRubbers, fixtureStarted]);
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount, doublesRubbers, fixtureStarted, positionsLoadTick]);
 
   // Doubles prefill — each rubber row shows the team's registered PAIR
   // ("Player one & Player two") instead of a single player name.
@@ -1241,7 +1244,7 @@ export default function LeagueGameDetail() {
         };
       }),
     );
-  }, [doublesInfo, fixture, positionCount, existingMatches, fixtureStarted]);
+  }, [doublesInfo, fixture, positionCount, existingMatches, fixtureStarted, positionsLoadTick]);
 
 
 

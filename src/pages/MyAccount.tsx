@@ -913,12 +913,19 @@ export default function MyAccount() {
 
 
       {clubId && clubMemberId && (
+        <div id="recurring-payments" ref={(el) => {
+          if (el && window.location.hash === "#recurring-payments" && !(el as any)._scrolled) {
+            (el as any)._scrolled = true;
+            setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+          }
+        }}>
         <PaymentMethodsCard
           clubId={clubId}
           clubMemberId={clubMemberId}
           paymentGateway={recurringGatewayFor(club as any)}
           memberFeeCategoryId={feeCategoryId}
         />
+        </div>
       )}
 
       {awaitingPayment && (

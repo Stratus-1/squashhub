@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.md_save_league_rubber(text, integer, uuid, integer, jsonb, text) FROM PUBLIC, anon, authenticated;
+COMMENT ON FUNCTION public.md_save_league_rubber(text, integer, uuid, integer, jsonb, text) IS 'DEPRECATED: league secure links now score through the shared League Games screens (md_hdr_* policies)';

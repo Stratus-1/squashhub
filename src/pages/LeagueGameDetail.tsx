@@ -1139,6 +1139,19 @@ export default function LeagueGameDetail() {
     };
   }, [fixtureId, queryClient]);
 
+  // Match has started once any rubber has play, or the result is submitted.
+  const fixtureStarted = useMemo(() => {
+    const st = String((existingResult as any)?.status || "");
+    if (st === "submitted" || st === "completed") return true;
+    return (existingMatches || []).some((m: any) => rubberHasPlay(m));
+  }, [existingMatches, existingResult]);
+  const defaultSlotFor = useCallback((side: "home" | "away", i: number): { code: string; name: string } | undefined => {
+    if (!fixture) return undefined;
+    const code = side === "home" ? fixture.home_team_code : fixture.away_team_code;
+    if ((doublesInfo as any)?.isDoubles) return ((doublesInfo as any).pairsByCode?.[String(code || "").toUpperCase()] || [])[i];
+    return ((prefillLineup as any)?.lineup?.[code] || [])[i];
+  }, [fixture, doublesInfo, prefillLineup]);
+
   // Apply prefill from the captain's Fill-Up Leagues lineup.
   //  - For each position, if real play has been recorded for THAT slot
   //    (scores or forfeit), keep it as-is.
@@ -1160,12 +1173,20 @@ export default function LeagueGameDetail() {
         const slotHasPlay = (Array.isArray(p.scores) && p.scores.length > 0) || !!p.isForfeit;
         // Prefill only fills genuinely empty sides — a saved reserve (with or
         // without an NSF code) is never overwritten by the default lineup.
-        const home = applyPrefillSlot(
+        const row = (existingMatches || []).find((r: any) => r.position === i + 1);
+        const common = { rowLocked: !!row?.participants_locked_at, matchStarted: fixtureStarted };
+        const refreshHome = shouldUseCurrentDefault({ ...common,
+          saved: { name: row?.home_player_name || "", code: row?.home_player_code || "" },
+          local: { name: p.homeName, code: p.homeCode }, current: homeSlots[i], explicit: row?.home_lineup_explicit });
+        const refreshAway = shouldUseCurrentDefault({ ...common,
+          saved: { name: row?.away_player_name || "", code: row?.away_player_code || "" },
+          local: { name: p.awayName, code: p.awayCode }, current: awaySlots[i], explicit: row?.away_lineup_explicit });
+        const home = refreshHome ? { code: homeSlots[i]?.code || "", name: homeSlots[i]?.name || "" } : applyPrefillSlot(
           { code: p.homeCode, name: p.homeName },
           homeSlots[i],
           { slotHasPlay, sourceHasAny: homeHasAny },
         );
-        const away = applyPrefillSlot(
+        const away = refreshAway ? { code: awaySlots[i]?.code || "", name: awaySlots[i]?.name || "" } : applyPrefillSlot(
           { code: p.awayCode, name: p.awayName },
           awaySlots[i],
           { slotHasPlay, sourceHasAny: awayHasAny },
@@ -1181,7 +1202,7 @@ export default function LeagueGameDetail() {
       }
       return next;
     });
-  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount, doublesRubbers]);
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount, doublesRubbers, fixtureStarted]);
 
   // Doubles prefill — each rubber row shows the team's registered PAIR
   // ("Player one & Player two") instead of a single player name.
@@ -1563,6 +1584,8 @@ export default function LeagueGameDetail() {
           away_player_name: p.awayName,
           lineup_set_by: setBy,
           lineup_set_at: stamp,
+          home_lineup_explicit: sideIsExplicit({ code: p.homeCode, name: p.homeName }, defaultSlotFor("home", i)),
+          away_lineup_explicit: sideIsExplicit({ code: p.awayCode, name: p.awayName }, defaultSlotFor("away", i)),
         } as any, { onConflict: "fixture_id,position" });
         if (error) throw error;
       }
@@ -1585,7 +1608,7 @@ export default function LeagueGameDetail() {
       if (!opts?.silent) toast.error(e?.message || "Could not save the lineup — please retry");
       return false;
     }
-  }, [fixtureId, user, activeMember?.id, queryClient]);
+  }, [fixtureId, user, activeMember?.id, queryClient, defaultSlotFor]);
 
   const handleSwap = useCallback(async (c: SwapCandidate, half?: 0 | 1) => {
     if (!swapTarget) return;
@@ -1892,6 +1915,8 @@ export default function LeagueGameDetail() {
           fixture_id: fixtureId, position: i + 1,
           home_player_code: pos.homeCode.toUpperCase(), away_player_code: pos.awayCode.toUpperCase(),
           home_player_name: pos.homeName, away_player_name: pos.awayName,
+          home_lineup_explicit: sideIsExplicit({ code: pos.homeCode, name: pos.homeName }, defaultSlotFor("home", i)),
+          away_lineup_explicit: sideIsExplicit({ code: pos.awayCode, name: pos.awayName }, defaultSlotFor("away", i)),
           game_scores: pos.scores.length > 0 ? pos.scores : [], home_games_won: hw, away_games_won: aw,
           winner: computedWinner,
           is_forfeit: !!pos.isForfeit,
@@ -1932,13 +1957,14 @@ export default function LeagueGameDetail() {
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
       toast.success("Setup saved! You can now mark games.");
+      editingLineupRef.current = false;
       setSetupDone(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to save setup");
     } finally {
       setSavingSetup(false);
     }
-  }, [fixtureId, user, positions, originalLineupSnapshot, scoringFormat, bestOf, queryClient, existingResult]);
+  }, [fixtureId, user, positions, originalLineupSnapshot, scoringFormat, bestOf, queryClient, existingResult, defaultSlotFor]);
 
   // ---- Marker ----
   const buildMarkerConfigForPosition = useCallback((posIdx: number): MarkerConfig | null => {
@@ -3660,9 +3686,11 @@ export default function LeagueGameDetail() {
                             colSpan={2}
                             className="p-2 text-center align-middle"
                           >
-                            {!isSubmitted && (
+                            {!isSubmitted && canEditLineup && (
                               <Button
                                 size="lg"
+                                disabled={fixtureStarted}
+                                title={fixtureStarted ? "Players are locked once scoring has started — use the swap icon on an unplayed rubber" : undefined}
                                 className="text-sm font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:opacity-95 transition-all h-12 px-5 mx-auto flex"
                                 onClick={() => {
                                   // Go straight to the tap-to-pick wizard; only fall back to the
@@ -3671,7 +3699,7 @@ export default function LeagueGameDetail() {
                                     setWizardStartEmpty(true);
                                     setSelectWizardOpen(true);
                                   }
-                                  else setSetupDone(false);
+                                  else { editingLineupRef.current = true; setSetupDone(false); }
                                 }}
                               >
                                 <Users className="w-4 h-4 mr-2" /> Edit / Select Players

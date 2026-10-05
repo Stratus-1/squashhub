@@ -2585,3 +2585,4 @@ Cause: builder stored one event per picked player; saving wrote one division and
 ## 2026-10-05 — Outstanding-balance plans separated from fee plans
 - Problem: outstanding-balance plan was added onto the membership monthly charge and sized from all unpaid charges (double-financing membership).
 - Fix: `member_outstanding_breakdown` RPC, rewritten `start_arrears_plan` (stores covered charges, never touches the mandate), separate collection per plan in `payfast-charge-mandates` (purpose `fee` against plan charges only), member UI copy updated.
+- Follow-up (same day): reverted to ONE combined debit (fee amount + plan instalment) with split settlement: fee part as before, plan part as separate 'fee' session against covered_fee_ids.

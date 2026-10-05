@@ -115,6 +115,7 @@ export function MatchDayAccessCard({ kind, competitionId, competitionName, subdo
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" onClick={() => copy(overall)}><Copy className="w-3.5 h-3.5 mr-1" />Copy link</Button>
                 <Button size="sm" variant="secondary" onClick={() => setQrFor({ label: "All Courts", url: overall })}><QrCode className="w-3.5 h-3.5 mr-1" />Show QR</Button>
+                <Button size="sm" variant="secondary" onClick={() => share("All Courts – Scoring, Live & Standings", overall)}><Share2 className="w-3.5 h-3.5 mr-1" />Share</Button>
               </div>
             </div>
             {courts.length > 0 && (
@@ -123,8 +124,9 @@ export function MatchDayAccessCard({ kind, competitionId, competitionName, subdo
                   <div key={c.id} className="rounded-md border border-border p-2 flex items-center justify-between gap-1">
                     <span className="text-xs truncate">{c.name || `Court ${c.id}`}</span>
                     <span className="flex">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copy(courtUrl(c.id))}><Copy className="w-3.5 h-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setQrFor({ label: c.name || `Court ${c.id}`, url: courtUrl(c.id) })}><QrCode className="w-3.5 h-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Copy link" onClick={() => copy(courtUrl(c.id))}><Copy className="w-3.5 h-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Show QR" onClick={() => setQrFor({ label: c.name || `Court ${c.id}`, url: courtUrl(c.id) })}><QrCode className="w-3.5 h-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Share link" onClick={() => share(c.name || `Court ${c.id}`, courtUrl(c.id))}><Share2 className="w-3.5 h-3.5" /></Button>
                     </span>
                   </div>
                 ))}

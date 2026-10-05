@@ -1058,7 +1058,7 @@ export function MemberOnboardingWizard({
 
   const canProceed = () => {
     if (step === 1) return name.trim().length >= 2;
-    if (step === 2) return true;
+    if (step === 2) return categoryLocked || feeCategories.length === 0 || !!feeCategoryId;
     if (currentStepId === "rules") return !rulesRequireAcceptance || rulesAccepted;
     if (currentStepId === "family") return !familyDraftError(familyPrimaryCat, familyDrafts);
     if (currentStepId === "face") return !!capturedPhoto;

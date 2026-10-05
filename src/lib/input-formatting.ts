@@ -15,10 +15,10 @@ export function toTitleCase(value: string): string {
     .map((word, idx) => {
       if (!word) return word;
       const lower = word.toLowerCase();
-      // Keep short all-caps initials like "JP", "JJ", "PJ" as typed
-      if (word.length <= 3 && word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
       // Keep particles lowercase unless first word
       if (idx > 0 && LOWERCASE_PARTICLES.has(lower)) return lower;
+      // Keep short all-caps initials like "JP", "JJ", "PJ" as typed
+      if (word.length <= 3 && word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
       // Handle hyphenated names like "Smith-Jones"
       return lower
         .split("-")

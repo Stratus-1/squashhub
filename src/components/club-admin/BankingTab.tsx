@@ -433,6 +433,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     { id: "methods", label: "Payment methods", description: "Step one — tick the ways your members are allowed to pay: cash, EFT or online card payments.", complete: acceptedMethods.size > 0 },
     { id: "bank", label: "Bank details", description: "The account members see when they choose EFT. Nothing here is charged automatically.", complete: !!bankForm.bank_account_number },
     { id: "gateway", label: "Online payments", description: "Connect a payment gateway so members can pay by card and set up monthly debit orders.", complete: gateway !== "none" },
+    { id: "recurring", label: "Recurring payments", description: "Choose whether members can pay fees or outstanding balances monthly, and set the allowed periods.", complete: false },
   ];
 
   return (
@@ -850,11 +851,6 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         )}
       </div>
 
-      <RecurringPaymentSettingsCard clubId={clubId} club={club as any} />
-
-
-      
-
       {isSouthAfrican && (
         <StitchOnboardingCard
           clubId={clubId}
@@ -868,6 +864,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       )}
 
       </>)}
+      {step === "recurring" && (
+        <RecurringPaymentSettingsCard clubId={clubId} club={club as any} />
+      )}
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>
   );

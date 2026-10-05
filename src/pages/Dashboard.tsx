@@ -10,6 +10,7 @@ import { SEO } from "@/components/SEO";
 import { Users } from "lucide-react";
 
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
+import { isApplicationIncomplete } from "@/lib/membership-application";
 import { MembershipIntroModal } from "@/components/MembershipIntroModal";
 import { MyChampionships } from "@/components/MyChampionships";
 

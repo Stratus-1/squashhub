@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
+import { isSelfApplication } from "@/lib/membership-application";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -327,7 +328,18 @@ export function MemberOnboardingWizard({
       }
 
       if (member) {
-        setIsExistingMember(true);
+        // A row created by this person's own sign-up moments ago is a NEW
+        // applicant (once-off registration fee applies), unless joining fees
+        // were already raised on it (resume / re-login never charges twice).
+        let freshApplicant = false;
+        if (member.user_id === user.id && isSelfApplication(member, (user as any)?.created_at)) {
+          const { count } = await fromExt("club_member_fee_payments")
+            .select("id", { count: "exact", head: true })
+            .eq("club_member_id", member.id)
+            .in("fee_type", ["club", "registration", "opening_balance"]);
+          freshApplicant = !count;
+        }
+        setIsExistingMember(!freshApplicant);
         // Always use the member's real name when one exists and the current value is empty or a lookup code
         if (member.name && !looksLikeLookupCode(member.name) && (!name || currentNameIsLookup)) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);

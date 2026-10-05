@@ -37,3 +37,4 @@
 
 - A new-member application is complete only once its signup steps saved a fee category (`src/lib/membership-application.ts`), never because a member number exists; why: clubs may auto-number applicants at account creation.
 - Unfinished self-application progress lives server-side in `club_members.application_progress` (owner-only via `get_/save_my_application_progress` RPCs, no client column grant), cleared on completion; category, fees and admin alerts are written only by the final save; why: applicants resume on any device without being charged or approved early.
+- A person may hold memberships at several clubs; joining a second club is a genuine new application created only via `apply_to_club_as_existing_person` after an explicit warning/confirm in `NoClubAccess`, reusing `person_id`; why: one national person record, and second-club joiners must never take the preloaded-activation shortcut or skip fees/approval.

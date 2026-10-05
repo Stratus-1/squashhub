@@ -52,3 +52,20 @@ describe("A vs B onboarding discriminator", () => {
     expect(dash).toMatch(/isApplicationIncomplete\(myClubMember/);
   });
 });
+
+describe("second-club application (existing SquashHub member)", () => {
+  const oldAccount = "2025-01-01T00:00:00Z";
+  it("row created by apply_to_club_as_existing_person is a fresh, incomplete application", () => {
+    const row = { role: "member", fee_category_id: null, joined_at: "2026-10-05T21:00:00Z", is_pending_approval: true, applied_at: "2026-10-05T21:00:00Z" };
+    expect(isSelfApplication(row, oldAccount)).toBe(true);
+    expect(isApplicationIncomplete(row, oldAccount)).toBe(true);
+  });
+  it("UI warns and only creates the application after explicit confirmation", () => {
+    const src = readFileSync("src/components/NoClubAccess.tsx", "utf8");
+    expect(src).toContain("apply_to_club_as_existing_person");
+    expect(src).toContain("AlertDialogCancel");
+    // RPC is only called from the confirm handler, never on render/open.
+    expect(src.indexOf("apply_to_club_as_existing_person")).toBeGreaterThan(src.indexOf("const handleApply"));
+    expect(src).not.toMatch(/activate/i);
+  });
+});

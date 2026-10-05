@@ -2600,3 +2600,6 @@ Cause: builder stored one event per picked player; saving wrote one division and
 - Symptom: secure league link showed a separate "Match Day" page with a simplified score form instead of League Games.
 - Root cause: League Games screens require a member login (RLS), so the first version rebuilt them behind `md_*` functions. Courts were never wrong (fixtures carry `court_id`; only the bye has none).
 - Fix: `/md/*` now renders the existing `LeagueGames` / `LeagueGameDetail` inside `MatchDayDeviceContext`; requests go as anon + `x-match-day-token`, scoped by `md_hdr_*` RLS policies; device writes audited. `md_save_league_rubber` revoked. Tournaments still on interim page.
+
+## 2026-10-05 Match Day tournament links
+- Tournament QR links showed an empty "Standings appear once results are in" because they used a separate interim page with its own simplified standings. Fix: links now open the real member Tournaments, tournament (standings), marker and live screens in device mode; interim MatchDay.tsx removed. Verified on Riverside 6th 7th and Open S D.

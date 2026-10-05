@@ -2089,6 +2089,13 @@ export type Database = {
             foreignKeyName: "champ_doubles_pairs_champ_id_fkey"
             columns: ["champ_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "champ_doubles_pairs_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -3198,6 +3205,13 @@ export type Database = {
             foreignKeyName: "club_champs_entries_champ_id_fkey"
             columns: ["champ_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_entries_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -3363,6 +3377,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
             referencedColumns: ["id"]
           },
           {
@@ -3575,6 +3596,13 @@ export type Database = {
             foreignKeyName: "club_champs_registrations_champ_id_fkey"
             columns: ["champ_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -3681,6 +3709,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_rounds_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
             referencedColumns: ["id"]
           },
           {
@@ -10167,6 +10202,13 @@ export type Database = {
             foreignKeyName: "match_correction_requests_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_correction_requests_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -13889,6 +13931,13 @@ export type Database = {
             foreignKeyName: "smart_tournament_drafts_created_tournament_id_fkey"
             columns: ["created_tournament_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_tournament_drafts_created_tournament_id_fkey"
+            columns: ["created_tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15033,6 +15082,13 @@ export type Database = {
             foreignKeyName: "team_league_events_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_league_events_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15081,6 +15137,13 @@ export type Database = {
             foreignKeyName: "tournament_divisions_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_divisions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15123,6 +15186,13 @@ export type Database = {
             columns: ["tournament_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_draw_versions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
             referencedColumns: ["id"]
           },
           {
@@ -15271,6 +15341,13 @@ export type Database = {
             foreignKeyName: "tournament_governance_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: true
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_governance_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: true
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15313,6 +15390,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_governance_audit_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
             referencedColumns: ["id"]
           },
           {
@@ -15427,6 +15511,13 @@ export type Database = {
             foreignKeyName: "tournament_pools_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_pools_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15511,6 +15602,13 @@ export type Database = {
             foreignKeyName: "tournament_rules_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: true
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_rules_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: true
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15572,6 +15670,13 @@ export type Database = {
             columns: ["tournament_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_stages_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
             referencedColumns: ["id"]
           },
           {
@@ -15686,6 +15791,13 @@ export type Database = {
             foreignKeyName: "tournament_venues_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_venues_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15737,6 +15849,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_whatsapp_group_invites_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
             referencedColumns: ["id"]
           },
           {
@@ -15820,6 +15939,13 @@ export type Database = {
             foreignKeyName: "tournament_whatsapp_groups_champ_id_fkey"
             columns: ["champ_id"]
             isOneToOne: true
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_whatsapp_groups_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: true
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -15878,6 +16004,13 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_withdrawal_requests_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
             referencedColumns: ["id"]
           },
           {
@@ -16732,6 +16865,162 @@ export type Database = {
         ]
       }
       club_champs: {
+        Row: {
+          affects_ranking_points: boolean | null
+          approval_gate: string | null
+          association_fee_cents: number | null
+          avoid_back_to_back: boolean | null
+          best_of: number | null
+          bye_handling: string | null
+          champion_scope: string | null
+          club_id: string | null
+          competition_level: string | null
+          court_ids: number[] | null
+          court_rotation_minutes: number | null
+          created_at: string | null
+          day_schedules: Json | null
+          default_break_minutes: number | null
+          description: string | null
+          division_follows: Json | null
+          division_pairing_method: Json | null
+          division_seed_source: Json | null
+          draw_type: string | null
+          eligibility_max_age: number | null
+          eligibility_min_age: number | null
+          eligibility_notes: string | null
+          eligibility_requires_licence: boolean | null
+          eligibility_scope: string | null
+          enable_playoffs: boolean | null
+          end_date: string | null
+          end_time: string | null
+          entries_locked: boolean | null
+          entry_fee_cents: number | null
+          entry_source: string | null
+          expected_players: Json | null
+          federation_fee_cents: number | null
+          gender: string | null
+          group_break_minutes: Json | null
+          group_durations: Json | null
+          group_labels: Json | null
+          handicap_divider: number | null
+          handicap_mode: string | null
+          handicap_multiplier: number | null
+          id: string | null
+          include_visitors: boolean | null
+          invite_audience: string | null
+          invite_audience_club_ids: string[] | null
+          invite_audience_include_individuals: boolean | null
+          invite_audience_league_ids: string[] | null
+          invite_audience_member_ids: string[] | null
+          invite_excluded_member_ids: string[] | null
+          invite_extra_details: string | null
+          invite_include_reserves: boolean | null
+          invite_methods: string[] | null
+          invite_short_message: boolean | null
+          invite_source: string | null
+          knockout_seeds: Json | null
+          knockout_seeds_at: string | null
+          ladder_affects: boolean | null
+          league_draw_styles: Json | null
+          league_formats: Json | null
+          league_playoff_modes: Json | null
+          league_playoff_qualifiers: Json | null
+          league_sections: Json | null
+          league_win_conditions: Json | null
+          match_duration_minutes: number | null
+          match_type: string | null
+          milestone_play_by: Json | null
+          name: string | null
+          no_show_opponent_points: number | null
+          no_show_player_points: number | null
+          num_groups: number | null
+          owner_org_id: string | null
+          partner_mode: string | null
+          payment_methods: string[] | null
+          payment_required: boolean | null
+          payment_timing: string | null
+          play_all_games: boolean | null
+          play_days: number[] | null
+          playoff_break_minutes: number | null
+          playoff_date: string | null
+          points_per_game: number | null
+          pool_allocation: string | null
+          pool_durations: Json | null
+          pool_sizes: Json | null
+          ranking_scope: string | null
+          ranking_weight: number | null
+          refund_cutoff_date: string | null
+          refund_policy: string | null
+          registration_closes_at: string | null
+          registration_mode: string | null
+          registration_opens_at: string | null
+          registration_required: boolean | null
+          result_notify_channels: string[] | null
+          result_notify_include_forfeits: boolean | null
+          result_notify_scope: string | null
+          rotation_avoid_pairs: Json | null
+          rotation_max_matches: number | null
+          rotation_strength_mode: string | null
+          round_definitions: Json | null
+          round_format: string | null
+          round_play_by: Json | null
+          sanction_notes: string | null
+          sanction_reference: string | null
+          sanction_status: string | null
+          sanctioned_at: string | null
+          sanctioned_by: string | null
+          sanctioning_org_id: string | null
+          schedule_mode: string | null
+          scheduling_mode: string | null
+          scoring_mode: string | null
+          source_league_id: string | null
+          source_league_ids: string[] | null
+          standard_of_play: string | null
+          start_date: string | null
+          start_time: string | null
+          status: string | null
+          swiss_knockout_qualifiers: Json | null
+          swiss_pairing_modes: Json | null
+          swiss_pools: Json | null
+          swiss_rounds: Json | null
+          updated_at: string | null
+          visitor_clubs: string[] | null
+          win_condition: string | null
+          withdrawal_cutoff_days: number | null
+          withdrawals_allowed: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_source_league_id_fkey"
+            columns: ["source_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_governance_sanctioning_org_id_fkey"
+            columns: ["sanctioning_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_owner_org_id_fkey"
+            columns: ["owner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      md_club_champs: {
         Row: {
           affects_ranking_points: boolean | null
           approval_gate: string | null
@@ -18650,11 +18939,14 @@ export type Database = {
       md_context: { Args: { _token: string }; Returns: Json }
       md_device_info: { Args: { _token: string }; Returns: Json }
       md_hdr_assoc_ids: { Args: never; Returns: string[] }
+      md_hdr_champ: { Args: never; Returns: string }
+      md_hdr_champ_open: { Args: never; Returns: boolean }
       md_hdr_club: { Args: never; Returns: string }
       md_hdr_court: { Args: never; Returns: number }
       md_hdr_fixture_ids: { Args: never; Returns: string[] }
       md_hdr_league_ids: { Args: never; Returns: string[] }
       md_hdr_member_ids: { Args: never; Returns: string[] }
+      md_hdr_user_ids: { Args: never; Returns: string[] }
       md_hdr_writable_fixture_ids: { Args: never; Returns: string[] }
       md_header_access: {
         Args: never

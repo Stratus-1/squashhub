@@ -449,6 +449,20 @@
       "when": 1791210316048,
       "tag": "0063_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1791211719730,
+      "tag": "0064_match_day_tournament_device_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1791211881139,
+      "tag": "0065_md_profiles_column_scope",
+      "breakpoints": true
     }
   ]
 }

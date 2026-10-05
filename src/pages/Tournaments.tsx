@@ -1,4 +1,5 @@
 import { allocateAllFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
+import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
 import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import React from "react";
 import { PageHeader } from "@/components/PageHeader";
@@ -65,21 +66,25 @@ import { hasAssumptions, scheduleWithAssumptions } from "@/lib/tournaments/assum
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
 export default function Tournaments() {
-  const navigate = useNavigate();
+  const navigate = useMdNavigate();
+  const md = useMatchDayDevice();
   const { club: contextClub } = useClubContext();
   const { data: clubData } = useMyClub();
-  const { activeMember } = useMemberContext();
-  const isClubAdmin = useIsClubAdmin();
-  const clubId = contextClub?.id || clubData?.club?.id;
+  const { activeMember: sessionMember } = useMemberContext();
+  // Secure Match Day link: no member identity and no admin rights.
+  const activeMember = md ? null : sessionMember;
+  const isClubAdmin = useIsClubAdmin() && !md;
+  const clubId = md ? md.clubId : contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
   // Club/tournament officials and super admins may capture any result;
   // everyone else only their own matches.
-  const canManageChamps = useHasPermission("champs");
+  const canManageChamps = useHasPermission("champs") && !md;
   const [resultMatch, setResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
-  const { user } = useAuth();
+  const { user: sessionUser } = useAuth();
+  const user = md ? md.deviceUser : sessionUser;
   const [takeover, setTakeover] = useState<
     { matchId: string; markRoute: string; label: string; markerName: string } | null
   >(null);
@@ -121,7 +126,7 @@ export default function Tournaments() {
       // Also include tournaments hosted by OTHER clubs that this login is
       // entered in (e.g. inter-club league get-togethers), so visiting
       // players see and can mark their games.
-      if (!user?.id) return own;
+      if (!user?.id || md) return own;
       const { data: mine } = await supabase
         .from("club_members").select("id").eq("user_id", user.id);
       const memberIds = (mine || []).map((m: any) => m.id);
@@ -234,7 +239,7 @@ export default function Tournaments() {
 
   // All scheduled matches per tournament (full schedule view)
   const { data: allMatches = [] } = useQuery({
-    queryKey: ["tournaments-all-matches", champIds],
+    queryKey: ["tournaments-all-matches", champIds, md?.court ?? null],
     queryFn: async () => {
       if (!champIds.length) return [];
       const rows = await fetchAllPages(() =>
@@ -245,7 +250,9 @@ export default function Tournaments() {
           .order("scheduled_time")
           .order("id"),
       );
-      return hydrateTournamentNames(rows as any[]);
+      const named = await hydrateTournamentNames(rows as any[]);
+      // Court-specific Match Day link: only that court's games.
+      return md?.court != null ? (named as any[]).filter((m: any) => m.court_id === md.court) : named;
     },
     enabled: champIds.length > 0,
     refetchInterval: 10000,

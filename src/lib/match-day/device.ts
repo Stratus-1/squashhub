@@ -20,6 +20,10 @@ export function enableMatchDayDevice(token: string, court: number | null) {
     headers.set("x-match-day-token", token);
     if (court != null) headers.set("x-match-day-court", String(court));
     else headers.delete("x-match-day-court");
+    // The club_champs compatibility view ignores row rules, so the link reads
+    // its own filtered copy (md_club_champs: only this tournament).
+    if (typeof input === "string") input = input.replace(/\/rest\/v1\/club_champs(?=\?|$)/, "/rest/v1/md_club_champs");
+    else if (input instanceof URL) input = new URL(input.toString().replace(/\/rest\/v1\/club_champs(?=\?|$)/, "/rest/v1/md_club_champs"));
     return original(input, { ...init, headers });
   };
   restore = () => { rest.fetch = original; };

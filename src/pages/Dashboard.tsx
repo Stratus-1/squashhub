@@ -135,8 +135,9 @@ export default function Dashboard() {
     String((myClubMember as any)?.role || "").toLowerCase() === "visitor";
   // One-time intro toast for clubs where the Bar / POS module is live.
   // Shows once per member (localStorage).
+  const isPendingApplicant = !!((activeMember as any)?.is_pending_approval || (myClubMember as any)?.is_pending_approval);
   useEffect(() => {
-    if (!barEnabled || !clubId || !myMemberId) return;
+    if (!barEnabled || !clubId || !myMemberId || isPendingApplicant) return;
     const key = `sh.barIntro.${clubId}.${myMemberId}`;
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, "1");
@@ -147,7 +148,7 @@ export default function Dashboard() {
         ? `Your member number is #${num}, shown at the top of your dashboard — give it at the bar to put items on your account. If you're logged in, you can simply tap items and select "Add to My Account".`
         : `Give your member number (shown at the top of your dashboard) at the bar to put items on your account. If you're logged in, you can simply tap items and select "Add to My Account".`,
     });
-  }, [barEnabled, clubId, myMemberId]);
+  }, [barEnabled, clubId, myMemberId, isPendingApplicant]);
   // Nightly knockout round-up toast ("Well done with your wins" / "Sorry to see you go").
   useChampDailyToast(clubId, tournamentsEnabled);
   // "Please make your court booking for your next upcoming game" nudge.
@@ -797,12 +798,14 @@ export default function Dashboard() {
       <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile />
 
       {/* Door / lights controls first, so Open Door is at the top of the screen */}
-      <div className="px-4 mt-2">
-        <DashboardDeviceControls />
-      </div>
+      {!isPendingApplicant && (
+        <div className="px-4 mt-2">
+          <DashboardDeviceControls />
+        </div>
+      )}
 
       {/* My member number (digits only) — used with the Bar PIN at the bar/shop */}
-      {activeMember?.club_member_number && (
+      {!isPendingApplicant && activeMember?.club_member_number && (
         <div className="px-4 mt-2">
           <div className="inline-flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5">
             <Hash className="w-3.5 h-3.5 text-muted-foreground" />

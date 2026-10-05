@@ -233,14 +233,16 @@ Deno.serve(async (req) => {
         }
         useManagedEmail = true;
       }
-      const port = Number(secrets?.smtp_port) || 587;
-      if (!ALLOWED_SMTP_PORTS.has(port)) return json({ error: `SMTP port ${port} not allowed` }, 400);
-      const nodemailer = await import("npm:nodemailer@6.9.14");
-      transporter = nodemailer.default.createTransport({
-        host: secrets.smtp_host, port, secure: port === 465, requireTLS: port === 587,
-        auth: { user: secrets.smtp_user, pass: secrets.smtp_pass },
-      });
-      fromHeader = `${secrets.sender_name || club?.name || "Club"} <${secrets.sender_email}>`;
+      if (!useManagedEmail) {
+        const port = Number(secrets?.smtp_port) || 587;
+        if (!ALLOWED_SMTP_PORTS.has(port)) return json({ error: `SMTP port ${port} not allowed` }, 400);
+        const nodemailer = await import("npm:nodemailer@6.9.14");
+        transporter = nodemailer.default.createTransport({
+          host: secrets.smtp_host, port, secure: port === 465, requireTLS: port === 587,
+          auth: { user: secrets.smtp_user, pass: secrets.smtp_pass },
+        });
+        fromHeader = `${secrets.sender_name || club?.name || "Club"} <${secrets.sender_email}>`;
+      }
       sigBlock = club?.email_signature_html
         ? `<div style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:14px">${club.email_signature_html}</div>` : "";
       disclaimerBlock = club?.email_disclaimer

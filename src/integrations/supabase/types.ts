@@ -18624,6 +18624,10 @@ export type Database = {
         Args: { p_club_member_id: string }
         Returns: boolean
       }
+      has_club_permission: {
+        Args: { _club_id: string; _slug: string; _user_id: string }
+        Returns: boolean
+      }
       has_org_role: {
         Args: {
           _org_id: string
@@ -18767,6 +18771,10 @@ export type Database = {
       }
       is_club_member: {
         Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_club_member_manager: {
+        Args: { _club_id: string; _target_user: string; _user_id: string }
         Returns: boolean
       }
       is_club_secrets_admin: {

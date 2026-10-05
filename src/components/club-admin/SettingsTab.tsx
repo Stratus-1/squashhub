@@ -223,14 +223,23 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
           to: testEmailTo || user?.email,
         },
       });
-      if (error) throw error;
+      if (error) {
+        // Surface the function's own explanation (wrong port, bad password, etc.)
+        let detail = "";
+        try {
+          const body = await (error as any)?.context?.json?.();
+          detail = body?.reason || body?.error || "";
+        } catch { /* ignore */ }
+        toast.error(detail || "Failed to send test email — check your SMTP settings");
+        return;
+      }
       if (data?.ok) {
         toast.success(`Test email sent to ${testEmailTo || user?.email}`);
       } else {
         toast.error(data?.reason || data?.error || "Failed to send test email — check your SMTP settings");
       }
     } catch (err: any) {
-      const msg = err?.message || err?.context?.body || String(err);
+      const msg = err?.message || String(err);
       toast.error(msg || "Failed to send test email");
     } finally {
       setSendingTest(false);

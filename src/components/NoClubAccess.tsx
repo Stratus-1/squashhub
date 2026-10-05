@@ -10,7 +10,11 @@ import { useClubContext } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ShieldAlert, Loader2 } from "lucide-react";
+import { ShieldAlert, Loader2, UserPlus } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /**
  * Shown when a signed-in user lands on a club subdomain where they have no
@@ -32,6 +36,25 @@ export function NoClubAccess() {
   const [homeClub, setHomeClub] = useState("");
   const [category, setCategory] = useState<"Men" | "Ladies">("Men");
   const [existingElsewhere, setExistingElsewhere] = useState(false);
+  const [confirmApply, setConfirmApply] = useState(false);
+  const [applying, setApplying] = useState(false);
+
+  // Existing SquashHub member at another club → genuine NEW application here.
+  // Nothing is created until they confirm the warning dialog.
+  const handleApply = async () => {
+    if (!club?.id) { toast.error("Club not found"); return; }
+    setApplying(true);
+    const { error } = await (supabase.rpc as any)("apply_to_club_as_existing_person", { p_club_id: club.id });
+    if (error) {
+      toast.error(String(error.message || "Could not start your application").replace(/^[A-Z_]+:\s*/, ""));
+      setApplying(false);
+      return;
+    }
+    toast.success(`Application to ${clubName} started — complete the steps to finish.`);
+    await queryClient.invalidateQueries({ queryKey: ["my-club"] });
+    await queryClient.invalidateQueries({ queryKey: ["my-club-member"] });
+    window.location.reload();
+  };
 
   // Pre-fill from profile + any existing club_members row (user at another club).
   useEffect(() => {
@@ -123,9 +146,23 @@ export function NoClubAccess() {
     <div className="min-h-screen flex items-center justify-center p-4">
       {dup.dialog}
       <Card className="max-w-md w-full p-6 space-y-4">
+        {existingElsewhere && !prefillLoading && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              <h2 className="text-base font-semibold">Apply for membership at {clubName}</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Join {clubName} as a full member. You keep your {homeClub || "current club"} membership.
+            </p>
+            <Button className="w-full" onClick={() => setConfirmApply(true)} disabled={applying || loading}>
+              Apply for membership
+            </Button>
+          </div>
+        )}
         <div className="flex items-center gap-2 text-amber-600">
           <ShieldAlert className="w-5 h-5" />
-          <h1 className="text-lg font-semibold">Register as a visitor at {clubName}</h1>
+          <h1 className="text-lg font-semibold">{existingElsewhere ? "Or r" : "R"}egister as a visitor at {clubName}</h1>
         </div>
         <p className="text-sm text-muted-foreground">
           You're signed in as <span className="font-medium">{user?.email}</span>, but you're not
@@ -190,6 +227,24 @@ export function NoClubAccess() {
           </form>
         )}
       </Card>
+      <AlertDialog open={confirmApply} onOpenChange={(o) => !applying && setConfirmApply(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apply to {clubName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You're already a member of {homeClub || "another club"}. Applying to {clubName} creates a separate{" "}
+              {clubName} membership. {clubName}'s joining fee and membership fee will be added to your {clubName}{" "}
+              account, and the club must approve you. Your {homeClub || "existing"} membership, fees and history stay as they are.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applying}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={applying} onClick={(e) => { e.preventDefault(); handleApply(); }}>
+              {applying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting…</> : `Yes, apply to ${clubName}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -4910,6 +4910,7 @@ export type Database = {
         Row: {
           access_suspended_at: string | null
           address: string | null
+          application_progress: Json | null
           applied_at: string | null
           approved_at: string | null
           approved_by: string | null
@@ -4965,6 +4966,7 @@ export type Database = {
         Insert: {
           access_suspended_at?: string | null
           address?: string | null
+          application_progress?: Json | null
           applied_at?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -5020,6 +5022,7 @@ export type Database = {
         Update: {
           access_suspended_at?: string | null
           address?: string | null
+          application_progress?: Json | null
           applied_at?: string | null
           approved_at?: string | null
           approved_by?: string | null

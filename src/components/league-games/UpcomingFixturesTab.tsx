@@ -19,6 +19,7 @@ import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { TeamLogo } from "./TeamLogo";
 import { useFixtureLiveMarkers } from "@/hooks/use-fixture-live-markers";
+import { useMatchDayDevice } from "@/contexts/MatchDayDevice";
 import { fixtureSideName, hasFixtureTeamName, type TeamNameLookup } from "@/lib/leagues/fixture-display";
 
 
@@ -49,8 +50,14 @@ type Props = {
 };
 
 export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, teamNameByCode, teamLogoByCode, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
-  const { activeMember } = useMemberContext();
+  // Match Day secure link: no member identity; the device may mark any open fixture
+  // of its competition, and a court link shows only that court's fixtures.
+  const md = useMatchDayDevice();
+  const { activeMember: memberCtxActive } = useMemberContext();
+  const activeMember = md ? null : memberCtxActive;
   const navigate = useNavigate();
+  const gamePath = (id: string, view = false) =>
+    `${md ? `${md.base}/game` : "/league-games"}/${id}${view ? "?mode=view" : ""}`;
   const qc = useQueryClient();
 
   type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "past-due" | "custom";
@@ -206,8 +213,10 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   }, [myLineupRows]);
 
   // Captain check: which team codes (leagues) is the active member captain of?
-  const isClubAdmin = useIsClubAdmin();
-  const isSuperAdmin = useIsSuperAdmin();
+  const isClubAdminRaw = useIsClubAdmin();
+  const isSuperAdminRaw = useIsSuperAdmin();
+  const isClubAdmin = md ? false : isClubAdminRaw;
+  const isSuperAdmin = md ? false : isSuperAdminRaw;
   const { data: myCaptainCodes } = useQuery({
     queryKey: ["my-captain-team-codes", activeMember?.id],
     queryFn: async () => {
@@ -324,6 +333,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     for (const f of (displayFixtures || []) as any[]) {
       // Skip byes — they don't need scoring or scheduling
       if (f.away_team_code === "__BYE__" || f.home_team_code === "__BYE__" || f.status === "bye") continue;
+      if (md?.court != null && f.court_id !== md.court) continue;
       const date = f.fixture_date;
       // Keep submitted/confirmed fixtures visible for 7 days after the match
       // date so captains/admins can still see what was just scored. After that
@@ -342,7 +352,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
       groups.get(date)!.push(f);
     }
     return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  }, [displayFixtures, rangeMode, resultMap]);
+  }, [displayFixtures, rangeMode, resultMap, md?.court]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
@@ -594,7 +604,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         // Set Up & Mark restricted to: captain of one of the teams,
                         // members assigned to play, members in that league, or admins.
                         // Everyone else gets a View-only button.
-                        const canSetupAndMark = mine || inLineup || isCaptain || canEnter;
+                        const canSetupAndMark = mine || inLineup || isCaptain || canEnter || (!!md && md.scoringOpen && !f.isTournament);
                         const viewOnly = !canSetupAndMark && !f.isTournament;
                         const label = f.isTournament
                           ? "Tournament"
@@ -612,7 +622,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                                 variant="outline"
                                 className="border-destructive text-destructive hover:bg-destructive/10 live-slow-pulse whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
                                 title="A captain is marking this game live — tap to follow"
-                                onClick={() => navigate(`/league-games/${f.id}?mode=view`)}
+                                onClick={() => navigate(gamePath(f.id, true))}
                               >
                                 <Radio className="w-3 h-3 mr-1 shrink-0" />
                                 LIVE · View
@@ -637,8 +647,8 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                                   f.isTournament
                                     ? `/club-champs/${f.champId}`
                                     : viewOnly
-                                      ? `/league-games/${f.id}?mode=view`
-                                      : `/league-games/${f.id}`
+                                      ? gamePath(f.id, true)
+                                      : gamePath(f.id)
                                 )
                               }
                             >

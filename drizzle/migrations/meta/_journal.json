@@ -344,6 +344,13 @@
       "when": 1791152718574,
       "tag": "0048_doubles_state_account_settled",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791193349383,
+      "tag": "0049_secrets_admin_honours_role_full_admin",
+      "breakpoints": true
     }
   ]
 }

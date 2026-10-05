@@ -638,16 +638,36 @@ export default function Profile() {
                 {feeCategories.length > 0 && (
                   <div className="space-y-1.5">
                     <Label>Fee Category</Label>
-                    <select className={selectClasses} value={feeCategoryId} onChange={(e) => setFeeCategoryId(e.target.value)}>
-                      <option value="">— Select category —</option>
-                      {feeCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name} ({fmtMoney(cat.annual_fee)}/yr)</option>
-                      ))}
-                    </select>
-                    {age !== null && !feeCategoryId && (
-                      <p className="text-xs text-amber-600">
-                        💡 Suggestion: {age < 25 ? "Student" : age >= 60 ? "Pensioner" : "Normal member"} based on age
-                      </p>
+                    {clubMember?.fee_category_id ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
+                          <span className="text-sm font-medium">
+                            {(() => {
+                              const assigned = feeCategories.find((cat) => cat.id === clubMember.fee_category_id);
+                              return assigned
+                                ? `${assigned.name} (${fmtMoney(assigned.annual_fee)}/yr)`
+                                : "Already assigned";
+                            })()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Your fee category is managed by the club — contact your club administrator to change it.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <select className={selectClasses} value={feeCategoryId} onChange={(e) => setFeeCategoryId(e.target.value)}>
+                          <option value="">— Select category —</option>
+                          {feeCategories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>{cat.name} ({fmtMoney(cat.annual_fee)}/yr)</option>
+                          ))}
+                        </select>
+                        {age !== null && !feeCategoryId && (
+                          <p className="text-xs text-amber-600">
+                            💡 Suggestion: {age < 25 ? "Student" : age >= 60 ? "Pensioner" : "Normal member"} based on age
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

@@ -1232,6 +1232,7 @@ export default function LeagueGameDetail() {
           local: { name: p.awayName, code: p.awayCode }, current: away,
           explicit: row?.away_lineup_explicit,
           staleDefaults: new Set((stale[String(fixture.away_team_code || "").toUpperCase()] || []).map(normalizeLineupName)) });
+        if (i === 1) console.log("DBGD", JSON.stringify({useHome, fixtureStarted, saved: row?.home_player_name, local: p.homeName, cur: home?.name, ex: row?.home_lineup_explicit, stale: stale[String(fixture.home_team_code || "").toUpperCase()]}));
         return {
           ...p,
           homeName: useHome ? (home?.name || "") : (p.homeName || home?.name || ""),

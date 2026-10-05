@@ -351,7 +351,6 @@ export function MemberOnboardingWizard({
         }
         setIsExistingMember(!freshApplicant);
         if (freshApplicant) {
-          setApplicationRowId(member.id);
           // Resume an unfinished application where it stopped (any device).
           try {
             const { data: saved } = await (supabase as any).rpc("get_my_application_progress", { _club_member_id: member.id });
@@ -360,6 +359,7 @@ export function MemberOnboardingWizard({
           } catch (e) {
             console.warn("[Wizard] could not load saved application progress", e);
           }
+          setApplicationRowId(member.id);
         }
         // Always use the member's real name when one exists and the current value is empty or a lookup code
         if (member.name && !looksLikeLookupCode(member.name) && (!name || currentNameIsLookup)) setName(member.name);
@@ -1115,11 +1115,11 @@ export function MemberOnboardingWizard({
   useEffect(() => {
     if (!resumeStepId) return;
     const ids = STEPS.map((s) => s.id);
-    if (resumeStepId === "family" && !ids.includes("family")) return; // wait for category → family step
+    if (resumeStepId === "family" && !ids.includes("family") && feeCategories.length === 0) return; // wait for categories → family step
     setStep(resumeStepIndex(ids, resumeStepId));
     setResumeStepId(null);
     if (resumeStepId !== "welcome") toast.info("Welcome back — continuing your application where you left off.");
-  }, [resumeStepId, STEPS]);
+  }, [resumeStepId, STEPS, feeCategories.length]);
 
   const next = () => {
     if (step === STEPS.length - 1) {

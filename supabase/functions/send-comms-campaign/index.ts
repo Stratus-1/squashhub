@@ -316,12 +316,47 @@ Deno.serve(async (req) => {
               continue;
             }
             const html = `${rendered.body}${sigBlock}${disclaimerBlock}`;
-            await transporter.sendMail({
-              from: fromHeader, to: m.email, subject: rendered.subject, html,
-              text: rendered.text,
-            });
-            sent++; await logDelivery({ ...base, target: m.email, status: "sent" });
-            await new Promise((r) => setTimeout(r, 250)); // pace the mailbox
+            if (useManagedEmail) {
+              // Main SquashHub domain (managed sending): suppression and rate
+              // limits are enforced server-side; a suppressed recipient is skipped.
+              let managedSent = false;
+              for (let attempt = 0; attempt < 3 && !managedSent; attempt++) {
+                try {
+                  await sendLovableEmail({
+                    to: m.email,
+                    from: `SquashHub <noreply@squashhub.co.za>`,
+                    sender_domain: "reg.squashhub.co.za",
+                    subject: rendered.subject,
+                    html,
+                    text: rendered.text,
+                    purpose: "transactional",
+                    label: `comms-${campaignId}`,
+                    idempotency_key: `${campaignId}:${m.id}:email`,
+                  }, { apiKey: Deno.env.get("LOVABLE_API_KEY")!, sendUrl: Deno.env.get("LOVABLE_SEND_URL") });
+                  managedSent = true;
+                } catch (e) {
+                  if (e instanceof EmailAPIError && e.code === "recipient_suppressed") {
+                    skipped++; await logDelivery({ ...base, target: m.email, status: "skipped", error_message: "Recipient suppressed (unsubscribed/bounced)" });
+                    managedSent = true; // handled — do not retry
+                    continue;
+                  }
+                  const wait = e instanceof EmailAPIError && e.status === 429 ? Math.min(e.retryAfterSeconds ?? 60, 30) : 0;
+                  if (wait && attempt < 2) { await new Promise((r) => setTimeout(r, wait * 1000)); continue; }
+                  throw e;
+                }
+              }
+              if (managedSent && !alreadySent.has(`${m.id}:email`)) {
+                // skipped recipients already logged above
+              }
+              if (managedSent) { sent++; await logDelivery({ ...base, target: m.email, status: "sent" }); }
+            } else {
+              await transporter.sendMail({
+                from: fromHeader, to: m.email, subject: rendered.subject, html,
+                text: rendered.text,
+              });
+              sent++; await logDelivery({ ...base, target: m.email, status: "sent" });
+              await new Promise((r) => setTimeout(r, 250)); // pace the mailbox
+            }
           } else if (ch === "whatsapp") {
             const phone = normalisePhone(m.phone);
             if (!phone) {

@@ -2581,3 +2581,7 @@ Cause: builder stored one event per picked player; saving wrote one division and
 - `champ_member_event_paid` returned NULL for a partner event covered by an unpaid "pay for both" promise, so the partner share dropped out of the amount owed (R150 instead of R250). Now always true/false.
 - Invite page now offers the tournament's chosen payment methods that the club can accept (card / EFT / member account / cash) via `invite_payment_options` + `invite_settle_entry`; card still goes through Stitch.
 - Picking a doubles partner can now be "Pay both" or "Pay only mine" (`propose_doubles_partner` honours `p_pay_for_partner`).
+
+## 2026-10-05 — Outstanding-balance plans separated from fee plans
+- Problem: outstanding-balance plan was added onto the membership monthly charge and sized from all unpaid charges (double-financing membership).
+- Fix: `member_outstanding_breakdown` RPC, rewritten `start_arrears_plan` (stores covered charges, never touches the mandate), separate collection per plan in `payfast-charge-mandates` (purpose `fee` against plan charges only), member UI copy updated.

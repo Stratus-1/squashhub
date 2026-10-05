@@ -526,6 +526,13 @@
       "when": 1791234259163,
       "tag": "0074_apply_to_club_as_existing_person",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1791242377997,
+      "tag": "0075_keep_ladder_position_on_claim",
+      "breakpoints": true
     }
   ]
 }

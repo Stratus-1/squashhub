@@ -841,7 +841,7 @@ export function MemberOnboardingWizard({
           return p;
         };
         const { data: prior, error: priorErr } = await fromExt("club_members")
-          .select("user_id")
+          .select("user_id, ladder_position")
           .eq("id", existingMember.id)
           .maybeSingle();
         if (priorErr) {
@@ -853,7 +853,8 @@ export function MemberOnboardingWizard({
         // bottom slot via the SECURITY DEFINER RPC (RLS would otherwise hide
         // existing members from this freshly-signed-up user).
         let bottomLadderPosition: number | null = null;
-        if (wasUnclaimed) {
+        // Existing members keep their ladder rank; only rows without one go to the bottom.
+        if (wasUnclaimed && (prior as any)?.ladder_position == null) {
           const { data: bp } = await supabase.rpc("next_bottom_ladder_position", {
             _club_id: clubId,
             _gender: gender || "",

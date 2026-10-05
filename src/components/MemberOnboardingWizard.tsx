@@ -1219,14 +1219,22 @@ export function MemberOnboardingWizard({
                             ))}
                         </SelectContent>
                       </Select>
-                      {suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
+                      )}
+                      {!categoryLocked && suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
                         <p className="text-[10px] text-primary mt-0.5">
                           ⭐ Auto-suggested based on your age ({detectedAge} years). You may change this if needed.
                         </p>
                       )}
+                      {!categoryLocked && (
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         Visiting from another club? Choose the <strong>Visitor</strong> option (R0/year) if available.
                       </p>
+                      )}
+                      {categoryLocked && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Your membership category was set up by your club. Contact the club if it needs to change.
+                        </p>
+                      )}
                       {selectedCategory?.description && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">{selectedCategory.description}</p>
                       )}

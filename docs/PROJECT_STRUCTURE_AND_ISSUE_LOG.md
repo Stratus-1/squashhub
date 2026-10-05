@@ -2619,3 +2619,6 @@ Fix: server-side `club_members.application_progress` + owner-only RPCs; wizard s
 
 ### 2026-10-05 — Second-club membership applications
 Existing members at another club only saw 'Register as a visitor'. Added RPC `apply_to_club_as_existing_person` + warn/confirm dialog in `NoClubAccess.tsx`; the new pending row flows through the normal application wizard (fees at final save, admin alerts on completion).
+
+### 2026-10-05 — Stitch success no longer returning to SquashHub (regression)
+Root cause: Riverside's Stitch portal 404s any ?redirect_url (host not whitelisted); fixes on 2 Oct (stitch-create-payment) and 5 Oct (stitch-create-mandate) stripped redirect_url for ALL clubs, relying on body keys Express ignores. Restored redirect_url with a per-link probe, bare-link fallback only where Stitch 404s.

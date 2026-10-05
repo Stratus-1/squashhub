@@ -1195,6 +1195,14 @@ export function MemberOnboardingWizard({
                   {feeCategories.length > 0 ? (
                     <div>
                       <Label>Membership Category</Label>
+                      {categoryLocked && feeCategoryId ? (
+                        <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
+                          <span className="text-sm font-medium">
+                            {selectedCategory ? `${selectedCategory.name} — ${money(selectedCategory.annual_fee)}/year` : "Category already assigned"}
+                          </span>
+                          <Badge variant="outline" className="whitespace-nowrap text-xs">Already assigned</Badge>
+                        </div>
+                      ) : (
                       <Select value={feeCategoryId} onValueChange={setFeeCategoryId}>
                         <SelectTrigger><SelectValue placeholder="Select category (optional)" /></SelectTrigger>
                         <SelectContent className="max-h-[320px]">

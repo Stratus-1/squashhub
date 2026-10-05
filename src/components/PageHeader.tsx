@@ -68,6 +68,8 @@ export function PageHeader({
   const pathname = location.pathname || "/";
   const isTopLevel = pathname === "/" || pathname === "/dashboard" || pathname === "/auth";
   const shouldShowBack = showBack ?? !isTopLevel;
+  // Club admin screens sit deep in the app; always offer a one-click way home.
+  const isClubAdminArea = pathname.startsWith("/club-admin") || pathname.startsWith("/club-champs");
   const fallbackTo = backTo || getBackFallback(pathname);
   // If the previous page was an external origin (e.g. Stitch / Yoco checkout),
   // browser-back would leave the app. Force the fallback in that case.
@@ -143,6 +145,18 @@ export function PageHeader({
 
         {user && (
           <div className="ml-auto flex items-center gap-1.5 shrink-0">
+            {isClubAdminArea && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden sm:inline-flex h-8 shrink-0"
+                onClick={() => navigate("/dashboard")}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Back to Dashboard
+              </Button>
+            )}
             <TenantSwitcher />
             <ThemeToggle />
             {isStandalonePWA() && (

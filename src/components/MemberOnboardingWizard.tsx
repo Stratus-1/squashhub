@@ -247,6 +247,9 @@ export function MemberOnboardingWizard({
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);
+  // True when the member's record already has a fee category (e.g. imported
+  // members activating their account) — the category is locked, not selectable.
+  const [categoryLocked, setCategoryLocked] = useState(false);
   /** True when the wizard found an existing club_members row for this user
    *  (admin-created, CSV-imported, or matched via the trigger on signup).
    *  Pre-existing members keep their assigned numbers and are NEVER auto-numbered. */
@@ -342,6 +345,7 @@ export function MemberOnboardingWizard({
         if (member.fee_category_id) {
           setFeeCategoryId(member.fee_category_id);
           setCategoryAutoSet(true);
+          setCategoryLocked(true);
         }
         if (member.plays_league) setPlaysLeague(member.plays_league);
 
@@ -1191,6 +1195,14 @@ export function MemberOnboardingWizard({
                   {feeCategories.length > 0 ? (
                     <div>
                       <Label>Membership Category</Label>
+                      {categoryLocked && feeCategoryId ? (
+                        <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
+                          <span className="text-sm font-medium">
+                            {selectedCategory ? `${selectedCategory.name} — ${money(selectedCategory.annual_fee)}/year` : "Category already assigned"}
+                          </span>
+                          <Badge variant="outline" className="whitespace-nowrap text-xs">Already assigned</Badge>
+                        </div>
+                      ) : (
                       <Select value={feeCategoryId} onValueChange={setFeeCategoryId}>
                         <SelectTrigger><SelectValue placeholder="Select category (optional)" /></SelectTrigger>
                         <SelectContent className="max-h-[320px]">
@@ -1207,14 +1219,22 @@ export function MemberOnboardingWizard({
                             ))}
                         </SelectContent>
                       </Select>
-                      {suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
+                      )}
+                      {!categoryLocked && suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
                         <p className="text-[10px] text-primary mt-0.5">
                           ⭐ Auto-suggested based on your age ({detectedAge} years). You may change this if needed.
                         </p>
                       )}
+                      {!categoryLocked && (
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         Visiting from another club? Choose the <strong>Visitor</strong> option (R0/year) if available.
                       </p>
+                      )}
+                      {categoryLocked && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Your membership category was set up by your club. Contact the club if it needs to change.
+                        </p>
+                      )}
                       {selectedCategory?.description && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">{selectedCategory.description}</p>
                       )}

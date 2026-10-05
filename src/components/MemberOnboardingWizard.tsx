@@ -1,6 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
-import { isSelfApplication } from "@/lib/membership-application";
+import {
+  isSelfApplication,
+  buildApplicationProgress,
+  parseApplicationProgress,
+  resumeStepIndex,
+  type ApplicationProgress,
+} from "@/lib/membership-application";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -255,6 +261,10 @@ export function MemberOnboardingWizard({
    *  (admin-created, CSV-imported, or matched via the trigger on signup).
    *  Pre-existing members keep their assigned numbers and are NEVER auto-numbered. */
   const [isExistingMember, setIsExistingMember] = useState(false);
+  /** Set only for a genuine self-application: its row receives step progress. */
+  const [applicationRowId, setApplicationRowId] = useState<string | null>(null);
+  const pendingResume = useRef<ApplicationProgress | null>(null);
+  const [resumeApplied, setResumeApplied] = useState(false);
 
   // Pre-populate fields from existing member record (for pre-existing / imported members)
   useEffect(() => {
@@ -340,6 +350,17 @@ export function MemberOnboardingWizard({
           freshApplicant = !count;
         }
         setIsExistingMember(!freshApplicant);
+        if (freshApplicant) {
+          // Resume an unfinished application where it stopped (any device).
+          try {
+            const { data: saved } = await (supabase as any).rpc("get_my_application_progress", { _club_member_id: member.id });
+            const restored = parseApplicationProgress(saved);
+            if (restored) pendingResume.current = restored;
+          } catch (e) {
+            console.warn("[Wizard] could not load saved application progress", e);
+          }
+          setApplicationRowId(member.id);
+        }
         // Always use the member's real name when one exists and the current value is empty or a lookup code
         if (member.name && !looksLikeLookupCode(member.name) && (!name || currentNameIsLookup)) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);
@@ -1037,6 +1058,13 @@ export function MemberOnboardingWizard({
       queryClient.invalidateQueries({ queryKey: ["club-members"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      if (applicationRowId) {
+        try {
+          await (supabase as any).rpc("save_my_application_progress", { _club_member_id: applicationRowId, _progress: null });
+        } catch (e) {
+          console.warn("[Wizard] could not clear application progress", e);
+        }
+      }
       toast.success("Registration complete! Welcome to the club 🎉");
       onComplete();
     } catch (err: any) {
@@ -1047,11 +1075,59 @@ export function MemberOnboardingWizard({
     }
   };
 
+  // Genuine applications only: remember the step reached + answers on the
+  // server so the applicant can resume on any device. Nothing is charged and
+  // no category is assigned until the final step is saved.
+  const saveProgress = (stepId: string) => {
+    if (!applicationRowId || isExistingMember) return;
+    const progress = buildApplicationProgress(stepId, {
+      name, phone, idNumber, dateOfBirth, gender, address, skillLevel,
+      feeCategoryId, playsLeague, leagueSelections: leagueSelections as any,
+      rulesAccepted, familyDrafts: familyDrafts as any,
+    });
+    (supabase as any)
+      .rpc("save_my_application_progress", { _club_member_id: applicationRowId, _progress: progress })
+      .then(({ error }: any) => { if (error) console.warn("[Wizard] progress save failed", error); });
+  };
+
+  // Restore saved answers first, then (once dependent steps such as Family
+  // exist) jump to the saved step.
+  const [resumeStepId, setResumeStepId] = useState<string | null>(null);
+  useEffect(() => {
+    const p = pendingResume.current;
+    if (!p || resumeApplied || !applicationRowId) return;
+    const a = p.answers;
+    if (a.name) setName(a.name);
+    if (a.phone) setPhone(a.phone);
+    if (a.idNumber) setIdNumber(a.idNumber);
+    if (a.dateOfBirth) setDateOfBirth(a.dateOfBirth);
+    if (a.gender) setGender(a.gender);
+    if (a.address) setAddress(a.address);
+    if (a.skillLevel) setSkillLevel(a.skillLevel);
+    if (a.feeCategoryId) { setFeeCategoryId(a.feeCategoryId); setCategoryAutoSet(true); }
+    if (typeof a.playsLeague === "boolean") setPlaysLeague(a.playsLeague);
+    if (a.leagueSelections) setLeagueSelections(a.leagueSelections as any);
+    if (a.rulesAccepted) setRulesAccepted(true);
+    if (Array.isArray(a.familyDrafts)) setFamilyDrafts(a.familyDrafts as any);
+    setResumeStepId(p.stepId);
+    setResumeApplied(true);
+  }, [applicationRowId, resumeApplied]);
+  useEffect(() => {
+    if (!resumeStepId) return;
+    const ids = STEPS.map((s) => s.id);
+    if (resumeStepId === "family" && !ids.includes("family") && feeCategories.length === 0) return; // wait for categories → family step
+    setStep(resumeStepIndex(ids, ids.includes(resumeStepId) ? resumeStepId : "fees"));
+    setResumeStepId(null);
+    if (resumeStepId !== "welcome") toast.info("Welcome back — continuing your application where you left off.");
+  }, [resumeStepId, STEPS, feeCategories.length]);
+
   const next = () => {
     if (step === STEPS.length - 1) {
       handleSave();
     } else {
-      setStep((s) => Math.min(s + 1, STEPS.length - 1));
+      const to = Math.min(step + 1, STEPS.length - 1);
+      saveProgress(STEPS[to].id);
+      setStep(to);
     }
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));

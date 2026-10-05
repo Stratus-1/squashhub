@@ -1,0 +1,2 @@
+ALTER TABLE public.club_members ADD COLUMN IF NOT EXISTS application_progress jsonb;
+COMMENT ON COLUMN public.club_members.application_progress IS 'Unfinished self-application signup progress (last step + non-secret answers) so applicants resume on any device; cleared when the signup steps are saved. Never holds passwords or fees.';

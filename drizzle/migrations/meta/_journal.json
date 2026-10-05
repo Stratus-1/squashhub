@@ -393,6 +393,13 @@
       "when": 1791203572499,
       "tag": "0055_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791207265897,
+      "tag": "0056_match_day_access",
+      "breakpoints": true
     }
   ]
 }

@@ -10172,6 +10172,48 @@ export type Database = {
           },
         ]
       }
+      match_day_access: {
+        Row: {
+          club_id: string
+          competition_id: string
+          competition_kind: string
+          created_at: string
+          created_by: string | null
+          id: string
+          regenerated_from: string | null
+          revoked_at: string | null
+          status: string
+          token: string
+          token_hash: string
+        }
+        Insert: {
+          club_id: string
+          competition_id: string
+          competition_kind: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          regenerated_from?: string | null
+          revoked_at?: string | null
+          status?: string
+          token: string
+          token_hash: string
+        }
+        Update: {
+          club_id?: string
+          competition_id?: string
+          competition_kind?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          regenerated_from?: string | null
+          revoked_at?: string | null
+          status?: string
+          token?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       match_disputes: {
         Row: {
           created_at: string
@@ -18597,6 +18639,63 @@ export type Database = {
       make_org_slug: {
         Args: { _abbrev?: string; _name: string }
         Returns: string
+      }
+      md_admin_enable: {
+        Args: { _id: string; _kind: string; _regenerate?: boolean }
+        Returns: Json
+      }
+      md_admin_get: { Args: { _id: string; _kind: string }; Returns: Json }
+      md_admin_revoke: { Args: { _id: string; _kind: string }; Returns: Json }
+      md_can_manage: { Args: { _id: string; _kind: string }; Returns: string }
+      md_context: { Args: { _token: string }; Returns: Json }
+      md_resolve: {
+        Args: { _token: string }
+        Returns: {
+          club_id: string
+          competition_id: string
+          competition_kind: string
+          created_at: string
+          created_by: string | null
+          id: string
+          regenerated_from: string | null
+          revoked_at: string | null
+          status: string
+          token: string
+          token_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "match_day_access"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      md_save_league_rubber: {
+        Args: {
+          _court: number
+          _device?: string
+          _fixture_id: string
+          _game_scores: Json
+          _position: number
+          _token: string
+        }
+        Returns: Json
+      }
+      md_save_tournament_result: {
+        Args: {
+          _court: number
+          _device?: string
+          _game_scores: string
+          _match_id: string
+          _score: string
+          _token: string
+          _winner_side: string
+        }
+        Returns: Json
+      }
+      md_window: {
+        Args: { _id: string; _kind: string }
+        Returns: Record<string, unknown>
       }
       member_access_blocked: {
         Args: { _club_id: string; _member_id?: string; _user_id: string }

@@ -311,7 +311,7 @@ export function LineupSwapDialog({
     const q = search.trim().toLowerCase();
     const list = (candidates || []).map((c) => ({
       ...c,
-      inUse: inUseCodes.get(c.code.toUpperCase()) || null,
+      inUse: (c.code ? inUseCodes.get(c.code.toUpperCase()) : undefined) || inUseCodes.get(`name:${c.name.trim().toLowerCase()}`) || null,
     }));
     const match = q
       ? list.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
@@ -430,10 +430,14 @@ export function LineupSwapDialog({
               {filtered.map((c) => {
                 const isCurrent = !!currentCode && c.code.toUpperCase() === currentCode.toUpperCase();
                 const elsewhere = c.inUse && !(c.inUse.side === side && c.inUse.position === position);
+                // One player, one rubber per fixture: in doubles a player already
+                // in another pair on this side can't also fill this pair.
+                const blocked = !!pairPlayers && !!elsewhere && c.inUse!.side === side;
                 return (
                   <button
                     key={c.memberId}
-                    disabled={isCurrent}
+                    disabled={isCurrent || blocked}
+                    title={blocked ? `Already playing in pair ${c.inUse!.position}` : undefined}
                     onClick={() => {
                       if (elsewhere) {
                         toast.warning(`${c.name} is in ${c.inUse!.side === "home" ? "Home" : "Visitors"} #${c.inUse!.position} — they will be moved.`);
@@ -459,7 +463,9 @@ export function LineupSwapDialog({
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
                         {c.code || "no NSF"}
                         {isCurrent && <span className="italic text-primary">current</span>}
-                        {elsewhere && (
+                        {blocked ? (
+                          <span className="text-destructive">already in pair {c.inUse!.position}</span>
+                        ) : elsewhere && (
                           <span className="text-amber-600">
                             in {c.inUse!.side === "home" ? "H" : "V"}#{c.inUse!.position}
                           </span>

@@ -1365,6 +1365,12 @@ export default function LeagueGameDetail() {
     positions.forEach((p, i) => {
       if (p.homeCode) map.set(p.homeCode.toUpperCase(), { side: "home", position: i + 1 });
       if (p.awayCode) map.set(p.awayCode.toUpperCase(), { side: "away", position: i + 1 });
+      // Doubles rows store "A & B" with no codes, so also index each player by
+      // name — otherwise a sub already used in another pair is never detected.
+      ([["home", p.homeName], ["away", p.awayName]] as const).forEach(([sd, nm]) => {
+        String(nm || "").split("&").map((x) => x.trim().toLowerCase()).filter(Boolean)
+          .forEach((n) => { if (!map.has(`name:${n}`)) map.set(`name:${n}`, { side: sd, position: i + 1 }); });
+      });
     });
     return map;
   }, [positions]);

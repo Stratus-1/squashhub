@@ -28,6 +28,24 @@ const Spinner = () => (
   </div>
 );
 
+/**
+ * Leaves the match-day link: SPA-navigating away from /md/... unmounts this
+ * shell, whose cleanup switches the data client back to normal (the member's
+ * own login, if any, was never touched — device mode only overrides requests).
+ */
+const ExitMatchDay = () => {
+  const navigate = useNavigate();
+  return (
+    <button
+      onClick={() => navigate("/", { replace: true })}
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 rounded-full border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
+    >
+      <LogOut className="h-3.5 w-3.5" />
+      Exit match day
+    </button>
+  );
+};
+
 export default function MatchDayShell() {
   const { token = "", court: courtParam, fixtureId } = useParams();
   const { pathname } = useLocation();

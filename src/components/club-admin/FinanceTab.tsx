@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { supabase as sbClient } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
@@ -1123,6 +1124,17 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      {tx.proof_url ? (
+                        <Button size="sm" variant="outline" onClick={async () => {
+                          const { data, error } = await sbClient.storage.from("payment-proofs").createSignedUrl(tx.proof_url, 600);
+                          if (error || !data?.signedUrl) { toast.error("Could not open the proof of payment"); return; }
+                          window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                        }}>
+                          View proof
+                        </Button>
+                      ) : tx.method === "eft" ? (
+                        <span className="self-center text-[11px] text-muted-foreground">No proof uploaded</span>
+                      ) : null}
                       <Button size="sm" variant="outline" onClick={() => handleRejectPayment(tx.id)}>
                         <XCircle className="w-4 h-4 mr-1" /> Reject
                       </Button>

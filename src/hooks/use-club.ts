@@ -49,6 +49,7 @@ export interface Club {
   peak_weekday_end?: string;
   peak_weekend_start?: string;
   peak_weekend_end?: string;
+  peak_day_overrides?: Record<string, { start?: string; end?: string; off?: boolean }>;
   max_peak_bookings_per_day?: number;
   max_bookings_per_day?: number;
   block_back_to_back_bookings?: boolean;

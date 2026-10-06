@@ -533,6 +533,13 @@
       "when": 1791242377997,
       "tag": "0075_keep_ladder_position_on_claim",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1791283250287,
+      "tag": "0076_peak_day_overrides",
+      "breakpoints": true
     }
   ]
 }

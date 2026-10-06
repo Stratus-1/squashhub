@@ -1,3 +1,4 @@
+import { isPeakSlot as isPeakSlotShared } from "@/lib/peak-hours";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -153,17 +154,7 @@ const timeSlots = buildTimeSlots(30);
 
 
 function isPeakSlot(date: Date, startTime: string, club: any | null | undefined) {
-  if (!club) return false;
-  const day = date.getDay(); // 0=Sun, 6=Sat
-  const isWeekend = day === 0 || day === 6;
-  const startKey = isWeekend ? "peak_weekend_start" : "peak_weekday_start";
-  const endKey = isWeekend ? "peak_weekend_end" : "peak_weekday_end";
-  const peakStart = String(club[startKey] ?? (isWeekend ? "08:00:00" : "16:00:00")).slice(0, 5);
-  const peakEnd = String(club[endKey] ?? (isWeekend ? "12:00:00" : "19:00:00")).slice(0, 5);
-  const m = timeToMinutes(startTime.slice(0, 5));
-  const ps = timeToMinutes(peakStart);
-  const pe = timeToMinutes(peakEnd);
-  return m >= ps && m < pe;
+  return isPeakSlotShared(date, startTime, club);
 }
 
 // courts are loaded dynamically from the database

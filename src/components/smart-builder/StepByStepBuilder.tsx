@@ -19,6 +19,8 @@ import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type Po
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
+import { matchEntries, parseEntryCsv } from "@/lib/smart-builder/pick-import";
+import { inferCategory } from "@/lib/leagues/category";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
 import { ConflictPanel } from "./ConflictPanel";
 import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
@@ -301,22 +303,24 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [leaguesByMember, setLeaguesByMember] = useState<Map<string, string[]>>(new Map());
   const [genderByMember, setGenderByMember] = useState<Map<string, string | null>>(new Map());
   const [memberSearch, setMemberSearch] = useState("");
+  const [contacts, setContacts] = useState<Map<string, { email: string | null; phone: string | null }>>(new Map());
+  const [importReport, setImportReport] = useState<{ added: number; problems: string[] } | null>(null);
   /** First player tapped while forming a pair, per doubles unit (UI-only). */
   const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
   useEffect(() => {
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;
     (async () => {
-      const PAGE = 1000; const all: { id: string; name: string }[] = []; const genders = new Map<string, string | null>();
+      const PAGE = 1000; const all: { id: string; name: string }[] = []; const genders = new Map<string, string | null>(); const contactMap = new Map<string, { email: string | null; phone: string | null }>();
       for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabase.from("club_members").select("id, name, gender").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
+        const { data, error } = await supabase.from("club_members").select("id, name, gender, email, phone").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
           .order("name").order("id").range(from, from + PAGE - 1);
         if (error || !data) break;
         all.push(...(data as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member" })));
-        (data as any[]).forEach((m) => genders.set(String(m.id), m.gender ?? null));
+        (data as any[]).forEach((m) => { genders.set(String(m.id), m.gender ?? null); contactMap.set(String(m.id), { email: m.email ?? null, phone: m.phone ?? null }); });
         if (data.length < PAGE) break;
       }
-      if (!cancelled) setMembers(all);
+      if (!cancelled) { setMembers(all); setContacts(contactMap); }
       const ids = all.map((m) => m.id); const lm = new Map<string, string[]>();
       for (let i = 0; i < ids.length; i += 200) {
         const { data } = await (supabase as any).from("member_league_registrations").select("club_member_id, league_id").in("club_member_id", ids.slice(i, i + 200));
@@ -510,6 +514,28 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const autoPlace = (id: string) => placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
+  /** Import an entry-form CSV: tick matched members and place them per entered event; never creates people. */
+  const importEntries = async (file: File) => {
+    const rows = parseEntryCsv(await file.text());
+    const matches = matchEntries(rows, members.map((m) => ({ ...m, ...contacts.get(m.id) })));
+    let next = { ...a.picks }; let added = 0; const problems: string[] = [];
+    for (const mt of matches) {
+      if (!mt.memberId) { problems.push(`${mt.row.name || mt.row.email}: ${mt.reason}`); continue; }
+      const id = mt.memberId;
+      if (!(id in next)) { next[id] = []; added++; }
+      for (const ev of mt.row.events) {
+        const cands = units.filter((u) => (u.categoryType ?? inferCategory(u.base)) === ev || (!u.categoryType && !inferCategory(u.base) && units.length === 1));
+        const ok = cands.filter((u) => fits(id, u.key));
+        if (cands.length && !ok.length) { problems.push(`${memberName(id)}: not eligible for ${ev === "ladies" ? "Ladies" : ev === "mens" ? "Mens" : ev} (check gender/league)`); continue; }
+        const auto = autoPlace(id);
+        const key = ok.length === 1 ? ok[0].key : ok.find((u) => u.key === auto)?.key;
+        if (key) next = addPlace(next, id, key, singleEvent);
+        else if (ok.length > 1) problems.push(`${memberName(id)}: added — choose which ${ev === "ladies" ? "Ladies" : "Mens"} group`);
+      }
+    }
+    setA({ ...a, picks: next });
+    setImportReport({ added, problems });
+  };
   const placesFor = (id: string) => placesOf(a.picks, id);
   const inUnit = (id: string, k: string) => placesFor(id).includes(k);
   /** Bells/time-capped: every event plays at the same time, so a person can enter only one. */
@@ -1054,6 +1080,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}{pairMode ? ` (${entryCount} entr${entryCount === 1 ? "y" : "ies"} — each pair counts as one)` : ""}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
               {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible members can still enter themselves, so the total stays provisional until entries close.</div>}
               {units.some((u) => u.disc === "doubles" && !adminPairKeys.has(u.key)) && <div className="text-xs text-muted-foreground">{pairMode ? "In doubles groups where players choose their own partner, picked players are paired by the players themselves." : "Doubles groups take players who will be paired up — partners are matched later."} A player placed in a Singles group is not counted as a doubles entry.</div>}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border px-2.5 py-1.5 font-medium hover:bg-muted">
+                  <UserPlus className="h-3.5 w-3.5" /> Import players from file (CSV)
+                  <input type="file" accept=".csv,text/csv,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importEntries(f); e.target.value = ""; }} />
+                </label>
+                <span className="text-muted-foreground">Matches club members by name, email and cell. Nothing is sent.</span>
+              </div>
+              {importReport && <div className="rounded-lg border border-border p-2 text-xs" aria-label="Import result">
+                <div className="font-medium">Imported {importReport.added} new player{importReport.added === 1 ? "" : "s"}{importReport.problems.length ? ` · ${importReport.problems.length} need attention` : ""}</div>
+                {importReport.problems.length > 0 && <ul className="mt-1 list-disc pl-4 text-muted-foreground">{importReport.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>}
+              </div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
               {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(q)).length;
                 return <div className="text-xs text-muted-foreground">{n} of {members.length} members available{q ? " matching your search" : ""}</div>; })()}

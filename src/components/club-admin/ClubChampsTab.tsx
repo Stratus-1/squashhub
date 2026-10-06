@@ -12849,6 +12849,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             <DiamondAllocationBoard
               draft={diamondDraft}
               onChange={setDiamondDraft}
+              allocation={poolAllocation === "banded" ? "banded" : "snake"}
+              onAllocationChange={(m) => setPoolAllocation(m)}
               players={(() => {
                 const ladder = genderMembers.map((m) => m.id);
                 const order = playerOrder.length ? [...playerOrder, ...ladder.filter((id) => !playerOrder.includes(id))] : ladder;

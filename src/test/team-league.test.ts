@@ -143,3 +143,16 @@ describe("autoSlotPlayers", () => {
     expect(r.unplaced).toEqual(["s"]);
   });
 });
+
+import { autoSlotDiamond } from "@/lib/tournaments/team-league";
+describe("autoSlotDiamond", () => {
+  const teams = () => ["A", "A", "B", "B"].map((pool, i) => ({ id: `t${i}`, pool, players: [null, null] as (string | null)[] }));
+  it("snake spreads across all teams", () => {
+    const r = autoSlotDiamond(["1","2","3","4","5","6","7","8"], teams());
+    expect(r.teams.map((t) => t.players)).toEqual([["1","8"],["2","7"],["3","6"],["4","5"]]);
+  });
+  it("banded gives Division A the strongest band", () => {
+    const r = autoSlotDiamond(["1","2","3","4","5","6","7","8"], teams(), new Set(), "banded");
+    expect(r.teams.map((t) => t.players)).toEqual([["1","4"],["2","3"],["5","8"],["6","7"]]);
+  });
+});

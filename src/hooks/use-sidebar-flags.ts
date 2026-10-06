@@ -70,7 +70,8 @@ export function useSidebarFlags() {
     hasAnyAdminAccess: isClubAdmin || myPermissions.size > 0,
     isAssociation,
     bookingsEnabled: cap("bookings") && !isPendingApplicant,
-    ladderEnabled: cap("ladder"),
+    // Ladder off = hidden from members; admins keep it to set it up first.
+    ladderEnabled: cap("ladder") || isClubAdmin,
     tournamentsEnabled: cap("tournaments"),
     eventsEnabled: cap("events"),
     visitorsEnabled: cap("visitors"),

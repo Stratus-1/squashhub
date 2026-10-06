@@ -547,9 +547,9 @@ function AppRoutes() {
         <Route path="/c/:subdomain/s/:code" element={<ScanPay />} />
         <Route path="/c/:subdomain/s/:code/success" element={<BarPaymentSuccess />} />
         <Route path="/bookings" element={<ProtectedRoute><CapabilityRoute capability="bookings"><Bookings /></CapabilityRoute></ProtectedRoute>} />
-        <Route path="/ladder" element={<ProtectedRoute><CapabilityRoute capability="ladder"><Ladder /></CapabilityRoute></ProtectedRoute>} />
+        <Route path="/ladder" element={<ProtectedRoute><CapabilityRoute capability="ladder" adminBypass><Ladder /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/challenges/new" element={<Navigate to="/ladder" replace />} />
-        <Route path="/challenges" element={<ProtectedRoute><CapabilityRoute capability="ladder"><Challenges /></CapabilityRoute></ProtectedRoute>} />
+        <Route path="/challenges" element={<ProtectedRoute><CapabilityRoute capability="ladder" adminBypass><Challenges /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
         <Route path="/bells-marker/:matchId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><BellsMarker /></CapabilityRoute></ProtectedRoute>} />

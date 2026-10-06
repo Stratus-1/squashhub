@@ -183,7 +183,7 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     slug: "ladder",
     label: "Ladder & Ranking",
     question: "Do you run a club ladder?",
-    description: "Ladder positions, challenges and ranking rules.",
+    description: "Ladder positions, challenges and ranking rules. Switch off to hide the ladder from members while you set it up — admins always keep access.",
     group: "competition",
     requires: [],
     worksWith: ["ranking_points"],

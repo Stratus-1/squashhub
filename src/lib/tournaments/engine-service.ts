@@ -129,7 +129,7 @@ export function generateStage(tid: string, d: SpecDivision, st: PlannedStage): E
     if (!st.mapping || st.mapping.source !== "seed_pools") throw new IntegrityError("mapping_source", `${st.name}: waits for the finishing positions of an earlier stage.`);
     return mappedFixtures(tid, d, st, st.mapping.positions ?? seedPools(d.entrants, st.mapping.pools, d.seeding.method));
   }
-  if (st.kind === "swiss") return swissFixtures(tid, d, st, 1, d.entrants.map((e, i) => ({ id: e.id, points: 0, seed: i + 1 })), new Set());
+  if (st.kind === "swiss") return swissFirstRound(tid, d, st);
   if (st.kind === "knockout") return knockoutFirstRound(tid, d, st, d.entrants.map((e) => e.id));
   throw new IntegrityError("unsupported_first_stage", `${st.kind} cannot be generated as a first stage yet.`);
 }
@@ -147,6 +147,21 @@ export function mappedFixtures(tid: string, d: SpecDivision, st: PlannedStage, p
     roundId: `${st.id}:r${x.round}`, round: x.round, poolId: null, slot: x.order, a: x.aId, b: x.bId,
     // Play-off stages carry their real name (Semifinals / Final) so pages and result messages recognise them.
     label: st.mapping!.source === "seed_pools" ? `${x.a} v ${x.b}` : st.name,
+  }));
+}
+
+/**
+ * Swiss round 1 is seeded top half v bottom half (1vN/2+1, 2vN/2+2 …) so the strongest only meet later.
+ * With an odd field the lowest seed takes the bye. Later rounds pair by score via swissRound.
+ */
+export function swissFirstRound(tid: string, d: SpecDivision, st: PlannedStage): EngineFixture[] {
+  const ids = d.entrants.map((e) => e.id);
+  const bye = ids.length % 2 ? ids.pop()! : null;
+  const half = ids.length / 2;
+  const pairs: Array<[string, string | null]> = ids.slice(0, half).map((a, i) => [a, ids[half + i]]);
+  if (bye) pairs.push([bye, null]);
+  return pairs.map(([a, b], i) => ({
+    tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss", roundId: `${st.id}:r1`, round: 1, poolId: null, slot: i + 1, a, b,
   }));
 }
 

@@ -188,7 +188,8 @@ const CHANNEL_LABEL: Record<Channel, string> = { in_app: "In-app", email: "Email
 const DEFAULT_MSG: MsgCfg = { channels: ["in_app", "email"], body: null, later: false };
 type Disc = "singles" | "doubles";
 type Source = "select" | "self" | "both" | null;
-type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose" };
+/** alsoPick: with "leagues", the organiser may additionally hand-pick players outside those leagues. */
+type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose"; alsoPick?: boolean };
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
@@ -1073,12 +1074,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
                       <div className="text-sm font-semibold">{u.label}</div>
                       <div className="flex flex-wrap gap-2">
-                        {(["everyone", "leagues", "manual"] as const).map((m) => (
-                          <button key={m} type="button" aria-pressed={e.mode === m} onClick={() => setElig(u.key, { mode: m })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.mode === m ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
+                        {(["everyone", "leagues", "manual"] as const).map((m) => {
+                          // Leagues + Players I pick can both be on: tapping "Players I pick" while leagues are chosen toggles alsoPick.
+                          const on = e.mode === m || (m === "manual" && e.mode === "leagues" && !!e.alsoPick);
+                          const click = () => {
+                            if (m === "manual" && e.mode === "leagues") setElig(u.key, { alsoPick: !e.alsoPick });
+                            else if (m === "leagues" && e.mode === "manual") setElig(u.key, { mode: "leagues", alsoPick: true });
+                            else setElig(u.key, { mode: m, alsoPick: false });
+                          };
+                          return <button key={m} type="button" aria-pressed={on} onClick={click} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
                             {m === "everyone" ? "Everyone" : m === "leagues" ? "Specific league(s)" : "Players I pick"}
-                          </button>
-                        ))}
+                          </button>;
+                        })}
                       </div>
+                      {e.mode === "leagues" && e.alsoPick && <p className="text-xs text-muted-foreground">Members of the chosen leagues may enter, and you can also add any other player yourself on Pick players.</p>}
                       {e.mode === "leagues" && (leagues.length === 0
                         ? <p className="text-xs text-muted-foreground">Your club has no leagues set up yet. Choose another option.</p>
                         : <div className="flex flex-wrap gap-1.5">{leagues.map((l) => {

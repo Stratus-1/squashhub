@@ -712,7 +712,24 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
-  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && pickIds.every((id) => placesFor(id).every((k) => units.some((u) => u.key === k) && fits(id, k)) && (!singleEvent || placesFor(id).length <= 1)) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0 && pairsFor(u.key).every(([x, y]) => validatePairComposition([genderByMember.get(x), genderByMember.get(y)], u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid)) && (!pairMode || pickIds.every((id) => placesFor(id).length > 0));
+  // Organiser overrides (events outside a player's scope) are allowed; only real blockers are listed.
+  const pickProblems: string[] = (() => {
+    const out: string[] = [];
+    if (a.source === "select" && pickIds.length === 0) out.push("Pick at least one player.");
+    for (const id of pickIds) {
+      const stale = placesFor(id).filter((k) => !units.some((u) => u.key === k));
+      if (stale.length) out.push(`${memberName(id)}: ticked in an event that no longer exists — untick and re-pick.`);
+      if (singleEvent && placesFor(id).length > 1) out.push(`${memberName(id)}: may only be in one event (timed format).`);
+      if (pairMode && placesFor(id).length === 0) out.push(`${memberName(id)}: not in any event yet.`);
+    }
+    for (const u of adminPairUnits) {
+      const un = unpairedIn(u.key);
+      if (un.length) out.push(`${u.label}: ${un.map(memberName).join(", ")} still need${un.length === 1 ? "s" : ""} a partner.`);
+      pairsFor(u.key).forEach(([x, y]) => { if (!validatePairComposition([genderByMember.get(x), genderByMember.get(y)], u.categoryType, { requireMixedPair: u.categoryType === "mixed" }).valid) out.push(`${u.label}: pair ${memberName(x)} + ${memberName(y)} doesn't fit the category.`); });
+    }
+    return out;
+  })();
+  const pickOk = pickProblems.length === 0;
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
@@ -1889,6 +1906,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
+          {cur !== "Summary" && !canNext && (
+            <div role="alert" className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+              <div className="font-semibold">Next is not available yet:</div>
+              {cur === "Pick" && pickProblems.length
+                ? <ul className="ml-4 list-disc">{pickProblems.slice(0, 12).map((p, i) => <li key={i}>{p}</li>)}{pickProblems.length > 12 && <li>…and {pickProblems.length - 12} more</li>}</ul>
+                : <p>Complete the required choices on this step ({STEP_LABEL[cur]}).</p>}
+            </div>
+          )}
           {cur !== "Summary" && (
             <div className="flex justify-between pt-2">
               <Button variant="ghost" size="sm" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>

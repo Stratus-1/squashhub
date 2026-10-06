@@ -11,6 +11,7 @@ import {
   diamondSemiTies, diamondFinalTies, diamondFinalTiesFromTable, finalsCarry,
   type TeamLeagueConfig, type GameScore,
   diamondTieLabel,
+  diamondPlayoffsOn,
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 import { diamondPositionPoints, type DiamondScoredMatch } from "@/lib/tournaments/diamond-position-points";
@@ -73,6 +74,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
   const generatePlayoff = useMutation({
     mutationFn: async (stage: "semi" | "final") => {
       if (!ev) throw new Error("Event not loaded yet.");
+      if (!diamondPlayoffsOn({ ...DIAMOND_TEAM_DEFAULTS, ...ev.config })) throw new Error("Play-offs are switched off for this Diamond League.");
       const weeksNow = ev.weeks || [];
       let nw: Week[];
       if (stage === "semi") {
@@ -233,7 +235,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
       {anyScores && (
         <p className="text-[11px] text-muted-foreground">Live: points update as each game is marked. P, W and the win bonus are added when a team match is finished.</p>
       )}
-      {canManage && !semiWeek && poolTies.length > 0 && (
+      {canManage && diamondPlayoffsOn(cfg) && !semiWeek && poolTies.length > 0 && (
         poolDone ? (
           <div className="flex items-center gap-2 flex-wrap rounded border border-primary/40 bg-primary/5 p-2 text-xs">
             <span className="font-medium">All league weeks are played.</span>
@@ -248,7 +250,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
           </p>
         )
       )}
-      {canManage && semiWeek && !finalWeek && (
+      {canManage && diamondPlayoffsOn(cfg) && semiWeek && !finalWeek && (
         semisDecided ? (
           <div className="flex items-center gap-2 flex-wrap rounded border border-primary/40 bg-primary/5 p-2 text-xs">
             <span className="font-medium">Semi-finals are decided.</span>

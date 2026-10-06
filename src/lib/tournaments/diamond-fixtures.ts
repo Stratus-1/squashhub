@@ -61,10 +61,12 @@ export async function syncDiamondFixtures(opts: {
         partner_a_member_id: null, partner_b_member_id: null,
       } });
     });
+    const tieDate = (t.date ?? w.date) || null;
+    const tieStarts = t.time ? diamondGameStarts(cfg, t.time) : starts;
     const tieReplacements = new Map([...diamondFixtureReplacements(singlesEvidence, teams), ...replacements]);
     games.forEach((g, gi) => {
       const key = `dl:${t.id}:${gi}`;
-      const time = starts[gi];
+      const time = tieStarts[gi];
       const [p1, p2] = g.positions;
       const participants: ParticipantIds = {
         player_a_member_id: home.players[p1 - 1] ?? null, player_b_member_id: away.players[p1 - 1] ?? null,
@@ -79,8 +81,8 @@ export async function syncDiamondFixtures(opts: {
         // a team-count change reshuffles tie→court, so a stale court would
         // double-book one court and leave another empty.
         const court = courtIds[t.court - 1] ?? null;
-        if (!saved.startedTie && (saved.scheduled_date !== (w.date || null) || saved.scheduled_time?.slice(0, 5) !== time || saved.court_id !== court)) {
-          patch.scheduled_date = w.date || null;
+        if (!saved.startedTie && (saved.scheduled_date !== tieDate || saved.scheduled_time?.slice(0, 5) !== time || saved.court_id !== court)) {
+          patch.scheduled_date = tieDate;
           patch.scheduled_time = time;
           patch.court_id = court;
         }
@@ -92,7 +94,7 @@ export async function syncDiamondFixtures(opts: {
         stage: w.stage === "pool" ? "group" : "knockout", stage_key: key,
         stage_label: `${w.stage === "pool" ? `Week ${w.week} · Division ${home.pool}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${teamName(home.id)} v ${teamName(away.id)} · ${gameLabel(g)}`,
         ...participants,
-        scheduled_date: w.date || null, scheduled_time: time,
+        scheduled_date: tieDate, scheduled_time: time,
         court_id: courtIds[t.court - 1] ?? null, status: "scheduled",
       });
     });

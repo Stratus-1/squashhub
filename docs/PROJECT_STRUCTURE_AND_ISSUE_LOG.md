@@ -2633,3 +2633,6 @@ Root cause: Riverside's Stitch portal 404s any ?redirect_url (host not whitelist
 ### 2026-10-06 — Elizane Barnard separated from Manie Barnard's login
 - Elizane UITS3356 was linked to Manie's `maniebarnard@gmail.com` login despite having her own member email.
 - Created and linked a separate confirmed login for `elizanebarnard23@gmail.com`, linked Elizane's existing person record, and left Manie's login/member record unchanged. Preserved Elizane's member number and ladder position 15.
+
+### 2026-10-06 — Diamond League per-division schedules + play-offs switch
+Template setting `divisionSchedules` (play days, optional from-date and start time per division) gives each division its own round-robin nights; `playoffs` (default on) hides/blocks semis and finals when off. Legacy events unchanged. Tests: src/test/diamond-division-schedule.test.ts.

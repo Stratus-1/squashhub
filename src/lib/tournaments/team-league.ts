@@ -36,7 +36,23 @@ export type TeamLeagueConfig = {
   doublesServing?: DoublesServingMethod;
   /** Finals: carry the running total (pairings + places by total) or reset. Missing = reset (legacy). */
   finalsPoints?: FinalsPoints;
+  /** Play-offs (crossover semis + finals) after the division round robins. Missing = on (legacy). */
+  playoffs?: boolean;
+  /**
+   * Optional per-division schedule keyed by division ("A", "B", …). A division
+   * with play days gets its own round-robin dates; missing = shared weekly dates.
+   */
+  divisionSchedules?: Record<string, DiamondDivisionSchedule>;
 };
+export type DiamondDivisionSchedule = {
+  /** Weekdays 0..6 (Sun..Sat) this division plays on. Empty = shared weekly dates. */
+  playDays?: number[];
+  /** First possible play date for this division (ISO). Missing = league start date. */
+  startDate?: string;
+  /** Start time for this division's nights. Missing = the tournament start time. */
+  startTime?: string;
+};
+export const diamondPlayoffsOn = (cfg: Pick<TeamLeagueConfig, "playoffs">) => cfg.playoffs !== false;
 export type FinalsPoints = "carry" | "reset";
 export const FINALS_POINTS_LABEL: Record<FinalsPoints, string> = {
   carry: "Carry on — running total decides final pairings and places",
@@ -184,7 +200,11 @@ export function diamondTeamName(team: Pick<DiamondTeam, "name" | "pool">, index:
   return team.name === `Team ${index + 1}` ? `${team.pool}${number}` : team.name;
 }
 
-export type DiamondTie = { id: string; home: string; away: string; court: number; label?: string };
+export type DiamondTie = {
+  id: string; home: string; away: string; court: number; label?: string;
+  /** Division-specific night; overrides the week date/start time when set. */
+  date?: string; time?: string;
+};
 export type DiamondWeek = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: DiamondTie[] };
 
 const ORD = ["", "1st", "2nd", "3rd", "4th"];
@@ -227,21 +247,57 @@ export function diamondMatchTeamNames(stageKey: string | null | undefined, teams
   return [diamondTeamName(teams[homeIndex], homeIndex, teams), diamondTeamName(teams[awayIndex], awayIndex, teams)];
 }
 
-/** Build the pool weeks shown in setup and persisted for scoring. */
-export function buildPoolWeeks(teams: DiamondTeam[], dates: string[], courts: number): DiamondWeek[] {
+/** Next `count` dates from `from` (ISO) that fall on one of `days`. */
+export function divisionPlayDates(from: string, days: number[], count: number): string[] {
+  const want = new Set(days.filter((d) => d >= 0 && d <= 6));
+  if (!from || !want.size || count <= 0) return [];
+  const [y, m, d] = from.split("-").map(Number);
+  const cur = new Date(Date.UTC(y, m - 1, d));
+  if (Number.isNaN(cur.getTime())) return [];
+  const out: string[] = [];
+  for (let guard = 0; out.length < count && guard < 3700; guard++) {
+    if (want.has(cur.getUTCDay())) out.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+
+/**
+ * Build the pool weeks shown in setup and persisted for scoring. Each division
+ * plays its own round robin. A division with its own play days gets its own
+ * dates/start time on every tie (and courts restart at 1 because it plays on
+ * its own night); other divisions keep the shared weekly `dates`.
+ */
+export function buildPoolWeeks(
+  teams: DiamondTeam[], dates: string[], courts: number,
+  opts: { schedules?: Record<string, DiamondDivisionSchedule>; startDate?: string } = {},
+): DiamondWeek[] {
   const pools = { A: teams.filter((team) => team.pool === "A"), B: teams.filter((team) => team.pool === "B") };
   const rounds = { A: poolRounds(pools.A.length), B: poolRounds(pools.B.length) };
   const count = Math.max(rounds.A.length, rounds.B.length);
   const courtCount = Math.max(1, courts);
+  const own = (["A", "B"] as const).reduce((acc, pool) => {
+    const sc = opts.schedules?.[pool];
+    if (sc?.playDays?.length) {
+      const from = sc.startDate || opts.startDate || dates.find(Boolean) || "";
+      acc[pool] = { dates: divisionPlayDates(from, sc.playDays, rounds[pool].length), time: sc.startTime || undefined };
+    }
+    return acc;
+  }, {} as Partial<Record<"A" | "B", { dates: string[]; time?: string }>>);
   return Array.from({ length: count }, (_, roundIndex) => {
     const ties: DiamondTie[] = [];
+    let sharedCourt = 0;
     (["A", "B"] as const).forEach((pool) => {
+      let ownCourt = 0;
       (rounds[pool][roundIndex] || []).forEach(([a, b]) => {
         const home = pools[pool][a - 1];
         const away = pools[pool][b - 1];
         if (!home || !away) return;
-        ties.push({ id: `p${roundIndex + 1}-${home.id}-${away.id}`, home: home.id, away: away.id,
-          court: (ties.length % courtCount) + 1, label: `${pool}${a} v ${pool}${b}` });
+        const sched = own[pool];
+        const court = sched ? (ownCourt++ % courtCount) + 1 : (sharedCourt++ % courtCount) + 1;
+        const tie: DiamondTie = { id: `p${roundIndex + 1}-${home.id}-${away.id}`, home: home.id, away: away.id, court, label: `${pool}${a} v ${pool}${b}` };
+        if (sched) { tie.date = sched.dates[roundIndex] || ""; if (sched.time) tie.time = sched.time; }
+        ties.push(tie);
       });
     });
     return { week: roundIndex + 1, date: dates[roundIndex] || "", stage: "pool", ties };

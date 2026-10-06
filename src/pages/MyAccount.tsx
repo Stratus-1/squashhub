@@ -506,6 +506,8 @@ export default function MyAccount() {
       clubId, clubMemberId,
       amount: opts.amount, purpose: opts.purpose,
       fee_ids: opts.fee_ids, description: opts.description,
+      // Stitch online: hosted page offers card / Capitec Pay / instant EFT as enabled on the club's account.
+      ...(gw === "stitch" ? { method: "paybybank" } : {}),
       returnPath: "/my-account",
     });
 
@@ -1035,22 +1037,24 @@ export default function MyAccount() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant={topUpMethod === "eft" ? "default" : "outline"}
-                className="gap-2 h-12"
-                onClick={() => setTopUpMethod("eft")}
-              >
-                <Building2 className="w-4 h-4" />
-                EFT
-              </Button>
+            <div className={`grid gap-2 ${clubSecrets?.bank_name ? "grid-cols-2" : "grid-cols-1"}`}>
+              {clubSecrets?.bank_name && (
+                <Button
+                  variant={topUpMethod === "eft" ? "default" : "outline"}
+                  className="gap-2 h-auto min-h-12 py-2 whitespace-normal text-xs leading-tight"
+                  onClick={() => setTopUpMethod("eft")}
+                >
+                  <Building2 className="w-4 h-4 shrink-0" />
+                  Manual bank transfer (admin confirms)
+                </Button>
+              )}
               <Button
                 variant={topUpMethod === "card" ? "default" : "outline"}
-                className="gap-2 h-12"
+                className="gap-2 h-auto min-h-12 py-2 whitespace-normal text-xs leading-tight"
                 onClick={() => setTopUpMethod("card")}
               >
-                <CreditCard className="w-4 h-4" />
-                Card
+                <CreditCard className="w-4 h-4 shrink-0" />
+                {payGateway === "stitch" ? "Pay online (card / Capitec Pay / instant EFT)" : "Pay online (card)"}
               </Button>
             </div>
 
@@ -1067,6 +1071,7 @@ export default function MyAccount() {
                 {clubSecrets?.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {clubSecrets?.bank_account_number}</p>}
                 {clubSecrets?.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {clubSecrets?.bank_branch_code}</p>}
                 <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Top-up</p>
+                <p className="text-[11px] text-muted-foreground">Make the transfer from your own banking app. The club confirms it once the money arrives.</p>
               </Card>
             )}
 
@@ -1074,8 +1079,7 @@ export default function MyAccount() {
               <>
                 <Card className="p-3 bg-muted/50">
                   <p className="text-xs text-muted-foreground">
-                    Card payments are processed via {gatewayLabel(payGateway)}.
-                    Your top-up will be confirmed by the admin after payment is verified.
+                    Paid securely via {gatewayLabel(payGateway)}. Your account updates automatically once the payment is confirmed.
                   </p>
                 </Card>
                 <GatewayPicker />

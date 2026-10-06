@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Copy, Loader2, Printer, QrCode, RefreshCw, Share2, ShieldOff, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { matchDayUrl, courtsUsed, type MatchDayKind } from "@/lib/match-day/access";
+import { useClubContext } from "@/contexts/ClubContext";
+import { loadImageAsDataUrl } from "@/lib/club-qr-poster";
 
 interface Props {
   kind: MatchDayKind;

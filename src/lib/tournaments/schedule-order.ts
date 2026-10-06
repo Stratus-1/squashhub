@@ -25,3 +25,15 @@ export function chronologicalTournamentMatches<T extends ScheduledTournamentMatc
     return String(a.id || "").localeCompare(String(b.id || ""));
   });
 }
+
+/** Display-only match days: generated rounds never split or reorder a night. */
+export function tournamentMatchDays<T extends ScheduledTournamentMatch>(matches: T[]): [string, T[]][] {
+  const days = new Map<string, T[]>();
+  for (const match of chronologicalTournamentMatches(matches)) {
+    const date = match.scheduled_date || "TBD";
+    const items = days.get(date);
+    if (items) items.push(match);
+    else days.set(date, [match]);
+  }
+  return Array.from(days.entries());
+}

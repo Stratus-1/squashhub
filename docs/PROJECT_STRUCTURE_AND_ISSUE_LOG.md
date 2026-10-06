@@ -2642,3 +2642,5 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 - 2026-10-06 — Match-day tablet "Complete Setup" failed with RLS error on league_fixture_results: anon device policies only allowed status 'draft' but setup saves status 'setup'. Policies now allow 'draft' or 'setup' (submitted rules unchanged).
 
 - 2026-10-06 — Durbanville Diamond League save failed for Grant van Zyl ("Cannot coerce the result to a single JSON object"): he has the "Events & Tournaments" permission role (champs) but `team_league_events` only allowed full club admins, so the update returned 0 rows. Added policy "Tournament admins manage team leagues" (has_club_permission 'champs').
+
+- 2026-10-06 — Diamond fixtures showed 7 Oct, 22 Oct, then 14 Oct because generated week/round groups spanned both divisions' nights. Diamond lists now use chronological date-only headings via `tournamentMatchDays`; times/courts remain underneath. No saved fixture, player or position changes; preview only. Regression: `tournament-schedule-order.test.ts`.

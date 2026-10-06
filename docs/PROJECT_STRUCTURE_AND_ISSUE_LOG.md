@@ -2629,3 +2629,7 @@ Root cause: Riverside's Stitch portal 404s any ?redirect_url (host not whitelist
 ### 2026-10-06 — Andre de Beer could not claim his Uitsig membership
 - Cause: Andre signed in with Google using `andredebeer1973@gmail.com`, while his imported Uitsig member row still carried `andredb@fischersa.com`; email auto-linking therefore left the existing member and person records unclaimed. His league signup retries returned 400 because the Google account had no password for the password-based claim endpoint.
 - Resolution: linked the verified Google account to Andre's existing person and Uitsig member records and updated their contact email. Preserved member number UITS2557, role, status, fee category and ladder position 30; no duplicate membership was created.
+
+### 2026-10-06 — Elizane Barnard separated from Manie Barnard's login
+- Elizane UITS3356 was linked to Manie's `maniebarnard@gmail.com` login despite having her own member email.
+- Created and linked a separate confirmed login for `elizanebarnard23@gmail.com`, linked Elizane's existing person record, and left Manie's login/member record unchanged. Preserved Elizane's member number and ladder position 15.

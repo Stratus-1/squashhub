@@ -51,7 +51,20 @@ export type DiamondDivisionSchedule = {
   startDate?: string;
   /** Start time for this division's nights. Missing = the tournament start time. */
   startTime?: string;
+  /** Organiser-edited round-robin date per week (index = week). Blank entries fall back to the play-day pattern. */
+  dates?: string[];
 };
+
+/** Effective per-week dates for one division: edited date → play-day pattern → shared weekly date. */
+export function divisionWeekDates(
+  sc: DiamondDivisionSchedule | undefined, weeks: number, shared: string[], startDate?: string,
+): { dates: string[]; own: boolean } {
+  const pattern = sc?.playDays?.length ? divisionPlayDates(sc.startDate || startDate || shared.find(Boolean) || "", sc.playDays, weeks) : [];
+  const edited = sc?.dates || [];
+  const own = !!sc?.playDays?.length || edited.some(Boolean);
+  const dates = Array.from({ length: weeks }, (_, i) => edited[i] || pattern[i] || (own ? "" : shared[i] || ""));
+  return { dates, own };
+}
 export const diamondPlayoffsOn = (cfg: Pick<TeamLeagueConfig, "playoffs">) => cfg.playoffs !== false;
 export type FinalsPoints = "carry" | "reset";
 export const FINALS_POINTS_LABEL: Record<FinalsPoints, string> = {
@@ -278,10 +291,8 @@ export function buildPoolWeeks(
   const courtCount = Math.max(1, courts);
   const own = (["A", "B"] as const).reduce((acc, pool) => {
     const sc = opts.schedules?.[pool];
-    if (sc?.playDays?.length) {
-      const from = sc.startDate || opts.startDate || dates.find(Boolean) || "";
-      acc[pool] = { dates: divisionPlayDates(from, sc.playDays, rounds[pool].length), time: sc.startTime || undefined };
-    }
+    const eff = divisionWeekDates(sc, rounds[pool].length, dates, opts.startDate);
+    if (eff.own) acc[pool] = { dates: eff.dates, time: sc?.startTime || undefined };
     return acc;
   }, {} as Partial<Record<"A" | "B", { dates: string[]; time?: string }>>);
   return Array.from({ length: count }, (_, roundIndex) => {

@@ -7,6 +7,7 @@ import { useMemberRankings, useNearbyRankings } from "@/hooks/use-member-ranking
 import { useSportyhqAutoLink } from "@/hooks/use-sportyhq-autolink";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { useProvisionalSettings, useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
+import { useCapabilities } from "@/hooks/use-club-capabilities";
 import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";
 import {
   DEFAULT_PROVISIONAL,
@@ -70,7 +71,14 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
   const clubSettings = provisional ?? DEFAULT_PROVISIONAL;
   const myMatches = memberId ? (matchCounts?.get(memberId) ?? 0) : 0;
 
-  const scopes: RankingScope[] = ["club", "association", "national"];
+  // Club admins can switch the club ladder off (Club Admin → Features); in that
+  // case the club ranking row and its ladder link must disappear too.
+  const { enabled: caps, hasRows: hasCapRows } = useCapabilities(clubId ?? undefined);
+  const ladderOn = !hasCapRows || caps.has("ladder");
+
+  const scopes: RankingScope[] = ladderOn
+    ? ["club", "association", "national"]
+    : ["association", "national"];
   const active = detail ? rankings?.[detail] : null;
   const nearby = useNearbyRankings(active?.snapshotId, active?.rank, !!detail);
 

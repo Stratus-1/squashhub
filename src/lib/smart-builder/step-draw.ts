@@ -638,11 +638,16 @@ export function withEntrants(spec: TournamentSpec, divs: DrawDivision[]): Tourna
   };
 }
 
+/** Swiss only draws Round 1 upfront (later rounds are paired from results), so its round count is the configured Swiss rounds. */
+function swissAware(d: DrawDivision | undefined, drawn: number): number {
+  return d?.format.kind === "swiss" ? Math.max(drawn, d.format.swissRounds || 0) : drawn;
+}
+
 /** Final spec: a dry run counts each division's rounds so several play-by dates land on the right rounds. */
 export function finalDrawSpec(name: string, divs: DrawDivision[], version: string, poolMode: PoolAllocationMode = "snake"): TournamentSpec {
   const first = buildDrawSpec(name, divs, version, { poolMode });
   const fx = generateFromSpec(withEntrants(first, divs), "preview");
-  const roundCounts = new Map(first.divisions.map((sd) => [sd.divisionId, Math.max(0, ...fx.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1))]));
+  const roundCounts = new Map(first.divisions.map((sd) => [sd.divisionId, swissAware(divs.find((x) => x.group === sd.groupNumber), Math.max(0, ...fx.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1)))]));
   return buildDrawSpec(name, divs, version, { roundCounts, poolMode });
 }
 
@@ -687,8 +692,8 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
     const first = buildDrawSpec(name, divs, version, { poolMode });
     const fx0 = generateFromSpec(withEntrants(first, divs), "preview");
     for (const sd of first.divisions) {
-      const rounds = Math.max(0, ...fx0.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1));
       const d = divs.find((x) => x.group === sd.groupNumber)!;
+      const rounds = swissAware(d, Math.max(0, ...fx0.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1)));
       // Knockout: rounds needed = fewest elimination rounds to reach the next stage's field, never a round-robin count.
       const need = d.format.kind === "knockout" ? knockoutRoundsNeeded(d, poolMode) : rounds;
       for (const g of (sd as any).entryGroups ?? [sd.groupNumber]) out.roundsByGroup[g] = need;

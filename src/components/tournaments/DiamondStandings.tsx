@@ -11,6 +11,7 @@ import {
   diamondSemiTies, diamondFinalTies, diamondFinalTiesFromTable, finalsCarry,
   type TeamLeagueConfig, type GameScore,
   diamondTieLabel,
+  diamondPlayoffsOn,
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 import { diamondPositionPoints, type DiamondScoredMatch } from "@/lib/tournaments/diamond-position-points";

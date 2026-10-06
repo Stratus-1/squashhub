@@ -5,9 +5,9 @@
  * Set up and mark game page). No second scoring UI for leagues.
  */
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { LogOut, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchDayDeviceContext, type MatchDayDevice } from "@/contexts/MatchDayDevice";
 import { enableMatchDayDevice, disableMatchDayDevice, matchDayDeviceId } from "@/lib/match-day/device";
@@ -27,6 +27,24 @@ const Spinner = () => (
     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
   </div>
 );
+
+/**
+ * Leaves the match-day link: SPA-navigating away from /md/... unmounts this
+ * shell, whose cleanup switches the data client back to normal (the member's
+ * own login, if any, was never touched — device mode only overrides requests).
+ */
+const ExitMatchDay = () => {
+  const navigate = useNavigate();
+  return (
+    <button
+      onClick={() => navigate("/", { replace: true })}
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 rounded-full border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
+    >
+      <LogOut className="h-3.5 w-3.5" />
+      Exit match day
+    </button>
+  );
+};
 
 export default function MatchDayShell() {
   const { token = "", court: courtParam, fixtureId } = useParams();
@@ -95,6 +113,7 @@ export default function MatchDayShell() {
     return (
       <MatchDayDeviceContext.Provider value={device}>
         <Suspense fallback={<Spinner />}>{page}</Suspense>
+        <ExitMatchDay />
       </MatchDayDeviceContext.Provider>
     );
   }
@@ -108,6 +127,7 @@ export default function MatchDayShell() {
       <Suspense fallback={<Spinner />}>
         {fixtureId ? <LeagueGameDetail /> : <LeagueGames />}
       </Suspense>
+      <ExitMatchDay />
     </MatchDayDeviceContext.Provider>
   );
 }

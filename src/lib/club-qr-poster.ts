@@ -9,7 +9,7 @@ interface PosterInput {
   logoUrl?: string | null;
 }
 
-function loadImageAsDataUrl(src: string): Promise<string> {
+export function loadImageAsDataUrl(src: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";

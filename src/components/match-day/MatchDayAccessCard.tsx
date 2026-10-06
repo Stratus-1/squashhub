@@ -26,6 +26,7 @@ interface Props {
 const rpc = (fn: string, args: any) => (supabase as any).rpc(fn, args);
 
 export function MatchDayAccessCard({ kind, competitionId, competitionName, subdomain }: Props) {
+  const { club } = useClubContext();
   const [state, setState] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [courts, setCourts] = useState<Array<{ id: number; name: string }>>([]);
@@ -71,17 +72,28 @@ export function MatchDayAccessCard({ kind, competitionId, competitionName, subdo
     }
   };
 
-  const print = () => {
+  const print = async () => {
     if (!token) return;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const qr = (id: string) => (document.getElementById(id) as HTMLCanvasElement).toDataURL("image/png");
-    doc.setFont("helvetica", "bold"); doc.setFontSize(16);
-    doc.text(competitionName, 105, 16, { align: "center" });
-    doc.setFontSize(13); doc.text("All Courts – Scoring, Live & Standings", 105, 26, { align: "center" });
-    doc.addImage(qr("md-qr-all"), "PNG", 75, 30, 60, 60);
+    let logoDataUrl: string | null = null;
+    if (club?.logo_url) {
+      try { logoDataUrl = await loadImageAsDataUrl(club.logo_url); } catch { /* poster still works without it */ }
+    }
+    let y = 12;
+    if (logoDataUrl) {
+      try { doc.addImage(logoDataUrl, "PNG", 90, y, 30, 30, undefined, "FAST"); } catch { /* ignore bad logo */ }
+      y += 34;
+    }
+    doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+    if (club?.name) { doc.text(club.name, 105, y, { align: "center" }); y += 8; }
+    doc.setFontSize(16);
+    doc.text(competitionName, 105, y, { align: "center" }); y += 10;
+    doc.setFontSize(13); doc.text("All Courts – Scoring, Live & Standings", 105, y, { align: "center" });
+    doc.addImage(qr("md-qr-all"), "PNG", 75, y + 4, 60, 60);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7);
-    doc.text(overall, 105, 94, { align: "center" });
-    const cols = 3, w = 60, h = 72, x0 = 15, y0 = 102;
+    doc.text(overall, 105, y + 68, { align: "center" });
+    const cols = 3, w = 60, h = 72, x0 = 15, y0 = y + 76;
     courts.forEach((c, i) => {
       const page = Math.floor(i / 9);
       if (i > 0 && i % 9 === 0) doc.addPage();

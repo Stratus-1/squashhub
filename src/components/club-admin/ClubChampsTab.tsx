@@ -1772,10 +1772,37 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       }),
     }));
   }, [diamondDraft.teams, diamondDraft.config.dates, diamondDraft.config.courts, diamondDraft.config.divisionSchedules]);
-  const diamondWeekDates = useMemo(
-    () => [...new Set([...(diamondDraft.config.dates || []), ...diamondDivisionNights.flatMap((d) => d.nights.map((n) => n.date))].filter(Boolean))].sort(),
-    [diamondDraft.config.dates, diamondDivisionNights],
-  );
+  // Per-division dates are authoritative; the shared config.dates list is only
+  // a fallback, so dates removed on the structure step never come back here.
+  const diamondWeekDates = useMemo(() => {
+    const own = diamondDivisionNights.flatMap((d) => d.nights.map((n) => n.date)).filter(Boolean);
+    return [...new Set(own.length ? own : (diamondDraft.config.dates || []).filter(Boolean))].sort();
+  }, [diamondDraft.config.dates, diamondDivisionNights]);
+  /** date → divisions playing that night (for the per-day times list). */
+  const diamondNightLabels = useMemo(() => {
+    const m = new Map<string, { label: string; time: string }>();
+    for (const d of diamondDivisionNights) for (const n of d.nights) {
+      if (!n.date) continue;
+      const prev = m.get(n.date);
+      const label = `Week ${n.week} · Division ${d.pool}`;
+      m.set(n.date, prev ? { label: `${prev.label} + ${label}`, time: prev.time < n.time ? prev.time : n.time } : { label, time: n.time });
+    }
+    return m;
+  }, [diamondDivisionNights]);
+  // Keep the per-day times list an exact copy of the structure-step dates.
+  useEffect(() => {
+    if (!diamondMode || diamondWeekDates.length === 0) return;
+    setDaySchedules((prev) => {
+      const byDate = new Map(prev.map((x) => [x.date, x]));
+      const next = diamondWeekDates.map((date) => {
+        const old = byDate.get(date);
+        const t = (diamondNightLabels.get(date)?.time || startTime || "").slice(0, 5);
+        return { date, start_time: t || old?.start_time || startTime, end_time: old?.end_time || endTime, court_ids: old?.court_ids ?? null };
+      });
+      const same = next.length === prev.length && next.every((x, i) => x.date === prev[i].date && x.start_time === prev[i].start_time);
+      return same ? prev : next;
+    });
+  }, [diamondMode, diamondWeekDates, diamondNightLabels]);
   useEffect(() => {
     if (!diamondMode || diamondWeekDates.length === 0) return;
     const first = diamondWeekDates[0];

@@ -1899,6 +1899,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-1"><Label>Full Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: toTitleCase(e.target.value) }))} /></div>
           <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
+          <LoginEmailControl member={member} email={form.email} />
           <div className="space-y-1">
             <Label>Gender Group *</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.gender} onChange={e => setForm(p => ({ ...p, gender: e.target.value }))}>

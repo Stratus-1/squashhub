@@ -1126,7 +1126,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     <div className="flex gap-2">
                       {tx.proof_url ? (
                         <Button size="sm" variant="outline" onClick={async () => {
-                          const { data, error } = await supabase.storage.from("payment-proofs").createSignedUrl(tx.proof_url, 600);
+                          const { data, error } = await sbClient.storage.from("payment-proofs").createSignedUrl(tx.proof_url, 600);
                           if (error || !data?.signedUrl) { toast.error("Could not open the proof of payment"); return; }
                           window.open(data.signedUrl, "_blank", "noopener,noreferrer");
                         }}>

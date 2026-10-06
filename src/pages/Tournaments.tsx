@@ -1158,9 +1158,16 @@ export default function Tournaments() {
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
     });
+    // Always show the date/time groups chronologically — a rescheduled or
+    // live game must never push a later date above an earlier one.
+    const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+      const ak = a.replace("TBD", "9999-12-31");
+      const bk = b.replace("TBD", "9999-12-31");
+      return ak.localeCompare(bk);
+    });
     return (
       <div className="space-y-2">
-        {Array.from(groups.entries()).map(([key, items]) => {
+        {sortedGroups.map(([key, items]) => {
           const [d, t] = key.split("|");
           const dateObj = d && d !== "TBD" ? new Date(`${d}T00:00:00`) : null;
           const courts = Array.from(new Set(items.map((m: any) => m.court?.name).filter(Boolean)));

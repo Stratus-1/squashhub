@@ -568,6 +568,13 @@
       "when": 1791324053494,
       "tag": "0080_admin_entries_bypass_league_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1791324254395,
+      "tag": "0081_admin_entries_bypass_division_league_filter",
+      "breakpoints": true
     }
   ]
 }

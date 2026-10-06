@@ -125,6 +125,7 @@ export default function MyAccount() {
   const [topUpAmount, setTopUpAmount] = useState("100");
   const [topUpFromGate, setTopUpFromGate] = useState(false);
   const [topUpMethod, setTopUpMethod] = useState<"eft" | "card">("eft");
+  const [topUpProof, setTopUpProof] = useState<File | null>(null);
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
@@ -567,6 +568,17 @@ export default function MyAccount() {
         });
         return;
       }
+      // EFT: the member pays from their own bank; proof of payment is required.
+      let proofPath: string | null = null;
+      if (method === "eft") {
+        if (!topUpProof) throw new Error("Please attach your proof of payment first.");
+        if (topUpProof.size > 10 * 1024 * 1024) throw new Error("Proof of payment must be smaller than 10 MB.");
+        const ext = (topUpProof.name.split(".").pop() || "pdf").toLowerCase().replace(/[^a-z0-9]/g, "") || "pdf";
+        proofPath = `${clubId}/${clubMemberId}/topup-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("payment-proofs")
+          .upload(proofPath, topUpProof, { contentType: topUpProof.type || undefined, upsert: false });
+        if (upErr) throw new Error("Could not upload your proof of payment. Please try again.");
+      }
       const { data: inserted, error } = await fromExt("member_credit_transactions").insert({
         club_id: clubId,
         club_member_id: clubMemberId,
@@ -575,6 +587,7 @@ export default function MyAccount() {
         method,
         description: `Top-up via ${method.toUpperCase()}${paidByTag}`,
         status: "pending",
+        proof_url: proofPath,
       }).select("id").single();
       if (error) throw error;
 
@@ -591,7 +604,8 @@ export default function MyAccount() {
       if (topUpMethod === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
-      toast.success("EFT top-up request submitted. Upload proof of payment for faster processing.");
+      toast.success("EFT top-up submitted with proof of payment. The club will confirm it once the money arrives.");
+      setTopUpProof(null);
       setTopUpOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Failed to submit top-up"),
@@ -1045,7 +1059,7 @@ export default function MyAccount() {
                   onClick={() => setTopUpMethod("eft")}
                 >
                   <Building2 className="w-4 h-4 shrink-0" />
-                  Manual bank transfer (admin confirms)
+                  EFT (upload proof of payment)
                 </Button>
               )}
               <Button
@@ -1071,8 +1085,22 @@ export default function MyAccount() {
                 {clubSecrets?.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {clubSecrets?.bank_account_number}</p>}
                 {clubSecrets?.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {clubSecrets?.bank_branch_code}</p>}
                 <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Top-up</p>
-                <p className="text-[11px] text-muted-foreground">Make the transfer from your own banking app. The club confirms it once the money arrives.</p>
+                <p className="text-[11px] text-muted-foreground">Make the transfer from your own banking app, then attach the proof of payment below. The club confirms it once the money arrives.</p>
               </Card>
+            )}
+
+            {topUpMethod === "eft" && clubSecrets?.bank_name && (
+              <div className="space-y-1">
+                <label htmlFor="topup-proof" className="text-xs font-medium">Proof of payment (required)</label>
+                <input
+                  id="topup-proof"
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="block w-full text-xs file:mr-2 file:rounded file:border file:border-border file:bg-muted file:px-2 file:py-1 file:text-xs"
+                  onChange={(e) => setTopUpProof(e.target.files?.[0] ?? null)}
+                />
+                {topUpProof && <p className="text-[11px] text-muted-foreground">Attached: {topUpProof.name}</p>}
+              </div>
             )}
 
             {topUpMethod === "card" && (
@@ -1088,13 +1116,13 @@ export default function MyAccount() {
 
             <Button
               className="w-full"
-              disabled={topUpMutation.isPending || !topUpAmount || Number(topUpAmount) < 10}
+              disabled={topUpMutation.isPending || !topUpAmount || Number(topUpAmount) < 10 || (!!clubSecrets?.bank_name && topUpMethod === "eft" && !topUpProof)}
               onClick={() => topUpMutation.mutate({ amount: Number(topUpAmount), method: !clubSecrets?.bank_name ? "card" : topUpMethod })}
             >
               {topUpMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : null}
-              {topUpMethod === "card" ? "Continue to secure payment" : `Submit bank transfer ${isAccountPayment ? "payment" : "top-up"}`} · {money(Number(topUpAmount || 0))}
+              {topUpMethod === "card" ? "Continue to secure payment" : `Submit EFT ${isAccountPayment ? "payment" : "top-up"}`} · {money(Number(topUpAmount || 0))}
             </Button>
           </div>
         </DialogContent>

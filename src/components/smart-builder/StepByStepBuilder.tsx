@@ -552,7 +552,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Bells/time-capped: every event plays at the same time, so a person can enter only one. */
   const singleEvent = units.length > 0 && units.every((u) => (scoringFor(u.key) ?? scoring)?.mode === "time_capped_points");
   const counts = pickCounts(a.picks);
-  const anyManual = units.some((u) => eligOf(u.key).mode === "manual");
+  const anyManual = units.some((u) => eligOf(u.key).mode === "manual" || (eligOf(u.key).mode === "leagues" && !!eligOf(u.key).alsoPick));
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
   /** Admin selects AND assigns partners: pairing happens on the Pick step itself. */
@@ -766,7 +766,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const discText = (k: string) => { const d = units.find((u) => u.key === k)?.disc; return d ? PLAY_LABEL[d] : "?"; };
   const eligText = (k: string) => {
     const e = eligOf(k);
-    const who = e.mode === "everyone" ? "Everyone" : e.mode === "leagues" ? (e.leagueIds.map(leagueName).join(" + ") || "Leagues not chosen") : "Players I pick";
+    const who = e.mode === "everyone" ? "Everyone" : e.mode === "leagues" ? ((e.leagueIds.map(leagueName).join(" + ") || "Leagues not chosen") + (e.alsoPick ? " + players I pick" : "")) : "Players I pick";
     return e.mode !== "manual" && selfEntry ? `${who} · ${e.placement === "auto" ? "placed automatically" : "choose when entering"}` : who;
   };
 

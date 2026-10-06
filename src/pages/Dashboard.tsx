@@ -127,7 +127,8 @@ export default function Dashboard() {
   const capOn = (slug: string) => !hasCapRows || clubCaps.has(slug);
   const pendingApplicantRow = usePendingApplicant();
   const bookingsEnabled = capOn("bookings") && !pendingApplicantRow;
-  const ladderEnabled = capOn("ladder");
+  // Ladder off = hidden from members; admins keep it to set it up first.
+  const ladderEnabled = capOn("ladder") || isClubAdmin;
   const tournamentsEnabled = capOn("tournaments");
   const eventsEnabled = capOn("events");
   const barEnabled = capOn("bar");

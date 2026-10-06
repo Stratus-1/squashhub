@@ -1119,15 +1119,21 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {importReport.problems.length > 0 && <ul className="mt-1 list-disc pl-4 text-muted-foreground">{importReport.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>}
               </div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
-              {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(q)).length;
-                return <div className="text-xs text-muted-foreground">{n} of {members.length} members available{q ? " matching your search" : ""}</div>; })()}
-              <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
-                {members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(memberSearch.trim().toLowerCase())).map((m) => (
-                  <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
-                    onClick={() => { const k = autoPlace(m.id); setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] } }); }}>
-                    {m.name}<Plus className="h-3 w-3" />
-                  </button>
-                ))}
+              {(() => {
+                // Organiser may add ANY member; those outside every event's scope are listed after, flagged.
+                const q = memberSearch.trim().toLowerCase();
+                const rows = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).map((m) => ({ m, ok: units.some((u) => fits(m.id, u.key)) }));
+                rows.sort((x, y) => Number(y.ok) - Number(x.ok));
+                const nOk = rows.filter((r) => r.ok).length;
+                return <>
+                  <div className="text-xs text-muted-foreground">{nOk} eligible · {rows.length - nOk} outside the chosen leagues (you can still add them){q ? " — matching your search" : ""}</div>
+                  <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
+                    {rows.map(({ m, ok }) => (
+                      <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
+                        onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] } }); }}>
+                        <span>{m.name}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
+                      </button>
+                    ))}
                 {members.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
               </div>
               {pickIds.length > 0 && (

@@ -561,6 +561,13 @@
       "when": 1791320188671,
       "tag": "0079_md_device_save_bells_result",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1791324053494,
+      "tag": "0080_admin_entries_bypass_league_scope",
+      "breakpoints": true
     }
   ]
 }

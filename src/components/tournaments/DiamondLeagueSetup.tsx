@@ -8,6 +8,7 @@ import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL, FINALS_POINTS_LABEL, type FinalsPoints,
   tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
+  diamondPlayoffsOn, divisionPlayDates, type DiamondDivisionSchedule,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
@@ -29,10 +30,11 @@ export const newDiamondDraft = (): DiamondDraft => ({
   config: { ...DIAMOND_TEAM_DEFAULTS, dates: [] }, teams: newDiamondTeams(8, DIAMOND_TEAM_DEFAULTS.playersPerTeam), locked: [],
 });
 
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const sel = "w-full h-8 rounded border border-input bg-background px-2 text-xs";
 
 /** Structure step: configure team ties and weekly pool play; courts are selected on the Courts step. */
-export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime }: { draft: DiamondDraft; onChange: (d: DiamondDraft) => void; courts: number; startTime: string; endTime: string }) {
+export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime, startDate }: { draft: DiamondDraft; onChange: (d: DiamondDraft) => void; courts: number; startTime: string; endTime: string; startDate?: string }) {
   const cfg = { ...draft.config, courts: courts || draft.config.courts, startTime: startTime || draft.config.startTime, endTime: endTime || draft.config.endTime };
   const set = (c: Partial<DiamondDraft["config"]>) => onChange({ ...draft, config: { ...draft.config, ...c } });
   const setSize = (n: number) => onChange({
@@ -56,6 +58,14 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
   const rounds = poolRounds(draft.teams.length / 2);
   const dates = draft.config.dates || [];
   const locked = !!draft.started;
+  const playoffsOn = diamondPlayoffsOn(cfg);
+  const schedules = draft.config.divisionSchedules || {};
+  const setSchedule = (pool: string, patch: Partial<DiamondDivisionSchedule>) =>
+    set({ divisionSchedules: { ...schedules, [pool]: { ...schedules[pool], ...patch } } });
+  const ownDates = (pool: "A" | "B") => {
+    const sc = schedules[pool];
+    return sc?.playDays?.length ? divisionPlayDates(sc.startDate || startDate || dates.find(Boolean) || "", sc.playDays, rounds.length) : null;
+  };
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
       <div><Label className="text-xs">Players per team</Label>
@@ -111,19 +121,38 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
       </div>
       <div className="col-span-2 md:col-span-4 rounded-lg border p-3 space-y-3">
         <p className="font-semibold">Divisions and round-robin weeks</p>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={playoffsOn} disabled={locked} onChange={(e) => set({ playoffs: e.target.checked })} />
+          <span className="font-medium">Play-offs after the round robins</span>
+          <span className="text-muted-foreground">{playoffsOn ? "crossover semi-finals then finals" : "off — each division ends on its own round-robin table"}</span></label>
+        <div className="grid md:grid-cols-2 gap-2">{(["A", "B"] as const).map((pool) => {
+          const sc = schedules[pool] || {};
+          const days = sc.playDays || [];
+          const own = ownDates(pool);
+          return <div key={pool} className="rounded border p-2 space-y-1.5" data-field={`diamond-division-schedule-${pool}`}>
+            <p className="font-semibold">Division {pool} schedule</p>
+            <div className="flex flex-wrap gap-1">{WEEKDAYS.map((d, i) => <Button key={d} type="button" size="sm" disabled={locked} variant={days.includes(i) ? "default" : "outline"} className="h-6 px-2 text-[10px]"
+              onClick={() => setSchedule(pool, { playDays: days.includes(i) ? days.filter((x) => x !== i) : [...days, i].sort() })}>{d}</Button>)}</div>
+            {days.length > 0 ? <div className="flex flex-wrap gap-2 items-center">
+              <Label className="text-[10px]">From</Label><Input type="date" className="h-7 w-36 text-xs" disabled={locked} value={sc.startDate || ""} placeholder={startDate} onChange={(e) => setSchedule(pool, { startDate: e.target.value || undefined })} />
+              <Label className="text-[10px]">Start</Label><Input type="time" className="h-7 w-24 text-xs" disabled={locked} value={sc.startTime || ""} onChange={(e) => setSchedule(pool, { startTime: e.target.value || undefined })} />
+              <span className="text-[10px] text-muted-foreground">Blank = tournament start date / {cfg.startTime}</span>
+            </div> : <p className="text-[10px] text-muted-foreground">No own play day — uses the shared weekly dates below.</p>}
+            {own && <p className="text-[10px] text-muted-foreground">Round robin: {own.length ? own.join(", ") : "add a start date to work out the nights"}</p>}
+          </div>;
+        })}</div>
         {rounds.map((round, i) => <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b last:border-0 pb-2 last:pb-0">
           <Label className="min-w-16 text-xs">Week {i + 1}</Label>
-          <Input type="date" aria-label={`Week ${i + 1} date`} className="h-8 w-40 text-xs" value={dates[i] || ""} disabled={locked} onChange={(e) => { const next = [...dates]; next[i] = e.target.value; set({ dates: next }); }} />
-          <span className="text-muted-foreground">{(["A", "B"] as const).map((pool) => `${pool}: ${round.map(([a, b]) => `${pool}${a} v ${pool}${b}`).join(" · ")}`).join("   |   ")}</span>
+          <Input type="date" aria-label={`Week ${i + 1} date`} className="h-8 w-40 text-xs" value={dates[i] || ""} disabled={locked || (!!ownDates("A") && !!ownDates("B"))} onChange={(e) => { const next = [...dates]; next[i] = e.target.value; set({ dates: next }); }} />
+          <span className="text-muted-foreground">{(["A", "B"] as const).map((pool) => `${pool}: ${round.map(([a, b]) => `${pool}${a} v ${pool}${b}`).join(" · ")}${ownDates(pool) ? ` (${ownDates(pool)![i] || "own night"})` : ""}`).join("   |   ")}</span>
         </div>)}
-        {draft.teams.length === 8 && <div className="space-y-2">
+        {playoffsOn && draft.teams.length === 8 && <div className="space-y-2">
           <p className="text-muted-foreground">After the pool weeks: crossover semi-finals (points carry), then placing finals ({(cfg.finalsPoints || "reset") === "carry" ? "points carry on — running total decides places" : "points reset"}).</p>
           {["Semi-finals", "Finals"].map((label, j) => { const i = rounds.length + j; return <div key={label} className="flex flex-wrap items-center gap-2">
             <Label className="min-w-16 text-xs">{label}</Label>
             <Input type="date" aria-label={`${label} date`} className="h-8 w-40 text-xs" value={dates[i] || ""} disabled={locked} onChange={(e) => { const next = [...dates]; next[i] = e.target.value; set({ dates: next }); }} />
           </div>; })}
         </div>}
-        {draft.teams.length !== 8 && <p className="text-muted-foreground">Crossover semi-finals and placing finals are available for two divisions of four teams. Other team counts use the division round robins.</p>}
+        {playoffsOn && draft.teams.length !== 8 && <p className="text-muted-foreground">Crossover semi-finals and placing finals are available for two divisions of four teams. Other team counts use the division round robins.</p>}
       </div>
       <div className="col-span-2 md:col-span-4 text-[11px] text-muted-foreground">
         {configIssues(cfg).map((i) => <div key={i} className="text-destructive">{i}</div>)}
@@ -248,10 +277,10 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
   );
 }
 
-export function DiamondFixturesPreview({ draft, nameOf, courtName }: {
-  draft: DiamondDraft; nameOf: (id: string) => string; courtName: (courtNumber: number) => string;
+export function DiamondFixturesPreview({ draft, nameOf, courtName, startDate }: {
+  draft: DiamondDraft; startDate?: string; nameOf: (id: string) => string; courtName: (courtNumber: number) => string;
 }) {
-  const weeks = buildPoolWeeks(draft.teams, draft.config.dates || [], draft.config.courts);
+  const weeks = buildPoolWeeks(draft.teams, draft.config.dates || [], draft.config.courts, { schedules: draft.config.divisionSchedules, startDate });
   const games = tieGames(draft.config);
    const teamName = (id: string) => {
      const index = draft.teams.findIndex((team) => team.id === id);
@@ -265,7 +294,7 @@ export function DiamondFixturesPreview({ draft, nameOf, courtName }: {
         const home = draft.teams.find((team) => team.id === tie.home);
         const away = draft.teams.find((team) => team.id === tie.away);
         return <div key={tie.id} className="rounded border border-border p-2 text-[11px]">
-          <div className="flex justify-between gap-2 font-semibold mb-1"><span>{tie.label} · {courtName(tie.court)}</span><span>{teamName(tie.home)} v {teamName(tie.away)}</span></div>
+          <div className="flex justify-between gap-2 font-semibold mb-1"><span>{tie.label} · {courtName(tie.court)}{tie.date !== undefined ? ` · ${tie.date || "date not set"}${tie.time ? ` ${tie.time}` : ""}` : ""}</span><span>{teamName(tie.home)} v {teamName(tie.away)}</span></div>
           {games.map((game) => {
             const label = (team?: DiamondTeam) => game.positions.map((position) => nameOf(team?.players[position - 1] || "")).join(" & ");
             return <div key={game.order} className="grid grid-cols-[1fr_auto_1fr] gap-2 py-0.5"><span className="truncate">{label(home)}</span><span className="text-muted-foreground">v</span><span className="truncate text-right">{label(away)}</span></div>;

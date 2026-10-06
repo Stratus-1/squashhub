@@ -3520,7 +3520,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const timingIssues = diamondConfigIssues(diamondDraft.config);
     if (timingIssues.length) throw new Error(timingIssues.join(" "));
     const configuredCourts = selectedCourtIds.size || diamondDraft.config.courts;
-    const poolWeeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts);
+    const poolWeeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts, { schedules: diamondDraft.config.divisionSchedules, startDate: startDate || undefined });
     // Preserve any knockout (semi/final) weeks already stored on the event —
     // the wizard only regenerates pool weeks and must never wipe them.
     let knockoutWeeks: any[] = [];
@@ -9779,7 +9779,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           </CardHeader>
           <CardContent>
             <div ref={stepIssuesRef} />
-            <DiamondRulesPanel draft={diamondDraft} onChange={setDiamondDraft} courts={selectedCourtIds.size} startTime={startTime} endTime={endTime} />
+            <DiamondRulesPanel draft={diamondDraft} onChange={setDiamondDraft} courts={selectedCourtIds.size} startTime={startTime} endTime={endTime} startDate={startDate} />
           </CardContent>
         </Card>
       )}
@@ -13926,6 +13926,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               <>
                 <Separator />
                 <DiamondFixturesPreview
+                  startDate={startDate}
                   draft={{ ...diamondDraft, config: { ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts } }}
                   nameOf={getMemberName}
                   courtName={(courtNumber) => {

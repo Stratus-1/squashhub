@@ -5,9 +5,9 @@
  * Set up and mark game page). No second scoring UI for leagues.
  */
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { LogOut, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchDayDeviceContext, type MatchDayDevice } from "@/contexts/MatchDayDevice";
 import { enableMatchDayDevice, disableMatchDayDevice, matchDayDeviceId } from "@/lib/match-day/device";

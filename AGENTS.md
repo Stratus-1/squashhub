@@ -1,12 +1,12 @@
 # SquashHub AI Development Guide
 
-Multi-tenant squash operations platform (clubs, associations, federation, members): bookings, ladders, leagues, tournaments, live marking, billing, payments, access/devices, comms, PWA and Capacitor apps.
+Multi-tenant squash operations platform.
 
 - Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
 - Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/AGENTS.md` (Help Center feed).
 - Step-by-Step Beta rules: see `src/components/smart-builder/AGENTS.md`.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
-- Commands: `npm run dev|test|lint|build|cap:sync`. Don't open native IDEs unless needed; review `cap:sync` output before committing.
+- Commands: `npm run dev|test|lint|build|cap:sync`; review native sync output.
 
 ## Before editing
 - Read relevant docs and issue history before touching federation, mobile, booking, payment or device flows.
@@ -14,6 +14,7 @@ Multi-tenant squash operations platform (clubs, associations, federation, member
 - Install needed dependencies proactively (prefer local); if an external connection loses auth, stop and ask the user to re-authenticate.
 
 ## Architecture rules
+- Diamond fixtures use `tournamentMatchDays` in `schedule-order.ts` for date headings and time/court order, never generated rounds; why: division weeks span different nights. Display only; saved fixtures unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.
 - Competition state (draws, rounds, pools, progression, marker locks, lineups, results, rankings) are state machines with cross-table invariants: reuse `src/lib/tournaments/`, `src/lib/tournament-formats/`, `src/lib/leagues/`; never recreate rules in pages; add tests before changing them.

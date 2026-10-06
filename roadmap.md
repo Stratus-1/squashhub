@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Diamond fixtures: chronological match-day headings, no round grouping; preserve players, positions and schedules. Preview only.
 
 - [x] Make invitation event lists factual rather than implying every recipient qualifies; retain existing links and entry eligibility. Preview only.
 

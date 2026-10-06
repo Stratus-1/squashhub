@@ -342,32 +342,10 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           </div>
 
           {/* 3. Peak hours */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">3. Peak hours</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1 rounded-lg border p-2">
-                <Label className="text-[11px] font-semibold">Weekday (Mon–Fri)</Label>
-                <div className="flex items-center gap-1">
-                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekday_start}
-                    onChange={e => setRulesForm(p => ({ ...p, peak_weekday_start: e.target.value }))} />
-                  <span className="text-[10px] text-muted-foreground">to</span>
-                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekday_end}
-                    onChange={e => setRulesForm(p => ({ ...p, peak_weekday_end: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="space-y-1 rounded-lg border p-2">
-                <Label className="text-[11px] font-semibold">Weekend (Sat–Sun)</Label>
-                <div className="flex items-center gap-1">
-                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekend_start}
-                    onChange={e => setRulesForm(p => ({ ...p, peak_weekend_start: e.target.value }))} />
-                  <span className="text-[10px] text-muted-foreground">to</span>
-                  <Input type="time" step={300} className="h-8 text-xs" value={rulesForm.peak_weekend_end}
-                    onChange={e => setRulesForm(p => ({ ...p, peak_weekend_end: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-          </div>
+          <PeakHoursEditor
+            value={rulesForm}
+            onChange={(patch) => setRulesForm(p => ({ ...p, ...patch }))}
+          />
 
           {/* 4. Member-created events */}
           <div className="space-y-1 rounded-lg border p-3 bg-muted/30">

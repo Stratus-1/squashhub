@@ -491,7 +491,7 @@ export default function MyAccount() {
       </div>
     ) : null;
 
-  const startYocoCheckout = async (opts: {
+  const startOnlineCheckout = async (opts: {
     amount: number;
     purpose: "fee" | "topup";
     fee_ids?: string[];
@@ -558,7 +558,7 @@ export default function MyAccount() {
       }
 
       if (method === "card") {
-        await startYocoCheckout({
+        await startOnlineCheckout({
           amount,
           purpose: "topup",
           description: `Wallet top-up of R${amount.toFixed(2)}${paidByTag}`,
@@ -656,7 +656,7 @@ export default function MyAccount() {
         }
       } else if (method === "card") {
         // Route through Yoco — payment + fee marking happens after verify-return
-        await startYocoCheckout({
+        await startOnlineCheckout({
           amount: payAmount,
           purpose: "fee",
           fee_ids: selectedFees.map((f: any) => f.id),

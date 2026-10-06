@@ -94,11 +94,13 @@ export function MatchDayAccessCard({ kind, competitionId, competitionName, subdo
     doc.setFont("helvetica", "normal"); doc.setFontSize(7);
     doc.text(overall, 105, y + 68, { align: "center" });
     const cols = 3, w = 60, h = 72, x0 = 15, y0 = y + 76;
+    const courtsOnOwnPage = y0 + 2 * h > 280;
+    if (courtsOnOwnPage && courts.length) doc.addPage();
     courts.forEach((c, i) => {
       const page = Math.floor(i / 9);
       if (i > 0 && i % 9 === 0) doc.addPage();
       const k = i % 9, col = k % cols, row = Math.floor(k / cols);
-      const x = x0 + col * w, y = (page === 0 ? y0 : 15) + row * h;
+      const x = x0 + col * w, y = (page === 0 && !courtsOnOwnPage ? y0 : 15) + row * h;
       doc.setLineDashPattern([1, 1], 0); doc.rect(x, y, w, h - 4);
       doc.setFont("helvetica", "bold"); doc.setFontSize(14);
       doc.text(c.name || `Court ${c.id}`, x + w / 2, y + 8, { align: "center" });

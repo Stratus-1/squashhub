@@ -188,8 +188,9 @@ const CHANNEL_LABEL: Record<Channel, string> = { in_app: "In-app", email: "Email
 const DEFAULT_MSG: MsgCfg = { channels: ["in_app", "email"], body: null, later: false };
 type Disc = "singles" | "doubles";
 type Source = "select" | "self" | "both" | null;
-/** alsoPick: with "leagues", the organiser may additionally hand-pick players outside those leagues. */
-type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose"; alsoPick?: boolean };
+/** alsoPick: with "leagues", the organiser may additionally hand-pick players outside those leagues.
+ *  alsoEveryone: with "leagues"/"manual", everyone may also self-enter; league members are auto-categorised, the organiser may override. */
+type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose"; alsoPick?: boolean; alsoEveryone?: boolean };
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
@@ -507,6 +508,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     const cat = units.find((u) => u.key === key)?.categoryType;
     if (!isPlayerEligibleForCategory(genderByMember.get(id), cat)) return false;
     const e = eligOf(key);
+    if (e.alsoEveryone) return true; // Everyone may enter; leagues only guide auto-categorisation.
     if (e.mode === "leagues" && e.leagueIds.length > 0) {
       const memberLeagues = leaguesByMember.get(id) ?? [];
       if (memberLeagues.some((l) => e.leagueIds.includes(l))) return true;
@@ -1075,19 +1077,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       <div className="text-sm font-semibold">{u.label}</div>
                       <div className="flex flex-wrap gap-2">
                         {(["everyone", "leagues", "manual"] as const).map((m) => {
-                          // Leagues + Players I pick can both be on: tapping "Players I pick" while leagues are chosen toggles alsoPick.
-                          const on = e.mode === m || (m === "manual" && e.mode === "leagues" && !!e.alsoPick);
-                          const click = () => {
-                            if (m === "manual" && e.mode === "leagues") setElig(u.key, { alsoPick: !e.alsoPick });
+                          // All three options can be combined: Everyone (alsoEveryone), leagues + Players I pick (alsoPick).
+                          const on = e.mode === m || (m === "manual" && e.mode === "leagues" && !!e.alsoPick) || (m === "everyone" && e.mode !== "everyone" && !!e.alsoEveryone);
+                           const click = () => {
+                            if (m === "everyone" && e.mode !== "everyone") setElig(u.key, { alsoEveryone: !e.alsoEveryone });
+                            else if (m === "manual" && e.mode === "leagues") setElig(u.key, { alsoPick: !e.alsoPick });
                             else if (m === "leagues" && e.mode === "manual") setElig(u.key, { mode: "leagues", alsoPick: true });
-                            else setElig(u.key, { mode: m, alsoPick: false });
+                            else if (e.mode === "everyone" && m !== "everyone") setElig(u.key, { mode: m, alsoEveryone: true, alsoPick: m === "leagues" ? e.alsoPick : false });
+                            else setElig(u.key, { mode: m, alsoPick: false, alsoEveryone: false });
                           };
                           return <button key={m} type="button" aria-pressed={on} onClick={click} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
                             {m === "everyone" ? "Everyone" : m === "leagues" ? "Specific league(s)" : "Players I pick"}
                           </button>;
                         })}
                       </div>
-                      {e.mode === "leagues" && e.alsoPick && <p className="text-xs text-muted-foreground">Members of the chosen leagues may enter, and you can also add any other player yourself on Pick players.</p>}
+                       {e.mode !== "everyone" && e.alsoEveryone && <p className="text-xs text-muted-foreground">Everyone may enter. Members of the chosen leagues are placed in their group automatically, and you can add or move any player yourself on Pick players.</p>}
+                       {e.mode === "leagues" && e.alsoPick && !e.alsoEveryone && <p className="text-xs text-muted-foreground">Members of the chosen leagues may enter, and you can also add any other player yourself on Pick players.</p>}
                       {e.mode === "leagues" && (leagues.length === 0
                         ? <p className="text-xs text-muted-foreground">Your club has no leagues set up yet. Choose another option.</p>
                         : <div className="flex flex-wrap gap-1.5">{leagues.map((l) => {

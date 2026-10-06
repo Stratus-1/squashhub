@@ -1,3 +1,6 @@
+### 2026-10-06 — Club ladder member visibility control was outside ladder settings
+- The existing member-facing ladder visibility switch was available under Features, while admins naturally looked for it under Club Ladder settings. The same switch now appears at the top of Ladder & Challenge Rules and saves immediately; switching it off hides member access while club admins retain the ladder and all arrangement tools. The Features control stays in sync, and no ladder positions, challenge rules or history are changed. Preview only.
+
 ### 2026-10-04 — Saved club championship template appeared empty on opening
 - CSIR's saved template contains three categories, league eligibility, a pools format and seven ordered stages. The builder opened on Basics, where the intentionally blank new-event name/start date obscured that saved structure. My templates now opens the copied plan on Summary and displays the template review checklist; it never changes the master or creates a tournament. New templates also clear entry-window dates for review. Tested structural round-trip in the landing suite; no club data changed.
 

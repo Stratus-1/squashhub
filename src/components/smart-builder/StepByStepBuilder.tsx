@@ -1134,8 +1134,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         <span>{m.name}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
                       </button>
                     ))}
-                {members.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
-              </div>
+                    {members.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
+                  </div>
+                </>; })()}
               {pickIds.length > 0 && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between"><Label>Picked: {counts.uniquePlayers} unique player{counts.uniquePlayers === 1 ? "" : "s"} · {counts.totalEntries} total entr{counts.totalEntries === 1 ? "y" : "ies"}</Label>

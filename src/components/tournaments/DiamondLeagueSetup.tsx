@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL, FINALS_POINTS_LABEL, type FinalsPoints,
-  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
+  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, autoSlotDiamond, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
   diamondPlayoffsOn, divisionPlayDates, type DiamondDivisionSchedule,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
@@ -165,8 +165,10 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime,
  * Allocate step: registered players drop into team slots automatically by
  * strength; the admin drags (or taps) players between slots and teams.
  */
-export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
+export function DiamondAllocationBoard({ draft, onChange, players, nameOf, allocation = "snake", onAllocationChange }: {
   draft: DiamondDraft; onChange: (d: DiamondDraft) => void;
+  /** snake = strength zig-zags across all teams; banded = Division A strongest band. */
+  allocation?: "snake" | "banded"; onAllocationChange?: (m: "snake" | "banded") => void;
   /** Registered/selected players, strongest first. */
   players: string[]; nameOf: (id: string) => string;
 }) {
@@ -178,7 +180,7 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
   // New registrations fill empty slots; withdrawn players leave an empty, flagged slot.
   useEffect(() => {
     if (draft.started) return;
-    const r = autoSlotPlayers(players, draft.teams, lockedSet);
+    const r = autoSlotDiamond(players, draft.teams, lockedSet, allocation);
     if (r.removed.length) setFlagged((f) => [...f, ...r.removed]);
     if (JSON.stringify(r.teams) !== JSON.stringify(draft.teams)) onChange({ ...draft, teams: r.teams as DiamondTeam[] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -208,7 +210,14 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
   const toggleLock = (key: string) =>
     onChange({ ...draft, locked: lockedSet.has(key) ? draft.locked.filter((k) => k !== key) : [...draft.locked, key] });
   const autoFill = () => {
-    const r = autoSlotPlayers(players, draft.teams, lockedSet);
+    const r = autoSlotDiamond(players, draft.teams, lockedSet, allocation);
+    onChange({ ...draft, teams: r.teams as DiamondTeam[] });
+  };
+  const changeAllocation = (m: "snake" | "banded") => {
+    onAllocationChange?.(m);
+    if (draft.started) return;
+    const cleared = draft.teams.map((t) => ({ ...t, players: t.players.map((p, i) => (lockedSet.has(`${t.id}:${i}`) ? p : null)) }));
+    const r = autoSlotDiamond(players, cleared, lockedSet, m);
     onChange({ ...draft, teams: r.teams as DiamondTeam[] });
   };
   const clearUnlocked = () => onChange({
@@ -229,6 +238,23 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
 
   return (
     <div className="space-y-3">
+      {onAllocationChange && (
+        <div className="rounded-md border bg-muted/30 p-2 space-y-2">
+          <div className="text-xs font-medium">Team allocation</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              { v: "snake" as const, t: "Snake through all teams", d: "Strength zig-zags across every team in every division, so all teams are of similar strength." },
+              { v: "banded" as const, t: "Strength band per division", d: "Division A gets the strongest players, Division B the next band; strength zig-zags only inside each division." },
+            ]).map((o) => (
+              <label key={o.v} className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${allocation === o.v ? "border-primary bg-primary/5" : ""}`}>
+                <input type="radio" name="diamond-allocation" className="mt-1" checked={allocation === o.v} disabled={draft.started} onChange={() => changeAllocation(o.v)} />
+                <span className="text-xs"><span className="font-medium block">{o.t}</span><span className="text-muted-foreground">{o.d}</span></span>
+              </label>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">Changing this re-places everyone by ranking. Locked (moved by hand) players keep their spot.</p>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="secondary">{placed.size} placed · {unallocated.length} reserve{unallocated.length === 1 ? "" : "s"} · {draft.teams.length * draft.config.playersPerTeam} slots</Badge>
         <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={autoFill} disabled={draft.started}><Wand2 className="w-3.5 h-3.5 mr-1" />Place by ranking</Button>

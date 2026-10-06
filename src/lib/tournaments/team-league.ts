@@ -469,6 +469,38 @@ export function autoSlotPlayers(ordered: string[], teams: SlotTeam[], locked: Se
   return { teams: next, unplaced: queue, removed };
 }
 
+/**
+ * Diamond allocation by mode. "snake" zig-zags strength across every team in
+ * every division. "banded" gives Division A the strongest band, B the next…,
+ * snaking only inside each division. Locks are always respected.
+ */
+export function autoSlotDiamond(
+  ordered: string[],
+  teams: (SlotTeam & { pool?: string })[],
+  locked: Set<string> = new Set(),
+  mode: "snake" | "banded" = "snake",
+) {
+  if (mode !== "banded") return autoSlotPlayers(ordered, teams, locked);
+  const keep = new Set(ordered);
+  const pools = Array.from(new Set(teams.map((t) => t.pool ?? "A"))).sort();
+  const inPool = (p: string) => new Set(teams.filter((t) => (t.pool ?? "A") === p).flatMap((t) => t.players.filter(Boolean) as string[]));
+  const placedAll = new Set(teams.flatMap((t) => t.players.filter(Boolean) as string[]));
+  let queue = ordered.filter((id) => !placedAll.has(id));
+  const out = new Map<string, SlotTeam>();
+  const removed: string[] = [];
+  for (const p of pools) {
+    const pt = teams.filter((t) => (t.pool ?? "A") === p);
+    const cur = inPool(p);
+    const free = pt.reduce((n, t) => n + t.players.filter((x, i) => (!x || !keep.has(x)) && !locked.has(`${t.id}:${i}`)).length, 0);
+    const chunk = queue.slice(0, free);
+    const sub = autoSlotPlayers(ordered.filter((id) => cur.has(id) || chunk.includes(id)), pt, locked);
+    queue = [...sub.unplaced.filter((id) => !cur.has(id)), ...queue.slice(free)];
+    removed.push(...sub.removed);
+    sub.teams.forEach((t) => out.set(t.id, t));
+  }
+  return { teams: teams.map((t) => ({ ...t, ...out.get(t.id)! })), unplaced: queue, removed };
+}
+
 /** Carry mode: finals pair by the running table after the semis (1v2, 3v4, 5v6, 7v8). */
 export function diamondFinalTiesFromTable(order: string[], courtOf: (i: number) => number): DiamondTie[] {
   return PLACING_FINALS.map((f, k) => ({

@@ -9597,9 +9597,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                           <div key={idx} className="rounded border p-2 bg-muted/20 space-y-2">
                             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                               <div>
-                                <Label className="text-xs">Date</Label>
+                                <Label className="text-xs">Date{diamondMode && diamondNightLabels.get(d.date) ? ` — ${diamondNightLabels.get(d.date)!.label}` : ""}</Label>
                                 <Input
                                   type="date"
+                                  readOnly={diamondMode}
+                                  title={diamondMode ? "Change dates on the Structure page" : undefined}
                                   value={d.date}
                                   onChange={(e) => {
                                     const v = e.target.value;
@@ -9636,7 +9638,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-8"
+                                className={diamondMode ? "h-8 invisible" : "h-8"}
                                 onClick={() => setDaySchedules((prev) => prev.filter((_, i) => i !== idx))}
                               >
                                 Remove

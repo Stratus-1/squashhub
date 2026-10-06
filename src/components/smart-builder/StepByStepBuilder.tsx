@@ -503,11 +503,21 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   // Eligibility = gender category +, when the event is scoped to leagues, actual
   // league registration. A 7th-league player can never tick the 6th-league event.
   const fits = (id: string, key: string) => {
-    if (!isPlayerEligibleForCategory(genderByMember.get(id), units.find((u) => u.key === key)?.categoryType)) return false;
+    const cat = units.find((u) => u.key === key)?.categoryType;
+    if (!isPlayerEligibleForCategory(genderByMember.get(id), cat)) return false;
     const e = eligOf(key);
     if (e.mode === "leagues" && e.leagueIds.length > 0) {
       const memberLeagues = leaguesByMember.get(id) ?? [];
-      if (!memberLeagues.some((l) => e.leagueIds.includes(l))) return false;
+      if (memberLeagues.some((l) => e.leagueIds.includes(l))) return true;
+      // Open/mixed event scoped to one gender's leagues (e.g. Mens A = men's 1st–4th):
+      // the league scope ranks that gender only; players of the other gender may still enter.
+      if (cat === "open" || cat === "mixed") {
+        const g = String(genderByMember.get(id) ?? "").toLowerCase();
+        const pg = /^(f|female|ladies|lady|women|woman)$/.test(g) ? "ladies" : /^(m|male|men|man|mens)$/.test(g) ? "mens" : null;
+        const scopeGenders = new Set(e.leagueIds.map((l) => inferCategory(leagueName(l))));
+        if (pg && !scopeGenders.has(pg) && !scopeGenders.has("open") && !scopeGenders.has("mixed") && !scopeGenders.has(null)) return true;
+      }
+      return false;
     }
     return true;
   };

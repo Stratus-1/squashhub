@@ -540,6 +540,13 @@
       "when": 1791283250287,
       "tag": "0076_peak_day_overrides",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1791305136315,
+      "tag": "0077_md_device_allow_setup_status",
+      "breakpoints": true
     }
   ]
 }

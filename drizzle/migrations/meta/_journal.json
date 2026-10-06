@@ -554,6 +554,13 @@
       "when": 1791314890336,
       "tag": "0078_team_league_events_champs_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1791320188671,
+      "tag": "0079_md_device_save_bells_result",
+      "breakpoints": true
     }
   ]
 }

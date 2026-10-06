@@ -768,7 +768,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const discText = (k: string) => { const d = units.find((u) => u.key === k)?.disc; return d ? PLAY_LABEL[d] : "?"; };
   const eligText = (k: string) => {
     const e = eligOf(k);
-    const who = e.mode === "everyone" ? "Everyone" : e.mode === "leagues" ? ((e.leagueIds.map(leagueName).join(" + ") || "Leagues not chosen") + (e.alsoPick ? " + players I pick" : "")) : "Players I pick";
+    const who = e.mode === "everyone" ? "Everyone" : e.mode === "leagues" ? ((e.leagueIds.map(leagueName).join(" + ") || "Leagues not chosen") + (e.alsoEveryone ? " + everyone" : "") + (e.alsoPick ? " + players I pick" : "")) : "Players I pick" + (e.alsoEveryone ? " + everyone" : "");
     return e.mode !== "manual" && selfEntry ? `${who} · ${e.placement === "auto" ? "placed automatically" : "choose when entering"}` : who;
   };
 

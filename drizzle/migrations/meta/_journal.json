@@ -547,6 +547,13 @@
       "when": 1791305136315,
       "tag": "0077_md_device_allow_setup_status",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1791314890336,
+      "tag": "0078_team_league_events_champs_permission",
+      "breakpoints": true
     }
   ]
 }

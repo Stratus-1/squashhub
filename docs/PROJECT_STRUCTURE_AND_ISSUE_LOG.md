@@ -2640,3 +2640,5 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 - 2026-10-06: Admins can change a member's login email from Members → Edit (Login email box). Shared logins are split: the member gets their own confirmed login (edge fn admin-set-login-email, club-admin only). Damian & Luhann Groenewald (Uitsig) split off Deon's login.
 
 - 2026-10-06 — Match-day tablet "Complete Setup" failed with RLS error on league_fixture_results: anon device policies only allowed status 'draft' but setup saves status 'setup'. Policies now allow 'draft' or 'setup' (submitted rules unchanged).
+
+- 2026-10-06 — Durbanville Diamond League save failed for Grant van Zyl ("Cannot coerce the result to a single JSON object"): he has the "Events & Tournaments" permission role (champs) but `team_league_events` only allowed full club admins, so the update returned 0 rows. Added policy "Tournament admins manage team leagues" (has_club_permission 'champs').

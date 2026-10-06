@@ -113,6 +113,7 @@ export default function MatchDayShell() {
     return (
       <MatchDayDeviceContext.Provider value={device}>
         <Suspense fallback={<Spinner />}>{page}</Suspense>
+        <ExitMatchDay />
       </MatchDayDeviceContext.Provider>
     );
   }
@@ -126,6 +127,7 @@ export default function MatchDayShell() {
       <Suspense fallback={<Spinner />}>
         {fixtureId ? <LeagueGameDetail /> : <LeagueGames />}
       </Suspense>
+      <ExitMatchDay />
     </MatchDayDeviceContext.Provider>
   );
 }

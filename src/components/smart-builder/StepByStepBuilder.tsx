@@ -1744,11 +1744,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
               <div className="rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">▼ Playoffs begin</div>
               <div className="space-y-3">
-                <div className="text-sm font-semibold">Playoffs <span className="font-normal text-muted-foreground">· {a.playoffSync === true ? "common dates for all categories" : a.playoffSync === false ? "per category" : a.playoffSync === "later" ? "synchronisation decided later" : "synchronisation not chosen"}</span></div>
+                <div className="text-sm font-semibold">Will there be playoffs? <span className="font-normal text-muted-foreground">· {playoff.choice === "none" ? "no playoffs" : playoff.choice === "playoffs" ? "planned below" : "not decided"}{a.playoffSync === true ? " · common dates" : a.playoffSync === false ? " · per category" : a.playoffSync === "later" ? " · synchronisation decided later" : ""}</span></div>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Playoff decision">
+                  <Button type="button" size="sm" variant={playoff.choice === "none" ? "default" : "outline"} aria-pressed={playoff.choice === "none"} onClick={() => setPlayoff({ choice: "none" })}>{format.kind === "swiss" ? "No playoffs — finish on Swiss standings" : format.kind === "cross" ? "No playoffs — finish on standings" : "No playoffs"}</Button>
+                  <Button type="button" size="sm" variant={playoff.choice === "playoffs" ? "default" : "outline"} aria-pressed={playoff.choice === "playoffs"} onClick={() => setPlayoff({ choice: "playoffs" })}>Yes — playoff stages below</Button>
+                  <Button type="button" size="sm" variant={playoff.choice === "later" ? "default" : "outline"} aria-pressed={playoff.choice === "later"} onClick={() => setPlayoff({ choice: "later" })}>Decide later</Button>
+                </div>
+                {playoff.choice === "later" && <p className="text-xs text-muted-foreground">Left open for now — decide before the final format review. Until then nothing playoff is generated.</p>}
                 <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
                 {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
                 {playoffStages.map(renderStage)}
-                <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
+                <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
                {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
                  const q = poolQualification(u.key);
                  // First CONFIGURED play-off stage (own stages win, else shared) — never assume Quarterfinals.

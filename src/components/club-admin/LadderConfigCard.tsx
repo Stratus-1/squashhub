@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trophy, Loader2 } from "lucide-react";
 import { useLadderConfig, useUpdateLadderConfig } from "@/hooks/use-ladder-config";
 import { describeLadderRule, type LadderConfig } from "@/lib/ladder/eligibility";
+import { useCapabilities, useSetCapability } from "@/hooks/use-club-capabilities";
+import { toast } from "sonner";
 
 interface Props {
   clubId: string;
@@ -17,6 +19,8 @@ interface Props {
 export function LadderConfigCard({ clubId }: Props) {
   const { data: config, isLoading } = useLadderConfig(clubId);
   const update = useUpdateLadderConfig(clubId);
+  const { enabled: capabilities, isLoading: capabilitiesLoading } = useCapabilities(clubId);
+  const setCapability = useSetCapability(clubId);
   const [draft, setDraft] = useState<LadderConfig | null>(null);
 
   useEffect(() => {
@@ -65,6 +69,29 @@ export function LadderConfigCard({ clubId }: Props) {
         <Trophy className="w-4 h-4 text-primary" />
         <h3 className="font-semibold text-sm">Ladder & Challenge Rules</h3>
       </div>
+
+      <div className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Show club ladder to members</p>
+          <p className="text-[11px] text-muted-foreground">
+            Switch off while arranging the ladder. Members will not see it, but club admins keep full access.
+          </p>
+        </div>
+        <Switch
+          aria-label="Show club ladder to members"
+          checked={capabilities.has("ladder")}
+          disabled={capabilitiesLoading || setCapability.isPending}
+          onCheckedChange={async (enabled) => {
+            try {
+              await setCapability.mutateAsync({ slug: "ladder", enabled });
+              toast.success(enabled ? "Club ladder is now visible to members" : "Club ladder is now hidden from members");
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Could not update member visibility");
+            }
+          }}
+        />
+      </div>
+
       <p className="text-xs text-muted-foreground">{describeLadderRule(draft)}</p>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

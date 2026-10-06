@@ -1114,17 +1114,21 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   {pickIds.filter((id) => memberName(id).toLowerCase().includes(memberSearch.trim().toLowerCase())).map((id) => {
                     const mine = placesFor(id);
                     return (
-                    <div key={id} className="flex flex-wrap items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-xs" data-testid={`pick-row-${id}`}>
-                      <span className="min-w-[8rem] flex-1 font-medium">{memberName(id)} <span className="font-normal text-muted-foreground">· {mine.length ? `${mine.length} event${mine.length === 1 ? "" : "s"}` : "no events yet"}</span></span>
-                      <div className="flex flex-wrap gap-1" role="group" aria-label={`Events for ${memberName(id)}`}>
+                    <div key={id} className={cn("grid grid-cols-[11rem_1fr_auto] items-center gap-2 rounded-md border px-2 py-1", mine.length ? "border-border" : "border-destructive/50 bg-destructive/5")} data-testid={`pick-row-${id}`}>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold" title={memberName(id)}>{memberName(id)}</div>
+                        <div className={cn("text-[11px]", mine.length ? "text-muted-foreground" : "font-medium text-destructive")}>{mine.length ? `${mine.length} event${mine.length === 1 ? "" : "s"}` : "No event yet"}</div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 text-[11px]" role="group" aria-label={`Events for ${memberName(id)}`}>
                         {units.map((u) => {
                           const on = mine.includes(u.key);
                           const why = blockedReason(fits(id, u.key), u.categoryType);
+                          // Organiser override: an event outside the player's scope can still be ticked; it's only flagged.
                           return (
-                            <button key={u.key} type="button" aria-pressed={on} disabled={!!why && !on} title={why ?? undefined}
+                            <button key={u.key} type="button" aria-pressed={on} title={why ? `${why} — tap to add anyway (organiser override)` : undefined}
                               onClick={() => setA({ ...a, picks: togglePlace(a.picks, id, u.key, singleEvent) })}
-                              className={cn("flex items-center gap-1 rounded-full border px-2 py-0.5", on ? "border-primary bg-primary text-primary-foreground" : why ? "cursor-not-allowed border-dashed border-border text-muted-foreground opacity-60" : "border-border hover:bg-muted", on && why && "border-destructive bg-destructive text-destructive-foreground")}>
-                              {on && <Check className="h-3 w-3" />}{u.label}{why && <span className="opacity-80"> · {why}</span>}
+                              className={cn("flex items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap", on ? "border-primary bg-primary text-primary-foreground" : why ? "border-dashed border-border text-muted-foreground opacity-70 hover:bg-muted hover:opacity-100" : "border-border hover:bg-muted")}>
+                              {on && <Check className="h-3 w-3" />}{u.label}{why && <span className="opacity-80">{on ? " · override" : ` · ${why}`}</span>}
                             </button>);
                         })}
                       </div>

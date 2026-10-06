@@ -1089,12 +1089,12 @@ export default function MyAccount() {
             <Button
               className="w-full"
               disabled={topUpMutation.isPending || !topUpAmount || Number(topUpAmount) < 10}
-              onClick={() => topUpMutation.mutate({ amount: Number(topUpAmount), method: topUpMethod })}
+              onClick={() => topUpMutation.mutate({ amount: Number(topUpAmount), method: !clubSecrets?.bank_name ? "card" : topUpMethod })}
             >
               {topUpMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : null}
-              {isAccountPayment ? "Pay" : "Submit"} {topUpMethod.toUpperCase()} {isAccountPayment ? "Payment" : "Top-Up"} · {money(Number(topUpAmount || 0))}
+              {topUpMethod === "card" ? "Continue to secure payment" : `Submit bank transfer ${isAccountPayment ? "payment" : "top-up"}`} · {money(Number(topUpAmount || 0))}
             </Button>
           </div>
         </DialogContent>

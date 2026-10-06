@@ -2243,3 +2243,57 @@ function BulkMembershipTypesDialog({
     </Dialog>
   );
 }
+
+/** Shows the member's sign-in email and lets a club admin change it.
+ *  If the login is shared with other people, the member gets their own login. */
+function LoginEmailControl({ member, email }: { member: any; email: string }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const { data, refetch } = useQuery({
+    queryKey: ["member-login-info", member.id, member.user_id],
+    enabled: !!member.user_id,
+    queryFn: async () => {
+      const [{ data: prof }, { data: rows }] = await Promise.all([
+        fromExt("profiles").select("email").eq("id", member.user_id).maybeSingle(),
+        fromExt("club_members").select("id, name, person_id").eq("user_id", member.user_id),
+      ]);
+      const others = ((rows || []) as any[]).filter((r) => r.id !== member.id && (!member.person_id || r.person_id !== member.person_id));
+      return { loginEmail: (prof as any)?.email as string | undefined, others };
+    },
+  });
+  const target = email.trim().toLowerCase();
+  const loginEmail = (data?.loginEmail || "").toLowerCase();
+  const shared = (data?.others?.length || 0) > 0;
+  const needsChange = !!target && (target !== loginEmail || shared);
+
+  const apply = async () => {
+    if (!confirm(shared
+      ? `Give ${member.name} their own login with ${target}? The shared login (${loginEmail}) stays with ${data!.others.map((o: any) => o.name).join(", ")}.`
+      : `Change ${member.name}'s login email to ${target}?`)) return;
+    setBusy(true);
+    const { data: res, error } = await supabase.functions.invoke("admin-set-login-email", {
+      body: { club_member_id: member.id, new_email: target },
+    });
+    setBusy(false);
+    const err = (res as any)?.error || error?.message;
+    if (err) { toast.error(err); return; }
+    toast.success((res as any)?.mode === "separated" ? "Member now has their own login" : "Login email updated");
+    await refetch();
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+  };
+
+  return (
+    <div className="rounded-md border border-border bg-muted/40 p-2 text-xs space-y-1">
+      <div>
+        <span className="text-muted-foreground">Login email: </span>
+        {member.user_id ? <span className="font-medium">{data?.loginEmail || "…"}</span> : <span className="italic">no login yet</span>}
+      </div>
+      {shared && <div className="text-muted-foreground">Shared with {data!.others.map((o: any) => o.name).join(", ")}</div>}
+      {needsChange && member.user_id && (
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={apply}>
+          {busy ? "Saving…" : shared ? `Give own login: ${target}` : `Use ${target} as login email`}
+        </Button>
+      )}
+    </div>
+  );
+}

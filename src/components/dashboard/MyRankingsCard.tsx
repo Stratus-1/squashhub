@@ -1,3 +1,4 @@
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useState } from "react";
 import { ChevronRight, Loader2, Minus, TrendingDown, TrendingUp, Trophy } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -76,7 +77,8 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
   // while they set it up; admins themselves always see the club ranking row.
   const { enabled: caps, hasRows: hasCapRows } = useCapabilities(clubId ?? undefined);
   const isClubAdmin = useIsClubAdmin();
-  const ladderOn = !hasCapRows || caps.has("ladder") || isClubAdmin;
+  const { isViewingAs: ladderViewingAs } = useMemberContext();
+  const ladderOn = !hasCapRows || caps.has("ladder") || (isClubAdmin && !ladderViewingAs);
 
   const scopes: RankingScope[] = ladderOn
     ? ["club", "association", "national"]

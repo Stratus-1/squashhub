@@ -81,6 +81,7 @@ export default function Dashboard() {
   } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
+  const { isViewingAs: ladderViewingAs } = useMemberContext();
   const myPermissions = useMyPermissions();
   // While viewing as another member, reflect THAT member's own admin rights
   // (club role 'admin', full-admin flag, or granted permission slugs) instead
@@ -128,7 +129,7 @@ export default function Dashboard() {
   const pendingApplicantRow = usePendingApplicant();
   const bookingsEnabled = capOn("bookings") && !pendingApplicantRow;
   // Ladder off = hidden from members; admins keep it to set it up first.
-  const ladderEnabled = capOn("ladder") || isClubAdmin;
+  const ladderEnabled = capOn("ladder") || (isClubAdmin && !ladderViewingAs);
   const tournamentsEnabled = capOn("tournaments");
   const eventsEnabled = capOn("events");
   const barEnabled = capOn("bar");

@@ -1,3 +1,4 @@
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
@@ -15,6 +16,7 @@ export function useSidebarFlags() {
   const { club: contextClub } = useClubContext();
   const { data: clubData } = useMyClub();
   const isClubAdmin = useIsClubAdmin();
+  const { isViewingAs: ladderViewingAs } = useMemberContext();
   const myPermissions = useMyPermissions();
   const isPendingApplicant = usePendingApplicant();
 
@@ -71,7 +73,7 @@ export function useSidebarFlags() {
     isAssociation,
     bookingsEnabled: cap("bookings") && !isPendingApplicant,
     // Ladder off = hidden from members; admins keep it to set it up first.
-    ladderEnabled: cap("ladder") || isClubAdmin,
+    ladderEnabled: cap("ladder") || (isClubAdmin && !ladderViewingAs),
     tournamentsEnabled: cap("tournaments"),
     eventsEnabled: cap("events"),
     visitorsEnabled: cap("visitors"),

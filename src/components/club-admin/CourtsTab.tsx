@@ -28,6 +28,8 @@ import {
 import { GoBookApiCard } from "./GoBookApiCard";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
+import { PeakHoursEditor } from "./PeakHoursEditor";
+import type { PeakOverrides } from "@/lib/peak-hours";
 import { BookingMessagesCard } from "./BookingMessagesCard";
 import { VisitorBookingRulesCard } from "./VisitorBookingRulesCard";
 
@@ -100,6 +102,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
     peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
     max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+    peak_day_overrides: ((club as any).peak_day_overrides ?? {}) as PeakOverrides,
     max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
     block_back_to_back_bookings: !!(club as any).block_back_to_back_bookings,
     max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,
@@ -115,11 +118,12 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
       peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
       max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+      peak_day_overrides: ((club as any).peak_day_overrides ?? {}) as PeakOverrides,
       max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
     block_back_to_back_bookings: !!(club as any).block_back_to_back_bookings,
       max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,
     });
-  }, [club.id, club.booking_slot_minutes, (club as any).booking_open_time, (club as any).booking_last_slot_time, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, (club as any).max_bookings_per_day, (club as any).max_member_events_per_month]);
+  }, [club.id, club.booking_slot_minutes, (club as any).booking_open_time, (club as any).booking_last_slot_time, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, JSON.stringify((club as any).peak_day_overrides ?? {}), (club as any).max_bookings_per_day, (club as any).max_member_events_per_month]);
 
   const handleSaveRules = async (onDone?: () => void) => {
     if (rulesForm.booking_last_slot_time <= rulesForm.booking_open_time) {
@@ -137,6 +141,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         peak_weekend_start: rulesForm.peak_weekend_start,
         peak_weekend_end: rulesForm.peak_weekend_end,
         max_peak_bookings_per_day: rulesForm.max_peak_bookings_per_day,
+        peak_day_overrides: rulesForm.peak_day_overrides,
         max_bookings_per_day: rulesForm.max_bookings_per_day,
         block_back_to_back_bookings: rulesForm.block_back_to_back_bookings,
         max_member_events_per_month: rulesForm.max_member_events_per_month,
@@ -157,6 +162,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
       peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
       max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+      peak_day_overrides: ((club as any).peak_day_overrides ?? {}) as PeakOverrides,
       max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
     block_back_to_back_bookings: !!(club as any).block_back_to_back_bookings,
       max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,

@@ -62,3 +62,4 @@
 - [x] E2E test of new-member application fix (safe test data, cleanup)
 - [x] Separate preloaded-member activation from genuine new application; check Durbanville category-lock regression; 5 regression tests
 - [x] Hide Courts tile/tab for pending applicants who can't book
+- [preview] Step-by-Step Pick players: add any member (outside leagues flagged); Who may enter: leagues + Players I pick together; Next shows blockers

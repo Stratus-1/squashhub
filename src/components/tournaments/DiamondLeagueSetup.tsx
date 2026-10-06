@@ -8,7 +8,7 @@ import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL, FINALS_POINTS_LABEL, type FinalsPoints,
   tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, autoSlotDiamond, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
-  diamondPlayoffsOn, divisionPlayDates, type DiamondDivisionSchedule,
+  diamondPlayoffsOn, divisionWeekDates, type DiamondDivisionSchedule,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
@@ -62,9 +62,17 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime,
   const schedules = draft.config.divisionSchedules || {};
   const setSchedule = (pool: string, patch: Partial<DiamondDivisionSchedule>) =>
     set({ divisionSchedules: { ...schedules, [pool]: { ...schedules[pool], ...patch } } });
-  const ownDates = (pool: "A" | "B") => {
-    const sc = schedules[pool];
-    return sc?.playDays?.length ? divisionPlayDates(sc.startDate || startDate || dates.find(Boolean) || "", sc.playDays, rounds.length) : null;
+  const effDates = (pool: "A" | "B") => divisionWeekDates(schedules[pool], rounds.length, dates, startDate);
+  const ownDates = (pool: "A" | "B") => { const e = effDates(pool); return e.own ? e.dates : null; };
+  /** Edit one division's week date; keeps the shared weekly dates = earliest night per week (window/play days). */
+  const setWeekDate = (pool: "A" | "B", i: number, value: string) => {
+    const cur = effDates(pool).dates.slice();
+    cur[i] = value;
+    const nextSchedules = { ...schedules, [pool]: { ...schedules[pool], dates: cur } };
+    const other = pool === "A" ? "B" : "A";
+    const otherDates = divisionWeekDates(nextSchedules[other], rounds.length, dates, startDate).dates;
+    const shared = cur.map((d, w) => [d, otherDates[w]].filter(Boolean).sort()[0] || "");
+    set({ divisionSchedules: nextSchedules, dates: [...shared, ...dates.slice(rounds.length)] });
   };
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
@@ -136,15 +144,25 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime,
               <Label className="text-[10px]">From</Label><Input type="date" className="h-7 w-36 text-xs" disabled={locked} value={sc.startDate || ""} placeholder={startDate} onChange={(e) => setSchedule(pool, { startDate: e.target.value || undefined })} />
               <Label className="text-[10px]">Start</Label><Input type="time" className="h-7 w-24 text-xs" disabled={locked} value={sc.startTime || ""} onChange={(e) => setSchedule(pool, { startTime: e.target.value || undefined })} />
               <span className="text-[10px] text-muted-foreground">Blank = tournament start date / {cfg.startTime}</span>
-            </div> : <p className="text-[10px] text-muted-foreground">No own play day — uses the shared weekly dates below.</p>}
-            {own && <p className="text-[10px] text-muted-foreground">Round robin: {own.length ? own.join(", ") : "add a start date to work out the nights"}</p>}
+            </div> : <p className="text-[10px] text-muted-foreground">Pick a play day to fill this division's dates, or type them in the weeks below.</p>}
+            {sc.dates?.some(Boolean) && <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px]" disabled={locked} onClick={() => setSchedule(pool, { dates: undefined })}>Reset dates to the play-day pattern</Button>}
           </div>;
         })}</div>
-        {rounds.map((round, i) => <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b last:border-0 pb-2 last:pb-0">
-          <Label className="min-w-16 text-xs">Week {i + 1}</Label>
-          <Input type="date" aria-label={`Week ${i + 1} date`} className="h-8 w-40 text-xs" value={dates[i] || ""} disabled={locked || (!!ownDates("A") && !!ownDates("B"))} onChange={(e) => { const next = [...dates]; next[i] = e.target.value; set({ dates: next }); }} />
-          <span className="text-muted-foreground">{(["A", "B"] as const).map((pool) => `${pool}: ${round.map(([a, b]) => `${pool}${a} v ${pool}${b}`).join(" · ")}${ownDates(pool) ? ` (${ownDates(pool)![i] || "own night"})` : ""}`).join("   |   ")}</span>
-        </div>)}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2 font-medium">Week</th><th className="py-1 pr-2 font-medium">Division A</th><th className="py-1 font-medium">Division B</th></tr></thead>
+            <tbody>{rounds.map((round, i) => <tr key={i} className="border-t align-top">
+              <td className="py-1.5 pr-2 font-semibold whitespace-nowrap">Week {i + 1}</td>
+              {(["A", "B"] as const).map((pool) => <td key={pool} className="py-1.5 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <Input type="date" aria-label={`Division ${pool} week ${i + 1} date`} className="h-7 w-36 text-xs" disabled={locked} value={effDates(pool).dates[i] || ""} onChange={(e) => setWeekDate(pool, i, e.target.value)} />
+                  <span className="text-[10px] text-muted-foreground">{schedules[pool]?.startTime || cfg.startTime}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{round.map(([a, b]) => `${pool}${a} v ${pool}${b}`).join(" · ")}</div>
+              </td>)}
+            </tr>)}</tbody>
+          </table>
+        </div>
         {playoffsOn && draft.teams.length === 8 && <div className="space-y-2">
           <p className="text-muted-foreground">After the pool weeks: crossover semi-finals (points carry), then placing finals ({(cfg.finalsPoints || "reset") === "carry" ? "points carry on — running total decides places" : "points reset"}).</p>
           {["Semi-finals", "Finals"].map((label, j) => { const i = rounds.length + j; return <div key={label} className="flex flex-wrap items-center gap-2">

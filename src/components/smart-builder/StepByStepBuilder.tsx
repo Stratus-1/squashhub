@@ -188,7 +188,8 @@ const CHANNEL_LABEL: Record<Channel, string> = { in_app: "In-app", email: "Email
 const DEFAULT_MSG: MsgCfg = { channels: ["in_app", "email"], body: null, later: false };
 type Disc = "singles" | "doubles";
 type Source = "select" | "self" | "both" | null;
-type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose" };
+/** alsoPick: with "leagues", the organiser may additionally hand-pick players outside those leagues. */
+type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose"; alsoPick?: boolean };
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
@@ -551,7 +552,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Bells/time-capped: every event plays at the same time, so a person can enter only one. */
   const singleEvent = units.length > 0 && units.every((u) => (scoringFor(u.key) ?? scoring)?.mode === "time_capped_points");
   const counts = pickCounts(a.picks);
-  const anyManual = units.some((u) => eligOf(u.key).mode === "manual");
+  const anyManual = units.some((u) => eligOf(u.key).mode === "manual" || (eligOf(u.key).mode === "leagues" && !!eligOf(u.key).alsoPick));
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
   /** Admin selects AND assigns partners: pairing happens on the Pick step itself. */
@@ -765,7 +766,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const discText = (k: string) => { const d = units.find((u) => u.key === k)?.disc; return d ? PLAY_LABEL[d] : "?"; };
   const eligText = (k: string) => {
     const e = eligOf(k);
-    const who = e.mode === "everyone" ? "Everyone" : e.mode === "leagues" ? (e.leagueIds.map(leagueName).join(" + ") || "Leagues not chosen") : "Players I pick";
+    const who = e.mode === "everyone" ? "Everyone" : e.mode === "leagues" ? ((e.leagueIds.map(leagueName).join(" + ") || "Leagues not chosen") + (e.alsoPick ? " + players I pick" : "")) : "Players I pick";
     return e.mode !== "manual" && selfEntry ? `${who} · ${e.placement === "auto" ? "placed automatically" : "choose when entering"}` : who;
   };
 
@@ -1073,12 +1074,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
                       <div className="text-sm font-semibold">{u.label}</div>
                       <div className="flex flex-wrap gap-2">
-                        {(["everyone", "leagues", "manual"] as const).map((m) => (
-                          <button key={m} type="button" aria-pressed={e.mode === m} onClick={() => setElig(u.key, { mode: m })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.mode === m ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
+                        {(["everyone", "leagues", "manual"] as const).map((m) => {
+                          // Leagues + Players I pick can both be on: tapping "Players I pick" while leagues are chosen toggles alsoPick.
+                          const on = e.mode === m || (m === "manual" && e.mode === "leagues" && !!e.alsoPick);
+                          const click = () => {
+                            if (m === "manual" && e.mode === "leagues") setElig(u.key, { alsoPick: !e.alsoPick });
+                            else if (m === "leagues" && e.mode === "manual") setElig(u.key, { mode: "leagues", alsoPick: true });
+                            else setElig(u.key, { mode: m, alsoPick: false });
+                          };
+                          return <button key={m} type="button" aria-pressed={on} onClick={click} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
                             {m === "everyone" ? "Everyone" : m === "leagues" ? "Specific league(s)" : "Players I pick"}
-                          </button>
-                        ))}
+                          </button>;
+                        })}
                       </div>
+                      {e.mode === "leagues" && e.alsoPick && <p className="text-xs text-muted-foreground">Members of the chosen leagues may enter, and you can also add any other player yourself on Pick players.</p>}
                       {e.mode === "leagues" && (leagues.length === 0
                         ? <p className="text-xs text-muted-foreground">Your club has no leagues set up yet. Choose another option.</p>
                         : <div className="flex flex-wrap gap-1.5">{leagues.map((l) => {
@@ -1119,17 +1128,24 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {importReport.problems.length > 0 && <ul className="mt-1 list-disc pl-4 text-muted-foreground">{importReport.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>}
               </div>}
               <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
-              {(() => { const q = memberSearch.trim().toLowerCase(); const n = members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(q)).length;
-                return <div className="text-xs text-muted-foreground">{n} of {members.length} members available{q ? " matching your search" : ""}</div>; })()}
-              <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
-                {members.filter((m) => !(m.id in a.picks) && units.some((u) => fits(m.id, u.key)) && m.name.toLowerCase().includes(memberSearch.trim().toLowerCase())).map((m) => (
-                  <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
-                    onClick={() => { const k = autoPlace(m.id); setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] } }); }}>
-                    {m.name}<Plus className="h-3 w-3" />
-                  </button>
-                ))}
-                {members.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
-              </div>
+              {(() => {
+                // Organiser may add ANY member; those outside every event's scope are listed after, flagged.
+                const q = memberSearch.trim().toLowerCase();
+                const rows = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).map((m) => ({ m, ok: units.some((u) => fits(m.id, u.key)) }));
+                rows.sort((x, y) => Number(y.ok) - Number(x.ok));
+                const nOk = rows.filter((r) => r.ok).length;
+                return <>
+                  <div className="text-xs text-muted-foreground">{nOk} eligible · {rows.length - nOk} outside the chosen leagues (you can still add them){q ? " — matching your search" : ""}</div>
+                  <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
+                    {rows.map(({ m, ok }) => (
+                      <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
+                        onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] } }); }}>
+                        <span>{m.name}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
+                      </button>
+                    ))}
+                    {members.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
+                  </div>
+                </>; })()}
               {pickIds.length > 0 && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between"><Label>Picked: {counts.uniquePlayers} unique player{counts.uniquePlayers === 1 ? "" : "s"} · {counts.totalEntries} total entr{counts.totalEntries === 1 ? "y" : "ies"}</Label>

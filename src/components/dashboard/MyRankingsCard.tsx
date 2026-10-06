@@ -8,6 +8,7 @@ import { useSportyhqAutoLink } from "@/hooks/use-sportyhq-autolink";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { useProvisionalSettings, useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
 import { useCapabilities } from "@/hooks/use-club-capabilities";
+import { useIsClubAdmin } from "@/hooks/use-club";
 import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";
 import {
   DEFAULT_PROVISIONAL,
@@ -71,10 +72,11 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
   const clubSettings = provisional ?? DEFAULT_PROVISIONAL;
   const myMatches = memberId ? (matchCounts?.get(memberId) ?? 0) : 0;
 
-  // Club admins can switch the club ladder off (Club Admin → Features); in that
-  // case the club ranking row and its ladder link must disappear too.
+  // Club admins can hide the club ladder from members (Club Admin → Features)
+  // while they set it up; admins themselves always see the club ranking row.
   const { enabled: caps, hasRows: hasCapRows } = useCapabilities(clubId ?? undefined);
-  const ladderOn = !hasCapRows || caps.has("ladder");
+  const isClubAdmin = useIsClubAdmin();
+  const ladderOn = !hasCapRows || caps.has("ladder") || isClubAdmin;
 
   const scopes: RankingScope[] = ladderOn
     ? ["club", "association", "national"]

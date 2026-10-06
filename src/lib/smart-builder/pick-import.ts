@@ -60,13 +60,13 @@ export function matchEntries(rows: ImportRow[], members: ImportMember[]): Import
       const nameIn = n.length > 1 && n.every((w) => x.n.includes(w));
       if (firstLast || nameIn) { s += 2; why.push("name"); }
       else if (n.length > 1 && x.n.includes(n[n.length - 1])) s += 0.5;
-      return { x, s, why };
-    }).filter((r) => r.s >= 2).sort((a, b) => b.s - a.s);
+      const strong = why.includes("name") || (why.includes("email") && why.includes("cell"));
+      return { x, s, why, strong };
+    }).filter((r) => r.s >= 2).sort((a, b) => Number(b.strong) - Number(a.strong) || b.s - a.s);
     const best = scored[0];
     if (!best) return { row, memberId: null, how: "", reason: "No club member found" };
-    const strong = best.why.includes("name") || (best.why.includes("email") && best.why.includes("cell"));
-    if (!strong) return { row, memberId: null, how: best.why.join("+"), reason: `Unsure — contact details match ${best.x.m.name}` };
-    if (scored[1] && scored[1].s >= best.s) return { row, memberId: null, how: "", reason: `Ambiguous: ${best.x.m.name} or ${scored[1].x.m.name}` };
+    if (!best.strong) return { row, memberId: null, how: best.why.join("+"), reason: `Unsure — contact details match ${best.x.m.name}` };
+    if (scored[1] && scored[1].strong && scored[1].s >= best.s) return { row, memberId: null, how: "", reason: `Ambiguous: ${best.x.m.name} or ${scored[1].x.m.name}` };
     return { row, memberId: best.x.m.id, how: best.why.join("+") };
   });
 }

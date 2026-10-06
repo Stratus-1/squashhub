@@ -2625,3 +2625,7 @@ Existing members at another club only saw 'Register as a visitor'. Added RPC `ap
 
 ### 2026-10-05 — Stitch success no longer returning to SquashHub (regression)
 Root cause: Riverside's Stitch portal 404s any ?redirect_url (host not whitelisted); fixes on 2 Oct (stitch-create-payment) and 5 Oct (stitch-create-mandate) stripped redirect_url for ALL clubs, relying on body keys Express ignores. Restored redirect_url with a per-link probe, bare-link fallback only where Stitch 404s.
+
+### 2026-10-06 — Andre de Beer could not claim his Uitsig membership
+- Cause: Andre signed in with Google using `andredebeer1973@gmail.com`, while his imported Uitsig member row still carried `andredb@fischersa.com`; email auto-linking therefore left the existing member and person records unclaimed. His league signup retries returned 400 because the Google account had no password for the password-based claim endpoint.
+- Resolution: linked the verified Google account to Andre's existing person and Uitsig member records and updated their contact email. Preserved member number UITS2557, role, status, fee category and ladder position 30; no duplicate membership was created.

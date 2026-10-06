@@ -1649,6 +1649,15 @@ export default function Bookings() {
             </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-xs"
+              onClick={() => navigate("/dashboard")}
+            >
+              <ChevronLeft className="w-3.5 h-3.5 mr-0.5" />
+              Dashboard
+            </Button>
             {!isToday(selectedDate) && (
               <Button
                 variant="secondary"

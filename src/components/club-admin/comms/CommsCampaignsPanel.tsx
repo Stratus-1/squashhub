@@ -66,7 +66,12 @@ export function CommsCampaignsPanel({
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["comms-campaigns", clubId] });
       qc.invalidateQueries({ queryKey: ["comms-deliveries", clubId] });
-      toast({ title: "Campaign sent", description: `${res.sent} delivered · ${res.failed} failed` });
+      toast({
+        title: (res as any).continuing ? "Sending in progress" : "Campaign sent",
+        description: (res as any).continuing
+          ? `${res.sent} delivered so far — the rest keeps sending in the background`
+          : `${res.sent} delivered · ${res.failed} failed`,
+      });
     },
     onError: (e: any) => toast({ title: "Send failed", description: e?.message, variant: "destructive" }),
   });
@@ -106,7 +111,8 @@ export function CommsCampaignsPanel({
               {c.status === "scheduled" && <CalendarClock className="w-3 h-3 mr-1" />}
               {c.status}
             </Badge>
-            {["draft", "scheduled"].includes(c.status) && (
+            {(["draft", "scheduled"].includes(c.status) ||
+              (c.status === "sending" && c.started_at && Date.now() - new Date(c.started_at).getTime() > 5 * 60_000)) && (
               <Button size="sm" variant="ghost" title="Send now" onClick={() => sendNow.mutate(c.id)} disabled={sendNow.isPending}>
                 <Play className="w-3.5 h-3.5" />
               </Button>

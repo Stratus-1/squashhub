@@ -177,7 +177,13 @@ Deno.serve(async (req) => {
       if (!isAdmin) return json({ error: "Not a club admin" }, 403);
     }
 
-    if (campaign.status === "sending" || campaign.status === "sent") {
+    // Large sends run in time-boxed chunks; a chunk hands over to the next by
+    // re-invoking itself internally with `resume`. A stale "sending" campaign
+    // (no chunk alive for 5 min) may also be resumed by an admin.
+    const startedMs = campaign.started_at ? new Date(campaign.started_at).getTime() : 0;
+    const resumable = campaign.status === "sending" &&
+      ((isInternal && body?.resume === true) || Date.now() - startedMs > 5 * 60_000);
+    if (!resumable && (campaign.status === "sending" || campaign.status === "sent")) {
       return json({ error: `Campaign is already ${campaign.status}` }, 400);
     }
 
@@ -251,6 +257,8 @@ Deno.serve(async (req) => {
     }
 
     let sent = 0, failed = 0, skipped = 0;
+    const deadline = Date.now() + 100_000; // stay well inside the edge wall-clock limit
+    let outOfTime = false;
 
     // Re-dispatch (retry) never re-sends to a recipient/channel already delivered.
     const { data: prior } = await admin.from("comms_deliveries")
@@ -262,6 +270,7 @@ Deno.serve(async (req) => {
         ? campaign.audience_filter.member_vars : {};
 
     for (const m of recipients) {
+      if (Date.now() > deadline && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) { outOfTime = true; break; }
       const vars = await mergeVarsFor(m, club, campaign.audience_league_id);
       for (const [k, v] of Object.entries(memberVars[m.id] ?? {})) {
         if (/^[a-z_]{1,40}$/.test(k) && (typeof v === "string" || typeof v === "number")) vars[k] = String(v).slice(0, 4000);
@@ -459,6 +468,20 @@ Deno.serve(async (req) => {
           await logDelivery({ ...base, status: "failed", error_message: String((err as Error)?.message || err).slice(0, 500) });
         }
       }
+    }
+
+    if (outOfTime) {
+      await admin.from("comms_campaigns").update({
+        status: "sending", started_at: new Date().toISOString(), sent_count: sent, failed_count: failed, skipped_count: skipped,
+      }).eq("id", campaignId);
+      const next = fetch(`${SUPABASE_URL}/functions/v1/send-comms-campaign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+        body: JSON.stringify({ campaign_id: campaignId, resume: true }),
+      }).catch(() => null);
+      // deno-lint-ignore no-explicit-any
+      (globalThis as any).EdgeRuntime?.waitUntil?.(next);
+      return json({ ok: true, status: "sending", continuing: true, sent, failed, skipped, channels, recipients: recipients.length });
     }
 
     const status = sent === 0 ? "failed" : failed > 0 ? "partial" : "sent";

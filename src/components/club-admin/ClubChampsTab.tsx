@@ -1761,9 +1761,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
    * place dates are entered. The tournament window and play days are derived
    * from them so the organiser never types the same dates twice.
    */
+  /** Per-division week list (date + start time) exactly as set on the structure step. */
+  const diamondDivisionNights = useMemo(() => {
+    const weeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], diamondDraft.config.courts, { schedules: diamondDraft.config.divisionSchedules });
+    return (["A", "B"] as const).map((pool) => ({
+      pool,
+      nights: weeks.map((w) => {
+        const tie = w.ties.find((t) => t.label.startsWith(pool));
+        return { week: w.week, date: (tie?.date ?? w.date) || "", time: tie?.time || diamondDraft.config.divisionSchedules?.[pool]?.startTime || "" };
+      }),
+    }));
+  }, [diamondDraft.teams, diamondDraft.config.dates, diamondDraft.config.courts, diamondDraft.config.divisionSchedules]);
   const diamondWeekDates = useMemo(
-    () => (diamondDraft.config.dates || []).filter(Boolean).slice().sort(),
-    [diamondDraft.config.dates],
+    () => [...new Set([...(diamondDraft.config.dates || []), ...diamondDivisionNights.flatMap((d) => d.nights.map((n) => n.date))].filter(Boolean))].sort(),
+    [diamondDraft.config.dates, diamondDivisionNights],
   );
   useEffect(() => {
     if (!diamondMode || diamondWeekDates.length === 0) return;
@@ -9262,10 +9273,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 <Label className="text-sm font-medium">Playing nights</Label>
                 <p className="text-[11px] text-muted-foreground">
                   {diamondWeekDates.length > 0
-                    ? `${diamondWeekDates.length} week${diamondWeekDates.length === 1 ? "" : "s"}: ${diamondWeekDates[0]} → ${diamondWeekDates[diamondWeekDates.length - 1]} · ${[...playDays].sort().map((d) => DAY_NAMES[d]).join(", ")}`
+                    ? `${diamondWeekDates[0]} → ${diamondWeekDates[diamondWeekDates.length - 1]} · ${[...playDays].sort().map((d) => DAY_NAMES[d]).join(", ")}`
                     : "No weekly dates yet — set them on the Diamond League structure page."}
-                  {" "}Dates come from the weekly fixtures, so you only enter them once.
+                  {" "}Dates and division start times are edited on the Structure page only — shown here so nothing is entered twice.
                 </p>
+                {diamondWeekDates.length > 0 && <div className="grid sm:grid-cols-2 gap-2">
+                  {diamondDivisionNights.map((d) => <div key={d.pool} className="rounded border p-2 text-xs">
+                    <p className="font-semibold mb-1">Division {d.pool}</p>
+                    {d.nights.map((n) => <div key={n.week} className="flex justify-between gap-2 py-0.5">
+                      <span className="text-muted-foreground">Week {n.week}</span>
+                      <span>{n.date ? `${DAY_NAMES[getDay(parseISO(n.date))]} ${n.date}` : "date not set"} · {n.time || startTime}</span>
+                    </div>)}
+                  </div>)}
+                </div>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-sm">Evening start time</Label>

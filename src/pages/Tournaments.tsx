@@ -53,7 +53,7 @@ import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, m
 import { parseMilestones } from "@/lib/tournaments/round-definitions";
 import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
-import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
+import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 
@@ -1055,6 +1055,7 @@ export default function Tournaments() {
    */
   const champIsChronological = (champId: string, list: any[]) => {
     const champ = champById.get(champId) as any;
+    if (diamondTournamentSet.has(champId)) return true;
     if (champ?.scoring_mode === "time_capped_points") return true;
     const own = list.filter((m: any) => m.champ_id === champId);
     return own.some((m: any) => m.scheduled_time) && !hasAdminRounds(own);
@@ -1068,6 +1069,24 @@ export default function Tournaments() {
   };
 
   const renderMatchList = (list: any[]) => {
+    // Diamond's generated week numbers span different division nights;
+    // only the actual match date can group its public programme.
+    if (list.length > 0 && list.every((m: any) => diamondTournamentSet.has(m.champ_id))) {
+      return (
+        <div className="space-y-2">
+          {tournamentMatchDays(list).map(([date, items]) => (
+            <details key={date} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
+              <summary className="cursor-pointer select-none flex flex-wrap items-center gap-2 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
+                <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
+                <span>{date === "TBD" ? "Unscheduled" : format(new Date(`${date}T00:00:00`), "EEEE, d MMMM")}</span>
+                <span className="text-muted-foreground font-normal">({items.length} {items.length === 1 ? "game" : "games"})</span>
+              </summary>
+              <div className="p-2 space-y-1.5">{items.map((m, i) => renderMatchRow(m, i, items))}</div>
+            </details>
+          ))}
+        </div>
+      );
+    }
     if (listIsChronological(list)) {
       const schedule = chronologicalTournamentMatches(list);
       // Bells/timed events keep programme order inside a round, but the

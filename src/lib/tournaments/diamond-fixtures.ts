@@ -29,16 +29,16 @@ export async function syncDiamondFixtures(opts: {
   if (courtError) throw courtError;
   const courtIds = opts.courtIds ?? ((courtRows || []) as any[]).map((c) => c.id as number);
   const { data: existing, error: exErr } = await fromExt("club_champs_matches")
-    .select("id, stage_key, status, score, scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId).like("stage_key", "dl:%");
+    .select("id, stage_key, stage_label, status, score, scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId).like("stage_key", "dl:%");
   if (exErr) throw exErr;
   const keep = new Set<string>();
   const savedByKey = new Map<string, ParticipantIds>();
-  const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null; court_id: number | null; participants: ParticipantIds; startedTie: boolean }>();
+  const replaceable = new Map<string, { id: string; stage_label: string | null; scheduled_date: string | null; scheduled_time: string | null; court_id: number | null; participants: ParticipantIds; startedTie: boolean }>();
   const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => String(m.stage_key).replace(/:\d+$/, "")));
   ((existing || []) as any[]).forEach((m) => {
     savedByKey.set(m.stage_key, { player_a_member_id: m.player_a_member_id, player_b_member_id: m.player_b_member_id, partner_a_member_id: m.partner_a_member_id, partner_b_member_id: m.partner_b_member_id });
     if (m.status === "scheduled" && !m.score) replaceable.set(m.stage_key, {
-      id: m.id, scheduled_date: m.scheduled_date, scheduled_time: m.scheduled_time, court_id: m.court_id ?? null,
+      id: m.id, stage_label: m.stage_label ?? null, scheduled_date: m.scheduled_date, scheduled_time: m.scheduled_time, court_id: m.court_id ?? null,
       participants: { player_a_member_id: m.player_a_member_id, player_b_member_id: m.player_b_member_id, partner_a_member_id: m.partner_a_member_id, partner_b_member_id: m.partner_b_member_id },
       startedTie: startedTies.has(String(m.stage_key).replace(/:\d+$/, "")),
     });
@@ -72,6 +72,7 @@ export async function syncDiamondFixtures(opts: {
         player_a_member_id: home.players[p1 - 1] ?? null, player_b_member_id: away.players[p1 - 1] ?? null,
         partner_a_member_id: p2 ? home.players[p2 - 1] ?? null : null, partner_b_member_id: p2 ? away.players[p2 - 1] ?? null : null,
       };
+      const label = `${w.stage === "pool" ? `Week ${w.week} · Division ${home.pool}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${teamName(home.id)} v ${teamName(away.id)} · ${gameLabel(g)}`;
       if (keep.has(key)) return;
       const saved = replaceable.get(key);
       if (saved) {
@@ -81,6 +82,9 @@ export async function syncDiamondFixtures(opts: {
         // a team-count change reshuffles tie→court, so a stale court would
         // double-book one court and leave another empty.
         const court = courtIds[t.court - 1] ?? null;
+        // Team names (A1, B2…) are positional, so a team-count change renames
+        // them; keep the stored label in step with the current pairing.
+        if (saved.stage_label !== label) patch.stage_label = label;
         if (!saved.startedTie && (saved.scheduled_date !== tieDate || saved.scheduled_time?.slice(0, 5) !== time || saved.court_id !== court)) {
           patch.scheduled_date = tieDate;
           patch.scheduled_time = time;
@@ -92,7 +96,7 @@ export async function syncDiamondFixtures(opts: {
       rows.push({
         champ_id: champId, group_number: w.week, round_number: w.week, section_number: 1,
         stage: w.stage === "pool" ? "group" : "knockout", stage_key: key,
-        stage_label: `${w.stage === "pool" ? `Week ${w.week} · Division ${home.pool}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${teamName(home.id)} v ${teamName(away.id)} · ${gameLabel(g)}`,
+        stage_label: label,
         ...participants,
         scheduled_date: tieDate, scheduled_time: time,
         court_id: courtIds[t.court - 1] ?? null, status: "scheduled",

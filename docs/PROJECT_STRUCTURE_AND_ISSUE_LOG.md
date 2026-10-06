@@ -2636,3 +2636,5 @@ Root cause: Riverside's Stitch portal 404s any ?redirect_url (host not whitelist
 
 ### 2026-10-06 — Diamond League per-division schedules + play-offs switch
 Template setting `divisionSchedules` (play days, optional from-date and start time per division) gives each division its own round-robin nights; `playoffs` (default on) hides/blocks semis and finals when off. Legacy events unchanged. Tests: src/test/diamond-division-schedule.test.ts.
+
+- 2026-10-06: Admins can change a member's login email from Members → Edit (Login email box). Shared logins are split: the member gets their own confirmed login (edge fn admin-set-login-email, club-admin only). Damian & Luhann Groenewald (Uitsig) split off Deon's login.

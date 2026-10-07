@@ -4,8 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { DoorOpen, Loader2, MapPin, ShieldCheck, Zap } from "lucide-react";
+import { DoorOpen, Loader2, MapPin, Power, ShieldCheck, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -73,6 +72,7 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
         <h2 className="text-sm font-semibold font-heading">Club Controls</h2>
       </div>
 
+      <div className={compact ? "flex flex-wrap items-start gap-x-2 gap-y-2" : "space-y-3"}>
       {visibleGroups.map((group) => {
         const Icon = group.icon;
         const rows = group.slug === "lights"
@@ -82,8 +82,8 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
               return !/^main\s+door$/i.test(device.name.trim());
             });
         return (
-          <div key={group.slug} className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
+          <div key={group.slug} className={cn("space-y-1.5", compact && (group.slug === "lights" ? "order-last basis-full" : "contents"))}>
+            <div className={cn("flex items-center gap-1.5", compact && group.slug !== "lights" && "sr-only")}>
               <Icon className={cn("w-3.5 h-3.5", group.accent)} />
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {group.label}
@@ -96,7 +96,7 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
               )}
             </div>
 
-            <div className={compact ? "flex flex-wrap gap-x-3 gap-y-3" : "space-y-1.5"}>
+            <div className={compact ? "contents" : "space-y-1.5"}>
               {group.slug === "access" && door.available && <DoorRow door={door} compact={compact} />}
               {rows.map((device) => (
                 <DeviceRow key={device.id} device={device} clubId={clubId} compact={compact} />
@@ -112,6 +112,7 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
           </div>
         );
       })}
+      </div>
     </section>
   );
 }
@@ -122,8 +123,7 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
 
   if (compact) return (
     <CompactDeviceButton name="Main door" action="Open" busy={loading} icon={DoorOpen}
-      description={adminOverride ? "Open the main door remotely? You are not at the club." : "Open the main clubhouse door?"}
-      onConfirm={() => door.openDoor("manual")} />
+      onActivate={() => door.openDoor("manual")} />
   );
 
   return (
@@ -195,6 +195,8 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
   const control = useDeviceControl(clubId);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
   const [bleBusy, setBleBusy] = useState(false);
+  const [compactState, setCompactState] = useState<boolean | null>(null);
+  const [compactUnavailable, setCompactUnavailable] = useState(false);
   const Icon = deviceIcon(device);
   const { data: clubSecrets } = useClubSecrets(clubId);
   const { activeMember } = useMemberContext();
@@ -220,10 +222,12 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
   const serverReadingAt = device.last_state_at;
   useEffect(() => {
     setOptimistic(null);
-  }, [serverReadingAt]);
+    setCompactState(null);
+    setCompactUnavailable(false);
+  }, [serverReadingAt, device.last_state, device.last_error]);
 
   const isPulse = device.control_mode === "pulse";
-  const state = optimistic ?? device.last_state ?? false;
+  const state = (compact ? compactState : optimistic) ?? device.last_state ?? false;
   const behaviour = describeDeviceSchedule(device) ?? describeDeviceBehaviour(device);
   const busy = control.isPending || bleBusy;
 
@@ -237,7 +241,7 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
     const secrets: any = clubSecrets || {};
     if (device.category !== "access" || !secrets.ble_fallback_enabled) {
       toast.error(cloudError);
-      return;
+      return false;
     }
     // The offline Bluetooth path can't reach the server, so the age gate is
     // checked here from the member's own ID/DOB before pulsing.
@@ -246,7 +250,7 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
       const gate = checkAgeGate(minAge, resolveAge({ dob: m.date_of_birth ?? null, idNumbers: [m.id_number] }));
       if (!gate.allowed) {
         showAgeDenied((gate as { reason?: string }).reason === "underage" ? "age_restricted" : "age_unknown");
-        return;
+        return false;
       }
     }
     setBleBusy(true);
@@ -266,21 +270,22 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
         cloudError,
       });
       toast.success(`${device.name} opened over Bluetooth (club internet is down)`);
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : cloudError);
+      return false;
     } finally {
       setBleBusy(false);
     }
   };
 
   const run = async (action: "on" | "off" | "pulse", trigger: "manual" | "geofence" = "manual") => {
-    if (action !== "pulse") setOptimistic(action === "on");
+    if (action !== "pulse" && !compact) setOptimistic(action === "on");
     try {
       const res = await control.mutateAsync({ deviceId: device.id, action, trigger });
       if (action === "pulse") {
         if (res && res.ok === false) {
-          await bleRescue(`${device.name} is offline.`, trigger);
-          return;
+          return await bleRescue(`${device.name} is offline.`, trigger);
         }
         toast.success(
           trigger === "geofence"
@@ -288,6 +293,14 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
             : `${device.name} triggered`,
         );
       } else {
+        if (compact) {
+          if (res?.ok === false || res?.online === false) {
+            setCompactUnavailable(true);
+            toast.error(`${device.name} is unavailable.`);
+            return false;
+          }
+          setCompactState(typeof res?.state === "boolean" ? res.state : null);
+        }
         toast.success(
           `${device.name} switched ${action}${
             action === "on" && res?.auto_off_seconds
@@ -296,19 +309,20 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
           }`,
         );
       }
+      return true;
     } catch (e) {
       setOptimistic(null);
       const msg = e instanceof Error ? e.message : `Could not switch ${device.name}`;
       const code = (e as any)?.code;
       if (code === "age_restricted" || code === "age_unknown") {
         showAgeDenied(code, msg);
-        return;
+        return false;
       }
       if (action === "pulse" && device.category === "access") {
-        await bleRescue(msg, trigger);
-        return;
+        return await bleRescue(msg, trigger);
       }
       toast.error(msg);
+      return false;
     }
   };
 
@@ -346,9 +360,8 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
   if (compact) {
     const action = isPulse ? (device.category === "access" ? "Open" : "Trigger") : state ? "Turn Off" : "Turn On";
     return <CompactDeviceButton name={device.name} action={action} busy={busy} icon={Icon}
-      description={`${action} ${device.name}?${device.location ? ` ${device.location}.` : ""}${behaviour ? ` ${behaviour}.` : ""}`}
-      error={device.last_error} isOn={!isPulse && state}
-      onConfirm={() => run(isPulse ? "pulse" : state ? "off" : "on")} />;
+      error={device.last_error || (compactUnavailable ? "Unavailable" : null)} isOn={isPulse ? undefined : state}
+      onActivate={() => run(isPulse ? "pulse" : state ? "off" : "on")} />;
   }
 
   return (
@@ -422,21 +435,25 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
  * grey = unreachable); momentary devices flash green briefly on success and
  * then return to rest — a door is never "on".
  */
-function CompactDeviceButton({ name, action, busy, icon: Icon, description, error, isOn, onConfirm }: {
-  name: string; action: string; busy: boolean; icon: typeof DoorOpen; description: string;
-  error?: string | null; isOn?: boolean; onConfirm: () => Promise<void>;
+function CompactDeviceButton({ name, action, busy, icon: Icon, error, isOn, onActivate }: {
+  name: string; action: string; busy: boolean; icon: typeof DoorOpen;
+  error?: string | null; isOn?: boolean; onActivate: () => Promise<void | boolean>;
 }) {
-  const [confirming, setConfirming] = useState(false);
+  const [pressing, setPressing] = useState(false);
   const [justSucceeded, setJustSucceeded] = useState(false);
   const isToggle = typeof isOn === "boolean";
   const unavailable = !!error;
 
-  const handleConfirm = async () => {
-    await onConfirm();
-    if (!isToggle) {
+  const handleActivate = async () => {
+    if (pressing || busy || unavailable) return;
+    setPressing(true);
+    try {
+    const succeeded = await onActivate();
+    if (!isToggle && succeeded === true) {
       setJustSucceeded(true);
       window.setTimeout(() => setJustSucceeded(false), 2500);
     }
+    } finally { setPressing(false); }
   };
 
   const buttonClass = unavailable
@@ -450,43 +467,29 @@ function CompactDeviceButton({ name, action, busy, icon: Icon, description, erro
         : "border-primary/50 bg-primary/5 text-primary";
 
   return (
-    <div className="flex w-20 shrink-0 flex-col items-center gap-1">
-      <button
+    <div className="flex w-16 shrink-0 flex-col items-center gap-1.5" data-device-control>
+      <Button
         type="button"
-        disabled={busy || unavailable}
-        onClick={() => setConfirming(true)}
+        variant="outline"
+        disabled={busy || pressing || unavailable}
+        onClick={() => { void handleActivate(); }}
         aria-label={`${name}: ${unavailable ? "Unavailable" : action}`}
-        aria-busy={busy}
+        aria-busy={busy || pressing}
+        aria-pressed={isToggle ? isOn : undefined}
+        title={`${name}: ${unavailable ? "Unavailable" : action}`}
         className={cn(
-          "flex h-14 w-14 items-center justify-center rounded-full border-2 transition-colors",
+          "member-device-push flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-0",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          "disabled:cursor-not-allowed disabled:opacity-70",
+          "disabled:cursor-not-allowed disabled:opacity-100",
           buttonClass,
         )}
       >
-        {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Icon className="h-6 w-6" />}
-      </button>
+        {busy || pressing ? <Loader2 className="h-5 w-5 animate-spin" /> : isToggle ? <Power className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+      </Button>
       <span className="w-full text-center text-[11px] font-medium leading-tight text-foreground">
         {name}
       </span>
-      <span className={cn(
-        "text-center text-[10px] leading-tight",
-        unavailable ? "text-muted-foreground" : isToggle ? (isOn ? "text-win" : "text-destructive") : "text-muted-foreground",
-      )}>
-        {unavailable ? "Unavailable" : isToggle ? (isOn ? "On" : "Off") : action}
-      </span>
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent className="w-[calc(100%-2rem)] rounded-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{action} {name}?</AlertDialogTitle>
-            <AlertDialogDescription className="text-foreground">{description}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="min-h-11" disabled={busy} onClick={() => { void handleConfirm(); }}>{action}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {unavailable && <span className="text-center text-[10px] leading-tight text-muted-foreground">Unavailable</span>}
     </div>
   );
 }

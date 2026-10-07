@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Replace member mobile Club Controls with a single compact tactile strip, immediate actions without dialogs, and verified state/visibility; test without live hardware.
 - [x] Compact member mobile device controls only; existing hooks/visibility preserved, manual confirmation added; 38 tests pass, 320/390px light/dark browser-only device samples checked without hardware commands. Preview only.
 - [x] Member home first pass: mobile duplicate tiles removed only where shortcuts exist; coloured bottom icons, earlier stats and dynamic controls preserved. Riverside 320/390/768/1280px both themes checked; existing localhost club-context reset requires ?club=riverside on Bar destination. Preview only; no live data/device changes.
 - [x] Member help entry: compact 44px header help icon replaces the main tile on mobile/desktop; existing /help verified. Club Admin permission checks unchanged.

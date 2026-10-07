@@ -2679,3 +2679,9 @@ Nelspruit Doubles League showed "No league rounds set up yet" despite 3 submitte
 ### 2026-10-07 — Compact member mobile device controls
 - Mobile dashboard opts into wrapping, touch-sized device buttons with device names and Open / Turn On / Turn Off actions. Manual actions now have a cancellable confirmation (previous controls executed immediately). Existing command hooks, geofence auto-unlock, age/role/visibility restrictions, Bluetooth rescue and booking-only court-light billing remain unchanged; desktop keeps its existing controls.
 - Validation: 38 focused regressions passed, including confirmed main-door/registry actions, cancellation, toggle state updates and hidden devices. Signed-in Riverside has no visible manual controls, so phone visual/confirmation checks used browser-only sample devices at 320/390px in both themes, with hardware requests blocked: no overflow, touch targets at least 44px, no runtime errors or device commands. Real hardware actuation and native builds were intentionally not tested. Preview only; no data/configuration/backend changes or publication.
+
+## 2026-10-07 — Member dashboard Club Controls: compact smart-home controls
+- Mobile compact mode now renders round push/toggle buttons (56px) with the device name below, wrapping side-by-side; full-width cards removed.
+- Stateful devices: green border/tint = On, red = Off, grey "Unavailable" when the device reports an error (off is never shown as unreachable).
+- Momentary/access devices flash green ~2.5s on success, then return to rest; confirmation dialog, permissions, BLE rescue, geofence and desktop rows unchanged.
+- Tests: src/test/dashboard-device-controls.test.tsx (13) pass. Preview only, not published.

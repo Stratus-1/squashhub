@@ -1,41 +1,19 @@
-# New Member Application: status review (read-only)
+# Investigation: Nelspruit doubles league scoring problems (Tue 6 Oct 2026)
 
-No code, data or publishing changes were made for this review. It is based on the recorded test results from 5–6 Oct and a read-only database check today.
+Read-only investigation. No code, data, settings or publishing changes. Output is a written findings report.
 
-## Verified
+## Status so far
+- A first look found 4 platform league fixtures dated 6 Oct 2026 (3 still `scheduled`, 1 `bye`), last updated 27 Sep. Not yet confirmed they belong to Nelspruit; no root cause is asserted yet.
 
-| Item | Status | Evidence |
-|---|---|---|
-| Exact-step, database-backed resume | PASS (preview) | Temporary Nelspruit applicant, fresh browser each time. Stopped after Personal: reopened at Membership with answers kept. Stopped after category: reopened at Club Rules with the category kept. At both stops: no category assigned, 0 fees, 0 admin alerts. Progress cleared on completion. |
-| Existing SquashHub person applies to Nelspruit | PASS (preview) | Throwaway person from Reyno Ridge. Warning shown; Cancel created nothing; Yes created one Nelspruit application on the same person record (no duplicate). Normal 6 steps, never the activation route. Fees only at Complete Registration: R875 pro-rated membership + R350 registration. 4 admin alerts only on completion. First club unchanged. |
-| Preloaded member activation | PASS (preview, after one fix) | Fake preloaded Nelspruit member (ZZT001, Individuals, R100 opening balance). Linked to the existing row, category kept, no joining or registration fee, no admin alerts, no duplicate person. Fixed: the activation link wrongly said "already linked" when the member was already signed in. |
-| Ladder position on activation | PASS (server, live) | Separate fix after Theo's case: existing members keep their ladder position, only members with no position go to the bottom. Theo restored to #11 Durbanville. |
-| Regression checks and build | PASS | 3 resume checks added; 24 related checks passed; build clean at the time. Later changes (scroll-to-top, hidden stats/door for pending applicants) built clean, with no full suite rerun since. |
-| Test-data cleanup | PASS | Checked today: 0 test members left, 0 saved application progress records. Throwaway logins still exist with no club attached. |
+## Steps
+1. **Identify affected fixtures** — resolve Nelspruit's doubles leagues/seasons (tenant and platform-owned), list every 6 Oct fixture with teams, status, `league_fixture_results` rows, rubbers in `league_match_results`, lineups, marker locks and match-day access rows.
+2. **Production evidence** — timestamps of result/rubber writes, rows stuck in `draft`/`setup`, missing or duplicated rubbers, mismatched player IDs (pairs vs singles slots), `live_marker_sessions`, audit events, notifications, plus database and edge-function logs for 6 Oct evening (RLS denials, permission errors, function failures).
+3. **Code trace** — QR match-day shell -> tablet scoring route -> doubles scorecard generation (rubber count from association `league_rules`, pair slots) -> score-save RPCs/inserts and RLS (incl. recent `md_device_allow_setup_status` and `md_device_save_bells_result` migrations).
+4. **Recent edits** — git history and migrations since ~1 Oct touching these paths; check what is published vs preview-only.
+5. **Per-issue verdict** — evidence-backed cause, whether it still exists in current production code, minimum safe fix, and the regression test that would cover it (extend existing league/match-day suites).
 
-## Server-live vs preview-only
+## Deliverable
+A chat report listing: affected fixtures, each problem with its evidence, cause (or "unconfirmed" where evidence is missing), still-present yes/no, proposed minimal fix and test. Fixes are only proposed, never applied, pending your approval.
 
-- **Live now (server):** the application progress field and its two save/read functions; the second-club application function; keeping the ladder position on activation; the application-completeness guard and alert/category fixes.
-- **Preview only (not published):** saving each step and resuming; the activation-page fix; the "Apply for membership at <club>" button and warning; hiding the door button, member number, bar intro, stats and rankings for pending applicants; each step opening at the top.
-- **Risk while split:** the live site saves no step progress, so live applicants still restart at step 1. Nothing breaks, because the server functions are additive.
-
-## Remaining risks and gaps
-
-1. **Real card payment not tested:** paid balance, status change and approval or auto-activation after a real Stitch payment are still manual only. The Stitch return to My Account is also unverified, and Riverside's Stitch portal still needs the My Account return address whitelisted.
-2. **Activating with Google not tested.** Andre de Beer's case showed that a Google email different from the imported email leaves the member unlinked.
-3. **Resume gap:** someone whose club record is only created at the final save has nothing to resume from.
-4. **Wizard reopening for clubs without fee categories:** not reproduced. It could return for legacy members or new clubs.
-5. **No full test run since the latest preview changes;** this should be done before publishing.
-
-## Business decisions waiting
-
-- Publish the preview-only items (they should go together so live matches the tested flow).
-- Delete the three leftover "ZZ Step check (delete)" R200 fees from an earlier tournament test (Kerry Mokoena, Palesa King, David Roberts). They are still present today.
-- Delete the throwaway test logins that have no club attached.
-
-## Suggested next steps (on approval)
-
-1. Run the full automated test suite and build.
-2. Remove the three ZZ test fees and the throwaway logins, if Willem agrees.
-3. Publish the preview-only items together.
-4. Willem or an admin does one real small card payment as a new applicant, to confirm payment and return.
+## Question
+If you have screenshots or the names of the teams/captains who hit the problems, sharing them will narrow step 1.

@@ -2644,3 +2644,7 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 - 2026-10-06 — Durbanville Diamond League save failed for Grant van Zyl ("Cannot coerce the result to a single JSON object"): he has the "Events & Tournaments" permission role (champs) but `team_league_events` only allowed full club admins, so the update returned 0 rows. Added policy "Tournament admins manage team leagues" (has_club_permission 'champs').
 
 - 2026-10-06 — Diamond fixtures showed 7 Oct, 22 Oct, then 14 Oct because generated week/round groups spanned both divisions' nights. Diamond lists now use chronological date-only headings via `tournamentMatchDays`; times/courts remain underneath. No saved fixture, player or position changes; preview only. Regression: `tournament-schedule-order.test.ts`.
+
+## 2026-10-07 — Bar tab card payments stuck "awaiting payment" after paying
+- Cause: bar scan-to-pay/tab Stitch payments were only confirmed while the payer's page polled `bar-card-verify`; `stitch-sweep-pending-payments` only scanned `stitch_payment_sessions`.
+- Fix: sweep now also re-checks pending `bar_visitor_sales` references (non-PayFast, 2 min – 3 days old) via `bar-card-verify` (gateway first, never auto-cancels). First run settled 2 more paid Nelspruit sales.

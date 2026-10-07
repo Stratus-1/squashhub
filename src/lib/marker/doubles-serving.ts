@@ -11,7 +11,9 @@
  *                   only from the COMBINED score of both pairs (total even →
  *                   RIGHT, odd → LEFT). Side never decides which partner serves.
  *  - by_position:   Forehand is the first server, partners alternate on each
- *                   regain; Forehand serves RIGHT, Backhand serves LEFT.
+ *                   regain. Position sets only where a service turn STARTS
+ *                   (Forehand RIGHT, Backhand LEFT); each further point won
+ *                   by the same server alternates the box (R,L,R… / L,R,L…).
  *  - second_server: each hand = Forehand (RIGHT) then Backhand (LEFT), then
  *                   service transfers to the other pair, which starts again
  *                   with its Forehand player.
@@ -25,7 +27,7 @@ export type Slot = 0 | 1;
 
 export const DOUBLES_SERVING_METHODS: { value: DoublesServingMethod; label: string; hint: string }[] = [
   { value: "even_odd", label: "Even / Odd", hint: "Forehand serves first, then partners alternate when the pair wins service back. Side: both pairs' points added together — even total → RIGHT, odd → LEFT." },
-  { value: "by_position", label: "By position", hint: "Forehand serves first, then partners alternate when the pair wins service back. Forehand serves RIGHT, Backhand LEFT." },
+  { value: "by_position", label: "By position", hint: "Forehand serves first, then partners alternate when the pair wins service back. Each turn starts Forehand RIGHT / Backhand LEFT, then the server alternates boxes on every point won." },
   { value: "second_server", label: "Second server", hint: "Each pair serves Forehand (RIGHT) then Backhand (LEFT) before service passes to the other pair." },
 ];
 
@@ -122,6 +124,10 @@ export function afterRally(state: DoublesServeState, winner: Team, scores: Score
   const { method, positions } = state;
   if (winner === state.team) {
     // Serving pair keeps service with the same server.
+    if (method === "by_position") {
+      // Position is only the starting box of the turn; consecutive serves alternate.
+      return { ...state, side: state.side === "R" ? "L" : "R" };
+    }
     return { ...state, side: sideFor(method, positions, state.team, state.server, scores) };
   }
 

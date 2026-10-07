@@ -174,3 +174,39 @@ describe("display + singles", () => {
     expect(effectiveTournamentSettings({ match_type: "doubles" }, 1).doublesServingMethod).toBeNull();
   });
 });
+
+describe("by_position: position sets starting box only", () => {
+  const pos = { a: { forehand: 0 as const }, b: { forehand: 1 as const } };
+  it("right-start server alternates R,L,R,L on consecutive wins", () => {
+    let s = startDoubles({ method: "by_position", positions: pos, servingTeam: "a" });
+    const sides = [s.side];
+    for (let i = 1; i <= 3; i++) { s = afterRally(s, "a", { a: i, b: 0 }); sides.push(s.side); }
+    expect(sides).toEqual(["R", "L", "R", "L"]);
+    expect(s.server).toBe(0);
+  });
+  it("left-start (backhand) server alternates L,R,L", () => {
+    let s = startDoubles({ method: "by_position", positions: pos, servingTeam: "a" });
+    s = afterRally(s, "b", { a: 0, b: 1 }); // B forehand (slot 1) R
+    expect([s.team, s.server, s.side]).toEqual(["b", 1, "R"]);
+    s = afterRally(s, "a", { a: 1, b: 1 }); // A regains: backhand slot 1 starts LEFT
+    expect([s.team, s.server, s.side]).toEqual(["a", 1, "L"]);
+    s = afterRally(s, "a", { a: 2, b: 1 }); expect(s.side).toBe("R");
+    s = afterRally(s, "a", { a: 3, b: 1 }); expect(s.side).toBe("L");
+  });
+  it("loss of serve resets the new server to their starting box", () => {
+    let s = startDoubles({ method: "by_position", positions: pos, servingTeam: "a" });
+    s = afterRally(s, "a", { a: 1, b: 0 }); // A forehand now L
+    s = afterRally(s, "b", { a: 1, b: 1 });
+    expect([s.team, s.server, s.side]).toEqual(["b", 1, "R"]);
+    s = afterRally(s, "b", { a: 1, b: 2 }); expect(s.side).toBe("L");
+    s = afterRally(s, "a", { a: 2, b: 2 });
+    expect([s.team, s.server, s.side]).toEqual(["a", 1, "L"]);
+  });
+  it("restoring an in-progress match keeps the alternated box and continues", () => {
+    let s = startDoubles({ method: "by_position", positions: pos, servingTeam: "a" });
+    s = afterRally(s, "a", { a: 1, b: 0 });
+    const r = restoreDoublesState(JSON.parse(JSON.stringify(s)), "by_position")!;
+    expect([r.server, r.side]).toEqual([0, "L"]);
+    expect(afterRally(r, "a", { a: 2, b: 0 }).side).toBe("R");
+  });
+});

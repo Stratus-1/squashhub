@@ -810,7 +810,7 @@ export default function Dashboard() {
       {/* Door / lights controls first, so Open Door is at the top of the screen */}
       {!isPendingApplicant && (
         <div className="px-4 mt-2">
-          <DashboardDeviceControls />
+          <DashboardDeviceControls compact />
         </div>
       )}
 

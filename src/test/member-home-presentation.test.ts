@@ -29,7 +29,7 @@ describe("Member home presentation boundary", () => {
     for (const path of ["/ladder", "/events", "/league-games", "/tournaments", "/match-marker", "/club-admin"]) expect(grid).toContain(path);
   });
   it("keeps controls and alerts unchanged and exposes opt-in header help", () => {
-    expect(mobile).toContain("<DashboardDeviceControls />");
+    expect(mobile).toContain("<DashboardDeviceControls compact />");
     expect(mobile).toContain("<MemberSuspensionBanner />");
     expect(mobile).toContain("<DebitOrderPromptCard");
     expect(header).toContain("showHelp = false");

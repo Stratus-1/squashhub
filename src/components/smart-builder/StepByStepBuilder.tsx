@@ -277,7 +277,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** True when this device already holds the plan for the tournament being edited. */
   const [hasLocalPlan] = useState(() => {
     if (!tournamentId) return true;
-    try { return JSON.parse(localStorage.getItem(tournamentKey(tournamentId)) || "{}").createdTournamentId === tournamentId; } catch { return false; }
+    // A blank local copy (nothing filled in) does not count — load the tournament's saved setup instead.
+    try { const p = JSON.parse(localStorage.getItem(tournamentKey(tournamentId)) || "{}"); return p.createdTournamentId === tournamentId && hasRealAnswers(p); } catch { return false; }
   });
   const [a, setA] = useState<StepAnswers>(() => {
     try {
@@ -297,7 +298,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         fromExt("club_champs").select("name, start_date").eq("id", tournamentId).eq("club_id", clubId).maybeSingle().then((r: any) => r.data).catch(() => null),
       ]);
       if (!live) return;
-      const fromServer = (life?.answers ?? null) as Partial<StepAnswers> | null;
+      const saved = (life?.answers ?? null) as Partial<StepAnswers> | null;
+      const fromServer = saved && hasRealAnswers(saved) ? saved : null;
       const fallback = { ...(life?.format_plan ?? {}), ...(row?.name ? { name: row.name } : {}), ...(row?.start_date ? { periodStart: row.start_date } : {}) } as Partial<StepAnswers>;
       setA((cur) => normalise({ ...cur, ...(fromServer ?? fallback), createdTournamentId: tournamentId } as any));
       setServerReady(true);

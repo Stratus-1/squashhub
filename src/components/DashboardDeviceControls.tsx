@@ -96,7 +96,7 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
               )}
             </div>
 
-            <div className={compact ? "flex flex-wrap gap-2" : "space-y-1.5"}>
+            <div className={compact ? "flex flex-wrap gap-x-3 gap-y-3" : "space-y-1.5"}>
               {group.slug === "access" && door.available && <DoorRow door={door} compact={compact} />}
               {rows.map((device) => (
                 <DeviceRow key={device.id} device={device} clubId={clubId} compact={compact} />

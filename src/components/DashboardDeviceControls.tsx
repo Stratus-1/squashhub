@@ -123,7 +123,7 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
 
   if (compact) return (
     <CompactDeviceButton name="Main door" action="Open" busy={loading} icon={DoorOpen}
-      onActivate={() => door.openDoor("manual")} />
+      onActivate={() => door.openDoor("manual", { allowBluetooth: false })} />
   );
 
   return (
@@ -167,7 +167,7 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
       </div>
       <Button
         size="sm"
-        onClick={() => door.openDoor("manual")}
+        onClick={() => door.openDoor("manual", { allowBluetooth: false })}
         disabled={loading}
         variant={adminOverride ? "outline" : "default"}
         className="gap-1.5 shrink-0"
@@ -191,6 +191,8 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
  * (it closes the relay momentarily). Using a switch for a pulse device would
  * show an "on" state that isn't real a second later.
  */
+const DASHBOARD_BLE_DISABLED = true;
+
 function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: string; compact: boolean }) {
   const control = useDeviceControl(clubId);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
@@ -239,7 +241,9 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
    */
   const bleRescue = async (cloudError: string, trigger: "manual" | "geofence" = "manual") => {
     const secrets: any = clubSecrets || {};
-    if (device.category !== "access" || !secrets.ble_fallback_enabled) {
+    // Dashboard controls use the server device action only; the Web Bluetooth
+    // rescue opened Chrome's Nearby-devices chooser on member taps.
+    if (DASHBOARD_BLE_DISABLED || device.category !== "access" || !secrets.ble_fallback_enabled) {
       toast.error(cloudError);
       return false;
     }

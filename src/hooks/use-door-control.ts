@@ -31,7 +31,7 @@ export interface DoorControl {
   /** Admin is opening remotely, from outside the geofence. */
   adminOverride: boolean;
   loading: boolean;
-  openDoor: (trigger?: "manual" | "geofence") => Promise<void>;
+  openDoor: (trigger?: "manual" | "geofence", opts?: { allowBluetooth?: boolean }) => Promise<void>;
   proximity: ReturnType<typeof useDoorProximity>;
   club:
     | {
@@ -125,7 +125,10 @@ export function useDoorControl(): DoorControl {
   const nearOnly = !!club?.door_button_near_only && !!club?.door_geofence_enabled;
   const available = configured && !(nearOnly && proximity.active && !nearDoor);
 
-  const openDoor = async (trigger: "manual" | "geofence" = "manual") => {
+  const openDoor = async (
+    trigger: "manual" | "geofence" = "manual",
+    opts: { allowBluetooth?: boolean } = {},
+  ) => {
     if (!club?.id) return;
     setLoading(true);
     try {
@@ -141,7 +144,9 @@ export function useDoorControl(): DoorControl {
               ? Math.min(120, Math.max(1, Number(club?.door_auto_unlock_seconds ?? 12))) * 1000
               : null,
           ble: {
-            enabled: !!s.ble_fallback_enabled,
+            // Member dashboard taps must never open the browser's
+            // Bluetooth/Nearby-devices chooser; they use the server path only.
+            enabled: opts.allowBluetooth !== false && !!s.ble_fallback_enabled,
             mac: s.shelly_door_ble_mac,
             password: s.shelly_ble_control_password,
             channel: s.shelly_door_channel,

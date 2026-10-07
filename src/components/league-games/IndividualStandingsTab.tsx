@@ -329,7 +329,19 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   // teams play in each "Nth League") so the dropdown stays accurate even
   // when teams have custom names like "Cobras" or "Fungi".
   const rows = data?.rows ?? [];
+  const byPositionRows = data?.byPositionRows ?? [];
   const leagueNums = data?.leagueNums ?? [];
+  // Group per-position rows under their position number (0 = unspecified).
+  const positionGroups = useMemo(() => {
+    const map = new Map<number, PlayerRow[]>();
+    for (const r of byPositionRows) {
+      const p = r.position ?? 0;
+      const list = map.get(p) || [];
+      list.push(r);
+      map.set(p, list);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+  }, [byPositionRows]);
   const leagueOptions = useMemo(
     () => leagueNums.map((num) => ({ num, label: `League ${num}` })),
     [leagueNums],

@@ -2651,3 +2651,5 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 
 ## 2026-10-07 — One online bar payment split into many bank entries
 - Fix: `bar_post_sale_journal` posts sales sharing a `payment_reference` under one journal ref (md5(club:ref)): one bank debit for the full amount, one gateway fee, itemised bar_income credits. Single/cash sales unchanged. Existing paid multi-line payments re-posted (totals unchanged).
+
+- 2026-10-07: Club ladder saves failed for admins granted via a Full Admin permission role (club_members.role=member). Ladder RPCs (admin_reorder_ladder, apply_ladder_adjustments, approve/reject_ladder_move_pending, admin_set_cross_gender_ladder, seed_ranking_points_from_ladder) and ladder_configs policy now use is_club_admin_or_permitted(...,'ladder').

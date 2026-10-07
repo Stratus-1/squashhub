@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Lightbulb } from "lucide-react";
+import { guideCountText, type GuideEntryCount } from "./guide-entry-counts";
 import { evaluateStructures, type GuideAnswers, type GuideOutcome, type GuideStrength, type GuideTime, type StructureOption } from "@/lib/smart-builder/structure-guide";
 
 function Pick({ active, onClick, title, desc }: { active: boolean; onClick: () => void; title: string; desc: string }) {
@@ -35,10 +36,11 @@ export function RecommendationCard({ cat, n, unit, options, applied, current, on
   );
 }
 
-export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, onUse, onOther }: {
+export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, onUse, onOther, entryCounts = {}, subcats = {}, countState = "ready" }: {
   cats: string[]; guide: GuideAnswers; onChange: (g: GuideAnswers) => void; isChamps: boolean;
   unitOf: (cat: string) => string; currentOf: (cat: string) => string | undefined;
   onUse: (cat: string, o: StructureOption) => void; onOther: () => void;
+  entryCounts?: Record<string, GuideEntryCount>; subcats?: Record<string, string[]>; countState?: "ready" | "loading" | "error";
 }) {
   const set = (p: Partial<GuideAnswers>) => onChange({ ...guide, ...p });
   const ready = guide.knowsEntries === true && cats.some((c) => Number(guide.expected?.[c]) >= 2);
@@ -55,13 +57,22 @@ export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, c
           <Pick active={guide.knowsEntries === true} onClick={() => set({ knowsEntries: true })} title="Yes, roughly" desc="Enter an approximate number per category." />
           <Pick active={guide.knowsEntries === false} onClick={() => set({ knowsEntries: false })} title="Not yet" desc="Skip — we'll recommend once entries come in." />
         </div>
-        {guide.knowsEntries === true && <div className="space-y-2">{cats.map((c) => (
-          <div key={c} className="flex items-center gap-2">
-            <span className="w-48 truncate text-sm">{c}</span>
+        <div className="space-y-2">{cats.map((c) => (
+          <div key={c} className="space-y-1" data-testid={`guide-count-${c}`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-48 break-words text-sm">{c}</span>
+            {guide.knowsEntries === true && <>
             <Input type="number" min={2} className="max-w-[110px]" aria-label={`Approximate entries for ${c}`} placeholder="e.g. 12" value={guide.expected?.[c] ?? ""}
               onChange={(e) => set({ expected: { ...(guide.expected ?? {}), [c]: e.target.value } })} />
             <span className="text-xs text-muted-foreground">~ {unitOf(c)} (estimate)</span>
-          </div>))}</div>}
+            </>}
+            <span className="text-xs text-muted-foreground">{guideCountText(entryCounts[c], countState)}</span>
+          </div>
+          {(subcats[c] ?? []).filter((s) => s.trim()).map((s) => <div key={s} className="flex flex-wrap items-center gap-2 pl-4 text-xs">
+            <span className="break-words">{s.trim()}</span>
+            <span className="text-muted-foreground">{guideCountText(entryCounts[`${c}::${s.trim()}`], countState)}</span>
+          </div>)}
+          </div>))}</div>
       </div>
 
       <div className="space-y-2">

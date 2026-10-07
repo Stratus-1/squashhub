@@ -39,6 +39,8 @@ import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
 import { StructureGuidePanel, RecommendationCard } from "./StructureGuidePanel";
+import { guideEntryCounts, guideCountText } from "./guide-entry-counts";
+import type { RegLite } from "@/lib/smart-builder/step-draw";
 import { evaluateStructures, materiallyDifferent, type GuideAnswers, type StructureOption } from "@/lib/smart-builder/structure-guide";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
@@ -633,6 +635,29 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Bells/time-capped: every event plays at the same time, so a person can enter only one. */
   const singleEvent = units.length > 0 && units.every((u) => (scoringFor(u.key) ?? scoring)?.mode === "time_capped_points");
   const counts = pickCounts(a.picks);
+  const [entrySnapshot, setEntrySnapshot] = useState<{ owner: string; rows: RegLite[]; state: "ready" | "loading" | "error" }>({ owner: "", rows: [], state: "loading" });
+  const entryTournamentId = tournamentId ?? a.createdTournamentId;
+  const entryOwner = `${clubId}:${entryTournamentId ?? "new"}`;
+  useEffect(() => {
+    let live = true;
+    if (!entryTournamentId) { setEntrySnapshot({ owner: entryOwner, rows: [], state: "ready" }); return; }
+    setEntrySnapshot({ owner: entryOwner, rows: [], state: "loading" });
+    (async () => {
+      const { data: owner, error: ownerError } = await fromExt("club_champs").select("id").eq("id", entryTournamentId).eq("club_id", clubId).maybeSingle();
+      if (ownerError || !owner) throw new Error("Entry counts unavailable");
+      const rows: RegLite[] = [];
+      for (let start = 0; ; start += 1000) {
+        const { data, error } = await fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices, division_partners").eq("champ_id", entryTournamentId).order("id").range(start, start + 999);
+        if (error) throw error;
+        rows.push(...((data ?? []) as RegLite[]));
+        if ((data ?? []).length < 1000) break;
+      }
+      if (live) setEntrySnapshot({ owner: entryOwner, rows, state: "ready" });
+    })().catch(() => { if (live) setEntrySnapshot({ owner: entryOwner, rows: [], state: "error" }); });
+    return () => { live = false; };
+  }, [clubId, entryTournamentId, entryOwner, step]);
+  const guideCounts = guideEntryCounts(cats, units.map((u) => u.key), a.picks, entrySnapshot.owner === entryOwner ? entrySnapshot.rows : []);
+  const guideCountState = entrySnapshot.owner === entryOwner ? entrySnapshot.state : "loading";
   const anyManual = units.some((u) => eligOf(u.key).mode === "manual" || (eligOf(u.key).mode === "leagues" && !!eligOf(u.key).alsoPick));
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
@@ -1134,7 +1159,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
 
           {cur === "Guide" && (
-            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} />
+            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats} countState={guideCountState} />
           )}
 
           {cur === "Subcategories" && (
@@ -1844,7 +1869,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <div key={u.key} className="flex items-center gap-2">
                   <span className="w-64 truncate text-sm">{u.label}</span>
                   <Input type="number" min={1} className="max-w-[120px]" aria-label={`Expected entries for ${u.base}`} value={a.unitEntries?.[u.key] ?? ""} onChange={(e) => setA({ ...a, unitEntries: { ...(a.unitEntries ?? {}), [u.key]: e.target.value } })} placeholder="e.g. 8" />
-                  <span className="text-xs text-muted-foreground">{u.disc === "doubles" ? "pairs" : "players"}</span>
+                  <span className="text-xs text-muted-foreground">{u.disc === "doubles" ? "pairs" : "players"} {guideCountText(guideCounts[u.key], guideCountState)}</span>
                 </div>
               ))}</div>
             </>

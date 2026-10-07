@@ -382,33 +382,35 @@ Deno.serve(async (req) => {
   }
 
 
-  // Unbilled WhatsApp usage per club for the previous month.
+  // Unbilled WhatsApp usage per club up to the previous month's end. Older
+  // unbilled messages (e.g. removed from a corrected invoice) carry forward.
   const waUsage = new Map<
     string,
-    { count: number; amount: number; utility: number; service: number; marketing: number; ids: string[] }
+    { count: number; amount: number; utility: number; service: number; marketing: number; ids: string[]; earliest: string }
   >()
   if (clubIds.length) {
     const { data: waRows } = await supabase
       .from('whatsapp_send_log')
-      .select('id, club_id, category, unit_cost')
+      .select('id, club_id, category, unit_cost, created_at')
       .in('club_id', clubIds)
       .eq('status', 'sent')
       .eq('billable', true)
       .is('platform_invoice_id', null)
       .is('invoice_id', null)
-      .gte('created_at', `${waRange.start}T00:00:00Z`)
       .lt('created_at', waCutoff)
 
       .range(0, 99999)
     for (const r of waRows || []) {
       const cur =
-        waUsage.get(r.club_id) ?? { count: 0, amount: 0, utility: 0, service: 0, marketing: 0, ids: [] }
+        waUsage.get(r.club_id) ?? { count: 0, amount: 0, utility: 0, service: 0, marketing: 0, ids: [], earliest: waRange.start }
       cur.count++
       cur.amount += Number(r.unit_cost || 0)
       if (r.category === 'utility') cur.utility++
       else if (r.category === 'service') cur.service++
       else if (r.category === 'marketing') cur.marketing++
       cur.ids.push(r.id)
+      const d = String(r.created_at || '').slice(0, 10)
+      if (d && d < cur.earliest) cur.earliest = d
       waUsage.set(r.club_id, cur)
     }
   }
@@ -553,7 +555,7 @@ Deno.serve(async (req) => {
           ? {
               messageCount: usage.count,
               amount: +usage.amount.toFixed(2),
-              periodStart: waRange.start,
+              periodStart: usage.earliest,
               periodEnd: waRange.end,
               utilityCount: usage.utility,
               serviceCount: usage.service,

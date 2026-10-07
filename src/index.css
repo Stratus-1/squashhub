@@ -451,3 +451,14 @@ body:has(.admin-contrast) [role="dialog"] {
 .admin-contrast :is(input, textarea)::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
 .admin-contrast [role="switch"] { border-color: hsl(var(--input)); }
 .admin-contrast [role="switch"] > span { border: 1px solid hsl(var(--input)); }
+/* Neutral navigation hover keeps subordinate text readable in either theme,
+   instead of inheriting the shared amber button hover surface. */
+.admin-contrast .admin-navigation button:hover:not([aria-current="page"]) {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+.admin-contrast [class*="text-muted-foreground/"] { color: hsl(var(--muted-foreground)); }
+.admin-contrast :is(button, input, textarea, select):disabled:not([role="switch"]) {
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--input));
+}

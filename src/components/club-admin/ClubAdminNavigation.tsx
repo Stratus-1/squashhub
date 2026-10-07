@@ -50,7 +50,7 @@ export function ClubAdminNavigation({ operations, setup, activeTab, onSelect, co
       })}</div>}
     </section>;
   };
-  return <div className="space-y-4">
+  return <div className="admin-navigation space-y-4">
     {onCompactChange && <div className="flex justify-end"><Button type="button" variant="ghost" size="icon" className="size-8" onClick={onCompactChange}
       aria-label={compact ? "Expand admin navigation" : "Collapse admin navigation"} title={compact ? "Expand admin navigation" : "Collapse admin navigation"}>
       {compact ? <PanelLeftOpen /> : <PanelLeftClose />}

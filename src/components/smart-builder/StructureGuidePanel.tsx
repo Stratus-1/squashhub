@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Lightbulb } from "lucide-react";
 import { guideCountText, type GuideEntryCount } from "./guide-entry-counts";
-import { evaluateStructures, guideCapacity, shareSlots, capacityFit, DEFAULT_MATCH_MINUTES, STRUCTURE_LABEL, type CapacityFit, type GuideAnswers, type GuideOutcome, type GuideStrength, type StructureOption } from "@/lib/smart-builder/structure-guide";
+import { evaluateStructures, poolStageText, guideCapacity, shareSlots, capacityFit, DEFAULT_MATCH_MINUTES, STRUCTURE_LABEL, type CapacityFit, type GuideAnswers, type GuideOutcome, type GuideStrength, type StructureOption } from "@/lib/smart-builder/structure-guide";
 
 const FIT_TEXT: Record<CapacityFit, string> = { fits: "Fits", tight: "Tight", exceeds: "Exceeds capacity" };
 const fitClass = (f: CapacityFit) => f === "fits" ? "text-primary" : "text-destructive";
@@ -45,10 +45,18 @@ export function RecommendationCard({ cat, n, unit, options, applied, current, on
       <div className="text-sm"><span className="text-muted-foreground">Recommended: </span><span className="font-semibold">{best.title}</span></div>
       <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Why: </span>{best.why}</p>
       {change && <p className="rounded bg-primary/10 px-2 py-1 text-xs font-medium">{change}</p>}
-      <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Approximate demand: </span>
-        {best.rounds} preliminary round{best.rounds === 1 ? "" : "s"}{best.playoffRounds ? ` + ${best.playoffRounds} playoff round${best.playoffRounds === 1 ? "" : "s"}` : ""} · {best.prelimMatches} preliminary/pool matches{best.playoffMatches ? ` + ${best.playoffMatches} playoff matches` : ""} = about {best.matches} matches · ~{best.courtHours} court-hours · {best.perPlayer}</p>
+      {best.kind === "pools" ? (
+        <div className="space-y-0.5 text-xs text-muted-foreground">
+          <p><span className="font-medium text-foreground">{poolStageText(best)}</span> · {best.prelimMatches} pool matches</p>
+          <p><span className="font-medium text-foreground">Playoff stage: </span>{best.playoff === "placement" ? "positional playoffs (same finishing place across pools)" : "semifinals & final for qualifiers"} — {best.playoffMatches} matches over {best.playoffRounds} round{best.playoffRounds === 1 ? "" : "s"}</p>
+          <p><span className="font-medium text-foreground">Total: </span>about {best.matches} matches · ~{best.courtHours} court-hours · {best.perPlayer}</p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Approximate demand: </span>
+          {best.rounds} round{best.rounds === 1 ? "" : "s"} · about {best.matches} matches · ~{best.courtHours} court-hours · {best.perPlayer}</p>
+      )}
       {best.fit && <p className="text-xs"><span className={cn("font-semibold", fitClass(best.fit))}>{FIT_TEXT[best.fit]}</span><span className="text-muted-foreground"> — this category's share is about {share} match slots of the tournament total.</span></p>}
-      {alt && <p className="text-xs text-muted-foreground">Next best: {alt.title} — {alt.rounds + alt.playoffRounds} rounds, about {alt.matches} matches, ~{alt.courtHours} court-hours{alt.fit ? ` (${FIT_TEXT[alt.fit].toLowerCase()})` : ""}.</p>}
+      {alt && <p className="text-xs text-muted-foreground">Next best: {alt.title} — {alt.pools ? `pools of ${alt.pools.join("/")}, ${alt.rounds} rounds per pool + ${alt.playoffRounds} playoff,` : `${alt.rounds} rounds,`} about {alt.matches} matches, ~{alt.courtHours} court-hours{alt.fit ? ` (${FIT_TEXT[alt.fit].toLowerCase()})` : ""}.</p>}
       {current && <p className="text-xs text-muted-foreground">Currently planned: {current}</p>}
       <div className="flex flex-wrap gap-2 pt-1">
         <Button type="button" size="sm" variant={applied ? "secondary" : "default"} onClick={() => onUse(best)}>{applied ? "Recommendation in use" : "Use recommendation"}</Button>

@@ -6,7 +6,7 @@
  * anything by itself — the builder only applies a recommendation when the organiser clicks "Use".
  * Match format (how one match is scored) is out of scope. Pure: no IO.
  */
-import { recommendPools } from "./pool-plan";
+import { balancedSizes } from "./pool-plan";
 
 export type GuideOutcome = "winner" | "rank" | "balanced";
 export type GuideStrength = "broad" | "similar";
@@ -84,6 +84,8 @@ export interface StructureOption {
   fit?: CapacityFit;
   perPlayer: string;
   pools?: number[];
+  /** Scheduling rounds per pool (n−1 even, n odd). */
+  poolRounds?: number[];
   playoff?: "placement" | "semis" | null;
   score: number;
 }
@@ -101,13 +103,6 @@ const ROUND_CAP: Record<GuideTime, number> = { plenty: 11, some: 7, tight: 4 };
 const rrRounds = (s: number) => (s < 2 ? 0 : s % 2 ? s : s - 1);
 const rrMatches = (s: number) => (s * (s - 1)) / 2;
 const log2c = (n: number) => Math.max(1, Math.ceil(Math.log2(Math.max(2, n))));
-
-/** Pool size preference: smaller pools when time is tight, larger when ranking broadly matters. */
-function poolTarget(inp: GuideInput, time: GuideTime): number {
-  if (time === "tight") return 4;
-  if (time === "plenty" && (inp.outcome === "rank" || inp.strength === "broad")) return 6;
-  return 5;
-}
 
 export function evaluateStructures(inp: GuideInput): StructureOption[] {
   const n = Math.floor(inp.n);
@@ -144,20 +139,19 @@ export function evaluateStructures(inp: GuideInput): StructureOption[] {
     const m = rrMatches(n);
     out.push({ kind: "round_robin", title: STRUCTURE_LABEL.round_robin, rounds: r, playoffRounds: 0, matches: m, prelimMatches: m, playoffMatches: 0, courtHours: 0, perPlayer: `${n - 1} matches each`, why: "", playoff: null, score: fit("round_robin", r, sizeFit, m) });
   }
-  // Pools (+ placement/semifinal playoffs)
+  // Pools (+ placement/semifinal playoffs): test every sensible pool count, each pool costed from ITS OWN size.
   if (n >= 6) {
-    const pools = recommendPools(n, poolTarget(inp, time));
-    if (pools.length > 1) {
-      const maxP = Math.max(...pools), minP = Math.min(...pools);
-      const r = rrRounds(maxP);
-      const placement = outcome === "rank" || (outcome === "balanced" && strength === "similar");
-      const pr = placement ? 1 : pools.length >= 4 ? 3 : 2;
-      const prelim = pools.reduce((t, s) => t + rrMatches(s), 0);
-      const po = placement ? Math.floor(n / 2) : pools.length >= 4 ? 7 : 3;
-      const pm = prelim + po;
-      const sizeFit = n >= 8 ? 2 : 1;
-      out.push({ kind: "pools", title: `${pools.length} round-robin pools + ${placement ? "positional playoffs" : "semifinals & final"}`, rounds: r, playoffRounds: pr, matches: pm, prelimMatches: prelim, playoffMatches: po, courtHours: 0, perPlayer: `${minP === maxP ? maxP - 1 : `${minP - 1}–${maxP - 1}`} pool matches${placement ? " + 1 placement match" : " + playoffs for qualifiers"}`, pools, playoff: placement ? "placement" : "semis", why: "", score: fit("pools", r + pr, sizeFit, pm) });
+    const placement = outcome === "rank" || (outcome === "balanced" && strength === "similar");
+    let best: StructureOption | null = null;
+    for (let k = 2; k <= Math.floor(n / 3); k++) {
+      const c = poolCandidate(n, k, placement);
+      const avg = n / k;
+      const prefersBig = outcome === "rank" || strength === "broad";
+      const sizeFit = (n >= 8 ? 2 : 1) + (avg < 4 ? -1.5 : avg > 7 ? -1.5 * (avg - 7) : prefersBig ? (avg - 4) * 0.5 : avg >= 4 && avg <= 5 ? 0.5 : 0);
+      c.score = fit("pools", c.rounds + c.playoffRounds, sizeFit, c.matches);
+      if (!best || c.score > best.score) best = c;
     }
+    if (best) out.push(best);
   }
   // Knockout
   if (n >= 4) {
@@ -180,6 +174,27 @@ export function evaluateStructures(inp: GuideInput): StructureOption[] {
   return out.sort((p, q) => q.score - p.score);
 }
 
+/** One pool candidate: k balanced pools, each a round robin costed from its own player count, plus its playoff stage. */
+export function poolCandidate(n: number, k: number, placement: boolean): StructureOption {
+  const pools = balancedSizes(n, k);
+  const maxP = Math.max(...pools), minP = Math.min(...pools);
+  const poolRounds = pools.map(rrRounds);
+  const prelim = pools.reduce((t, s) => t + rrMatches(s), 0);
+  // Positional: players finishing in the same place across pools play off (k−1 matches per place group).
+  const po = placement ? pools.length === 2 ? minP : n - maxP : pools.length >= 4 ? 7 : 3;
+  const pr = placement ? log2c(pools.length) : pools.length >= 4 ? 3 : 2;
+  return { kind: "pools", title: `${pools.length} round-robin pools + ${placement ? "positional playoffs" : "semifinals & final"}`, rounds: Math.max(...poolRounds), poolRounds, playoffRounds: pr, matches: prelim + po, prelimMatches: prelim, playoffMatches: po, courtHours: 0, perPlayer: `${minP === maxP ? maxP - 1 : `${minP - 1}–${maxP - 1}`} pool matches${placement ? " + positional playoff" : " + playoffs for qualifiers"}`, pools, playoff: placement ? "placement" : "semis", why: "", score: 0 };
+}
+
+/** "Pool stage: 4 pools, each played as a round robin — 7 players (21 matches, 7 rounds), …" */
+export function poolStageText(x: StructureOption): string {
+  if (!x.pools) return "";
+  const groups = new Map<number, number>();
+  x.pools.forEach((s) => groups.set(s, (groups.get(s) ?? 0) + 1));
+  const parts = [...groups].map(([s, c]) => `${c} × ${s} players (${rrMatches(s)} matches, ${rrRounds(s)} rounds each)`);
+  return `Pool stage: ${x.pools.length} pools, each played as a round robin — ${parts.join(", ")}`;
+}
+
 function explain(x: StructureOption, n: number, inp: GuideInput, cap: number): string {
   const goal = inp.outcome === "rank" ? "you want the whole field ranked meaningfully" : inp.outcome === "winner" ? "you mainly want a champion efficiently" : "you want a winner and meaningful matches for everyone";
   const time = x.fit === "exceeds" ? ` It needs about ${x.matches} matches — more than this category's share of your court time.`
@@ -189,7 +204,7 @@ function explain(x: StructureOption, n: number, inp: GuideInput, cap: number): s
     case "round_robin":
       return n <= 8 ? `With ${n} entries everyone can play everyone — the fairest ranking, and ${goal}.${time}` : `Everyone plays everyone, but ${n} entries means ${x.rounds} rounds.${time}`;
     case "pools":
-      return `${x.pools!.length} pools of ${x.pools!.join("/")} give every player several competitive matches${inp.strength === "similar" ? " (pools can be banded by strength)" : ""}, then ${x.playoff === "placement" ? "positional playoffs (1st v 1st, 2nd v 2nd…) rank the full field" : "the top players meet in semifinals and a final"} — fits as ${goal}.${time}`;
+      return `${x.pools!.length} round-robin pools of ${x.pools!.join("/")} players (up to ${x.rounds} rounds each) give every player several competitive matches${inp.strength === "similar" ? " (pools can be banded by strength)" : ""}, then ${x.playoff === "placement" ? "positional playoffs (1st v 1st, 2nd v 2nd…) rank the full field" : "the top players meet in semifinals and a final"} — fits as ${goal}.${time}`;
     case "knockout":
       return `Finds a champion in ${x.rounds} rounds with only ${n - 1} matches, but half the field plays once and it does not rank everyone.${inp.outcome === "rank" ? " Weak fit for ranking the field." : ""}${time}`;
     case "swiss":

@@ -13,6 +13,33 @@ import {
 import { useMyClub } from "@/hooks/use-club";
 import { MatchHistorySheet } from "./MatchHistorySheet";
 
+const CATEGORY_ACCENT: Record<string, string> = {
+  club: "hsl(var(--member-courts, var(--primary)))",
+  league: "hsl(var(--member-leagues, var(--primary)))",
+  regional: "hsl(var(--member-profile, var(--primary)))",
+  national: "hsl(var(--member-ladder, var(--primary)))",
+};
+
+/** Compact wins-vs-losses ring; a dashed neutral ring when there are no matches. */
+function WinLossDonut({ won, lost }: { won: number; lost: number }) {
+  const total = won + lost;
+  const r = 15, c = 2 * Math.PI * r;
+  const pct = total ? Math.round((won / total) * 100) : 0;
+  return (
+    <svg viewBox="0 0 40 40" className="h-10 w-10 shrink-0 -rotate-90" aria-hidden="true">
+      {total ? (
+        <>
+          <circle cx="20" cy="20" r={r} fill="none" strokeWidth="6" className="stroke-loss" />
+          <circle cx="20" cy="20" r={r} fill="none" strokeWidth="6" className="stroke-win" strokeDasharray={`${(won / total) * c} ${c}`} />
+          <text x="20" y="20" transform="rotate(90 20 20)" textAnchor="middle" dominantBaseline="central" className="fill-foreground text-[10px] font-bold">{pct}%</text>
+        </>
+      ) : (
+        <circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" strokeDasharray="3 3" className="stroke-muted-foreground/40" />
+      )}
+    </svg>
+  );
+}
+
 interface Props {
   memberId: string | null;
 }
@@ -107,25 +134,34 @@ export function MyStatsCard({ memberId }: Props) {
       <div className="grid grid-cols-2 gap-2">
         {STAT_CATEGORY_ORDER.filter((c) => c !== "total").map((c) => {
           const s = stats?.[c];
+          const played = s?.played ?? 0;
+          const accent = CATEGORY_ACCENT[c];
           return (
             <Button variant="ghost"
               key={c}
               onClick={() => setOpenCategory(c)}
-              className="h-auto min-h-20 block rounded-lg bg-muted/40 border border-border p-2.5 text-left hover:bg-muted/60 transition-colors"
+              aria-label={`${STAT_CATEGORY_LABELS[c]} ${played} played, ${s?.won ?? 0} won, ${s?.lost ?? 0} lost`}
+              className="h-auto min-h-20 flex items-center gap-2.5 rounded-lg border border-border border-l-4 p-2.5 text-left transition-colors hover:bg-muted/60"
+              style={{ borderLeftColor: accent, backgroundColor: `color-mix(in hsl, ${accent} 8%, transparent)` }}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {STAT_CATEGORY_LABELS[c]}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+              <WinLossDonut won={s?.won ?? 0} lost={s?.lost ?? 0} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: accent }}>
+                    {STAT_CATEGORY_LABELS[c]}
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <p className="text-base font-heading font-bold text-foreground tabular-nums leading-tight">
+                  {played}
+                  <span className="text-[11px] font-medium text-muted-foreground"> played</span>
+                </p>
+                <p className="text-[11px] tabular-nums">
+                  {played ? (
+                    <><span className="font-semibold text-win">{s?.won ?? 0}W</span><span className="text-muted-foreground"> – </span><span className="font-semibold text-loss">{s?.lost ?? 0}L</span></>
+                  ) : <span className="text-muted-foreground">No matches yet</span>}
+                </p>
               </div>
-              <p className="text-base font-heading font-bold text-foreground tabular-nums leading-tight">
-                {s?.played ?? 0}
-                <span className="text-[11px] font-medium text-muted-foreground"> played</span>
-              </p>
-              <p className="text-[11px] text-muted-foreground tabular-nums">
-                {s?.won ?? 0}W – {s?.lost ?? 0}L · {s?.winRate ?? 0}%
-              </p>
             </Button>
           );
         })}

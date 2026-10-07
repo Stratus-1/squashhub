@@ -97,7 +97,45 @@ Deno.serve(async (req) => {
       console.log("sweep settled stitch session", session.id, session.stitch_request_id, session.amount);
     }
 
-    return json({ ok: true, checked: (sessions || []).length, settled, failed, pending, skipped });
+    // Bar scan-to-pay / tab card payments live on bar_visitor_sales, not in
+    // stitch_payment_sessions. Re-check each pending reference (one sale per
+    // reference) through bar-card-verify, which asks the gateway first and only
+    // settles/releases on a definite gateway answer — never cancels on its own.
+    let barChecked = 0, barPaid = 0;
+    try {
+      const { data: barRows } = await admin.from("bar_visitor_sales")
+        .select("id, payment_reference")
+        .eq("payment_status", "pending")
+        .not("payment_reference", "is", null)
+        .not("payment_reference", "like", "PF-%")
+        .lte("created_at", new Date(now - 2 * 60 * 1000).toISOString())
+        .gte("created_at", new Date(now - MAX_AGE_MS).toISOString())
+        .order("created_at", { ascending: true })
+        .limit(200);
+      const seen = new Set<string>();
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/bar-card-verify`;
+      const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      for (const r of barRows || []) {
+        if (seen.has(r.payment_reference) || seen.size >= BATCH) continue;
+        seen.add(r.payment_reference);
+        try {
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, apikey: key },
+            body: JSON.stringify({ sale_id: r.id }),
+          });
+          const out = await resp.json().catch(() => ({}));
+          barChecked++;
+          if (out?.status === "paid") { barPaid++; console.log("sweep settled bar payment", r.payment_reference); }
+        } catch (e) {
+          console.error("sweep bar check failed", r.id, (e as Error).message);
+        }
+      }
+    } catch (e) {
+      console.error("sweep bar lookup failed", (e as Error).message);
+    }
+
+    return json({ ok: true, checked: (sessions || []).length, settled, failed, pending, skipped, barChecked, barPaid });
   } catch (e) {
     console.error("stitch-sweep-pending-payments fatal", e);
     return json({ error: (e as Error).message }, 500);

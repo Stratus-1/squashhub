@@ -444,6 +444,7 @@ body:has(.admin-contrast) [role="dialog"] {
 }
 /* Disabled remains non-interactive without fading its labels into the photo. */
 .admin-contrast :is(button, input, textarea, select):disabled,
+.admin-contrast fieldset:disabled,
 .admin-contrast [aria-disabled="true"] {
   opacity: 1;
   color: hsl(var(--muted-foreground));

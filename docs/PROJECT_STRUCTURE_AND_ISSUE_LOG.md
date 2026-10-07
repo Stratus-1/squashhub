@@ -2658,3 +2658,6 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 - Doubles positions now also write `rubber_type='doubles'`, `*_player2_name` and both `*_member_id`s (resolved from pairs official on the fixture date; label stays the display name). Helper `src/lib/leagues/doubles-rubber-columns.ts`.
 - Manual "Enter result" overlay and setup save drop 0–0 games (`dropEmptyGames`).
 - Every scorecard write sets `updated_at`. Frozen (scored) rows unchanged by DB trigger. Tests: `src/test/doubles-rubber-columns.test.ts`.
+
+### 2026-10-07 — League Team Standings hidden when rounds lacked season link
+Nelspruit Doubles League showed "No league rounds set up yet" despite 3 submitted results: its only round had `season_id` NULL while a 2026 season existed, and standings only read fixtures through season-linked rounds. Fix: standings now read all league fixtures in the season (season_id match, or unlinked and dated in the season window) and use rounds only for grouping (`src/lib/leagues/team-standings.ts`, tests `src/test/team-standings.test.ts`). No data changed.

@@ -22,6 +22,7 @@ type Props = {
   associationId: string;
   platformAssocId?: string | null;
   clubLeagues: ClubLeague[];
+  isDoubles?: boolean;
 };
 
 type PlayerRow = {
@@ -39,7 +40,7 @@ type PlayerRow = {
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-export function IndividualStandingsTab({ clubId, associationId, platformAssocId, clubLeagues }: Props) {
+export function IndividualStandingsTab({ clubId, associationId, platformAssocId, clubLeagues, isDoubles }: Props) {
   const queryClient = useQueryClient();
   const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
 
@@ -218,7 +219,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             (m) => (m.club_member_number || "").toUpperCase() === key,
           );
           const row: PlayerRow = existing || {
-            player_code: code ? key : "",
+            player_code: key,
             name: member?.name || name || key,
             ladder_position: member?.ladder_position ?? null,
             played: 0,
@@ -364,7 +365,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
         <Card className="p-8 text-center">
           <Users className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground text-sm">
-            No individual results recorded yet for {seasonYear}.
+            No {isDoubles ? "pair" : "player"} results recorded yet for {seasonYear}.
           </p>
         </Card>
       ) : (
@@ -394,7 +395,9 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
                   <TableCell className="text-xs">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{r.name}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{r.player_code}</span>
+                      {!r.player_code.startsWith("NAME:") && (
+                        <span className="font-mono text-[10px] text-muted-foreground">{r.player_code}</span>
+                      )}
                       {r.team_codes.size > 0 && (
                         <div className="flex gap-1 flex-wrap">
                           {Array.from(r.team_codes).map((tc) => (

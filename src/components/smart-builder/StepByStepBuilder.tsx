@@ -762,8 +762,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       {s.mode === "scheduled" && <div className="space-y-2">
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1"><Label>Date</Label><Input type="date" aria-label="Scheduled date" value={s.date} onChange={(e) => updStage(s.id, { date: e.target.value })} /></div>
-          <div className="space-y-1"><Label>From</Label><Input type="time" step={300} aria-label="Session from" value={s.from} onChange={(e) => updStage(s.id, { from: e.target.value })} /></div>
-          <div className="space-y-1"><Label>To</Label><Input type="time" step={300} aria-label="Session to" value={s.to} onChange={(e) => updStage(s.id, { to: e.target.value })} /></div>
+          <div className="space-y-1"><Label>From</Label>{slotSelect("Session from", s.from, (v) => updStage(s.id, { from: v }), slotStarts)}</div>
+          <div className="space-y-1"><Label>To</Label>{slotSelect("Session to", s.to, (v) => updStage(s.id, { to: v }), s.from ? slotEnds.filter((t) => t > s.from) : slotEnds)}</div>
         </div>
         <Label>{s.phase === "playoff" && a.playoffSync === true && !s.unit ? "Courts reserved centrally for this date" : "Courts for this stage"}</Label>
         {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {

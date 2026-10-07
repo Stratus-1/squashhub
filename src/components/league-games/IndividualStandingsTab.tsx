@@ -36,6 +36,8 @@ type PlayerRow = {
   gamesLost: number;
   diff: number;
   team_codes: Set<string>;
+  /** Team position (1..5) this row's stats were accumulated at; null for the overall view. */
+  position: number | null;
 };
 
 const CURRENT_YEAR = new Date().getFullYear();

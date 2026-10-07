@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronLeft, LogOut, RefreshCw, User, Settings as SettingsIcon } from "lucide-react";
+import { ChevronLeft, LogOut, RefreshCw, User, CircleHelp, Settings as SettingsIcon } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
@@ -44,6 +44,7 @@ interface PageHeaderProps {
   showBack?: boolean;
   backTo?: string;
   actionsOnly?: boolean;
+  showHelp?: boolean;
 }
 
 export function PageHeader({
@@ -56,6 +57,7 @@ export function PageHeader({
   showBack,
   backTo,
   actionsOnly = false,
+  showHelp = false,
 }: PageHeaderProps) {
   const { user, signOut } = useAuth();
   const { activeMember } = useMemberContext();
@@ -114,9 +116,9 @@ export function PageHeader({
 
   return (
     <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">
-      <div className="flex items-center justify-between gap-3">
+      <div className={`flex items-center justify-between gap-3 ${showHelp ? "flex-wrap md:flex-nowrap" : ""}`}>
         {!actionsOnly && (
-        <div className="min-w-0 flex-1 flex items-start gap-2">
+        <div className={`min-w-0 flex-1 flex items-start gap-2 ${showHelp ? "basis-full md:basis-auto" : ""}`}>
           {shouldShowBack ? (
             <Button
               type="button"
@@ -144,7 +146,7 @@ export function PageHeader({
         )}
 
         {user && (
-          <div className="ml-auto flex items-center gap-1.5 shrink-0">
+          <div className={`ml-auto flex items-center gap-1.5 shrink-0 ${showHelp ? "member-header-actions max-md:w-full" : ""}`}>
             {isClubAdminArea && (
               <Button
                 type="button"
@@ -158,6 +160,11 @@ export function PageHeader({
               </Button>
             )}
             <TenantSwitcher />
+            {showHelp && (
+              <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground" aria-label="Help & Tutorials" title="Help & Tutorials" onClick={() => navigate("/help")}>
+                <CircleHelp className="h-5 w-5" />
+              </Button>
+            )}
             <ThemeToggle />
             {isStandalonePWA() && (
               <Button

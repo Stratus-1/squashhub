@@ -1,3 +1,6 @@
+### 2026-10-07 — Member mobile controls still split into oversized category blocks
+- Compact controls now share one wrapping strip across access/gadget categories, with 48px raised push buttons and names beneath. Removed mobile confirmations and redundant action lines; taps use existing command/access hooks immediately. Desktop and booking-light information unchanged; toggle colour follows relay readings, unavailable stays neutral, and registry pulse success feedback requires a successful command. No hardware/configuration/data changes; preview only.
+
 ### 2026-10-06 — Club ladder member visibility control was outside ladder settings
 - The existing member-facing ladder visibility switch was available under Features, while admins naturally looked for it under Club Ladder settings. The same switch now appears at the top of Ladder & Challenge Rules and saves immediately; switching it off hides member access while club admins retain the ladder and all arrangement tools. The Features control stays in sync, and no ladder positions, challenge rules or history are changed. Preview only.
 

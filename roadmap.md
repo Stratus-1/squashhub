@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Compact member mobile device controls only; preserve visibility/actions and confirm manual commands; test both themes without operating live hardware.
 - [x] Member home first pass: mobile duplicate tiles removed only where shortcuts exist; coloured bottom icons, earlier stats and dynamic controls preserved. Riverside 320/390/768/1280px both themes checked; existing localhost club-context reset requires ?club=riverside on Bar destination. Preview only; no live data/device changes.
 - [x] Member help entry: compact 44px header help icon replaces the main tile on mobile/desktop; existing /help verified. Club Admin permission checks unchanged.
 - [x] Club Admin contrast: scoped light/dark text/surfaces and locked fields; 13 regressions pass; signed-in Riverside Features, navigation, Banking and Settings checked in both themes on desktop/mobile. Photo/icons/order/behaviour preserved; no live data changes or publishing.

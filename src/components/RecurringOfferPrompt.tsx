@@ -34,28 +34,26 @@ export default function RecurringOfferPrompt({ club, clubMemberId }: { club: any
     },
   });
 
-  const key = clubMemberId ? `sh.recurringOffer.dismissed.${clubMemberId}` : "";
+  // Shown on every visit (once per app session) until a monthly plan exists
+  // or the balance is settled — it can be closed for now, never permanently.
+  const key = clubMemberId ? `sh.recurringOffer.seen.${clubMemberId}` : "";
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!data || !key || data.hasPlan || !arrearsOfferOpen(settings, data.uncovered)) return;
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const { at, amount } = JSON.parse(raw);
-        // Re-prompt after a week, or sooner if the balance has grown.
-        if (Date.now() - at < DISMISS_DAYS * 864e5 && data.uncovered <= Number(amount) + 0.005) return;
-      }
-    } catch { /* ignore */ }
+    try { if (sessionStorage.getItem(key)) return; } catch { /* ignore */ }
     setOpen(true);
   }, [data, key, settings]);
 
   if (!data) return null;
   const dismiss = () => {
-    try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), amount: data.uncovered })); } catch { /* ignore */ }
+    try { sessionStorage.setItem(key, "1"); } catch { /* ignore */ }
     setOpen(false);
   };
-  const go = (path: string) => { setOpen(false); navigate(path); };
+  const until = settings?.arrears_until
+    ? new Date(`${settings.arrears_until}T00:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+  const go = (path: string) => { dismiss(); navigate(path); };
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : dismiss())}>
@@ -64,23 +62,33 @@ export default function RecurringOfferPrompt({ club, clubMemberId }: { club: any
         <DialogHeader className="space-y-1.5">
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5 shrink-0" />
-            Pay your outstanding balance monthly
+            Outstanding balance — action required
           </DialogTitle>
-          <DialogDescription className="text-foreground/90">
-            You have{" "}
-            <span className="inline-block rounded bg-destructive/10 px-1.5 py-0.5 font-bold text-destructive">
-              {money(data.uncovered)} outstanding
-            </span>{" "}
-            (bar, court lights, bookings, tournaments, opening balance and other charges).
-            {data.hasFeePlan
-              ? " Your club lets you add it to your existing monthly payment. Your membership amount stays the same, and the extra stops once the balance is paid."
-              : " Your club lets you spread it over a few months with a monthly payment."}
-            {settings?.arrears_until ? ` Offer open until ${settings.arrears_until}.` : ""}
+          <DialogDescription asChild>
+            <div className="space-y-2 text-foreground/90">
+              <p>
+                Your account shows an outstanding balance of{" "}
+                <span className="inline-block rounded bg-destructive/10 px-1.5 py-0.5 font-bold text-destructive">{money(data.uncovered)}</span>.
+                This amount must be settled.
+              </p>
+              <p>You can settle it in one of two ways:</p>
+              <ul className="list-disc space-y-1 pl-5">
+                <li><strong>Once-off:</strong> top up your account with the full amount (EFT with proof of payment, or pay online).</li>
+                <li>
+                  <strong>Monthly:</strong>{" "}
+                  {data.hasFeePlan
+                    ? "add it to your existing monthly payment — the extra stops once the balance is paid."
+                    : `spread it over up to ${settings?.arrears_max_months ?? ""} months with a monthly debit order.`}
+                  {until ? ` This option is available until ${until}.` : ""}
+                </li>
+              </ul>
+              <p className="text-xs text-muted-foreground">This reminder will show each time you open the app until the balance is paid or a monthly payment is set up.</p>
+            </div>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <Button variant="ghost" onClick={dismiss}>Dismiss</Button>
-          <Button variant="outline" onClick={() => go("/my-account")}>Go to My Account</Button>
+          <Button variant="ghost" onClick={dismiss}>Remind me next time</Button>
+          <Button variant="outline" onClick={() => go("/my-account")}>Top up once-off</Button>
           <Button variant="destructive" onClick={() => go("/my-account#recurring-payments")}>
             {data.hasFeePlan ? "Increase monthly payment" : "Set up monthly payment"}
           </Button>

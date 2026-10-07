@@ -2665,3 +2665,6 @@ Nelspruit Doubles League showed "No league rounds set up yet" despite 3 submitte
 
 ### 2026-10-07 — Club Admin setup steps still showed rounded coloured buttons
 - Banking alone opted into connected steps; other setup pages retained default pills. ClubAdmin now provides a presentation-only scope selecting connected steps throughout its workspace, with responsive grids for different step counts. Shared association consumers retain pills; callbacks, fields and permissions unchanged. Preview only.
+
+### 2026-10-07 — Club Admin light/dark contrast
+- Global muted text and translucent court surfaces made menu descriptions/content hard to read, especially in dark mode. Added local Club Admin semantic text/surface tokens, near-opaque photo wash, readable disabled/placeholders and switch boundaries; Features readiness uses semantic status colours. Navigation order, coloured icons, callbacks, permissions and live data remain unchanged. Preview only; both-theme checks recorded after validation.

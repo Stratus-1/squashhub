@@ -313,7 +313,7 @@ export default function ClubAdmin() {
   }));
 
   return (
-    <div className="min-h-screen pb-20 text-[13px]">
+    <div className="admin-contrast min-h-screen pb-20 text-[13px]">
       <PageHeader title={club.name} subtitle="Club Administration" />
       <main className="w-full space-y-3 px-3 py-3 md:space-y-5 md:px-4 md:py-5 lg:px-5">
         {activeTabMeta && (
@@ -359,7 +359,7 @@ export default function ClubAdmin() {
           )}
         </div>
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-          <SheetContent side="bottom" className="h-[85dvh] rounded-t-2xl p-0 md:hidden">
+          <SheetContent side="bottom" className="admin-contrast h-[85dvh] rounded-t-2xl p-0 md:hidden">
             <SheetHeader className="border-b px-5 py-4 text-left">
               <SheetTitle>Club administration</SheetTitle>
               <SheetDescription>Choose the area you want to manage.</SheetDescription>

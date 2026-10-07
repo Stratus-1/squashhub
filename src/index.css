@@ -393,3 +393,61 @@ input[type="month"]:hover {
 
 /* Release page-level width caps, not readable text, fields or dialog widths. */
 .admin-pilot .admin-workspace > [class*="max-w-"] { max-width: none; }
+
+/* Readability tokens are local to Club Admin, including portalled controls.
+   Keep the existing court image atmospheric beneath a near-opaque wash. */
+.admin-contrast,
+body:has(.admin-contrast) [data-radix-popper-content-wrapper],
+body:has(.admin-contrast) [role="dialog"] {
+  --background: 220 15% 97%;
+  --foreground: 220 25% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 12%;
+  --muted: 220 12% 93%;
+  --muted-foreground: 220 12% 35%;
+  --secondary: 220 12% 91%;
+  --secondary-foreground: 220 25% 18%;
+  --primary: 220 65% 28%;
+  --primary-foreground: 0 0% 100%;
+  --input: 220 12% 52%;
+  --ring: 220 65% 28%;
+  --warning-foreground: 32 85% 27%;
+  --win: 155 65% 27%;
+  --admin-surface-opacity: .96;
+}
+.dark .admin-contrast,
+.dark body:has(.admin-contrast) [data-radix-popper-content-wrapper],
+.dark body:has(.admin-contrast) [role="dialog"] {
+  --background: 220 22% 10%;
+  --foreground: 220 15% 96%;
+  --card: 220 18% 15%;
+  --card-foreground: 220 15% 96%;
+  --popover: 220 18% 15%;
+  --popover-foreground: 220 15% 96%;
+  --muted: 220 18% 20%;
+  --muted-foreground: 220 12% 76%;
+  --secondary: 220 18% 22%;
+  --secondary-foreground: 220 15% 92%;
+  --primary: 215 75% 75%;
+  --primary-foreground: 220 25% 10%;
+  --input: 220 12% 55%;
+  --border: 220 15% 32%;
+  --ring: 215 75% 75%;
+  --warning-foreground: 40 95% 75%;
+  --win: 155 55% 72%;
+}
+.admin-contrast {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background) / var(--admin-surface-opacity));
+}
+/* Disabled remains non-interactive without fading its labels into the photo. */
+.admin-contrast :is(button, input, textarea, select):disabled,
+.admin-contrast [aria-disabled="true"] {
+  opacity: 1;
+  color: hsl(var(--muted-foreground));
+}
+.admin-contrast :is(input, textarea)::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+.admin-contrast [role="switch"] { border-color: hsl(var(--input)); }
+.admin-contrast [role="switch"] > span { border: 1px solid hsl(var(--input)); }

@@ -258,6 +258,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ["internal-standings", platformAssocId] });
+          queryClient.invalidateQueries({ queryKey: ["internal-standings-season", associationId] });
         }
       )
       .subscribe();

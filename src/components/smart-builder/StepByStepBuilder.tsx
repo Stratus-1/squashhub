@@ -38,7 +38,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
-import { StructureGuidePanel, RecommendationCard } from "./StructureGuidePanel";
+import { StructureGuidePanel, RecommendationCard, guideRecommendations } from "./StructureGuidePanel";
 import { guideEntryCounts, guideCountText } from "./guide-entry-counts";
 import type { RegLite } from "@/lib/smart-builder/step-draw";
 import { evaluateStructures, materiallyDifferent, type GuideAnswers, type StructureOption } from "@/lib/smart-builder/structure-guide";
@@ -849,7 +849,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const catIsDoubles = (c: string) => { const us = catUnits(c); return us.length > 0 && us.every((u) => u.disc === "doubles"); };
   const catUnitWord = (c: string) => catIsDoubles(c) ? "pairs" : "players";
   const catEstimate = (c: string) => Number(guide.expected?.[c]) || catUnits(c).reduce((t, u) => t + (Number(a.unitEntries?.[u.key]) || 0), 0);
-  const catActual = (c: string) => { const ids = new Set<string>(); catUnits(c).forEach((u) => pickIds.forEach((id) => { if (placesFor(id).includes(u.key)) ids.add(id); })); return catIsDoubles(c) ? Math.ceil(ids.size / 2) : ids.size; };
+  const catActual = (c: string) => Math.max(catPicked(c), catIsDoubles(c) ? Math.ceil((guideCounts[c]?.total ?? 0) / 2) : (guideCounts[c]?.total ?? 0));
+  const catPicked = (c: string) => { const ids = new Set<string>(); catUnits(c).forEach((u) => pickIds.forEach((id) => { if (placesFor(id).includes(u.key)) ids.add(id); })); return catIsDoubles(c) ? Math.ceil(ids.size / 2) : ids.size; };
   const catCurrent = (c: string) => { const f = formatFor(c); return f.kind ? formatDetail(f) : undefined; };
   const setGuide = (g: GuideAnswers) => {
     const ue = { ...(a.unitEntries ?? {}) };
@@ -878,13 +879,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Categories whose picked field materially differs from the estimate and hasn't been reviewed yet. */
   const fieldReview = cats.map((c) => ({ c, est: catEstimate(c), act: catActual(c) }))
     .filter((r) => materiallyDifferent(r.est, r.act) && guide.reviewedActual?.[r.c] !== r.act);
+  const fieldRecs = guideRecommendations(cats, guide, isChamps, (c) => catActual(c) >= 2 ? catActual(c) : catEstimate(c));
   const renderFieldReview = () => fieldReview.length === 0 ? null : (
     <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="field-review">
       <div className="text-sm font-semibold">Your actual field differs from the estimate. Review the recommended tournament structure.</div>
       <p className="text-xs text-muted-foreground">Your chosen structure is not changed unless you click "Use recommendation".</p>
       {fieldReview.map(({ c, est, act }) => (
         <div key={c} className="space-y-1">
-          <RecommendationCard cat={c} n={act} unit={catUnitWord(c)} note={`estimated ${est}, actual`} options={evaluateStructures({ n: act, outcome: guide.outcome, strength: guide.strength, time: guide.time, isChamps })}
+          <RecommendationCard cat={c} n={act} unit={catUnitWord(c)} note={`estimated ${est}, actual`} share={fieldRecs.byCat[c]?.share} options={fieldRecs.byCat[c]?.options ?? evaluateStructures({ n: act, outcome: guide.outcome, strength: guide.strength, time: guide.time, isChamps })}
             applied={false} current={catCurrent(c)} onUse={(o) => applyStructure(c, o, { reviewedActual: { ...(guide.reviewedActual ?? {}), [c]: act } })} onOther={() => go("Format")} />
           <Button type="button" size="sm" variant="ghost" onClick={() => setA({ ...a, guide: { ...guide, reviewedActual: { ...(guide.reviewedActual ?? {}), [c]: act } } })}>Keep my current structure for {c}</Button>
         </div>
@@ -1159,7 +1161,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
 
           {cur === "Guide" && (
-            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats} countState={guideCountState} />
+            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats} countState={guideCountState} actualOf={catActual}
+              review={initialStep === "Guide" && tournamentId ? { onDone: () => go("Summary") } : undefined} />
           )}
 
           {cur === "Subcategories" && (

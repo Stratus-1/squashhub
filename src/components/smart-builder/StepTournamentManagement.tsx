@@ -27,7 +27,7 @@ const money = (c: number) => `R${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
  * Payment status comes from club_champs_registrations.status (the tournament's normal payment flow).
  */
 export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, onBack }: {
-  clubId: string; tournamentId: string; onEditSetup: (at?: "Summary" | "Messaging") => void; onBack: () => void;
+  clubId: string; tournamentId: string; onEditSetup: (at?: "Summary" | "Messaging" | "Guide") => void; onBack: () => void;
 }) {
   const [h, setH] = useState<Handover | null>(() => loadHandover(clubId, tournamentId));
   const [rebuilding, setRebuilding] = useState(() => !loadHandover(clubId, tournamentId));
@@ -186,8 +186,9 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
               return <>
                 {payWarn && <p className="text-destructive">{payWarn} — this doesn't block the draw because entries are confirmed without payment.</p>}
                 {why.length
-                  ? <><Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button><p className="text-destructive">Blocked because: {why.join(" · ")}. Decide {why.length === 1 ? "it" : "them"} in setup to unlock.</p></>
+                  ? <><Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button><Button variant="outline" className="ml-2" onClick={() => onEditSetup("Guide")}>Review / Finalise Structure & Format</Button><p className="text-destructive">Blocked because: {why.join(" · ")}. Decide {why.length === 1 ? "it" : "them"} in setup to unlock.</p></>
                   : <><Button onClick={() => { if (!payWarn || confirm(`${payWarn}. Continue anyway?`)) advance("finalise", "generate"); }}>Continue to Generate draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Button>
+                      <Button variant="outline" className="ml-2" onClick={() => onEditSetup("Guide")}>Review / Finalise Structure & Format</Button>
                       <p className="text-muted-foreground">Prerequisites are met. Next you confirm the final format, preview the draw and generate it.</p></>}
               </>;
             })()}

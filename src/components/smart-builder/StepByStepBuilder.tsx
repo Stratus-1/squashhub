@@ -1140,6 +1140,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "Subcategories" && (
             <>
               <Q t="Do any categories need subcategories?" h="Optional — e.g. Men's could be split into Group A, Group B, Group C. Ladies can stay as one group." />
+              {cats.some((c) => guide.applied?.[c] === "pools") && <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">From the structure guide: {cats.filter((c) => guide.applied?.[c] === "pools").join(", ")} will use round-robin pools. Pools are made automatically inside a category from real entries — add subcategories only if you want separate strength groups (e.g. A/B), each with its own winner.</p>}
               {a.playType === "both" && <p className="text-xs text-muted-foreground">You chose Singles and Doubles — pick one for each category, or for each subcategory if it's split. Singles and doubles entries are always kept apart.</p>}
               <div className="space-y-3">
                 {cats.map((cat) => {
@@ -1837,6 +1838,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "ExpEntries" && (
             <>
               <Q t="How many entries do you expect in each group?" h="Rough guesses are fine — they stay provisional until registrations close." />
+              {cats.some((c) => Number(guide.expected?.[c])) && <p className="text-xs text-muted-foreground">Structure guide estimates: {cats.filter((c) => Number(guide.expected?.[c])).map((c) => `${c} ~${guide.expected![c]}`).join(", ")}.</p>}
               <p className="text-xs text-muted-foreground">Categories and subcategories are not pools. A group like Men's A may later be split into one or more pools once real entries are known.</p>
               <div className="space-y-2">{units.map((u) => (
                 <div key={u.key} className="flex items-center gap-2">

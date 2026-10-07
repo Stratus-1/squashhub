@@ -9,7 +9,7 @@
 ## Before editing
 - Read relevant docs and issue history before touching federation, mobile, booking, payment or device flows.
 - Trace route → context → hooks → `src/lib` → tables/RLS/RPCs → Edge Functions → provider callbacks.
-- Install dependencies proactively, preferably locally; if external auth fails, stop and request re-authentication.
+- Install dependencies locally when possible; if external auth fails, stop and request re-authentication.
 
 <!-- LOVABLE:BEGIN -->
 - Scope member-home and club bottom-nav presentation locally; deduplicate only mobile shortcuts, preserving desktop/association access and domain hooks.

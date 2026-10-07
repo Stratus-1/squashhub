@@ -390,3 +390,6 @@ input[type="month"]:hover {
 .admin-pilot .bg-card .bg-card, .admin-pilot .border .border.bg-card { background: transparent; }
 .admin-pilot table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); }
 .admin-pilot :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+/* Release page-level width caps, not readable text, fields or dialog widths. */
+.admin-pilot .admin-workspace > [class*="max-w-"] { max-width: none; }

@@ -45,13 +45,15 @@ import { useMyPermissionsStatus, type PermissionSlug } from "@/hooks/use-club-pe
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
-import { CORE_SETUP_KEYS, isTabVisible, type Capability } from "@/lib/capabilities";
+import { isTabVisible, type Capability } from "@/lib/capabilities";
 import { useClubCapabilityRows, useCapabilities } from "@/hooks/use-club-capabilities";
 import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ClubAdminNavigation, type AdminNavigationItem } from "@/components/club-admin/ClubAdminNavigation";
 
 
 type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability; startHere?: boolean };
@@ -180,6 +182,7 @@ export default function ClubAdmin() {
   const { enabled: enabledCaps, hasRows: hasCapRows, isLoading: capsLoading } = useCapabilities(club?.id);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [compactNav, setCompactNav] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get
@@ -299,64 +302,24 @@ export default function ClubAdmin() {
 
   const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
 
-  // Explicit core progress — optional modules are reported per tile instead.
-  const coreKeys = CORE_SETUP_KEYS.filter(k => visibleSetup.concat(visibleOps).some(t => t.value === k));
-  const coreDone = coreKeys.filter(k => setupStatus[k as keyof SetupStatusMap] === "complete").length;
-
-  const renderTabRow = (tab: AdminTab, showStatus = false, closeMobileNav = false) => {
-    const Icon = tab.icon;
-    const status = showStatus ? setupStatus[tab.value as keyof SetupStatusMap] : undefined;
-    const isComplete = status === "complete";
-    const active = activeTab === tab.value;
-    return (
-      <button
-        key={tab.value}
-        type="button"
-        aria-current={active ? "page" : undefined}
-        onClick={() => {
-          setActiveTab(tab.value);
-          if (closeMobileNav) setMobileNavOpen(false);
-        }}
-        className={cn(
-          "group flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-          active && "bg-muted",
-        )}
-      >
-        <Icon className={cn("size-4 shrink-0 text-muted-foreground", active && "text-primary")} strokeWidth={1.75} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{tab.label}</span>
-          <span className="block truncate text-xs text-muted-foreground">{TAB_DESCRIPTIONS[tab.value] ?? ""}</span>
-        </span>
-        {showStatus && !isComplete && (
-          <span className="shrink-0 rounded-full border border-warning/30 px-2 py-0.5 text-[10px] font-medium text-warning-foreground bg-warning/10">Needs setup</span>
-        )}
-        <span aria-hidden className={cn("shrink-0 text-xs text-muted-foreground/60 transition-colors group-hover:text-foreground", active && "text-primary")}>→</span>
-      </button>
-    );
-  };
-
-  const renderGroup = (title: string, tabs: AdminTab[], withStatus: boolean, closeMobileNav = false, meta?: string) => (
-    <section aria-label={title}>
-      <div className="flex items-baseline justify-between px-1 pb-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
-        {meta && <span className="text-[11px] text-muted-foreground">{meta}</span>}
-      </div>
-      <div className="divide-y overflow-hidden rounded-lg border bg-card">
-        {tabs.map((tab) => renderTabRow(tab, withStatus && !tab.noStatus, closeMobileNav))}
-      </div>
-    </section>
-  );
+  const navigationItems = (tabs: AdminTab[], withStatus = false): AdminNavigationItem[] => tabs.map(tab => ({
+    value: tab.value,
+    label: tab.label,
+    icon: tab.icon,
+    description: TAB_DESCRIPTIONS[tab.value] ?? "",
+    needsSetup: withStatus && !tab.noStatus && setupStatus[tab.value as keyof SetupStatusMap] !== "complete",
+  }));
 
   return (
     <div className="min-h-screen pb-20 text-[13px]">
       <PageHeader title={club.name} subtitle="Club Administration" />
-      <main className="mx-auto w-full max-w-7xl space-y-3 px-3 py-3 md:space-y-6 md:px-4 md:py-6 lg:px-6">
+      <main className="w-full space-y-3 px-3 py-3 md:space-y-5 md:px-4 md:py-5 lg:px-5">
         {activeTabMeta && (
           <section className="sticky top-2 z-20 md:hidden">
-            <button
+            <Button variant="ghost"
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="flex min-h-14 w-full items-center gap-3 rounded-xl border bg-card/95 px-3 py-2 text-left shadow-sm backdrop-blur"
+              className="flex h-auto min-h-14 w-full items-center gap-3 rounded-md border bg-card/95 px-3 py-2 text-left shadow-sm backdrop-blur"
               aria-label="Choose admin workspace"
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -367,25 +330,25 @@ export default function ClubAdmin() {
                 <span className="block truncate text-sm font-semibold">{activeTabMeta.label}</span>
               </span>
               <ChevronsUpDown className="size-4 text-muted-foreground" />
-            </button>
+            </Button>
           </section>
         )}
 
-        <div className="md:grid md:grid-cols-[280px_minmax(0,1fr)] md:items-start md:gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <nav aria-label="Club administration" className="hidden space-y-5 md:sticky md:top-4 md:block md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:pr-1">
-            {visibleSetup.length > 0 && renderGroup("Setup & configuration", visibleSetup, true, false, `${coreDone}/${coreKeys.length} core done`)}
-            {visibleOps.length > 0 && renderGroup("Operations", visibleOps, false)}
+        <div className={cn("md:grid md:items-start md:gap-4 lg:gap-5", compactNav ? "md:grid-cols-[56px_minmax(0,1fr)]" : "md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)]")}>
+          <nav aria-label="Club administration" className="hidden md:sticky md:top-4 md:block md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:pr-1">
+            <ClubAdminNavigation operations={navigationItems(visibleOps)} setup={navigationItems(visibleSetup, true)} activeTab={activeTab}
+              onSelect={setActiveTab} compact={compactNav} onCompactChange={() => setCompactNav(value => !value)} />
           </nav>
 
           {activeTabMeta && (
             <section className="admin-pilot min-w-0">
               <header className="hidden items-center justify-between gap-3 border-b pb-4 md:flex">
                 <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold tracking-tight">{activeTabMeta.label}</h2>
+                  <h2 className="truncate text-lg font-semibold">{activeTabMeta.label}</h2>
                   <p className="text-sm text-muted-foreground">{TAB_DESCRIPTIONS[activeTabMeta.value] ?? "Manage this area of your club."}</p>
                 </div>
               </header>
-              <div className="pt-1 md:pt-4 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_h3]:text-sm [&_h3]:font-semibold">
+              <div className="admin-workspace pt-1 md:pt-4 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_h3]:text-sm [&_h3]:font-semibold">
                 {renderContent()}
               </div>
             </section>
@@ -399,8 +362,8 @@ export default function ClubAdmin() {
             </SheetHeader>
             <ScrollArea className="h-[calc(85dvh-85px)]">
               <div className="space-y-5 p-3 pb-8">
-                {visibleSetup.length > 0 && renderGroup("Setup & configuration", visibleSetup, true, true, `${coreDone}/${coreKeys.length}`)}
-                {visibleOps.length > 0 && renderGroup("Operations", visibleOps, false, true)}
+                <ClubAdminNavigation operations={navigationItems(visibleOps)} setup={navigationItems(visibleSetup, true)} activeTab={activeTab}
+                  onSelect={value => { setActiveTab(value); setMobileNavOpen(false); }} />
               </div>
             </ScrollArea>
           </SheetContent>

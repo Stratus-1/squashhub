@@ -438,7 +438,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-4 mt-4">
-      <SetupSteps steps={steps} value={step} onChange={setStep} />
+      <SetupSteps steps={steps} value={step} onChange={setStep} variant="connected" />
       {step === "methods" && (
       <Card className="p-4 space-y-3">
         <h3 className="text-sm font-semibold">Accepted Payment Methods</h3>

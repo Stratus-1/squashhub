@@ -1,19 +1,18 @@
 # SquashHub AI Development Guide
 
-Multi-tenant squash operations platform.
-
 - Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
 - Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/AGENTS.md` (Help Center feed).
 - Step-by-Step Beta rules: see `src/components/smart-builder/AGENTS.md`.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
-- Commands: `npm run dev|test|lint|build|cap:sync`; review native sync output.
+- Commands: `npm run dev|test|lint|build|cap:sync`; review native sync.
 
 ## Before editing
 - Read relevant docs and issue history before touching federation, mobile, booking, payment or device flows.
 - Trace route → context → hooks → `src/lib` → tables/RLS/RPCs → Edge Functions → provider callbacks.
-- Install needed dependencies proactively (prefer local); if an external connection loses auth, stop and ask the user to re-authenticate.
+- Install dependencies proactively, preferably locally; if external auth fails, stop and request re-authentication.
 
 ## Architecture rules
+- Scope admin layout to ClubAdmin and opt-in setup variants; preserve member/association screens.
 - Diamond fixtures use `tournamentMatchDays` in `schedule-order.ts` for date headings and time/court order, never generated rounds; why: division weeks span different nights. Display only; saved fixtures unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.
@@ -22,7 +21,7 @@ Multi-tenant squash operations platform.
 - Tournament court-slot ownership comes from the structured stage rule or explicit legacy club mode without a linked player booking, never from saved date/time alone; why: player-booked fixtures must retain rescheduling and their play-by deadline.
 - Payment callbacks (Stitch, Yoco) retry/arrive out of order: handlers idempotent; server verification is authoritative; billing/ledger changes must be auditable.
 - Preserve web, PWA, Android and iOS behaviour; deep links, OAuth, push and payment returns need platform testing; native config/signing is sensitive.
-- Integrations: identify source of truth and credential owner, preserve external IDs/idempotency keys, document env vars by name only, log without secrets/PII.
+- Integrations: identify authority and credential owner; preserve external IDs/idempotency keys; document env names only; never log secrets/PII.
 - Supabase → GCP migration is incremental: one writable authority per domain per phase, authenticated service APIs, outbox/replayable workers; don't move live marking or booking without measuring realtime needs.
 
 ## Testing and secrets

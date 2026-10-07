@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Club Admin refinements: operations-first collapsible navigation, wide workspace and connected banking steps; four regression tests, preview build and read-only Riverside checks at 390/768/1024/1280/1920px. No publishing/data changes.
 - [x] Diamond fixtures: chronological match-day headings, no round grouping; preserve players, positions and schedules. Preview only. Verified signed-in Durbanville: all ten day headings ordered, 270 games, no runtime errors; three regression tests pass.
 
 - [x] Make invitation event lists factual rather than implying every recipient qualifies; retain existing links and entry eligibility. Preview only.

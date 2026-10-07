@@ -106,8 +106,8 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Member Communications", icon: Mail, permission: "communications", color: "blue" },
-  { value: "updates", label: "Updates from SquashHub", icon: Megaphone, permission: "communications", color: "rose", noStatus: true },
   { value: "emails", label: "Message Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
+  { value: "updates", label: "Updates from SquashHub", icon: Megaphone, permission: "communications", color: "rose", noStatus: true },
   { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   // AI Assistant tab hidden while the feature is being reworked.
 ];

@@ -11,6 +11,8 @@ const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
 interface PendingSale {
   saleId: string;
   code: string;
+  /** Member open-tab key to clear once the card payment is confirmed. */
+  openTabKey?: string | null;
 }
 
 export default function BarPaymentSuccess() {
@@ -48,6 +50,7 @@ export default function BarPaymentSuccess() {
       const st = (res as { status?: string } | null)?.status;
       if (st === "paid") {
         localStorage.removeItem(PENDING_SALE_KEY);
+        if (parsed.openTabKey?.startsWith("sh.bar.openTab.")) localStorage.removeItem(parsed.openTabKey);
         setStatus("paid");
         return;
       }

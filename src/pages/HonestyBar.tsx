@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Beer, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode } from "lucide-react";
+import { Beer, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +21,7 @@ import { Link } from "react-router-dom";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
+import { addToTab, loadOpenTab, openTabStorageKey, pruneTab, saveOpenTab, tabCount } from "@/lib/bar/open-tab";
 import { useClubCurrency } from "@/hooks/use-currency";
 import {
   BAR_CATEGORY_EMOJI,
@@ -68,7 +67,18 @@ export default function HonestyBar() {
   const money = (n: number) => fmtMoney(n, 2);
 
 
+  // OPEN tab for this visit — device-local, never posted until settled.
+  const tabKey = clubId && memberId ? openTabStorageKey(clubId, memberId) : null;
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!tabKey) return;
+    setCart(loadOpenTab(tabKey));
+    setLoadedKey(tabKey);
+  }, [tabKey]);
+  useEffect(() => {
+    if (tabKey && loadedKey === tabKey) saveOpenTab(tabKey, cart);
+  }, [cart, tabKey, loadedKey]);
   const [submitting, setSubmitting] = useState(false);
   const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
   const [counterSaleOpen, setCounterSaleOpen] = useState(false);
@@ -144,26 +154,32 @@ export default function HonestyBar() {
     enabled: !!clubId && canSeeVisitors,
   });
 
+  // Drop items that are no longer on sale once the catalogue loads.
+  const itemIdsSig = items.map(i => i.id).join(",");
+  useEffect(() => {
+    if (!items.length) return;
+    const valid = new Set(items.map(i => i.id));
+    setCart(prev => {
+      const pruned = pruneTab(prev, valid);
+      return Object.keys(pruned).length === Object.keys(prev).length ? prev : pruned;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemIdsSig]);
+
   const cartTotal = Object.entries(cart).reduce((sum, [itemId, qty]) => {
     const item = items.find(i => i.id === itemId);
     return sum + (item ? item.price * qty : 0);
   }, 0);
-  const cartCount = Object.values(cart).reduce((sum, q) => sum + q, 0);
+  const cartCount = tabCount(cart);
+  const cartLines = useMemo(() => Object.entries(cart)
+    .map(([id, qty]) => ({ item: items.find(i => i.id === id), qty }))
+    .filter((l): l is { item: BarItem; qty: number } => !!l.item && l.qty > 0), [cart, items]);
 
-  const updateCart = (itemId: string, delta: number) => {
-    setCart(prev => {
-      const current = prev[itemId] || 0;
-      const next = Math.max(0, current + delta);
-      if (next === 0) {
-        const { [itemId]: _, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [itemId]: next };
-    });
-  };
+  const updateCart = (itemId: string, delta: number) => setCart(prev => addToTab(prev, itemId, delta));
 
+  /** Settlement: post the final open tab to the member account (the only path that journals). */
   const submitCart = async () => {
-    if (cartCount === 0) return;
+    if (cartCount === 0 || submitting) return;
     if (!memberId || !clubId) {
       toast.error("We couldn't find your club membership — please reload and try again.");
       return;
@@ -187,7 +203,7 @@ export default function HonestyBar() {
         });
       const { error } = await fromExt("bar_tab_entries").insert(entries);
       if (error) throw error;
-      toast.success(`R${cartTotal.toFixed(2)} added to your tab`);
+      toast.success(`${money(cartTotal)} posted to your member account`);
       setCart({});
       qc.invalidateQueries({ queryKey: ["my-bar-tab"] });
     } catch (err: any) {
@@ -204,7 +220,7 @@ export default function HonestyBar() {
 
   /** Member confirms they already swiped at the club's card machine — recorded as paid. */
   const swipeAtClub = async () => {
-    if (!clubId || cartCount === 0) return;
+    if (!clubId || cartCount === 0 || submitting) return;
     setSubmitting(true);
     try {
       const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
@@ -226,7 +242,7 @@ export default function HonestyBar() {
 
   /** Pay the cart online through the club's card checkout. */
   const payOnline = async () => {
-    if (!clubId || cartCount === 0) return;
+    if (!clubId || cartCount === 0 || submitting) return;
     if (!venueCode) {
       toast.error("Online card payments are not set up for this bar yet.");
       return;
@@ -244,6 +260,10 @@ export default function HonestyBar() {
       if ((data as any)?.error) throw new Error((data as any).error);
       const redirect = (data as any)?.redirect_url;
       if (!redirect) throw new Error("Card payment could not be started");
+      // The open tab is cleared only once the bank confirms (see BarPaymentSuccess).
+      if ((data as any)?.sale_id) {
+        localStorage.setItem("sh.scanpay.pendingSale", JSON.stringify({ saleId: (data as any).sale_id, code: venueCode, openTabKey: tabKey }));
+      }
       window.location.assign(redirect);
     } catch (err: any) {
       toast.error(err.message || "Could not start the card payment");
@@ -346,14 +366,19 @@ export default function HonestyBar() {
 
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
+          <TabsList className="w-full grid sticky top-0 z-20" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
             <TabsTrigger value="shop" className="gap-1 text-xs">
               <ShoppingCart className="w-3.5 h-3.5" />
               Buy
             </TabsTrigger>
-            <TabsTrigger value="my-tab" className="gap-1 text-xs">
+            <TabsTrigger
+              value="my-tab"
+              aria-label={cartCount > 0 ? `My Tab, ${cartCount} item${cartCount === 1 ? "" : "s"} open` : "My Tab"}
+              className={`gap-1 text-xs ${cartCount > 0 ? "bg-accent text-accent-foreground font-bold data-[state=active]:bg-accent data-[state=active]:text-accent-foreground ring-2 ring-accent" : ""}`}
+            >
               <User className="w-3.5 h-3.5" />
-              My Tab
+              My Tab{cartCount > 0 ? ` (${cartCount})` : ""}
+              {cartCount > 0 && <span className="ml-1 tabular-nums">· {money(cartTotal)}</span>}
             </TabsTrigger>
             {canSeeVisitors && (
               <TabsTrigger value="visitors" className="gap-1 text-xs">
@@ -478,62 +503,69 @@ export default function HonestyBar() {
               );
             })}
 
-            {/* Render outside the tab/layout tree so ancestor overflow or transforms cannot
-                push the checkout controls back into the normal document flow. */}
-            {typeof document !== "undefined" && createPortal(
-              <AnimatePresence>
-                {cartCount > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    className="fixed inset-x-3 top-[calc(env(safe-area-inset-top,0px)+5rem)] z-[60] md:inset-x-auto md:right-4 md:top-24 md:w-80"
-                  >
-                    <Card className="p-3 space-y-2 shadow-lg border-primary/40 bg-background/95 backdrop-blur">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
-                          {cartCount} item{cartCount > 1 ? "s" : ""} selected
-                        </p>
-                        <p className="text-base font-semibold">{money(cartTotal)}</p>
-                      </div>
-                      {accountTabEnabled && (
-                        <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>
-                          <ShoppingCart className="w-4 h-4" /> Add to my account tab
-                        </Button>
-                      )}
-                      <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
-                        {payOnlineEnabled && (
-                          <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5" onClick={payOnline} disabled={submitting}>
-                            <CreditCard className="w-3.5 h-3.5 shrink-0" /> Pay with card online
-                          </Button>
-                        )}
-                        {cardSwipeEnabled && (
-                          <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5 whitespace-normal" onClick={swipeAtClub} disabled={submitting}>
-                            <Receipt className="w-3.5 h-3.5 shrink-0" /> I swiped at the card machine
-                          </Button>
-                        )}
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full h-7 text-[11px] text-muted-foreground"
-                        onClick={() => setCart({})}
-                      >
-                        Clear selection
-                      </Button>
-                    </Card>
-                  </motion.div>
-                )}
-              </AnimatePresence>,
-              document.body,
-            )}
-
           </TabsContent>
 
           <TabsContent value="my-tab" className="space-y-3 mt-4">
+            <Card className={`p-3 space-y-2 ${cartCount > 0 ? "border-accent ring-1 ring-accent" : ""}`}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Open tab{cartCount > 0 ? ` (${cartCount})` : ""}</h3>
+                <span className="text-base font-semibold tabular-nums">{money(cartTotal)}</span>
+              </div>
+              {cartLines.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-3 text-center">
+                  Your tab is empty. Tap items on Buy to add them — nothing is charged until you settle.
+                </p>
+              ) : (
+                <>
+                  <div className="divide-y">
+                    {cartLines.map(({ item, qty }) => (
+                      <div key={item.id} className="flex items-center gap-2 py-1.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{item.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{money(item.price)} each</p>
+                        </div>
+                        <Button size="icon" variant="outline" className="h-8 w-8" aria-label={`One less ${item.name}`} onClick={() => updateCart(item.id, -1)}>
+                          <Minus className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="w-6 text-center text-sm font-semibold tabular-nums">{qty}</span>
+                        <Button size="icon" variant="outline" className="h-8 w-8" aria-label={`One more ${item.name}`} onClick={() => updateCart(item.id, 1)}>
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className="w-16 text-right text-sm tabular-nums">{money(item.price * qty)}</span>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Remove ${item.name}`} onClick={() => updateCart(item.id, -qty)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs font-medium pt-1">Settle tab — choose how to pay</p>
+                  {accountTabEnabled && (
+                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>
+                      <ShoppingCart className="w-4 h-4" /> Add {money(cartTotal)} to my member account
+                    </Button>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {payOnlineEnabled && (
+                      <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5 whitespace-normal" onClick={payOnline} disabled={submitting}>
+                        <CreditCard className="w-3.5 h-3.5 shrink-0" /> Pay now by card
+                      </Button>
+                    )}
+                    {cardSwipeEnabled && (
+                      <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5 whitespace-normal" onClick={swipeAtClub} disabled={submitting}>
+                        <Receipt className="w-3.5 h-3.5 shrink-0" /> I swiped at the card machine
+                      </Button>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>
+                    Clear tab
+                  </Button>
+                </>
+              )}
+            </Card>
+
+            <h3 className="text-xs font-semibold text-muted-foreground pt-2">Posted to my member account</h3>
             {myTab.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No items on your tab yet.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">Nothing posted to your account yet.</p>
             ) : (
               <div className="space-y-1.5">
                 {myTab.slice(0, 50).map(entry => (

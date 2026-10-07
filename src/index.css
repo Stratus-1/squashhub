@@ -40,6 +40,8 @@
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 32 80% 30%;
 
     --border: 220 12% 88%;
     --input: 220 12% 88%;
@@ -112,6 +114,8 @@
     --accent-foreground: 220 40% 5%;
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 40 95% 70%;
     --border: 220 20% 18%;
     --input: 220 20% 18%;
     --ring: 220 55% 45%;
@@ -378,3 +382,11 @@ input[type="month"]:hover {
   cursor: pointer;
 }
 
+
+/* Club Admin UI pilot — scoped calm surfaces. Only applies inside .admin-pilot
+   so member pages stay visually unchanged. Remove this block to roll back. */
+.admin-pilot [class*="shadow"]:not([role="dialog"]):not([data-radix-popper-content-wrapper] *) { box-shadow: none; }
+.admin-pilot .rounded-xl { border-radius: var(--radius); }
+.admin-pilot .bg-card .bg-card, .admin-pilot .border .border.bg-card { background: transparent; }
+.admin-pilot table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); }
+.admin-pilot :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }

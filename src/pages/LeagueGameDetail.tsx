@@ -3343,10 +3343,11 @@ export default function LeagueGameDetail() {
                                 <>
                                   <button
                                     onClick={() => setManualEntry(idx)}
-                                    className="text-muted-foreground hover:text-primary hover:bg-accent rounded p-0.5"
+                                    className="text-muted-foreground hover:text-primary hover:bg-accent rounded px-1 py-0.5 flex items-center gap-0.5"
                                     title="Edit scores"
                                   >
                                     <Edit3 className="w-4 h-4" />
+                                    <span className="text-[10px] font-medium">Edit scores</span>
                                   </button>
                                   <button
                                     onClick={() => {
@@ -3607,10 +3608,11 @@ export default function LeagueGameDetail() {
                                         }
                                         setManualEntry(idx);
                                       }}
-                                      className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
+                                      className="text-primary hover:bg-accent rounded px-1.5 py-0.5 flex items-center gap-0.5 border border-primary/40"
                                       title="Enter scores manually"
                                     >
                                       <Edit3 className="w-4 h-4" />
+                                      <span className="text-[10px] font-semibold">Enter result</span>
                                     </button>
                                   )}
                                   {(pos.completed || pos.scores.length > 0) && (
@@ -3642,10 +3644,11 @@ export default function LeagueGameDetail() {
                                   </button>
                                   <button
                                     onClick={() => setManualEntry(idx)}
-                                    className="text-muted-foreground hover:text-primary hover:bg-accent rounded p-0.5"
+                                    className="text-muted-foreground hover:text-primary hover:bg-accent rounded px-1 py-0.5 flex items-center gap-0.5"
                                     title="Edit scores"
                                   >
                                     <Edit3 className="w-4 h-4" />
+                                    <span className="text-[10px] font-medium">Edit scores</span>
                                   </button>
 
                                   <button

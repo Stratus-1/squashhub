@@ -220,14 +220,17 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             .join(" & ");
           if (!code && !nameKey) return;
           if (selectedLeagueNum !== "ALL" && codeToLeagueNum.get(teamCode) !== selectedLeagueNum) return;
-          const key = code ? code.toUpperCase() : `NAME:${nameKey}`;
+          const baseKey = code ? code.toUpperCase() : `NAME:${nameKey}`;
+          // Key by player + position so per-position stats never mix; position
+          // null (legacy rows) folds into position 0 ("Unspecified").
+          const key = `${baseKey}@P${position ?? 0}`;
           const existing = agg.get(key);
           const member = members.find(
-            (m) => (m.club_member_number || "").toUpperCase() === key,
+            (m) => (m.club_member_number || "").toUpperCase() === baseKey,
           );
           const row: PlayerRow = existing || {
-            player_code: key,
-            name: member?.name || name || key,
+            player_code: baseKey,
+            name: member?.name || name || baseKey,
             ladder_position: member?.ladder_position ?? null,
             played: 0,
             won: 0,
@@ -236,6 +239,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             gamesLost: 0,
             diff: 0,
             team_codes: new Set<string>(),
+            position,
           };
           row.played += 1;
           if (won) row.won += 1;

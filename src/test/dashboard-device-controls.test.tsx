@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { ClubDevice } from "@/lib/devices";
 
 const mocks = vi.hoisted(() => ({
@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   doorAvailable: false,
   courtLightsOn: false,
   mutateAsync: vi.fn(),
+  openDoor: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-club", () => ({
@@ -29,7 +30,7 @@ vi.mock("@/hooks/use-door-control", () => ({
     nearDoor: true,
     adminOverride: false,
     loading: false,
-    openDoor: vi.fn(),
+    openDoor: mocks.openDoor,
     proximity: { active: false, hint: "", state: "inside", distance: null, accuracy: null, coords: null, triggerRadiusM: 5 },
     club: { id: "club-1" },
   }),
@@ -75,6 +76,7 @@ describe("DashboardDeviceControls", () => {
     mocks.doorAvailable = false;
     mocks.courtLightsOn = false;
     mocks.mutateAsync = vi.fn().mockResolvedValue({ ok: true, state: true, online: true });
+    mocks.openDoor = vi.fn().mockResolvedValue(undefined);
   });
 
   it("renders nothing when the club has no controls at all", () => {
@@ -169,5 +171,46 @@ describe("DashboardDeviceControls", () => {
     mocks.devices = [device({ last_error: "Geyser is offline." })];
     render(<DashboardDeviceControls />);
     expect(screen.getByText("Geyser is offline.")).toBeTruthy();
+  });
+
+  it("confirms compact main-door opening and allows cancellation without a command", async () => {
+    mocks.doorAvailable = true;
+    render(<DashboardDeviceControls compact />);
+    fireEvent.click(screen.getByRole("button", { name: "Main door: Open" }));
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(mocks.openDoor).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(mocks.openDoor).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Main door: Open" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open", exact: true }));
+    await waitFor(() => expect(mocks.openDoor).toHaveBeenCalledExactlyOnceWith("manual"));
+  });
+
+  it("uses confirmed compact buttons for current toggle state and updates after the action", async () => {
+    mocks.devices = [device({ last_state: false })];
+    render(<DashboardDeviceControls compact />);
+    expect(screen.queryByRole("switch")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn On" }));
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Turn On", exact: true }));
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledExactlyOnceWith({ deviceId: "d1", action: "on", trigger: "manual" }));
+    fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn Off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Turn Off", exact: true }));
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenLastCalledWith({ deviceId: "d1", action: "off", trigger: "manual" }));
+  });
+
+  it("confirms registry access pulses and preserves configured dashboard visibility", async () => {
+    mocks.devices = [
+      device({ id: "gate", category: "access", name: "Side gate", control_mode: "pulse" }),
+      device({ id: "hidden", name: "Hidden pump", show_on_dashboard: false }),
+      device({ id: "disabled", name: "Retired pump", enabled: false }),
+    ];
+    render(<DashboardDeviceControls compact />);
+    expect(screen.queryByText("Hidden pump")).toBeNull();
+    expect(screen.queryByText("Retired pump")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Side gate: Open" }));
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Open", exact: true }));
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledExactlyOnceWith({ deviceId: "gate", action: "pulse", trigger: "manual" }));
   });
 });

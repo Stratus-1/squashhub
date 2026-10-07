@@ -818,6 +818,54 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: true, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
+  /** Structure guidance (advisory): estimates, actual field and applying a recommendation on request only. */
+  const guide: GuideAnswers = a.guide ?? {};
+  const catUnits = (c: string) => units.filter((u) => u.key === c || u.key.startsWith(`${c}::`));
+  const catIsDoubles = (c: string) => { const us = catUnits(c); return us.length > 0 && us.every((u) => u.disc === "doubles"); };
+  const catUnitWord = (c: string) => catIsDoubles(c) ? "pairs" : "players";
+  const catEstimate = (c: string) => Number(guide.expected?.[c]) || catUnits(c).reduce((t, u) => t + (Number(a.unitEntries?.[u.key]) || 0), 0);
+  const catActual = (c: string) => { const ids = new Set<string>(); catUnits(c).forEach((u) => pickIds.forEach((id) => { if (placesFor(id).includes(u.key)) ids.add(id); })); return catIsDoubles(c) ? Math.ceil(ids.size / 2) : ids.size; };
+  const catCurrent = (c: string) => { const f = formatFor(c); return f.kind ? formatDetail(f) : undefined; };
+  const setGuide = (g: GuideAnswers) => {
+    const ue = { ...(a.unitEntries ?? {}) };
+    for (const c of cats) { const v = g.expected?.[c]; if (v && !(a.subcats[c] ?? []).some((x) => x.trim()) && !ue[c]) ue[c] = v; }
+    const total = cats.reduce((t, c) => t + (Number(g.expected?.[c]) || 0), 0);
+    setA({ ...a, guide: g, unitEntries: ue, entries: a.entries || (total ? String(total) : "") });
+  };
+  const applyStructure = (c: string, o: StructureOption, extra?: Partial<GuideAnswers>) => {
+    const f: FormatPlan = o.kind === "knockout" ? { ...DEFAULT_FORMAT, kind: "knockout", koPace: "paced", koPairing: "progressive" }
+      : o.kind === "swiss" ? { ...DEFAULT_FORMAT, kind: "swiss", swissRounds: String(o.rounds) }
+      : { ...DEFAULT_FORMAT, kind: "pools", pools: String(o.pools?.length ?? 1) };
+    const single = cats.length === 1;
+    const next: StepAnswers = { ...a, guide: { ...guide, ...extra, applied: { ...(guide.applied ?? {}), [c]: o.kind } } };
+    if (single) next.format = f; else next.formatOverrides = { ...(a.formatOverrides ?? {}), [c]: f };
+    if (o.kind === "pools" || o.kind === "round_robin") {
+      const sizes = o.pools ?? [];
+      next.poolPlan = { ...(a.poolPlan ?? {}), [c]: o.kind === "pools" ? { mode: "auto", target: String(Math.round(sizes.reduce((t, x) => t + x, 0) / Math.max(1, sizes.length))) } : { mode: "none" } };
+    }
+    if (o.kind === "pools") {
+      const po: PlayoffPlan = { ...DEFAULT_PLAYOFF, choice: "playoffs", rounds: o.playoff === "semis" ? 2 : 1, qualification: "top_pools", pairing: o.playoff === "semis" ? "cross_pools" : "later", style: o.playoff === "placement" ? "placement" : "championship" };
+      if (single) next.playoff = po; else next.playoffOverrides = { ...(a.playoffOverrides ?? {}), [c]: po };
+    }
+    setA(next);
+    toast.success(`${c}: ${o.title} planned — you can still change it in Planned format.`);
+  };
+  /** Categories whose picked field materially differs from the estimate and hasn't been reviewed yet. */
+  const fieldReview = cats.map((c) => ({ c, est: catEstimate(c), act: catActual(c) }))
+    .filter((r) => materiallyDifferent(r.est, r.act) && guide.reviewedActual?.[r.c] !== r.act);
+  const renderFieldReview = () => fieldReview.length === 0 ? null : (
+    <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="field-review">
+      <div className="text-sm font-semibold">Your actual field differs from the estimate. Review the recommended tournament structure.</div>
+      <p className="text-xs text-muted-foreground">Your chosen structure is not changed unless you click "Use recommendation".</p>
+      {fieldReview.map(({ c, est, act }) => (
+        <div key={c} className="space-y-1">
+          <RecommendationCard cat={c} n={act} unit={catUnitWord(c)} note={`estimated ${est}, actual`} options={evaluateStructures({ n: act, outcome: guide.outcome, strength: guide.strength, time: guide.time, isChamps })}
+            applied={false} current={catCurrent(c)} onUse={(o) => applyStructure(c, o, { reviewedActual: { ...(guide.reviewedActual ?? {}), [c]: act } })} onOther={() => go("Format")} />
+          <Button type="button" size="sm" variant="ghost" onClick={() => setA({ ...a, guide: { ...guide, reviewedActual: { ...(guide.reviewedActual ?? {}), [c]: act } } })}>Keep my current structure for {c}</Button>
+        </div>
+      ))}
+    </div>
+  );
   /** Exact reasons the Stages & scheduling step is not complete. */
   const scheduleProblems: string[] = (() => {
     const out: string[] = [];
@@ -1083,6 +1131,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <Button variant="outline" size="sm" onClick={() => setA({ ...a, categories: [...a.categories, ""] })}><Plus className="mr-1 h-4 w-4" />Add category</Button>
               </div>
             </>
+          )}
+
+          {cur === "Guide" && (
+            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} />
           )}
 
           {cur === "Subcategories" && (
@@ -1562,6 +1614,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
 
           {cur === "Dates" && (
             <>
+              {renderFieldReview()}
               <Q t="On which days will it be played?" h="Add one line for each tournament day." />
               <div className="space-y-2">
                 {a.days.map((d, i) => (
@@ -1820,6 +1873,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
 
           {cur === "Schedule" && (
             <>
+              {renderFieldReview()}
               <Q t="How will each stage be scheduled?" h="This is the whole timeline, from Round 1 to the final. Playoffs follow once a category's rounds are done — no separate question needed." />
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Play by a date: players arrange and book their own match before the deadline — no courts are blocked. Scheduled: a set date, time window and courts. Categories progress independently through main rounds. Stage names are a plan; the real rounds come from the format you confirm after registrations close.</div>
               <div className="space-y-2 rounded-lg border border-border p-3">

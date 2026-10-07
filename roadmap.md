@@ -1,5 +1,6 @@
 # Roadmap
 - [ ] Member home first pass: mobile duplicate-tile removal, coloured bottom shortcuts, earlier personal stats, dynamic controls preserved; phone light/dark and navigation regression checks. Preview only.
+- [ ] Member help entry: replace main Help & Tutorials tile with a compact, labelled header help icon to the existing destination; retain Club Admin permission checks.
 - [x] Club Admin contrast: scoped light/dark text/surfaces and locked fields; 13 regressions pass; signed-in Riverside Features, navigation, Banking and Settings checked in both themes on desktop/mobile. Photo/icons/order/behaviour preserved; no live data changes or publishing.
 - [x] Club Admin refinements: operations-first collapsible navigation, wide workspace and connected banking steps; four regression tests, preview build and read-only Riverside checks at 390/768/1024/1280/1920px. No publishing/data changes.
 - [x] Diamond fixtures: chronological match-day headings, no round grouping; preserve players, positions and schedules. Preview only. Verified signed-in Durbanville: all ten day headings ordered, 270 games, no runtime errors; three regression tests pass.

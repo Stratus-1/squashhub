@@ -310,8 +310,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === "find_client") {
-      const q = encodeURIComponent(String(payload.query ?? "").trim());
-      const clients = (await apiGet(token, `/Client/Search?searchText=${q}`)) ?? [];
+      const raw = String(payload.query ?? "").trim();
+      if (raw.length < 2) return json({ success: true, clients: [] });
+      const param = raw.includes("@") ? "emailAddress" : /^\d+$/.test(raw) ? "membershipNumber" : "lastName";
+      const clients = (await apiGet(token, `/Client/Search?${param}=${encodeURIComponent(raw)}`)) ?? [];
       return json({
         success: true,
         clients: (clients as any[]).map((c) => ({
@@ -333,10 +335,21 @@ Deno.serve(async (req) => {
         .replace(/\s+/g, " ")
         .trim();
 
+    // GoBook filters only on lastName / emailAddress / membershipNumber
+    // (searchText is ignored and returns every client). Cache per surname and
+    // pace calls so bulk matching doesn't hammer their API.
+    const surnameCache = new Map<string, any[]>();
+    let lastCallAt = 0;
     const searchClients = async (term: string) => {
-      const q = encodeURIComponent(term.trim());
-      if (!q) return [] as any[];
-      return ((await apiGet(token, `/Client/Search?searchText=${q}`)) ?? []) as any[];
+      const key = term.trim().toLowerCase();
+      if (!key) return [] as any[];
+      if (surnameCache.has(key)) return surnameCache.get(key)!;
+      const wait = 400 - (Date.now() - lastCallAt);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      lastCallAt = Date.now();
+      const rows = ((await apiGet(token, `/Client/Search?lastName=${encodeURIComponent(term.trim())}`)) ?? []) as any[];
+      surnameCache.set(key, rows);
+      return rows;
     };
 
     const clientFullName = (c: any) =>

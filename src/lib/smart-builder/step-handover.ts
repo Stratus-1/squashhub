@@ -285,6 +285,8 @@ export type BetaLifecycle = {
   /** Draw-relevant setup answers (format incl. within/between/custom matchups, seeding, stages, play-offs) so Generate draw works on any device. */
   format_plan?: Record<string, unknown> | null;
   category_types?: Record<string, string>;
+  /** Full Step-by-Step setup answers, so "Edit setup" opens the same answers on any device. */
+  answers?: Record<string, unknown> | null;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };
   /** Invite mode: the organiser's audience choice + send log (see step-invite.ts). */
   invite?: {
@@ -305,7 +307,7 @@ export async function loadLifecycle(tournamentId: string): Promise<BetaLifecycle
 export async function saveLifecycle(tournamentId: string, l: BetaLifecycle) {
   // Never drop the saved setup (format_plan) when a caller holds an older lifecycle copy without it.
   let next = l;
-  if (l.format_plan === undefined || l.category_types === undefined) { const cur = await loadLifecycle(tournamentId).catch(() => null); next = { ...l, ...(l.format_plan === undefined && cur?.format_plan ? { format_plan: cur.format_plan } : {}), ...(l.category_types === undefined && cur?.category_types ? { category_types: cur.category_types } : {}) }; }
+  if (l.format_plan === undefined || l.category_types === undefined || l.answers === undefined) { const cur = await loadLifecycle(tournamentId).catch(() => null); next = { ...l, ...(l.format_plan === undefined && cur?.format_plan ? { format_plan: cur.format_plan } : {}), ...(l.category_types === undefined && cur?.category_types ? { category_types: cur.category_types } : {}), ...(l.answers === undefined && cur?.answers ? { answers: cur.answers } : {}) }; }
   const { error } = await fromExt("tournaments").update({ beta_lifecycle: next }).eq("id", tournamentId);
   if (error) throw error;
 }

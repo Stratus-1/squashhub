@@ -77,6 +77,9 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
 
   // Filter for league selection (by league number: "1", "2", ... or "ALL")
   const [selectedLeagueNum, setSelectedLeagueNum] = useState<string>("ALL");
+  // "position" (default): compare players/pairs who played the same team position;
+  // "overall": one accumulated list across all positions.
+  const [viewMode, setViewMode] = useState<"position" | "overall">("position");
 
   // Fetch club members (for name + ladder + member-number → player-code mapping)
   const { data: members = [] } = useQuery({

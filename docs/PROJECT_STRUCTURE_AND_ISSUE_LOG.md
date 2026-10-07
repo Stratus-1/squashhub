@@ -2653,3 +2653,8 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 - Fix: `bar_post_sale_journal` posts sales sharing a `payment_reference` under one journal ref (md5(club:ref)): one bank debit for the full amount, one gateway fee, itemised bar_income credits. Single/cash sales unchanged. Existing paid multi-line payments re-posted (totals unchanged).
 
 - 2026-10-07: Club ladder saves failed for admins granted via a Full Admin permission role (club_members.role=member). Ladder RPCs (admin_reorder_ladder, apply_ladder_adjustments, approve/reject_ladder_move_pending, admin_set_cross_gender_ladder, seed_ranking_points_from_ladder) and ladder_configs policy now use is_club_admin_or_permitted(...,'ladder').
+
+### 2026-10-07 — League doubles scorecard saved pairs as text only; stray 0–0 games; stale updated_at
+- Doubles positions now also write `rubber_type='doubles'`, `*_player2_name` and both `*_member_id`s (resolved from pairs official on the fixture date; label stays the display name). Helper `src/lib/leagues/doubles-rubber-columns.ts`.
+- Manual "Enter result" overlay and setup save drop 0–0 games (`dropEmptyGames`).
+- Every scorecard write sets `updated_at`. Frozen (scored) rows unchanged by DB trigger. Tests: `src/test/doubles-rubber-columns.test.ts`.

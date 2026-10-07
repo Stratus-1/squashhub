@@ -2648,3 +2648,6 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 ## 2026-10-07 — Bar tab card payments stuck "awaiting payment" after paying
 - Cause: bar scan-to-pay/tab Stitch payments were only confirmed while the payer's page polled `bar-card-verify`; `stitch-sweep-pending-payments` only scanned `stitch_payment_sessions`.
 - Fix: sweep now also re-checks pending `bar_visitor_sales` references (non-PayFast, 2 min – 3 days old) via `bar-card-verify` (gateway first, never auto-cancels). First run settled 2 more paid Nelspruit sales.
+
+## 2026-10-07 — One online bar payment split into many bank entries
+- Fix: `bar_post_sale_journal` posts sales sharing a `payment_reference` under one journal ref (md5(club:ref)): one bank debit for the full amount, one gateway fee, itemised bar_income credits. Single/cash sales unchanged. Existing paid multi-line payments re-posted (totals unchanged).

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { DoorOpen, Loader2, MapPin, ShieldCheck, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,7 @@ import {
  * desktop drew the same devices in different orders. Both dashboards now
  * render this one component.
  */
-export function DashboardDeviceControls({ className }: { className?: string }) {
+export function DashboardDeviceControls({ className, compact = false }: { className?: string; compact?: boolean }) {
   const { data: clubData } = useMyClub();
   const clubId = (clubData?.club as { id?: string } | undefined)?.id;
 
@@ -95,12 +96,12 @@ export function DashboardDeviceControls({ className }: { className?: string }) {
               )}
             </div>
 
-            {/* The main clubhouse door keeps its richer GPS presentation. */}
-            {group.slug === "access" && door.available && <DoorRow door={door} />}
-
-            {rows.map((device) => (
-              <DeviceRow key={device.id} device={device} clubId={clubId} />
-            ))}
+            <div className={compact ? "flex flex-wrap gap-2" : "space-y-1.5"}>
+              {group.slug === "access" && door.available && <DoorRow door={door} compact={compact} />}
+              {rows.map((device) => (
+                <DeviceRow key={device.id} device={device} clubId={clubId} compact={compact} />
+              ))}
+            </div>
 
             {group.slug === "lights" && courtLightsOn && (
               <p className="text-[11px] text-muted-foreground pl-0.5">
@@ -116,8 +117,14 @@ export function DashboardDeviceControls({ className }: { className?: string }) {
 }
 
 /** Main clubhouse door — geofence state, auto-unlock, admin remote override. */
-function DoorRow({ door }: { door: DoorControl }) {
+function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
   const { proximity, nearDoor, adminOverride, loading, club } = door;
+
+  if (compact) return (
+    <CompactDeviceButton name="Main door" action="Open" busy={loading} icon={DoorOpen}
+      description={adminOverride ? "Open the main door remotely? You are not at the club." : "Open the main clubhouse door?"}
+      onConfirm={() => door.openDoor("manual")} />
+  );
 
   return (
     <Card className="p-3 flex items-center gap-3 border-primary/30 bg-primary/5">
@@ -184,7 +191,7 @@ function DoorRow({ door }: { door: DoorControl }) {
  * (it closes the relay momentarily). Using a switch for a pulse device would
  * show an "on" state that isn't real a second later.
  */
-function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
+function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: string; compact: boolean }) {
   const control = useDeviceControl(clubId);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
   const [bleBusy, setBleBusy] = useState(false);
@@ -336,6 +343,14 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
   });
   if (nearOnly && !isAdmin && proximity.active && !proximity.allowed) return null;
 
+  if (compact) {
+    const action = isPulse ? (device.category === "access" ? "Open" : "Trigger") : state ? "Turn Off" : "Turn On";
+    return <CompactDeviceButton name={device.name} action={action} busy={busy} icon={Icon}
+      description={`${action} ${device.name}?${device.location ? ` ${device.location}.` : ""}${behaviour ? ` ${behaviour}.` : ""}`}
+      error={device.last_error} isOn={!isPulse && state}
+      onConfirm={() => run(isPulse ? "pulse" : state ? "off" : "on")} />;
+  }
+
   return (
     <Card className="p-3 flex items-center gap-3">
       <div
@@ -395,5 +410,40 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/** Mobile-only manual entry point; automatic and desktop commands stay unchanged. */
+function CompactDeviceButton({ name, action, busy, icon: Icon, description, error, isOn, onConfirm }: {
+  name: string; action: string; busy: boolean; icon: typeof DoorOpen; description: string;
+  error?: string | null; isOn?: boolean; onConfirm: () => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div className="min-w-0 flex-1 basis-36 max-w-full">
+      <Button variant="outline" disabled={busy} onClick={() => setConfirming(true)}
+        aria-label={`${name}: ${action}`} aria-busy={busy}
+        className={cn("h-auto min-h-14 w-full justify-start gap-2 whitespace-normal rounded-md border-border bg-card px-3 py-2 text-left text-foreground hover:bg-muted", isOn && "border-primary/60 bg-primary/5")}
+      >
+        {busy ? <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" /> : <Icon className="h-5 w-5 shrink-0 text-primary" />}
+        <span className="min-w-0 break-words leading-4">
+          <span className="block text-xs font-semibold">{name}</span>
+          <span className="block text-xs font-medium">{busy ? "Working…" : action}</span>
+        </span>
+      </Button>
+      {error && <p className="mt-1 break-words text-[11px] text-destructive">{error}</p>}
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent className="w-[calc(100%-2rem)] rounded-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{action} {name}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-foreground">{description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="min-h-11" disabled={busy} onClick={() => { void onConfirm(); }}>{action}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

@@ -8,7 +8,8 @@
  * fixture date (plus reserves/bye players); a name that can't be resolved is
  * still stored as text, never guessed.
  */
-import { normalizePlayerName } from "@/lib/leagues/original-pair-bonus";
+export const normalizePlayerName = (name: string | null | undefined) =>
+  (name || "").trim().replace(/\s+/g, " ").toUpperCase();
 
 export function splitPair(label: string | null | undefined): [string, string] | null {
   const parts = String(label || "").split(/\s*(?:&|\/|\+)\s*/).map((s) => s.trim()).filter(Boolean);

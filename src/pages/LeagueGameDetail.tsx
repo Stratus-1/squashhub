@@ -31,6 +31,7 @@ import { SelectLineupWizard, type LineupPick } from "@/components/league-games/S
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
 import { AdminManualScoreDialog } from "@/components/league-games/AdminManualScoreDialog";
+import { doublesRubberColumns, dropEmptyGames } from "@/lib/leagues/doubles-rubber-columns";
 import { LadderImpactPreview } from "@/components/league-games/LadderImpactPreview";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
@@ -791,7 +792,9 @@ export default function LeagueGameDetail() {
         const n = nameById.get(r.member_id);
         if (n) reserveRankByName[normalizePlayerName(n)] = Number(r.rank) || 1;
       }
-      return { isDoubles: true, rubbers, pairsByCode, pairKeysByCode, byeRankByName, reserveRankByName, stalePairNamesByCode };
+      const memberIdByName: Record<string, string> = {};
+      for (const [id, n] of nameById) if (n) memberIdByName[normalizePlayerName(n)] ||= id;
+      return { isDoubles: true, memberIdByName, rubbers, pairsByCode, pairKeysByCode, byeRankByName, reserveRankByName, stalePairNamesByCode };
     },
   });
   const doublesRubbers = doublesInfo?.isDoubles ? doublesInfo.rubbers : 0;
@@ -1161,6 +1164,11 @@ export default function LeagueGameDetail() {
     if ((doublesInfo as any)?.isDoubles) return ((doublesInfo as any).pairsByCode?.[String(code || "").toUpperCase()] || [])[i];
     return ((prefillLineup as any)?.lineup?.[code] || [])[i];
   }, [fixture, doublesInfo, prefillLineup]);
+  // Doubles rows: also store player 2 + member links (pair label stays the display name).
+  const doublesCols = useCallback((homeName?: string | null, awayName?: string | null) => {
+    if (!(doublesInfo as any)?.isDoubles) return {};
+    return doublesRubberColumns(homeName, awayName, (doublesInfo as any).memberIdByName || {});
+  }, [doublesInfo]);
 
   // Apply prefill from the captain's Fill-Up Leagues lineup.
   //  - For each position, if real play has been recorded for THAT slot
@@ -1599,6 +1607,8 @@ export default function LeagueGameDetail() {
           away_player_code: p.awayCode.toUpperCase(),
           home_player_name: p.homeName,
           away_player_name: p.awayName,
+          ...doublesCols(p.homeName, p.awayName),
+          updated_at: stamp,
           lineup_set_by: setBy,
           lineup_set_at: stamp,
           home_lineup_explicit: sideIsExplicit({ code: p.homeCode, name: p.homeName }, defaultSlotFor("home", i)),
@@ -1625,7 +1635,7 @@ export default function LeagueGameDetail() {
       if (!opts?.silent) toast.error(e?.message || "Could not save the lineup — please retry");
       return false;
     }
-  }, [fixtureId, user, activeMember?.id, queryClient, defaultSlotFor]);
+  }, [fixtureId, user, activeMember?.id, queryClient, defaultSlotFor, doublesCols]);
 
   const handleSwap = useCallback(async (c: SwapCandidate, half?: 0 | 1) => {
     if (!swapTarget) return;
@@ -1702,7 +1712,7 @@ export default function LeagueGameDetail() {
   const playerFieldsForScoreWrite = useCallback(async (
     posIdx: number,
     p: { homeCode?: string; awayCode?: string; homeName?: string; awayName?: string } | null | undefined,
-  ): Promise<Record<string, string>> => {
+  ): Promise<Record<string, string | null>> => {
     const fields = {
       home_player_code: (p?.homeCode || "").toUpperCase(),
       away_player_code: (p?.awayCode || "").toUpperCase(),
@@ -1720,8 +1730,8 @@ export default function LeagueGameDetail() {
     const serverHasPlayers = !!row && !!(
       row.home_player_code || row.home_player_name || row.away_player_code || row.away_player_name
     );
-    return serverHasPlayers ? {} : fields;
-  }, [fixtureId]);
+    return serverHasPlayers ? {} : { ...fields, ...doublesCols(fields.home_player_name, fields.away_player_name) };
+  }, [fixtureId, doublesCols]);
 
   // ---- Auto-save a single position's FINISHED game scores to DB.
   // Always clears `current_game` (the in-progress rally is over once a game ends).
@@ -1756,6 +1766,7 @@ export default function LeagueGameDetail() {
         is_forfeit: !!updatedPos.isForfeit,
         forfeit_side: updatedPos.forfeitSide ?? null,
         current_game: null,
+        updated_at: new Date().toISOString(),
       } as any, { onConflict: "fixture_id,position" });
       // Also update fixture result summary
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
@@ -1789,6 +1800,7 @@ export default function LeagueGameDetail() {
         home_games_won: hw,
         away_games_won: aw,
         current_game: current,
+        updated_at: new Date().toISOString(),
       } as any, { onConflict: "fixture_id,position" });
     } catch (err) {
       console.error("Live-rally save failed:", err);
@@ -1934,7 +1946,9 @@ export default function LeagueGameDetail() {
           home_player_name: pos.homeName, away_player_name: pos.awayName,
           home_lineup_explicit: sideIsExplicit({ code: pos.homeCode, name: pos.homeName }, defaultSlotFor("home", i)),
           away_lineup_explicit: sideIsExplicit({ code: pos.awayCode, name: pos.awayName }, defaultSlotFor("away", i)),
-          game_scores: pos.scores.length > 0 ? pos.scores : [], home_games_won: hw, away_games_won: aw,
+          ...doublesCols(pos.homeName, pos.awayName),
+          updated_at: new Date().toISOString(),
+          game_scores: dropEmptyGames(pos.scores), home_games_won: hw, away_games_won: aw,
           winner: computedWinner,
           is_forfeit: !!pos.isForfeit,
           forfeit_side: pos.forfeitSide ?? null,
@@ -2325,6 +2339,8 @@ export default function LeagueGameDetail() {
           fixture_id: fixtureId, position: i + 1,
           home_player_code: pos.homeCode.toUpperCase(), away_player_code: pos.awayCode.toUpperCase(),
           home_player_name: pos.homeName, away_player_name: pos.awayName,
+          ...doublesCols(pos.homeName, pos.awayName),
+          updated_at: new Date().toISOString(),
           is_forfeit: !!pos.isForfeit,
           forfeit_side: pos.forfeitSide ?? null,
         } as any, { onConflict: "fixture_id,position" });
@@ -2665,9 +2681,12 @@ export default function LeagueGameDetail() {
     // A game is "decided" once one side has scored more than the other (i.e. a clear winner).
     const isDecided = (s: { home: number; away: number }) => s.home !== s.away && (s.home > 0 || s.away > 0);
     const closeOverlay = () => {
-      const updatedPos = { ...positions[manualEntry], completed: pos.scores.length > 0 };
-      updatePosition(manualEntry, "completed", pos.scores.length > 0);
-      if (pos.scores.length > 0) persistPositionScores(manualEntry, updatedPos);
+      // Never save an empty 0–0 game row as if it were played.
+      const realScores = dropEmptyGames(pos.scores);
+      const updatedPos = { ...positions[manualEntry], scores: realScores, completed: realScores.length > 0 };
+      updatePosition(manualEntry, "scores", realScores);
+      updatePosition(manualEntry, "completed", realScores.length > 0);
+      if (realScores.length > 0) persistPositionScores(manualEntry, updatedPos);
       setManualUnlocked(new Set());
       setManualEntry(null);
     };

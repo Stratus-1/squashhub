@@ -277,7 +277,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** True when this device already holds the plan for the tournament being edited. */
   const [hasLocalPlan] = useState(() => {
     if (!tournamentId) return true;
-    try { return JSON.parse(localStorage.getItem(tournamentKey(tournamentId)) || "{}").createdTournamentId === tournamentId; } catch { return false; }
+    // A blank local copy (nothing filled in) does not count — load the tournament's saved setup instead.
+    try { const p = JSON.parse(localStorage.getItem(tournamentKey(tournamentId)) || "{}"); return p.createdTournamentId === tournamentId && hasRealAnswers(p); } catch { return false; }
   });
   const [a, setA] = useState<StepAnswers>(() => {
     try {

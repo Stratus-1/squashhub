@@ -133,7 +133,7 @@ export function evaluateStructures(inp: GuideInput): StructureOption[] {
       similar: { round_robin: 0, pools: 2, swiss: 3, knockout: 1 },
     };
     const excess = Math.max(0, rounds - cap);
-    const capPen = slots == null ? 0 : (() => { const f = capacityFit(matches, slots); return f === "fits" ? 0 : f === "tight" ? 1 : 6 + Math.min(4, matches / slots); })();
+    const capPen = slots == null ? 0 : (() => { const f = capacityFit(matches, slots); return f === "fits" ? 0 : f === "tight" ? 1 : 8 + Math.min(4, matches / slots); })();
     return -capPen +  o[outcome][kind] * (outcome === "rank" ? rankWeight : 1.4) + (strength ? s[strength][kind] : 0) + sizeFit - Math.min(8, excess * 1.5);
   };
 

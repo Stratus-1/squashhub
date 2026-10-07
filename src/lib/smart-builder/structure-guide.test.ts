@@ -29,3 +29,24 @@ describe("structure guide", () => {
     expect(materiallyDifferent(4, 6)).toBe(false);
   });
 });
+
+describe("structure guide capacity", () => {
+  it("6 ladies, club champs ranking, ample capacity → round robin not knockout", () => {
+    const r = evaluateStructures({ n: 6, outcome: "rank", strength: null, time: null, isChamps: true, slots: 40, matchMinutes: 45 });
+    expect(r[0].kind).toBe("round_robin");
+    expect(r[0].matches).toBe(15);
+    expect(r[0].fit).toBe("fits");
+    expect(r[0].courtHours).toBe(11.3);
+  });
+  it("capacity too small pushes away from round robin", () => {
+    const r = evaluateStructures({ n: 6, outcome: "rank", strength: null, time: null, isChamps: true, slots: 6 });
+    expect(r[0].kind).not.toBe("round_robin");
+  });
+  it("computes capacity and shares", async () => {
+    const { guideCapacity, shareSlots } = await import("./structure-guide");
+    expect(guideCapacity({ courts: "3", hoursPerCourt: "4", sessionDays: "2", matchMinutes: "45" })).toEqual({ courtHours: 24, slots: 32, matchMinutes: 45 });
+    expect(guideCapacity({ time: "some" })).toBeNull();
+    const s = shareSlots({ A: 6, B: 6 }, 30);
+    expect(s.A + s.B).toBeLessThanOrEqual(30);
+  });
+});

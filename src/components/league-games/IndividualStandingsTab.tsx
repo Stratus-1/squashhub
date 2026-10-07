@@ -198,6 +198,8 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
 
         const homeOurs = myCodes.includes(fx.home);
         const awayOurs = myCodes.includes(fx.away);
+        const pos = typeof r.position === "number" ? r.position : parseInt(String(r.position ?? ""), 10);
+        const position = Number.isFinite(pos) ? pos : null;
 
         const pushPlayer = (
           code: string | null,

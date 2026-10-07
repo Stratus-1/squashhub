@@ -533,7 +533,6 @@ body:has(.admin-contrast) [role="dialog"] {
   box-shadow: var(--device-raised);
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
-.member-device-push:hover { background-color: inherit; }
 .member-device-push:active:not(:disabled) { transform: translateY(2px); box-shadow: var(--device-pressed); }
 .member-device-push:disabled { background-image: none; box-shadow: none; }
 .dark .member-device-push { --device-highlight: 215 40% 85%; }

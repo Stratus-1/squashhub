@@ -353,7 +353,7 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
       longitude: device.geofence_longitude ?? null,
       radiusM: device.geofence_radius_m ?? 50,
     },
-    onEnter: () => run("pulse", "geofence"),
+    onEnter: async () => { await run("pulse", "geofence"); },
   });
   if (nearOnly && !isAdmin && proximity.active && !proximity.allowed) return null;
 
@@ -457,14 +457,14 @@ function CompactDeviceButton({ name, action, busy, icon: Icon, error, isOn, onAc
   };
 
   const buttonClass = unavailable
-    ? "border-border bg-muted text-muted-foreground"
+    ? "border-border bg-muted text-muted-foreground hover:bg-muted hover:text-muted-foreground"
     : isToggle
       ? isOn
-        ? "border-win bg-win/15 text-win"
-        : "border-destructive bg-destructive/15 text-destructive"
+        ? "border-win bg-win/15 text-win hover:bg-win/15 hover:text-win"
+        : "border-destructive bg-destructive/15 text-destructive hover:bg-destructive/15 hover:text-destructive"
       : justSucceeded
-        ? "border-win bg-win/15 text-win"
-        : "border-primary/50 bg-primary/5 text-primary";
+        ? "border-win bg-win/15 text-win hover:bg-win/15 hover:text-win"
+        : "border-primary/50 bg-primary/5 text-primary hover:bg-primary/5 hover:text-primary";
 
   return (
     <div className="flex w-16 shrink-0 flex-col items-center gap-1.5" data-device-control>

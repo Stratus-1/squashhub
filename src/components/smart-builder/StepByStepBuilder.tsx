@@ -265,18 +265,43 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Editing an existing tournament's setup. Absent = a NEW tournament (the club's unfinished draft only, never an existing tournament). */
   tournamentId?: string }) {
   const [key, setKey] = useState(() => { migrateLegacy(clubId); return tournamentId ? tournamentKey(tournamentId) : draftKey(clubId); });
-  const [a, setA] = useState<StepAnswers>(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(tournamentId ? tournamentKey(tournamentId) : draftKey(clubId)) || "{}");
-      // A new setup never carries a tournament identity; an edit only ever loads that exact tournament.
-      const saved = (tournamentId ? (raw.createdTournamentId === tournamentId ? raw : { createdTournamentId: tournamentId }) : (raw.createdTournamentId ? {} : raw)) as Partial<StepAnswers> & { fee?: Partial<FeeCfg> & { doublesPay?: string } };
+  const normalise = (saved: Partial<StepAnswers> & { fee?: Partial<FeeCfg> & { doublesPay?: string } }): StepAnswers => {
       const legacy = saved.fee?.doublesPay;
       const doublesEntry = saved.doublesEntry !== undefined ? saved.doublesEntry : legacy === "later" || !legacy ? null : legacy !== "separate";
       const doublesCover = saved.fee?.doublesCover !== undefined ? saved.fee.doublesCover : legacy === "later" || !legacy ? null : legacy === "one_pays";
       const { doublesPay: _oldRule, ...savedFee } = saved.fee ?? {};
-      return { ...EMPTY, ...saved, scoringOverrides: saved.scoringOverrides ?? {}, playoff: { ...DEFAULT_PLAYOFF, ...saved.playoff }, playoffOverrides: saved.playoffOverrides ?? {}, format: { ...DEFAULT_FORMAT, ...saved.format }, formatOverrides: saved.formatOverrides ?? {}, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } };
+      return { ...EMPTY, ...saved, scoringOverrides: saved.scoringOverrides ?? {}, playoff: { ...DEFAULT_PLAYOFF, ...saved.playoff }, playoffOverrides: saved.playoffOverrides ?? {}, format: { ...DEFAULT_FORMAT, ...saved.format }, formatOverrides: saved.formatOverrides ?? {}, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } } as StepAnswers;
+  };
+  /** True when this device already holds the plan for the tournament being edited. */
+  const [hasLocalPlan] = useState(() => {
+    if (!tournamentId) return true;
+    try { return JSON.parse(localStorage.getItem(tournamentKey(tournamentId)) || "{}").createdTournamentId === tournamentId; } catch { return false; }
+  });
+  const [a, setA] = useState<StepAnswers>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(tournamentId ? tournamentKey(tournamentId) : draftKey(clubId)) || "{}");
+      // A new setup never carries a tournament identity; an edit only ever loads that exact tournament.
+      return normalise((tournamentId ? (raw.createdTournamentId === tournamentId ? raw : { createdTournamentId: tournamentId }) : (raw.createdTournamentId ? {} : raw)) as any);
     } catch { return EMPTY; }
   });
+  // Editing on a device without the plan: load the setup saved on the tournament (any device), never start blank.
+  const [serverReady, setServerReady] = useState(hasLocalPlan);
+  useEffect(() => {
+    if (hasLocalPlan || !tournamentId) return;
+    let live = true;
+    (async () => {
+      const [life, row] = await Promise.all([
+        loadLifecycle(tournamentId).catch(() => null),
+        fromExt("club_champs").select("name, start_date").eq("id", tournamentId).eq("club_id", clubId).maybeSingle().then((r: any) => r.data).catch(() => null),
+      ]);
+      if (!live) return;
+      const fromServer = (life?.answers ?? null) as Partial<StepAnswers> | null;
+      const fallback = { ...(life?.format_plan ?? {}), ...(row?.name ? { name: row.name } : {}), ...(row?.start_date ? { startDate: row.start_date } : {}) } as Partial<StepAnswers>;
+      setA((cur) => normalise({ ...cur, ...(fromServer ?? fallback), createdTournamentId: tournamentId } as any));
+      setServerReady(true);
+    })();
+    return () => { live = false; };
+  }, [hasLocalPlan, tournamentId, clubId]);
   const [step, setStep] = useState(0);
   /** Stable id for this device-local plan, used to make court reservations idempotent. */
   useEffect(() => { if (!a.planId) setA((x) => ({ ...x, planId: x.planId ?? (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) })); }, [a.planId]);
@@ -456,6 +481,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       await saveLifecycle(tid, { ...cur, partner_pay: partnerPayAnswer }).catch(() => undefined);
     })();
   }, [a.createdTournamentId, partnerPayAnswer]);
+  // Keep the full setup on the tournament so "Edit setup" shows the same answers on every device.
+  const answersJson = JSON.stringify(a);
+  useEffect(() => {
+    const tid = a.createdTournamentId;
+    if (!tid || !serverReady) return;
+    const t = setTimeout(async () => {
+      const cur = await loadLifecycle(tid).catch(() => null);
+      if (!cur || JSON.stringify(cur.answers ?? null) === answersJson) return;
+      await saveLifecycle(tid, { ...cur, answers: JSON.parse(answersJson) }).catch(() => undefined);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [a.createdTournamentId, answersJson, serverReady]);
   // Save the draw-relevant setup (format incl. within/between/custom matchups, seeding, stages) on the tournament so
   // Generate draw & fixtures uses it on any device.
   const drawPlanJson = JSON.stringify(drawPlanOf(a as any));

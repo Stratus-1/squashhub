@@ -463,3 +463,67 @@ body:has(.admin-contrast) [role="dialog"] {
   background-color: hsl(var(--muted));
   border-color: hsl(var(--input));
 }
+
+/* Member first pass: isolated from Club Admin and association workspaces. */
+.member-home, .member-bottom-nav {
+  --muted-foreground: 220 12% 35%;
+  --member-home: 215 70% 38%;
+  --member-courts: 153 75% 27%;
+  --member-account: 174 75% 25%;
+  --member-profile: 275 55% 40%;
+  --member-events: 330 65% 37%;
+  --member-leagues: 240 50% 42%;
+  --member-bar: 350 68% 38%;
+  --member-ladder: 38 90% 27%;
+  --member-admin: 20 80% 33%;
+}
+.dark .member-home, .dark .member-bottom-nav {
+  --primary: 215 80% 75%;
+  --primary-foreground: 220 30% 12%;
+  --muted-foreground: 220 12% 78%;
+  --member-home: 215 85% 75%;
+  --member-courts: 153 65% 68%;
+  --member-account: 174 65% 68%;
+  --member-profile: 275 75% 80%;
+  --member-events: 330 75% 78%;
+  --member-leagues: 240 80% 82%;
+  --member-bar: 350 80% 78%;
+  --member-ladder: 38 90% 72%;
+  --member-admin: 20 90% 75%;
+}
+.member-home [data-tone="home"], .member-bottom-nav [data-tone="home"] { --member-tone: var(--member-home); }
+.member-home [data-tone="courts"], .member-bottom-nav [data-tone="courts"] { --member-tone: var(--member-courts); }
+.member-home [data-tone="account"], .member-bottom-nav [data-tone="account"] { --member-tone: var(--member-account); }
+.member-home [data-tone="profile"], .member-bottom-nav [data-tone="profile"] { --member-tone: var(--member-profile); }
+.member-home [data-tone="events"], .member-bottom-nav [data-tone="events"] { --member-tone: var(--member-events); }
+.member-home [data-tone="leagues"], .member-bottom-nav [data-tone="leagues"] { --member-tone: var(--member-leagues); }
+.member-home [data-tone="bar"], .member-bottom-nav [data-tone="bar"] { --member-tone: var(--member-bar); }
+.member-home [data-tone="ladder"], .member-bottom-nav [data-tone="ladder"] { --member-tone: var(--member-ladder); }
+.member-home [data-tone="admin"], .member-bottom-nav [data-tone="admin"] { --member-tone: var(--member-admin); }
+.member-home [data-tone="score"], .member-bottom-nav [data-tone="score"] { --member-tone: var(--member-profile); }
+.member-home .member-feature-tile {
+  color: hsl(var(--member-tone));
+  background-color: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--member-tone)));
+  border-color: hsl(var(--member-tone) / .4);
+  min-height: 84px;
+  border-radius: 8px;
+  white-space: normal;
+}
+.member-home .member-feature-tile:hover { background-color: hsl(var(--member-tone) / .1); }
+.member-home .member-feature-tile svg { width: 24px; height: 24px; }
+.member-home .member-feature-tile span { font-size: 13px; line-height: 1.3; }
+.member-home .member-feature-tile:focus-visible { outline: 2px solid hsl(var(--member-tone)); outline-offset: 2px; }
+.member-bottom-nav .member-nav-icon { color: hsl(var(--member-tone)); }
+.member-bottom-nav a[aria-current="page"] .member-nav-icon {
+  background-color: hsl(var(--member-tone) / .12);
+  box-shadow: inset 0 0 0 1px hsl(var(--member-tone));
+}
+.member-home [class*="text-muted-foreground/"] { color: hsl(var(--muted-foreground)); }
+.member-home .member-header-actions > button, .member-home .member-header-actions > [aria-label="Account menu"] { min-height: 44px; min-width: 44px; }
+.member-home .member-header-actions > button:first-child { min-width: 0; flex: 1; }
+@media (max-width: 767px) {
+  .member-home .member-header-actions { gap: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .member-home *, .member-bottom-nav * { animation: none !important; transition: none !important; }
+}

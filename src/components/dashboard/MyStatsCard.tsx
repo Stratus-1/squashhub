@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
@@ -45,47 +46,47 @@ export function MyStatsCard({ memberId }: Props) {
 
 
   return (
-    <Card className="p-3 rounded-2xl">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h2 className="text-xs font-heading uppercase tracking-[0.18em] text-foreground">
+    <Card className="p-3 rounded-lg">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 className="text-sm font-heading font-semibold text-foreground">
           My Stats
         </h2>
-        <div className="flex items-center gap-1 overflow-x-auto">
+        <div className="flex items-center gap-1 max-w-full overflow-x-auto">
           {seasonOptions.map((y) => (
-            <button
+            <Button variant="ghost"
               key={y}
               onClick={() => setSeason(y)}
               className={cn(
-                "px-2 py-1 rounded-md text-[11px] font-medium transition-colors",
+                "h-11 min-w-11 px-2 py-1 rounded-md text-[11px] font-medium transition-colors",
                 activeSeason === y
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted",
               )}
             >
               {y}
-            </button>
+            </Button>
           ))}
-          <button
+          <Button variant="ghost"
             onClick={() => setSeason(null)}
             className={cn(
-              "px-2 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors",
+              "h-11 min-w-11 px-2 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors",
               activeSeason === null
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted",
             )}
           >
             All Time
-          </button>
+          </Button>
         </div>
       </div>
 
       {total && (
-        <button
+        <Button variant="ghost"
           onClick={() => setOpenCategory("total")}
-          className="w-full rounded-xl bg-muted/40 border border-border px-3 py-2.5 mb-2 flex items-center justify-between text-left"
+          className="h-auto min-h-16 w-full rounded-lg bg-muted/40 border border-border px-3 py-2.5 mb-2 flex items-center justify-between text-left"
         >
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Overall</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Overall</p>
             <p className="text-lg font-heading font-bold text-foreground tabular-nums leading-tight">
               {total.played} played
               <span className="text-sm font-medium text-muted-foreground">
@@ -100,20 +101,20 @@ export function MyStatsCard({ memberId }: Props) {
             </span>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </div>
-        </button>
+        </Button>
       )}
 
       <div className="grid grid-cols-2 gap-2">
         {STAT_CATEGORY_ORDER.filter((c) => c !== "total").map((c) => {
           const s = stats?.[c];
           return (
-            <button
+            <Button variant="ghost"
               key={c}
               onClick={() => setOpenCategory(c)}
-              className="rounded-lg bg-muted/40 border border-border p-2.5 text-left hover:bg-muted/60 transition-colors"
+              className="h-auto min-h-20 block rounded-lg bg-muted/40 border border-border p-2.5 text-left hover:bg-muted/60 transition-colors"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">
                   {STAT_CATEGORY_LABELS[c]}
                 </span>
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
@@ -125,13 +126,13 @@ export function MyStatsCard({ memberId }: Props) {
               <p className="text-[11px] text-muted-foreground tabular-nums">
                 {s?.won ?? 0}W – {s?.lost ?? 0}L · {s?.winRate ?? 0}%
               </p>
-            </button>
+            </Button>
           );
         })}
       </div>
 
       {computedAt && (
-        <p className="mt-2 text-[10px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           Updated{" "}
           {new Date(computedAt).toLocaleDateString(undefined, {
             day: "2-digit",
@@ -144,7 +145,7 @@ export function MyStatsCard({ memberId }: Props) {
       {!statsActivated && (
         <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-muted/40 border border-border px-2.5 py-2">
           <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-[10px] leading-snug text-muted-foreground">
+          <p className="text-xs leading-snug text-muted-foreground">
             Full stats will be activated once your club subscribes to SquashHub.
           </p>
         </div>

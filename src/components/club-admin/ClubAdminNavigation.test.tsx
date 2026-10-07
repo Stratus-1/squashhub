@@ -9,14 +9,16 @@ const operations = [{ value: "members", label: "Members", description: "Member r
 const setup = [{ value: "banking", label: "Banking", description: "Payments", icon: Banknote, needsSetup: true }];
 
 describe("Club Admin presentation", () => {
-  it("defaults to operations first/open and setup collapsed with visible attention", () => {
+  it("defaults to setup first/collapsed with visible attention and operations below/open", () => {
     render(<ClubAdminNavigation operations={operations} setup={setup} activeTab="members" onSelect={vi.fn()} />);
     const groups = screen.getAllByRole("region");
-    expect(groups[0]).toHaveAttribute("aria-label", "Club operations");
-    expect(screen.getByRole("button", { name: "Club operations" })).toHaveAttribute("aria-expanded", "true");
+    expect(groups[0]).toHaveAttribute("aria-label", "Setup & configuration");
     expect(screen.getByRole("button", { name: /Setup & configuration/ })).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("button", { name: "Banking" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("1 setup items need attention")).toBeVisible();
+    expect(groups[1]).toHaveAttribute("aria-label", "Club operations");
+    expect(screen.getByRole("button", { name: "Club operations" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Members" })).toBeVisible();
   });
   it("keeps destinations selectable in expanded and compact navigation", () => {
     const onSelect = vi.fn();

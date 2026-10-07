@@ -36,6 +36,8 @@ type PlayerRow = {
   gamesLost: number;
   diff: number;
   team_codes: Set<string>;
+  /** Team position (1..5) this row's stats were accumulated at; null for the overall view. */
+  position: number | null;
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -75,6 +77,9 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
 
   // Filter for league selection (by league number: "1", "2", ... or "ALL")
   const [selectedLeagueNum, setSelectedLeagueNum] = useState<string>("ALL");
+  // "position" (default): compare players/pairs who played the same team position;
+  // "overall": one accumulated list across all positions.
+  const [viewMode, setViewMode] = useState<"position" | "overall">("position");
 
   // Fetch club members (for name + ladder + member-number → player-code mapping)
   const { data: members = [] } = useQuery({
@@ -193,6 +198,8 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
 
         const homeOurs = myCodes.includes(fx.home);
         const awayOurs = myCodes.includes(fx.away);
+        const pos = typeof r.position === "number" ? r.position : parseInt(String(r.position ?? ""), 10);
+        const position = Number.isFinite(pos) ? pos : null;
 
         const pushPlayer = (
           code: string | null,
@@ -213,14 +220,17 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             .join(" & ");
           if (!code && !nameKey) return;
           if (selectedLeagueNum !== "ALL" && codeToLeagueNum.get(teamCode) !== selectedLeagueNum) return;
-          const key = code ? code.toUpperCase() : `NAME:${nameKey}`;
+          const baseKey = code ? code.toUpperCase() : `NAME:${nameKey}`;
+          // Key by player + position so per-position stats never mix; position
+          // null (legacy rows) folds into position 0 ("Unspecified").
+          const key = `${baseKey}@P${position ?? 0}`;
           const existing = agg.get(key);
           const member = members.find(
-            (m) => (m.club_member_number || "").toUpperCase() === key,
+            (m) => (m.club_member_number || "").toUpperCase() === baseKey,
           );
           const row: PlayerRow = existing || {
-            player_code: key,
-            name: member?.name || name || key,
+            player_code: baseKey,
+            name: member?.name || name || baseKey,
             ladder_position: member?.ladder_position ?? null,
             played: 0,
             won: 0,
@@ -229,6 +239,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             gamesLost: 0,
             diff: 0,
             team_codes: new Set<string>(),
+            position,
           };
           row.played += 1;
           if (won) row.won += 1;
@@ -262,16 +273,37 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
         }
       }
 
-      const rows = Array.from(agg.values());
-      rows.sort((a, b) => {
-        if (b.diff !== a.diff) return b.diff - a.diff;
-        const la = a.ladder_position ?? Number.POSITIVE_INFINITY;
-        const lb = b.ladder_position ?? Number.POSITIVE_INFINITY;
-        if (la !== lb) return la - lb;
-        return a.name.localeCompare(b.name);
-      });
+      const byPositionRows = Array.from(agg.values());
+      const sortRows = (list: PlayerRow[]) =>
+        list.sort((a, b) => {
+          if (b.diff !== a.diff) return b.diff - a.diff;
+          const la = a.ladder_position ?? Number.POSITIVE_INFINITY;
+          const lb = b.ladder_position ?? Number.POSITIVE_INFINITY;
+          if (la !== lb) return la - lb;
+          return a.name.localeCompare(b.name);
+        });
+      sortRows(byPositionRows);
+
+      // Overall: merge each player's per-position rows into one accumulated row.
+      const overallAgg = new Map<string, PlayerRow>();
+      for (const r of byPositionRows) {
+        const ex = overallAgg.get(r.player_code);
+        if (ex) {
+          ex.played += r.played;
+          ex.won += r.won;
+          ex.lost += r.lost;
+          ex.gamesWon += r.gamesWon;
+          ex.gamesLost += r.gamesLost;
+          ex.diff = ex.gamesWon - ex.gamesLost;
+          r.team_codes.forEach((tc) => ex.team_codes.add(tc));
+        } else {
+          overallAgg.set(r.player_code, { ...r, position: null, team_codes: new Set(r.team_codes) });
+        }
+      }
+      const overallRows = sortRows(Array.from(overallAgg.values()));
+
       const leagueNums = Array.from(leagueNumsSet).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-      return { rows, leagueNums };
+      return { rows: overallRows, byPositionRows, leagueNums };
     },
   });
 
@@ -297,7 +329,19 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   // teams play in each "Nth League") so the dropdown stays accurate even
   // when teams have custom names like "Cobras" or "Fungi".
   const rows = data?.rows ?? [];
+  const byPositionRows = data?.byPositionRows ?? [];
   const leagueNums = data?.leagueNums ?? [];
+  // Group per-position rows under their position number (0 = unspecified).
+  const positionGroups = useMemo(() => {
+    const map = new Map<number, PlayerRow[]>();
+    for (const r of byPositionRows) {
+      const p = r.position ?? 0;
+      const list = map.get(p) || [];
+      list.push(r);
+      map.set(p, list);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+  }, [byPositionRows]);
   const leagueOptions = useMemo(
     () => leagueNums.map((num) => ({ num, label: `League ${num}` })),
     [leagueNums],
@@ -314,6 +358,16 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        <Select value={viewMode} onValueChange={(v) => setViewMode(v as "position" | "overall")}>
+          <SelectTrigger className="h-8 w-[180px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="position">By position</SelectItem>
+            <SelectItem value="overall">Overall (all positions)</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={selectedLeagueNum} onValueChange={setSelectedLeagueNum}>
           <SelectTrigger className="h-8 w-[220px] text-xs">
             <SelectValue placeholder="All leagues" />
@@ -368,76 +422,94 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             No {isDoubles ? "pair" : "player"} results recorded yet for {seasonYear}.
           </p>
         </Card>
+      ) : viewMode === "position" ? (
+        <div className="space-y-4">
+          {positionGroups.map(([pos, list]) => (
+            <Card key={pos} className="overflow-x-auto">
+              <div className="px-3 pt-3 pb-1 text-xs font-semibold">
+                {pos > 0 ? `Position ${pos}` : "Position not recorded"}
+                <span className="ml-2 font-normal text-muted-foreground">
+                  {list.length} {isDoubles ? "pairs" : "players"}
+                </span>
+              </div>
+              {renderTable(list)}
+            </Card>
+          ))}
+        </div>
       ) : (
-        <Card className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8 text-center">#</TableHead>
-                <TableHead>Player</TableHead>
-                <TableHead className="text-center w-14" title="Matches (rubbers) played">P</TableHead>
-                <TableHead className="text-center w-14" title="Matches won">W</TableHead>
-                <TableHead className="text-center w-14" title="Matches lost">L</TableHead>
-                <TableHead className="text-center w-16" title="Total games (sets) won">GW</TableHead>
-                <TableHead className="text-center w-16" title="Total games (sets) lost">GL</TableHead>
-                <TableHead className="text-center w-20 font-bold" title="Net contribution: games won − games lost">
-                  +/−
-                </TableHead>
-                <TableHead className="text-center w-14 text-[10px]" title="Club ladder position">
-                  Ladder
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r, i) => (
-                <TableRow key={r.player_code} style={rankTint(i, rows.length)}>
-                  <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
-                  <TableCell className="text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{r.name}</span>
-                      {!r.player_code.startsWith("NAME:") && (
-                        <span className="font-mono text-[10px] text-muted-foreground">{r.player_code}</span>
-                      )}
-                      {r.team_codes.size > 0 && (
-                        <div className="flex gap-1 flex-wrap">
-                          {Array.from(r.team_codes).map((tc) => (
-                            <Badge key={tc} variant="outline" className="text-[9px] px-1 py-0">
-                              {tc}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center text-xs">{r.played}</TableCell>
-                  <TableCell className="text-center text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                    {r.won}
-                  </TableCell>
-                  <TableCell className="text-center text-xs text-rose-600 dark:text-rose-400">
-                    {r.lost}
-                  </TableCell>
-                  <TableCell className="text-center text-xs">{r.gamesWon}</TableCell>
-                  <TableCell className="text-center text-xs">{r.gamesLost}</TableCell>
-                  <TableCell
-                    className={`text-center font-bold ${
-                      r.diff > 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : r.diff < 0
-                        ? "text-rose-600 dark:text-rose-400"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {r.diff > 0 ? `+${r.diff}` : r.diff}
-                  </TableCell>
-                  <TableCell className="text-center text-[11px] text-muted-foreground">
-                    {r.ladder_position ?? "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <Card className="overflow-x-auto">{renderTable(rows)}</Card>
       )}
     </div>
   );
+
+  function renderTable(list: PlayerRow[]) {
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-8 text-center">#</TableHead>
+            <TableHead>{isDoubles ? "Pair" : "Player"}</TableHead>
+            <TableHead className="text-center w-14" title="Matches (rubbers) played">P</TableHead>
+            <TableHead className="text-center w-14" title="Matches won">W</TableHead>
+            <TableHead className="text-center w-14" title="Matches lost">L</TableHead>
+            <TableHead className="text-center w-16" title="Total games (sets) won">GW</TableHead>
+            <TableHead className="text-center w-16" title="Total games (sets) lost">GL</TableHead>
+            <TableHead className="text-center w-20 font-bold" title="Net contribution: games won − games lost">
+              +/−
+            </TableHead>
+            <TableHead className="text-center w-14 text-[10px]" title="Club ladder position">
+              Ladder
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.map((r, i) => (
+            <TableRow key={`${r.player_code}@${r.position ?? 0}`} style={rankTint(i, list.length)}>
+              <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
+              <TableCell className="text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{r.name}</span>
+                  {!r.player_code.startsWith("NAME:") && (
+                    <span className="font-mono text-[10px] text-muted-foreground">{r.player_code}</span>
+                  )}
+                  {r.team_codes.size > 0 && (
+                    <div className="flex gap-1 flex-wrap">
+                      {Array.from(r.team_codes).map((tc) => (
+                        <Badge key={tc} variant="outline" className="text-[9px] px-1 py-0">
+                          {tc}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="text-center text-xs">{r.played}</TableCell>
+              <TableCell className="text-center text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                {r.won}
+              </TableCell>
+              <TableCell className="text-center text-xs text-rose-600 dark:text-rose-400">
+                {r.lost}
+              </TableCell>
+              <TableCell className="text-center text-xs">{r.gamesWon}</TableCell>
+              <TableCell className="text-center text-xs">{r.gamesLost}</TableCell>
+              <TableCell
+                className={`text-center font-bold ${
+                  r.diff > 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : r.diff < 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {r.diff > 0 ? `+${r.diff}` : r.diff}
+              </TableCell>
+              <TableCell className="text-center text-[11px] text-muted-foreground">
+                {r.ladder_position ?? "—"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  }
 }

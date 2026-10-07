@@ -420,7 +420,7 @@ function CompactDeviceButton({ name, action, busy, icon: Icon, description, erro
 }) {
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="min-w-0 flex-1 basis-36 max-w-full">
+    <div className="min-w-0 flex-1 basis-28 max-w-full">
       <Button variant="outline" disabled={busy} onClick={() => setConfirming(true)}
         aria-label={`${name}: ${action}`} aria-busy={busy}
         className={cn("h-auto min-h-14 w-full justify-start gap-2 whitespace-normal rounded-md border-border bg-card px-3 py-2 text-left text-foreground hover:bg-muted", isOn && "border-primary/60 bg-primary/5")}

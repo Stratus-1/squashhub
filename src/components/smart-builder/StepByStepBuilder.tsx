@@ -1613,9 +1613,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     <Label>Times courts are free</Label>
                     {d.windows.map((w, k) => (
                       <div key={k} className="flex items-center gap-2">
-                        <Input type="time" step={300} className="max-w-[130px]" aria-label="From" value={w.from} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, from: e.target.value } : x)) })} />
+                        {slotSelect("From", w.from, (v) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, from: v } : x)) }), slotStarts)}
                         <span className="text-xs text-muted-foreground">to</span>
-                        <Input type="time" step={300} className="max-w-[130px]" aria-label="To" value={w.to} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, to: e.target.value } : x)) })} />
+                        {slotSelect("To", w.to, (v) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, to: v } : x)) }), w.from ? slotEnds.filter((t) => t > w.from) : slotEnds)}
                         <Button variant="ghost" size="icon" aria-label="Remove time" disabled={d.windows.length === 1} onClick={() => updDay(i, { windows: d.windows.filter((_, j) => j !== k) })}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
@@ -1657,7 +1657,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             <option value="">Choose day…</option>
                             {a.days.filter((d) => d.date).map((d) => <option key={d.date} value={d.date}>{new Date(`${d.date}T00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</option>)}
                           </select>
-                          <Input type="time" step={300} className="max-w-[120px]" aria-label="Playoff start time" value={ps.time ?? ""} onChange={(e) => setSc({ playoffStart: { ...ps, time: e.target.value } })} />
+                          {slotSelect("Playoff start time", ps.time ?? "", (v) => setSc({ playoffStart: { ...ps, time: v } }), slotStarts, "max-w-[120px]")}
                         </span>}
                         <p className="text-xs text-muted-foreground">Playoff games (players still TBD) are scheduled in the same run, so their courts are kept free.</p>
                       </div>

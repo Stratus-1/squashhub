@@ -8,6 +8,7 @@ export interface AdminNavigationItem {
   label: string;
   description: string;
   icon: ComponentType<{ className?: string; strokeWidth?: string | number }>;
+  iconClassName?: string;
   needsSetup?: boolean;
 }
 
@@ -39,7 +40,9 @@ export function ClubAdminNavigation({ operations, setup, activeTab, onSelect, co
           aria-label={item.label} title={compact ? `${item.label}${item.needsSetup ? " — Needs setup" : ""}` : undefined}
           onClick={() => onSelect(item.value)}
           className={cn("group relative h-auto min-h-11 w-full justify-start gap-2 rounded-md px-2 py-2 text-left", active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary", compact && "justify-center px-1")}>
-          <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+          <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-md", item.iconClassName ?? "text-muted-foreground", compact && "size-8")}>
+            <Icon className="size-4" strokeWidth={1.75} />
+          </span>
           {!compact && <span className="min-w-0 flex-1 whitespace-normal"><span className="block text-xs font-semibold">{item.label}</span><span className="block text-[11px] font-normal text-muted-foreground">{item.description}</span></span>}
           {item.needsSetup && <span aria-label="Needs setup" className={cn("size-1.5 shrink-0 rounded-full bg-warning", compact && "absolute right-1 top-1")} />}
           {!compact && <span aria-hidden className="text-xs text-muted-foreground">→</span>}

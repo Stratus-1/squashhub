@@ -792,6 +792,24 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
+  /** Exact reasons the Stages & scheduling step is not complete. */
+  const scheduleProblems: string[] = (() => {
+    const out: string[] = [];
+    if (stages.length === 0) out.push("Add at least one stage (e.g. the Swiss rounds).");
+    stages.forEach((s, i) => {
+      const n = s.name.trim() || `Stage ${i + 1}`;
+      if (!s.name.trim()) out.push(`Stage ${i + 1}: give it a name.`);
+      if (s.mode === "play_by" && !s.deadline) out.push(`${n}: choose the play-by date.`);
+      if (s.mode === "scheduled") {
+        if (!s.date) out.push(`${n}: choose the date.`);
+        if (!s.from || !s.to) out.push(`${n}: choose the From and To times.`);
+        else if (s.from >= s.to) out.push(`${n}: the To time must be after the From time.`);
+        if (s.courtIds.length === 0) out.push(`${n}: tick at least one court.`);
+      }
+    });
+    if (a.playoffSync === null || a.playoffSync === undefined) out.push("Answer whether playoff dates are shared across categories (Decide later is fine).");
+    return out;
+  })();
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1991,6 +2009,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="font-semibold">Next is not available yet:</div>
               {cur === "Pick" && pickProblems.length
                 ? <ul className="ml-4 list-disc">{pickProblems.slice(0, 12).map((p, i) => <li key={i}>{p}</li>)}{pickProblems.length > 12 && <li>…and {pickProblems.length - 12} more</li>}</ul>
+                : cur === "Schedule" && scheduleProblems.length
+                ? <ul className="ml-4 list-disc">{scheduleProblems.map((p, i) => <li key={i}>{p}</li>)}</ul>
                 : <p>Complete the required choices on this step ({STEP_LABEL[cur]}).</p>}
             </div>
           )}

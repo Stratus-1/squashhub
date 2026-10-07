@@ -302,6 +302,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     })();
     return () => { live = false; };
   }, [hasLocalPlan, tournamentId, clubId]);
+  // Editing on the device that holds the plan: push the answers to the tournament once,
+  // so Edit works on every other device without needing a full re-save.
+  useEffect(() => {
+    if (!hasLocalPlan || !tournamentId) return;
+    saveLifecycle(tournamentId, { answers: JSON.parse(JSON.stringify(a)) } as any).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLocalPlan, tournamentId]);
   const [step, setStep] = useState(0);
   /** Stable id for this device-local plan, used to make court reservations idempotent. */
   useEffect(() => { if (!a.planId) setA((x) => ({ ...x, planId: x.planId ?? (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) })); }, [a.planId]);

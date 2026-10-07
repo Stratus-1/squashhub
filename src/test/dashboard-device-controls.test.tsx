@@ -179,7 +179,7 @@ describe("DashboardDeviceControls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Main door: Open" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(screen.queryByText("Open")).toBeNull();
-    await waitFor(() => expect(mocks.openDoor).toHaveBeenCalledExactlyOnceWith("manual"));
+    await waitFor(() => expect(mocks.openDoor).toHaveBeenCalledExactlyOnceWith("manual", { allowBluetooth: false }));
   });
 
   it("toggles immediately and displays the returned relay state", async () => {

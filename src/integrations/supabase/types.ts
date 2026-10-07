@@ -17663,6 +17663,12 @@ export type Database = {
         }[]
       }
       bar_open_tabs: { Args: { _club_id: string }; Returns: Json }
+      bar_post_sale_journal: {
+        Args: {
+          _sale: Database["public"]["Tables"]["bar_visitor_sales"]["Row"]
+        }
+        Returns: undefined
+      }
       bar_qr_charge_guest_tab_member: {
         Args: {
           _club_member_id: string
@@ -17753,6 +17759,12 @@ export type Database = {
       bar_units_per_sale: {
         Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
         Returns: number
+      }
+      bar_unpost_sale_journal: {
+        Args: {
+          _sale: Database["public"]["Tables"]["bar_visitor_sales"]["Row"]
+        }
+        Returns: undefined
       }
       bill_wifi_monthly: { Args: never; Returns: Json }
       booking_notice_data: {

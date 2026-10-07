@@ -1,6 +1,9 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { createContext, useContext } from "react";
+
+export const ClubAdminSetupPresentation = createContext(false);
 
 export interface SetupStep {
   id: string;
@@ -19,19 +22,21 @@ export function SetupSteps({
   steps,
   value,
   onChange,
-  variant = "pills",
+  variant,
 }: {
   steps: SetupStep[];
   value: string;
   onChange: (id: string) => void;
   variant?: "pills" | "connected";
 }) {
+  const clubAdminPresentation = useContext(ClubAdminSetupPresentation);
+  const presentation = variant ?? (clubAdminPresentation ? "connected" : "pills");
   const current = steps.find((s) => s.id === value) ?? steps[0];
   return (
     <div className="space-y-2">
-      {variant === "connected" ? (
+      {presentation === "connected" ? (
         <div className="overflow-hidden rounded-md border bg-card">
-          <div role="group" aria-label="Setup steps" className="grid grid-cols-4 divide-x">
+          <div role="group" aria-label="Setup steps" className={cn("grid divide-x", steps.length <= 2 ? "grid-cols-2" : steps.length === 3 ? "grid-cols-3" : steps.length === 4 ? "grid-cols-4" : steps.length === 5 ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-3")}>
             {steps.map((s, i) => {
               const active = s.id === current?.id;
               return <Button key={s.id} type="button" variant="ghost" aria-current={active ? "step" : undefined}

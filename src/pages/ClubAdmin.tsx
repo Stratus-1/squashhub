@@ -54,6 +54,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ClubAdminNavigation, type AdminNavigationItem } from "@/components/club-admin/ClubAdminNavigation";
+import { ClubAdminSetupPresentation } from "@/components/club-admin/setup/SetupSteps";
 
 
 type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability; startHere?: boolean };
@@ -350,7 +351,9 @@ export default function ClubAdmin() {
                 </div>
               </header>
               <div className="admin-workspace pt-1 md:pt-4 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_h3]:text-sm [&_h3]:font-semibold">
-                {renderContent()}
+                <ClubAdminSetupPresentation.Provider value={true}>
+                  {renderContent()}
+                </ClubAdminSetupPresentation.Provider>
               </div>
             </section>
           )}

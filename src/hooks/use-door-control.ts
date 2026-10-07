@@ -31,7 +31,7 @@ export interface DoorControl {
   /** Admin is opening remotely, from outside the geofence. */
   adminOverride: boolean;
   loading: boolean;
-  openDoor: (trigger?: "manual" | "geofence") => Promise<void>;
+  openDoor: (trigger?: "manual" | "geofence", opts?: { allowBluetooth?: boolean }) => Promise<void>;
   proximity: ReturnType<typeof useDoorProximity>;
   club:
     | {

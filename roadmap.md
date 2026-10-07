@@ -72,3 +72,6 @@
 - [x] Hide Courts tile/tab for pending applicants who can't book
 - [preview] Step-by-Step Pick players: add any member (outside leagues flagged); Who may enter: leagues + Players I pick together; Next shows blockers
 - [x] League Rounds tab: a season round spanning future weeks shows as "Past rounds"
+
+- [ ] IoT offline alerts: on hold pending Willem's architecture approval (plan written)
+- [ ] Member dashboard My Stats: compact win/loss donuts per category

@@ -19,15 +19,33 @@ export function SetupSteps({
   steps,
   value,
   onChange,
+  variant = "pills",
 }: {
   steps: SetupStep[];
   value: string;
   onChange: (id: string) => void;
+  variant?: "pills" | "connected";
 }) {
   const current = steps.find((s) => s.id === value) ?? steps[0];
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-1.5">
+      {variant === "connected" ? (
+        <div className="overflow-x-auto rounded-md border bg-muted/50">
+          <div role="group" aria-label="Setup steps" className="flex min-w-max divide-x sm:min-w-0">
+            {steps.map((s, i) => {
+              const active = s.id === current?.id;
+              return <Button key={s.id} type="button" variant="ghost" aria-current={active ? "step" : undefined}
+                onClick={() => onChange(s.id)} className={cn(
+                  "h-auto min-h-11 flex-1 gap-2 rounded-none px-3 py-2 text-xs",
+                  active ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : s.complete ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}>
+                <span className="flex size-4 shrink-0 items-center justify-center text-[11px]">{s.complete ? <Check className="size-3.5" /> : i + 1}</span>
+                {s.label}
+              </Button>;
+            })}
+          </div>
+        </div>
+      ) : <div className="flex flex-wrap gap-1.5">
         {steps.map((s, i) => {
           const active = s.id === current?.id;
           const hue = `var(--step-${(i % 6) + 1})`;
@@ -59,7 +77,7 @@ export function SetupSteps({
             </button>
           );
         })}
-      </div>
+      </div>}
       {current?.description && (
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">

@@ -95,6 +95,12 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
       </div>
 
 
+      {props.statsSlot && (
+        <div className="px-8 pb-3 space-y-3">
+          {props.statsSlot}
+        </div>
+      )}
+
       {/* QUICK ACCESS TILES — categorised like the sidebar */}
       <div className="px-8 pb-2">
         <QuickAccess
@@ -104,12 +110,6 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
           navigate={navigate}
         />
       </div>
-
-      {props.statsSlot && (
-        <div className="px-8 pb-3 space-y-3">
-          {props.statsSlot}
-        </div>
-      )}
 
 
       <div className="px-8 pb-3">
@@ -365,7 +365,6 @@ function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigat
     ...(honestyBarEnabled
       ? [{ title: "Bar / POS", url: "/honesty-bar", icon: Wine, color: "rose" } as Tile]
       : []),
-    { title: "Help & Tutorials",  url: "/help",         icon: GraduationCap, color: "sky" },
   ];
 
   const admin: Tile[] = hasAnyAdminAccess

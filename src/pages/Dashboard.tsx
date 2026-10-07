@@ -1,4 +1,5 @@
 import { usePendingApplicant } from "@/hooks/use-pending-applicant";
+import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
 import { PageHeader } from "@/components/PageHeader";
 import { useCapabilities } from "@/hooks/use-club-capabilities";
 import { fromExt } from "@/lib/supabase-ext";
@@ -66,6 +67,7 @@ import { toast } from "sonner";
 export default function Dashboard() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const shortcutFlags = useSidebarFlags();
   const queryClient = useQueryClient();
   const location = useLocation();
   const { user } = useAuth();
@@ -645,7 +647,7 @@ export default function Dashboard() {
     const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
 
     return (
-      <div className="relative">
+      <div className="member-home relative">
         <SEO title="Member Dashboard" description="Your squash hub — stats and bookings." path="/" noIndex />
         <MembershipIntroModal
           open={showIntro}
@@ -682,6 +684,7 @@ export default function Dashboard() {
           showNotifications
           showProfile
           actionsOnly
+          showHelp
         />
 
         {isVisitorRoleMember && effectiveClub?.id && myClubMember?.id && (
@@ -774,7 +777,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="bottom-nav-safe relative">
+    <div className="member-home bottom-nav-safe relative">
       <SEO title="Member Dashboard" description="Your squash hub — stats and bookings." path="/" noIndex />
 
       <MembershipIntroModal
@@ -802,7 +805,7 @@ export default function Dashboard() {
       />
       
 
-      <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile />
+      <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile showHelp />
 
       {/* Door / lights controls first, so Open Door is at the top of the screen */}
       {!isPendingApplicant && (
@@ -894,21 +897,24 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Primary Actions — My Account first, then Book, Ladder, Profile */}
+      {!isPendingApplicant && (
+        <div className="px-4 mt-3 space-y-3">
+          <MyStatsCard memberId={myMemberId} />
+          <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+        </div>
+      )}
+
+      {/* Features not already supplied by the persistent shortcuts. */}
       <div className="px-4 mt-4">
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
-            <Wallet className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">My Account</span>
-          </Button>
-          {bookingsEnabled && (
-<Button className="flex-col h-auto py-3 gap-1.5 bg-primary text-primary-foreground border border-border bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => navigate("/bookings")}>
+        <div className="member-feature-grid grid grid-cols-3 gap-2.5">
+          {bookingsEnabled && !shortcutFlags.bookingsEnabled && (
+<Button data-tone="courts" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
             <span className="text-xs font-medium">Court Bookings</span>
           </Button>
 )}
           {ladderEnabled && (
-<Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20" onClick={() => navigate("/ladder")}>
+<Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/ladder")}>
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
@@ -918,9 +924,9 @@ export default function Dashboard() {
               leads: while a game is being scored. Otherwise it sits at the end
               of the grid as the entry point for social / ad-hoc games. */}
           {hasMarkerSession && (
-            <Button
+            <Button data-tone="score"
               variant="outline"
-              className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-emerald-500/60 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-2 ring-emerald-500/40 animate-pulse"
+              className="member-feature-tile flex-col py-3 gap-2 ring-2 ring-member-profile/40"
               onClick={() => navigate("/match-marker")}
             >
               <Play className="w-5 h-5" />
@@ -928,28 +934,28 @@ export default function Dashboard() {
             </Button>
           )}
 
-          {eventsEnabled && (
-<Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-400 hover:bg-pink-500/20" onClick={() => navigate("/events")}>
+          {eventsEnabled && (shortcutFlags.bookingsEnabled || !shortcutFlags.eventsEnabled) && (
+<Button data-tone="events" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/events")}>
             <CalendarDays className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Events</span>
           </Button>
 )}
           {hasLeagues && (
-            <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-500/20" onClick={() => navigate("/league-games")}>
+            <Button data-tone="leagues" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/league-games")}>
               <Trophy className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Leagues</span>
             </Button>
           )}
           {tournamentsEnabled && (
-<Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20" onClick={() => navigate("/tournaments")}>
+<Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/tournaments")}>
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
           </Button>
 )}
-          {effectiveClub && barEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
-            <Button
+          {effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
+            <Button data-tone="bar"
               variant="outline"
-              className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20"
+              className="member-feature-tile flex-col py-3 gap-2"
               onClick={() => navigate("/honesty-bar")}
               title="Buy drinks & snacks — pay now or charge to your member account"
             >
@@ -957,16 +963,11 @@ export default function Dashboard() {
               <span className="text-xs font-medium leading-tight text-center">Bar / POS</span>
             </Button>
           )}
-          {/* My Profile still desktop-only */}
-          <Button variant="outline" className="hidden sm:flex flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/20" onClick={() => openProfile("/profile?edit=1")}>
-            <Settings className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">My Profile</span>
-          </Button>
           <DashboardWifiCard asTile />
           {!hasMarkerSession && (
-            <Button
+            <Button data-tone="score"
               variant="outline"
-              className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20"
+              className="member-feature-tile flex-col py-3 gap-2"
               onClick={() => navigate("/match-marker")}
               title="Score a social, ladder or practice game live — league and tournament games are marked from their own fixture screens"
             >
@@ -974,25 +975,14 @@ export default function Dashboard() {
               <span className="text-xs font-medium leading-tight text-center">Score a Match</span>
             </Button>
           )}
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20" onClick={() => navigate("/help")}>
-            <GraduationCap className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Help &amp; Tutorials</span>
-          </Button>
           {hasAnyAdminAccess && (
-            <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-500/20" onClick={() => navigate("/club-admin")}>
+            <Button data-tone="admin" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/club-admin")}>
               <ShieldCheck className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Club Admin</span>
             </Button>
           )}
         </div>
       </div>
-
-      {!isPendingApplicant && (
-        <div className="px-4 mt-3 space-y-3">
-          <MyStatsCard memberId={myMemberId} />
-          <MyRankingsCard clubId={clubId} memberId={myMemberId} />
-        </div>
-      )}
 
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />

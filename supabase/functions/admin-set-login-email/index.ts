@@ -43,8 +43,13 @@ Deno.serve(async (req) => {
     let ownRows: string[] = [member.id];
     let othersOnLogin = 0;
     if (member.user_id) {
-      const { data: rows } = await admin.from("club_members").select("id, person_id").eq("user_id", member.user_id);
-      const same = (r: any) => r.id === member.id || (member.person_id && r.person_id === member.person_id);
+      const { data: rows } = await admin.from("club_members").select("id, person_id, club_id").eq("user_id", member.user_id);
+      // Within the same club every member row is its own login holder, even if
+      // it shares a person record (e.g. a doubles-team row created from a
+      // player). Only the same person's rows at OTHER clubs move with it.
+      const same = (r: any) =>
+        r.id === member.id ||
+        (member.person_id && r.person_id === member.person_id && r.club_id !== member.club_id);
       ownRows = (rows || []).filter(same).map((r: any) => r.id);
       othersOnLogin = (rows || []).filter((r: any) => !same(r)).length;
     }

@@ -54,6 +54,8 @@ Deno.serve(async (req) => {
       othersOnLogin = (rows || []).filter((r: any) => !same(r)).length;
     }
 
+    if (body.dry_run) return json({ ok: true, dry_run: true, own_rows: ownRows.length, others_on_login: othersOnLogin });
+
     // Is the email already a login?
     const { data: prof } = await admin.from("profiles").select("id").ilike("email", email).maybeSingle();
     const existingId: string | null = (prof as any)?.id ?? null;

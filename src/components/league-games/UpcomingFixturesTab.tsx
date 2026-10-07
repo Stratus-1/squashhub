@@ -609,10 +609,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         const label = f.isTournament
                           ? "Tournament"
                           : needsAdminMode
-                            ? ((submitted || hasSavedScore) ? "Edit your results" : "Enter your results")
+                            ? ((submitted || hasSavedScore) ? "Edit result" : "Enter result")
                             : viewOnly
                               ? "View Game"
-                              : "Set up and mark game";
+                              : (isPast || submitted || hasSavedScore)
+                                ? ((submitted || hasSavedScore) ? "Edit result" : "Enter result")
+                                : "Set up and mark game";
                         const isLive = !f.isTournament && liveFixtureIds.has(f.id);
                         return (
                           <>

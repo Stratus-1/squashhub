@@ -589,6 +589,13 @@
       "when": 1791336284432,
       "tag": "0083_bar_sale_journal_only_when_paid",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1791338751095,
+      "tag": "0084_migration",
+      "breakpoints": true
     }
   ]
 }

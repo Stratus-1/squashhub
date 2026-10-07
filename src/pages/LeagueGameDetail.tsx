@@ -940,7 +940,7 @@ export default function LeagueGameDetail() {
   }, [existingResult, originalLineupSnapshot]);
 
   // ---- Prefill lineup from Fill-Up Leagues / registrations for known club teams ----
-  const { data: prefillLineup } = useQuery({
+  const { data: prefillLineup, isFetched: prefillFetched } = useQuery({
     queryKey: ["league-fixture-prefill", fixtureId, fixture?.home_team_code, fixture?.away_team_code, fixture?.fixture_date],
     queryFn: async () => {
       if (!fixture) return null;
@@ -2240,7 +2240,7 @@ export default function LeagueGameDetail() {
     // registrations). If that query hasn't resolved yet, OPB silently saves
     // as 0 and the standings post short by the OPB amount (bug seen in NIL).
     // Block submission until prefill data is loaded.
-    if (!!leagueRules?.original_player_bonus_enabled && !prefillLineup) {
+    if (!!leagueRules?.original_player_bonus_enabled && !prefillFetched) {
       toast.error("Still loading team lineup — please wait a moment and try again.");
       return;
     }

@@ -624,6 +624,13 @@
       "when": 1791362178135,
       "tag": "0088_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1791385714516,
+      "tag": "0089_iot_connectivity_alerts",
+      "breakpoints": true
     }
   ]
 }

@@ -4632,6 +4632,79 @@ export type Database = {
           },
         ]
       }
+      club_iot_alert_settings: {
+        Row: {
+          club_id: string
+          enabled: boolean
+          grace_minutes: number
+          recipient_member_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          enabled?: boolean
+          grace_minutes?: number
+          recipient_member_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          enabled?: boolean
+          grace_minutes?: number
+          recipient_member_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_iot_alert_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_iot_device_health: {
+        Row: {
+          alert_sent_at: string | null
+          club_id: string
+          device_id: string
+          label: string | null
+          last_checked_at: string | null
+          last_online_at: string | null
+          offline_since: string | null
+          online: boolean | null
+        }
+        Insert: {
+          alert_sent_at?: string | null
+          club_id: string
+          device_id: string
+          label?: string | null
+          last_checked_at?: string | null
+          last_online_at?: string | null
+          offline_since?: string | null
+          online?: boolean | null
+        }
+        Update: {
+          alert_sent_at?: string | null
+          club_id?: string
+          device_id?: string
+          label?: string | null
+          last_checked_at?: string | null
+          last_online_at?: string | null
+          offline_since?: string | null
+          online?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_iot_device_health_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_journal_entries: {
         Row: {
           account: Database["public"]["Enums"]["gl_account"]

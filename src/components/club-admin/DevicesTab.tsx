@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { IotConnectivityAlerts } from "./IotConnectivityAlerts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -686,6 +687,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
           </div>
         </CardHeader>
       </Card>
+
+      <IotConnectivityAlerts clubId={clubId} />
 
       {(isLoading || secretsLoading || courtsLoading) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

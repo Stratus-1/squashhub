@@ -55,7 +55,7 @@ export function ClubAdminNavigation({ operations, setup, activeTab, onSelect, co
       aria-label={compact ? "Expand admin navigation" : "Collapse admin navigation"} title={compact ? "Expand admin navigation" : "Collapse admin navigation"}>
       {compact ? <PanelLeftOpen /> : <PanelLeftClose />}
     </Button></div>}
-    {group("Club operations", operations, operationsOpen, () => setOperationsOpen(value => !value))}
     {group("Setup & configuration", setup, setupOpen, () => setSetupOpen(value => !value), attentionCount)}
+    {group("Club operations", operations, operationsOpen, () => setOperationsOpen(value => !value))}
   </div>;
 }

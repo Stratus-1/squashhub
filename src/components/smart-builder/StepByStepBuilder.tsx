@@ -38,6 +38,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
+import { StructureGuidePanel, RecommendationCard } from "./StructureGuidePanel";
+import { evaluateStructures, materiallyDifferent, type GuideAnswers, type StructureOption } from "@/lib/smart-builder/structure-guide";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
@@ -110,6 +112,8 @@ export type StepAnswers = {
   afterMatch?: { on: boolean | null; scope: "all" | "playoffs"; channels: string[] };
   /** Draw notifications (opponents, partner, phone numbers, play-by date) — default on. */
   drawNotify?: boolean;
+  /** Structure guidance answers (advisory, planning only). */
+  guide?: GuideAnswers;
   kind: Kind;
   entries: string;
   playType: PlayType;
@@ -247,8 +251,8 @@ const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [], split: {}, playoffSync: null, syncCutoff: "", scope: null, ownerName: "" };
 /** A blank setup must never overwrite what is saved on the tournament. */
 const hasRealAnswers = (x: Partial<StepAnswers>) => !!(x.name?.trim() || (x.categories ?? []).some((c) => c?.trim()) || x.format?.kind || (x.stages ?? []).length);
-type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
+type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Guide" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Guide: "Structure guide", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -778,9 +782,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Invitations only when players self-enter; admin-entered players still get an entry notification. */
   const commsSteps: StepKey[] = selfEntry ? ["Invites", "Messaging"] : notifyOnly ? ["Messaging"] : [];
   const steps: StepKey[] = isChamps
-    ? ["Type", "Basics", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+    ? ["Type", "Basics", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
       ...(showPick ? ["Pick" as const] : []), ...commsSteps, "Fees", "Schedule", "Summary"]
-    : ["Type", "Basics", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+    : ["Type", "Basics", "Entries", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
       ...(showPick ? ["Pick" as const] : []), ...commsSteps, "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
@@ -811,7 +815,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
-  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: true, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   /** Exact reasons the Stages & scheduling step is not complete. */

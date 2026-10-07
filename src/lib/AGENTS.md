@@ -41,3 +41,6 @@
 - Step-by-Step Beta 'Import players' matching lives in `src/lib/smart-builder/pick-import.ts` (name required unless email+cell both match; event columns exclude league-history columns) and only ticks existing members into device-local picks; why: shared family emails must never pick the wrong person and imports never create people.
 
 - Team standings derive from season-scoped fixtures + submitted/confirmed results via `src/lib/leagues/team-standings.ts`; rounds only label groups; why: a missing or unlinked round must never hide valid results.
+
+- Diamond fixtures use `tournamentMatchDays` in `schedule-order.ts` for date headings and time/court order, never generated rounds; why: division weeks span different nights. Display only; saved fixtures unchanged.
+- Knockout stages after the first play-off use fixed feeder paths (stage_winners by bracket_position); never reseed from standings — keeps brackets deterministic and auditable.

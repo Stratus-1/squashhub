@@ -165,7 +165,7 @@ export function LeagueWeekAvailabilityCard() {
         </div>
           <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold leading-tight">League — next week</p>
+            <p className="text-sm font-semibold leading-tight">League — upcoming league week</p>
             {status === "unavailable" && (
               <Badge variant="secondary" className="text-[10px] bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30">
                 Not available

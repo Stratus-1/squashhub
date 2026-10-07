@@ -327,6 +327,27 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     supabase.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).order("name")
       .then(({ data }) => setClubCourts((data ?? []).map((c) => ({ id: String(c.id), name: c.name }))));
   }, [clubId]);
+  /** Court booking grid settings — time pickers offer exactly these slots. */
+  const [slotCfg, setSlotCfg] = useState<{ step: number; open: string | null; last: string | null }>({ step: 30, open: null, last: null });
+  useEffect(() => {
+    (supabase as any).from("clubs").select("booking_slot_minutes, booking_open_time, booking_last_slot_time").eq("id", clubId).maybeSingle()
+      .then(({ data }: any) => setSlotCfg({ step: Number(data?.booking_slot_minutes) || 30, open: data?.booking_open_time ?? null, last: data?.booking_last_slot_time ?? null }));
+  }, [clubId]);
+  const slotStarts = useMemo(() => buildSlots(slotCfg.step, slotCfg.open, slotCfg.last), [slotCfg]);
+  /** Valid end times: every slot start after the first, plus one step past the last slot. */
+  const slotEnds = useMemo(() => {
+    const ends = slotStarts.slice(1);
+    const lastMin = slotStarts.length ? timeToMinutes(slotStarts[slotStarts.length - 1]) + slotCfg.step : 0;
+    if (lastMin) ends.push(minutesToTime(lastMin));
+    return ends;
+  }, [slotStarts, slotCfg.step]);
+  const slotSelect = (ariaLabel: string, value: string, onChange: (v: string) => void, opts: string[], className = "max-w-[130px]") => (
+    <select aria-label={ariaLabel} className={cn("h-9 rounded-md border border-input bg-background px-2 text-sm", className)} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Choose…</option>
+      {value && !opts.includes(value) && <option value={value}>{value}</option>}
+      {opts.map((t) => <option key={t} value={t}>{t}</option>)}
+    </select>
+  );
   const [payCfg, setPayCfg] = useState<ClubPaymentConfig | null>(null);
   useEffect(() => {
     (async () => {

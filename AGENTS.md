@@ -12,7 +12,7 @@
 - Install dependencies proactively, preferably locally; if external auth fails, stop and request re-authentication.
 
 ## Architecture rules
-- Scope admin layout to ClubAdmin and opt-in setup variants; preserve member/association screens.
+- Scope connected steps via ClubAdmin's provider; shared association/member consumers must stay unchanged.
 - Diamond fixtures use `tournamentMatchDays` in `schedule-order.ts` for date headings and time/court order, never generated rounds; why: division weeks span different nights. Display only; saved fixtures unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.

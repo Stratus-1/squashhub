@@ -74,4 +74,4 @@
 - [x] League Rounds tab: a season round spanning future weeks shows as "Past rounds"
 
 - [ ] IoT offline alerts: on hold pending Willem's architecture approval (plan written)
-- [ ] Member dashboard My Stats: compact win/loss donuts per category
+- [preview] Member dashboard My Stats: compact win/loss donuts per category

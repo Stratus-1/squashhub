@@ -201,15 +201,24 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
           oppGames: number,
           won: boolean,
         ) => {
-          if (!code) return;
+          // Doubles (and older singles rows) may only carry names: fall back to
+          // a normalised name key so every finished rubber counts. Pairs are
+          // keyed order-independently ("A & B" == "B & A").
+          const nameKey = (name || "")
+            .split(/\s*&\s*/)
+            .map((n) => n.trim().toLowerCase())
+            .filter(Boolean)
+            .sort()
+            .join(" & ");
+          if (!code && !nameKey) return;
           if (selectedLeagueNum !== "ALL" && codeToLeagueNum.get(teamCode) !== selectedLeagueNum) return;
-          const key = code.toUpperCase();
+          const key = code ? code.toUpperCase() : `NAME:${nameKey}`;
           const existing = agg.get(key);
           const member = members.find(
             (m) => (m.club_member_number || "").toUpperCase() === key,
           );
           const row: PlayerRow = existing || {
-            player_code: key,
+            player_code: code ? key : "",
             name: member?.name || name || key,
             ladder_position: member?.ladder_position ?? null,
             played: 0,

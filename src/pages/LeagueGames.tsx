@@ -330,7 +330,7 @@ export default function LeagueGames() {
                 value="individuals"
                 className="text-[10px] sm:text-sm px-1 py-2 font-medium whitespace-normal leading-tight text-center data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow"
               >
-                Individuals
+                {(selectedAssoc as any)?.discipline === "doubles" ? "Pair Standings" : "Player Standings"}
               </TabsTrigger>
             </TabsList>
 
@@ -392,6 +392,7 @@ export default function LeagueGames() {
                   associationId={selectedAssocId}
                   platformAssocId={selectedAssoc?.platform_association_id ?? null}
                   clubLeagues={leaguesInScope}
+                  isDoubles={(selectedAssoc as any)?.discipline === "doubles"}
                 />
               ) : (
                 <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">

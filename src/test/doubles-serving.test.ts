@@ -80,7 +80,7 @@ describe("By position", () => {
     let s = startDoubles({ method: "by_position", positions, servingTeam: "a" });
     expect([who(s), s.side]).toEqual(["Ann", "R"]);
     s = afterRally(s, "a", { a: 1, b: 0 });
-    expect([who(s), s.side]).toEqual(["Ann", "R"]); // side fixed by position
+    expect([who(s), s.side]).toEqual(["Ann", "L"]); // same server alternates box
     s = afterRally(s, "b", { a: 1, b: 1 });
     expect([who(s), s.side]).toEqual(["Bob", "R"]);
     s = afterRally(s, "a", { a: 2, b: 1 });

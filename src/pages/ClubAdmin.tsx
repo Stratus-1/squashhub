@@ -306,6 +306,7 @@ export default function ClubAdmin() {
     value: tab.value,
     label: tab.label,
     icon: tab.icon,
+    iconClassName: ICON_COLORS[tab.color] ?? "text-muted-foreground",
     description: TAB_DESCRIPTIONS[tab.value] ?? "",
     needsSetup: withStatus && !tab.noStatus && setupStatus[tab.value as keyof SetupStatusMap] !== "complete",
   }));

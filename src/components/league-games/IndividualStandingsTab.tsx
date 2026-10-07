@@ -22,6 +22,7 @@ type Props = {
   associationId: string;
   platformAssocId?: string | null;
   clubLeagues: ClubLeague[];
+  isDoubles?: boolean;
 };
 
 type PlayerRow = {
@@ -39,7 +40,7 @@ type PlayerRow = {
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-export function IndividualStandingsTab({ clubId, associationId, platformAssocId, clubLeagues }: Props) {
+export function IndividualStandingsTab({ clubId, associationId, platformAssocId, clubLeagues, isDoubles }: Props) {
   const queryClient = useQueryClient();
   const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
 
@@ -201,9 +202,18 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
           oppGames: number,
           won: boolean,
         ) => {
-          if (!code) return;
+          // Doubles (and older singles rows) may only carry names: fall back to
+          // a normalised name key so every finished rubber counts. Pairs are
+          // keyed order-independently ("A & B" == "B & A").
+          const nameKey = (name || "")
+            .split(/\s*&\s*/)
+            .map((n) => n.trim().toLowerCase())
+            .filter(Boolean)
+            .sort()
+            .join(" & ");
+          if (!code && !nameKey) return;
           if (selectedLeagueNum !== "ALL" && codeToLeagueNum.get(teamCode) !== selectedLeagueNum) return;
-          const key = code.toUpperCase();
+          const key = code ? code.toUpperCase() : `NAME:${nameKey}`;
           const existing = agg.get(key);
           const member = members.find(
             (m) => (m.club_member_number || "").toUpperCase() === key,
@@ -355,7 +365,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
         <Card className="p-8 text-center">
           <Users className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground text-sm">
-            No individual results recorded yet for {seasonYear}.
+            No {isDoubles ? "pair" : "player"} results recorded yet for {seasonYear}.
           </p>
         </Card>
       ) : (
@@ -385,7 +395,9 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
                   <TableCell className="text-xs">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{r.name}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{r.player_code}</span>
+                      {!r.player_code.startsWith("NAME:") && (
+                        <span className="font-mono text-[10px] text-muted-foreground">{r.player_code}</span>
+                      )}
                       {r.team_codes.size > 0 && (
                         <div className="flex gap-1 flex-wrap">
                           {Array.from(r.team_codes).map((tc) => (

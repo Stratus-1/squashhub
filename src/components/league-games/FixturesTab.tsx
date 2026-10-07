@@ -118,6 +118,32 @@ export function FixturesTab({ clubId, associationId }: Props) {
     enabled: !!associationId,
   });
 
+  // A round is only "past" once its LAST fixture date has passed. The saved
+  // end_date can be stale (e.g. a whole season generated into one round), so
+  // the real fixture dates win.
+  const roundIdsKey = (rounds ?? []).map((r) => r.id).join(",");
+  const { data: lastFixtureByRound } = useQuery({
+    queryKey: ["league-round-last-fixture", associationId, roundIdsKey],
+    enabled: !!roundIdsKey,
+    queryFn: async () => {
+      const map = new Map<string, string>();
+      const ids = roundIdsKey.split(",");
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await supabase
+          .from("platform_league_fixtures")
+          .select("round_id, fixture_date")
+          .in("round_id", ids.slice(i, i + 200));
+        if (error) throw error;
+        (data ?? []).forEach((f: any) => {
+          if (f.round_id && f.fixture_date && (map.get(f.round_id) ?? "") < f.fixture_date) {
+            map.set(f.round_id, f.fixture_date);
+          }
+        });
+      }
+      return map;
+    },
+  });
+
   const { data: leagues } = useQuery({
     queryKey: ["assoc-leagues-for-fixtures", associationId],
     queryFn: async () => {
@@ -683,8 +709,13 @@ export function FixturesTab({ clubId, associationId }: Props) {
       {(() => {
         const today = format(new Date(), "yyyy-MM-dd");
         const all = rounds ?? [];
-        const upcoming = all.filter((r) => (r.end_date || r.round_date) >= today);
-        const past = all.filter((r) => (r.end_date || r.round_date) < today);
+        const lastDay = (r: Round) => {
+          const fx = lastFixtureByRound?.get(r.id) ?? "";
+          const own = r.end_date || r.round_date;
+          return fx > own ? fx : own;
+        };
+        const upcoming = all.filter((r) => lastDay(r) >= today);
+        const past = all.filter((r) => lastDay(r) < today);
         const renderCard = (r: Round) => {
           // Admin can only delete rounds that haven't started yet.
           // Super admin can always delete.

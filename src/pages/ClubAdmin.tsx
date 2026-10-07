@@ -74,33 +74,31 @@ const ICON_COLORS: Record<string, string> = {
   teal: "bg-teal-500/15 text-teal-600 dark:text-teal-400",
 };
 
+// Order follows the pilot's Setup / Operations grouping. Ids, permissions and
+// capability gates are unchanged — only presentation order and copy.
 const SETUP_TABS: AdminTab[] = [
-  // Features first: a new club picks what it does before anything else.
-  { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true, startHere: true },
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
+  { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true, startHere: true },
   { value: "rules", label: "Rules & Constitution", icon: ScrollText, permission: "club", color: "amber", noStatus: true },
-  // Courts is core: admins must always be able to add courts, otherwise a club
-  // with Court Bookings off could never set them up (circular dependency).
+  // Courts is core: admins must always be able to add courts.
   { value: "courts", label: "Courts & Bookings", icon: LayoutGrid, permission: "courts", color: "cyan" },
   { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald", capability: "membership_fees" },
   { value: "banking", label: "Banking & Payments", icon: Banknote, permission: "banking", color: "green", capability: "payments" },
+  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
+  { value: "whatsapp", label: "Messaging", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
+  { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
   { value: "devices", label: "IoT / Shelly", icon: Zap, permission: "devices", color: "sky", noStatus: true, capability: "gadgets" },
   { value: "ladder", label: "Ladder & Ranking", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true, capability: "ladder" },
   { value: "ranking-points", label: "Player Ratings", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true, capability: "ranking_points" },
-
-  { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
-  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
-  { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
-  { value: "whatsapp", label: "Messaging", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
   { value: "router", label: "Member Wi-Fi", icon: Router, color: "cyan", noStatus: true, capability: "wifi" },
 ];
 
 const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
-  { value: "skills", label: "Skills Directory", icon: HeartHandshake, permission: "members", color: "rose", noStatus: true, capability: "skills" },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky", capability: "visitors" },
+  { value: "skills", label: "Skills Directory", icon: HeartHandshake, permission: "members", color: "rose", noStatus: true, capability: "skills" },
   { value: "finance", label: "Club Books", icon: Landmark, permission: "finance", color: "teal", capability: "finance" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow", capability: "tournaments" },
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
@@ -108,8 +106,38 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "comms", label: "Member Communications", icon: Mail, permission: "communications", color: "blue" },
   { value: "updates", label: "Updates from SquashHub", icon: Megaphone, permission: "communications", color: "rose", noStatus: true },
   { value: "emails", label: "Message Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
+  { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   // AI Assistant tab hidden while the feature is being reworked.
 ];
+
+const TAB_DESCRIPTIONS: Record<string, string> = {
+  club: "Name, contact details and branding",
+  settings: "Booking, ladder and general preferences",
+  features: "Switch optional modules on or off",
+  rules: "Club rules and constitution documents",
+  courts: "Courts, slots and booking rules",
+  fees: "Membership categories and fees",
+  banking: "Bank details and payment gateways",
+  permissions: "Who can manage which areas",
+  whatsapp: "Member messaging channels and costs",
+  subscription: "Your SquashHub plan and billing",
+  devices: "Lights, doors and connected gadgets",
+  ladder: "Ladder order and ranking moves",
+  "ranking-points": "Player rating points",
+  router: "Member Wi-Fi access",
+  members: "Member roster and details",
+  users: "App logins linked to members",
+  visitors: "Visitor registrations",
+  skills: "Members' professional skills",
+  finance: "Ledger, accounts and reports",
+  champs: "Club tournaments and draws",
+  leagues: "Teams, fixtures and results",
+  awards: "League prizes and awards",
+  comms: "Templates, campaigns and sends",
+  updates: "News from the SquashHub team",
+  emails: "Delivery history of messages",
+  bar: "Honesty bar stock and sales",
+};
 
 export default function ClubAdmin() {
   const { user } = useAuth();
@@ -279,63 +307,52 @@ export default function ClubAdmin() {
     const Icon = tab.icon;
     const status = showStatus ? setupStatus[tab.value as keyof SetupStatusMap] : undefined;
     const isComplete = status === "complete";
+    const active = activeTab === tab.value;
     return (
       <button
         key={tab.value}
         type="button"
+        aria-current={active ? "page" : undefined}
         onClick={() => {
           setActiveTab(tab.value);
           if (closeMobileNav) setMobileNavOpen(false);
         }}
         className={cn(
-          "group flex min-h-14 w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/60",
-          activeTab === tab.value && "border-border bg-muted shadow-xs",
+          "group flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          active && "bg-muted",
         )}
       >
-        <span className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
-          ICON_COLORS[tab.color] ?? "bg-muted text-muted-foreground",
-          activeTab === tab.value && "ring-2 ring-current",
-        )}>
-          <Icon className="size-4" />
-        </span>
+        <Icon className={cn("size-4 shrink-0 text-muted-foreground", active && "text-primary")} strokeWidth={1.75} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{tab.label}</span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {showStatus ? (isComplete ? "Ready to use" : "Needs setup") : "Open workspace"}
-          </span>
+          <span className="block truncate text-xs text-muted-foreground">{TAB_DESCRIPTIONS[tab.value] ?? ""}</span>
         </span>
-        {showStatus && (
-          <span className={cn(
-            "rounded-full border px-2 py-0.5 text-[10px] font-medium",
-            isComplete ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-          )}>
-            {isComplete ? "Complete" : "Setup"}
-          </span>
+        {showStatus && !isComplete && (
+          <span className="shrink-0 rounded-full border border-warning/30 px-2 py-0.5 text-[10px] font-medium text-warning-foreground bg-warning/10">Needs setup</span>
         )}
+        <span className={cn("hidden shrink-0 text-xs text-muted-foreground group-hover:text-foreground sm:inline", active && "text-primary")}>
+          {active ? "Open" : "Open →"}
+        </span>
       </button>
     );
   };
+
+  const renderGroup = (title: string, tabs: AdminTab[], withStatus: boolean, closeMobileNav = false, meta?: string) => (
+    <section aria-label={title}>
+      <div className="flex items-baseline justify-between px-1 pb-2">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+        {meta && <span className="text-[11px] text-muted-foreground">{meta}</span>}
+      </div>
+      <div className="divide-y overflow-hidden rounded-lg border bg-card">
+        {tabs.map((tab) => renderTabRow(tab, withStatus && !tab.noStatus, closeMobileNav))}
+      </div>
+    </section>
+  );
 
   return (
     <div className="min-h-screen pb-20 text-[13px]">
       <PageHeader title={club.name} subtitle="Club Administration" />
       <main className="mx-auto w-full max-w-7xl space-y-3 px-3 py-3 md:space-y-6 md:px-4 md:py-6 lg:px-6">
-        <section className="hidden gap-4 md:grid md:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: "Core setup", value: `${coreDone}/${coreKeys.length}`, detail: "required areas complete" },
-            { label: "Setup modules", value: visibleSetup.length, detail: "available to configure" },
-            { label: "Operations", value: visibleOps.length, detail: "available to manage" },
-            { label: "Current workspace", value: activeTabMeta?.label || "Dashboard", detail: "selected section" },
-          ].map((metric) => (
-            <div key={metric.label} className="rounded-xl border bg-card p-5 shadow-xs">
-              <p className="text-sm text-muted-foreground">{metric.label}</p>
-              <p className="mt-2 truncate text-2xl font-semibold tracking-tight">{metric.value}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p>
-            </div>
-          ))}
-        </section>
-
         {activeTabMeta && (
           <section className="sticky top-2 z-20 md:hidden">
             <button
@@ -344,7 +361,7 @@ export default function ClubAdmin() {
               className="flex min-h-14 w-full items-center gap-3 rounded-xl border bg-card/95 px-3 py-2 text-left shadow-sm backdrop-blur"
               aria-label="Choose admin workspace"
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <activeTabMeta.icon className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
@@ -356,38 +373,26 @@ export default function ClubAdmin() {
           </section>
         )}
 
-        <section className="hidden gap-6 md:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          {visibleSetup.length > 0 && (
-            <div className="rounded-xl border bg-card shadow-xs">
-              <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
-                <div><h2 className="font-semibold tracking-tight">Setup &amp; configuration</h2><p className="mt-1 text-sm text-muted-foreground">Core club settings and connected services.</p></div>
-                <span className="shrink-0 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">{coreDone}/{coreKeys.length} complete</span>
-              </div>
-              <div className="grid gap-1 p-3 sm:grid-cols-2">{visibleSetup.map((tab) => renderTabRow(tab, !tab.noStatus))}</div>
-            </div>
-          )}
-          {visibleOps.length > 0 && (
-            <div className="rounded-xl border bg-card shadow-xs">
-              <div className="border-b px-5 py-4"><h2 className="font-semibold tracking-tight">Operations &amp; finance</h2><p className="mt-1 text-sm text-muted-foreground">Day-to-day club management tools.</p></div>
-              <div className="grid gap-1 p-3 sm:grid-cols-2">{visibleOps.map((tab) => renderTabRow(tab))}</div>
-            </div>
-          )}
-        </section>
+        <div className="md:grid md:grid-cols-[280px_minmax(0,1fr)] md:items-start md:gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <nav aria-label="Club administration" className="hidden space-y-5 md:sticky md:top-4 md:block md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:pr-1">
+            {visibleSetup.length > 0 && renderGroup("Setup & configuration", visibleSetup, true, false, `${coreDone}/${coreKeys.length} core done`)}
+            {visibleOps.length > 0 && renderGroup("Operations", visibleOps, false)}
+          </nav>
 
-        {activeTabMeta && (
-          <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
-            <div className="hidden flex-wrap items-center justify-between gap-3 border-b px-5 py-4 md:flex">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><activeTabMeta.icon className="size-4" /></span>
-                <div className="min-w-0"><h2 className="truncate font-semibold tracking-tight">{activeTabMeta.label}</h2><p className="text-sm text-muted-foreground">Manage this area of your club.</p></div>
+          {activeTabMeta && (
+            <section className="admin-pilot min-w-0">
+              <header className="hidden items-center justify-between gap-3 border-b pb-4 md:flex">
+                <div className="min-w-0">
+                  <h2 className="truncate text-lg font-semibold tracking-tight">{activeTabMeta.label}</h2>
+                  <p className="text-sm text-muted-foreground">{TAB_DESCRIPTIONS[activeTabMeta.value] ?? "Manage this area of your club."}</p>
+                </div>
+              </header>
+              <div className="pt-1 md:pt-4 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_h3]:text-sm [&_h3]:font-semibold">
+                {renderContent()}
               </div>
-              <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">Workspace</span>
-            </div>
-            <div className="p-2.5 md:p-6 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold md:[&_.p-4]:p-3 md:[&_.p-3]:p-2.5 md:[&_.gap-4]:gap-3 md:[&_.gap-3]:gap-2">
-              {renderContent()}
-            </div>
-          </section>
-        )}
+            </section>
+          )}
+        </div>
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetContent side="bottom" className="h-[85dvh] rounded-t-2xl p-0 md:hidden">
             <SheetHeader className="border-b px-5 py-4 text-left">
@@ -396,25 +401,8 @@ export default function ClubAdmin() {
             </SheetHeader>
             <ScrollArea className="h-[calc(85dvh-85px)]">
               <div className="space-y-5 p-3 pb-8">
-                {visibleSetup.length > 0 && (
-                  <section>
-                    <div className="flex items-center justify-between px-2 pb-2">
-                      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Setup &amp; configuration</h2>
-                      <span className="text-[11px] text-muted-foreground">{coreDone}/{coreKeys.length}</span>
-                    </div>
-                    <div className="divide-y rounded-xl border bg-card">
-                      {visibleSetup.map((tab) => renderTabRow(tab, !tab.noStatus, true))}
-                    </div>
-                  </section>
-                )}
-                {visibleOps.length > 0 && (
-                  <section>
-                    <h2 className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Operations &amp; finance</h2>
-                    <div className="divide-y rounded-xl border bg-card">
-                      {visibleOps.map((tab) => renderTabRow(tab, false, true))}
-                    </div>
-                  </section>
-                )}
+                {visibleSetup.length > 0 && renderGroup("Setup & configuration", visibleSetup, true, true, `${coreDone}/${coreKeys.length}`)}
+                {visibleOps.length > 0 && renderGroup("Operations", visibleOps, false, true)}
               </div>
             </ScrollArea>
           </SheetContent>

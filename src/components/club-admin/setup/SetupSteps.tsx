@@ -30,13 +30,13 @@ export function SetupSteps({
   return (
     <div className="space-y-2">
       {variant === "connected" ? (
-        <div className="overflow-x-auto rounded-md border bg-muted/50">
-          <div role="group" aria-label="Setup steps" className="flex min-w-max divide-x sm:min-w-0">
+        <div className="overflow-hidden rounded-md border bg-card">
+          <div role="group" aria-label="Setup steps" className="grid grid-cols-4 divide-x">
             {steps.map((s, i) => {
               const active = s.id === current?.id;
               return <Button key={s.id} type="button" variant="ghost" aria-current={active ? "step" : undefined}
                 onClick={() => onChange(s.id)} className={cn(
-                  "h-auto min-h-11 flex-1 gap-2 rounded-none px-3 py-2 text-xs",
+                  "h-auto min-h-14 min-w-0 flex-col gap-1 whitespace-normal rounded-none px-1 py-2 text-[11px] leading-tight sm:min-h-11 sm:flex-row sm:gap-2 sm:px-3 sm:text-xs",
                   active ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : s.complete ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}>
                 <span className="flex size-4 shrink-0 items-center justify-center text-[11px]">{s.complete ? <Check className="size-3.5" /> : i + 1}</span>

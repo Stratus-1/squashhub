@@ -70,6 +70,12 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime,
     cur[i] = value;
     const nextSchedules = { ...schedules, [pool]: { ...schedules[pool], dates: cur } };
     const other = pool === "A" ? "B" : "A";
+    // If the other division has no schedule of its own, pin its current
+    // effective dates as its own first, otherwise editing this division's
+    // week earlier would silently move the other division's week too (it
+    // falls back to the shared earliest-night list).
+    const otherEff = divisionWeekDates(nextSchedules[other], rounds.length, dates, startDate);
+    if (!otherEff.own) nextSchedules[other] = { ...nextSchedules[other], dates: otherEff.dates };
     const otherDates = divisionWeekDates(nextSchedules[other], rounds.length, dates, startDate).dates;
     const shared = cur.map((d, w) => [d, otherDates[w]].filter(Boolean).sort()[0] || "");
     set({ divisionSchedules: nextSchedules, dates: [...shared, ...dates.slice(rounds.length)] });

@@ -122,13 +122,25 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
           .select("id, name, round_number, round_date, season_id")
           .eq("association_id", associationId)
           .order("round_number", { ascending: true }),
-        supabase
-          .from("platform_league_fixtures")
-          .select(
-            "id, fixture_date, division, home_team_code, away_team_code, home_team_name_snapshot, away_team_name_snapshot, status, round_id, season_id",
-          )
-          .eq("association_id", platformAssocId!)
-          .order("fixture_date", { ascending: true }),
+        (() => {
+          // Scope server-side to the selected season (mirrors inSeason): rows
+          // linked to this season, or unlinked rows dated inside the season
+          // window. Without this the request returns the association's entire
+          // history, and PostgREST's 1000-row cap silently drops the newest
+          // fixtures once the history grows past it.
+          const from = seasonWindow.starts_on || `${seasonWindow.season_year}-01-01`;
+          const to = seasonWindow.ends_on || `${seasonWindow.season_year}-12-31`;
+          const dated = `and(season_id.is.null,fixture_date.gte.${from},fixture_date.lte.${to})`;
+          const scope = seasonWindow.id ? `season_id.eq.${seasonWindow.id},${dated}` : dated;
+          return supabase
+            .from("platform_league_fixtures")
+            .select(
+              "id, fixture_date, division, home_team_code, away_team_code, home_team_name_snapshot, away_team_name_snapshot, status, round_id, season_id",
+            )
+            .eq("association_id", platformAssocId!)
+            .or(scope)
+            .order("fixture_date", { ascending: true });
+        })(),
       ]);
       if (rErr) throw rErr;
       if (fErr) throw fErr;

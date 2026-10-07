@@ -2661,3 +2661,4 @@ Template setting `divisionSchedules` (play days, optional from-date and start ti
 
 ### 2026-10-07 — League Team Standings hidden when rounds lacked season link
 Nelspruit Doubles League showed "No league rounds set up yet" despite 3 submitted results: its only round had `season_id` NULL while a 2026 season existed, and standings only read fixtures through season-linked rounds. Fix: standings now read all league fixtures in the season (season_id match, or unlinked and dated in the season window) and use rounds only for grouping (`src/lib/leagues/team-standings.ts`, tests `src/test/team-standings.test.ts`). No data changed.
+- Follow-up: added trigger `league_rounds_autolink_season` so any round created without a season is linked to the single league season covering its date; backfilled the Nelspruit Doubles round. Scores untouched.

@@ -169,7 +169,11 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   const urlTier = searchParams.get("tier");
   const [selection, setSelection] = useState<string>(urlTier || "");
   useEffect(() => {
-    if (!selection && tiers.length > 0) setSelection(tiers[0].tier);
+    // Reset when the selected group doesn't exist in this league/season
+    // (e.g. after switching league tabs or seasons).
+    if (tiers.length > 0 && selection !== "ALL" && !tiers.some((t) => t.tier === selection)) {
+      setSelection(tiers[0].tier);
+    }
   }, [tiers, selection]);
 
   const handleSelectTier = (val: string) => {

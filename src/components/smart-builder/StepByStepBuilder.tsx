@@ -296,7 +296,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       ]);
       if (!live) return;
       const fromServer = (life?.answers ?? null) as Partial<StepAnswers> | null;
-      const fallback = { ...(life?.format_plan ?? {}), ...(row?.name ? { name: row.name } : {}), ...(row?.start_date ? { startDate: row.start_date } : {}) } as Partial<StepAnswers>;
+      const fallback = { ...(life?.format_plan ?? {}), ...(row?.name ? { name: row.name } : {}), ...(row?.start_date ? { periodStart: row.start_date } : {}) } as Partial<StepAnswers>;
       setA((cur) => normalise({ ...cur, ...(fromServer ?? fallback), createdTournamentId: tournamentId } as any));
       setServerReady(true);
     })();

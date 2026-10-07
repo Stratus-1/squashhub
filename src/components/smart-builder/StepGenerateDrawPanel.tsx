@@ -485,7 +485,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const generate = async () => {
     if (!meta) return;
     const ko = seeded.some((d) => proposals.has(d.group));
-    if (!window.confirm(`This creates ${preview?.total ?? 0} game${preview?.total === 1 ? "" : "s"} now${ko ? " — exactly the Round 1 matches listed above. Later knockout rounds are only proposed and confirmed week by week in Manage Tournament" : ""}. Players ${notifyDraw ? "WILL" : "will not"} be notified. Continue?`)) return;
+    if (!window.confirm(`This creates ${preview?.total ?? 0} game${preview?.total === 1 ? "" : "s"} now${ko ? " — exactly the Round 1 matches listed above. Later knockout rounds are only proposed and confirmed week by week in Manage Tournament" : ""}. You will be asked whether to notify players after it is saved. Continue?`)) return;
     setBusy(true);
     try {
       await assertNotDiamondTournament(tournamentId);
@@ -518,7 +518,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         if (r.issues?.length) toast.error(`Games not given times — ${r.issues.join(" ")} Add courts, widen the time window or add a match date.`);
         else if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit — widen the time window or add courts.`);
       }
-      if (notifyDraw) {
+      {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.
         try { const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1 }); toast.success(roundNotifySummary(r)); }
         catch (e: any) { toast.error(`Draw saved, but players weren't notified: ${e.message ?? e}`); }

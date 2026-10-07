@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Show bracketed entered/selected/combined totals beside guide estimates and per subcategory; 19 focused tests and isolated browser display check pass, build OK. Live club flow not exercised; no live data changes or publishing.
 - [x] Replace member mobile Club Controls with a single compact tactile strip and immediate actions without dialogs. 37 focused tests pass; authenticated browser-only device samples show four 48px controls in one row at 390px in both themes, wrapping at 320px; door/toggle requests intercepted, no modal/runtime errors. No live hardware/config/data changes; preview only.
 - [x] Compact member mobile device controls only; existing hooks/visibility preserved, manual confirmation added; 38 tests pass, 320/390px light/dark browser-only device samples checked without hardware commands. Preview only.
 - [x] Member home first pass: mobile duplicate tiles removed only where shortcuts exist; coloured bottom icons, earlier stats and dynamic controls preserved. Riverside 320/390/768/1280px both themes checked; existing localhost club-context reset requires ?club=riverside on Bar destination. Preview only; no live data/device changes.

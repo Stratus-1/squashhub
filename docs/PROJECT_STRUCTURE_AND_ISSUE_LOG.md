@@ -1,3 +1,7 @@
+### 2026-10-07 — Structure guide estimates lacked current entry counts
+- Added bracketed entered, selected and deduplicated total player-entry counts per category/subcategory, also beside Expected entries. Registration reads verify club ownership and paginate; unavailable/loading counts are explicit. Display only: no estimates, formats, registrations or fixtures changed.
+- Verification: 19 focused tests passed, preview build OK, isolated browser panel shows unchanged estimate and deduplicated category/subcategory totals. Existing pairing suite has four failures because its seeded category types are missing and later steps are disabled; no unrelated production behaviour changed. Authenticated saved-tournament flow not exercised; preview only.
+
 ### 2026-10-07 — Member mobile controls still split into oversized category blocks
 - Compact controls now share one wrapping strip across access/gadget categories, with 48px raised push buttons and names beneath. Removed mobile confirmations and redundant action lines; taps use existing command/access hooks immediately. Desktop and booking-light information unchanged; toggle colour follows relay readings, unavailable stays neutral, and registry pulse success feedback requires a successful command. No hardware/configuration/data changes; preview only.
 

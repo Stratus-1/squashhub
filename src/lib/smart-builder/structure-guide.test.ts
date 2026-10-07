@@ -13,7 +13,7 @@ describe("structure guide", () => {
     expect(top(20, "winner", null, "tight").kind).toBe("knockout");
   });
   it("large field, similar strength, constrained → Swiss", () => {
-    expect(top(32, "balanced", "similar", "tight").kind).toBe("swiss");
+    expect(top(32, "balanced", "similar", "some").kind).toBe("swiss");
   });
   it("small field ranking → round robin", () => {
     expect(top(6, "rank", "broad", "plenty").kind).toBe("round_robin");

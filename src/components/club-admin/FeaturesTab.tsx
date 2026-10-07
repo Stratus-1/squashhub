@@ -32,8 +32,8 @@ import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard
 
 const STATE_STYLES: Record<ModuleState, string> = {
   off: "border-border text-muted-foreground",
-  needs_setup: "border-amber-500/40 text-amber-700 dark:text-amber-400",
-  ready: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+  needs_setup: "border-warning-foreground/60 text-warning-foreground",
+  ready: "border-win/60 text-win",
 };
 const STATE_LABEL: Record<ModuleState, string> = {
   off: "Off",

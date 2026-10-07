@@ -48,6 +48,11 @@ describe("Club Admin presentation", () => {
     expect(screen.queryByRole("region", { name: "Setup & configuration" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Banking" })).not.toBeInTheDocument();
   });
+  it("retains supplied coloured icons inside the scoped neutral-hover navigation", () => {
+    const { container } = render(<ClubAdminNavigation operations={[{ ...operations[0], iconClassName: "text-win" }]} setup={setup} activeTab="members" onSelect={vi.fn()} />);
+    expect(container.querySelector(".admin-navigation")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Members" }).querySelector(".text-win")).toBeInTheDocument();
+  });
   it("preserves direct step selection, sequence, guidance and Back/Next", () => {
     const onChange = vi.fn();
     const steps = ["Payment methods", "Bank details", "Online payments", "Recurring payments"].map((label, i) => ({ id: String(i), label, description: "Details", complete: i < 2 }));

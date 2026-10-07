@@ -1,4 +1,5 @@
 import { reconcileFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
+import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { milestoneFor, configuredPathText } from "@/lib/tournaments/paced-knockout";
@@ -327,6 +328,27 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     supabase.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).order("name")
       .then(({ data }) => setClubCourts((data ?? []).map((c) => ({ id: String(c.id), name: c.name }))));
   }, [clubId]);
+  /** Court booking grid settings — time pickers offer exactly these slots. */
+  const [slotCfg, setSlotCfg] = useState<{ step: number; open: string | null; last: string | null }>({ step: 30, open: null, last: null });
+  useEffect(() => {
+    (supabase as any).from("clubs").select("booking_slot_minutes, booking_open_time, booking_last_slot_time").eq("id", clubId).maybeSingle()
+      .then(({ data }: any) => setSlotCfg({ step: Number(data?.booking_slot_minutes) || 30, open: data?.booking_open_time ?? null, last: data?.booking_last_slot_time ?? null }));
+  }, [clubId]);
+  const slotStarts = useMemo(() => buildSlots(slotCfg.step, slotCfg.open, slotCfg.last), [slotCfg]);
+  /** Valid end times: every slot start after the first, plus one step past the last slot. */
+  const slotEnds = useMemo(() => {
+    const ends = slotStarts.slice(1);
+    const lastMin = slotStarts.length ? timeToMinutes(slotStarts[slotStarts.length - 1]) + slotCfg.step : 0;
+    if (lastMin) ends.push(minutesToTime(lastMin));
+    return ends;
+  }, [slotStarts, slotCfg.step]);
+  const slotSelect = (ariaLabel: string, value: string, onChange: (v: string) => void, opts: string[], className = "max-w-[130px]") => (
+    <select aria-label={ariaLabel} className={cn("h-9 rounded-md border border-input bg-background px-2 text-sm", className)} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Choose…</option>
+      {value && !opts.includes(value) && <option value={value}>{value}</option>}
+      {opts.map((t) => <option key={t} value={t}>{t}</option>)}
+    </select>
+  );
   const [payCfg, setPayCfg] = useState<ClubPaymentConfig | null>(null);
   useEffect(() => {
     (async () => {
@@ -740,8 +762,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       {s.mode === "scheduled" && <div className="space-y-2">
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1"><Label>Date</Label><Input type="date" aria-label="Scheduled date" value={s.date} onChange={(e) => updStage(s.id, { date: e.target.value })} /></div>
-          <div className="space-y-1"><Label>From</Label><Input type="time" step={300} aria-label="Session from" value={s.from} onChange={(e) => updStage(s.id, { from: e.target.value })} /></div>
-          <div className="space-y-1"><Label>To</Label><Input type="time" step={300} aria-label="Session to" value={s.to} onChange={(e) => updStage(s.id, { to: e.target.value })} /></div>
+          <div className="space-y-1"><Label>From</Label>{slotSelect("Session from", s.from, (v) => updStage(s.id, { from: v }), slotStarts)}</div>
+          <div className="space-y-1"><Label>To</Label>{slotSelect("Session to", s.to, (v) => updStage(s.id, { to: v }), s.from ? slotEnds.filter((t) => t > s.from) : slotEnds)}</div>
         </div>
         <Label>{s.phase === "playoff" && a.playoffSync === true && !s.unit ? "Courts reserved centrally for this date" : "Courts for this stage"}</Label>
         {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
@@ -1591,9 +1613,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     <Label>Times courts are free</Label>
                     {d.windows.map((w, k) => (
                       <div key={k} className="flex items-center gap-2">
-                        <Input type="time" step={300} className="max-w-[130px]" aria-label="From" value={w.from} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, from: e.target.value } : x)) })} />
+                        {slotSelect("From", w.from, (v) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, from: v } : x)) }), slotStarts)}
                         <span className="text-xs text-muted-foreground">to</span>
-                        <Input type="time" step={300} className="max-w-[130px]" aria-label="To" value={w.to} onChange={(e) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, to: e.target.value } : x)) })} />
+                        {slotSelect("To", w.to, (v) => updDay(i, { windows: d.windows.map((x, j) => (j === k ? { ...x, to: v } : x)) }), w.from ? slotEnds.filter((t) => t > w.from) : slotEnds)}
                         <Button variant="ghost" size="icon" aria-label="Remove time" disabled={d.windows.length === 1} onClick={() => updDay(i, { windows: d.windows.filter((_, j) => j !== k) })}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
@@ -1635,7 +1657,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             <option value="">Choose day…</option>
                             {a.days.filter((d) => d.date).map((d) => <option key={d.date} value={d.date}>{new Date(`${d.date}T00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</option>)}
                           </select>
-                          <Input type="time" step={300} className="max-w-[120px]" aria-label="Playoff start time" value={ps.time ?? ""} onChange={(e) => setSc({ playoffStart: { ...ps, time: e.target.value } })} />
+                          {slotSelect("Playoff start time", ps.time ?? "", (v) => setSc({ playoffStart: { ...ps, time: v } }), slotStarts, "max-w-[120px]")}
                         </span>}
                         <p className="text-xs text-muted-foreground">Playoff games (players still TBD) are scheduled in the same run, so their courts are kept free.</p>
                       </div>

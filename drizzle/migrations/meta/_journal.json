@@ -582,6 +582,13 @@
       "when": 1791324573505,
       "tag": "0082_category_guard_named_errors",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1791336284432,
+      "tag": "0083_bar_sale_journal_only_when_paid",
+      "breakpoints": true
     }
   ]
 }

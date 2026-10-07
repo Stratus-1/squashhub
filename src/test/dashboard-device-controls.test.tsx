@@ -173,33 +173,27 @@ describe("DashboardDeviceControls", () => {
     expect(screen.getByText("Geyser is offline.")).toBeTruthy();
   });
 
-  it("confirms compact main-door opening and allows cancellation without a command", async () => {
+  it("opens the compact main door immediately without a confirmation", async () => {
     mocks.doorAvailable = true;
     render(<DashboardDeviceControls compact />);
     fireEvent.click(screen.getByRole("button", { name: "Main door: Open" }));
-    expect(screen.getByRole("alertdialog")).toBeTruthy();
-    expect(mocks.openDoor).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(mocks.openDoor).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Main door: Open" }));
-    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByText("Open")).toBeNull();
     await waitFor(() => expect(mocks.openDoor).toHaveBeenCalledExactlyOnceWith("manual"));
   });
 
-  it("uses confirmed compact buttons for current toggle state and updates after the action", async () => {
+  it("toggles immediately and displays the returned relay state", async () => {
     mocks.devices = [device({ last_state: false })];
     render(<DashboardDeviceControls compact />);
     expect(screen.queryByRole("switch")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn On" }));
-    expect(mocks.mutateAsync).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Turn On" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledExactlyOnceWith({ deviceId: "d1", action: "on", trigger: "manual" }));
     fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn Off" }));
-    fireEvent.click(screen.getByRole("button", { name: "Turn Off" }));
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenLastCalledWith({ deviceId: "d1", action: "off", trigger: "manual" }));
   });
 
-  it("confirms registry access pulses and preserves configured dashboard visibility", async () => {
+  it("immediately pulses registry access and preserves configured dashboard visibility", async () => {
     mocks.devices = [
       device({ id: "gate", category: "access", name: "Side gate", control_mode: "pulse" }),
       device({ id: "hidden", name: "Hidden pump", show_on_dashboard: false }),
@@ -209,8 +203,37 @@ describe("DashboardDeviceControls", () => {
     expect(screen.queryByText("Hidden pump")).toBeNull();
     expect(screen.queryByText("Retired pump")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Side gate: Open" }));
-    expect(mocks.mutateAsync).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledExactlyOnceWith({ deviceId: "gate", action: "pulse", trigger: "manual" }));
+  });
+
+  it("keeps four controls in one strip across category boundaries", () => {
+    mocks.doorAvailable = true;
+    mocks.devices = [device({ id: "bar", name: "Bar Door", category: "access", control_mode: "pulse" }), device({ last_state: false }), device({ id: "fan", name: "Fan", last_state: true })];
+    const { container } = render(<DashboardDeviceControls compact />);
+    const controls = container.querySelectorAll("[data-device-control]");
+    expect(controls).toHaveLength(4);
+    expect(controls[0].parentElement?.parentElement?.className).toContain("contents");
+    expect(screen.getByRole("button", { name: "Fan: Turn Off" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("does not fake on state while a toggle request is pending or reports off", async () => {
+    mocks.devices = [device({ last_state: false })];
+    let resolve: (result: unknown) => void = () => {};
+    mocks.mutateAsync.mockImplementation(() => new Promise(r => { resolve = r; }));
+    render(<DashboardDeviceControls compact />);
+    fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn On" }));
+    expect(screen.getByRole("button", { name: "Geyser: Turn On" }).getAttribute("aria-pressed")).toBe("false");
+    resolve({ ok: true, online: true, state: false });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Geyser: Turn On" }).hasAttribute("disabled")).toBe(false));
+  });
+
+  it("disables unreachable gadgets without confusing them with off", async () => {
+    mocks.devices = [device({ last_state: false })];
+    mocks.mutateAsync.mockResolvedValue({ ok: false, online: false, state: null });
+    render(<DashboardDeviceControls compact />);
+    fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn On" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Geyser: Unavailable" }).hasAttribute("disabled")).toBe(true));
+    expect(screen.getByText("Unavailable")).toBeTruthy();
   });
 });

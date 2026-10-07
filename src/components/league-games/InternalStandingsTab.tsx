@@ -17,6 +17,15 @@ import { TeamLogo } from "./TeamLogo";
 import { rankTint } from "@/lib/rank-tint";
 import { useLeagueSeasons } from "@/hooks/use-league-seasons";
 import { pickSeasonScoped, seasonLabel } from "@/lib/leagues/seasons";
+import {
+  buildTierStandings,
+  deriveTiers,
+  inSeason,
+  tierOfFixture,
+  type StandingsResult,
+  type StandingsRound,
+  type Tier,
+} from "@/lib/leagues/team-standings";
 
 
 type ClubLeague = {
@@ -42,33 +51,10 @@ type FixtureRow = {
   away_team_code: string | null;
   status: string | null;
   round_id: string | null;
+  season_id?: string | null;
 };
-
-type ResultRow = {
-  fixture_id: string;
-  home_total_points: number | null;
-  away_total_points: number | null;
-  status: string | null;
-};
-
-type StandingRow = {
-  team_code: string;
-  total: number;
-  played: number;
-  weeks: Array<{ date: string; value: string; fixture_id: string | null; status: string | null; isBye?: boolean }>;
-};
-
-const BYE_CODE = "__BYE__";
 
 const CURRENT_YEAR = new Date().getFullYear();
-
-// Strip " round N" / " week N" suffix to get the tier label, e.g.
-// "1st League round 1" -> "1st League"
-function tierFromRoundName(name: string): string {
-  return name
-    .replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, "")
-    .trim() || name.trim();
-}
 
 export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLeagueCode }: Props) {
   const queryClient = useQueryClient();
@@ -111,39 +97,51 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   const seasonId = currentSeasonId;
   const hasSeasons = seasons.length > 0;
 
-  // Fetch all rounds for this tenant association → derive tiers
-  const { data: tiers = [] } = useQuery({
-    queryKey: ["internal-standings-tiers", associationId, seasonId, seasonYear],
-    enabled: !!associationId,
-    staleTime: 60 * 1000,
+  const seasonWindow = useMemo(
+    () => ({
+      id: seasonId,
+      season_year: Number(seasonYear),
+      starts_on: currentSeason?.starts_on ?? null,
+      ends_on: currentSeason?.ends_on ?? null,
+    }),
+    [seasonId, seasonYear, currentSeason?.starts_on, currentSeason?.ends_on],
+  );
+
+  // Fixtures are the source of truth: every fixture of this league in the
+  // selected season (linked by season_id, or unlinked and dated in the season).
+  // Rounds only label/group them, so a missing or unlinked round never hides
+  // a completed result.
+  const { data: seasonData } = useQuery({
+    queryKey: ["internal-standings-season", associationId, platformAssocId, seasonId, seasonYear],
+    enabled: !!associationId && !!platformAssocId,
+    staleTime: 30 * 1000,
     queryFn: async () => {
-      let request = supabase
-        .from("league_rounds")
-        .select("id, name, round_number, round_date, season_id")
-        .eq("association_id", associationId);
-      if (seasonId) {
-        // Season-scoped: identical set to the legacy year filter for 2026.
-        request = request.eq("season_id", seasonId);
-      } else {
-        request = request
-          .gte("round_date", `${seasonYear}-01-01`)
-          .lte("round_date", `${seasonYear}-12-31`);
-      }
-      const { data, error } = await request.order("round_number", { ascending: true });
-      if (error) throw error;
-      const grouped = new Map<string, { tier: string; roundIds: string[]; firstNumber: number }>();
-      (data || []).forEach((r: any) => {
-        const tier = tierFromRoundName(r.name || `Round ${r.round_number}`);
-        const ex = grouped.get(tier);
-        if (ex) {
-          ex.roundIds.push(r.id);
-        } else {
-          grouped.set(tier, { tier, roundIds: [r.id], firstNumber: r.round_number ?? 0 });
-        }
-      });
-      return Array.from(grouped.values()).sort((a, b) => a.firstNumber - b.firstNumber);
+      const [{ data: rounds, error: rErr }, { data: fixtures, error: fErr }] = await Promise.all([
+        supabase
+          .from("league_rounds")
+          .select("id, name, round_number, round_date, season_id")
+          .eq("association_id", associationId)
+          .order("round_number", { ascending: true }),
+        supabase
+          .from("platform_league_fixtures")
+          .select(
+            "id, fixture_date, division, home_team_code, away_team_code, home_team_name_snapshot, away_team_name_snapshot, status, round_id, season_id",
+          )
+          .eq("association_id", platformAssocId!)
+          .order("fixture_date", { ascending: true }),
+      ]);
+      if (rErr) throw rErr;
+      if (fErr) throw fErr;
+      const scoped = ((fixtures || []) as any[]).filter((f) =>
+        inSeason({ season_id: f.season_id, date: f.fixture_date }, seasonWindow),
+      );
+      return {
+        fixtures: scoped as FixtureRow[],
+        tiers: deriveTiers((rounds || []) as StandingsRound[], scoped, seasonWindow),
+      };
     },
   });
+  const tiers: Tier[] = seasonData?.tiers ?? [];
 
   // Map team_code -> { name, logo_url }, scoped to the selected season so a
   // future season's team cannot relabel historical standings rows.
@@ -190,93 +188,29 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     [tiers, selection, isAllMode]
   );
 
-  const allRoundIds = useMemo(
-    () => tiersToShow.flatMap((t) => t.roundIds),
-    [tiersToShow]
-  );
-
-  // Fetch fixtures + results for the selected tier(s)
+  // Fetch results for the selected tier(s)
   const { data: standings, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["internal-standings", platformAssocId, seasonId, seasonYear, allRoundIds.join(",")],
-    enabled: allRoundIds.length > 0 && !!platformAssocId,
+    queryKey: ["internal-standings", platformAssocId, seasonId, seasonYear, selection, tiers.map((t) => t.tier).join("|")],
+    enabled: !!seasonData && tiersToShow.length > 0,
     staleTime: 30 * 1000,
     queryFn: async () => {
-      const { data: fixtures, error: fxErr } = await supabase
-        .from("platform_league_fixtures")
-        .select(
-          "id, fixture_date, division, home_team_code, away_team_code, home_team_name_snapshot, away_team_name_snapshot, status, round_id",
-        )
-        .eq("association_id", platformAssocId!)
-        .in("round_id", allRoundIds)
-        .order("fixture_date", { ascending: true });
-      if (fxErr) throw fxErr;
-
-
-      const fixtureIds = (fixtures || []).map((f) => f.id);
-      let results: ResultRow[] = [];
-      if (fixtureIds.length > 0) {
+      const fixtures = (seasonData?.fixtures || []).filter((f) =>
+        tiersToShow.some((t) => t.tier === tierOfFixture(f, tiers)),
+      );
+      const fixtureIds = fixtures.map((f) => f.id);
+      let results: StandingsResult[] = [];
+      for (let i = 0; i < fixtureIds.length; i += 200) {
         const { data: res, error: resErr } = await supabase
           .from("league_fixture_results" as any)
           .select("fixture_id, home_total_points, away_total_points, status")
-          .in("fixture_id", fixtureIds);
+          .in("fixture_id", fixtureIds.slice(i, i + 200));
         if (resErr) throw resErr;
-        results = (res || []) as any;
+        results = results.concat((res || []) as any);
       }
-      const resByFixture = new Map<string, ResultRow>();
-      results.forEach((r) => resByFixture.set(r.fixture_id, r));
-
-      // Group fixtures by tier
-      const byTier = new Map<string, FixtureRow[]>();
-      (fixtures || []).forEach((f: any) => {
-        const tier =
-          tiersToShow.find((t) => t.roundIds.includes(f.round_id))?.tier || "Other";
-        const list = byTier.get(tier) || [];
-        list.push(f as FixtureRow);
-        byTier.set(tier, list);
-      });
-
-      const out: Array<{ tier: string; weeks: string[]; rows: StandingRow[] }> = [];
-      for (const t of tiersToShow) {
-        const fxs = byTier.get(t.tier) || [];
-        const weekDates = Array.from(new Set(fxs.map((f) => f.fixture_date))).sort();
-        const teams = Array.from(
-          new Set(
-            fxs
-              .flatMap((f) => [f.home_team_code, f.away_team_code])
-              .filter((c): c is string => !!c && c !== BYE_CODE)
-          )
-        );
-        const rows: StandingRow[] = teams.map((tc) => {
-          const weeks = weekDates.map((d) => {
-            const fx = fxs.find(
-              (f) => f.fixture_date === d && (f.home_team_code === tc || f.away_team_code === tc)
-            );
-            if (!fx) return { date: d, value: "", fixture_id: null, status: null };
-            const opp = fx.home_team_code === tc ? fx.away_team_code : fx.home_team_code;
-            if (opp === BYE_CODE) {
-              return { date: d, value: "", fixture_id: null, status: "bye", isBye: true };
-            }
-            const r = resByFixture.get(fx.id);
-            const isFinal = r?.status === "submitted" || r?.status === "confirmed";
-            if (!r || !isFinal || (r.home_total_points == null && r.away_total_points == null)) {
-              return { date: d, value: "", fixture_id: fx.id, status: r?.status ?? null };
-            }
-            const isHome = fx.home_team_code === tc;
-            const own = isHome ? r.home_total_points ?? 0 : r.away_total_points ?? 0;
-            const oppPts = isHome ? r.away_total_points ?? 0 : r.home_total_points ?? 0;
-            return { date: d, value: `${own}-${oppPts}`, fixture_id: fx.id, status: r.status };
-          });
-          const total = weeks.reduce((s, w) => {
-            if (!w.value) return s;
-            const n = parseInt(w.value.split("-")[0], 10);
-            return s + (Number.isFinite(n) ? n : 0);
-          }, 0);
-          const played = weeks.filter((w) => !!w.value).length;
-          return { team_code: tc, total, played, weeks };
-        });
-        rows.sort((a, b) => b.total - a.total || a.team_code.localeCompare(b.team_code));
-        out.push({ tier: t.tier, weeks: weekDates, rows });
-      }
+      const out = tiersToShow.map((t) => ({
+        tier: t.tier,
+        ...buildTierStandings(fixtures.filter((f) => tierOfFixture(f, tiers) === t.tier), results),
+      }));
 
       // Historical name snapshots taken when the fixture was created — these win
       // over the current team name so past seasons never get relabelled.
@@ -337,7 +271,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
       <Card className="p-8 text-center">
         <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
         <p className="text-muted-foreground text-sm">
-          No league rounds set up yet for {seasonYear}. Create rounds in the Rounds tab first.
+          No league fixtures scheduled for {seasonYear} yet.
         </p>
       </Card>
     );

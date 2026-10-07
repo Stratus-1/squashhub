@@ -330,9 +330,7 @@ export default function ClubAdmin() {
         {showStatus && !isComplete && (
           <span className="shrink-0 rounded-full border border-warning/30 px-2 py-0.5 text-[10px] font-medium text-warning-foreground bg-warning/10">Needs setup</span>
         )}
-        <span className={cn("hidden shrink-0 text-xs text-muted-foreground group-hover:text-foreground sm:inline", active && "text-primary")}>
-          {active ? "Open" : "Open →"}
-        </span>
+        <span aria-hidden className={cn("shrink-0 text-xs text-muted-foreground/60 transition-colors group-hover:text-foreground", active && "text-primary")}>→</span>
       </button>
     );
   };

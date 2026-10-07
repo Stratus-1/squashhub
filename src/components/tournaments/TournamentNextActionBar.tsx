@@ -23,6 +23,9 @@ import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression } from "@/lib/tournaments/knockout-progression";
 import { tournamentNextAction, type ChampionScope } from "@/lib/tournaments/round-control";
+import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
+import { toast } from "sonner";
+import { Send } from "lucide-react";
 import { NextRoundDrawDialog } from "./NextRoundDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { prepareActionLabel } from "@/lib/tournaments/round-draw";
@@ -92,6 +95,29 @@ export function TournamentNextActionBar({
     [matches],
   );
   const states = useMemo(() => sectionProgression(koMatches, rounds as any), [koMatches, rounds]);
+  // "Send now": draws saved without notifying (organiser was testing) can be announced later.
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sending, setSending] = useState<number | null>(null);
+  const drawnRounds = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const x of matches as any[]) {
+      if (!x.player_a_member_id || !x.player_b_member_id) continue;
+      const r = Number(x.round_number) || 1;
+      m.set(r, (m.get(r) ?? 0) + 1);
+    }
+    return Array.from(m.entries()).sort((a, b) => a[0] - b[0]);
+  }, [matches]);
+  const sendRound = async (round: number) => {
+    if (!window.confirm(`Send the Round ${round} draw emails / notifications to the players now?`)) return;
+    setSending(round);
+    try {
+      const r = await notifyRoundDraw({ champId, roundNumber: round, skipPrompt: true });
+      toast.success(roundNotifySummary(r));
+      if (r.whatsappFailed > 0) toast.warning(`${r.whatsappFailed} WhatsApp message(s) failed.`);
+    } catch (e: any) {
+      toast.error(`Players were not notified: ${e?.message || e}`);
+    } finally { setSending(null); }
+  };
   const generate = useGenerateNextRound({ champId, states, selfScheduled, playByForRound });
 
   const na = useMemo(
@@ -201,6 +227,12 @@ export function TournamentNextActionBar({
 
         </div>
 
+        <div className="flex shrink-0 flex-wrap gap-2">
+        {canManage && drawnRounds.length > 0 && (
+          <Button size="sm" variant="outline" onClick={() => setSendOpen(true)}>
+            <Send className="mr-1 h-4 w-4" /> Send draw to players
+          </Button>
+        )}
         {canManage && na.ctaLabel && (
           <Button
             size="sm"
@@ -214,7 +246,28 @@ export function TournamentNextActionBar({
             {ctaLabel}
           </Button>
         )}
+        </div>
       </div>
+
+      <Dialog open={sendOpen} onOpenChange={setSendOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send draw to players</DialogTitle>
+            <DialogDescription>
+              Tell players their opponent, contact number and play-by date for a round, using the tournament's message
+              channels. Use this once you've checked the draw. Sending again repeats the message.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {drawnRounds.map(([round, n]) => (
+              <Button key={round} variant="outline" className="w-full justify-between" disabled={sending !== null} onClick={() => sendRound(round)}>
+                <span>Round {round} · {n} game{n === 1 ? "" : "s"}</span>
+                {sending === round ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={scopeOpen} onOpenChange={setScopeOpen}>
         <DialogContent className="max-w-lg">

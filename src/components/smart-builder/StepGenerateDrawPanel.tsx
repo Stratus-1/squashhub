@@ -485,7 +485,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const generate = async () => {
     if (!meta) return;
     const ko = seeded.some((d) => proposals.has(d.group));
-    if (!window.confirm(`This creates ${preview?.total ?? 0} game${preview?.total === 1 ? "" : "s"} now${ko ? " — exactly the Round 1 matches listed above. Later knockout rounds are only proposed and confirmed week by week in Manage Tournament" : ""}. Players ${notifyDraw ? "WILL" : "will not"} be notified. Continue?`)) return;
+    if (!window.confirm(`This creates ${preview?.total ?? 0} game${preview?.total === 1 ? "" : "s"} now${ko ? " — exactly the Round 1 matches listed above. Later knockout rounds are only proposed and confirmed week by week in Manage Tournament" : ""}. You will be asked whether to notify players after it is saved. Continue?`)) return;
     setBusy(true);
     try {
       await assertNotDiamondTournament(tournamentId);
@@ -518,7 +518,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         if (r.issues?.length) toast.error(`Games not given times — ${r.issues.join(" ")} Add courts, widen the time window or add a match date.`);
         else if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit — widen the time window or add courts.`);
       }
-      if (notifyDraw) {
+      {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.
         try { const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1 }); toast.success(roundNotifySummary(r)); }
         catch (e: any) { toast.error(`Draw saved, but players weren't notified: ${e.message ?? e}`); }
@@ -743,7 +743,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       {!(hasDraw && existing.played > 0) && (
         <>
           <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
-          {<label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
+          {false && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
           <div className="flex flex-wrap items-center gap-2">
             <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
             {hasDraw && <Button type="button" variant="outline" onClick={() => navigate(fixturesUrl())}>Go to Fixtures</Button>}

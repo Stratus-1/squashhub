@@ -37,7 +37,7 @@ async function announceRound(
       groupNumber,
       sections: typeof section === "number" ? [section] : null,
     });
-    if (res.sent > 0) toast.success(roundNotifySummary(res));
+    if (res.sent > 0 || res.skipped) toast.success(roundNotifySummary(res));
     if (res.whatsappFailed > 0) toast.warning(`${res.whatsappFailed} WhatsApp message(s) failed.`);
   } catch (e: any) {
     toast.warning(`Round created, but players could not be notified: ${e?.message || e}`);

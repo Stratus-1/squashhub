@@ -478,6 +478,8 @@ body:has(.admin-contrast) [role="dialog"] {
   --member-admin: 20 80% 33%;
 }
 .dark .member-home, .dark .member-bottom-nav {
+  --primary: 215 80% 75%;
+  --primary-foreground: 220 30% 12%;
   --muted-foreground: 220 12% 78%;
   --member-home: 215 85% 75%;
   --member-courts: 153 65% 68%;
@@ -501,7 +503,7 @@ body:has(.admin-contrast) [role="dialog"] {
 .member-home [data-tone="score"], .member-bottom-nav [data-tone="score"] { --member-tone: var(--member-profile); }
 .member-home .member-feature-tile {
   color: hsl(var(--member-tone));
-  background-color: hsl(var(--card));
+  background-color: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--member-tone)));
   border-color: hsl(var(--member-tone) / .4);
   min-height: 84px;
   border-radius: 8px;

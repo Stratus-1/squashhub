@@ -900,7 +900,6 @@ export default function Dashboard() {
       {!isPendingApplicant && (
         <div className="px-4 mt-3 space-y-3">
           <MyStatsCard memberId={myMemberId} />
-          <MyRankingsCard clubId={clubId} memberId={myMemberId} />
         </div>
       )}
 
@@ -983,6 +982,10 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {!isPendingApplicant && (
+        <div className="px-4 mt-3"><MyRankingsCard clubId={clubId} memberId={myMemberId} /></div>
+      )}
 
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />

@@ -244,6 +244,8 @@ type ChampsSplit = { mainEnd: string; start: PlayoffStart; custom: string };
 const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 
 const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [], split: {}, playoffSync: null, syncCutoff: "", scope: null, ownerName: "" };
+/** A blank setup must never overwrite what is saved on the tournament. */
+const hasRealAnswers = (x: Partial<StepAnswers>) => !!(x.name?.trim() || (x.categories ?? []).some((c) => c?.trim()) || x.format?.kind || (x.stages ?? []).length);
 type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
 const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
@@ -305,8 +307,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   // Editing on the device that holds the plan: push the answers to the tournament once,
   // so Edit works on every other device without needing a full re-save.
   useEffect(() => {
-    if (!hasLocalPlan || !tournamentId) return;
-    saveLifecycle(tournamentId, { answers: JSON.parse(JSON.stringify(a)) } as any).catch(() => undefined);
+    if (!hasLocalPlan || !tournamentId || !hasRealAnswers(a)) return;
+    (async () => {
+      const cur = await loadLifecycle(tournamentId).catch(() => null);
+      // Merge into the existing lifecycle — never drop stage/completed/inform etc.
+      if (!cur) return;
+      await saveLifecycle(tournamentId, { ...cur, answers: JSON.parse(JSON.stringify(a)) }).catch(() => undefined);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasLocalPlan, tournamentId]);
   const [step, setStep] = useState(0);
@@ -492,10 +499,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const answersJson = JSON.stringify(a);
   useEffect(() => {
     const tid = a.createdTournamentId;
-    if (!tid || !serverReady) return;
+    if (!tid || !serverReady || !hasRealAnswers(a)) return;
     const t = setTimeout(async () => {
       const cur = await loadLifecycle(tid).catch(() => null);
-      if (!cur || JSON.stringify(cur.answers ?? null) === answersJson) return;
+      if (!cur?.stage || JSON.stringify(cur.answers ?? null) === answersJson) return;
       await saveLifecycle(tid, { ...cur, answers: JSON.parse(answersJson) }).catch(() => undefined);
     }, 1500);
     return () => clearTimeout(t);
@@ -505,10 +512,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const drawPlanJson = JSON.stringify(drawPlanOf(a as any));
   useEffect(() => {
     const tid = a.createdTournamentId;
-    if (!tid) return;
+    if (!tid || !serverReady || !hasRealAnswers(a)) return;
     const t = setTimeout(async () => {
       const cur = await loadLifecycle(tid).catch(() => null);
-      if (!cur || JSON.stringify(cur.format_plan ?? null) === drawPlanJson) return;
+      if (!cur?.stage || JSON.stringify(cur.format_plan ?? null) === drawPlanJson) return;
       await saveLifecycle(tid, { ...cur, format_plan: JSON.parse(drawPlanJson) }).catch(() => undefined);
       // Each fixed stage schedules only on its OWN courts/window: re-slot games a setup change made invalid.
       try {

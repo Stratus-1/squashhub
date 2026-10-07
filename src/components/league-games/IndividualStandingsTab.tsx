@@ -358,6 +358,16 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        <Select value={viewMode} onValueChange={(v) => setViewMode(v as "position" | "overall")}>
+          <SelectTrigger className="h-8 w-[180px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="position">By position</SelectItem>
+            <SelectItem value="overall">Overall (all positions)</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={selectedLeagueNum} onValueChange={setSelectedLeagueNum}>
           <SelectTrigger className="h-8 w-[220px] text-xs">
             <SelectValue placeholder="All leagues" />

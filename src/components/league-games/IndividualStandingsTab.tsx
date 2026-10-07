@@ -273,16 +273,37 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
         }
       }
 
-      const rows = Array.from(agg.values());
-      rows.sort((a, b) => {
-        if (b.diff !== a.diff) return b.diff - a.diff;
-        const la = a.ladder_position ?? Number.POSITIVE_INFINITY;
-        const lb = b.ladder_position ?? Number.POSITIVE_INFINITY;
-        if (la !== lb) return la - lb;
-        return a.name.localeCompare(b.name);
-      });
+      const byPositionRows = Array.from(agg.values());
+      const sortRows = (list: PlayerRow[]) =>
+        list.sort((a, b) => {
+          if (b.diff !== a.diff) return b.diff - a.diff;
+          const la = a.ladder_position ?? Number.POSITIVE_INFINITY;
+          const lb = b.ladder_position ?? Number.POSITIVE_INFINITY;
+          if (la !== lb) return la - lb;
+          return a.name.localeCompare(b.name);
+        });
+      sortRows(byPositionRows);
+
+      // Overall: merge each player's per-position rows into one accumulated row.
+      const overallAgg = new Map<string, PlayerRow>();
+      for (const r of byPositionRows) {
+        const ex = overallAgg.get(r.player_code);
+        if (ex) {
+          ex.played += r.played;
+          ex.won += r.won;
+          ex.lost += r.lost;
+          ex.gamesWon += r.gamesWon;
+          ex.gamesLost += r.gamesLost;
+          ex.diff = ex.gamesWon - ex.gamesLost;
+          r.team_codes.forEach((tc) => ex.team_codes.add(tc));
+        } else {
+          overallAgg.set(r.player_code, { ...r, position: null, team_codes: new Set(r.team_codes) });
+        }
+      }
+      const overallRows = sortRows(Array.from(overallAgg.values()));
+
       const leagueNums = Array.from(leagueNumsSet).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-      return { rows, leagueNums };
+      return { rows: overallRows, byPositionRows, leagueNums };
     },
   });
 

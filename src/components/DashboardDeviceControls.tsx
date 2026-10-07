@@ -191,8 +191,6 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
  * (it closes the relay momentarily). Using a switch for a pulse device would
  * show an "on" state that isn't real a second later.
  */
-const DASHBOARD_BLE_DISABLED = true;
-
 function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: string; compact: boolean }) {
   const control = useDeviceControl(clubId);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
@@ -241,9 +239,9 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
    */
   const bleRescue = async (cloudError: string, trigger: "manual" | "geofence" = "manual") => {
     const secrets: any = clubSecrets || {};
-    // Dashboard controls use the server device action only; the Web Bluetooth
-    // rescue opened Chrome's Nearby-devices chooser on member taps.
-    if (DASHBOARD_BLE_DISABLED || device.category !== "access" || !secrets.ble_fallback_enabled) {
+    // Manual taps use the server action only (Web Bluetooth opened Chrome's
+    // Nearby-devices chooser); the automatic geofence unlock keeps BLE rescue.
+    if (trigger === "manual" || device.category !== "access" || !secrets.ble_fallback_enabled) {
       toast.error(cloudError);
       return false;
     }

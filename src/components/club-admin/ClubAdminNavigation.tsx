@@ -7,7 +7,7 @@ export interface AdminNavigationItem {
   value: string;
   label: string;
   description: string;
-  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: ComponentType<{ className?: string; strokeWidth?: string | number }>;
   needsSetup?: boolean;
 }
 

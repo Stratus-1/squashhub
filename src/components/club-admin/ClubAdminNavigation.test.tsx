@@ -15,17 +15,17 @@ describe("Club Admin presentation", () => {
     expect(groups[0]).toHaveAttribute("aria-label", "Club operations");
     expect(screen.getByRole("button", { name: "Club operations" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: /Setup & configuration/ })).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("button", { name: "Banking", exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Banking" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("1 setup items need attention")).toBeVisible();
   });
   it("keeps destinations selectable in expanded and compact navigation", () => {
     const onSelect = vi.fn();
     render(<ClubAdminNavigation operations={operations} setup={setup} activeTab="members" onSelect={onSelect} compact />);
-    expect(screen.getByRole("button", { name: "Members", exact: true })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Members" })).toHaveAttribute("aria-current", "page");
     fireEvent.click(screen.getByRole("button", { name: /Setup & configuration/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Banking", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Banking" }));
     expect(onSelect).toHaveBeenCalledWith("banking");
-    expect(screen.getByRole("button", { name: "Banking", exact: true })).toHaveAttribute("title", "Banking — Needs setup");
+    expect(screen.getByRole("button", { name: "Banking" })).toHaveAttribute("title", "Banking — Needs setup");
   });
   it("renders only the supplied permission-filtered destinations", () => {
     render(<ClubAdminNavigation operations={operations} setup={[]} activeTab="members" onSelect={vi.fn()} />);

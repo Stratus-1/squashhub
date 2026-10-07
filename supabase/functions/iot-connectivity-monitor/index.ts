@@ -98,8 +98,8 @@ async function checkClub(admin: any, clubId: string, cfg: any) {
   if (!secrets?.shelly_auth_key) return { clubId, skipped: "no Shelly key" };
   const targets = await targetsFor(admin, clubId, secrets);
   if (!targets.length) return { clubId, skipped: "no devices" };
-  const { data: club } = await admin.from("clubs").select("name, timezone").eq("id", clubId).maybeSingle();
-  const tz = club?.timezone || "Africa/Johannesburg";
+  const { data: club } = await admin.from("clubs").select("name").eq("id", clubId).maybeSingle();
+  const tz = "Africa/Johannesburg";
   const clubName = club?.name || "your club";
 
   const status = new Map<string, boolean | null>();

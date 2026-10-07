@@ -128,9 +128,12 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     return eligibleMembersForInvite;
   }, [eligibleMembersForInvite, members, typedCategories]);
 
-  // Mark EFT paid
+  // Record organiser-confirmed payment, including offline arrangements.
   const markPaid = useMutation({
     mutationFn: async (reg: any) => {
+      if (!champId || reg.champ_id !== champId || classifyEntrant(reg) === "declined") {
+        throw new Error("This registration is not available for payment updates");
+      }
       // Settle the linked fee row first — trg_fee_paid_marks_champ_entries then
       // flips the registration to paid itself, keeping statement and entry in
       // sync. (Manually marking only the registration leaves an unpaid fee on
@@ -147,9 +150,12 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           status: "paid",
           fee_paid_cents: entryDueCents(Math.round(entryFee * 100), (reg as any).division_choices),
           paid_at: new Date().toISOString(),
-          payment_ref: `EFT-${Date.now()}`,
+          payment_ref: `ADMIN-${Date.now()}`,
         })
-        .eq("id", reg.id);
+        .eq("id", reg.id)
+        .eq("champ_id", champId)
+        .select("id")
+        .single();
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Marked as paid"); invalidate(); },
@@ -299,8 +305,9 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const feeRequired = entryFee > 0 && !!champ?.payment_required;
   const participatingCount = activeRegistrations.filter((r: any) => isParticipatingEntrant(r, { paymentRequired: feeRequired })).length;
-  const paidCount = activeRegistrations.filter((r: any) => r.status === "paid" || r.status === "waived").length;
-  const pendingCount = activeRegistrations.filter((r: any) => r.status === "pending_payment" || r.status === "pending_eft").length;
+  const paidCount = activeRegistrations.filter((r: any) => r.fee_status ? r.fee_status === "paid" : r.status === "paid").length;
+  const accountCount = activeRegistrations.filter((r: any) => r.fee_status === "on_account").length;
+  const pendingCount = activeRegistrations.filter((r: any) => r.fee_status ? r.fee_status === "pending" : r.status === "pending_payment" || r.status === "pending_eft").length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -313,6 +320,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           <div className="flex items-center gap-3 text-xs flex-wrap">
             <Badge variant="default">{feeRequired ? "Registered" : "Entered"} {participatingCount}</Badge>
             {feeRequired && <Badge variant="secondary">Paid {paidCount}</Badge>}
+            {feeRequired && accountCount > 0 && <Badge variant="secondary">Member account {accountCount}</Badge>}
             {feeRequired && <Badge variant="outline">Pending {pendingCount}</Badge>}
             {proofPendingCount > 0 && (
               <Badge
@@ -391,7 +399,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             <div className="border rounded divide-y">
               {visibleRegistrations.map((r: any) => (
                 <div key={r.id} className="p-2 text-sm">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{getName(r.member)}</p>
                       {isDoubles && (
@@ -430,7 +438,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         </Badge>
                       );
                     })()}
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {r.invited_by_admin && normalisePhoneForWhatsApp(r.member?.phone) && (
                         <Button
                           size="sm"
@@ -523,11 +531,14 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           <FileText className="w-3 h-3 mr-1" />Proof
                         </Button>
                       )}
+                      {feeRequired && classifyEntrant(r, { paymentRequired: feeRequired }) !== "declined" &&
+                        (r.fee_status ? !["paid", "waived", "not_required"].includes(r.fee_status) : !["paid", "waived"].includes(r.status)) && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" title="Record payment received or an agreed payment arrangement" aria-label={`Mark ${getName(r.member)} paid`} onClick={() => markPaid.mutate(r)} disabled={markPaid.isPending}>
+                          {markPaid.isPending && markPaid.variables?.id === r.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}Paid
+                        </Button>
+                      )}
                       {(r.status === "pending_payment" || r.status === "pending_eft") && (
                         <>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPaid.mutate(r)} disabled={markPaid.isPending}>
-                            <Check className="w-3 h-3 mr-1" />EFT paid
-                          </Button>
                           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => waiveFee.mutate(r)}>Waive</Button>
                         </>
                       )}

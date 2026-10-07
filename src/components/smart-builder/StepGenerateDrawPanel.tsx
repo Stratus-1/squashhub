@@ -743,7 +743,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       {!(hasDraw && existing.played > 0) && (
         <>
           <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
-          {<label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
+          {false && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
           <div className="flex flex-wrap items-center gap-2">
             <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
             {hasDraw && <Button type="button" variant="outline" onClick={() => navigate(fixturesUrl())}>Go to Fixtures</Button>}

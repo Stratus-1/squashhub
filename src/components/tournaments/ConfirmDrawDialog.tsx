@@ -176,7 +176,7 @@ export function ConfirmDrawDialog({
               (s) => typeof s === "number",
             ) as number[],
           });
-          if (res.sent > 0) toast.success(roundNotifySummary(res));
+          if (res.sent > 0 || res.skipped) toast.success(roundNotifySummary(res));
           if (res.whatsappFailed > 0) toast.warning(`${res.whatsappFailed} WhatsApp message(s) failed.`);
         } catch (notifyErr: any) {
           toast.warning(`Fixtures created, but players were not notified: ${notifyErr?.message || "unknown error"}`);

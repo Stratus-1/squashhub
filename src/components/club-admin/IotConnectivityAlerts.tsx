@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { BellRing, X } from "lucide-react";
 import { toast } from "sonner";
 
-type Member = { id: string; first_name: string | null; last_name: string | null; email: string | null };
+type Member = { id: string; name: string | null; email: string | null };
 
 /** Club-scoped connectivity-loss alerts: up to two member recipients, emailed via the club's SMTP. */
 export function IotConnectivityAlerts({ clubId }: { clubId: string }) {
@@ -36,16 +36,16 @@ export function IotConnectivityAlerts({ clubId }: { clubId: string }) {
     queryKey: ["iot-alert-members", clubId, search, ids.join(",")],
     queryFn: async () => {
       const out: Member[] = [];
-      if (ids.length) out.push(...(((await supabase.from("club_members").select("id,first_name,last_name,email").eq("club_id", clubId).in("id", ids)).data ?? []) as Member[]));
+      if (ids.length) out.push(...(((await supabase.from("club_members").select("id,name,email").eq("club_id", clubId).in("id", ids)).data ?? []) as Member[]));
       if (search.trim().length >= 2) {
         const q = search.trim().replace(/[%,]/g, "");
-        out.push(...(((await supabase.from("club_members").select("id,first_name,last_name,email").eq("club_id", clubId).or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`).limit(8)).data ?? []) as Member[]));
+        out.push(...(((await supabase.from("club_members").select("id,name,email").eq("club_id", clubId).or(`name.ilike.%${q}%,email.ilike.%${q}%`).limit(8)).data ?? []) as Member[]));
       }
       return out;
     },
   });
   const byId = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
-  const name = (m?: Member) => (m ? `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() || "Member" : "Member");
+  const name = (m?: Member) => (m ? m.name?.trim() || "Member" : "Member");
 
   const save = async () => {
     const g = Math.min(60, Math.max(2, Number(grace) || 5));

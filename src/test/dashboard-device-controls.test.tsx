@@ -182,7 +182,7 @@ describe("DashboardDeviceControls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(mocks.openDoor).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Main door: Open" }));
-    fireEvent.click(screen.getByRole("button", { name: "Open", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
     await waitFor(() => expect(mocks.openDoor).toHaveBeenCalledExactlyOnceWith("manual"));
   });
 
@@ -192,10 +192,10 @@ describe("DashboardDeviceControls", () => {
     expect(screen.queryByRole("switch")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn On" }));
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Turn On", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Turn On" }));
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledExactlyOnceWith({ deviceId: "d1", action: "on", trigger: "manual" }));
     fireEvent.click(screen.getByRole("button", { name: "Geyser: Turn Off" }));
-    fireEvent.click(screen.getByRole("button", { name: "Turn Off", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Turn Off" }));
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenLastCalledWith({ deviceId: "d1", action: "off", trigger: "manual" }));
   });
 
@@ -210,7 +210,7 @@ describe("DashboardDeviceControls", () => {
     expect(screen.queryByText("Retired pump")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Side gate: Open" }));
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Open", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledExactlyOnceWith({ deviceId: "gate", action: "pulse", trigger: "manual" }));
   });
 });

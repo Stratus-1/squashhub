@@ -413,25 +413,68 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
   );
 }
 
-/** Mobile-only manual entry point; automatic and desktop commands stay unchanged. */
+/**
+ * Mobile-only manual entry point; automatic and desktop commands stay unchanged.
+ *
+ * Compact smart-home style control: a round push/toggle button on top with the
+ * device name directly below, so several controls sit side by side and wrap.
+ * Stateful devices colour the button by real state (green = on, red = off,
+ * grey = unreachable); momentary devices flash green briefly on success and
+ * then return to rest — a door is never "on".
+ */
 function CompactDeviceButton({ name, action, busy, icon: Icon, description, error, isOn, onConfirm }: {
   name: string; action: string; busy: boolean; icon: typeof DoorOpen; description: string;
   error?: string | null; isOn?: boolean; onConfirm: () => Promise<void>;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [justSucceeded, setJustSucceeded] = useState(false);
+  const isToggle = typeof isOn === "boolean";
+  const unavailable = !!error;
+
+  const handleConfirm = async () => {
+    await onConfirm();
+    if (!isToggle) {
+      setJustSucceeded(true);
+      window.setTimeout(() => setJustSucceeded(false), 2500);
+    }
+  };
+
+  const buttonClass = unavailable
+    ? "border-border bg-muted text-muted-foreground"
+    : isToggle
+      ? isOn
+        ? "border-win bg-win/15 text-win"
+        : "border-destructive bg-destructive/15 text-destructive"
+      : justSucceeded
+        ? "border-win bg-win/15 text-win"
+        : "border-primary/50 bg-primary/5 text-primary";
+
   return (
-    <div className="min-w-0 flex-1 basis-28 max-w-full">
-      <Button variant="outline" disabled={busy} onClick={() => setConfirming(true)}
-        aria-label={`${name}: ${action}`} aria-busy={busy}
-        className={cn("h-auto min-h-14 w-full justify-start gap-2 whitespace-normal rounded-md border-border bg-card px-3 py-2 text-left text-foreground hover:bg-muted", isOn && "border-primary/60 bg-primary/5")}
+    <div className="flex w-20 shrink-0 flex-col items-center gap-1">
+      <button
+        type="button"
+        disabled={busy || unavailable}
+        onClick={() => setConfirming(true)}
+        aria-label={`${name}: ${unavailable ? "Unavailable" : action}`}
+        aria-busy={busy}
+        className={cn(
+          "flex h-14 w-14 items-center justify-center rounded-full border-2 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "disabled:cursor-not-allowed disabled:opacity-70",
+          buttonClass,
+        )}
       >
-        {busy ? <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" /> : <Icon className="h-5 w-5 shrink-0 text-primary" />}
-        <span className="min-w-0 break-words leading-4">
-          <span className="block text-xs font-semibold">{name}</span>
-          <span className="block text-xs font-medium">{busy ? "Working…" : action}</span>
-        </span>
-      </Button>
-      {error && <p className="mt-1 break-words text-[11px] text-destructive">{error}</p>}
+        {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Icon className="h-6 w-6" />}
+      </button>
+      <span className="w-full text-center text-[11px] font-medium leading-tight text-foreground">
+        {name}
+      </span>
+      <span className={cn(
+        "text-center text-[10px] leading-tight",
+        unavailable ? "text-muted-foreground" : isToggle ? (isOn ? "text-win" : "text-destructive") : "text-muted-foreground",
+      )}>
+        {unavailable ? "Unavailable" : isToggle ? (isOn ? "On" : "Off") : action}
+      </span>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent className="w-[calc(100%-2rem)] rounded-md">
           <AlertDialogHeader>
@@ -440,7 +483,7 @@ function CompactDeviceButton({ name, action, busy, icon: Icon, description, erro
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="min-h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="min-h-11" disabled={busy} onClick={() => { void onConfirm(); }}>{action}</AlertDialogAction>
+            <AlertDialogAction className="min-h-11" disabled={busy} onClick={() => { void handleConfirm(); }}>{action}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

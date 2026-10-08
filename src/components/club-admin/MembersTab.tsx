@@ -202,7 +202,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, onCompetitionStatus, isSuperAdmin }: {
+function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, onCompetitionStatus, onResolveDuplicate, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -218,6 +218,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
   onAffiliate?: () => void;
   onCompetitionStatus?: () => void;
+  onResolveDuplicate?: () => void;
   isSuperAdmin?: boolean;
 }) {
 
@@ -260,6 +261,9 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             <DropdownMenuItem onClick={() => onChangeStatus(m, "active")}>{status === "active" ? "Active" : "Reinstate…"}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onChangeStatus(m, "suspended")}>Suspend…</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onChangeStatus(m, "resigned")}>Resign…</DropdownMenuItem>
+            {onResolveDuplicate && (
+              <DropdownMenuItem onClick={onResolveDuplicate}>Resolve duplicate…</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[9px] px-1 py-0 shrink-0">{m.role}</Badge>
@@ -1085,6 +1089,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onChangeStatus={handleChangeStatus}
                     onAffiliate={() => setAffiliateMember(m)}
                     onCompetitionStatus={() => setStatusMember(m)}
+                    onResolveDuplicate={() => setDupMember(m)}
                     isSuperAdmin={isSuperAdmin}
                   />
 
@@ -1128,6 +1133,14 @@ export function MembersTab({ clubId }: { clubId: string }) {
           memberId={statusMember.id}
           memberName={statusMember.name || statusMember.profiles?.name || "Member"}
           onClose={() => setStatusMember(null)}
+        />
+      )}
+      {dupMember && (
+        <ResolveDuplicateDialog
+          clubId={clubId}
+          source={dupMember}
+          members={members}
+          onClose={() => setDupMember(null)}
         />
       )}
 

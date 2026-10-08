@@ -6,7 +6,9 @@ export type GuideEntryCount = { entered: number; selected: number; total: number
 export function guideEntryCounts(cats: string[], keys: string[], picks: Picks, regs: RegLite[]) {
   const counts: Record<string, GuideEntryCount> = {};
   keys.forEach((key, index) => {
-    const entered = new Set(unitsFor(regs, index + 1, keys.length, false).units.map((u) => u.member));
+    // Registrations with no chosen category are unassigned — never count them in every group.
+    const mine = keys.length > 1 ? regs.filter((r) => r.division_choices?.includes(index + 1)) : regs;
+    const entered = new Set(unitsFor(mine, index + 1, keys.length, false).units.map((u) => u.member));
     const selected = new Set(Object.keys(picks).filter((id) => placesOf(picks, id).includes(key)));
     counts[key] = { entered: entered.size, selected: selected.size, total: new Set([...entered, ...selected]).size };
   });

@@ -237,12 +237,17 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   if (sd === "manual") notes.push(`Seeding "Manual seeds" — entry order is shown; change the order before generating if needed.`);
   const stages: any[] = (plan?.stages ?? []).filter((s: any) => (s.phase ?? "main") === "main" && (!s.unit || s.unit === key || s.unit === key.split("::")[0]));
   let schedule: DivSchedule = { rule: null, deadlines: [], upto: [], dates: [] };
-  if (stages.length && stages.every((s) => s.mode === "play_by" && s.deadline)) {
-    const ds = [...new Set<string>(stages.map((s) => s.deadline))].sort();
-    schedule = { rule: "play_by", deadlines: ds, upto: ds.slice(1).map(() => null), dates: [] };
-  } else if (stages.length && stages.every((s) => s.mode === "scheduled" && s.date)) {
+  // Every stage's own date: a scheduled round uses its fixed day, a play-by round its deadline.
+  const stageDates: (string | null)[] = stages.map((s) => (s.mode === "scheduled" ? s.date : s.deadline) || null);
+  if (stages.length && stageDates.every(Boolean) && stages.every((s) => s.mode === "scheduled")) {
     schedule = { rule: "fixed", deadlines: [], upto: [], dates: stages.map((s) => s.date).sort() };
     notes.push("Scheduled rounds get their date; court times and courts are not invented — book them separately.");
+  } else if (stages.length && stageDates.every(Boolean)) {
+    // Mixed setup (some rounds on fixed days, some play-by — as chosen in Stages & scheduling): each round
+    // keeps its own date from setup, in date order. Nothing is re-asked here.
+    const ds = stages.map((s, i) => ({ d: stageDates[i]!, i })).sort((a, b) => a.d.localeCompare(b.d) || a.i - b.i).map((o) => o.d);
+    schedule = { rule: "play_by", deadlines: ds, upto: ds.slice(1).map((_, j) => j + 1), dates: [], share: true };
+    if (stages.some((s) => s.mode === "scheduled")) notes.push("Rounds keep the dates from your Stages & scheduling setup — fixed days and play-by dates together.");
   } else if (!stages.length && plan?.days?.length) {
     schedule = { rule: "fixed", deadlines: [], upto: [], dates: [...new Set<string>(plan.days.map((d: any) => d.date).filter(Boolean))].sort() };
   } else if (stages.length) notes.push("Some stages are still \"Decide later\" — choose play-by or fixed dates now.");

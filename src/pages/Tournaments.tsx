@@ -174,6 +174,27 @@ export default function Tournaments() {
     },
     enabled: !!muChampIdsKey,
   });
+  // Step-by-step setup keeps per-round modes (Round 1 fixed days, later rounds play-by) that the
+  // compressed structured spec loses: round_number → fixed range from the setup.
+  const { data: fixedRoundsByChamp } = useQuery({
+    queryKey: ["setup-fixed-rounds", muChampIdsKey],
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("id,beta_lifecycle").in("id", muChampIdsKey.split(","));
+      const m = new Map<string, Map<number, { from: string; to: string; timeFrom: string | null; timeTo: string | null }>>();
+      for (const t of (data || []) as any[]) {
+        const main = ((t.beta_lifecycle?.answers?.stages ?? []) as any[]).filter((s) => (s?.phase ?? "main") === "main");
+        const r = new Map<number, any>();
+        main.forEach((s, i) => {
+          if (s?.mode !== "scheduled" || !s?.date) return;
+          const dates = [s.date, ...((s.extraDays ?? []) as any[]).map((d) => d?.date)].filter(Boolean).sort();
+          r.set(i + 1, { from: dates[0], to: dates[dates.length - 1], timeFrom: s.from || null, timeTo: s.to || null });
+        });
+        if (r.size) m.set(t.id, r);
+      }
+      return m;
+    },
+    enabled: !!muChampIdsKey,
+  });
   // Fixed-date rounds that cannot be given times/courts: say why (admins only), never silent TBD.
   const { data: timedIssues } = useQuery({
     queryKey: ["timed-round-capacity", muChampIdsKey],

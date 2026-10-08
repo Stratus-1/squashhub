@@ -31,8 +31,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
 import { createPortal } from "react-dom";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -1459,7 +1460,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     <Button size="sm" variant="outline" title="Use the whole screen for the category columns" onClick={() => setBoardFull(true)}><Maximize2 className="mr-1 h-3.5 w-3.5" />Expand</Button>
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
-                  <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Drag names between columns, or use Move to / + Add to on each name. Order within a column is the seeding — drag or use ▲▼ to change it."}</div>
+                  <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Drag names between columns, or use → to move and + to add on each name. Order within a column is the seeding — drag or use ▲▼ to change it. Names in italic are picked by you and have not entered yet."}</div>
                   {(() => {
                     const q = memberSearch.trim().toLowerCase();
                     const ladderOf = (id: string) => members.find((m) => m.id === id)?.ladder ?? 1e9;
@@ -1497,29 +1498,36 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                 const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
                                 return (
                                   <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
-                                    className={cn("cursor-grab rounded border bg-background px-1.5 py-1 text-xs", hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
+                                    className={cn("cursor-grab rounded border bg-background px-1 py-1 text-xs", hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
                                     <div className="flex items-center gap-1">
-                                      {c.key && <span className="w-5 shrink-0 text-right font-mono text-muted-foreground">{i + 1}</span>}
-                                      <span className="min-w-0 flex-1 truncate font-medium" title={memberName(id)}>{memberName(id)}</span>
-                                      {enteredIds.has(id) && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">Entered</span>}
-                                      {mine.length > 1 && <span className="rounded bg-muted px-1 text-[10px]" title={mine.map(unitLabel).join(", ")}>+{mine.length - 1}</span>}
+                                      {c.key && <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>}
+                                      <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>
+                                      {mine.length > 1 && <span className="shrink-0 rounded bg-muted px-1 text-[10px]" title={mine.map(unitLabel).join(", ")}>+{mine.length - 1}</span>}
+                                      {why && <span className="shrink-0 text-[10px] text-destructive" title={`${why} · organiser override`}>⚠</span>}
                                       {c.key && <>
                                         <button type="button" aria-label={`Move ${memberName(id)} up`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0} onClick={() => nudge(c.key, id, -1)}>▲</button>
                                         <button type="button" aria-label={`Move ${memberName(id)} down`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === c.ids.length - 1} onClick={() => nudge(c.key, id, 1)}>▼</button>
                                       </>}
-                                    </div>
-                                    {why && <div className="text-[10px] text-muted-foreground">{why} · organiser override</div>}
-                                    <div className="mt-1 flex gap-1">
-                                      <select aria-label={`Move ${memberName(id)} to`} className="h-6 min-w-0 flex-1 rounded border border-input bg-background px-1 text-[11px]" value="" onChange={(e) => e.target.value && move(id, c.key, e.target.value === "__none" ? "" : e.target.value)}>
-                                        <option value="">Move to…</option>
-                                        {units.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
-                                        {c.key && <option value="__none">Remove from {c.label}</option>}
-                                      </select>
-                                      {!singleEvent && <select aria-label={`Add ${memberName(id)} to another event`} className="h-6 min-w-0 flex-1 rounded border border-input bg-background px-1 text-[11px]" value="" onChange={(e) => e.target.value && addTo(id, e.target.value)}>
-                                        <option value="">+ Add to…</option>
-                                        {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <option key={u.key} value={u.key}>{u.label}{w ? ` (${w})` : ""}</option>; })}
-                                      </select>}
-                                      {!c.key && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Remove ${memberName(id)}`} onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <button type="button" aria-label={`Move ${memberName(id)} to`} title="Move to another category" className="rounded px-0.5 text-muted-foreground hover:text-foreground"><ArrowRight className="h-3.5 w-3.5" /></button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
+                                          <DropdownMenuLabel>Move to</DropdownMenuLabel>
+                                          {units.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <DropdownMenuItem key={u.key} onSelect={() => move(id, c.key, u.key)}>{u.label}</DropdownMenuItem>)}
+                                          {c.key && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => move(id, c.key, "")}>Remove from {c.label}</DropdownMenuItem></>}
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                      {!singleEvent && <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <button type="button" aria-label={`Add ${memberName(id)} to another event`} title="Add to another category" className="rounded px-0.5 text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" /></button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
+                                          <DropdownMenuLabel>Add to</DropdownMenuLabel>
+                                          {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>}
+                                      {!c.key && <button type="button" aria-label={`Remove ${memberName(id)}`} title="Remove this player" className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>}
                                     </div>
                                   </li>);
                               })}

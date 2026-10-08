@@ -88,3 +88,6 @@
 
 - [x] Permissions redesign Stage 1 (approved plan): additive migration 0099 — capability_catalogue, member_role_assignments, member_capability_overrides, club_offices (unique open Chairman), chairman_handovers, chairman_emergency_requests/votes, capability_nominations, permission_events, club_permission_settings (legacy_mode default ON), permission_shadow_log, permission_inventory_snapshots, has_cap()/can_grant() wrappers. Verified has_cap matches legacy answers; build OK. No club behaviour changed.
 - [ ] Stage 2+ (shadow mode, Riverside inventory/mapping, gate ON) — each needs separate owner approval per plan checklist.
+
+- [x] Permissions Stage 2: shadow mode (Riverside only, comparison log, no access change)
+- [ ] Permissions Stage 3: seed capability list + role templates, Riverside impact report (needs owner approval)

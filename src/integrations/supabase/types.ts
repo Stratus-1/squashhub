@@ -5728,6 +5728,7 @@ export type Database = {
           legacy_mode: boolean
           new_permissions_enabled: boolean
           refund_second_approval: boolean
+          shadow_mode: boolean
           updated_at: string
         }
         Insert: {
@@ -5738,6 +5739,7 @@ export type Database = {
           legacy_mode?: boolean
           new_permissions_enabled?: boolean
           refund_second_approval?: boolean
+          shadow_mode?: boolean
           updated_at?: string
         }
         Update: {
@@ -5748,6 +5750,7 @@ export type Database = {
           legacy_mode?: boolean
           new_permissions_enabled?: boolean
           refund_second_approval?: boolean
+          shadow_mode?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -20264,6 +20267,10 @@ export type Database = {
         }[]
       }
       new_invite_token: { Args: never; Returns: string }
+      new_model_cap: {
+        Args: { _capability: string; _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       next_bottom_ladder_position: {
         Args: { _club_id: string; _gender: string }
         Returns: number
@@ -20616,6 +20623,7 @@ export type Database = {
         Args: { _approve: boolean; _invoice_id: string; _note?: string }
         Returns: undefined
       }
+      run_permission_shadow: { Args: { _club_id: string }; Returns: Json }
       save_bells_match_result: {
         Args: {
           _match_id: string

@@ -34,14 +34,6 @@ async function openBoard() {
   await screen.findByTestId("pick-board");
 }
 
-/** Radix menus open on the pointer sequence a real tap makes, not on a bare click. */
-function openChooser(el: HTMLElement) {
-  fireEvent.pointerDown(el, { button: 0, ctrlKey: false, pointerType: "mouse" });
-  fireEvent.mouseDown(el, { button: 0, ctrlKey: false });
-  fireEvent.mouseUp(el, { button: 0, ctrlKey: false });
-  fireEvent.click(el, { button: 0, ctrlKey: false });
-}
-
 describe("Step-by-Step: category board full-screen expand", () => {
   beforeEach(() => localStorage.clear());
 
@@ -73,18 +65,21 @@ describe("Step-by-Step: category board full-screen expand", () => {
     expect(screen.getByTestId("pick-board")).toBeInTheDocument();
   });
 
-  it("still moves a player between categories while expanded", async () => {
+  it("gives each row an arrow to move and a plus to add, with no Entered badge", async () => {
     seed();
     await openBoard();
-    fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
-    const dlg = await screen.findByRole("dialog", { name: /full screen/i });
-    // Each row carries a → chooser; open it and pick the category.
-    openChooser(within(dlg).getByLabelText(/Move Anna to/i));
-    fireEvent.click(await screen.findByRole("menuitem", { name: /Ladies/ }));
-    // Anna left Mens A: one row only, and her chooser now offers to leave Ladies.
-    await waitFor(() => expect(within(dlg).getAllByText("Anna")).toHaveLength(1));
-    expect(within(dlg).getAllByLabelText(/Move Anna to/i)).toHaveLength(1);
-    openChooser(within(dlg).getByLabelText(/Move Anna to/i));
-    expect(await screen.findByText(/Remove from Ladies/)).toBeInTheDocument();
+    const board = screen.getByTestId("pick-board");
+    // Compact icons replace the old wide "Move to…" / "+ Add to…" dropdowns.
+    expect(within(board).getByLabelText(/Move Anna to/i)).toBeInTheDocument();
+    expect(within(board).getByLabelText(/Add Anna to another event/i)).toBeInTheDocument();
+    expect(within(board).queryByText("Entered")).toBeNull();
+    // Nobody has entered this setup, so every name shows italic (picked by the admin).
+    expect(within(board).getByText("Anna").className).toMatch(/italic/);
+    // ▲▼ still re-orders within a column.
+    const column = within(board).getByText(/Mens A/).closest("div")!.parentElement!;
+    const names = () => Array.from(column.querySelectorAll("ol > li")).map((li) => li.querySelector("span.truncate")?.textContent);
+    expect(names()).toEqual(["Anna", "Ben"]);
+    fireEvent.click(within(board).getByLabelText(/Move Ben down/i));
+    await waitFor(() => expect(names()).toEqual(["Ben", "Anna"]));
   });
 });

@@ -58,6 +58,7 @@ const MatchTracker = lazy(() => import("./pages/MatchTracker"));
 const MatchMarker = lazy(() => import("./pages/MatchMarker"));
 const BellsMarker = lazy(() => import("./pages/BellsMarker"));
 const MarkerTv = lazy(() => import("./pages/MarkerTv"));
+const CourtsDisplay = lazy(() => import("./pages/CourtsDisplay"));
 const TournamentMatchLive = lazy(() => import("./pages/TournamentMatchLive"));
 const AddMatchResult = lazy(() => import("./pages/AddMatchResult"));
 const PlayerProfile = lazy(() => import("./pages/PlayerProfile"));
@@ -554,6 +555,7 @@ function AppRoutes() {
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
         <Route path="/bells-marker/:matchId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><BellsMarker /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/tournament-live/:matchId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><TournamentMatchLive /></CapabilityRoute></ProtectedRoute>} />
+        <Route path="/courts-display/:token" element={<CourtsDisplay />} />
         <Route path="/tv" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain/court/:court" element={<MarkerTv />} />

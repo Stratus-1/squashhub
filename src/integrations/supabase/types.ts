@@ -7105,6 +7105,41 @@ export type Database = {
           },
         ]
       }
+      court_display_tokens: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "court_display_tokens_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       court_reflow_log: {
         Row: {
           club_id: string | null
@@ -18228,6 +18263,7 @@ export type Database = {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number
       }
+      court_display_board: { Args: { _token: string }; Returns: Json }
       create_family_doubles_pair: {
         Args: {
           p_champ_id: string

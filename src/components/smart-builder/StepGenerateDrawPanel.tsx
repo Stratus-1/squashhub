@@ -157,7 +157,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       p.format = formatWithPoolRule(p.format, rule, r.units.length);
       // Knockout never plays a round robin, so round-robin game-count warnings do not apply.
       if (p.format.kind === "knockout") review.warnings = [];
-      list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto",
+      const sc = (plan?.divisions ?? []).find((dv: any) => dv?.label === label)?.scoring;
+      const scoringText = sc ? `${sc.mode === "time_capped_points" ? "Time-capped points" : `PAR ${sc.pointsPerGame ?? 11}`} · ${sc.playAllGames ? `Play all ${sc.bestOf} games` : `Best of ${sc.bestOf}`}` : null;
+      list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto", scoringText,
         poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); const q = poolQualificationOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(q.perPool) || null, runnersUp: Number(q.runnersUp) || 0 } : null; })() });
     }
     const ids = [...new Set(((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id, ...Object.values(r.division_partners ?? {})]).filter(Boolean))];
@@ -717,7 +719,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
               <label className="space-y-0.5"><span className="text-muted-foreground">Seeding</span>
                 <select className="w-full rounded border border-input bg-background p-1" value={f.seeding} onChange={(e) => apply({ seeding: e.target.value as DrawSeeding })}>
                   {(Object.keys(SEED_LABEL) as DrawSeeding[]).map((k) => <option key={k} value={k}>{SEED_LABEL[k]}</option>)}
-                </select></label>
+                 </select></label>
+              {d.scoringText && <div className="space-y-0.5"><span className="text-muted-foreground">Match format (from setup)</span><p>{d.scoringText}</p></div>}
               <div className="space-y-0.5 sm:col-span-3"><span className="text-muted-foreground">When games are played</span>
                 <p>{f.schedule.rule === "fixed" ? `Fixed days: ${f.schedule.dates.map(fmtDay).join(", ")}` : f.schedule.rule === "play_by" && f.schedule.deadlines.filter(Boolean).length ? `As set in Stages & scheduling (${f.schedule.deadlines.filter(Boolean).map(fmtDay).join(", ")})` : "Not set — choose dates in Stages & scheduling"}</p></div>
               {f.kind === "knockout" && (() => {

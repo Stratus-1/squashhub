@@ -38,7 +38,7 @@ Columns: V view, C create/initiate, E edit, A approve/reject, Act activate/deact
 | Reports (trial balance, income, statements) | reports.view | - | - | - | - | - | - | - | - | reports.export |
 | Finance settings (gateways, banking details, recurring settings, thresholds) | settings.view | - | - | - | - | - | - | - | settings.configure | - |
 | Finance audit trail | audit.view | - | - | - | - | - | - | - | - | audit.export |
-| Granting finance permissions | perm.finance.grant (view who holds what) | perm.finance.grant | perm.finance.grant | - | - | - | - | - | - | audit.export |
+| Granting finance permissions | Chairman / super admin (who holds what) | Chairman / super admin | Chairman / super admin | super admin (Chairman's own rights) | - | - | - | - | - | audit.export |
 
 Every key also lets the holder see the records needed for that action, and nothing more. Member contact details and ID numbers show only where the action needs them, such as the phone number for a reminder.
 
@@ -101,7 +101,7 @@ Every finance action and every grant or removal writes a permanent event: who, c
 - Admin with no finance key is refused in every finance function (legacy OFF) and allowed (legacy ON).
 - Each preset can do its own actions and is refused for every other key.
 - No self-approval, no approving a family member's payment, no approving your own entry above the threshold, no approving payments within 24h of a gateway change.
-- Grant rules: no self-grant, can't grant beyond your own keys, grant holder has no money access.
+- Grant rules: only the Chairman of that club or the super admin can grant. Admin, Treasurer, full-admin, federation admin and moderator are all refused. The Chairman sees no finance data. A Chairman self-grant is refused until a super admin approves it. Only the super admin can change the Chairman, and an admin editing that field is refused.
 - Mandate: notices and reminders never activate; only a provider callback or `manual_authorise` (with reason, logged, label shown) does; collection reported separately.
 - Club isolation: keys in club A give nothing in club B.
 - Shadow-check differences match the per-club report. Switching back restores old behaviour.
@@ -119,7 +119,8 @@ Every finance action and every grant or removal writes a permanent event: who, c
 7. Rollback window after a club switches legacy OFF (proposed 30 days).
 
 ## Technical details
+- Confirmed: "platform super admin" today = `user_roles.role='admin'` (1 user); `is_platform_admin` also includes moderators. The federation super admin is a separate `organisation_admins.role='super_admin'` (1 row). The Chairman is `clubs.chairman_member_id`, mirrored into a 'Chairman' role by `auto_assign_officer_roles`. The clubs UPDATE policy allows `is_club_admin_or_permitted(...,'club')`, so the Chairman field is currently admin-editable.
 - Existing: `is_club_admin_or_permitted`, `club_member_permissions` (custom_permissions, is_full_admin, permission_role_id), `club_permission_roles`, trigger `create_default_finance_role`, `finance_decide_member_transaction`, `admin_reverse_journal_group`/`admin_delete_journal_group` (`is_club_admin`), `stitch-refresh-mandate` confirm/reject (`is_club_admin`), `post_journal` (no caller check), `mandate_notification_recipients` (`finance`/`recurring_payments`).
-- New: `club_finance_settings(legacy_mode, thresholds, separation flags)`, `finance_permission_events` (append-only), `finance_shadow_log`, `has_fin()`; keys stored in the existing `custom_permissions`/role `permissions` arrays.
+- New: `club_finance_settings(legacy_mode, thresholds, separation flags)`, `finance_permission_events` (append-only), `finance_shadow_log`, `has_fin()`, `can_grant_finance(user, club)` (active Chairman of that club, or `has_role(admin)`), `finance_self_grant_requests`, an audited `set_club_chairman()` (super admin only) plus a guard trigger on `clubs.chairman_member_id`; keys stored in the existing `custom_permissions`/role `permissions` arrays.
 - Mandate notice recipients would later move to `has_fin(..., 'fin.mandates.view')`.
 - The cancelled EFT attribution migration stays cancelled. Attribution will read from the finance audit events instead.

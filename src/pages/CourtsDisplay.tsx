@@ -118,7 +118,7 @@ export default function CourtsDisplay() {
             <Maximize className="w-6 h-6" />
           </button>
         </div>
-        <p className="text-center text-[11px] leading-snug sm:text-xs text-muted-foreground">
+        <p className="text-center text-xs font-medium leading-snug text-accent sm:text-sm">
           <span className="font-semibold">View only</span> — To make changes to your booking, please log in to the SquashHub app.
         </p>
       </header>

@@ -102,20 +102,25 @@ export default function CourtsDisplay() {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
-      <header className="relative flex items-center gap-3 sm:gap-4 overflow-hidden rounded-xl border border-border bg-card/60 px-3 py-2.5 sm:px-5 sm:py-3.5">
+      <header className="relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-card/60 px-3 py-2.5 sm:px-5 sm:py-3">
         <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
-        <ClubMark logoUrl={data.club.logo_url} name={data.club.name} />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl sm:text-3xl font-extrabold tracking-tight md:text-4xl">{data.club.name}</h1>
-          <p className="truncate text-base text-muted-foreground md:text-lg">Court bookings · {dateLabel}</p>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <ClubMark logoUrl={data.club.logo_url} name={data.club.name} />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl sm:text-3xl font-extrabold tracking-tight md:text-4xl">{data.club.name}</h1>
+            <p className="truncate text-base text-muted-foreground md:text-lg">Court bookings · {dateLabel}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-2xl sm:text-5xl font-extrabold tabular-nums text-accent md:text-6xl">{hhmm(now)}</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">SAST</div>
+          </div>
+          <button aria-label="Full screen" className="shrink-0 p-2 text-muted-foreground hover:text-foreground" onClick={() => document.documentElement.requestFullscreen?.()}>
+            <Maximize className="w-6 h-6" />
+          </button>
         </div>
-        <div className="shrink-0 text-right">
-          <div className="text-2xl sm:text-5xl font-extrabold tabular-nums text-accent md:text-6xl">{hhmm(now)}</div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">SAST</div>
-        </div>
-        <button aria-label="Full screen" className="shrink-0 p-2 text-muted-foreground hover:text-foreground" onClick={() => document.documentElement.requestFullscreen?.()}>
-          <Maximize className="w-6 h-6" />
-        </button>
+        <p className="text-center text-[11px] leading-snug sm:text-xs text-muted-foreground">
+          <span className="font-semibold">View only</span> — To make changes to your booking, please log in to the SquashHub app.
+        </p>
       </header>
 
       <div ref={gridRef} className="flex-1 min-h-0 rounded-xl border border-border overflow-y-auto overflow-x-hidden">

@@ -99,5 +99,25 @@ Clubs with no attendance source rely on admin confirmation alone. The penalty is
 - Authorised admins may cancel in the late window with no penalty. Who, when, why and the waiver are all logged.
 - Rollout leaves every club's existing courts, bookings, fees and booking rules exactly as they are. The whole penalty feature is opt-in and switched off for existing and new clubs, with fees at R0. No penalty is posted until an admin turns it on and sets it up. Nothing is backdated.
 
-## One point to confirm
-- To keep today's behaviour by default, the card has a master switch, **"Enable peak-hour cancellation & no-show rules"**, which is OFF. The "Allow late cancellation" toggle (default OFF, meaning members are blocked in the late window) only takes effect once the master switch is ON. Please confirm this is what you meant.
+## 6. Booking platform vs lighting provider (added 8 Oct)
+Two separate settings replace the single master switch. Both are OFF by default for every club:
+
+| Setting | What it does | Which clubs |
+|---|---|---|
+| **A. Restrict peak-hour late cancellations** | Members can't cancel in the SquashHub app once the slot before starts, with no grace period. Admins may override; the override and reason are logged. | Any club. Covers SquashHub bookings **and** GoBook/external bookings shown in SquashHub. |
+| **B. Charge peak-hour penalty fees** (late cancellation and no-show) | SquashHub posts penalty fees to member accounts | **Only clubs whose court lights SquashHub runs**, and only after an admin turns it on and sets amounts. Hidden or locked for other clubs. |
+
+- "Allow late cancellation with a fee" is only available when B is on. Without B, setting A simply blocks the late cancel.
+- **Who counts as a SquashHub-lighting club** is decided by the club's lights being controlled through SquashHub's own court-lights system. It is never decided by the booking platform. A club linked to GoBook is not assumed to have SquashHub-managed lights. Step 1 of the build confirms the exact setting that identifies this, before anything is written.
+- **No SquashHub penalties for GoBook, Court Manager or other external providers.** They charge their own fees, and SquashHub never writes fees or changes data in their systems.
+
+What the GoBook connection supports (checked in code):
+- SquashHub can send a cancellation to GoBook, so the in-app cancel button can be blocked during the late window.
+- GoBook already enforces its own rule of roughly 1 hour before start.
+- Cancellations made directly on GoBook only show up when the next sync removes the booking. SquashHub **cannot block them**, and the app will not claim it can. Admins see a note saying so.
+- Court Manager: no connection found in the code, so it is listed as "restriction not available" until a connection exists.
+
+Rollout stays the same: existing settings, bookings and fees are untouched, nothing is backdated, and there is no grace period.
+
+## Nothing else to confirm
+Splitting the switch into A and B resolves the earlier master-switch question. Both start OFF, so every club behaves exactly as it does today until an admin deliberately changes it.

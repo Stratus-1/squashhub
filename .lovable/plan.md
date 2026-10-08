@@ -52,26 +52,56 @@ There were no other member charges from scheduled billing, manual journals or re
 - PayFast settlement for E3.
 - Whether the person saw any prompt. No check call was logged, but backend log retention may be limited.
 
-## 6. Safe remediation (only after your approval)
-1. **C:** leave it pending. The club confirms who C is.
-   - If C is B: decline C, cancel the R200 with an audited reversal, and give B his own login using the admin "change login email" (it splits a shared login). A stays on Login 1. Nothing is deleted or merged.
-   - If C is a new person: approve normally. The R200 stands.
-2. **E1:** confirm with Uitsig whether SSA/NSA apply. Post audited reversals for members wrongly charged. For valid charges, create the matching fee lines.
-3. **E3:** reconcile with PayFast before any refund.
+## 6. Status: what is done vs planned
+- **Done:** the read-only investigation above.
+- **Not done (planned, waiting for your approval):** everything below. No records, charges, logins or code have been changed.
 
-## 7. Minimal code fix (later, with tests)
-- Run the same duplicate check in the sign-up steps **before** the membership row and any joining fee are created. This covers Google and every other path. Match on cell, ID and first + last name, ignoring middle names and "Jnr/Snr".
-- If a match is found, show "You're already on the system — is this you?" and offer to claim the existing record. Raise no fee until the person picks "I'm a different person".
-- Make the club-side name matcher compare first + last name, so middle names and suffixes don't break it.
-- Regression tests:
-  - Google sign-up with "Michiel Philip Heyns" against an existing "Michiel Heyns" shows the prompt and creates no row or fee.
-  - Choosing "different person" then raises exactly one R200.
-  - A family sharing a cell number can still continue.
-  - Every path that creates a membership calls the guard (extend the existing source test).
+## 7. Requested clean-up (planned)
 
-## 8. Existing-member activation with a shared family email
-- A contact email may be shared by family members. Each person's login stays unique.
-- Activation finds the existing record by name + cell or ID, verifies with an SMS/WhatsApp code to that member's cell, and creates a login only for that member. It never creates a new member row or fees.
-- If the login email belongs to a relative, ask for a different login email and keep the shared contact email. The relative's records never move.
+**(a) Clear the 23 wrong SSA/NSA charges (R10,580).**
+- For each of the 23 members, post an audited reversing ledger entry against the original 30 Aug posting: debtors credited, league fee income debited, with a link back to the original entry. Nothing is deleted.
+- Record one audit event per member with the reason "Erroneous SSA/NSA seeding at import 30 Aug 2026", the actor and the amounts.
+- Club membership, registration and other legitimate fees stay untouched. Only the 46 SSA/NSA postings from 30 Aug 07:04–07:05 are reversed.
+- Afterwards, check that each of the 23 members' balances fell by exactly R460, that the club total fell by R10,580, and that no other postings changed.
+
+**(b) R200 Registration on the pending signup (C).**
+- Reverse it with an audited entry **only after** C is positively confirmed as an existing member (see the blocker below). If C turns out to be a new person, the R200 stands.
+
+**(c) Fold the new signup into the original Michiel Heyns (B) membership.**
+- **Safety blocker:** C's ID number and cell differ from B's. Nothing moves until identity is positively confirmed, either by the club admin checking ID in person or by a code sent to B's cell number on file. If it isn't confirmed, nothing changes.
+- **Never** combine Michiel Jnr Heyns (A) with his father. A keeps Login 1, his number UITS3543, his Scholar category and his history.
+- Once confirmed, use a supported **"Resolve duplicate / claim existing membership"** action (new, admin-only, audited). It will:
+  1. Move C's own login (Login 2) and the confirmed new contact details onto B. B keeps UITS2970, Premium, rankings, ladder and history. Updating B's ID number or cell also needs the admin to confirm which value is correct.
+  2. Take B off the shared Login 1 (A stays on it).
+  3. Close C as "resolved: duplicate of UITS2970". This is neither an approval nor a decline. C is kept for audit, not deleted, and the duplicate person record is marked as merged into B's.
+  4. Reverse C's R200 as in (b).
+  5. Write one audit event with before/after details, the actor and the verification method.
+
+## 8. Prevention (planned code changes, with tests)
+
+**(d) Recognise existing members on every sign-up path, before any fee.**
+- Google, Apple and email sign-ups all run the existing-member check inside the sign-up steps, **before** a membership row or any joining fee is created.
+- Matching: cell, ID number, and first + last name with middle names and "Jnr/Snr" ignored.
+- When several people match (e.g. father and son), list them with masked details (number, category, age group) so the person picks the right one, or chooses "None of these — I'm new".
+- Claiming an existing record needs a code sent to that record's cell, or admin confirmation. No fee is raised until "I'm new" is chosen.
+- Tests:
+  - Google sign-up as "Michiel Philip Heyns" shows both Heyns matches and creates no row or fee.
+  - Choosing "new" raises exactly one R200.
+  - A family sharing a cell can continue.
+  - Every path that creates a membership calls the check.
+
+**(e) SSA/NSA fees only on formal league-season submission.**
+- Import, joining, activation and approval never raise SSA/NSA.
+- These fees are raised only when a member is formally submitted for a league season, at most once per eligible member per season. A duplicate submission is ignored rather than charged twice.
+- Every SSA/NSA charge always creates a payable fee line together with its ledger entry.
+- Tests:
+  - An import creates no SSA/NSA.
+  - A season submission charges once.
+  - Re-submitting doesn't charge again.
+  - A member without a league number isn't charged.
+
+## 9. Other items
+- **E3 (possible double R20 top-up):** reconcile with PayFast before any action.
+- **Shared family email:** the contact email may be shared; each person's login stays unique and is claimed only through a code to their own cell.
 
 Note: the task list was not updated because these turns were read-only.

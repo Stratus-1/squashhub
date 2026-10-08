@@ -103,6 +103,45 @@ Delegation rules:
 - **What transfers:** Chairman authority (appointing offices, granting permissions). Rights the outgoing Chairman held personally (including any finance) do **not** transfer, and stay until the new Chairman reviews them. Grants made by the outgoing Chairman stay valid.
 - **Audit:** start, accept, cancel and effective handover are all recorded (who, successor, club, reason, times, re-authentication method). Office bearers get an in-app notice. The Super Admin can see the record but takes no part.
 - The Chairman cannot appoint themselves (they already hold the office) or remove themselves without naming a successor.
+### New club onboarding: temporary Chairman (owner proposal)
+
+**Today (confirmed):**
+- Listed clubs are claimed through a claim request (`club_claim_requests`). The platform admin approves it (`approve_club_claim`). Approval makes the requester a **club admin** and fills the **Club Captain** office if empty, not the Chairman.
+- After that, any club admin can set the Chairman on the Club Info screen. This is the escalation route already noted.
+- How a brand-new club's creator is set up at registration was not traced in detail; it is assumed to make them a club admin, and must be confirmed before building.
+
+**Proposal:**
+- The first verified person for a truly new or unclaimed club becomes **Temporary Chairman (setup)**.
+- A clear message at the claim: "You are Temporary Chairman only to set the club up. You must hand over to your club's real Chairman once known."
+- A permanent "Temporary" badge shows in the header and in Permissions, with reminders (e.g. weekly in-app notices and a banner after 30 days).
+- They appoint the real Chairman through the normal handover. Their temporary authority ends at that moment, as one atomic step, with exactly one Chairman at a time.
+
+**Guardrails:**
+- **Eligibility:** only a club with no members holding a login, no Chairman and no prior approved claim. A club with existing data (e.g. imported members) goes through the reviewed claim instead.
+- **Verified link to the club:** verified email and phone, plus one of the following:
+  - an email on the club's domain;
+  - a match to the club's listed contact;
+  - an affiliated association confirming it;
+  - a Super Admin review.
+- **Anti-takeover:**
+  - Only one pending claim per club.
+  - Other claimants are told the club is claimed and may dispute it.
+  - The association and Super Admin can see new temporary Chairmen.
+  - A dispute freezes the claim's grant authority until resolved.
+- **Audit:** the first claim (who, evidence, time, IP class) and the handover are permanently recorded.
+- **Proposed limits while temporary (for approval, D24):**
+  - No finance self-grants (finance view only of the club's own setup screens).
+  - No payout bank details changed without a Super Admin check.
+  - No member deletions or merges, no bulk export, no payment gateway credentials.
+  - No outbound bulk messaging to imported members.
+  - Normal setup stays open: courts, bookings, fees, inviting members and appointing offices.
+
+**Options (D24):**
+- (A) Temporary Chairman as above, with limits, verified automatically.
+- (B) Temporary Chairman only after a quick Super Admin or association check. This keeps today's claim review but grants the temporary Chairman role instead of club admin.
+- (C) Keep today's reviewed claim and give the claimant the "Club Manager" template without the Chairman office, until a Chairman is appointed.
+- Proposed: (A) for brand-new clubs, (B) for listed clubs with existing data.
+
 ### Other office bearers (owner decision)
 - **Only the Chairman** (own club) appoints, replaces or removes the Vice-Chair, Secretary, Treasurer, Club Captain and any other office. The Super Admin is not involved. A server check refuses anyone else, and the direct edit of the `clubs` office fields is blocked.
 - **On appointment**, the office's default template applies, plus any person-specific grants or denies the Chairman separately authorises. Finance capabilities follow the finance grant rule.

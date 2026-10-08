@@ -875,7 +875,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             <div className={fits ? "text-foreground" : "font-medium text-destructive"}>{fits
               ? (need < days.length ? `Fits with ${slots - matches} spare slots — ${need} day${need === 1 ? "" : "s"} would be enough. Consider removing a day, fewer courts or a shorter session.` : `Fits, with ${slots - matches} spare slots for delays.`)
               : `Short by ${matches - slots} slots — add a day, another court or a longer session.`}</div>
-            <div className="text-muted-foreground">Estimate only: also allow for minimum rest between a player's matches. Change match time under Scheduling assumptions.</div>
+            <div className="text-muted-foreground">Estimate only: also allow for minimum rest between a player's matches. Change match time under Match time per slot above.</div>
           </div>;
         })()}
       </div>}

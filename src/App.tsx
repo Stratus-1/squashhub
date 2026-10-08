@@ -479,6 +479,7 @@ function AppRoutes() {
     const p = routeLocation.pathname || "/";
     if (p === "/booking-response") return false;
     if (p.startsWith("/match-tracker/")) return false;
+    if (p.startsWith("/courts-display/")) return false;
     if (isTvRoute) return false;
     if (isAdminRoute) return false;
     return true;

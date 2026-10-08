@@ -637,7 +637,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const inUnit = (id: string, k: string) => placesFor(id).includes(k);
   /** Bells/time-capped: every event plays at the same time, so a person can enter only one. */
   const singleEvent = units.length > 0 && units.every((u) => (scoringFor(u.key) ?? scoring)?.mode === "time_capped_points");
-  const counts = pickCounts(a.picks);
+  const counts = pickCounts(Object.fromEntries(Object.keys(a.picks).map((id) => [id, placesOf(a.picks, id).filter((k) => unitKeySet.has(k))])));
   const [entrySnapshot, setEntrySnapshot] = useState<{ owner: string; rows: RegLite[]; state: "ready" | "loading" | "error" }>({ owner: "", rows: [], state: "loading" });
   const entryTournamentId = tournamentId ?? a.createdTournamentId;
   const entryOwner = `${clubId}:${entryTournamentId ?? "new"}`;
@@ -851,8 +851,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     const out: string[] = [];
     if (a.source === "select" && pickIds.length === 0) out.push("Pick at least one player.");
     for (const id of pickIds) {
-      const stale = placesFor(id).filter((k) => !units.some((u) => u.key === k));
-      if (stale.length) out.push(`${memberName(id)}: ticked in an event that no longer exists — clearing it…`);
       if (singleEvent && placesFor(id).length > 1) out.push(`${memberName(id)}: may only be in one event (timed format).`);
       if (pairMode && placesFor(id).length === 0) out.push(`${memberName(id)}: not in any event yet.`);
     }
@@ -1369,6 +1367,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.some((id) => placesFor(id).length === 0) && (
                       <Button size="sm" variant="outline" onClick={() => { const n = { ...a.picks }; pickIds.forEach((id) => { if (placesFor(id).length === 0) { const k = autoPlace(id); n[id] = k ? [k] : []; } }); setA({ ...a, picks: n }); }}>Place by league</Button>)}
                   </div>
+                  {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
                   <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Tap an event to add or remove it. A player stays picked even with no events."}</div>
                   <div className="max-h-[28rem] space-y-1 overflow-auto">
                   {pickIds.filter((id) => memberName(id).toLowerCase().includes(memberSearch.trim().toLowerCase())).map((id) => {

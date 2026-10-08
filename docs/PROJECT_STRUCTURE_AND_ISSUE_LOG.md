@@ -2703,3 +2703,6 @@ Nelspruit Doubles League showed "No league rounds set up yet" despite 3 submitte
 - Data: 46 SSA R300/NSA R160 postings from the 30 Aug 2026 import (23 members, R10,580, no fee lines, no payments) were reversed with linked reversing journals plus audit_events (`reverse_erroneous_import_fees`). The originals are kept.
 - Open: the pending Heyns application and its R200 stay untouched until the club confirms identity (its ID number and cell differ from the existing member's).
 - Resolved 2026-10-08: the pending "Michiel Philip Heyns" signup was the son (age 17 from ID), not the father. His Google login, ID, cell and email were moved onto UITS3543 (Michiel Jnr Heyns). The duplicate row was set to resigned and kept, its person record marked merged, and the R200 reversed with a linked journal. Father UITS2970 was untouched and is now alone on the old login. Audit action: `resolve_duplicate_signup`.
+
+## 2026-10-08 Court Booking Rules: opt-in peak late-cancel restriction and penalties
+Added separate Peak Hours card (Edit/Save/Cancel), member events moved to section 3, booking-hours summary, opt-in restriction/penalty card, admin no-show confirmation and waivers. All clubs default OFF / R0.

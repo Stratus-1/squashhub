@@ -1,3 +1,4 @@
+import { barChargeErrorMessage } from "@/lib/account-charge-gate";
 import { useRef, useState } from "react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -1279,7 +1280,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
       unit_price: selectedItem.price,
       total,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(barChargeErrorMessage(error, "Could not add the charge"), { duration: 10000 });
     else {
       toast.success("Charge added");
       setMemberId("");

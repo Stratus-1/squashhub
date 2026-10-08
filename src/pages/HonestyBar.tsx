@@ -1,3 +1,4 @@
+import { barChargeErrorMessage } from "@/lib/account-charge-gate";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
@@ -207,7 +208,7 @@ export default function HonestyBar() {
       setCart({});
       qc.invalidateQueries({ queryKey: ["my-bar-tab"] });
     } catch (err: any) {
-      toast.error(err.message || "Failed to log items");
+      toast.error(barChargeErrorMessage(err, "Failed to log items"), { duration: 10000 });
     } finally {
       setSubmitting(false);
     }

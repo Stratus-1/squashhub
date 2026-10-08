@@ -4,7 +4,7 @@ import { computeAccountChargeGate as g, debitSwitchFor, parseAccountLimit, barCh
 const none = { fees: [], hasMandate: false };
 
 describe("bar/shop account charge gate", () => {
-  it("prepaid credit covers purchase", () => expect(g({ currentOwing: -100, purchase: 60, ...none })).toMatchObject({ allowed: true, projectedOwing: 40 - 80 }));
+  it("prepaid credit covers purchase", () => expect(g({ currentOwing: -100, purchase: 60, ...none })).toMatchObject({ allowed: true, projectedOwing: -40 }));
   it("exactly zero after purchase is allowed", () => expect(g({ currentOwing: -50, purchase: 50, ...none }).allowed).toBe(true));
   it("zero balance, no arrangement → refused", () => expect(g({ currentOwing: 0, purchase: 30, ...none })).toMatchObject({ allowed: false, shortfall: 30 }));
   it("arrears without arrangement → refused", () => expect(g({ currentOwing: 200, purchase: 10, ...none })).toMatchObject({ allowed: false, shortfall: 210 }));

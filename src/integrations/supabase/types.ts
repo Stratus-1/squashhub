@@ -6433,6 +6433,7 @@ export type Database = {
           fill_top_down_enabled: boolean
           fill_up_leagues_enabled: boolean
           free_tier_until: string | null
+          free_visitor_bookings_per_year: number
           gateway_fee_pct_capitec: number | null
           gateway_fee_pct_card_intl: number | null
           gateway_fee_pct_card_local: number | null
@@ -6585,6 +6586,7 @@ export type Database = {
           fill_top_down_enabled?: boolean
           fill_up_leagues_enabled?: boolean
           free_tier_until?: string | null
+          free_visitor_bookings_per_year?: number
           gateway_fee_pct_capitec?: number | null
           gateway_fee_pct_card_intl?: number | null
           gateway_fee_pct_card_local?: number | null
@@ -6737,6 +6739,7 @@ export type Database = {
           fill_top_down_enabled?: boolean
           fill_up_leagues_enabled?: boolean
           free_tier_until?: string | null
+          free_visitor_bookings_per_year?: number
           gateway_fee_pct_capitec?: number | null
           gateway_fee_pct_card_intl?: number | null
           gateway_fee_pct_card_local?: number | null

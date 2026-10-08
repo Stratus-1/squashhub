@@ -3861,7 +3861,7 @@ export default function ClubChampsView() {
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />}
         {!diamondEvent && !isStructured && survivorsCard}
-        {diamondEvent ? <DiamondStandings tournamentId={champId!} canManage={canManage} /> : winnersCard}
+        {!diamondEvent && winnersCard}
 
         {!diamondEvent && woodenSpoonsCard}
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
@@ -3869,6 +3869,7 @@ export default function ClubChampsView() {
           {fixtureCards}
           {combinedFixtures}
         </div>
+        {diamondEvent && <DiamondStandings tournamentId={champId!} canManage={canManage} />}
         {isHandicapChamp && champ?.club_id && (
           <ChampLadderSuggestions
             champId={champId!}

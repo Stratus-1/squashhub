@@ -1503,7 +1503,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                       {c.key && <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>}
                                       <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>
                                       {mine.length > 1 && <span className="shrink-0 rounded bg-muted px-1 text-[10px]" title={mine.map(unitLabel).join(", ")}>+{mine.length - 1}</span>}
-                                      {why && <span className="shrink-0 text-[10px] text-destructive" title={`${why} · organiser override`}>⚠</span>}
+                                      {why && <span className="shrink-0 text-[10px] text-destructive" title={`${why} — this player doesn't match this group (check gender/league on their profile). Use → to move them, or the bin to remove.`}>⚠</span>}
                                       {c.key && <>
                                         <button type="button" aria-label={`Move ${memberName(id)} up`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0} onClick={() => nudge(c.key, id, -1)}>▲</button>
                                         <button type="button" aria-label={`Move ${memberName(id)} down`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === c.ids.length - 1} onClick={() => nudge(c.key, id, 1)}>▼</button>
@@ -1527,7 +1527,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                           {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
-                                      {!c.key && <button type="button" aria-label={`Remove ${memberName(id)}`} title="Remove this player" className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>}
+                                      <button type="button" aria-label={c.key ? `Remove ${memberName(id)} from ${c.label}` : `Remove ${memberName(id)}`} title={c.key ? `Remove from ${c.label}${mine.length <= 1 ? " (goes to Not placed)" : ""}` : "Remove this player from the tournament list"} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { if (c.key) { move(id, c.key, ""); return; } const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>
                                     </div>
                                   </li>);
                               })}

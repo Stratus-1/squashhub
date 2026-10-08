@@ -380,9 +380,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   /** The seeding data actually used for this unit, shown next to its seed. */
   const seedData = (d: DrawDivision, id: string, idx: number): string => {
     const ps = id.split("+");
-    if (manual[d.group]?.order) return `manual order (#${idx + 1})`;
+    if (manual[d.group]?.order) return "";
     if (d.format.seeding === "ranking") { const v = ps.map((x) => points.get(x) ?? 0); return `ranking pts ${v.join(" + ")} = ${v.reduce((a, b) => a + b, 0)}`; }
-    if (d.format.seeding === "ladder") { const v = ps.map((x) => ladder.get(x)); return `ladder ${v.map((x) => (x == null ? "—" : `#${x}`)).join(" / ")}`; }
+    if (d.format.seeding === "ladder") { const v = ps.map((x) => ladder.get(x)); return v.map((x) => (x == null ? "—" : `#${x}`)).join(" / "); }
     if (d.format.seeding === "random") return "random draw";
     return `entry #${(baseUnits[d.group - 1] ?? []).findIndex((u) => unitId(u) === id) + 1}`;
   };
@@ -422,9 +422,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                   return (
                     <li key={id} draggable={isPools} onDragStart={() => setDragId(id)} onDragEnd={() => setDragId(null)}
                       className="flex flex-wrap items-center gap-1 rounded bg-muted/40 px-1 py-0.5">
-                      <span className="w-12 font-semibold">Seed {k + 1}</span>
-                      <span className="flex-1 min-w-[10rem]">{unitName(id)}</span>
-                      <span className="text-muted-foreground">{seedData(d, id, k)}</span>
+                      <span className="w-5 text-right font-semibold" title={`Seed ${k + 1}`}>{k + 1}</span>
+                      <span className="flex-1 min-w-[7rem]">{unitName(id)}{(() => { const sd = seedData(d, id, k); return sd ? <span className="text-muted-foreground"> ({sd})</span> : null; })()}</span>
                       <button type="button" className="px-1 underline disabled:opacity-40" disabled={k === 0} aria-label={`Move ${unitName(id)} up one seed`} onClick={() => moveSeed(d, id, -1)}>↑</button>
                       <button type="button" className="px-1 underline disabled:opacity-40" disabled={k === d.units.length - 1} aria-label={`Move ${unitName(id)} down one seed`} onClick={() => moveSeed(d, id, 1)}>↓</button>
                       {isPools && (
@@ -595,7 +594,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <Button size="sm" variant="outline" onClick={() => setSeedFull(false)}><Minimize2 className="mr-1 h-3.5 w-3.5" />Exit full screen</Button>
           </div>
           <p className="text-muted-foreground">All groups side by side. Change seed order with ↑↓, move players between pools with drag or "Move to pool" — changes apply here and on the page behind.</p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="seed-board">
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-testid="seed-board">
             {seeded.filter((d) => d.units.length > 0).map((d) => (
               <div key={d.group} className="flex flex-col rounded border border-border p-1.5">
                 <div className="mb-1 flex flex-wrap items-center justify-between gap-1">

@@ -91,7 +91,9 @@ The `/beta-tournament/:champId` page and the Club Admin "Manage" card both open 
 - One row per round, and per category/division where they run separately.
 - Each row shows: Not sent / Sent (date, who sent it, channels, how many players) / Changes not communicated (number of affected players). History opens when you expand the row.
 - Swiss and knockout rounds only appear once real pairings exist.
-- Actions: **Send**, **Resend** (shows a warning that it was already sent), **Send changes only** (only players whose opponent, date, time or court changed since the last send), and **Choose recipients**.
+- Actions: **Send now**, **Send later** (scheduled through the existing Communications scheduling and cancellable), **Resend all** (shows a warning that it was already sent), **Send changes only** (only players whose opponent, date, time or court changed since the last send), and **Choose recipients**.
+- **One round at a time:** each send covers exactly one round (optionally one category/division). There is no "send all rounds" button, even when all rounds are generated upfront.
+- **Updated notices** are clearly marked: the subject and opening line say "UPDATED: Round N", and the message says what changed (e.g. "Court changed from 2 to 3").
 
 **Send flow (every time, nothing pre-ticked from setup):**
 1. Choose channels: Email / WhatsApp / SMS / In-app, any combination. A channel the club hasn't switched on shows as unavailable with the reason. WhatsApp and SMS show the estimated cost from the existing messaging rates.

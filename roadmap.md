@@ -113,3 +113,4 @@
 - [ ] Member editing enforcement (club_members write rules) — next
 - [ ] Office appointment / handover screens
 - [ ] Pick/Allocate board block tidy-up: + icon for add, arrow icon for move, entered names normal font and unentered italic, compact entered mark (label takes too much space). Preview only.
+- [x] Pick/Allocate board tidy-up: arrow icon moves, plus icon adds, entered names plain font, picked-only names italic, no Entered badge; full-screen Expand now holds up to 5 categories across. 3 board tests pass, type-check clean. Published to squashhub.lovable.app.

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
+import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { proposedKnockoutRound1, previewTimedGames } from "@/lib/smart-builder/step-draw";
@@ -491,6 +492,20 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const hasDraw = existing.games > 0;
   const canGenerate = !busy && schedOk && confirmed && errors.length === 0 && (!hasDraw || (rebuildOk && existing.played === 0));
 
+  const reportSessions = (rs: Awaited<ReturnType<typeof applySetupSessions>>) => {
+    for (const r of rs) {
+      if (r.noSlot) toast.error(`${r.name}: enter "Match time per slot" in Stages & scheduling so games can be placed on courts.`);
+      else if (r.unplaced) toast.warning(`${r.name}: ${r.placed} of ${r.games} games placed on courts (${r.slots} slots). ${r.unplaced} keep their play-by date — add a day, courts or time.`);
+      else if (r.games) toast.success(`${r.name}: all ${r.placed} games placed on courts (${r.slots - r.placed} slots spare).`);
+    }
+  };
+  const placeOnCourts = async () => {
+    setBusy(true);
+    try { const rs = await applySetupSessions(supabase, tournamentId); if (!rs.some((r) => r.games)) toast.info("No unplaced games in scheduled rounds."); reportSessions(rs); }
+    catch (e: any) { toast.error(String(e.message ?? e)); }
+    finally { setBusy(false); }
+  };
+
   const generate = async () => {
     if (!meta) return;
     const ko = seeded.some((d) => proposals.has(d.group));
@@ -527,6 +542,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         if (r.issues?.length) toast.error(`Games not given times — ${r.issues.join(" ")} Add courts, widen the time window or add a match date.`);
         else if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit — widen the time window or add courts.`);
       }
+      try { reportSessions(await applySetupSessions(supabase, tournamentId)); }
+      catch (e: any) { toast.error(`Games not placed on courts: ${e.message ?? e}`); }
       {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.
         try { const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1 }); toast.success(roundNotifySummary(r)); }
@@ -572,6 +589,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div className="flex flex-wrap gap-2">
             <Button size="sm" asChild><Link to={`/club-champs/${tournamentId}`}>Open draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Link></Button>
             <Button size="sm" variant="outline" asChild><Link to={`/beta-tournament/${tournamentId}`}>Manage stages / play-offs</Link></Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={placeOnCourts}>Place games on courts (as per setup)</Button>
             {existing.played === 0 && !rebuildOk && <Button size="sm" variant="destructive" onClick={() => setRebuildOk(true)}>Make a new draw (replace this one)</Button>}
           </div>
           <p className="text-muted-foreground">Results are entered on the draw page as usual. Play-off stages you planned are kept as "Define later" and are set up from Manage stages once the first stage finishes.</p>

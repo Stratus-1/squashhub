@@ -419,6 +419,12 @@ Operations preserved:
   - (b) **Self-grant refused.** The Chairman's own finance and sensitive rights come only from the Super Admin. Section 3c is dropped.
   - In both options, nobody may self-approve transactions, the Chairman office changes only by handover, and nothing crosses clubs. This plan keeps both written down until you choose. Until then, (b) is the safer default.
 - **D21.** Approve the proposed office-bearer defaults in section 3d (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain).
+- **D22.** Succession: must the successor accept before taking over (proposed), or does the handover take effect without acceptance?
+- **D23. Absent or incapacitated Chairman (exceptional, not routine):** options:
+  - (a) Two office bearers (e.g. Secretary + Vice-Chair) jointly appoint an interim Chairman, after a 7-day notice to the absent Chairman.
+  - (b) A Chairman-named deputy (Vice-Chair) takes over automatically after a set absence.
+  - (c) The Super Admin acts on a written club resolution, as a last resort only.
+  - (d) No recovery in the app; the club handles it outside the app.
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

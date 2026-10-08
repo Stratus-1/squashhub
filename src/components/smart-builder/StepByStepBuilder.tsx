@@ -1009,6 +1009,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Exact field when the organiser picked everyone; otherwise the estimate (provisional). */
   const knownField = a.source === "select" && pickIds.length > 0;
   const champsEstimate = units.reduce((n, u) => n + (Number(a.unitEntries?.[u.key]) || 0), 0);
+  /** Actual = saved entries + organiser picks, counted once per player (same source as the structure guide). */
+  const champsActual = units.reduce((n, u) => n + (guideCounts[u.key]?.total ?? 0), 0);
   const fieldCount = knownField ? entryCount : isChamps ? champsEstimate : Number(a.entries) || 0;
   const courtHours = a.days.reduce((t, d) => t + (Number(d.courts) || 0) * d.windows.reduce((h, w) => {
     if (!w.from || !w.to || w.from >= w.to) return h;

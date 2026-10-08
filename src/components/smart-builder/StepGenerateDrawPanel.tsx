@@ -491,6 +491,20 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const hasDraw = existing.games > 0;
   const canGenerate = !busy && schedOk && confirmed && errors.length === 0 && (!hasDraw || (rebuildOk && existing.played === 0));
 
+  const reportSessions = (rs: Awaited<ReturnType<typeof applySetupSessions>>) => {
+    for (const r of rs) {
+      if (r.noSlot) toast.error(`${r.name}: enter "Match time per slot" in Stages & scheduling so games can be placed on courts.`);
+      else if (r.unplaced) toast.warning(`${r.name}: ${r.placed} of ${r.games} games placed on courts (${r.slots} slots). ${r.unplaced} keep their play-by date — add a day, courts or time.`);
+      else if (r.games) toast.success(`${r.name}: all ${r.placed} games placed on courts (${r.slots - r.placed} slots spare).`);
+    }
+  };
+  const placeOnCourts = async () => {
+    setBusy(true);
+    try { const rs = await applySetupSessions(supabase, tournamentId); if (!rs.some((r) => r.games)) toast.info("No unplaced games in scheduled rounds."); reportSessions(rs); }
+    catch (e: any) { toast.error(String(e.message ?? e)); }
+    finally { setBusy(false); }
+  };
+
   const generate = async () => {
     if (!meta) return;
     const ko = seeded.some((d) => proposals.has(d.group));
@@ -527,6 +541,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         if (r.issues?.length) toast.error(`Games not given times — ${r.issues.join(" ")} Add courts, widen the time window or add a match date.`);
         else if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit — widen the time window or add courts.`);
       }
+      try { reportSessions(await applySetupSessions(supabase, tournamentId)); }
+      catch (e: any) { toast.error(`Games not placed on courts: ${e.message ?? e}`); }
       {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.
         try { const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1 }); toast.success(roundNotifySummary(r)); }

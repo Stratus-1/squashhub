@@ -53,15 +53,10 @@ export default function CourtsDisplay() {
   if (isLoading) return <div className="min-h-screen bg-background" />;
   if (!data) return <div className="min-h-screen bg-background text-foreground grid place-items-center text-xl">This display link is not valid or has been disabled.</div>;
 
-  // Grid rows follow the club's real booking slot length (30/40/45/60 min), not fixed hours.
-  const slot = [30, 40, 45, 60].includes(data.club.slot_minutes ?? 0) ? (data.club.slot_minutes as number) : 60;
-  const openMin = data.club.open_time ? toMin(data.club.open_time) : 6 * 60;
-  const closeMin = data.club.last_slot_time ? toMin(data.club.last_slot_time) + slot : 22 * 60;
-  const times = data.bookings.flatMap((b) => [toMin(b.start), toMin(b.end)]);
-  const start = times.length ? Math.min(openMin, Math.floor(Math.min(...times) / slot) * slot) : openMin;
-  const end = times.length ? Math.max(closeMin, Math.ceil(Math.max(...times) / slot) * slot) : closeMin;
+  // Grid follows the club's real booking slots: any slot length, aligned to the club's opening
+  // time, running through the END of the last configured slot (e.g. 21:45 slot -> 22:30).
+  const { slot, start, end, slots } = displayGrid(data);
   const span = end - start;
-  const slots = Array.from({ length: Math.round(span / slot) }, (_, i) => start + i * slot);
   const pct = (m: number) => `${((m - start) / span) * 100}%`;
   const dateLabel = new Date(data.date + "T12:00:00").toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" });
 

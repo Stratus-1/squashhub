@@ -31,7 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2 } from "lucide-react";
+import { createPortal } from "react-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -381,6 +382,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [importReport, setImportReport] = useState<{ added: number; problems: string[] } | null>(null);
   /** First player tapped while forming a pair, per doubles unit (UI-only). */
   const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
+  /** Category board shown across the whole screen (device-local view choice, not saved). */
+  const [boardFull, setBoardFull] = useState(false);
+  useEffect(() => {
+    if (!boardFull) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBoardFull(false); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [boardFull]);
   useEffect(() => {
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;

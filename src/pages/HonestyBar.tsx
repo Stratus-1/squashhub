@@ -211,6 +211,7 @@ export default function HonestyBar() {
       toast.success(`${money(cartTotal)} posted to your member account`);
       setCart({});
       qc.invalidateQueries({ queryKey: ["my-bar-tab"] });
+      qc.invalidateQueries({ queryKey: ["bar-account-charge-preview"] });
     } catch (err: any) {
       showBarChargeError(err, "Failed to log items");
     } finally {

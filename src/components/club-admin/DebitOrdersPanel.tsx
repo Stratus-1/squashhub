@@ -5,6 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
+import { sendWhatsApp } from "@/lib/whatsapp-send";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Banknote, CheckCircle2, Clock, AlertTriangle, RefreshCw, X } from "lucide-react";
 
 type Mandate = {
@@ -168,6 +171,42 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     if (!m.auth_url) return toast.error("No authorisation link on this mandate — ask the member to start setup again.");
     await navigator.clipboard.writeText(m.auth_url);
     toast.success("Authorisation link copied");
+  };
+
+  const clubWaEnabled = useWhatsAppEnabled(clubId);
+  const [waPreview, setWaPreview] = useState<Mandate | null>(null);
+  const [waSending, setWaSending] = useState(false);
+  const { data: waLog } = useQuery({
+    queryKey: ["mandate-wa-log", clubId],
+    enabled: clubWaEnabled,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("whatsapp_send_log")
+        .select("member_id, status, error, created_at").eq("club_id", clubId)
+        .eq("kind", "mandate_auth_reminder").order("created_at", { ascending: false }).limit(200);
+      const last: Record<string, { status: string; error: string | null; created_at: string }> = {};
+      for (const r of data || []) if (r.member_id && !last[r.member_id]) last[r.member_id] = r;
+      return last;
+    },
+  });
+  const waMessage = (m: Mandate) => `Hi ${m.club_members?.full_name || "there"}, please finish authorising your monthly club card payment using the secure link below. Your debit order only starts once the payment provider confirms it.`;
+  const sendClubWhatsApp = async (m: Mandate) => {
+    if (!m.auth_url) return toast.error("No authorisation link on this mandate.");
+    setWaSending(true);
+    try {
+      const res = await sendWhatsApp({
+        clubId, kind: "mandate_auth_reminder", category: "utility", templateKey: "club_notice",
+        recipients: [{ member_id: m.club_member_id, variables: { message: waMessage(m), link: m.auth_url } }],
+      });
+      const r = res.results?.[0];
+      if (r?.status === "sent") toast.success("Sent from the club WhatsApp. The mandate stays pending until the provider confirms it.");
+      else toast.error(`Not sent: ${r?.error || "unknown reason"}. You can still use Copy link or Personal WhatsApp.`, { duration: 10000 });
+      setWaPreview(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Club WhatsApp send failed", { duration: 10000 });
+    } finally {
+      setWaSending(false);
+      qc.invalidateQueries({ queryKey: ["mandate-wa-log", clubId] });
+    }
   };
 
   const whatsappAuthLink = (m: Mandate) => {
@@ -376,8 +415,19 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
                     </Button>
                   </>
                 )}
-                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => whatsappAuthLink(m)}>
-                  WhatsApp link
+                {clubWaEnabled && (
+                  <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" disabled={!m.auth_url} onClick={() => setWaPreview(m)}>
+                    Send via club WhatsApp
+                  </Button>
+                )}
+                {waLog?.[m.club_member_id] && (
+                  <span className={`text-[10px] ${waLog[m.club_member_id].status === "sent" ? "text-muted-foreground" : "text-destructive"}`}
+                    title={waLog[m.club_member_id].error || undefined}>
+                    Club WA {waLog[m.club_member_id].status === "sent" ? "sent" : waLog[m.club_member_id].status} {new Date(waLog[m.club_member_id].created_at).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => whatsappAuthLink(m)} title="Opens WhatsApp on this device from your own number">
+                  Personal WhatsApp
                 </Button>
                 <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => copyAuthLink(m)}>
                   Copy link
@@ -456,6 +506,25 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
           </div>
         )}
       </div>
+      <Dialog open={!!waPreview} onOpenChange={(o) => !o && !waSending && setWaPreview(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send via club WhatsApp</DialogTitle>
+            <DialogDescription>
+              Sent from the club's SquashHub WhatsApp number (not your personal WhatsApp) to {waPreview?.club_members?.full_name || "this member"}'s number on file. Members who opted out of WhatsApp are skipped. Sending does not authorise the mandate — it stays pending until the payment provider confirms.
+            </DialogDescription>
+          </DialogHeader>
+          {waPreview && (
+            <div className="rounded-md border bg-muted/40 p-2 text-xs whitespace-pre-wrap break-words">
+              {`Update from *your club* about your club account:\n\n${waMessage(waPreview)}\n\nView the details in your account here: ${waPreview.auth_url}\n\nThank you.`}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" disabled={waSending} onClick={() => setWaPreview(null)}>Cancel</Button>
+            <Button disabled={waSending} onClick={() => waPreview && sendClubWhatsApp(waPreview)}>{waSending ? "Sending…" : "Send"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

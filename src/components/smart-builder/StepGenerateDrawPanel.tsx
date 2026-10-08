@@ -718,10 +718,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 <select className="w-full rounded border border-input bg-background p-1" value={f.seeding} onChange={(e) => apply({ seeding: e.target.value as DrawSeeding })}>
                   {(Object.keys(SEED_LABEL) as DrawSeeding[]).map((k) => <option key={k} value={k}>{SEED_LABEL[k]}</option>)}
                 </select></label>
-              <label className="space-y-0.5"><span className="text-muted-foreground">When games are played</span>
-                <select className="w-full rounded border border-input bg-background p-1" value={f.schedule.rule ?? ""} onChange={(e) => apply({ schedule: { ...f.schedule, rule: (e.target.value || null) as any } })}>
-                  <option value="">Choose…</option><option value="play_by">Play by a date (players arrange)</option><option value="fixed">Fixed match date(s)</option>
-                </select></label>
+              <div className="space-y-0.5 sm:col-span-3"><span className="text-muted-foreground">When games are played</span>
+                <p>{f.schedule.rule === "fixed" ? `Fixed days: ${f.schedule.dates.map(fmtDay).join(", ")}` : f.schedule.rule === "play_by" && f.schedule.deadlines.filter(Boolean).length ? `As set in Stages & scheduling (${f.schedule.deadlines.filter(Boolean).map(fmtDay).join(", ")})` : "Not set — choose dates in Stages & scheduling"}</p></div>
               {f.kind === "knockout" && (() => {
                 const pace = f.ko?.pace ?? "paced", pairing = f.ko?.pairing ?? "progressive";
                 const choose = (c: { pace?: "paced" | "immediate"; pairing?: "progressive" | "traditional" }) => {
@@ -742,36 +740,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                   <p className="text-muted-foreground">{knockoutNeedText(d, poolMode)} You can change any suggested pairing later in Manage Tournament.</p>
                 </div>;
               })()}
-              {f.schedule.rule === "play_by" && (
-                <div className="space-y-1 sm:col-span-3">
-                  <span className="text-muted-foreground">Play-by rounds{f.schedule.deadlines.length > 1 ? " — later dates cover the later rounds" : ""}</span>
-                  {(f.schedule.deadlines.length ? f.schedule.deadlines : [""]).map((dl, k, arr) => (
-                    <div key={k} className="flex flex-wrap items-center gap-2">
-                      <Input type="date" aria-label={`Play-by date ${k + 1}`} className="h-7 w-40" value={dl} onChange={(e) => { const ds = [...arr]; ds[k] = e.target.value; applySch({ deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }} />
-                      {(() => { const need = preview?.roundsByGroup[d.group]; const have = arr.filter(Boolean).length;
-                        if (need == null || have <= 1 || f.kind === "knockout") return null;
-                        if (have === need) return <span className="font-medium">Round {k + 1} · Play by {fmtDay(dl)}</span>;
-                        if (have > need && k >= need) return <span className="font-medium text-destructive">Unused — this structure has only {need} round{need === 1 ? "" : "s"}</span>;
-                        return null; })()}
-                      {k < arr.length - 1 && f.schedule.share && (preview?.roundsByGroup[d.group] ?? 0) > arr.filter(Boolean).length && <label className="flex items-center gap-1">games up to round <Input type="number" min={1} aria-label={`Last round due by date ${k + 1}`} className="h-7 w-16" placeholder="choose" value={f.schedule.upto[k] ?? ""} onChange={(e) => { const up = [...f.schedule.upto]; up[k] = e.target.value ? Number(e.target.value) : null; applySch({ upto: up }); }} /></label>}
-                      {arr.length > 1 && <button type="button" className="text-destructive underline" onClick={() => { const ds = arr.filter((_, j) => j !== k); applySch({ deadlines: ds, upto: ds.slice(1).map(() => null) }); }}>remove</button>}
-                    </div>
-                  ))}
-                  <button type="button" className="text-primary underline" onClick={() => { const ds = [...f.schedule.deadlines, ""]; applySch({ deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }}>+ add a play-by round</button>
-                </div>
-              )}
-              {f.schedule.rule === "play_by" && (() => {
-                const need = preview?.roundsByGroup[d.group];
-                const have = f.schedule.deadlines.filter(Boolean).length;
-                return (
-                  <div className="space-y-1 sm:col-span-3">
-                    {need != null && f.kind === "knockout" && <span className={have > 0 && have < need ? "font-medium text-destructive" : "text-muted-foreground"}>Knockout: {knockoutNeedText(d, poolMode)} {have} play-by date{have === 1 ? "" : "s"} set{have >= need ? " — enough; eliminations are paced across them in Manage Tournament." : " — add dates or reduce the qualifiers."}</span>}
-                    {need != null && f.kind !== "knockout" && <span className={have > 1 && have < need && !f.schedule.share ? "font-medium text-destructive" : "text-muted-foreground"}>This structure needs {need} round{need === 1 ? "" : "s"}; {have} play-by date{have === 1 ? "" : "s"} set{have === 1 ? " (one date for all games)" : ""}.</span>}
-                    {f.kind !== "knockout" && have > 1 && need != null && have < need && <label className="flex items-center gap-2"><Checkbox checked={!!f.schedule.share} onCheckedChange={(v) => applySch({ share: !!v })} /><span>Let several rounds share a play-by date (choose "games up to round" for each date)</span></label>}
-                  </div>
-                );
-              })()}
-              {f.schedule.rule === "fixed" && <label className="space-y-0.5"><span className="text-muted-foreground">Round dates (comma-separated)</span><Input className="h-7" placeholder="2026-10-10, 2026-10-17" value={f.schedule.dates.join(", ")} onChange={(e) => apply({ schedule: { ...f.schedule, dates: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })} /></label>}
             </div>
             {(f.kind === "cross" || f.kind === "round_robin") && crossSection(i, d)}
             {f.kind === "knockout" && proposals.has(d.group) && showProposal && round1Editor(d)}

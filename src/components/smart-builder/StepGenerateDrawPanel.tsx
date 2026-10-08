@@ -839,26 +839,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       {seeded.some((d) => d.format.schedule.rule === "fixed") && errors.length === 0 && (
         <SchedulingPreferencesSection tournamentId={tournamentId} categories={seeded.map((d) => ({ group: d.group, label: d.label }))} previewGames={timedPreview} useSaved={hasDraw && !rebuildOk} onFeasible={setSchedOk} />
       )}
-      {!(hasDraw && existing.played > 0) && (
-        <>
-          <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
-          {false && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
-            {hasDraw && <Button type="button" variant="outline" onClick={() => navigate(fixturesUrl())}>Go to Fixtures</Button>}
-          </div>
-          {!canGenerate && !busy && (
-            <p className="text-muted-foreground" data-testid="draw-blocked-reason">
-              To {hasDraw ? "rebuild" : "generate"}: {[
-                hasDraw && !rebuildOk && "tick \"Replace the existing draw\" above",
-                !confirmed && "tick \"I confirm this is the final format\"",
-                errors.length > 0 && "fix the red items listed above",
-                !schedOk && "make the court times fit (see scheduling box above)",
-              ].filter(Boolean).join(" · ")}
-            </p>
-          )}
-        </>
-      )}
       <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>
         <DialogContent>
           <DialogHeader>

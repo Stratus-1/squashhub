@@ -228,6 +228,15 @@ effective rights = rights from their roles
 - **Who may override:** the Chairman (own club) and the Super Admin. For an operational capability, a delegator may revoke only what they themselves granted.
 - **No self-changes:** nobody can add, deny or remove their own capabilities. The Chairman may be an exception, depending on D20 (section 3c). The Chairman office changes only through the handover by the current Chairman.
 
+### Several roles per person (owner confirmed)
+- One person may hold several roles and offices in the same club (e.g. Secretary + Treasurer).
+- Effective rights = the **union** of all their roles, plus personal grants, minus personal denies. **A personal deny always wins**, whichever role grants the right.
+- **Removing one role** removes only what that role gave. A right stays if another role they hold, or a personal grant, still provides it. The person screen shows each right's sources, so the Chairman sees what will stay.
+- Finance rules still apply per capability: a finance capability is effective only if it came from the Chairman or Super Admin, by role or personal grant.
+- **Separation of duties applies to the person, not the role.** Holding both "initiate" and "approve" through different roles never lets someone approve what they initiated, counted or captured (EFT, refunds, journals, invoices, stock adjustments, stocktake discrepancies). A second person is always required.
+- Proposed warning: when one person would hold both sides of a separated pair (e.g. Billing Clerk + Finance Approver), the Chairman sees a notice at assignment. It doesn't block, because approval of their own items is refused anyway.
+- Each role add or remove is audited per club, with the rights gained or lost.
+
 ## 3c. Chairman self-grant exception (deliberate policy choice)
 
 **What is allowed:** the active Chairman may grant or remove their own capabilities, including finance and sensitive Bar & Shop rights, in their own club only.

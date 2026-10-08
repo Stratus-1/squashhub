@@ -16,6 +16,7 @@ import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { isCentrallyScheduled } from "@/lib/tournaments/fixture-scheduling";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 
 
@@ -265,6 +266,12 @@ export function MyChampionships() {
 
                   const unscheduled = isUnscheduled(m);
                   const perm = canSelfScheduleMatch(m, memberId);
+                  // Only "By Date" (play-by) matches are member-reschedulable.
+                  // Organiser-fixed games (date/time set by the club, no player
+                  // booking, no play-by) can only be moved by an admin.
+                  const centrallyFixed =
+                    !unscheduled &&
+                    isCentrallyScheduled({ ...m, scheduling_mode: champ.scheduling_mode });
                   // Entering an already-played score is independent of both the
                   // scheduling mode and any court booking.
                   const resultPerm = canEnterChampResult(m, memberId, { anyClubMember: true });
@@ -338,7 +345,7 @@ export function MyChampionships() {
                       <span className="font-medium truncate">vs {opponent}</span>
                       {m.court && <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{m.court.name}</Badge>}
                       {today && <Badge className="text-[9px] shrink-0">Today</Badge>}
-                        {perm.allowed && (
+                        {perm.allowed && !centrallyFixed && (
                           <Button
                             size="sm"
                             className="h-6 text-[10px] px-2 shrink-0 rounded-full bg-reschedule text-reschedule-foreground hover:bg-reschedule/90 font-semibold shadow-sm"

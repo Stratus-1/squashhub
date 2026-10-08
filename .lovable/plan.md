@@ -105,8 +105,14 @@ Delegation rules:
 - The Chairman cannot appoint themselves (they already hold the office) or remove themselves without naming a successor.
 - Secretary, Club Captain, Treasurer and Vice-Chair offices are set by the Chairman. These offices carry no rights by themselves; rights come from their templates.
 - **Super Admin oversight (not routine):** the Super Admin can freeze grants for a club or revoke a grant for a security incident. This needs a reason, is logged, and notifies office bearers.
-- **Exceptional recovery (owner decision):** if the Chairman resigns, disappears, is incapacitated or can't start a handover, the **platform Super Admin may appoint a new Chairman**. This is the only Super Admin role in succession.
-  - **Vice-Chair (or any office bearer) may raise a recovery request**, with a reason, but **cannot take the Chairman role themselves**. The request goes to the Super Admin's queue and is audited.
+- **Emergency replacement by the committee (owner decision):** if the Chairman resigns, disappears, is incapacitated or can't start a handover:
+  - The Secretary (or another eligible committee member, e.g. the Vice-Chair) **starts** an emergency replacement, naming the proposed successor, a reason and evidence.
+  - It needs **three approvals in total** from three **distinct** eligible committee members of that club. The Secretary's own approval counts as one of the three, if they approve.
+  - Each person counts once. The proposed successor **cannot approve** their own appointment. The absent Chairman is not counted.
+  - Each approval is authenticated (re-auth) and audited. The request expires after a set time (D23).
+  - On the third approval, the same single atomic step closes the old office and opens the new one.
+  - Nobody, including the Vice-Chair, can take the role alone.
+- **Super Admin fallback (exceptional):** if the committee can't reach three approvals (e.g. too few eligible members), the **platform Super Admin may appoint a new Chairman**. This is the only Super Admin role in succession.
   - The Super Admin chooses an active member of that club with a login. A reason and evidence (e.g. resignation letter or committee minutes) are required. The Super Admin re-authenticates.
   - The same single atomic step closes the old office and opens the new one, so there is exactly one Chairman per club at all times. Any pending handover is cancelled.
   - The recovery record (Super Admin, club, old and new Chairman, reason, evidence, request link, time) can't be edited or deleted. Office bearers and the outgoing Chairman, where reachable, are notified.
@@ -425,7 +431,11 @@ Operations preserved:
   - In both options, nobody may self-approve transactions, the Chairman office changes only by handover, and nothing crosses clubs. This plan keeps both written down until you choose. Until then, (b) is the safer default.
 - **D21.** Approve the proposed office-bearer defaults in section 3d (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain).
 - **D22.** Succession: must the successor accept before taking over (proposed), or does the handover take effect without acceptance?
-- **D23.** Decided by the owner (section "Exceptional recovery"). Remaining detail: what counts as acceptable evidence (e.g. committee minutes or resignation letter upload), and whether to notify the outgoing Chairman before the Super Admin acts (proposed: yes, where reachable).
+- **D23.** Emergency replacement is decided (three distinct committee approvals, Super Admin fallback). Remaining details:
+  - Who counts as an "eligible committee member"? Proposed: the holders of the Secretary, Treasurer, Vice-Chair and Club Captain offices, plus any office the Chairman marks as committee.
+  - How long before a request expires? Proposed: 14 days.
+  - What evidence is required?
+  - Should the absent Chairman be notified and given a short objection window? Proposed: yes, 72 hours, where reachable.
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

@@ -90,4 +90,5 @@
 - [ ] Stage 2+ (shadow mode, Riverside inventory/mapping, gate ON) — each needs separate owner approval per plan checklist.
 
 - [x] Permissions Stage 2: shadow mode (Riverside only, comparison log, no access change)
-- [ ] Permissions Stage 3: seed capability list + role templates, Riverside impact report (needs owner approval)
+- [x] Permissions Stage 3: capability list (41), standard templates (16), office defaults, Riverside impact report
+- [ ] Permissions Stage 4: record Riverside offices + test accounts, re-run shadow, gate ON (needs owner approval of impact report)

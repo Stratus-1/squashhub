@@ -22,6 +22,7 @@ import {
 } from "@/hooks/use-club-permissions";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { permissionSlugsForTenant, permissionLabel, visibleSlugs } from "@/lib/permission-scope";
+import { NewPermissionsPanel, useNewPermissionsOn } from "./NewPermissionsPanel";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 /**
@@ -44,6 +45,7 @@ function useIsAssociationTenant(clubId: string): boolean {
 
 export function PermissionsTab({ clubId }: { clubId: string }) {
   const { data: newOn } = useNewPermissionsOn(clubId);
+  const touched = useRef(false);
   const [step, setStep] = useState("roles");
   const { data: roles = [] } = usePermissionRoles(clubId);
 

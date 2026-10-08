@@ -56,7 +56,7 @@ export function barChargeErrorMessage(err: unknown, fallback: string): string {
 }
 
 export const EARLY_ACCOUNT_WARNING =
-  "Your member account cannot be charged for this purchase. Please pay by card or top up your account.";
+  "Member account has insufficient available credit. Please pay by card or top up.";
 
 /**
  * Early basket warning: given the club's switches and the member's current owing/allowance,
@@ -68,7 +68,14 @@ export function previewBasketCharge(opts: {
 }): { blocked: boolean; shortfall: number } {
   const { preview, lines } = opts;
   const total = lines.reduce((s, l) => s + Number(l.total || 0), 0);
-  if (!preview || total <= 0) return { blocked: false, shortfall: 0 };
+  if (!preview) return { blocked: false, shortfall: 0 };
+  // Available spendable credit = allowance - owing. With an empty basket, warn as soon as a
+  // gated member is selected whose available credit is already zero or negative.
+  if (total <= 0) {
+    if (!preview.bar_gated && !preview.shop_gated) return { blocked: false, shortfall: 0 };
+    const available = Number(preview.allowance || 0) - Number(preview.current_owing || 0);
+    return available <= 0 ? { blocked: true, shortfall: Math.round(-available * 100) / 100 } : { blocked: false, shortfall: 0 };
+  }
   const gated = lines.some((l) => Number(l.total) > 0
     && (debitSwitchFor(l.division) === "shop" ? preview.shop_gated : preview.bar_gated));
   if (!gated) return { blocked: false, shortfall: 0 };

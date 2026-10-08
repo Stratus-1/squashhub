@@ -548,7 +548,7 @@ export default function HonestyBar() {
                   <AccountChargeWarning show={accountPreview.blocked} />
                   <p className="text-xs font-medium pt-1">Settle tab — choose how to pay</p>
                   {accountTabEnabled && (
-                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>
+                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || accountPreview.blocked}>
                       <ShoppingCart className="w-4 h-4" /> Add {money(cartTotal)} to my member account
                     </Button>
                   )}

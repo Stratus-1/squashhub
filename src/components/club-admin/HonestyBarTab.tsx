@@ -1329,7 +1329,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
           onChange={e => setQuantity(parseInt(e.target.value) || 1)}
           placeholder="Qty"
         />
-        <Button onClick={handleAdd} disabled={!memberId || !itemId}>
+        <Button onClick={handleAdd} disabled={!memberId || !itemId || chargePreview.blocked}>
           Add Charge{selectedItem ? ` (${money(selectedItem.price * quantity)})` : ""}
         </Button>
       </div>

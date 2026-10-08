@@ -11,7 +11,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
-export type BookableStage = { id: string; name: string; mode: string; date: string; from: string; to: string; courtIds: string[] };
+export type BookableStage = { id: string; name: string; mode: string; date: string; from: string; to: string; courtIds: string[]; extraDays?: Array<{ date: string; from: string; to: string; courtIds: string[] }> };
 export type StageSlot = { stageId: string; stageName: string; courtId: number; date: string; start: string; end: string; externalId: string };
 export type SlotConflict = StageSlot & { reason: string };
 
@@ -21,11 +21,14 @@ export const planPrefix = (planId: string) => `sbs:${planId}:`;
 /** Pure: which slots can be booked (scheduled, dated, timed, with courts). */
 export function bookableSlots(planId: string, stages: BookableStage[]): StageSlot[] {
   return stages
-    .filter((s) => s.mode === "scheduled" && s.date && s.from && s.to && s.from < s.to && s.courtIds.length > 0)
-    .flatMap((s) => s.courtIds.map((c) => ({
-      stageId: s.id, stageName: s.name, courtId: Number(c), date: s.date, start: hhmmss(s.from), end: hhmmss(s.to),
-      externalId: `${planPrefix(planId)}${s.id}:${c}`,
-    })))
+    .filter((s) => s.mode === "scheduled")
+    .flatMap((s) => [{ date: s.date, from: s.from, to: s.to, courtIds: s.courtIds, extra: false }, ...(s.extraDays ?? []).map((d) => ({ ...d, extra: true }))]
+      .filter((d) => d.date && d.from && d.to && d.from < d.to && d.courtIds.length > 0)
+      // Day 1 keeps its original id so existing reservations stay stable; extra days add the date.
+      .flatMap((d) => d.courtIds.map((c) => ({
+        stageId: s.id, stageName: s.name, courtId: Number(c), date: d.date, start: hhmmss(d.from), end: hhmmss(d.to),
+        externalId: `${planPrefix(planId)}${s.id}:${d.extra ? `${d.date}:` : ""}${c}`,
+      }))))
     .filter((x) => Number.isFinite(x.courtId));
 }
 

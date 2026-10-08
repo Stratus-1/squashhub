@@ -224,7 +224,8 @@ const PAIRING_LABEL: Record<PlayoffPairing, string> = {
   winners: "Winners of the previous stage",
   later: "Pairing: decide later",
 };
-type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; phase?: StagePhase; pairing?: PlayoffPairing; /** Playoffs: start automatically when the previous stage is complete, or wait for organiser confirmation. */ start?: "auto" | "confirm" };
+type StageDay = { date: string; from: string; to: string; courtIds: string[] };
+type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; /** Further playing days for this round; day 1 is date/from/to/courtIds. */ extraDays?: StageDay[]; phase?: StagePhase; pairing?: PlayoffPairing; /** Playoffs: start automatically when the previous stage is complete, or wait for organiser confirmation. */ start?: "auto" | "confirm" };
 const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = "main"): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [], phase, ...(phase === "playoff" ? { pairing: "later" as PlayoffPairing } : {}) });
 /** Playoff stages are fixed standard rounds — organisers pick, never type arbitrary names. */
 const PLAYOFF_STAGE_NAMES = ["Quarterfinal", "Semifinal", "Final"] as const;
@@ -240,7 +241,7 @@ function pairingOptions(s: ClubStage, playoffs: ClubStage[], kind: string): Play
   out.push("seeded", "later");
   return out;
 }
-const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0));
+const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0 && (s.extraDays ?? []).every((d) => !!d.date && !!d.from && !!d.to && d.from < d.to && d.courtIds.length > 0)));
 /** Per category/subcategory: where main (qualifying) rounds end and the stage playoffs begin. Planning only. */
 type PlayoffStart = "qf" | "sf" | "final" | "custom" | "none" | "later";
 const START_LABEL: Record<PlayoffStart, string> = { qf: "Quarterfinals (8 remain)", sf: "Semifinals (4 remain)", final: "Final only (2 remain)", custom: "Custom stage", none: "No separate playoff phase (format decides the finish)", later: "Decide later" };
@@ -725,7 +726,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const setStages = (s: ClubStage[]) => setA({ ...a, stages: s });
   const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
-  const stageWhen = (s: ClubStage) => s.mode === "later" ? "Decide later" : s.mode === "play_by" ? `Play by ${s.deadline ? fmtDay(s.deadline) : "(deadline not set)"}` : `Scheduled ${s.date ? fmtDay(s.date) : "(date not set)"} ${s.from || "?"}–${s.to || "?"} · ${clubCourts.filter((c) => s.courtIds.includes(c.id)).map((c) => c.name).join(", ") || "no courts"}`;
+  const courtChips = (ids: string[], set: (ids: string[]) => void) => clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
+    const on = ids.includes(c.id);
+    return <button key={c.id} type="button" aria-pressed={on} onClick={() => set(on ? ids.filter((x) => x !== c.id) : [...ids, c.id])} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{c.name}</button>;
+  })}</div>;
+  const stageWhen = (s: ClubStage) => s.mode === "later" ? "Decide later" : s.mode === "play_by" ? `Play by ${s.deadline ? fmtDay(s.deadline) : "(deadline not set)"}` : `Scheduled ${s.date ? fmtDay(s.date) : "(date not set)"} ${s.from || "?"}–${s.to || "?"} · ${clubCourts.filter((c) => s.courtIds.includes(c.id)).map((c) => c.name).join(", ") || "no courts"}${(s.extraDays ?? []).map((d) => ` · ${d.date ? fmtDay(d.date) : "(date not set)"} ${d.from || "?"}–${d.to || "?"}`).join("")}`;
   const splitOf = (k: string): ChampsSplit => ({ ...DEFAULT_SPLIT, ...(a.split?.[k] ?? {}) });
   const champsEnd = (() => { const ds = (a.stages ?? []).map((x) => x.mode === "scheduled" ? x.date : x.mode === "play_by" ? x.deadline : "").filter(Boolean).sort(); return ds.length ? ds[ds.length - 1] : ""; })();
   const periodText = `${fmtDay(a.periodStart)} – ${champsEnd ? fmtDay(champsEnd) : "ends with the final"}`;
@@ -795,10 +800,23 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           <div className="space-y-1"><Label>To</Label>{slotSelect("Session to", s.to, (v) => updStage(s.id, { to: v }), s.from ? slotEnds.filter((t) => t > s.from) : slotEnds)}</div>
         </div>
         <Label>{s.phase === "playoff" && a.playoffSync === true && !s.unit ? "Courts reserved centrally for this date" : "Courts for this stage"}</Label>
-        {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
-          const on = s.courtIds.includes(c.id);
-          return <button key={c.id} type="button" aria-pressed={on} onClick={() => updStage(s.id, { courtIds: on ? s.courtIds.filter((x) => x !== c.id) : [...s.courtIds, c.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{c.name}</button>;
-        })}</div>}
+        {courtChips(s.courtIds, (ids) => updStage(s.id, { courtIds: ids }))}
+        {(s.extraDays ?? []).map((d, i) => {
+          const setDay = (patch: Partial<StageDay>) => updStage(s.id, { extraDays: (s.extraDays ?? []).map((x, j) => j === i ? { ...x, ...patch } : x) });
+          return <div key={i} className="space-y-1.5 rounded-md border border-border p-2">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1"><Label>Day {i + 2}</Label><Input type="date" aria-label={`Day ${i + 2} date`} value={d.date} onChange={(e) => setDay({ date: e.target.value })} /></div>
+              <div className="space-y-1"><Label>From</Label>{slotSelect(`Day ${i + 2} from`, d.from, (v) => setDay({ from: v }), slotStarts)}</div>
+              <div className="space-y-1"><Label>To</Label>{slotSelect(`Day ${i + 2} to`, d.to, (v) => setDay({ to: v }), d.from ? slotEnds.filter((t) => t > d.from) : slotEnds)}</div>
+              <Button variant="ghost" size="icon" aria-label={`Remove day ${i + 2}`} onClick={() => updStage(s.id, { extraDays: (s.extraDays ?? []).filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+            {courtChips(d.courtIds, (ids) => setDay({ courtIds: ids }))}
+          </div>;
+        })}
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1"><Label>Add another day for this round</Label><Input type="date" aria-label="Add another day" value="" disabled={!s.date} onChange={(e) => { const v = e.target.value; if (!v || v === s.date || (s.extraDays ?? []).some((x) => x.date === v)) return; const days = [...(s.extraDays ?? []), { date: v, from: s.from, to: s.to, courtIds: [...s.courtIds] }].sort((x, y) => x.date.localeCompare(y.date)); updStage(s.id, { extraDays: days }); }} /></div>
+          <p className="pb-2 text-xs text-muted-foreground">{s.date ? "New days copy the first day's times and courts — change them per day if needed." : "Choose the first date before adding more days."}</p>
+        </div>
       </div>}
       {(a.periodStart && ((s.mode === "play_by" && s.deadline && s.deadline < a.periodStart) || (s.mode === "scheduled" && s.date && s.date < a.periodStart))) && <p className="text-xs text-muted-foreground">Note: this date is before the championship start.</p>}
     </div>

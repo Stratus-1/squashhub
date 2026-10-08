@@ -558,14 +558,16 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 | Approval notices | In-app + WhatsApp, reminders at 24 hours then daily, no escalation |
 | Onboarding | Preloaded and new club pathways. Setup helper picks the initial office bearers. Temporary Chairman where none is chosen |
 | Super Admin meaning (old D3) | Platform Super Admin (`user_roles` admin) only. Proposed default, treated as decided unless you object |
+| Riverside start (P2) | Test accounts first; real committee members activated as soon as tests pass. No mandatory one-week wait |
+| Counter PIN management (P4) | The Bar Manager creates, resets and disables individual PINs after the Chairman grants `bar.pin.manage` once. No per-reset approval; every change audited; PINs never displayed |
+| Office-bearer lock (P5) | Chairman and office-bearer changes go only through the authorised succession/appointment workflows, enforced in the Riverside pilot first. No early nationwide fix; other clubs' effective permissions stay unchanged |
 
 ### Open — blocks Phase 1 (Riverside) build
 | # | Question | Proposed default |
 |---|---|---|
-| P2 | Riverside: real office bearers on the new model at activation, or test accounts first? | Test accounts first for 1 week, then real users |
 | ~~P3~~ | **Decided (mutual independent approval):** the Chairman approves transactions the Treasurer or another finance officer initiates (a narrow default approval right, no initiation); the Treasurer or another authorised finance approver approves transactions the Chairman initiates. Nobody ever approves their own transaction, however many roles they hold. Capture, approval, authorisation source and timestamps are audited. No temporary permissions: people are appointed and removed by hand | — |
-| P4 | `bar.pin.manage` default holder | The Bar Manager, after the Chairman grants it; first PIN via a one-time setup code |
-| P5 | Early office-field lock as a stand-alone fix before the pilot | Yes |
+
+**No remaining blockers for the Phase 1 (Riverside) build.** The questions below are needed only before Phase 2 or can wait.
 
 ### Open — needed before Phase 2 (Nelspruit)
 | # | Question | Proposed default |

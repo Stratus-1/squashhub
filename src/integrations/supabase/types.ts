@@ -19137,6 +19137,7 @@ export type Database = {
           member_id: string
         }[]
       }
+      club_new_perms_on: { Args: { _club_id: string }; Returns: boolean }
       club_peak_window: {
         Args: {
           _club: Database["public"]["Tables"]["clubs"]["Row"]
@@ -20437,6 +20438,28 @@ export type Database = {
           person_b_name: string
           reasons: string[]
         }[]
+      }
+      perm_club_matrix: {
+        Args: { _club_id: string }
+        Returns: {
+          caps: string[]
+          club_member_id: string
+          denies: string[]
+          grants: string[]
+          name: string
+          offices: string[]
+          roles: string[]
+        }[]
+      }
+      perm_set_override: {
+        Args: {
+          _capability: string
+          _club_id: string
+          _effect: string
+          _member_id: string
+          _reason?: string
+        }
+        Returns: Json
       }
       person_age: { Args: { _person_id: string }; Returns: number }
       person_age_group: { Args: { _person_id: string }; Returns: string }

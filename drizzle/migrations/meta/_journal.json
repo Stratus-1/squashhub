@@ -736,6 +736,13 @@
       "when": 1791473861174,
       "tag": "0104_platform_update_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1791490392790,
+      "tag": "0105_permissions_stage4b_enforcement",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from "react";
-import { BarChart3, Calendar, CalendarDays, Crosshair, Home, LayoutGrid, Network, Receipt, Settings as SettingsIcon, ListOrdered, ShieldCheck, Trophy, User, Users, Wallet, Wine } from "lucide-react";
+import { Megaphone, BarChart3, Calendar, CalendarDays, Crosshair, Home, LayoutGrid, Network, Receipt, Settings as SettingsIcon, ListOrdered, ShieldCheck, Trophy, User, Users, Wallet, Wine } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
@@ -30,7 +30,7 @@ export function AppSidebar({ variant = "sidebar" }: { variant?: "sidebar" | "flo
     : [{ title: "Stats", url: "/analytics", icon: BarChart3 }, ...(bookingsEnabled ? [{ title: "Bookings", url: "/bookings", icon: Calendar }] : [])];
   const activityItems: Item[] = isAssociation
     ? [{ title: "Leagues", url: "/league-games", icon: Trophy }, { title: "Tournaments", url: "/tournaments", icon: Trophy }, { title: "Events", url: "/events", icon: CalendarDays }, { title: "My Account", url: "/my-account", icon: Wallet }]
-    : [{ title: "Score a Match", url: "/match-marker", icon: Crosshair }, ...(ladderEnabled ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy }] : []), ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []), ...(tournamentsEnabled ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy }] : []), ...(eventsEnabled ? [{ title: "Events", url: "/events", icon: CalendarDays }] : []), ...(honestyBarEnabled ? [{ title: "Bar / POS", url: "/honesty-bar", icon: Wine }] : []), { title: "My Account", url: "/my-account", icon: Wallet }];
+    : [{ title: "Score a Match", url: "/match-marker", icon: Crosshair }, ...(ladderEnabled ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy }] : []), ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []), ...(tournamentsEnabled ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy }] : []), ...(eventsEnabled ? [{ title: "Events", url: "/events", icon: CalendarDays }] : []), ...(honestyBarEnabled ? [{ title: "Bar / POS", url: "/honesty-bar", icon: Wine }] : []), { title: "My Account", url: "/my-account", icon: Wallet }, { title: "Updates from SquashHub", url: "/updates", icon: Megaphone }];
   const courtItems: Item[] = isAssociation ? [] : [{ title: "Courts & Bookings", url: "/bookings", icon: LayoutGrid }];
   const adminItems: Item[] = hasAnyAdminAccess && !isAssociation ? [{ title: "Club Admin", url: "/club-admin", icon: ShieldCheck }] : [];
   const { club } = useClubContext();

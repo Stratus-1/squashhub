@@ -91,7 +91,7 @@ export function PlatformUpdatesInbox({ clubId }: { clubId: string }) {
                 <p className="text-sm whitespace-pre-wrap">{u.body}</p>
                 {u.action_url && (
                   <Button size="sm" asChild>
-                    <a href={u.action_url} target="_blank" rel="noreferrer">{u.action_label || "Open"}</a>
+                    <a href={u.action_url} {...(/^https?:/i.test(u.action_url) ? { target: "_blank", rel: "noreferrer" } : {})}>{u.action_label || "Open"}</a>
                   </Button>
                 )}
               </div>

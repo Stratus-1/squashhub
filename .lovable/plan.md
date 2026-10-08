@@ -180,6 +180,46 @@ effective rights = rights from their roles
 - **Rights passed on by a revoked person:** when someone loses a capability they had delegated, the grants they made are listed for the Chairman. Proposed: those grants keep working until reviewed but are flagged; the Chairman can then confirm or revoke them (see D15). Finance and sensitive rights are never delegated, so they are never affected this way.
 - **Legacy mode:** overrides are recorded but only take effect when the club switches legacy mode off. They show in the shadow report beforehand.
 
+## 3d. Office-bearer templates: what they carry today vs proposed defaults
+
+The office-bearer templates are kept as configurable defaults for new clubs. Below is what each carries today (confirmed across about 800 clubs), and the proposed minimal default.
+
+| Template | Today's keys (live) | Proposed default |
+|---|---|---|
+| Chairman | access, affiliation, banking, bar, bookings_unlimited(+non_peak), champs, club, communications, courts, devices, events, federation, fees, **finance**, ladder, leagues, members, ops_booking, settings, users, visitors | View all non-finance areas; members.profile.view/edit; members.admin; appoint offices; grant/revoke permissions (own club). **No finance or sensitive Bar & Shop** unless granted (D20) |
+| Secretary | access, **banking**, **bar**, champs, club, courts, **fees**, **finance**, ladder, leagues, members, settings, users, visitors | See below. **No finance, Bar & Shop, credentials or cross-club** |
+| Treasurer | **banking, bar, fees, finance**, members | Treasurer finance template (granted by the Chairman or Super Admin); members.profile.view (names and contact only) |
+| Club Captain | access, **banking**, **bar**, champs, club, courts, **fees**, **finance**, ladder, leagues, members, settings, users, visitors | Competitions Coordinator + events + court bookings; members.profile.view. No finance |
+| Vice-Chair | (no template exists today) | New: operational club areas except finance (D17); members.profile.view |
+
+Today, Secretary and Club Captain both get full finance and bar rights from their templates. The proposal removes these. The removal only happens in the staged switch-over, per club, after review.
+
+**Secretary default (owner approved):**
+- View and edit ordinary member information.
+- **Add members** (with the duplicate-person check).
+- **Change membership status** (active, suspended, resigned), with a required reason and audit.
+- **Remove members from the club**, with these safeguards:
+  - Removal ends only this club's membership: the club member row is marked resigned/removed. It **never deletes** the national person record, their other club memberships, or history (matches, results, payments, ledger, bar tabs).
+  - A confirmation shows the member, any balance owing, and active mandates or registrations. Typing the member's name is required for a member with a balance.
+  - Audit records who, when, reason and the previous status. The removal can be undone by the Chairman or Secretary.
+- Membership applications: approve or decline. Invite and activation links: send.
+
+**Member-data functions (least privilege, club-scoped):**
+
+| Function | Capability | Secretary | Chairman | Others |
+|---|---|---|---|---|
+| View names and contact | members.profile.view | Yes | Yes | By role |
+| View DOB / SA ID | members.id.view, members.dob.view | Per section 3a option | Per section 3a option | No |
+| Edit records | members.profile.edit | Yes | Yes | No |
+| Add / remove / status | members.admin | Yes | Yes | No |
+| Export lists | members.export | Yes, logged | Yes, logged | No |
+| Communications to members | comms.send | Yes | Yes | Communications Officer |
+| Invite / activation | members.invite | Yes | Yes | No |
+| Assign roles | perm.manage | No | Yes | No |
+| Merge duplicates | members.merge | No (proposed) | Yes | Super Admin |
+| Delete person record | — | Never at club level | Never | Super Admin only (POPIA requests) |
+| View member-data audit | members.audit.view | Yes | Yes | No |
+
 ## 4. Default role templates (renamed, editable, none implicit)
 | Template | Content (summary) | Class |
 |---|---|---|

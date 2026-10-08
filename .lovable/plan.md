@@ -66,9 +66,24 @@ Other details:
 
 **Single link:** at the top of the member tournament page, one "Manage tournament" button shown only to admins. It replaces the admin accordion, the "Open the tournament control page" button and the "What's next" bar on the member page.
 
-**Member page after the change:** no admin section, accordion, registrations panel or round controls are left on it. The page keeps fixtures, bookings, results, standings and the player's own entry. The one admin-only element is the "Manage tournament" button. Everything that was in the accordion moves to the hub (Overview, Rounds & Fixtures, Players & Entries, Settings). Admins can still enter scores and reschedule from the hub, and scoring stays available to players and markers exactly as it is today.
+**Final decision: member pages contain no admin section.** The member tournament page will not include any of these:
+- the "Tournament Administration" accordion
+- the "What's next" admin bar
+- Run stages, stage progression or draw/round generation buttons
+- the registrations/entries admin panel (Paid, Confirm, invite, withdraw)
+- messaging or send-draw controls
 
-**Rounds page:** draw generation (next Swiss round, knockout round, start stage, generate all rounds where allowed) and each round's notification status and trigger sit together on one row per round and category.
+The one admin-only element is a single "Manage tournament" button. The page keeps fixtures, schedule, bookings, results, standings and the player's own entry. Scoring stays available to players and markers exactly as it is today.
+
+Every admin capability moves to the hub: What's next, draw and round generation, stage progression, entries, payments and confirmations, messaging and settings. The hub has a clear "Back to tournament" link, and non-admins who open it are sent back to the member page.
+
+**Rounds page (Manage Tournament > Rounds):** one row per round and category/pool. Each row holds:
+- **"Create next round"**, shown only when that round needs a results-based draw (dynamic Swiss or knockout)
+- the round's notification status (Not sent / Sent / Changes not communicated)
+- its trigger (Manual / Prompt / Automatic)
+- Preview, Send now, Send later, Resend all and Send changes only
+
+Round robin and pre-generated Swiss rounds show no "Create next round" button, because their pairings already exist.
 
 **Tabs (the same for every format; parts that don't apply are hidden):**
 1. **Overview:** lifecycle and the next action per category/division (from `progression.ts` / `run-overview`), warnings (unpaid entries, unsent changes), and Edit setup (opens the existing builder at the right step).

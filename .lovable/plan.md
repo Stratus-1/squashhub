@@ -1,54 +1,77 @@
-# Uitsig Heyns + member fee forensic findings (read-only) and safe remediation
+# Uitsig Heyns: what happened with the signup and the fees (read-only findings) + safe fix
 
-Read-only queries against the live database. Nothing was changed, approved, merged, reversed or sent.
+These findings come from read-only checks of the live records and code. Nothing was changed, approved, merged, reversed or sent.
 
 ## 1. The three Michiel records (Uitsig)
 
-| Record | Number | Category | Login | Person record | Status | Created |
+| Record | Number | Category | Login | Person record | ID number on file | Status | Created |
+|---|---|---|---|---|---|---|---|
+| A "Michiel Jnr Heyns" | UITS3543 | Scholar | Login 1 | P1 | none | Active | 6 May 2026 (import) |
+| B "Michiel Heyns" | UITS2970 | Premium | Login 1 (shared with A) | P2 | yes | Active | 30 Aug 2026 (bulk import) |
+| C "Michiel Philip Heyns" | none | none | Login 2 (Google, own) | P3 (new) | yes, **different from B** | **Pending** | 7 Oct 2026 15:42 |
+
+- **The application has not been approved.** C is still pending, with no member number and no category. There is no approval record.
+- There is no email-change record for any Heyns row. When and by whom A and B were put on Login 1 cannot be confirmed.
+- C's cell number matches neither A nor B. C's ID number is different from B's. So the records do **not** prove C is the father (B). C could be a third person, or one ID could be mistyped. The club must check this.
+
+## 2. Why the "Is this you?" check did not appear (evidence-based)
+
+How the signup ran, from the records:
+1. 15:40:27 – a Google login was created (sign-up through Google, not the email form).
+2. 15:42:28 – the person saved the sign-up steps. The membership row was created directly from those steps, and the system marked it as a self-application.
+3. 15:42:29 – one second later, the same save raised the **R200 Registration** fee and posted it to the ledger.
+
+Root cause:
+- The duplicate check ("We may already have an account for you") only runs on the **email/password sign-up form**, the visitor forms and the "no club" screen. The **Google sign-up → sign-up steps** path has no duplicate check. It creates the membership and the fee directly.
+- The backend has **no record of the duplicate check being called** from 1 Oct onwards, and no recovery codes were sent on 7 Oct. This fits the check never running. It is not a case of the person skipping the prompt.
+- The only check inside the sign-up steps is an ID-number match. C's ID differs from B's, so it passed.
+- Even where the check does run, a name-only match is shown as a soft "possible" prompt with "I'm a different person — continue". The club-side matcher also requires an exact full name, so "Michiel Philip Heyns" would never equal "Michiel Heyns" there. (The platform matcher does compare first + last name, so it would have matched.)
+- So: the matcher did not fail. This route skipped it. The middle name would also have defeated the in-steps matcher.
+
+**Was the R200 raised before any identity check?** Yes. It was raised in the same save that created the membership, with only the ID-number check before it.
+
+## 3. Where the R460 on Michiel Heyns (B) comes from
+- R300 "Squash South Africa (SSA)" + R160 "Northern Squash Association" were posted on 30 Aug 2026 at 07:04, the same second B was imported.
+- Cause: fee seeding during the bulk import. Not signup, approval, activation or an email edit.
+- No matching member fee lines exist, so these charges cannot be paid or marked paid as normal fee items.
+
+## 4. Club-wide exceptions (anonymised)
+
+| # | Source | When | Members | Each | Total | Assessment |
 |---|---|---|---|---|---|---|
-| A "Michiel Jnr Heyns" | UITS3543 | Scholar | Login 1 | Person P1 | Active | 6 May 2026 (import) |
-| B "Michiel Heyns" | UITS2970 | Premium | Login 1 (shared with A) | Person P2 | Active | 30 Aug 2026 07:04 (bulk import) |
-| C "Michiel Philip Heyns" | none | none | Login 2 (own) | Person P3 | **Pending** | 7 Oct 2026 15:42 (self-signup) |
+| E1 | Import seeding SSA + NSA, ledger only, no fee lines | 30 Aug 2026 07:04–07:05 | 23 | R460 | R10,580 | **Likely erroneous.** 16 have no login; only 11 have a league number; the rules say seeded defaults are auto-paid and SSA only applies to league players |
+| E2 | Sign-up steps Registration fee (C) | 7 Oct 2026 | 1 | R200 | R200 | Valid if C is a genuinely new person; wrong if C is B |
+| E3 | R20 wallet top-up posted twice (PayFast), one member | 18 Sep 2026 | 1 | R20 | R20 possibly extra | Two separate gateway fees suggest two real payments; check against PayFast |
 
-- Login 1 created 6 Oct 2026; Login 2 created 7 Oct 2026 15:40. Both use different gmail addresses starting "mic…" (masked).
-- **The application was NOT approved.** C is still pending, has no member number and no category. No approval audit row exists.
-- No email-change audit record exists for any Heyns row, so it cannot be confirmed when or by whom A/B were attached to Login 1.
-- Three separate person records exist. C is very likely the father, who is already B (UITS2970). This means a likely **duplicate person and membership** for the father. That comes from the self-signup, not from approval or an email edit. It is unconfirmed until the club checks ID numbers/date of birth.
-- The signup created one charge: **R200 Registration for C, unpaid**. It is in the ledger (debtors R200 / membership income). If C is a duplicate of B, this charge is wrong.
+There were no other member charges from scheduled billing, manual journals or reversals in the last 45 days. Uitsig has 247 members: 18 have no category and 1 is pending.
 
-## 2. Where the R460 on Michiel Heyns (B) comes from
-
-- R300 "Fee raised: Squash South Africa (SSA)" + R160 "Fee raised: Northern Squash Association" were posted to the ledger on 30 Aug 2026 at 07:04, the same second B was created.
-- This is the federation/league fee seeding that ran during the 30 Aug bulk import. It was not caused by signup, approval, activation or an email edit.
-- No matching member fee rows exist (0 of these postings link to a fee line). The amounts show on the member card and the debtors ledger, but members cannot see them as payable fee items or mark them paid.
-
-## 3. Club-wide exceptions (anonymised)
-
-| # | Source | When | Members | Amount each | Total | Assessment |
-|---|---|---|---|---|---|---|
-| E1 | Import seeding SSA + NSA postings, no fee lines | 30 Aug 2026 07:04–07:05 | 23 | R460 | R10,580 net debt | **Likely erroneous.** No fee lines. 16 of 23 have no login. Only 11 of 23 have a league affiliation, but SSA should only be charged to members with a league number. The rule says default seeded fees are auto-marked PAID. |
-| E2 | Self-signup Registration | 7 Oct 2026 | 1 (C) | R200 | R200 | Valid in itself, but wrong if C is a duplicate of B |
-| E3 | Wallet top-up R20 posted twice (PayFast), one member | 18 Sep 2026 12:17 and 12:38 | 1 | R20 | R20 possibly extra | Two separate gateway-fee entries suggest two real payments. Check against PayFast before acting. |
-
-- No scheduled-billing, manual-journal or reversal postings to members exist in the last 45 days apart from these.
-- Club totals: 247 members, 18 with no category, 1 pending.
-
-## 4. What could not be verified
-- Who ran the 30 Aug import (no actor in the audit trail).
-- When and how Login 1 got attached to both A and B.
-- Whether C is truly the father (needs ID/date of birth checked by the club).
+## 5. What cannot be verified
+- Who ran the 30 Aug import (no actor recorded).
+- How Login 1 came to hold both A and B.
+- Whether C is B, A or a third Heyns. The ID numbers differ, so the club must confirm in person.
 - PayFast settlement for E3.
+- Whether the person saw any prompt. No check call was logged, but backend log retention may be limited.
 
-## 5. Safe remediation (only with your approval; nothing done yet)
-1. **C (pending):** keep it pending. The club confirms identity. If C is the father, do not approve it: void the R200 with a reversing journal, then decline C. Then give B its own login (Login 2's email) using the existing admin "change login email", which splits a shared login. A stays on Login 1. Do not merge or delete anything until you approve.
-2. **E1 (23 × R460):** first confirm with Uitsig whether SSA/NSA should apply. For members who should not be charged, post audited reversing journals (never delete). For members who should, create matching fee lines so the charges are visible and payable. List the 23 privately to the club admin.
-3. **E3:** check against the PayFast record. Only refund or reverse if just one payment actually settled.
-4. **Prevention (code, later):** seeding must only charge league-affiliated members, must always create a fee line with each posting, and must be logged with the actor.
+## 6. Safe remediation (only after your approval)
+1. **C:** leave it pending. The club confirms who C is.
+   - If C is B: decline C, cancel the R200 with an audited reversal, and give B his own login using the admin "change login email" (it splits a shared login). A stays on Login 1. Nothing is deleted or merged.
+   - If C is a new person: approve normally. The R200 stands.
+2. **E1:** confirm with Uitsig whether SSA/NSA apply. Post audited reversals for members wrongly charged. For valid charges, create the matching fee lines.
+3. **E3:** reconcile with PayFast before any refund.
 
-## 6. Existing-member activation with a shared family email
-- Keep each member's contact email separate from their login. Family members may share a contact email.
-- Activation searches for existing members by name + cell + ID/date of birth before creating a new record. On a match it offers "This is me — activate" with a code sent by SMS/WhatsApp to that member's cell. It then creates a new, unique login for that member only and never adds a new member row or fees.
-- If the login email is already used by a relative, ask for a different login email and keep the shared contact email. Never move the relative's rows.
-- The admin "change login email" stays the only way to split logins, and it is audited.
+## 7. Minimal code fix (later, with tests)
+- Run the same duplicate check in the sign-up steps **before** the membership row and any joining fee are created. This covers Google and every other path. Match on cell, ID and first + last name, ignoring middle names and "Jnr/Snr".
+- If a match is found, show "You're already on the system — is this you?" and offer to claim the existing record. Raise no fee until the person picks "I'm a different person".
+- Make the club-side name matcher compare first + last name, so middle names and suffixes don't break it.
+- Regression tests:
+  - Google sign-up with "Michiel Philip Heyns" against an existing "Michiel Heyns" shows the prompt and creates no row or fee.
+  - Choosing "different person" then raises exactly one R200.
+  - A family sharing a cell number can still continue.
+  - Every path that creates a membership calls the guard (extend the existing source test).
 
-Note: the task list file was not updated because this was a read-only turn.
+## 8. Existing-member activation with a shared family email
+- A contact email may be shared by family members. Each person's login stays unique.
+- Activation finds the existing record by name + cell or ID, verifies with an SMS/WhatsApp code to that member's cell, and creates a login only for that member. It never creates a new member row or fees.
+- If the login email belongs to a relative, ask for a different login email and keep the shared contact email. The relative's records never move.
+
+Note: the task list was not updated because these turns were read-only.

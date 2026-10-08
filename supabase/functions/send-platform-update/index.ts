@@ -197,6 +197,8 @@ Deno.serve(async (req) => {
 
     const channels = (campaign.channels ?? []).filter((ch: string) =>
       (CHANNELS as readonly string[]).includes(ch)) as Channel[];
+    // Member-wide updates are in-app only — never mass email/SMS/WhatsApp.
+    if (campaign.audience_type === "members") channels.splice(0, channels.length, "in_app");
     if (!channels.length) return json({ error: "No channels selected" }, 400);
     if (!String(campaign.body_html || "").replace(/<[^>]*>/g, "").trim()) {
       return json({ error: "This campaign has no message body" }, 400);
@@ -282,7 +284,7 @@ Deno.serve(async (req) => {
                 title: subject,
                 message: plain.slice(0, 500),
                 type: "platform_update",
-                url: "/club-admin?tab=updates",
+                url: campaign.audience_type === "members" ? "/updates" : "/club-admin?tab=updates",
                 data: { platform_campaign_id: campaignId, action_label: actionLabel, action_url: actionUrl },
               });
             }

@@ -24,6 +24,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
     guestFee: Number((club as any).visitor_booking_fee ?? 0),
     requireVisitor: !!(club as any).require_visitor_for_member_booking,
     allowSolo: (club as any).allow_solo_bookings ?? true,
+    freeVisits: Number((club as any).free_visitor_bookings_per_year ?? 0),
   });
 
   const [form, setForm] = useState(initial);
@@ -32,6 +33,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
     (club as any).visitor_booking_fee,
     (club as any).require_visitor_for_member_booking,
     (club as any).allow_solo_bookings,
+    (club as any).free_visitor_bookings_per_year,
 
   ]);
   const lock = useEditLock(() => setForm(initial()));
@@ -44,6 +46,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
         require_visitor_for_member_booking: form.requireVisitor,
 
         allow_solo_bookings: form.allowSolo,
+        free_visitor_bookings_per_year: Math.max(0, Math.floor(form.freeVisits || 0)),
       } as any);
       toast.success("Visitor booking rules saved");
       onDone?.();
@@ -74,9 +77,9 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
         <div className="space-y-1 rounded-lg border p-3">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <Label className="text-xs font-semibold">Allow members to book a court on their own</Label>
+              <Label className="text-xs font-semibold">Allow members to make solo bookings</Label>
               <p className="text-[11px] text-muted-foreground">
-                Switch this off and every booking must name a second player — another member or a visitor.
+                A solo booking names only the member. Switch this off and every booking must name a second player — another member or a visitor (visitors are allowed).
               </p>
             </div>
             <Switch
@@ -120,6 +123,24 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
               onChange={(e) => setForm((p) => ({ ...p, guestFee: Math.max(0, parseFloat(e.target.value) || 0) }))}
             />
             <span className="text-[11px] text-muted-foreground">per booking (0 = no charge)</span>
+          </div>
+          <div className="space-y-1 pt-1">
+            <Label className="text-xs font-semibold">Free visitor bookings per member per calendar year</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                className="h-8 text-xs w-28"
+                value={form.freeVisits}
+                onChange={(e) => setForm((p) => ({ ...p, freeVisits: Math.max(0, parseInt(e.target.value) || 0) }))}
+              />
+              <span className="text-[11px] text-muted-foreground">free per year (0 = none free)</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Each member's first visitor bookings in a calendar year (1 Jan – 31 Dec) are free, counted from their
+              existing booking history; after that the fee above applies. The count resets every 1 January.
+            </p>
           </div>
           <div className="flex items-center justify-between gap-2 pt-1">
             <div>

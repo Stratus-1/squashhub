@@ -359,7 +359,7 @@ Offices are positions. Each office gets a **default role template** when someone
 - **Proposed for the same treatment (D25), operational only:**
   - Court & Bookings Officer (booking help, court blocks);
   - Communications Officer (draft and send to member groups; not exports);
-  - Bar Manager: non-execution tasks only, such as stocktake counting without posting and viewing stock levels without cost prices. All Bar & Shop execution rights need the Chairman's approval (next section).
+  - Bar Manager (owner confirmed for counter access): routine counter access (bar.sell with the person's own PIN), stocktake counting without posting, and viewing stock levels without cost prices. All other Bar & Shop execution rights, and PIN administration, need the Chairman's approval.
 - **Never delegable:**
   - office-bearer appointment, role template edits and permission management;
   - all finance;
@@ -379,7 +379,7 @@ Offices are positions. Each office gets a **default role template** when someone
 | X: finance execution | Moves money or changes the books | EFT/deposit approval, payments and allocation, refunds, reversals, journals, billing runs, bank import and reconcile, mandate actions, payouts | Chairman/Super Admin grant only; others may nominate |
 | X: Bar & Shop execution | Changes stock value or money | stock purchases, receiving and posting supplier invoices, stock adjustments/write-offs/transfers, stocktake posting or approval, price changes, discounts, voids/refunds, till cash-up, account charges, PIN management | Chairman/Super Admin grant only; others may nominate |
 | O: operational, delegable | No money or stock-value effect | tournament/event helpers, booking help, communications drafting, stocktake counting (no posting), viewing stock levels without cost | Delegable by a holder with the delegate right |
-| Open (D26) | Taking sales at set prices | bar.sell | Proposed: class X |
+| O: routine counter access (owner decision) | Taking sales at set prices with own PIN | bar.sell | Bar Manager assigns directly |
 
 **Nomination workflow:**
 1. A holder (e.g. the Treasurer) nominates a same-club member for specific class-X capabilities, with scope (e.g. only bar or only shop) and a reason.
@@ -397,6 +397,26 @@ Offices are positions. Each office gets a **default role template** when someone
 - The server check `can_grant()` refuses class X for anyone but the Chairman or Super Admin. The same check applies to roles, personal grants, templates and imports.
 
 **Audit:** nomination (who, nominee, capabilities, scope, reason), decision (Chairman, outcome, changes, time), and each later revocation.
+
+### Counter staff: individual logins, routine access vs PIN administration (owner decision)
+- **Every counter operator has their own PIN.** No shared PINs. Every sale, tab entry, settle and void records the actual operator (club member), the device and the time.
+- **Today (confirmed):**
+  - Staff PINs are stored hashed per member (`member_bar_pins`: member, club, hash, failed attempts, lock time).
+  - Counter devices have their own sessions.
+  - Anyone who passes the bar-staff check can set or remove PINs and revoke devices. This is the gap the plan closes.
+- **Three separate things:**
+  | | What | Who controls |
+  |---|---|---|
+  | Routine counter access (`bar.sell`, operational) | Being allowed to serve at the counter at set prices | **Bar Manager assigns directly**, no Chairman approval (same club; audited) |
+  | PIN administration (`bar.pin.manage`, sensitive) | Create, reset, disable a staff PIN; unlock after failed attempts | Separate capability, granted only by the Chairman/Super Admin (D26) |
+  | Counter devices (`bar.devices.manage`, sensitive) | Register or revoke a till tablet | Separate capability, Chairman/Super Admin |
+- **PIN rules:**
+  - PINs are never shown or logged. Each create, reset, disable and unlock is audited (who, for whom, when, reason).
+  - A disabled PIN stops working immediately.
+  - Removing someone's counter access disables their PIN too.
+  - Nobody manages their own PIN except through a one-time setup or reset code (D26).
+- **Not the same as member OTP:** the one-time code a **member** gives to approve a charge to their own account is a separate check. It approves the member's payment, not the operator's access, and is handled and logged separately. A counter PIN never stands in for a member OTP, or the other way round.
+- Higher-risk till actions (voids, refunds, discounts, cash-up, price overrides) still need their own class-X rights, even for an operator logged in with a PIN.
 
 ### Holding a capability vs delegating it
 - **Holding (inherited from a role or granted personally)** lets you **perform** the action.
@@ -537,7 +557,9 @@ Operations preserved:
 - **D14.** Member data (section 3a): approve the Secretary default; choose which higher-risk protections, if any, to add (ID number, date of birth, suspension and billing, bulk export, face data).
 - **D15.** The revocation question is decided: delegated grants end automatically. Still open: should temporary grants or denies (with an expiry date) be allowed? Proposed: yes.
 - **D25.** Confirm which roles get **direct delegation by default** (section "Direct delegation"): Club Captain/Competitions Coordinator (owner confirmed), plus the proposed Court & Bookings Officer, Communications Officer, and Bar Manager (non-execution tasks only).
-- **D26.** Is **taking sales at the till** (selling at set prices, which deducts stock and takes payment) a sensitive execution right that needs the Chairman's approval (proposed, safer), or an ordinary Bar Staff task the Bar Manager may delegate? The same question applies to stocktake counting without posting (proposed: ordinary).
+- **D26.** Decided: routine counter access (selling at set prices) is assignable by the Bar Manager. Still open:
+  - Who holds `bar.pin.manage` by default? Proposed: the Bar Manager, granted by the Chairman, not delegable.
+  - Should a staff member be able to set their own PIN on first use via a one-time setup code (proposed), rather than a manager typing it?
 - **D16. "Chairman has access to everything" — needs your confirmation.** This conflicts with the earlier decision of no automatic finance. Options:
   - (a) **Proposed:** the Chairman sees and manages all non-finance club areas by default. Finance (view and transactions) and sensitive Bar & Shop rights only when the Super Admin grants them.
   - (b) The Chairman gets read-only finance by default (balances, reports), but transactions only from the Super Admin.

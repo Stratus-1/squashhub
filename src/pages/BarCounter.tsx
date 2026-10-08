@@ -1,4 +1,4 @@
-import { barChargeErrorMessage } from "@/lib/account-charge-gate";
+import { showBarChargeError } from "@/lib/bar-charge-toast";
 /**
  * Bar Counter mode — `/s/:code/counter` (device unlocked with a staff PIN, no login)
  * or `/bar/counter` for signed-in staff with Bar permission.
@@ -233,7 +233,7 @@ export default function BarCounter() {
       _tab_id: tabId, _lines: lines, _token: token, _club_id: clubId,
     } as any);
     if (error) {
-      toast.error(barChargeErrorMessage(error, "Could not add the basket to the tab"), { duration: 10000 });
+      showBarChargeError(error, "Could not add the basket to the tab");
       return false;
     }
     setCart({});
@@ -275,7 +275,7 @@ export default function BarCounter() {
       invalidate();
       toast.success("Tab settled");
     } catch (e: any) {
-      toast.error(barChargeErrorMessage(e, "Could not settle the tab"), { duration: 10000 });
+      showBarChargeError(e, "Could not settle the tab");
     } finally {
       setBusy(false);
     }

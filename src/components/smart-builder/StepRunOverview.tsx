@@ -65,12 +65,14 @@ export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle }: {
             {ordered.map((s) => {
               const live = stateFor(s.name);
               const st = live.length ? (live.every((x) => x.state === "completed") ? "Completed" : live.some((x) => x.state === "active") ? "In play" : live.some((x) => x.state === "ready" || x.state === "blocked") ? "Next" : "Planned") : s.phase === "playoff" ? "Planned" : "";
-              const when = s.mode === "scheduled" && s.date ? `${s.date}${s.from ? ` · ${s.from}–${s.to ?? ""}` : ""}` : s.deadline ? `Play by ${s.deadline}` : "Date: decide later";
+              const extra = ((s as any).extraDays ?? []) as Array<{ date?: string }>;
+              const lastDay = extra.map((d) => d.date).filter(Boolean).sort().pop();
+              const when = s.mode === "scheduled" && s.date ? `${s.date}${lastDay && lastDay !== s.date ? ` to ${lastDay} (${extra.filter((d) => d.date).length + 1} days)` : ""}${s.from ? ` · ${s.from}–${s.to ?? ""}` : ""}` : s.deadline ? `Play by ${s.deadline}` : "Date: decide later";
               return (
                 <li key={s.id} className="flex flex-wrap gap-x-2">
                   <span className="font-medium">{s.name}</span>
                   <span className="text-muted-foreground">{when}</span>
-                  {(s.courtIds ?? []).length > 0 && <span className="text-muted-foreground">· {(s.courtIds ?? []).map(courtName).join(", ")}</span>}
+                  {(s.courtIds ?? []).length > 0 && <span className="text-muted-foreground">· {[...(s.courtIds ?? [])].map(courtName).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(", ")}</span>}
                   {s.unit && <span className="text-muted-foreground">· {s.unit.split("::").join(" › ")}</span>}
                   {st && <span className={cn("rounded-full border px-1.5", st === "Completed" ? "border-primary/50 text-primary" : st === "Next" ? "border-destructive text-destructive" : "border-border text-muted-foreground")}>{st}</span>}
                 </li>

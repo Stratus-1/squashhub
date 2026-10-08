@@ -112,7 +112,11 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const n = Math.max(1, Number(tt?.num_groups ?? 1));
     // This device's answers when present, else the setup saved on the tournament (works on any device).
     if ((tt as any)?.beta_lifecycle?.draw_notify === false) setNotifyDraw(false);
-    const plan = readStepPlan(clubId, tournamentId) ?? ((tt as any)?.beta_lifecycle?.format_plan ?? null);
+    // The setup saved on the tournament is authoritative (Stages & scheduling syncs it on every change);
+    // this device's copy is only a fallback, so edits made in setup always show up here.
+    const saved = (tt as any)?.beta_lifecycle?.format_plan ?? null;
+    const local = readStepPlan(clubId, tournamentId);
+    const plan = saved ? { ...(local ?? {}), ...saved } : local;
     const errs: string[] = [];
     const list: DrawDivision[] = [];
     const unspecifiedCross = new Set<number>();

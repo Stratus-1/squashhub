@@ -64,7 +64,11 @@ Other details:
 
 **Route:** `/club-champs/:champId/manage`, admin-only (`canManage`). Anyone else is sent back to the member page. Match-day devices never see it.
 
-**Single link:** at the top of the member tournament page, one "Manage tournament" button shown only to admins. It replaces the admin accordion, the "Open the tournament control page" button and the "What's next" bar on the member page. The member page keeps only fixtures, bookings, results, standings and the player's own entry.
+**Single link:** at the top of the member tournament page, one "Manage tournament" button shown only to admins. It replaces the admin accordion, the "Open the tournament control page" button and the "What's next" bar on the member page.
+
+**Member page after the change:** no admin section, accordion, registrations panel or round controls are left on it. The page keeps fixtures, bookings, results, standings and the player's own entry. The one admin-only element is the "Manage tournament" button. Everything that was in the accordion moves to the hub (Overview, Rounds & Fixtures, Players & Entries, Settings). Admins can still enter scores and reschedule from the hub, and scoring stays available to players and markers exactly as it is today.
+
+**Rounds page:** draw generation (next Swiss round, knockout round, start stage, generate all rounds where allowed) and each round's notification status and trigger sit together on one row per round and category.
 
 **Tabs (the same for every format; parts that don't apply are hidden):**
 1. **Overview:** lifecycle and the next action per category/division (from `progression.ts` / `run-overview`), warnings (unpaid entries, unsent changes), and Edit setup (opens the existing builder at the right step).
@@ -99,16 +103,23 @@ The `/beta-tournament/:champId` page and the Club Admin "Manage" card both open 
   - Fixed date, time and court: opponent, date, time and court.
   - Play-by-date: opponent, the opponent's contact details (only where permitted), the deadline and how to book.
 
-**Trigger for round 2 onwards (per round, set in the Planned timeline):**
-- **Manual** (the default): nothing happens until the admin presses Send.
-- **When the previous round is completed:** the recommended and default behaviour is **Prompt admin**. When the last result of the previous round is in (and, for Swiss/knockout, the next pairings have been generated), the round is marked "Ready to send". The admin gets an in-app alert and still goes through preview, channels and confirmation.
-- **Automatic send** is an extra opt-in only. It needs:
-  - the admin to switch it on explicitly for that round
-  - the channels chosen and confirmed at the moment it's switched on
-  - pairings generated and marked "checked" by the admin
-  - one send per round and fixture snapshot, enforced by a stored key, so a re-run or regeneration can never send twice
-  - any later change to show as "Changes not communicated", never resent automatically
-- **Uitsig and any test tournament** stay on Manual or Prompt only. A per-club switch can turn automatic send off entirely and is off by default.
+**Trigger for round 2 onwards (set per round on Manage Tournament > Rounds, next to that round's draw controls):**
+- **Manual:** nothing happens until the admin presses Send.
+- **Prompt when the previous round completes:** the round is marked "Ready to send" and the admin gets an in-app alert. The admin still goes through preview, channels and confirmation.
+- **Automatic when the previous round completes:** when the last result of the previous round is submitted, the round's notices go out straight away with no extra prompt. The admin chose the channels and confirmed them when switching this on.
+
+**How each round type behaves (the app works this out from the fixtures, never from the format name):**
+- **(a) Pairings already exist (round robin, or Swiss with every round pre-generated at draw creation):** no new draw is needed. When the previous round's last result is in, the next round can send straight away, automatically if that's switched on.
+- **(b) Swiss re-paired after each round:** after the last result, the next draw must be generated first (by the admin, or by the existing next-round engine if that is already set up). Notices only go out once the new pairings exist; automatic send fires as soon as they are saved.
+- **(c) Knockout:** winners aren't known in advance. The next-round fixtures are generated/confirmed after the previous round completes, and only then are notices sent (automatically if switched on).
+- In every case, a round with any player still missing ("TBD" or unknown) is never sent.
+
+**Safeguards for automatic send:**
+- It is off unless the admin explicitly switches it on for that round.
+- A backend check, not the browser, decides that a round is complete and its pairings exist.
+- Each round and fixture snapshot can be sent only once, enforced by a stored key. Re-submitting a result, editing a score or regenerating a draw can never send again.
+- Later changes show as "Changes not communicated" and are never resent automatically.
+- **Test safety:** a per-club "Automatic sending allowed" switch (off by default), plus a per-tournament **Test mode** that sends only to the admin. Uitsig stays on Test mode, Manual or Prompt until you say otherwise.
 
 **Send flow (every time, nothing pre-ticked from setup):**
 1. Choose channels: Email / WhatsApp / SMS / In-app, any combination. A channel the club hasn't switched on shows as unavailable with the reason. WhatsApp and SMS show the estimated cost from the existing messaging rates.
@@ -145,7 +156,11 @@ The `/beta-tournament/:champId` page and the Club Admin "Manage" card both open 
 
 **Phase 3: Notifications tab.** Store each send (a small table for round sends and snapshots, which is the only schema change, with RLS limited to club admins), the channel picker, previews, test-to-self, costs, Send / Resend / Send changes only / recipient choice, delivery through the Communications engine, and the unsent-changes flag.
 
-**Phase 3b: round triggers.** Add the Manual / When previous round completed setting, with the "Ready to send" prompt. Automatic send comes last, behind the per-club switch (off by default) and the safeguards above. It is tested only on Riverside test data with sends intercepted.
+**Phase 3b: round triggers.** Add Manual / Prompt / Automatic per round, with cases (a), (b) and (c). The completion check and the send-once key are enforced on the backend, behind the per-club switch and Test mode. It is tested only on Riverside test data with sends intercepted. Tests cover:
+- the last result in a pre-paired round sends exactly once
+- a re-paired Swiss round sends only after the new draw exists
+- a knockout round with a missing player never sends
+- re-submitting a result sends nothing
 
 **Phase 4: parity check per format,** across round robin, Swiss, knockout, multi-stage/weekend, Diamond League and older tournaments. Every action from the old screens must be available in the hub.
 

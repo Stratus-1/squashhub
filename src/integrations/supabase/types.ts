@@ -17488,6 +17488,10 @@ export type Database = {
         Args: { p_match_id: string; p_new_member_id: string; p_slot: string }
         Returns: Json
       }
+      admin_resolve_duplicate_member: {
+        Args: { _reason?: string; _source_id: string; _target_id: string }
+        Returns: Json
+      }
       admin_reverse_journal_group: {
         Args: { _journal_ref: string; _note?: string }
         Returns: Json

@@ -694,6 +694,13 @@
       "when": 1791464359852,
       "tag": "0098_mandate_lifecycle_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1791468526776,
+      "tag": "0099_permissions_stage1_additive",
+      "breakpoints": true
     }
   ]
 }

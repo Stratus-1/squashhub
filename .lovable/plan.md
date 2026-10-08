@@ -94,6 +94,21 @@ The `/beta-tournament/:champId` page and the Club Admin "Manage" card both open 
 - Actions: **Send now**, **Send later** (scheduled through the existing Communications scheduling and cancellable), **Resend all** (shows a warning that it was already sent), **Send changes only** (only players whose opponent, date, time or court changed since the last send), and **Choose recipients**.
 - **One round at a time:** each send covers exactly one round (optionally one category/division). There is no "send all rounds" button, even when all rounds are generated upfront.
 - **Updated notices** are clearly marked: the subject and opening line say "UPDATED: Round N", and the message says what changed (e.g. "Court changed from 2 to 3").
+- **Where it appears:** the same round rows also show inside the management view's Planned timeline (one row per stage, round and category/pool). Later rounds are handled there without reopening setup.
+- **Message content by fixture type:**
+  - Fixed date, time and court: opponent, date, time and court.
+  - Play-by-date: opponent, the opponent's contact details (only where permitted), the deadline and how to book.
+
+**Trigger for round 2 onwards (per round, set in the Planned timeline):**
+- **Manual** (the default): nothing happens until the admin presses Send.
+- **When the previous round is completed:** the recommended and default behaviour is **Prompt admin**. When the last result of the previous round is in (and, for Swiss/knockout, the next pairings have been generated), the round is marked "Ready to send". The admin gets an in-app alert and still goes through preview, channels and confirmation.
+- **Automatic send** is an extra opt-in only. It needs:
+  - the admin to switch it on explicitly for that round
+  - the channels chosen and confirmed at the moment it's switched on
+  - pairings generated and marked "checked" by the admin
+  - one send per round and fixture snapshot, enforced by a stored key, so a re-run or regeneration can never send twice
+  - any later change to show as "Changes not communicated", never resent automatically
+- **Uitsig and any test tournament** stay on Manual or Prompt only. A per-club switch can turn automatic send off entirely and is off by default.
 
 **Send flow (every time, nothing pre-ticked from setup):**
 1. Choose channels: Email / WhatsApp / SMS / In-app, any combination. A channel the club hasn't switched on shows as unavailable with the reason. WhatsApp and SMS show the estimated cost from the existing messaging rates.
@@ -129,6 +144,8 @@ The `/beta-tournament/:champId` page and the Club Admin "Manage" card both open 
 **Phase 2: hub shell.** Add the `/manage` route behind `canManage`, with Overview, Rounds & Fixtures and Players & Entries reusing the existing components. Add the "Manage tournament" button. The old controls stay in place but are marked as moved.
 
 **Phase 3: Notifications tab.** Store each send (a small table for round sends and snapshots, which is the only schema change, with RLS limited to club admins), the channel picker, previews, test-to-self, costs, Send / Resend / Send changes only / recipient choice, delivery through the Communications engine, and the unsent-changes flag.
+
+**Phase 3b: round triggers.** Add the Manual / When previous round completed setting, with the "Ready to send" prompt. Automatic send comes last, behind the per-club switch (off by default) and the safeguards above. It is tested only on Riverside test data with sends intercepted.
 
 **Phase 4: parity check per format,** across round robin, Swiss, knockout, multi-stage/weekend, Diamond League and older tournaments. Every action from the old screens must be available in the hub.
 

@@ -836,18 +836,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <p className="mt-1 text-muted-foreground">No courts are booked and no court times are invented. Players are not messaged by this step.</p>
         </div>
       )}
-      {errors.length > 0 && (
-        <div className="rounded border border-destructive/50 bg-destructive/10 p-2">
-          <div className="flex items-center gap-1 font-medium"><AlertTriangle className="h-3 w-3" />Can't generate yet</div>
-          <ul className="list-disc pl-4">{[...new Set(errors)].map((e) => <li key={e}>{e}</li>)}</ul>
-        </div>
-      )}
-
-      {hasDraw && existing.played > 0 && <p className="text-destructive">Games have been played or started, so the draw can't be rebuilt here — results are protected. Use "Rebuild unplayed games" under Manage stages to drop withdrawn players' future games.</p>}
-      {hasDraw && existing.played === 0 && (
-        <label className="flex items-start gap-2"><Checkbox checked={rebuildOk} onCheckedChange={(v) => setRebuildOk(!!v)} />
-          <span>Replace the existing draw: all {existing.games} unplayed games are deleted and a new draw is made from the current entries. No results are lost (none exist). Players who already saw their games should be told.</span></label>
-      )}
       {seeded.some((d) => d.format.schedule.rule === "fixed") && errors.length === 0 && (
         <SchedulingPreferencesSection tournamentId={tournamentId} categories={seeded.map((d) => ({ group: d.group, label: d.label }))} previewGames={timedPreview} useSaved={hasDraw && !rebuildOk} onFeasible={setSchedOk} />
       )}

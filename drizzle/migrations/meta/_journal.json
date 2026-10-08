@@ -743,6 +743,13 @@
       "when": 1791490392790,
       "tag": "0105_permissions_stage4b_enforcement",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1791490507196,
+      "tag": "0106_perm_matrix_fix",
+      "breakpoints": true
     }
   ]
 }

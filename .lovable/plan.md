@@ -73,6 +73,32 @@ Every key also lets the holder see the records needed for that action, and nothi
 - Proposed: a request from at least two club office bearers (e.g. secretary + treasurer) is recorded before the super admin acts, unless it's a security incident.
 - All recovery actions appear in the finance audit trail. They can't be edited or deleted, and they expire or are reviewed after 30 days.
 
+## Bar & Shop operational permissions (owner decision)
+- The same grant rule applies. **Only that club's Chairman and the platform super admin** may assign or revoke any Bar & Shop permission. The Bar Manager, Club Admin and Treasurer can't delegate them.
+- Grant authority gives the Chairman **no Bar & Shop operations** (no till, stock, prices or PINs) unless separately granted.
+- **No self-grant:** the Chairman's own Bar & Shop rights, like their finance rights, are approved by the super admin only.
+- Today (confirmed), anyone who passes `bar_staff_can_serve` can set or remove counter PINs and revoke counter devices (`bar_counter_set_pin`, `bar_counter_remove_operator`, `bar_counter_revoke_devices`).
+
+| Function | V | C | E | A | Act | Cfg | X |
+|---|---|---|---|---|---|---|---|
+| Sell at till / counter (using own PIN) | bar.sell | bar.sell | - | - | - | - | - |
+| Charge member account at till (debit limits still apply) | bar.sell | bar.charge_account | - | - | - | - | - |
+| Void / refund a sale | bar.view | - | - | bar.void | - | - | - |
+| Items, prices, specials, categories | bar.view | bar.items | bar.items | - | bar.items (archive) | - | - |
+| Stock purchases, adjustments | bar.view | bar.stock | bar.stock | - | - | - | - |
+| Stock-take (count, finalise) | bar.view | bar.stocktake | bar.stocktake | bar.stocktake_finalise | - | - | - |
+| Open tabs / guest tabs | bar.view | bar.sell | - | bar.void (close/write-off) | - | - | - |
+| **Counter staff PINs** (create, reset, disable operator) | bar.pins (names only, never PINs) | bar.pins | bar.pins (reset) | - | bar.pins (disable) | - | - |
+| Counter devices (pair, revoke) | bar.devices | bar.devices | - | - | bar.devices (revoke) | - | - |
+| Bar settings (payment methods, debit switches, costing) | bar.view | - | - | - | - | bar.settings | - |
+| Bar reports and cost of sales | bar.reports | - | - | - | - | - | bar.reports |
+
+- **Managing PINs is separate from using a PIN.** Holding `bar.pins` doesn't let you sell, and selling with your own PIN doesn't let you manage anyone's PIN.
+- **Existing PINs are never shown.** Only hashes are stored, as now. A reset sets a new PIN that is shown once to the person setting it, or the operator sets it at the device.
+- **No managing your own operator PIN** through `bar.pins`; you change your own only via your own login.
+- **Every create, reset, disable and device revoke is logged:** who, which operator, which club, when and the reason. The PIN value is never logged.
+- **Presets:** Bar Manager (items, stock, stocktake, void, reports, devices, settings, no grant power); Bar Staff (sell, charge_account); PIN Admin (pins only); Stock Counter (stocktake, no finalise).
+
 ## Presets (starting points, editable per club)
 - **Treasurer (full finance):** everything except `manual_authorise` and `perm.finance.grant`.
 - **Finance viewer / auditor:** all `.view`, `reports.export`, `audit.view`.
@@ -111,6 +137,7 @@ Every finance action and every grant or removal writes a permanent event: who, c
 1. Chairman finance rights: second-party approval by the platform super admin only (proposed), or also a named committee member?
 1a. Confirm "Super Admin" means the platform super admin (the app-wide admin role), and NOT the federation organisation super admin. Proposed: federation admins get no club finance grant authority.
 1b. Changing the Chairman: platform super admin only (proposed), or an outgoing Chairman + super admin confirmation?
+1c. Bar & Shop transition: keep current bar staff PIN powers in legacy mode until the club opts in (proposed), or lock PIN management to the Chairman and super admin immediately?
 2. Should `manual_authorise` exist at all, or should mandates be provider-verified only, with no manual path?
 3. Default second-approver thresholds for refunds, journals and waivers (e.g. R1,000)? Should they be skipped for one-treasurer clubs?
 4. Platform moderators: keep a view-only support role, or nothing?

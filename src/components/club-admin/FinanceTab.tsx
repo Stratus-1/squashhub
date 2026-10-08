@@ -1987,7 +1987,10 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
   const partyLower = party === "club" ? "club" : "member";
   // Approval emails link to ?tab=finance&view=pending&tx=<id>.
   const [view, setView] = useState<FinanceView>(() => {
-    try { return new URLSearchParams(window.location.search).get("view") === "pending" ? "pending" : ""; } catch { return ""; }
+    try {
+      const v = new URLSearchParams(window.location.search).get("view");
+      return v === "pending" || v === "debit-orders" ? (v as FinanceView) : "";
+    } catch { return ""; }
   });
   const [hubStep, setHubStep] = useState("0");
 

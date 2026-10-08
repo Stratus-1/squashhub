@@ -2,6 +2,11 @@
 
 Design only. No code, migrations, access changes or publishing. Production stays exactly as it is until each phase is separately approved.
 
+## 0. Design priorities (owner)
+1. **Audit chain first.** Every right has a recorded origin. Every significant action records who did it and which right allowed it, traceable back to the original grantor. The Chairman can search it easily (section 8).
+2. **Proportionate for volunteer clubs:** low friction, no re-authentication, waiting periods or repeated confirmations for ordinary changes.
+3. **Essential boundaries only:** club scope, finance and execution rights granted by the Chairman or Super Admin, and an independent second approver for sensitive finance and stock actions.
+
 ## 1. Owner decisions (final list)
 
 **Model**
@@ -333,7 +338,35 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
 - Nobody changes their own roles or offices. The only exception is the Chairman, who may self-grant execution rights (audited, badge, optional alerts). This never allows approving their own transactions.
 - A change to payout bank details is audited, and the Treasurer and Chairman are notified (no waiting period).
 - In tiny clubs, the Super Admin may act as the second approver on request, logged (D14).
-- The audit records every grant, deny, delegation, nomination, decision, office change, succession step, claim and sensitive action: who, for whom, what, club, before and after, reason and time. Records can't be edited or deleted. PINs and card data are never logged.
+### Audit chain (explicit design priority, ahead of intricate permission rules)
+**1. Where every permission came from:** each grant record keeps:
+- who granted it, to whom, and when;
+- the scope (club, and e.g. one tournament or bar only);
+- how it was given: role, office, direct grant, delegated, nominated plus Chairman-approved, self-granted, or migration;
+- the parent grant it was delegated from;
+- every later change, expiry or revocation (who, when, why).
+
+Records are never overwritten; changes add new versions.
+
+**2. Every significant action** (finance, bar and stock, member changes, bookings admin, tournaments, permission and office changes) logs:
+- the actual actor and the device or counter PIN;
+- the action, time and target;
+- before and after values;
+- **the exact grant that allowed it**, as a link to the record above.
+
+**3. Traceable back to the source:** from any action you can follow the chain: action → the grant used → who granted it (and their grant) → up to the Chairman, Super Admin or migration that started it.
+
+**4. Chairman activity view** (Permissions → Activity, club-scoped), simple and searchable:
+- Search by person, action type, date range or target (member, transaction, item).
+- "Who authorised this person?" shows the person's rights, each with its grant chain.
+- "What did they do?" lists the person's actions, each with the right used.
+- "Who did this?" works from any transaction, sale or member change.
+- Export to CSV for committee meetings.
+- Visible to the Chairman and Super Admin. Finance actions are also visible to finance viewers; others see only their own history.
+
+**5. Basics:** records can't be edited or deleted. PINs and card data are never logged. Retention defaults to 7 years for finance, 3 years for everything else (open to change).
+
+**6. Proportionality:** the audit chain carries the safety. Permissions stay simple and low-friction; independent approval is kept only for sensitive finance and stock actions.
 
 ## 9. Onboarding (both pathways)
 

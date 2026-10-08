@@ -100,6 +100,36 @@ Delegation rules:
 - Secretary, Club Captain and Treasurer offices are set by the Chairman (or Super Admin). These offices carry no rights by themselves.
 - **Emergency recovery:** the Super Admin can freeze grants for a club, revoke any grant, or appoint an interim Chairman. Each needs a reason, is logged, notifies office bearers, and is reviewed after 30 days.
 
+## 3a. Member data and the Secretary (owner clarification)
+
+**Default:** the Secretary template can **view and update ordinary member profile and contact information with no extra restrictions**. This is routine membership administration and is not treated as "sensitive" for gating.
+
+### Current behaviour (confirmed)
+- Member edits are allowed for: club admins (`is_club_admin`, which includes office bearers such as the Secretary when recorded on the club); the member themselves (not their own role); and holders of the `members` key (but not on admin members).
+- Today's Secretary role template holds almost every key, including finance and bar. Under the target model it would hold membership rights only.
+- Signed-in users have no direct table read on `club_members`. The ID number, address, phone and email columns are not readable directly. Staff screens get them through server functions, which are not yet listed one by one. The fellow-member read rule covers only the columns that are readable.
+- National ID is also kept in the restricted `people_private` record. Date of birth is private on the national person record, and only age or age group is shown.
+- The member list can be exported (`MembersTab.tsx`).
+
+### Field groups
+| Group | Fields | Secretary default | Capability |
+|---|---|---|---|
+| Ordinary profile and contact | name, email, phone, address, gender, avatar, member number, occupation, skills, volunteer, WhatsApp/SMS opt-outs, home club | **View + edit** | members.profile.view / .edit |
+| Membership administration | status, fee category, joined, applications (approve/decline), pending captain claim, league-only flag | View + edit + approve applications | members.admin |
+| Competition data | skill level, ladder/ranking, league flags | View; edit stays with competition roles | ladder.*, leagues.* |
+| **Higher risk — national ID** | `id_number`, `people_private` | Listed separately (see options) | members.id.view / .edit |
+| **Higher risk — date of birth** | DOB (national record; only age shown today) | Listed separately | members.dob.view |
+| **Higher risk — finance and payments** | balances, billing exemption, mandates, payments, suspension amounts | None by default (Finance) | fin.* |
+| **Higher risk — sign-in and identity** | login link (`user_id`), password, recovery, GoBook link, face data and consent | Never edit credentials. Linking or unlinking a login, and face data, are separate | members.login.link, access.face |
+| Suspension | suspension status/reason/dates | Proposed: Membership admin view; changing it is a separate capability | members.suspend |
+| **Bulk export and sharing** | CSV/Excel of the member list, bulk message lists | Separate function | members.export |
+
+### Options for the higher-risk items (owner chooses; nothing is imposed silently)
+- ID number: (a) Secretary sees and edits it, as today when the Secretary is an admin; (b) shown masked, with full view logged; (c) a separate capability. Proposed: (b).
+- Date of birth: keep today's rule (age only) unless the owner wants the Secretary to see the full date.
+- Bulk export: a separate capability, every export logged (who, when, row count, columns), ID and DOB excluded unless chosen. Proposed: Secretary holds it by default, with logging.
+- Credentials: nobody at club level sees or sets passwords. Login linking and face data stay separate capabilities.
+
 ## 4. Default role templates (renamed, editable, none implicit)
 | Template | Content (summary) | Class |
 |---|---|---|
@@ -248,6 +278,7 @@ Operations preserved:
 - **D11.** Build the missing Bar & Shop features (suppliers, POs, receiving, till cash-up) as part of this work, or later?
 - **D12.** Approve the office-field lock (stage 2) early as a stand-alone fix?
 - **D13.** Family exclusions based on account delegations, family groups, or both?
+- **D14.** Member data (section 3a): approve the Secretary default; choose which higher-risk protections, if any, to add (ID number, date of birth, suspension and billing, bulk export, face data).
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

@@ -12362,6 +12362,21 @@ export type Database = {
         }
         Relationships: []
       }
+      office_role_defaults: {
+        Row: {
+          office: string
+          role_name: string
+        }
+        Insert: {
+          office: string
+          role_name: string
+        }
+        Update: {
+          office?: string
+          role_name?: string
+        }
+        Relationships: []
+      }
       organisation_admins: {
         Row: {
           active: boolean
@@ -14672,6 +14687,48 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      role_capability_templates: {
+        Row: {
+          capability_key: string
+          club_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          role_name: string
+        }
+        Insert: {
+          capability_key: string
+          club_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role_name: string
+        }
+        Update: {
+          capability_key?: string
+          club_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_capability_templates_capability_key_fkey"
+            columns: ["capability_key"]
+            isOneToOne: false
+            referencedRelation: "capability_catalogue"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "role_capability_templates_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       season_awards: {
         Row: {

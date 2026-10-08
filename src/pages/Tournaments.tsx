@@ -174,6 +174,27 @@ export default function Tournaments() {
     },
     enabled: !!muChampIdsKey,
   });
+  // Step-by-step setup keeps per-round modes (Round 1 fixed days, later rounds play-by) that the
+  // compressed structured spec loses: round_number → fixed range from the setup.
+  const { data: fixedRoundsByChamp } = useQuery({
+    queryKey: ["setup-fixed-rounds", muChampIdsKey],
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("id,beta_lifecycle").in("id", muChampIdsKey.split(","));
+      const m = new Map<string, Map<number, { from: string; to: string; timeFrom: string | null; timeTo: string | null }>>();
+      for (const t of (data || []) as any[]) {
+        const main = ((t.beta_lifecycle?.answers?.stages ?? []) as any[]).filter((s) => (s?.phase ?? "main") === "main");
+        const r = new Map<number, any>();
+        main.forEach((s, i) => {
+          if (s?.mode !== "scheduled" || !s?.date) return;
+          const dates = [s.date, ...((s.extraDays ?? []) as any[]).map((d) => d?.date)].filter(Boolean).sort();
+          r.set(i + 1, { from: dates[0], to: dates[dates.length - 1], timeFrom: s.from || null, timeTo: s.to || null });
+        });
+        if (r.size) m.set(t.id, r);
+      }
+      return m;
+    },
+    enabled: !!muChampIdsKey,
+  });
   // Fixed-date rounds that cannot be given times/courts: say why (admins only), never silent TBD.
   const { data: timedIssues } = useQuery({
     queryKey: ["timed-round-capacity", muChampIdsKey],
@@ -807,8 +828,13 @@ export default function Tournaments() {
    * between leagues, so position in the plan means nothing), and finally to the
    * positional plan entry.
    */
-  const matchStage = (m: any): StageScheduleInfo | null =>
-    (m?.stage_key && stageSchedByChamp?.get(m.champ_id)?.get(m.stage_key)) || null;
+  const matchStage = (m: any): StageScheduleInfo | null => {
+    const st = (m?.stage_key && stageSchedByChamp?.get(m.champ_id)?.get(m.stage_key)) || null;
+    // A main-phase round set to fixed days in setup is centrally scheduled, even if the spec says play-by.
+    const fixed = (!st || st.order === 0) ? fixedRoundsByChamp?.get(m.champ_id)?.get(Number(m.round_number)) : undefined;
+    if (fixed) return { stageId: st?.stageId ?? String(m.stage_key ?? ""), name: st?.name ?? "", order: 0, rule: "fixed", date: fixed.from, deadline: null, timeFrom: fixed.timeFrom, timeTo: fixed.timeTo, courtIds: [] };
+    return st;
+  };
   const matchSchedule = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const milestones = parseMilestones((champ as any)?.milestone_play_by);

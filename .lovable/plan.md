@@ -328,7 +328,7 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
 **Counter PINs:**
 - PINs are never shown or logged. Every change is audited.
 - Removing someone's counter access disables their PIN.
-- A first PIN or reset uses a one-time setup code (D13).
+- The Bar Manager creates, resets and disables individual counter PINs once the Chairman has granted `bar.pin.manage` (one grant, no per-reset approval). Every create, reset and disable is audited; existing PINs are never displayed.
 
 **Member OTP:** this approves a charge to the member's own account and is logged separately. It never replaces an operator PIN, and an operator PIN never replaces it.
 
@@ -445,7 +445,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 1. **Dry run for all clubs:** a read-only comparison of today's effective rights against the mapped new model, per person per club. Riverside is reviewed in detail; a summary is produced for all other clubs.
 2. **Riverside setup:**
    - Inventory, mapping and an impact report showing kept rights and intentional reductions.
-   - Test accounts: Chairman, Treasurer, Secretary, Club Captain, Bar Manager, two counter staff and an ordinary member (P2). Riverside's real data may be used.
+   - Test accounts: Chairman, Treasurer, Secretary, Club Captain, Bar Manager, two counter staff and an ordinary member. Riverside's real data may be used. Real committee members are activated as soon as the tests pass — no mandatory waiting period.
 3. **Gate ON for Riverside only.** Other clubs keep today's behaviour.
 4. **Pilot tests in Riverside:**
    - Roles and multiple roles; custom grants and denies.

@@ -70,12 +70,13 @@ describe("Step-by-Step: category board full-screen expand", () => {
     await openBoard();
     fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
     const dlg = await screen.findByRole("dialog", { name: /full screen/i });
-    // Each row carries a "Move <name> to" chooser; use it instead of dragging.
-    const chooser = within(dlg).getByLabelText(/Move Anna to/i);
-    fireEvent.change(chooser, { target: { value: "Ladies" } });
-    // Anna left Mens A: one row only, and her own chooser now offers to leave Ladies.
+    // Each row carries a → chooser; open it and pick the category.
+    fireEvent.click(within(dlg).getByLabelText(/Move Anna to/i));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Ladies/ }));
+    // Anna left Mens A: one row only, and her chooser now offers to leave Ladies.
     await waitFor(() => expect(within(dlg).getAllByText("Anna")).toHaveLength(1));
     expect(within(dlg).getAllByLabelText(/Move Anna to/i)).toHaveLength(1);
-    expect(within(dlg).getByLabelText(/Move Anna to/i).textContent).toMatch(/Remove from Ladies/);
+    fireEvent.click(within(dlg).getByLabelText(/Move Anna to/i));
+    expect(await screen.findByText(/Remove from Ladies/)).toBeInTheDocument();
   });
 });

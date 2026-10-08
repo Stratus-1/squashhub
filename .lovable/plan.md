@@ -114,25 +114,31 @@ Delegation rules:
 
 **Pathway A: existing preloaded club (most South African clubs)**
 1. **Find, don't create.** The person searches for and picks their club. Creating a new club is blocked when a close match exists (name, town, association), so no duplicate club is created.
-2. **Identity first:**
-   - Verified email and phone.
-   - The duplicate-person check links them to their existing **national person** record and their **imported club member row**, if one matches by SA ID, email or phone, instead of creating a new member.
-3. **Proof of link to the club** (one strong item, or two weaker ones):
-   - **Strong:**
-     - their verified email or phone matches the club's imported contact or an imported office bearer;
-     - the affiliated association confirms them;
-     - a Super Admin review.
-   - **Weaker:**
-     - they match an imported member of that club;
-     - an email on the club's domain;
-     - a short reason given with the claim.
-4. **Activation:** they become **Temporary Chairman (setup)** of that club. All imported members, history and records stay untouched. Imported members stay unlinked until they activate their own accounts.
+2. **Identity: reuse what exists, add nothing new.** Current matching (confirmed in code):
+   - Every self-registration runs the duplicate guard (`useDuplicateGuard` → `account-recovery`, rules in `_shared/person-match.ts`).
+   - Match levels: **exact** (same cell + same name), **phone** (same cell, different name — families share phones), **name only**, **none**.
+   - Existing accounts are revealed only after a phone OTP.
+   - A verified email may claim an unlinked, non-admin imported member row with the same email (existing access rule).
+   - SA ID links to the national person through the restricted record.
+   - The person is linked to their national record and imported member row this way. No new person or member is created when a trusted match exists.
+3. **Member match ≠ right to claim the club.** Being matched to an imported member proves membership, not authority. Temporary Chairman is decided separately:
+
+   | Situation | Outcome |
+   |---|---|
+   | Trusted match (SA ID, verified email, or exact cell + name) to an imported member, club not activated, no other pending claim | **Smooth path:** Temporary Chairman at once. The 7-day notice and dispute window apply |
+   | Also matches an imported office bearer or the club contact | Same as above; flagged as stronger evidence |
+   | Weak match only (name only, or phone with a different name, e.g. a family member) | Linked as a member only after the existing OTP step. The claim goes to quick review (association or Super Admin) |
+   | No match to that club | May still claim: joins as a new member (with the duplicate check) and the claim goes to quick review |
+   | Another claim already pending | Second claimant told it is pending and may dispute or wait. First verified claim wins; never two |
+   | Club already activated (has a Chairman or Temporary Chairman) | No claim. They can ask to join, or dispute through the club's process or the Super Admin |
+   | A match later found false (wrong person linked) | The member link is reversed by the existing correction tools. If they claimed the club, the Super Admin recovery removes the temporary Chairman. Data is kept |
+
+4. **Activation:** they become **Temporary Chairman (setup)** of that club. All imported members, history and records stay untouched. Other imported members stay unlinked until they activate their own accounts.
 5. **Takeover protection, which matters most here:**
    - One pending claim per club.
    - A public "club claimed" notice on the club page for 7 days.
    - Imported office bearers and the association are notified, where contact details exist.
    - Anyone can dispute within that window. A dispute freezes grant authority and sensitive actions until it is resolved.
-   - Weaker evidence on its own means a quick review before activation (D24).
 
 **Pathway B: genuinely new club (not in the database, including international clubs)**
 1. The duplicate-club search runs first (worldwide). If no match is found, the person creates the club with country, town and contact details.

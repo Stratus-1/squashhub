@@ -3035,29 +3035,35 @@ export type Database = {
       club_bar_settings: {
         Row: {
           allow_negative_stock: boolean
+          bar_allow_member_debit: boolean
           club_id: string
           costing_enabled: boolean
           costing_enabled_at: string | null
           costing_enabled_by: string | null
           created_at: string
+          shop_allow_member_debit: boolean
           updated_at: string
         }
         Insert: {
           allow_negative_stock?: boolean
+          bar_allow_member_debit?: boolean
           club_id: string
           costing_enabled?: boolean
           costing_enabled_at?: string | null
           costing_enabled_by?: string | null
           created_at?: string
+          shop_allow_member_debit?: boolean
           updated_at?: string
         }
         Update: {
           allow_negative_stock?: boolean
+          bar_allow_member_debit?: boolean
           club_id?: string
           costing_enabled?: boolean
           costing_enabled_at?: string | null
           costing_enabled_by?: string | null
           created_at?: string
+          shop_allow_member_debit?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -19347,6 +19353,15 @@ export type Database = {
       member_access_blocked: {
         Args: { _club_id: string; _member_id?: string; _user_id: string }
         Returns: boolean
+      }
+      member_account_gate: {
+        Args: { _club_member_id: string; _extra?: number }
+        Returns: {
+          allowance: number
+          current_owing: number
+          projected_owing: number
+          shortfall: number
+        }[]
       }
       member_competition_status: {
         Args: { _club_member_ids: string[] }

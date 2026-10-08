@@ -2715,3 +2715,6 @@ Added separate Peak Hours card (Edit/Save/Cancel), member events moved to sectio
 - Added a small, muted, horizontally centred line under the club row in the display header: "View only — To make changes to your booking, please log in to the SquashHub app." (11px phone / 14px desktop, muted foreground).
 - Header is now a two-row card: existing logo/club name/clock/full-screen row unchanged, notice below. Peak P markers, booking rules, penalties and permissions untouched.
 - Validation: courts-display-peak.test.tsx (6) passes, including the notice; Uitsig display token checked live at 1280x1800, 1280x800, 390x844 and 360x740 — notice centred (0px offset), single line on desktop, two lines on phone, no clipping/overlap, 20 peak markers, no console errors. Preview only, not published.
+
+## 2026-10-08 Bar/Shop "Allow member account to go into debit"
+Separate Bar and Shop switches (default on). When off, account charges that would exceed the booking-gate allowance (credit + fees under active monthly mandate) are refused server-side; nothing posted. Tests: src/test/account-charge-gate.test.ts; rolled-back backend test on Riverside.

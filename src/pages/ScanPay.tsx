@@ -1,3 +1,4 @@
+import { barChargeErrorMessage } from "@/lib/account-charge-gate";
 /**
  * Public Scan-to-Pay page — `/s/:code`
  *
@@ -347,7 +348,7 @@ export default function ScanPay() {
       setCheckingOut(false);
       toast.success("Added to your tab — settle up when you're ready.");
     } catch (err: any) {
-      toast.error(err.message || "Could not add to your tab");
+      toast.error(barChargeErrorMessage(err, "Could not add to your tab"), { duration: 10000 });
     } finally {
       setSubmitting(false);
     }
@@ -404,7 +405,7 @@ export default function ScanPay() {
         terminal: method === "terminal",
       });
     } catch (err: any) {
-      toast.error(err.message || "Could not settle your tab");
+      toast.error(barChargeErrorMessage(err, "Could not settle your tab"), { duration: 10000 });
     } finally {
       setSubmitting(false);
     }
@@ -427,7 +428,7 @@ export default function ScanPay() {
       setCart({});
       setCheckingOut(false);
     } catch (err: any) {
-      toast.error(err.message || "Could not send your order to the bar");
+      toast.error(barChargeErrorMessage(err, "Could not send your order to the bar"), { duration: 10000 });
     } finally {
       setSubmitting(false);
     }

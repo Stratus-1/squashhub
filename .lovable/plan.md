@@ -105,7 +105,12 @@ Delegation rules:
 - The Chairman cannot appoint themselves (they already hold the office) or remove themselves without naming a successor.
 - Secretary, Club Captain, Treasurer and Vice-Chair offices are set by the Chairman. These offices carry no rights by themselves; rights come from their templates.
 - **Super Admin oversight (not routine):** the Super Admin can freeze grants for a club or revoke a grant for a security incident. This needs a reason, is logged, and notifies office bearers.
-- **Absent or incapacitated Chairman:** this is not decided and is not routine; see D23.
+- **Exceptional recovery (owner decision):** if the Chairman resigns, disappears, is incapacitated or can't start a handover, the **platform Super Admin may appoint a new Chairman**. This is the only Super Admin role in succession.
+  - **Vice-Chair (or any office bearer) may raise a recovery request**, with a reason, but **cannot take the Chairman role themselves**. The request goes to the Super Admin's queue and is audited.
+  - The Super Admin chooses an active member of that club with a login. A reason and evidence (e.g. resignation letter or committee minutes) are required. The Super Admin re-authenticates.
+  - The same single atomic step closes the old office and opens the new one, so there is exactly one Chairman per club at all times. Any pending handover is cancelled.
+  - The recovery record (Super Admin, club, old and new Chairman, reason, evidence, request link, time) can't be edited or deleted. Office bearers and the outgoing Chairman, where reachable, are notified.
+  - Super Admin recovery is checked against the club; the Super Admin's own club rights don't change.
 
 ## 3a. Member data and the Secretary (owner clarification)
 
@@ -420,11 +425,7 @@ Operations preserved:
   - In both options, nobody may self-approve transactions, the Chairman office changes only by handover, and nothing crosses clubs. This plan keeps both written down until you choose. Until then, (b) is the safer default.
 - **D21.** Approve the proposed office-bearer defaults in section 3d (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain).
 - **D22.** Succession: must the successor accept before taking over (proposed), or does the handover take effect without acceptance?
-- **D23. Absent or incapacitated Chairman (exceptional, not routine):** options:
-  - (a) Two office bearers (e.g. Secretary + Vice-Chair) jointly appoint an interim Chairman, after a 7-day notice to the absent Chairman.
-  - (b) A Chairman-named deputy (Vice-Chair) takes over automatically after a set absence.
-  - (c) The Super Admin acts on a written club resolution, as a last resort only.
-  - (d) No recovery in the app; the club handles it outside the app.
+- **D23.** Decided by the owner (section "Exceptional recovery"). Remaining detail: what counts as acceptable evidence (e.g. committee minutes or resignation letter upload), and whether to notify the outgoing Chairman before the Super Admin acts (proposed: yes, where reachable).
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

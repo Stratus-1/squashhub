@@ -1632,5 +1632,6 @@ export function MemberOnboardingWizard({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

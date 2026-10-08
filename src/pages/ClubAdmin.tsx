@@ -55,6 +55,9 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ClubAdminNavigation, type AdminNavigationItem } from "@/components/club-admin/ClubAdminNavigation";
 import { ClubAdminSetupPresentation } from "@/components/club-admin/setup/SetupSteps";
+import { useMenuPrefs } from "@/hooks/use-menu-prefs";
+import { applyOrder, visibleOnly } from "@/lib/menu-order";
+import { MenuOrderEditor } from "@/components/MenuOrderEditor";
 
 
 type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability; startHere?: boolean };
@@ -103,13 +106,13 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky", capability: "visitors" },
   { value: "skills", label: "Skills Directory", icon: HeartHandshake, permission: "members", color: "rose", noStatus: true, capability: "skills" },
   { value: "finance", label: "Club Books", icon: Landmark, permission: "finance", color: "teal", capability: "finance" },
+  { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow", capability: "tournaments" },
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Member Communications", icon: Mail, permission: "communications", color: "blue" },
   { value: "emails", label: "Message Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
   { value: "updates", label: "Updates from SquashHub", icon: Megaphone, permission: "communications", color: "rose", noStatus: true },
-  { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   // AI Assistant tab hidden while the feature is being reworked.
 ];
 

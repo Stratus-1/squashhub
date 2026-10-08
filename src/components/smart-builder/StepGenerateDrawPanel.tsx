@@ -11,6 +11,7 @@ import { Loader2, ChevronRight, AlertTriangle, Maximize2, Minimize2 } from "luci
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { applySetupSessions } from "@/lib/smart-builder/session-slots";
@@ -65,6 +66,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [pickDraft, setPickDraft] = useState<Record<number, [string, string]>>({});
   const [confirmed, setConfirmed] = useState(false);
   const [notifyDraw, setNotifyDraw] = useState(true);
+  const [askSend, setAskSend] = useState<{ after: boolean } | null>(null);
+  const [sendCh, setSendCh] = useState<{ app: boolean; email: boolean }>({ app: true, email: false });
+  const [sending, setSending] = useState(false);
   const [rebuildOk, setRebuildOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
@@ -506,6 +510,24 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     finally { setBusy(false); }
   };
 
+  const closeAsk = () => { const after = askSend?.after; setAskSend(null); if (after) navigate(fixturesUrl()); };
+  const sendDraw = async () => {
+    const want = [sendCh.app && "app", sendCh.email && "email"].filter(Boolean) as string[];
+    if (!want.length) { toast.error("Choose In-app and/or Email."); return; }
+    setSending(true);
+    try {
+      // The notice goes out through the tournament's channels: set app/email to this choice, keep any others.
+      const { data: t } = await fromExt("tournaments").select("invite_methods").eq("id", tournamentId).maybeSingle();
+      const others = (((t as any)?.invite_methods ?? []) as string[]).filter((c) => c !== "app" && c !== "email");
+      const { error } = await fromExt("tournaments").update({ invite_methods: [...want, ...others] }).eq("id", tournamentId);
+      if (error) throw error;
+      const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1, skipPrompt: true });
+      toast.success(roundNotifySummary(r));
+      closeAsk();
+    } catch (e: any) { toast.error(`Players weren't notified: ${e.message ?? e}`); }
+    finally { setSending(false); }
+  };
+
   const generate = async () => {
     if (!meta) return;
     const ko = seeded.some((d) => proposals.has(d.group));
@@ -546,12 +568,12 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       catch (e: any) { toast.error(`Games not placed on courts: ${e.message ?? e}`); }
       {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.
-        try { const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1 }); toast.success(roundNotifySummary(r)); }
-        catch (e: any) { toast.error(`Draw saved, but players weren't notified: ${e.message ?? e}`); }
+        // Never sent automatically: ask the organiser now (unless setup chose Off).
       }
       setConfirmed(false); setRebuildOk(false);
       await load();
       onGenerated({ games });
+      if (notifyDraw) { setAskSend({ after: true }); return; }
       // Success only: take the organiser straight to this tournament's fixtures/games view.
       navigate(fixturesUrl());
     } catch (e: any) {
@@ -589,6 +611,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div className="flex flex-wrap gap-2">
             <Button size="sm" asChild><Link to={`/club-champs/${tournamentId}`}>Open draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Link></Button>
             <Button size="sm" variant="outline" asChild><Link to={`/beta-tournament/${tournamentId}`}>Manage stages / play-offs</Link></Button>
+            <Button size="sm" variant="outline" onClick={() => setAskSend({ after: false })}>Send draw to players</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={placeOnCourts}>Place games on courts (as per setup)</Button>
             {existing.played === 0 && !rebuildOk && <Button size="sm" variant="destructive" onClick={() => setRebuildOk(true)}>Make a new draw (replace this one)</Button>}
           </div>
@@ -817,6 +840,22 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           )}
         </>
       )}
+      <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send draw to players now?</DialogTitle>
+            <DialogDescription>Each Round 1 player is told who they play, the opponent's phone number and their court/time or play-by date. Nothing has been sent yet.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <label className="flex items-center gap-2"><Checkbox checked={sendCh.app} onCheckedChange={(v) => setSendCh((c) => ({ ...c, app: !!v }))} />In-app</label>
+            <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeAsk} disabled={sending}>Not now</Button>
+            <Button onClick={sendDraw} disabled={sending || (!sendCh.app && !sendCh.email)}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {revisiting && null}
     </div>
   );

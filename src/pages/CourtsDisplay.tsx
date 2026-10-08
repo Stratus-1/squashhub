@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Maximize } from "lucide-react";
@@ -11,6 +11,8 @@ type Board = {
   bookings: { court_id: number; start: string; end: string; type: string | null; label: string }[];
 };
 
+/** Smallest readable slot row; shorter screens scroll inside the board instead of hiding rows. */
+const MIN_ROW_PX = 22;
 const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const nowSast = () => { const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Johannesburg" })); return d.getHours() * 60 + d.getMinutes(); };
@@ -64,7 +66,14 @@ function ClubMark({ logoUrl, name }: { logoUrl: string | null; name: string }) {
 export default function CourtsDisplay() {
   const { token = "" } = useParams();
   const [now, setNow] = useState(nowSast());
-  useEffect(() => { document.documentElement.classList.add("dark"); const i = setInterval(() => setNow(nowSast()), 30000); return () => clearInterval(i); }, []);
+  useEffect(() => { document.documentElement.classList.add("dark"); const prevOverflow = document.body.style.overflow; document.body.style.overflow = "hidden"; const i = setInterval(() => setNow(nowSast()), 30000); return () => { clearInterval(i); document.body.style.overflow = prevOverflow; }; }, []);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridH, setGridH] = useState(0);
+  useEffect(() => {
+    const el = gridRef.current; if (!el) return;
+    const ro = new ResizeObserver(() => setGridH(el.clientHeight)); ro.observe(el); setGridH(el.clientHeight);
+    return () => ro.disconnect();
+  });
   const { data, isLoading } = useQuery({
     queryKey: ["courts-display", token],
     queryFn: async () => { const { data, error } = await rpcExt("court_display_board", { _token: token }); if (error) throw error; return data as Board | null; },
@@ -78,11 +87,13 @@ export default function CourtsDisplay() {
   // time, running through the END of the last configured slot (e.g. 21:45 slot -> 22:30).
   const { start, end, slots } = displayGrid(data);
   const span = end - start;
+  // Room for the closing-time label only when rows are tall enough not to overlap the last start label.
+  const showEnd = gridH > 0 && (gridH - 44) / Math.max(slots.length, 1) >= 36;
   const pct = (m: number) => `${((m - start) / span) * 100}%`;
   const dateLabel = new Date(data.date + "T12:00:00").toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
       <header className="relative flex items-center gap-3 sm:gap-4 overflow-hidden rounded-xl border border-border bg-card/60 px-3 py-2.5 sm:px-5 sm:py-3.5">
         <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
         <ClubMark logoUrl={data.club.logo_url} name={data.club.name} />
@@ -99,19 +110,20 @@ export default function CourtsDisplay() {
         </button>
       </header>
 
-      <div className="flex-1 flex min-h-0 rounded-xl border border-border overflow-hidden">
+      <div ref={gridRef} className="flex-1 min-h-0 rounded-xl border border-border overflow-y-auto overflow-x-hidden">
+      <div className="flex h-full" style={{ minHeight: `calc(2.75rem + ${slots.length * MIN_ROW_PX}px)` }}>
         <div className="w-16 shrink-0 flex flex-col border-r border-border">
           {/* Spacer matching the court header row so hour labels line up with the booking grid. */}
-          <div aria-hidden className="text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>
+          <div aria-hidden className="sticky top-0 z-20 text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>
           <div className="flex-1 relative">
             {slots.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
             {/* End of the final slot, kept inside the frame so it's never clipped. */}
-            <div className="absolute left-0 right-0 bottom-0 text-sm leading-none text-muted-foreground px-1 pb-1">{hhmm(end)}</div>
+            {showEnd && <div className="absolute left-0 right-0 bottom-0 text-sm leading-none text-muted-foreground px-1 pb-1">{hhmm(end)}</div>}
           </div>
         </div>
         {data.courts.map((c) => (
           <div key={c.id} className="flex-1 flex flex-col min-w-0 border-r border-border last:border-r-0">
-            <div className="text-center font-semibold text-xl py-2 border-b border-border bg-muted/40 truncate px-2">{c.name}</div>
+            <div className="sticky top-0 z-20 text-center font-semibold text-xl py-2 border-b border-border bg-card truncate px-2">{c.name}</div>
             <div className="flex-1 relative">
               {slots.map((h) => <div key={h} className={`absolute left-0 right-0 border-t ${h % 60 === 0 ? "border-border" : "border-border/40"}`} style={{ top: pct(h) }} />)}
               {data.bookings.filter((b) => b.court_id === c.id).map((b, i) => {
@@ -127,6 +139,7 @@ export default function CourtsDisplay() {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

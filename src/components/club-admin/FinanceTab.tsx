@@ -383,6 +383,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     ? (journalEntries || [])
     : (journalEntries || []).filter((e: any) => e.account === accountFilter);
 
+  const linkedTxId = (() => { try { return new URLSearchParams(window.location.search).get("tx"); } catch { return null; } })();
+
   /* ─── Confirm / reject EFT payment ───
    * One server call (finance_decide_member_transaction) checks the club-scoped
    * Club Books permission, locks the row and only acts while it is still
@@ -1006,6 +1008,11 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               <Clock className="w-4 h-4 text-amber-600" />
               <h3 className="font-semibold text-sm">Pending EFT Payments</h3>
             </div>
+            {!pendingLoading && linkedTxId && !(pendingTransactions || []).some((t: any) => t.id === linkedTxId) && (
+              <p role="status" className="text-xs rounded-md border border-border bg-muted/40 px-3 py-2">
+                The payment from your notification has already been dealt with (or isn't in this club). Nothing more to do.
+              </p>
+            )}
             {pendingLoading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (pendingTransactions || []).length === 0 ? (
@@ -1013,7 +1020,12 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
             ) : (
               <div className="space-y-2">
                 {(pendingTransactions || []).map((tx: any) => (
-                  <div key={tx.id} className="flex items-center justify-between border rounded-lg p-3 bg-muted/30">
+                  <div
+                    key={tx.id}
+                    data-tx-id={tx.id}
+                    ref={tx.id === linkedTxId ? (el) => el?.scrollIntoView({ block: "center" }) : undefined}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border rounded-lg p-3 bg-muted/30 ${tx.id === linkedTxId ? "ring-2 ring-primary" : ""}`}
+                  >
                     <div className="space-y-0.5">
                       <div className="font-medium text-sm">{getMemberName(tx.club_member_id)}</div>
                       <div className="text-xs text-muted-foreground">
@@ -1025,7 +1037,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                         {format(new Date(tx.created_at), "dd MMM yyyy HH:mm")}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {tx.proof_url ? (
                         <Button size="sm" variant="outline" onClick={async () => {
                           const { data, error } = await sbClient.storage.from("payment-proofs").createSignedUrl(tx.proof_url, 600);

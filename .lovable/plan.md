@@ -130,6 +130,30 @@ Delegation rules:
 - Bulk export: a separate capability, every export logged (who, when, row count, columns), ID and DOB excluded unless chosen. Proposed: Secretary holds it by default, with logging.
 - Credentials: nobody at club level sees or sets passwords. Login linking and face data stay separate capabilities.
 
+## 3b. Per-person overrides (owner clarification)
+
+Role templates, including office-bearer templates such as Secretary, are **starting points**. The Chairman can adjust one person without touching the template or anyone else holding that role.
+
+```text
+effective rights = rights from their roles
+                 + individual grants (authorised)
+                 - individual denies   (deny always wins)
+```
+
+- **Individual deny:** removes one capability from one person even though their role has it. The template and other holders are unchanged.
+- **Individual grant:** adds one capability to one person, within the normal grant rules (finance and sensitive rights only by the Chairman or Super Admin; operational rights by the Chairman, Super Admin, or a holder with the delegate flag).
+- **Template changes:** apply to everyone holding the role, but never undo a personal deny. A personal grant stays until removed.
+- **Who may override:** the Chairman (own club) and the Super Admin. For an operational capability, a delegator may revoke only what they themselves granted.
+- **No self-changes:** nobody can add, deny or remove their own capabilities. The Chairman can't change their own roles or overrides; only the Super Admin can.
+- **Immediate effect:**
+  - The server checks the effective rights on every action, so a deny applies to the next action straight away.
+  - Open screens refresh the person's rights within seconds through a live update, plus a re-check on every save.
+  - Device sessions such as counter PINs are re-checked at each use.
+- **Clear display:** in Permissions → Person, each capability shows its source ("From role: Secretary", "Personal grant by Chairman 8 Oct", "Denied personally by Chairman 8 Oct: reason"). Overrides are highlighted. Role pages show "3 holders, 1 with personal changes".
+- **Audit:** every grant, deny, removal and expiry records who, for whom, which capability, club, reason and time. The reason is required.
+- **Rights passed on by a revoked person:** when someone loses a capability they had delegated, the grants they made are listed for the Chairman. Proposed: those grants keep working until reviewed but are flagged; the Chairman can then confirm or revoke them (see D15). Finance and sensitive rights are never delegated, so they are never affected this way.
+- **Legacy mode:** overrides are recorded but only take effect when the club switches legacy mode off. They show in the shadow report beforehand.
+
 ## 4. Default role templates (renamed, editable, none implicit)
 | Template | Content (summary) | Class |
 |---|---|---|
@@ -279,8 +303,9 @@ Operations preserved:
 - **D12.** Approve the office-field lock (stage 2) early as a stand-alone fix?
 - **D13.** Family exclusions based on account delegations, family groups, or both?
 - **D14.** Member data (section 3a): approve the Secretary default; choose which higher-risk protections, if any, to add (ID number, date of birth, suspension and billing, bulk export, face data).
+- **D15.** Personal overrides (section 3b): on revocation, should rights the person passed on be **flagged for review** (proposed) or **suspended at once until reviewed**? Should temporary grants or denies (with an expiry date) be allowed?
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.
-- New (proposed): `capability_catalogue(key, area, class, delegable)`, `member_capabilities(club_id, club_member_id, key, can_delegate, granted_by, source)`, `club_offices(club_id, office, club_member_id, appointed_by, reason)`, `permission_events` (append-only), `club_permission_settings(legacy_mode, thresholds, separation flags)`, `permission_shadow_log`, `has_cap()`, `can_grant()`, `appoint_office()`, `self_grant_requests`.
+- New (proposed): `capability_catalogue(key, area, class, delegable)`, `member_role_assignments(club_id, club_member_id, role_id, assigned_by, reason)`, `member_capability_overrides(club_id, club_member_id, key, effect grant|deny, can_delegate, granted_by, reason, expires_at, revoked_at)`, `club_offices(club_id, office, club_member_id, appointed_by, reason)`, `permission_events` (append-only), `club_permission_settings(legacy_mode, thresholds, separation flags)`, `permission_shadow_log`, a view `effective_capabilities` (role defaults ∪ grants − denies, with source columns), `has_cap()` reading that view, `can_grant()`, `appoint_office()`, `self_grant_requests`.
 - `mandate_notification_recipients` moves to `has_cap(..., 'fin.mandates.view')`. The EFT attribution migration stays cancelled; attribution will come from audit events.

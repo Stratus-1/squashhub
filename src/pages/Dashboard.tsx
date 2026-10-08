@@ -100,6 +100,8 @@ export default function Dashboard() {
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const [editDash, setEditDash] = useState(false);
+  // Pilot: Edit dashboard button shown in Riverside only for now (display-only feature).
+  const dashEditPilot = clubId === "11111111-1111-1111-1111-111111111111";
   const { prefs: dashPrefs, save: dashSave } = useMenuPrefs("member-dashboard", clubId);
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -956,11 +958,11 @@ export default function Dashboard() {
         <DashboardRouterCard />
       </div>
 
-      <div className="px-4 mt-2 flex justify-end">
+      {dashEditPilot && <div className="px-4 mt-2 flex justify-end">
         <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setEditDash(true)}>
           <LayoutGrid className="w-3.5 h-3.5" /> Edit dashboard
         </Button>
-      </div>
+      </div>}
 
       <div className="flex flex-col">
       {sec("my-stats", !isPendingApplicant && (

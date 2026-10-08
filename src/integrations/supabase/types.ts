@@ -1960,6 +1960,257 @@ export type Database = {
           },
         ]
       }
+      capability_catalogue: {
+        Row: {
+          action: string
+          area: string
+          cap_class: string
+          created_at: string
+          delegable: boolean
+          description: string | null
+          key: string
+        }
+        Insert: {
+          action: string
+          area: string
+          cap_class: string
+          created_at?: string
+          delegable?: boolean
+          description?: string | null
+          key: string
+        }
+        Update: {
+          action?: string
+          area?: string
+          cap_class?: string
+          created_at?: string
+          delegable?: boolean
+          description?: string | null
+          key?: string
+        }
+        Relationships: []
+      }
+      capability_nominations: {
+        Row: {
+          capability_key: string
+          club_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          last_reminded_at: string | null
+          nominated_by: string
+          nominee_member_id: string
+          reason: string | null
+          reminder_count: number
+          scope: string | null
+          status: string
+        }
+        Insert: {
+          capability_key: string
+          club_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          last_reminded_at?: string | null
+          nominated_by: string
+          nominee_member_id: string
+          reason?: string | null
+          reminder_count?: number
+          scope?: string | null
+          status?: string
+        }
+        Update: {
+          capability_key?: string
+          club_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          last_reminded_at?: string | null
+          nominated_by?: string
+          nominee_member_id?: string
+          reason?: string | null
+          reminder_count?: number
+          scope?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capability_nominations_capability_key_fkey"
+            columns: ["capability_key"]
+            isOneToOne: false
+            referencedRelation: "capability_catalogue"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "capability_nominations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capability_nominations_nominee_member_id_fkey"
+            columns: ["nominee_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chairman_emergency_requests: {
+        Row: {
+          club_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          initiated_by: string
+          proposed_member_id: string
+          reason: string
+          status: string
+        }
+        Insert: {
+          club_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          initiated_by: string
+          proposed_member_id: string
+          reason: string
+          status?: string
+        }
+        Update: {
+          club_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string
+          proposed_member_id?: string
+          reason?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chairman_emergency_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chairman_emergency_requests_proposed_member_id_fkey"
+            columns: ["proposed_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chairman_emergency_votes: {
+        Row: {
+          created_at: string
+          id: string
+          request_id: string
+          voter_member_id: string
+          voter_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_id: string
+          voter_member_id: string
+          voter_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_id?: string
+          voter_member_id?: string
+          voter_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chairman_emergency_votes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "chairman_emergency_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chairman_emergency_votes_voter_member_id_fkey"
+            columns: ["voter_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chairman_handovers: {
+        Row: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          club_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          effective_at: string | null
+          from_member_id: string
+          id: string
+          status: string
+          to_member_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          club_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          effective_at?: string | null
+          from_member_id: string
+          id?: string
+          status?: string
+          to_member_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          club_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          effective_at?: string | null
+          from_member_id?: string
+          id?: string
+          status?: string
+          to_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chairman_handovers_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chairman_handovers_from_member_id_fkey"
+            columns: ["from_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chairman_handovers_to_member_id_fkey"
+            columns: ["to_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_schedules: {
         Row: {
           booking_id: string | null
@@ -5379,6 +5630,57 @@ export type Database = {
           },
         ]
       }
+      club_offices: {
+        Row: {
+          appointed_by: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          office: string
+          reason: string | null
+          started_at: string
+        }
+        Insert: {
+          appointed_by?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          office: string
+          reason?: string | null
+          started_at?: string
+        }
+        Update: {
+          appointed_by?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          office?: string
+          reason?: string | null
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_offices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_offices_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_permission_roles: {
         Row: {
           club_id: string
@@ -5412,6 +5714,47 @@ export type Database = {
             foreignKeyName: "club_permission_roles_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_permission_settings: {
+        Row: {
+          club_id: string
+          created_at: string
+          discount_second_approval_cents: number
+          journal_second_approval_cents: number
+          legacy_mode: boolean
+          new_permissions_enabled: boolean
+          refund_second_approval: boolean
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          discount_second_approval_cents?: number
+          journal_second_approval_cents?: number
+          legacy_mode?: boolean
+          new_permissions_enabled?: boolean
+          refund_second_approval?: boolean
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          discount_second_approval_cents?: number
+          journal_second_approval_cents?: number
+          legacy_mode?: boolean
+          new_permissions_enabled?: boolean
+          refund_second_approval?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_permission_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
@@ -10978,6 +11321,83 @@ export type Database = {
           },
         ]
       }
+      member_capability_overrides: {
+        Row: {
+          can_delegate: boolean
+          capability_key: string
+          club_id: string
+          club_member_id: string
+          created_at: string
+          delegated_from: string | null
+          effect: string
+          granted_by: string | null
+          id: string
+          reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          source: string
+        }
+        Insert: {
+          can_delegate?: boolean
+          capability_key: string
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          delegated_from?: string | null
+          effect: string
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source?: string
+        }
+        Update: {
+          can_delegate?: boolean
+          capability_key?: string
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          delegated_from?: string | null
+          effect?: string
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_capability_overrides_capability_key_fkey"
+            columns: ["capability_key"]
+            isOneToOne: false
+            referencedRelation: "capability_catalogue"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "member_capability_overrides_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_capability_overrides_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_capability_overrides_delegated_from_fkey"
+            columns: ["delegated_from"]
+            isOneToOne: false
+            referencedRelation: "member_capability_overrides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_credit_transactions: {
         Row: {
           amount: number
@@ -11431,6 +11851,70 @@ export type Database = {
             columns: ["club_member_id"]
             isOneToOne: true
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_role_assignments: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          delegated_from: string | null
+          granted_by: string | null
+          id: string
+          reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role_name: string
+          source: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          delegated_from?: string | null
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_name: string
+          source?: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          delegated_from?: string | null
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_name?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_role_assignments_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_role_assignments_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_role_assignments_delegated_from_fkey"
+            columns: ["delegated_from"]
+            isOneToOne: false
+            referencedRelation: "member_role_assignments"
             referencedColumns: ["id"]
           },
         ]
@@ -12787,6 +13271,132 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: true
             referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permission_events: {
+        Row: {
+          actor_member_id: string | null
+          actor_user_id: string | null
+          capability_key: string | null
+          club_id: string
+          created_at: string
+          detail: Json
+          event_type: string
+          id: string
+          office: string | null
+          role_name: string | null
+          target_member_id: string | null
+        }
+        Insert: {
+          actor_member_id?: string | null
+          actor_user_id?: string | null
+          capability_key?: string | null
+          club_id: string
+          created_at?: string
+          detail?: Json
+          event_type: string
+          id?: string
+          office?: string | null
+          role_name?: string | null
+          target_member_id?: string | null
+        }
+        Update: {
+          actor_member_id?: string | null
+          actor_user_id?: string | null
+          capability_key?: string | null
+          club_id?: string
+          created_at?: string
+          detail?: Json
+          event_type?: string
+          id?: string
+          office?: string | null
+          role_name?: string | null
+          target_member_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permission_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permission_inventory_snapshots: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          snapshot: Json
+          stage: string
+          taken_by: string | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          snapshot: Json
+          stage: string
+          taken_by?: string | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          stage?: string
+          taken_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permission_inventory_snapshots_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permission_shadow_log: {
+        Row: {
+          capability_key: string
+          club_id: string
+          context: Json
+          created_at: string
+          id: string
+          legacy_answer: boolean
+          new_answer: boolean
+          user_id: string
+        }
+        Insert: {
+          capability_key: string
+          club_id: string
+          context?: Json
+          created_at?: string
+          id?: string
+          legacy_answer: boolean
+          new_answer: boolean
+          user_id: string
+        }
+        Update: {
+          capability_key?: string
+          club_id?: string
+          context?: Json
+          created_at?: string
+          id?: string
+          legacy_answer?: boolean
+          new_answer?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permission_shadow_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -18061,6 +18671,10 @@ export type Database = {
         Args: { _club_id: string; _tournament_id: string; _uid: string }
         Returns: boolean
       }
+      can_grant: {
+        Args: { _capability: string; _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_host_at_club: {
         Args: { _club: string; _uid: string }
         Returns: boolean
@@ -18939,6 +19553,10 @@ export type Database = {
       }
       has_active_visitor_pass: {
         Args: { p_club_member_id: string }
+        Returns: boolean
+      }
+      has_cap: {
+        Args: { _capability: string; _club_id: string; _user_id: string }
         Returns: boolean
       }
       has_club_permission: {

@@ -1202,8 +1202,8 @@ export default function Dashboard() {
             No match results yet
           </Card>
         )}
-      </motion.div>
-
+      </motion.div>)}
+      <div style={{ order: secOrder("match-results") + 5 }}>
       {trackableBooking && (
         <motion.div
           className="px-4 mt-3"
@@ -1300,6 +1300,7 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
+      </div>
 
 
       {sec("tournaments", <div className="px-4 mt-4">

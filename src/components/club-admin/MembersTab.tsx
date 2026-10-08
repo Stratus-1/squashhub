@@ -27,6 +27,7 @@ import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
 import { MemberStandingDialog, type MemberStanding } from "./MemberStandingDialog";
+import { ResolveDuplicateDialog } from "./ResolveDuplicateDialog";
 import { useCompetitionStatus } from "@/hooks/use-competition-status";
 import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
@@ -201,7 +202,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, onCompetitionStatus, isSuperAdmin }: {
+function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, onCompetitionStatus, onResolveDuplicate, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -217,6 +218,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
   onAffiliate?: () => void;
   onCompetitionStatus?: () => void;
+  onResolveDuplicate?: () => void;
   isSuperAdmin?: boolean;
 }) {
 
@@ -259,6 +261,9 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             <DropdownMenuItem onClick={() => onChangeStatus(m, "active")}>{status === "active" ? "Active" : "Reinstate…"}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onChangeStatus(m, "suspended")}>Suspend…</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onChangeStatus(m, "resigned")}>Resign…</DropdownMenuItem>
+            {onResolveDuplicate && (
+              <DropdownMenuItem onClick={onResolveDuplicate}>Resolve duplicate…</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[9px] px-1 py-0 shrink-0">{m.role}</Badge>
@@ -426,6 +431,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const [affiliateMember, setAffiliateMember] = useState<ClubMember | null>(null);
   const [statusMember, setStatusMember] = useState<ClubMember | null>(null);
+  const [dupMember, setDupMember] = useState<ClubMember | null>(null);
   const [standingChange, setStandingChange] = useState<{ member: ClubMember; status: MemberStanding } | null>(null);
 
   const qc = useQueryClient();
@@ -1083,6 +1089,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onChangeStatus={handleChangeStatus}
                     onAffiliate={() => setAffiliateMember(m)}
                     onCompetitionStatus={() => setStatusMember(m)}
+                    onResolveDuplicate={() => setDupMember(m)}
                     isSuperAdmin={isSuperAdmin}
                   />
 
@@ -1126,6 +1133,14 @@ export function MembersTab({ clubId }: { clubId: string }) {
           memberId={statusMember.id}
           memberName={statusMember.name || statusMember.profiles?.name || "Member"}
           onClose={() => setStatusMember(null)}
+        />
+      )}
+      {dupMember && (
+        <ResolveDuplicateDialog
+          clubId={clubId}
+          source={dupMember}
+          members={members}
+          onClose={() => setDupMember(null)}
         />
       )}
 

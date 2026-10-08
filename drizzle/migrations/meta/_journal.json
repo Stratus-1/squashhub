@@ -645,6 +645,13 @@
       "when": 1791425616338,
       "tag": "0091_free_visitor_bookings_per_year",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1791455141392,
+      "tag": "0092_admin_resolve_duplicate_member",
+      "breakpoints": true
     }
   ]
 }

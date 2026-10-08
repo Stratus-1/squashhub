@@ -56,6 +56,25 @@ There were no other member charges from scheduled billing, manual journals or re
 - **Done:** the read-only investigation above.
 - **Not done (planned, waiting for your approval):** everything below. No records, charges, logins or code have been changed.
 
+### Extra checks for the confirmed corrections (read-only, done)
+- **No payments against the 23 charges:** none of the 23 members has any payment or credit on their account, so **no refunds are needed**.
+- None of the 23 has any fee line, and none has had any other ledger activity since 30 Aug. Reversing these postings therefore affects nothing else.
+- **Likely cause** (not proven): the fee line and its ledger posting are made together when a fee line is created. Here the postings survived but the fee lines are gone, so the import's SSA/NSA fee lines were probably removed later without reversing their postings.
+- **Current state:** the automatic fee set-up for new and imported members **no longer raises SSA/NSA**. It now only raises the club category fee. So the 30 Aug problem cannot repeat through that route today. Point (e) below still adds a hard block and tests.
+
+### Exact implementation and checks for (a) and (b), run only after you approve
+1. **Snapshot first:** record the 46 posting IDs (23 × SSA R300 + 23 × NSA R160, Uitsig, 30 Aug 07:04–07:05, posted with no fee line). Confirm the count is 46 and the total is R10,580 before running anything.
+2. **Reverse in one all-or-nothing step:** for each original posting, add the exact opposite pair under a new reference. Debtors is credited, league fee income is debited, and each new pair points back to the original it cancels. It is described as "Reversal: erroneous SSA/NSA import seeding 30 Aug 2026". Originals are never edited or deleted.
+3. **Safe to repeat:** any posting that already has a reversal is skipped, so a re-run can't double-reverse.
+4. **Audit trail:** one record per member with the before/after balance, the reason and the actor.
+5. **Check after:**
+   - Each of the 23 members' balances fell by exactly R460, and their SSA/NSA net is R0.
+   - Club debtors fell by R10,580.
+   - The postings count rose by exactly 92 (46 pairs).
+   - No other member, fee line or club fee changed.
+   - Michiel Heyns (UITS2970) no longer shows R460.
+6. **(b) R200:** only after identity is positively confirmed as a duplicate. Mark the R200 fee line as cancelled (it is unpaid; checked) and add one reversing pair linked to it. Check that the balance falls by R200 and the R200 no longer counts as outstanding. The application and identity records stay unchanged until then.
+
 ## 7. Requested clean-up (planned)
 
 **(a) Clear the 23 wrong SSA/NSA charges (R10,580).**

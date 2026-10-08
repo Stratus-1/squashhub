@@ -715,6 +715,13 @@
       "when": 1791468804035,
       "tag": "0101_permissions_stage3_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1791468954796,
+      "tag": "0102_user_menu_preferences",
+      "breakpoints": true
     }
   ]
 }

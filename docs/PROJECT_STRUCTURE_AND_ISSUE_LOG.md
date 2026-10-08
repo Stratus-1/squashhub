@@ -2728,3 +2728,6 @@ Causes: (1) right after sign-in the permission check ran before member details l
 
 ### 2026-10-08 Bar/Shop early account warning
 - Member Bar basket (Buy + My Tab) and admin Add Charge show "Your member account cannot be charged..." as the basket changes when the Bar/Shop no-debit switch would refuse it (same court-booking allowance rule). Final ACCOUNT_LIMIT refusals now stay until dismissed. `member_account_gate` no longer directly callable by signed-in users; new guarded `bar_account_charge_preview`.
+
+### 2026-10-08 Sidebar personalisation
+Bar / POS moved after Club Books in Club Admin. Users can reorder/hide their own permitted menu items (main side menu + Club Admin) via Edit menu; stored per user/club; display only.

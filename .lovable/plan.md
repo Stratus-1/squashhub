@@ -330,7 +330,7 @@ Operations preserved:
 - With legacy ON, every check answers exactly as today (snapshot comparison per club).
 - With legacy OFF, there is no implicit access for admin, full admin, office bearers or moderators. Each template allows its own capabilities and refuses others.
 - `fin.bank.view` can read balances and ledger; every banking write is refused on the server.
-- Grants: F/S only by the Chairman (own club) or Super Admin. Chairman self-grant is refused, and only the Super Admin can change the Chairman.
+- Grants: F/S only by the Chairman (own club) or Super Admin. Chairman self-grant behaviour depends on D20 (allowed and audited under 3c, or refused). Only the Super Admin can change the Chairman. Self-approval of transactions is refused in both cases.
 - Delegation: only flagged capabilities, never wider than the delegator's own, never cross-club, never to yourself.
 - Second-person approval for stocktake discrepancies, adjustments, invoices and journals; self-approval refused.
 - PINs: management needs `bar.pins`, PINs are never returned, and every change is logged.
@@ -345,7 +345,7 @@ Operations preserved:
 
 ## 14. Decisions needed from the owner
 - **D1.** "Super Admin" = platform Super Admin only (`user_roles` admin), not federation or support? Proposed yes.
-- **D2.** Chairman's own rights: Super Admin only (proposed), or Super Admin + one named office bearer?
+- **D2.** Superseded by D20.
 - **D3.** Confirm the O/S/F class of each capability (sections 4, 6, 7). Should any sensitive capability become delegable?
 - **D4.** Who may delegate operational keys: only holders the Chairman flags (proposed), or every Bar Manager automatically?
 - **D5.** Second-person rule for tiny clubs: Super Admin as the second approver on request (proposed), or let the Chairman waive it?
@@ -359,12 +359,18 @@ Operations preserved:
 - **D13.** Family exclusions based on account delegations, family groups, or both?
 - **D14.** Member data (section 3a): approve the Secretary default; choose which higher-risk protections, if any, to add (ID number, date of birth, suspension and billing, bulk export, face data).
 - **D15.** Personal overrides (section 3b): on revocation, should rights the person passed on be **flagged for review** (proposed) or **suspended at once until reviewed**? Should temporary grants or denies (with an expiry date) be allowed?
-- **D16. "Chairman has access to everything" — needs your confirmation.** This conflicts with earlier decisions: no automatic finance, Chairman's own finance only from the Super Admin, and no self-grant. Options:
+- **D16. "Chairman has access to everything" — needs your confirmation.** This conflicts with the earlier decision of no automatic finance. Options:
   - (a) **Proposed:** the Chairman sees and manages all non-finance club areas by default. Finance (view and transactions) and sensitive Bar & Shop rights only when the Super Admin grants them.
   - (b) The Chairman gets read-only finance by default (balances, reports), but transactions only from the Super Admin.
   - (c) The Chairman gets everything, including finance, automatically. This would reverse the earlier decisions.
 - **D17. Vice-Chair "broad functions except finance":** does that include granting permissions (proposed: no — only the Chairman and Super Admin grant), and does it cover sensitive Bar & Shop and access/doors (proposed: operational yes, sensitive no unless the Chairman adds them)?
 - **D18. Secretary and "constitution":** there is no constitution feature today. The nearest are club rules (`club_membership_rules`, rule acceptances) and club profile documents. Confirm the Secretary edits club rules and documents.
+- **D19.** If self-grant is allowed: should a finance self-grant wait 24 hours unless the Super Admin confirms it sooner?
+- **D20. CONFLICTING INSTRUCTIONS — please choose.** At 13:24 you said the Chairman **may** grant themselves finance permissions, overriding the earlier rule. At 13:25 you said the Chairman **cannot** grant their own sensitive permissions, and that the Chairman's finance access comes via the Super Admin.
+  - (a) **Self-grant allowed**, with the section 3c safeguards (audit, badge, alerts, Super Admin revoke).
+  - (b) **Self-grant refused.** The Chairman's own finance and sensitive rights come only from the Super Admin. Section 3c is dropped.
+  - In both options, nobody may self-approve transactions, the Chairman can't appoint or remove themselves, and nothing crosses clubs. This plan keeps both written down until you choose. Until then, (b) is the safer default.
+- **D21.** Approve the proposed office-bearer defaults in section 3d (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain).
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

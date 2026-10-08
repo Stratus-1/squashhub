@@ -1,57 +1,150 @@
-# IoT offline alerts — findings and recommended architecture (on hold)
+# Manage Tournament hub + round-by-round communications (audit and proposal)
 
-## Findings
+Nothing is built yet. This plan is for approval only.
 
-### 1. How online/offline is determined today
-- No continuous health tracking exists. Status is only read on demand from Shelly Cloud (`POST {server}/v2/devices/api/get`, field `online: 0|1`):
-  - `device-control`: reads it after a switch command to check the relay really switched (and reports "device is offline").
-  - `shelly-diagnostics`: a check that a club admin runs by hand. It covers the door controller (club secrets) and the court light switches (`courts.relay_device_id`).
-- `club_devices` stores `last_state`, `last_state_at` and `last_error` from the last command only. There is no last-seen time and no outage history.
-- Separate system: `router-poll` already watches club routers/internet (Wi-Fi capability, scheduled poll, `club_router_alert_settings`, offline emails). It watches the router, not the Shelly devices.
+## 1. Audit: where tournament admin happens today
 
-### 2. What Shelly offers
-- Cloud Control API (auth key, what we use now): you can ask whether a device is online right now. No push and no webhooks; about 1 request per second.
-- Shelly Cloud real-time events (WebSocket, `Shelly:Online` events with online 0/1): this is native, event-driven detection. It is only available through Shelly's **Integrator programme**, which needs an integrator token from Shelly and the device owner granting access. It also needs a connection that stays open all the time, and backend functions are short-lived and cannot hold one.
-- Webhooks on the device itself (Gen2/3): they fire on device events such as an output or input changing. They cannot report the device's own loss of connection, because the device is offline at that moment.
-- MQTT with a "last will" message: possible, but it needs a message server we would run and a setup change on every device.
+| Entry point | Where it lives | What it does | Who sees it |
+|---|---|---|---|
+| Member tournament page | `/club-champs/:champId` (`ClubChampsView.tsx`) | Fixtures, standings, results, plus a "Tournament Administration (Admin only)" accordion, the Attendance/Registrations panel (Paid, Confirm, Confirm all), Diamond standings | Everyone; admin parts need `canManage` = tournament permission or club admin, and are hidden on match-day devices |
+| "What's next" bar | `TournamentNextActionBar.tsx` (inside the member page) | Next Swiss round / next knockout round, "Send draw to players" | Admins |
+| "Open the tournament control page" button | Member page, line ~2225 → `/beta-tournament/:champId` | Opens a second page | Admins |
+| Tournament Control page | `/beta-tournament/:champId` (`BetaTournamentOperate.tsx`) | Tabs: Overview, Games, Run stages (admins only), Entries. Only for tournaments built with the Step-by-Step setup; Diamond League and older tournaments get "open it here" back to the member page | Any signed-in user can open the page; Run stages needs `canManage` |
+| Tournament management view | Club Admin → Tournaments → Manage (`ClubTournamentBeta` → `StepTournamentManagement`, `StepRunOverview`) | Planned timeline, lifecycle, Edit setup, Inform players, Generate draw | Club admins |
+| Current Builder management | Club Admin → Tournaments (`ClubChampsTab.tsx`, about 7,000+ lines) | Older-style setup, invites, WhatsApp sends, Diamond League setup | Club admins |
 
-### 3. Shelly's built-in offline notification
-- The Shelly app's "device offline" notification goes only to the Shelly account holder, as an app push or email. There is no public API or webhook to send it to SquashHub, so we cannot use it.
+So which screen an organiser lands on depends on how the tournament was made:
+- **Step-by-Step tournaments:** the member page, the control page and the management view.
+- **Diamond League:** the member page and the Current Builder only.
+- **Older / Current Builder tournaments:** the member page and the Current Builder.
 
-### 4. Recommended architecture
-- Short term (usable now): check each device on the server at regular intervals. This reuses the Cloud Control `online` flag we already use, so it is not a competing mechanism. Nothing is ever switched; checks are read-only.
-- Long term (preferred native option): apply for Shelly Integrator access. Then run a small, always-on listener outside the backend functions (for example a planned GCP worker). It writes `Shelly:Online` events into the same outage table and alert engine. Polling becomes a backstop at a lower frequency.
-- Shared alert engine, whichever way detection happens:
-  - Settings for each club (alerts on/off, up to 2 member recipients, grace period).
-  - Outage state for each device: offline seen, then confirmed after the grace period, then **one** offline email; back online, then **one** recovery email with the downtime.
-  - Unknown status (Shelly Cloud unreachable) never sends an alert.
-  - Emails go out through the club's own email (SMTP) settings.
-- Optional: combine with `router-poll`. If the club router is also offline, say "club internet down" in a single email instead of one email per device.
+**Shared business logic already exists and stays the single source of truth.** It covers:
+- progression (`src/lib/tournaments/progression.ts`)
+- the engine (`engine-service.ts`, `generateStructuredTournament`)
+- Swiss and next-round generation (`use-generate-next-round.ts`, `NextRoundDrawDialog`, `AllNextRoundDrawsDialog`)
+- knockout (`KnockoutCard`, `StepKnockoutRoundsPanel`)
+- stages (`StageProgressPanel`)
+- scheduling (`fixture-scheduling.ts`, `round-plan.ts`, `stage-schedule.ts`)
+- entrants (`entrant-status.ts`)
 
-### 5. Fallback health check (if native is not available)
-- One scheduled job every 2–5 minutes. It only runs for clubs that switched alerts on, and devices are grouped by Shelly server to stay within the rate limit.
-- Maximum detection delay = check interval + grace period (for example 2 + 5 = about 7 minutes).
-- Cost: 288–720 checks a day.
+The hub only rearranges where these controls live. It must not re-implement any of them.
 
-### 6. Test plan (to run after approval)
-1. Tests in code for the outage logic: blip shorter than the grace period sends nothing; confirmed outage sends exactly one email; repeated checks while still offline send nothing more; recovery sends exactly one email; unknown status changes nothing.
-2. Set up in the preview on Riverside, or on a test Shelly that is not installed anywhere: enable alerts, pick two test recipients, send the test email, and confirm it arrives through the club's email settings.
-3. Real disconnection on a bench or spare Shelly (with the club's agreement, never a live door during play):
-   - a. Unplug power or Wi-Fi for about 60 seconds, then reconnect. Expect no email (grace period).
-   - b. Unplug for 15 minutes. Expect one offline email within check interval + grace, showing club, device and time. Expect no further emails during the outage.
-   - c. Reconnect. Expect one recovery email with the restored time and downtime.
-   - d. Check the outage records match the emails, and that door and lights still work normally afterwards.
-4. Make sure nothing else changed: door, lights and the Gordon's Bay geofence/Bluetooth fallback still behave as before. Clubs that have alerts switched off see no checks and no emails.
+### Duplicated controls found
+- **Generate the next round** sits in three places: the "What's next" bar (member page), Run stages (control page) and the management view.
+- **Entries / registrations** appear three times: the member-page registrations panel, the control page's Entries tab and the builder's entrants step.
+- **Games list:** the member page fixtures and the control page's Games tab.
+- **Overview / lifecycle:** the control page Overview and `StepRunOverview` both show it.
+- **"Send draw to players":** the "What's next" bar has it, and five generation paths also ask "send now?" with a browser confirm.
 
-### 7. Code already changed by the previous request (frozen, not expanded)
-- Database: new tables `club_iot_alert_settings` and `club_iot_device_health`, with access rules for club admins only. Both are currently empty (0 rows).
-- Backend function `iot-connectivity-monitor` (deployed): read-only status checks, outage state machine, SMTP emails, admin test email.
-- Scheduled job `iot-connectivity-monitor`, every 2 minutes: **live but inert**, because no club has alerts on.
-- UI: `src/components/club-admin/IotConnectivityAlerts.tsx`, added at the top of `DevicesTab.tsx`. Preview only, not published.
-- Notes: a rule added to `supabase/AGENTS.md`.
-- Door control, lights, geofence and Bluetooth code were not touched.
+### Notification audit (critical)
+These all call `notifyRoundDraw` straight after a draw is saved:
+- `ConfirmDrawDialog`
+- `AllNextRoundDrawsDialog`
+- `use-generate-next-round`
+- `StepGenerateDrawPanel` (line ~523)
+- `StageProgressPanel` (line ~40)
+- `StepKnockoutRoundsPanel` (line ~300)
 
-## Decision needed
-- A: Keep the existing changes and finish them as the fallback health check, after review, plus apply to Shelly for Integrator access.
-- B: Roll them back now. This removes the UI card, unschedules the job and deletes the function; the empty tables can be kept or dropped.
-- Either way, step 1 after approval is to unschedule the 2-minute job until the design is approved.
+Each one is protected only by a browser OK/Cancel box (`askSendDrawNotices`). That box defaults to **send** when there is no browser window, and one answer is reused for 15 seconds across several calls. So today **generating a draw can send messages**, which breaks the new rule.
+
+Other details:
+- `notify_champ_round_draw` (backend) sends in-app and email itself, and returns WhatsApp text for the browser to send.
+- Channels come from `club_champs.invite_methods`, not from a choice the admin makes when sending.
+- No per-round "sent" record exists, so the app cannot show Not sent / Sent / Changes not communicated.
+- Result messages after a match (`queue_champ_result_emails` + `dispatch-champ-result-messages`) are a separate, opt-in setting. They are out of scope and stay unchanged.
+
+### Which messaging actually works (to confirm in Phase 0 by reading logs only, sending nothing)
+- **In-app:** works everywhere, through the notifications table.
+- **Email:** through the club's own email settings and the Communications engine (`send-comms-campaign`). It only works for clubs whose email is set up.
+- **WhatsApp:** through the shared SquashHub number. It is per-club opt-in and billed per message. Messages to players who haven't replied recently need approved templates (`club_notice`).
+- **SMS:** through the platform SMS gateway. It is per-club and billed.
+- **Riverside:** confirm which of these are actually switched on. Riverside is only treated as a basic test site, and no test will message real members.
+
+## 2. Proposed design: one "Manage Tournament" hub
+
+**Route:** `/club-champs/:champId/manage`, admin-only (`canManage`). Anyone else is sent back to the member page. Match-day devices never see it.
+
+**Single link:** at the top of the member tournament page, one "Manage tournament" button shown only to admins. It replaces the admin accordion, the "Open the tournament control page" button and the "What's next" bar on the member page. The member page keeps only fixtures, bookings, results, standings and the player's own entry.
+
+**Tabs (the same for every format; parts that don't apply are hidden):**
+1. **Overview:** lifecycle and the next action per category/division (from `progression.ts` / `run-overview`), warnings (unpaid entries, unsent changes), and Edit setup (opens the existing builder at the right step).
+2. **Rounds & Fixtures:**
+   - Round robin: pools and rounds.
+   - Swiss: "Generate next round", using the existing Swiss engine.
+   - Knockout: the bracket and the next round (`KnockoutCard`).
+   - Multi-stage/weekend: Run stages and the planned timeline (`StageProgressPanel`, play-offs).
+   - All formats: fixture edit, reschedule, courts.
+   - "Generate all rounds now" where the format allows. It is never offered for Swiss or knockout rounds that depend on earlier results.
+3. **Players & Entries:** the existing registrations panel moved here (Paid, Confirm, Confirm all, invite, withdraw/replace, partners).
+4. **Notifications:** see section 3.
+5. **Settings:** result-notification settings, the WhatsApp group link, and scoring/serving rules (existing cards moved here).
+
+The `/beta-tournament/:champId` page and the Club Admin "Manage" card both open the hub. The old route stays as a redirect, so saved links still work.
+
+## 3. Round-by-round communications
+
+**Hard rule:** generating, regenerating, confirming or editing a draw never sends anything. All six automatic `notifyRoundDraw` calls are removed from the generation paths, and `askSendDrawNotices` is retired.
+
+**After the first draw is generated,** a dialog offers Preview / Send first round now / Later. "Send" opens the send flow below. It never sends straight away.
+
+**Notifications tab:**
+- One row per round, and per category/division where they run separately.
+- Each row shows: Not sent / Sent (date, who sent it, channels, how many players) / Changes not communicated (number of affected players). History opens when you expand the row.
+- Swiss and knockout rounds only appear once real pairings exist.
+- Actions: **Send**, **Resend** (shows a warning that it was already sent), **Send changes only** (only players whose opponent, date, time or court changed since the last send), and **Choose recipients**.
+
+**Send flow (every time, nothing pre-ticked from setup):**
+1. Choose channels: Email / WhatsApp / SMS / In-app, any combination. A channel the club hasn't switched on shows as unavailable with the reason. WhatsApp and SMS show the estimated cost from the existing messaging rates.
+2. A preview for each channel shows the opponent (the latest confirmed one), the opponent's contact details (only if the club's privacy settings allow), the date/time/court or play-by deadline, and booking instructions.
+3. Recipient count, with players who can't be reached on a chosen channel listed.
+4. "Send test to me" sends to the admin only.
+5. A clear "Send to N players via X" confirmation.
+6. Delivery status per player and channel afterwards.
+
+**Delivery** goes through the existing Communications engine (`comms_campaigns` + `send-comms-campaign`), with per-player text in `member_vars` and `meta { tournament_id, round, group, purpose: "round_draw" | "round_changes" }`. That gives the delivery log, retry safety and audit trail without a new sending system.
+
+**Preventing duplicate sends:**
+- Each send has an idempotency key made from the round, the fixture snapshot, the channel set and the recipients.
+- The Send button is disabled while a send is running.
+- Resending needs a second confirmation.
+
+**Detecting unsent changes:** each send stores a snapshot (fixture id, opponent, date, time, court, deadline). The tab compares current fixtures with the last snapshot and flags differences. Edits only flag the change; they never send.
+
+## 4. Risks
+- Admins used to the accordion or control page: the redirect from the old route keeps their links working, and the single button sits in the same spot.
+- Diamond League and older tournaments have never had a control page. The hub must load them on the existing engines (Diamond uses `team_league_events`), with nothing converted.
+- `ClubChampsTab` is very large, so pieces will be moved out of it step by step, never rewritten.
+- Removing the automatic send changes behaviour: tell organisers "players are no longer messaged automatically".
+- WhatsApp needs approved templates for players who haven't replied recently. Each preview will show if a template is missing.
+- Privacy: the opponent's phone number is shown only where the existing rule allows it.
+
+## 5. Phased plan (nothing is removed until its replacement is verified)
+
+**Phase 0: verify, read-only.** Confirm which channels each club has switched on (including Riverside), list every caller of `notify_champ_round_draw`, and capture the current admin screens per format as a baseline.
+
+**Phase 1: safety first.** Remove automatic sending from all six generation paths. After the first draw, show Preview / Send / Later, with Send still going through the existing round-notify. Tests check that generating, regenerating, confirming and editing make no notify calls.
+
+**Phase 2: hub shell.** Add the `/manage` route behind `canManage`, with Overview, Rounds & Fixtures and Players & Entries reusing the existing components. Add the "Manage tournament" button. The old controls stay in place but are marked as moved.
+
+**Phase 3: Notifications tab.** Store each send (a small table for round sends and snapshots, which is the only schema change, with RLS limited to club admins), the channel picker, previews, test-to-self, costs, Send / Resend / Send changes only / recipient choice, delivery through the Communications engine, and the unsent-changes flag.
+
+**Phase 4: parity check per format,** across round robin, Swiss, knockout, multi-stage/weekend, Diamond League and older tournaments. Every action from the old screens must be available in the hub.
+
+**Phase 5: tidy up.** Remove the accordion, the "What's next" bar and the control-page tabs from the member page. `/beta-tournament` becomes a redirect, and the Club Admin "Manage" button opens the hub.
+
+## 6. Acceptance tests
+- Generating, regenerating or confirming a draw, generating the next round, generating all rounds, starting a stage or editing a fixture creates no campaign, notification, email, WhatsApp or SMS. These are unit tests with the senders mocked.
+- The first draw shows Preview / Send / Later, and "Later" sends nothing.
+- A Swiss or knockout round can't be notified before its pairings exist.
+- Changing a sent fixture shows "Changes not communicated (N)". "Send changes only" reaches only those N players.
+- Channels must be picked every time, unavailable channels can't be picked, and cost and recipient count are shown.
+- Test-to-self reaches only the admin. Double-clicking Send produces one campaign.
+- History shows each send with who sent it, when, the channels and the delivery results.
+- A non-admin opening `/manage` is redirected, and the member page shows no admin controls.
+- Every format opens the same hub, and all existing data (registrations, scorecards, bookings, fixtures, results) is unchanged before and after.
+- Browser tests only use Riverside test data or intercepted sends. No real member is messaged.
+
+## Technical notes
+- Key files: `ClubChampsView.tsx`, `BetaTournamentOperate.tsx`, `TournamentNextActionBar.tsx`, `round-notify.ts`, `ConfirmDrawDialog.tsx`, `AllNextRoundDrawsDialog.tsx`, `use-generate-next-round.ts`, `StepGenerateDrawPanel.tsx`, `StageProgressPanel.tsx`, `StepKnockoutRoundsPanel.tsx`, `StepTournamentManagement.tsx`, `StepRunOverview.tsx`, `ClubChampsTab.tsx`, `lib/comms/send.ts`.
+- The backend `notify_champ_round_draw` stays for now. The new flow builds per-player text from the same wording, so messages stay identical across channels. Once the new flow is verified, the backend function stops being called automatically.
+- New rule in `AGENTS.md`: draw generation never dispatches messages, and round communications only go out from Manage Tournament → Notifications.

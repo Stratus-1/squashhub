@@ -37,4 +37,14 @@ describe("shared court display peak indicator", () => {
       cleanup();
     }
   });
+
+  it("shows the view-only sign-in notice, centred in the header", () => {
+    const club = { name: "Sample club", logo_url: null, slot_minutes: 60, open_time: "08:00", last_slot_time: "11:00" };
+    state.data = { club, date: "2026-10-08", courts: [{ id: 1, name: "Court 1" }], bookings: [] };
+    render(<MemoryRouter><CourtsDisplay /></MemoryRouter>);
+    const notice = screen.getByText(/View only — To make changes to your booking, please log in to the SquashHub app\./);
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveClass("text-center");
+    cleanup();
+  });
 });

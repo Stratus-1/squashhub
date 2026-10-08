@@ -561,7 +561,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 | # | Question | Proposed default |
 |---|---|---|
 | P2 | Riverside: real office bearers on the new model at activation, or test accounts first? | Test accounts first for 1 week, then real users |
-| P3 | Treasurer self-approval: a second finance holder or the Chairman must approve the Treasurer's own items | Yes; Super Admin as second approver only in tiny clubs |
+| ~~P3~~ | **Decided:** the Chairman approves transactions the Treasurer initiates. The Treasurer approves everyone else's. Nobody approves their own. No temporary permissions: people are appointed and removed by hand | — |
 | P4 | `bar.pin.manage` default holder | The Bar Manager, after the Chairman grants it; first PIN via a one-time setup code |
 | P5 | Early office-field lock as a stand-alone fix before the pilot | Yes |
 

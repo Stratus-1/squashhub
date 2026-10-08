@@ -153,6 +153,31 @@ The `/beta-tournament/:champId` page and the Club Admin "Manage" card both open 
 
 **Detecting unsent changes:** each send stores a snapshot (fixture id, opponent, date, time, court, deadline). The tab compares current fixtures with the last snapshot and flags differences. Edits only flag the change; they never send.
 
+## 3b. Who can manage a tournament (permissions)
+
+**Confirmed: Manage Tournament is not limited to super admins or club admins.** Anyone who can manage the tournament today will see the button and can use the hub.
+
+**What exists today:**
+- Clubs have custom roles and per-member overrides (`club_permission_roles`, `club_member_permissions`, managed in Club Admin → Permissions).
+- One permission key, `champs`, is labelled "Tournaments" in that screen.
+- **In the app:** both tournament pages already gate admin parts on `useHasPermission("champs")` OR club admin. They don't rely only on an admin role.
+- **On the backend:** match and tournament policies use `is_club_admin_or_permitted(user, club, 'champs')`, scoped to the tournament's own club. Federation/association officials use `can_manage_tournament(user, champ_id)`. Platform super admins use `has_role(..., 'admin')`, stored in the protected roles table.
+- No finer-grained tournament permissions exist yet (for example separate permissions for draws, entries or messaging).
+
+**Proposed:**
+- Use one shared check: `canManageTournament` = club admin OR the `champs` permission for that tournament's club OR `can_manage_tournament` (federation/association scope) OR platform admin.
+  - The hub link, the hub route and every hub action use this check.
+  - Hard-coded "is admin" checks in the moved code are replaced with it.
+  - Existing admin access stays exactly as it is.
+- **Backend enforcement:**
+  - Phase 0 checks that every write the hub uses requires the same scoped check, not just the browser: tournaments, registrations, fixtures, rounds, the draw and engine functions, `notify_champ_round_draw`, `send-comms-campaign` / `send-whatsapp` / `send-sms` for tournament sends, and the new round-send table and trigger.
+  - Any gap gets a narrow fix. The automatic-send job checks the tournament's own club and scope before sending.
+- **Optional finer permissions:** these don't exist today, so the default stays the single "Tournaments" permission.
+  - If you want them, the plan can add sub-permissions in the same Permissions screen: View, Fixtures & draws, Entries & payments, Send notifications, Settings.
+  - "Tournaments" would continue to mean all of them, so current roles keep working.
+- **No cross-club or cross-association access:** every check uses the tournament's own club or organisation, never the club the user is currently viewing.
+- **Tests:** these cover a custom-role member with "Tournaments" (sees the button, can act), an ordinary member (no button, redirected, backend refuses writes), an admin from another club (refused), and an association official (only their own tournaments).
+
 ## 4. Risks
 - Admins used to the accordion or control page: the redirect from the old route keeps their links working, and the single button sits in the same spot.
 - Diamond League and older tournaments have never had a control page. The hub must load them on the existing engines (Diamond uses `team_league_events`), with nothing converted.

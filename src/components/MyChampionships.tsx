@@ -75,8 +75,10 @@ export function MyChampionships() {
     enabled: champIds.length > 0 && !!memberId,
   });
 
-  // Get upcoming matches for this member
-  const myChampIds = [...new Set(myEntries.map((e: any) => e.champ_id))];
+  // Get upcoming matches for this member. Search every current tournament,
+  // not only ones with an entry row: placed/imported players (e.g. league-style
+  // tournaments) can have fixtures without a club_champs_entries row.
+  const myChampIds = champIds;
 
   const { data: myMatches = [] } = useQuery({
     queryKey: ["my-champ-matches-dashboard", memberId, myChampIds],
@@ -153,7 +155,7 @@ export function MyChampionships() {
     refetchInvites();
   };
 
-  if (!myEntries.length && openForRegistration.length === 0 && partnerInvites.length === 0) return null;
+  if (!myEntries.length && !myMatches.length && openForRegistration.length === 0 && partnerInvites.length === 0) return null;
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);
@@ -176,6 +178,12 @@ export function MyChampionships() {
     seenChamps.add(e.champ_id);
     return true;
   });
+  // Tournaments where the member has fixtures but no entry row.
+  for (const m of myMatches as any[]) {
+    if (seenChamps.has(m.champ_id)) continue;
+    seenChamps.add(m.champ_id);
+    uniqueEntries.push({ id: `m-${m.champ_id}`, champ_id: m.champ_id, partner: null });
+  }
 
   return (
     <div>
@@ -355,7 +363,14 @@ export function MyChampionships() {
                   );
                 })}
                 {champUpcoming.length > 2 && (
-                  <p className="text-[11px] text-muted-foreground text-center">+{champUpcoming.length - 2} more</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-full text-[11px]"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/club-champs/${champ.id}`); }}
+                  >
+                    View all {champUpcoming.length} upcoming games <ChevronRight className="w-3 h-3 ml-1" />
+                  </Button>
                 )}
               </div>
             ) : (

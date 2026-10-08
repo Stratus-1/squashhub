@@ -93,7 +93,7 @@ export default function CourtsDisplay() {
   const dateLabel = new Date(data.date + "T12:00:00").toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
       <header className="relative flex items-center gap-3 sm:gap-4 overflow-hidden rounded-xl border border-border bg-card/60 px-3 py-2.5 sm:px-5 sm:py-3.5">
         <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
         <ClubMark logoUrl={data.club.logo_url} name={data.club.name} />
@@ -111,7 +111,7 @@ export default function CourtsDisplay() {
       </header>
 
       <div ref={gridRef} className="flex-1 min-h-0 rounded-xl border border-border overflow-y-auto overflow-x-hidden">
-      <div className="flex min-h-full" style={{ minHeight: `calc(2.75rem + ${slots.length * MIN_ROW_PX}px)` }}>
+      <div className="flex h-full" style={{ minHeight: `calc(2.75rem + ${slots.length * MIN_ROW_PX}px)` }}>
         <div className="w-16 shrink-0 flex flex-col border-r border-border">
           {/* Spacer matching the court header row so hour labels line up with the booking grid. */}
           <div aria-hidden className="sticky top-0 z-20 text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>

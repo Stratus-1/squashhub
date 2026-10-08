@@ -1,0 +1,2 @@
+ALTER TABLE public.platform_update_campaigns ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'campaign';
+UPDATE public.platform_update_campaigns SET kind = 'update' WHERE name IN ('Customise your home screen','Release: Edit your menu');

@@ -13976,6 +13976,7 @@ export type Database = {
           created_by: string | null
           failed_count: number
           id: string
+          kind: string
           last_error: string | null
           name: string
           sent_at: string | null
@@ -14002,6 +14003,7 @@ export type Database = {
           created_by?: string | null
           failed_count?: number
           id?: string
+          kind?: string
           last_error?: string | null
           name: string
           sent_at?: string | null
@@ -14028,6 +14030,7 @@ export type Database = {
           created_by?: string | null
           failed_count?: number
           id?: string
+          kind?: string
           last_error?: string | null
           name?: string
           sent_at?: string | null

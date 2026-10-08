@@ -484,6 +484,10 @@ Operations preserved:
   - How long before a request expires? Proposed: 14 days.
   - What evidence is required?
   - Should the absent Chairman be notified and given a short objection window? Proposed: yes, 72 hours, where reachable.
+- **D24.** New-club onboarding:
+  - Option A, B or C for the temporary Chairman?
+  - Approve the proposed limits while temporary?
+  - Should temporary status expire, e.g. after 90 days, with grant authority frozen until a real Chairman is appointed?
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

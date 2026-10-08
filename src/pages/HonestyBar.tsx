@@ -1,4 +1,6 @@
 import { showBarChargeError } from "@/lib/bar-charge-toast";
+import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
+import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
@@ -176,6 +178,8 @@ export default function HonestyBar() {
     .map(([id, qty]) => ({ item: items.find(i => i.id === id), qty }))
     .filter((l): l is { item: BarItem; qty: number } => !!l.item && l.qty > 0), [cart, items]);
 
+  const accountPreview = useAccountChargePreview(accountTabEnabled ? memberId : null,
+    cartLines.map(({ item, qty }) => ({ division: (item as any).division, total: item.price * qty })));
   const updateCart = (itemId: string, delta: number) => setCart(prev => addToTab(prev, itemId, delta));
 
   /** Settlement: post the final open tab to the member account (the only path that journals). */
@@ -390,6 +394,7 @@ export default function HonestyBar() {
           </TabsList>
 
           <TabsContent value="shop" className="space-y-4 mt-4">
+            <AccountChargeWarning show={accountPreview.blocked} />
             {/* Choose which kind of item to browse. */}
             <div className="grid gap-1 rounded-lg bg-muted p-1" style={{ gridTemplateColumns: `repeat(${Math.max(divisions.length, 1)}, minmax(0, 1fr))` }}>
               {divisions.map(d => (
@@ -539,6 +544,7 @@ export default function HonestyBar() {
                       </div>
                     ))}
                   </div>
+                  <AccountChargeWarning show={accountPreview.blocked} />
                   <p className="text-xs font-medium pt-1">Settle tab — choose how to pay</p>
                   {accountTabEnabled && (
                     <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>

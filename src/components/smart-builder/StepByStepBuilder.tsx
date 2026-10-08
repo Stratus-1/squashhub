@@ -1471,9 +1471,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
                     const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...units.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
                     return (
-                      <div className="flex gap-2 overflow-x-auto pb-2" data-testid="pick-board">
+                      <div className="grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="pick-board">
                         {cols.map((c) => (
-                          <div key={c.key || "none"} className={cn("flex w-60 shrink-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
+                          <div key={c.key || "none"} className={cn("flex min-w-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
+
                             <div className="sticky top-0 flex items-center justify-between border-b border-border bg-muted/60 px-2 py-1.5">
                               <span className="truncate text-sm font-semibold" title={c.label}>{c.label}</span>
                               <span className="text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key)!]}` : ""}</span>

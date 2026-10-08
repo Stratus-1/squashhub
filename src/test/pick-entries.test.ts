@@ -25,6 +25,13 @@ describe("multi-event Pick players", () => {
     expect(pickCounts(p)).toEqual({ uniquePlayers: 4, totalEntries: 6 });
   });
 
+  it("ticks for renamed/removed events are kept but never handed over as entrants", () => {
+    const p = { albert: ["MS", "Mens X"], ben: ["Mens X"] };
+    const ents = entrantsFromPicks(p, UNITS, () => null);
+    expect(ents).toEqual([{ memberId: "albert", partnerId: null, division: 1 }]);
+    expect(ents.every((e) => e.division !== null)).toBe(true);
+  });
+
   it("removing one event keeps the player and other events", () => {
     const p = togglePlace({ albert: ["MS", "MD", "XD"] }, "albert", "MD");
     expect(placesOf(p, "albert")).toEqual(["MS", "XD"]);

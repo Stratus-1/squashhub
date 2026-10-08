@@ -719,7 +719,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
               <label className="space-y-0.5"><span className="text-muted-foreground">Seeding</span>
                 <select className="w-full rounded border border-input bg-background p-1" value={f.seeding} onChange={(e) => apply({ seeding: e.target.value as DrawSeeding })}>
                   {(Object.keys(SEED_LABEL) as DrawSeeding[]).map((k) => <option key={k} value={k}>{SEED_LABEL[k]}</option>)}
-                </select></label>
+                 </select></label>
+              {d.scoringText && <div className="space-y-0.5"><span className="text-muted-foreground">Match format (from setup)</span><p>{d.scoringText}</p></div>}
               <div className="space-y-0.5 sm:col-span-3"><span className="text-muted-foreground">When games are played</span>
                 <p>{f.schedule.rule === "fixed" ? `Fixed days: ${f.schedule.dates.map(fmtDay).join(", ")}` : f.schedule.rule === "play_by" && f.schedule.deadlines.filter(Boolean).length ? `As set in Stages & scheduling (${f.schedule.deadlines.filter(Boolean).map(fmtDay).join(", ")})` : "Not set — choose dates in Stages & scheduling"}</p></div>
               {f.kind === "knockout" && (() => {

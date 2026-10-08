@@ -91,6 +91,7 @@
 
 - [x] Permissions Stage 2: shadow mode (Riverside only, comparison log, no access change)
 - [x] Permissions Stage 3: capability list (41), standard templates (16), office defaults, Riverside impact report
-- [ ] Permissions Stage 4: record Riverside offices + test accounts, re-run shadow, gate ON (needs owner approval of impact report)
+- [x] Permissions Stage 4a: Riverside offices recorded (Willem Chairman, Pieter Treasurer, Joseph Bar Manager), comparison run
+- [ ] Permissions Stage 4b: wire has_cap into Riverside finance, Bar & Shop and member actions, then gate ON (owner go-ahead on scope)
 
 - [x] Sidebar: Bar/POS after Club Books; per-user/club menu reorder + hide items (Edit Menu, Save/Cancel/Reset)

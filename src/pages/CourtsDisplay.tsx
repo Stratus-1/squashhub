@@ -88,7 +88,7 @@ export default function CourtsDisplay() {
           {/* Spacer matching the court header row so hour labels line up with the booking grid. */}
           <div aria-hidden className="text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>
           <div className="flex-1 relative">
-            {hours.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
+            {slots.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
           </div>
         </div>
         {data.courts.map((c) => (

@@ -75,3 +75,6 @@
 
 - [ ] IoT offline alerts: on hold pending Willem's architecture approval (plan written)
 - [preview] Member dashboard My Stats: compact win/loss donuts per category
+
+## Tournament registrations
+- [preview] Admin "Confirm registration" action on Registrations panel (next to Paid override) for invited players

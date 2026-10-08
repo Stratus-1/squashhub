@@ -866,7 +866,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const catUnits = (c: string) => units.filter((u) => u.key === c || u.key.startsWith(`${c}::`));
   const catIsDoubles = (c: string) => { const us = catUnits(c); return us.length > 0 && us.every((u) => u.disc === "doubles"); };
   const catUnitWord = (c: string) => catIsDoubles(c) ? "pairs" : "players";
-  const catEstimate = (c: string) => Number(guide.expected?.[c]) || catUnits(c).reduce((t, u) => t + (Number(a.unitEntries?.[u.key]) || 0), 0);
+  /** The admin's own Expected entries answers win over the earlier Structure guide guess. */
+  const catEstimate = (c: string) => catUnits(c).reduce((t, u) => t + (Number(a.unitEntries?.[u.key]) || 0), 0) || Number(guide.expected?.[c]) || 0;
+  const unitPicked = (k: string) => pickIds.filter((id) => placesFor(id).includes(k)).length;
   const catActual = (c: string) => Math.max(catPicked(c), catIsDoubles(c) ? Math.ceil((guideCounts[c]?.total ?? 0) / 2) : (guideCounts[c]?.total ?? 0));
   const catPicked = (c: string) => { const ids = new Set<string>(); catUnits(c).forEach((u) => pickIds.forEach((id) => { if (placesFor(id).includes(u.key)) ids.add(id); })); return catIsDoubles(c) ? Math.ceil(ids.size / 2) : ids.size; };
   const catCurrent = (c: string) => { const f = formatFor(c); return f.kind ? formatDetail(f) : undefined; };
@@ -902,8 +904,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="field-review">
       <div className="text-sm font-semibold">Your actual field differs from the estimate. Review the recommended tournament structure.</div>
       <p className="text-xs text-muted-foreground">Your chosen structure is not changed unless you click "Use recommendation".</p>
+      <div className="rounded-md border border-border bg-background/40 p-2 text-xs" data-testid="field-breakdown">
+        <div className="mb-1 font-medium">Every group — expected vs picked</div>
+        {units.map((u) => <div key={u.key} className="flex justify-between gap-2"><span>{u.base}</span><span className="text-muted-foreground">expected {Number(a.unitEntries?.[u.key]) || "?"} · picked {unitPicked(u.key)} · planned {formatDetail(formatFor(u.key))}</span></div>)}
+      </div>
       {fieldReview.map(({ c, est, act }) => (
         <div key={c} className="space-y-1">
+          {catUnits(c).length > 1 && <p className="text-xs text-muted-foreground">{c} is split into {catUnits(c).map((u) => `${u.base} (${unitPicked(u.key)})`).join(", ")} — the suggestion below is for the whole category; each subgroup keeps its own draw.</p>}
           <RecommendationCard cat={c} n={act} unit={catUnitWord(c)} note={`estimated ${est}, actual`} share={fieldRecs.byCat[c]?.share} options={fieldRecs.byCat[c]?.options ?? evaluateStructures({ n: act, outcome: guide.outcome, strength: guide.strength, time: guide.time, isChamps })}
             applied={false} current={catCurrent(c)} onUse={(o) => applyStructure(c, o, { reviewedActual: { ...(guide.reviewedActual ?? {}), [c]: act } })} onOther={() => go("Format")} />
           <Button type="button" size="sm" variant="ghost" onClick={() => setA({ ...a, guide: { ...guide, reviewedActual: { ...(guide.reviewedActual ?? {}), [c]: act } } })}>Keep my current structure for {c}</Button>

@@ -103,7 +103,16 @@ Delegation rules:
 - **What transfers:** Chairman authority (appointing offices, granting permissions). Rights the outgoing Chairman held personally (including any finance) do **not** transfer, and stay until the new Chairman reviews them. Grants made by the outgoing Chairman stay valid.
 - **Audit:** start, accept, cancel and effective handover are all recorded (who, successor, club, reason, times, re-authentication method). Office bearers get an in-app notice. The Super Admin can see the record but takes no part.
 - The Chairman cannot appoint themselves (they already hold the office) or remove themselves without naming a successor.
-- Secretary, Club Captain, Treasurer and Vice-Chair offices are set by the Chairman. These offices carry no rights by themselves; rights come from their templates.
+### Other office bearers (owner decision)
+- **Only the Chairman** (own club) appoints, replaces or removes the Vice-Chair, Secretary, Treasurer, Club Captain and any other office. The Super Admin is not involved. A server check refuses anyone else, and the direct edit of the `clubs` office fields is blocked.
+- **On appointment**, the office's default template applies, plus any person-specific grants or denies the Chairman separately authorises. Finance capabilities follow the finance grant rule.
+- **On removal or replacement:**
+  - Template-derived rights end immediately (next action on the server; screens refresh within seconds).
+  - Club membership is untouched.
+  - Personal grants tied to that office end with it. Unrelated personal grants stay, but are listed for the Chairman to keep or revoke on the removal screen.
+  - Grants the person delegated to others are flagged for review (D15).
+- Each appointment, replacement and removal is club-scoped and audited (Chairman, person, office, previous holder, reason, time). The person is notified.
+- The Chairman office itself changes only through the handover or emergency process.
 - **Super Admin oversight (not routine):** the Super Admin can freeze grants for a club or revoke a grant for a security incident. This needs a reason, is logged, and notifies office bearers.
 - **Emergency replacement by the committee (owner decision):** if the Chairman resigns, disappears, is incapacitated or can't start a handover:
   - The Secretary (or another eligible committee member, e.g. the Vice-Chair) **starts** an emergency replacement, naming the proposed successor, a reason and evidence.

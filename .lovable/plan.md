@@ -165,17 +165,21 @@ Any role a delegator assigns is stripped of its S, F and X capabilities, so exec
 3. Notices go by in-app and WhatsApp to the Chairman, with a reminder at 24 hours and then daily until decided. There is no automatic escalation. The nominator may withdraw.
 
 ### Chairman succession
-- **Normal handover:** only the current Chairman can start it (with re-authentication). The successor must be an active member of the same club with a login.
-  - There is an effective time; the successor accepts (D6); the Chairman can cancel until it takes effect.
-  - At the effective time, one atomic step closes the old office and opens the new one.
-  - A database uniqueness rule allows only one open Chairman office per club, and one pending handover per club.
-  - Chairman authority transfers. The outgoing Chairman's personal rights don't transfer and stay for the new Chairman to review.
-- **Emergency:** started by the Secretary (or another eligible committee member, D7).
-  - It needs three approvals in total from three distinct eligible committee members; the Secretary counts if they approve.
-  - Each person counts once. The successor and the absent Chairman can't vote. Each vote is re-authenticated.
+**Proportionality (owner principle):** these are volunteer clubs, so ordinary role changes need no re-authentication, waiting periods or repeated confirmations. A normal signed-in session plus a basic audit record is enough. Separation of duties stays only for sensitive finance and stock approvals.
+
+- **Normal handover (decided):**
+  - The current Chairman nominates a successor (an active member of the same club with a login) and may pick an effective date.
+  - The successor gets an in-app and WhatsApp notice and **accepts**.
+  - The handover takes effect atomically at the later of acceptance and the chosen date.
+  - The Chairman can cancel before then.
+  - Chairman authority transfers. Rights granted to the outgoing Chairman independently of the office stay.
+- **Stepping down from any office:** role-linked rights end when the removal or transfer takes effect. The Chairman may schedule that date for a practical handover. Independently granted rights stay.
+- **Emergency (decided):** the Secretary (or another eligible committee member) starts it.
+  - It needs three approvals in total from distinct committee members; the Secretary counts if they approve.
+  - The successor and the absent Chairman can't vote.
   - The third approval triggers the atomic switch.
-  - The Vice-Chair may request it but never takes the role alone.
-- **Super Admin fallback:** used only when three approvals can't be reached. Requires a reason, evidence and re-authentication, with the same atomic switch.
+  - The Vice-Chair can't take the role alone.
+- **Super Admin fallback:** only when three approvals can't be reached, or when accounts are compromised. A reason is required, and the same atomic switch is used.
 - The direct office fields on `clubs` are locked. They change only through these processes, and every step is permanently audited.
 
 ### Exactly one Chairman: how the switch is enforced
@@ -327,7 +331,7 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
 ## 8. Separation of duties and audit
 - No self-approval anywhere: captures, counts, adjustments, invoices, refunds, journals, payments, and own or family accounts and mandates.
 - Nobody changes their own roles or offices. The only exception is the Chairman, who may self-grant execution rights (audited, badge, optional alerts). This never allows approving their own transactions.
-- A finance-settings change blocks paying to that changed bank account for 24 hours.
+- A change to payout bank details is audited, and the Treasurer and Chairman are notified (no waiting period).
 - In tiny clubs, the Super Admin may act as the second approver on request, logged (D14).
 - The audit records every grant, deny, delegation, nomination, decision, office change, succession step, claim and sensitive action: who, for whom, what, club, before and after, reason and time. Records can't be edited or deleted. PINs and card data are never logged.
 
@@ -342,7 +346,7 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
 
 | Situation | Outcome |
 |---|---|
-| Trusted match (SA ID, verified email, exact phone + name), club not activated, no other pending claim | Temporary Chairman at once, followed by a 7-day public notice and dispute window |
+| Trusted match (SA ID, verified email, exact phone + name), club not activated, no other pending claim | Temporary Chairman at once. Anyone can report a wrong claim to the Super Admin |
 | Also matches the club contact or an imported office bearer | Same; recorded as stronger evidence |
 | Weak match (name only, or phone with a different name) | Linked as a member after OTP; claim goes to quick review |
 | No match to that club | Joins as a new member after the duplicate check; claim goes to quick review |
@@ -361,7 +365,7 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
   - no payout bank changes without a Super Admin check;
   - no member deletes, merges or bulk export;
   - no payment gateway credentials;
-  - no bulk messages during the dispute window.
+  - (Removed for proportionality: no waiting period on bulk messages.)
 
 ## 10. "Club Books" → "Finance"
 Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and notices. URLs, keys and database names stay unchanged.
@@ -532,8 +536,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 | # | Question | Proposed default |
 |---|---|---|
 | N1 | Nelspruit notice lead time and channel (not yet agreed) | 7 days, in-app + WhatsApp, with a permission preview |
-| N2 | Successor must accept a handover | Yes |
-| N3 | Which committee roles count for an emergency, request expiry, evidence, objection window | Secretary, Vice-Chair, Treasurer, Club Captain + offices the Chairman marks; 14 days; written reason + optional document; 72 hours |
+| N3 | Emergency succession (plan D7): which committee roles count | Secretary, Vice-Chair, Treasurer, Club Captain. A short reason; no waiting period or extra evidence |
 | N4 | Thresholds for discount, void, refund and journal second approval | R100 discount/void per sale; any refund; journals over R5,000 |
 
 ### Open — can wait (not blocking)
@@ -547,7 +550,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 | L6 | Tiny-club second approver | Super Admin on request |
 | L7 | Build suppliers, purchase orders and till cash-up | Later, after the pilot |
 | L8 | Family exclusions | Both account delegations and family groups |
-| L9 | Onboarding: automatic on a trusted match; 90-day temporary expiry; 7-day public claim notice; setup window length | Yes; yes; yes; 30 days |
+| L9 | Onboarding: automatic on a trusted match; setup window length; whether to show a simple "club claimed by X" notice | Yes; 30 days; yes, no waiting period |
 
 ### Old to new numbering
 - **Old D1/D2:** decided (Chairman read-only finance + self-grant).

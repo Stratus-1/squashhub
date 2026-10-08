@@ -15,8 +15,8 @@ Design only. No code, migrations, access changes or publishing. Production stays
 
 6. The Chairman is the highest club authority; the Super Admin is above that.
 7. Only the Chairman (own club) or the Super Admin grants or revokes finance and sensitive rights. Both may grant directly while helping clubs set up.
-8. Grant authority by itself gives the Chairman no finance or Bar & Shop operating rights.
-9. **Chairman self-grant is unresolved.** You gave two conflicting instructions; see D1.
+8. The Chairman automatically has **finance read-only** (balances, ledger, reports). Other Bar & Shop and finance execution rights don't come with the office.
+9. The Chairman **may self-grant** execution rights in their own club. Each self-grant is permanently audited, marked "Self-granted", and optionally alerted to the Treasurer and Super Admin. The Super Admin can revoke it.
 10. Nobody may approve their own transaction, including the Chairman.
 11. The Chairman alone appoints, replaces and removes all other office bearers. No Super Admin step.
 12. **Normal succession:** the current Chairman appoints the successor directly.
@@ -56,8 +56,8 @@ Design only. No code, migrations, access changes or publishing. Production stays
 
 **Rollout**
 
-25. **No approval flood.** Existing legitimate role-holders keep their agreed default rights, with no re-approval and no pending requests.
-    - Nothing working today is stripped before review.
+25. **No approval flood.** Existing role-holders keep their new default rights, plus explicitly assigned custom roles and grants, with no re-approval and no pending requests.
+    - Blanket implicit rights (Full Admin, admin role, finance that came only from being an office bearer) are **not** grandfathered. They are removed at activation and listed in the impact report.
     - The approval workflow applies only to new sensitive grants made after rollout.
 26. Approval notices go by in-app and WhatsApp, with a reminder at 24 hours and then daily. There is no automatic escalation.
 
@@ -152,8 +152,8 @@ Only 8 clubs have a Chairman recorded.
 Any role a delegator assigns is stripped of its S, F and X capabilities, so execution rights can't be passed on indirectly through a role. The server check `can_grant()` enforces this for roles, personal grants, template edits and imports.
 
 ### Direct delegation (no Chairman approval)
-- **Club Captain / Competitions Coordinator (confirmed):** may appoint same-club tournament and event helpers, with a subset of their own rights and scope (e.g. one tournament). Helpers can't delegate further (proposed).
-- **Proposed (D9):**
+- **Club Captain / Competitions Coordinator (confirmed):** delegation is built into the role, with no separate delegate toggle. They may appoint same-club tournament and event helpers, with a subset of their own rights and scope (e.g. one tournament). Helpers can't delegate further (proposed).
+- **Proposed, same built-in style (D9):**
   - Court & Bookings Officer: booking help.
   - Communications Officer: drafting and sending to groups; not exports.
   - Bar Manager: routine counter access (`bar.sell` with the person's own PIN), stocktake counting without posting, and viewing stock levels without cost prices.
@@ -178,6 +178,25 @@ Any role a delegator assigns is stripped of its S, F and X capabilities, so exec
 - **Super Admin fallback:** used only when three approvals can't be reached. Requires a reason, evidence and re-authentication, with the same atomic switch.
 - The direct office fields on `clubs` are locked. They change only through these processes, and every step is permanently audited.
 
+### Exactly one Chairman: how the switch is enforced
+- **Data:**
+  - `club_offices` holds Chairman rows with a start and end time. A partial unique index allows only one open Chairman row per club.
+  - `clubs.chairman_member_id` is kept in sync by the same step, for older screens.
+- **One transaction:** in a single database transaction, the club row is locked, the old row is closed (end = T), the new row is opened (start = T), the club field is updated, and two audit records are written (outgoing and incoming, same T). Any failure rolls back everything, so there's never zero or two Chairmen.
+- **Authorisation:** "is Chairman" is read only from the open row at the moment of each action. The outgoing Chairman's next action after T is refused; the successor's is allowed.
+- **Concurrency:** handovers, emergency switches and the Super Admin fallback all use the same function and lock. A second request fails cleanly.
+- The Vice-Chair is a separate office and can coexist.
+- Notices go to both people, the committee and the Super Admin (for awareness only, not approval).
+
+### Initial setup vs ongoing changes
+- **Initial setup (one time per club):** after members are imported or created, the setup helper picks the initial office bearers (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain) from the member list and saves them in one step. No existing Chairman or Super Admin approval is needed.
+- **Setup capability:**
+  - Narrow: it can only set the initial offices and basic club setup, and it is held only by the setup helper (the person who claimed or created the club, or a Super Admin helping them).
+  - Time-limited: it ends on the first successful save of a Chairman, or after the setup window (L9), whichever comes first.
+  - Audited, and it can't be reused: once the club has an open Chairman row, the setup path is refused on the server.
+- **On save:** the exactly-one-Chairman check runs, office templates apply, and the Temporary Chairman status (if any) ends.
+- **From then on:** only the Chairman appoints or removes office bearers, and the succession and emergency rules apply.
+
 ### Other office bearers
 - Only the Chairman appoints, replaces or removes them.
 - On removal:
@@ -195,7 +214,7 @@ Any role a delegator assigns is stripped of its S, F and X capabilities, so exec
 
 ### Immediate effect and display
 - The server checks effective rights on every action. Screens refresh within seconds and re-check on save. Counter PINs are re-checked at each use.
-- Each person's rights screen shows every capability with its source, e.g. "From role: Secretary", "Personal grant by Chairman 8 Oct", "Nominated by Treasurer", "Denied by Chairman 8 Oct: reason", "Self-granted" (if D1 allows it).
+- Each person's rights screen shows every capability with its source, e.g. "From role: Secretary", "Personal grant by Chairman 8 Oct", "Nominated by Treasurer", "Denied by Chairman 8 Oct: reason", "Self-granted by Chairman".
 
 ## 4. Default templates (confirmed list; editable per club)
 
@@ -207,10 +226,10 @@ Any role a delegator assigns is stripped of its S, F and X capabilities, so exec
 | Court & Bookings Officer | courts, bookings, visitors, lights | O |
 | Communications Officer | campaigns to members | S |
 | Access Device Officer | access, devices, doors | S |
-| Treasurer | all `fin.*` except manual mandate authorise | F/X |
+| Treasurer | `fin.*` view, initiate, approve and reconcile, except manual mandate authorise. **Never approves items they initiated** (person-level separation; D21) | F/X |
 | Finance Viewer | `fin.overview.view`, `fin.bank.view`, `fin.reports.view` (read-only) | F |
 | Billing Clerk | billing create and remind, fees view | F/X |
-| Bar Manager | items, stock view, counting, counter access, receiving; delegate on routine counter access and counting | O |
+| Bar Manager | items, stock view, counting, counter access; delegate on routine counter access and counting. Receiving and other execution rights only by Chairman grant | O |
 | Bar Staff | sell with own PIN, charge account (debit limits apply) | O |
 | Stock Counter | stocktake count, stock view | O |
 | Bar Controller | cost view, approvals, prices, refunds, PIN admin, devices, settings | S/X |
@@ -220,7 +239,7 @@ Any role a delegator assigns is stripped of its S, F and X capabilities, so exec
 
 | Office | Default | Finance |
 |---|---|---|
-| Chairman | View of all non-finance areas, members admin, appoint offices, grant permissions | None automatic (D1, D2) |
+| Chairman | View of all club areas, members admin, appoint offices, grant permissions | **Finance read-only automatically.** May self-grant execution rights (audited); never approves own transactions |
 | Vice-Chair | Club Manager + Competitions + Court & Bookings + Communications | None |
 | Secretary | Membership Officer + add/remove/status + club rules and documents + communications | None |
 | Treasurer | Treasurer template | Yes |
@@ -307,7 +326,7 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
 
 ## 8. Separation of duties and audit
 - No self-approval anywhere: captures, counts, adjustments, invoices, refunds, journals, payments, and own or family accounts and mandates.
-- Nobody changes their own roles or offices (Chairman self-grant: D1).
+- Nobody changes their own roles or offices. The only exception is the Chairman, who may self-grant execution rights (audited, badge, optional alerts). This never allows approving their own transactions.
 - A finance-settings change blocks paying to that changed bank account for 24 hours.
 - In tiny clubs, the Super Admin may act as the second approver on request, logged (D14).
 - The audit records every grant, deny, delegation, nomination, decision, office change, succession step, claim and sensitive action: who, for whom, what, club, before and after, reason and time. Records can't be edited or deleted. PINs and card data are never logged.
@@ -349,23 +368,30 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 
 ## 11. Rollout for existing clubs (no approval flood)
 1. **Inventory per club:** every current right of every person, from role templates, custom keys, full admin, the admin role and office bearers.
-2. **Mapping, applied automatically for role defaults:**
+2. **Mapping at activation (per club, per phase):**
 
 | Legacy | Maps to | Re-approval |
 |---|---|---|
-| Treasurer / Finance role, `finance` key | Treasurer template | None |
+| Treasurer / Finance role, `finance` key (explicitly assigned) | Treasurer template | None |
 | `fees` key | Billing Clerk + Finance Viewer | None |
 | `banking` key | Finance Viewer + bank import/reconcile | None |
-| `bar` key | Bar Manager (+ Bar Controller where they use those functions today) | None |
-| Club Captain office/role | Club Captain default + any current rights not covered | None |
-| Secretary office/role | Secretary default + any current rights not covered | None |
-| Chairman office/role | Chairman default + any current rights not covered | None |
-| `role='admin'`, full admin, Full Admin role | "Legacy carry-over" set = exactly what they have today | None; listed for later review |
+| `bar` key | Bar Manager. Bar Controller rights only if explicitly assigned today | None |
+| Explicit custom roles and custom keys | Preserved as equivalent capabilities | None |
+| Chairman office | Chairman default (includes finance read-only) | None |
+| Secretary / Club Captain / Vice-Chair office | That office's new default only. **Finance and bar rights that came only from the office are removed** | None |
+| `role='admin'`, full admin flag, Full Admin role | **Not grandfathered.** Blanket rights end. The person keeps their explicit grants and office defaults. The Chairman can then grant what they need | None |
 | Other keys | Matching O capabilities 1:1 | None |
 | Platform moderator | Platform Support | — |
 
-3. **Carry-over, not revocation:** any current right not covered by the new defaults is kept as a "Legacy carry-over" personal grant, marked as such. Nothing is removed until the Chairman or Super Admin reviews it. No pending requests are created.
-4. **Prospective only:** after rollout, the nomination and approval workflow applies only to new sensitive or execution grants. The Chairman and Super Admin can grant directly at any time, audited.
+3. **Migration inventory and per-club impact preview.** Each person's rights are sorted into three groups:
+   1. **Template rights:** from the office or role template defaults. Applied automatically, no approval.
+   2. **Explicit custom or special grants:** club-created roles and personal keys. Kept. Any that contain sensitive finance or Bar & Shop execution are **flagged** for Chairman or owner confirmation in the preview. Legacy Full Admin is never translated into an explicit grant.
+   3. **Incidental legacy rights to remove:** whatever came only from Full Admin, the admin role, or being an office bearer (e.g. Uitsig, where most office bearers have full finance today). Removed at activation.
+   - Each person sees a preview before activation. The owner approves the club's report.
+   - Lockouts are possible and accepted for group 3. The Chairman and Super Admin can correct grants right after activation.
+   - Activation creates no pending requests. Every removal is audited.
+   - Rollback is per club (gate OFF).
+4. **Prospective only:** after activation, the nomination and approval workflow applies only to new sensitive or execution grants. The Chairman and Super Admin can grant directly at any time, audited.
 
 ### Pilot: Riverside only, then owner-approved waves
 
@@ -378,7 +404,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 **Pilot steps:**
 1. **Dry run for all clubs:** a read-only comparison of today's effective rights against the mapped new model, per person per club. Riverside is reviewed in detail; a summary is produced for all other clubs.
 2. **Riverside setup:**
-   - Inventory and mapping with carry-overs.
+   - Inventory, mapping and an impact report showing kept rights and intentional reductions.
    - Test accounts: Chairman, Treasurer, Secretary, Club Captain, Bar Manager, two counter staff and an ordinary member (D18, D19).
 3. **Gate ON for Riverside only.** Other clubs keep today's behaviour.
 4. **Pilot tests in Riverside:**
@@ -397,7 +423,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 - Real transactions made during the pilot are normal records, valid under either model.
 
 **Pilot acceptance criteria (all needed before any wider wave):**
-- Zero unexpected refusals for Riverside's real legitimate users over at least 2 weeks.
+- Zero **unintended** refusals for Riverside's real users over at least 2 weeks. Intentional reductions in the impact report don't count as failures.
 - Every test scenario in section 13 passes in Riverside.
 - Non-Riverside comparison shows zero differences.
 - Zero pending approval requests created by the migration.
@@ -415,7 +441,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 
 - **No automatic promotion.** Nothing moves to the next phase or batch without the owner's written go-ahead.
 - **Phase 2 preparation for Nelspruit:**
-  - Advance notice to Nelspruit's committee (in-app and WhatsApp), e.g. 7 days before.
+  - Advance notice to Nelspruit's committee. The timing and channel are not agreed (D20); 7 days is a suggestion only.
   - A **permission preview**: each person sees what they will be able to do, with the source of each right, and can raise a query before the switch.
   - A dry-run difference report for Nelspruit reviewed by the owner.
 - **Phase 3 batches:** each gets a dry-run report, notice and preview, and the same acceptance criteria.
@@ -425,9 +451,9 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 1. **Add only.** New catalogue, assignments, overrides, append-only events, `legacy_mode=ON` per club, and `has_cap()`. While legacy mode is on, `has_cap()` returns the old answer.
 2. **Early safety fix** (separate approval): lock the office fields to the Chairman flows. Nobody loses access.
 3. **Shadow mode.** Each area's checks move to `has_cap()` but still return the legacy answer, while logging what the new model would decide. A per-club difference report follows.
-4. **Inventory and mapping** written per club, including carry-overs. Owner spot-check on sample clubs (Nelspruit, plus Riverside read-only).
-5. **Per-club switch:** legacy mode OFF. The shadow report must show zero unexpected refusals for current legitimate users.
-6. **Retire labels:** hide "Full Admin", "Admin" and "Club Admin". New clubs get the new templates. Office bearers stop auto-receiving admin.
+4. **Inventory, mapping and impact report** written for the club in the current phase only. Riverside first; Nelspruit only in Phase 2; others only in Phase 3.
+5. **Per-club switch:** gate ON for that club. The impact report must show no unintended loss; intentional reductions must be owner-approved.
+6. **Retire labels in switched clubs:** hide "Full Admin", "Admin" and "Club Admin". New clubs get the new templates. Office bearers stop auto-receiving admin.
 7. **Final cleanup** (separate approval): remove implicit paths and mark legacy columns deprecated (kept, not dropped).
 
 ## 12. Migration safety and rollback checklist
@@ -435,7 +461,10 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 - [ ] Stage 1 is additive only: no drops, renames or type changes. Every new table has grants, RLS and policies in the same migration.
 - [ ] Snapshot of effective rights per person per club taken before each stage, and stored.
 - [ ] With legacy ON, every check gives the same answer as before, by automated comparison per club.
-- [ ] Shadow report per club: no current legitimate user loses a right they use. Any difference becomes a carry-over.
+- [ ] Impact report per club, reviewed before activation:
+  - every right kept (explicit grants, custom roles, office defaults);
+  - every **intentional reduction** (blanket admin, full admin, office-bearer finance);
+  - any **unintended** loss, which must be zero; fix it before activation.
 - [ ] No pending approval requests are created by the migration (count = 0 verified).
 - [ ] Bookings, doors and lights, payment callbacks, marker, tills, notifications and automated jobs are tested per area before switching that area.
 - [ ] Pilot gate verified: only Riverside has `new_permissions_enabled`. Every other club passes the same-answer comparison before and after each pilot deploy.
@@ -444,7 +473,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
   - Set `legacy_mode` back ON per club, effective immediately.
   - Legacy flags and keys are never deleted during 30 days after the switch.
   - The early safety fix can be undone by restoring the previous update rule.
-- [ ] Audit trail verified: grants, carry-overs and switch events are all logged.
+- [ ] Audit trail verified: grants, intentional reductions and switch events are all logged.
 - [ ] Web, PWA and Android behaviour checked for permission refreshes.
 - [ ] Architecture notes and the issue log updated.
 
@@ -468,33 +497,79 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
   - an already-activated club refuses a claim.
 - The migration creates zero pending requests, and rollback restores the old answers.
 
-## 14. Decisions needed
-- **D1. Chairman self-grant (conflict).** At 13:24 you allowed it; at 13:25 you said finance access for the Chairman comes via the Super Admin. Choose:
-  - (a) allowed, with permanent audit, a "Self-granted" badge, optional alerts to the Treasurer and Super Admin, and Super Admin revoke;
-  - (b) refused; Super Admin only.
-  - Until you choose, (b) applies. Self-approving transactions is refused either way.
-- **D2.** Should the Chairman get read-only finance by default, or none until granted (proposed)?
-- **D3.** "Super Admin" means the platform Super Admin only (proposed), not the federation admin or support staff?
-- **D4.** Thresholds for discounts, voids, refunds and journal second approval?
-- **D5.** Build the missing Bar & Shop features (suppliers, purchase orders, till cash-up) now or later?
-- **D6.** Must the successor accept the handover before it takes effect (proposed: yes)?
-- **D7.** Emergency replacement details:
-  - Who counts as an eligible committee member? Proposed: office holders plus offices the Chairman marks.
-  - Request expiry? Proposed: 14 days.
-  - What evidence is required?
-  - Proposed: a 72-hour objection window for the absent Chairman.
-- **D8.** Allow temporary grants and denies with an expiry date (proposed: yes)?
-- **D9.** Direct delegation for Court & Bookings Officer, Communications Officer and Bar Manager, as listed?
-- **D10.** Approve the office defaults. Vice-Chair excludes granting permissions and sensitive rights. Secretary "constitution" = club rules and documents.
-- **D11.** National ID: masked with logged full view (proposed), full view, or a separate right? Date of birth: age only (proposed)?
-- **D12.** Manual "Mark authorised": remove, or keep as a Super Admin-only key?
-- **D13.** `bar.pin.manage` default holder: the Bar Manager once the Chairman grants it (proposed)? First PIN set via a one-time setup code (proposed)?
-- **D14.** Tiny clubs: Super Admin as the second approver on request (proposed)?
-- **D15.** Onboarding: automatic activation on a trusted match (proposed)? Approve the limits while temporary, a 90-day expiry for temporary status, and the 7-day notice?
-- **D16.** Approve the early office-field lock as a stand-alone fix?
-- **D17.** Family exclusions based on account delegations, family groups, or both?
-- **D18. Riverside pilot vs "never alter Riverside's live data" (standing rule).** The pilot changes how access is checked for Riverside's real users. It also adds test accounts, roles and audit rows there. It doesn't change members, bookings, finance or stock records. Please confirm this exception for the pilot. Test accounts would be clearly named, billing-exempt, hidden from public lists and removed afterwards. Test finance and POS flows would use synthetic rows that are reversed, never real member balances.
-- **D19.** Who in Riverside fills the real Chairman, Treasurer, Secretary, Club Captain and Bar Manager roles during the pilot? Or should it run with test accounts only, with real users left on today's mapping (carry-over)?
+## 14. Decisions: already decided vs open
+
+### Already decided — no need to answer again
+| Topic | Decision (prefilled from your messages) |
+|---|---|
+| Chairman finance | Finance **read-only** automatically. No execution by default. May self-grant execution (prominently audited). Never approves own transactions |
+| Other office bearers' finance | Vice-Chair, Secretary and committee members get no finance view by default. The Treasurer gets the defined finance functions |
+| Who grants finance and sensitive rights | Chairman (own club) and Super Admin; others may only nominate |
+| Office bearers | The Chairman alone appoints and removes them. Several roles per person are allowed |
+| Chairman succession | The current Chairman appoints the successor directly. Exactly one Chairman, with an atomic switch |
+| Emergency succession | The Secretary may start it. **Three approvals in total, including the Secretary if they approve**, from distinct committee members. The successor and the absent Chairman can't vote. Super Admin fallback (confirmed 13:30) |
+| Club Captain delegation | Built in; no toggle; operational tournament and event rights only |
+| Bar Manager | Assigns basic counter duties and PIN use directly. Sensitive execution and PIN create/reset need the Chairman's approval; the Bar Manager may nominate |
+| Counter PINs | Individual per operator, never shared; separate from member OTP |
+| Stocktake / adjustments | A second, independent approver |
+| Secretary | View/edit members, add, remove from club, change status. No finance, Bar & Shop or credentials |
+| Migration | Template defaults are automatic. Genuine custom grants are kept. Blanket Full Admin/admin and office-bearer finance are **removed**. No re-approval flood. No zero-lockout promise |
+| Rollout | Strict sequence: Riverside → (owner approval) → Nelspruit → (Nelspruit satisfied + owner approval) → other clubs. Per-club gate and rollback |
+| Approval notices | In-app + WhatsApp, reminders at 24 hours then daily, no escalation |
+| Onboarding | Preloaded and new club pathways. Setup helper picks the initial office bearers. Temporary Chairman where none is chosen |
+| Super Admin meaning (old D3) | Platform Super Admin (`user_roles` admin) only. Proposed default, treated as decided unless you object |
+
+### Open — blocks Phase 1 (Riverside) build
+| # | Question | Proposed default |
+|---|---|---|
+| P1 | Riverside live-data exception: the pilot changes access checks and adds test accounts, roles and audit rows; it doesn't change members, bookings, finance or stock records | Approve, with labelled test accounts removed afterwards |
+| P2 | Riverside: real office bearers on the new model at activation, or test accounts first? | Test accounts first for 1 week, then real users |
+| P3 | Treasurer self-approval: a second finance holder or the Chairman must approve the Treasurer's own items | Yes; Super Admin as second approver only in tiny clubs |
+| P4 | `bar.pin.manage` default holder | The Bar Manager, after the Chairman grants it; first PIN via a one-time setup code |
+| P5 | Early office-field lock as a stand-alone fix before the pilot | Yes |
+
+### Open — needed before Phase 2 (Nelspruit)
+| # | Question | Proposed default |
+|---|---|---|
+| N1 | Nelspruit notice lead time and channel (not yet agreed) | 7 days, in-app + WhatsApp, with a permission preview |
+| N2 | Successor must accept a handover | Yes |
+| N3 | Which committee roles count for an emergency, request expiry, evidence, objection window | Secretary, Vice-Chair, Treasurer, Club Captain + offices the Chairman marks; 14 days; written reason + optional document; 72 hours |
+| N4 | Thresholds for discount, void, refund and journal second approval | R100 discount/void per sale; any refund; journals over R5,000 |
+
+### Open — can wait (not blocking)
+| # | Question | Proposed default |
+|---|---|---|
+| L1 | Temporary grants and denies with an expiry date | Allowed |
+| L2 | Built-in delegation for Court & Bookings and Communications Officers | Yes, operational only |
+| L3 | Vice-Chair excludes granting and sensitive rights; Secretary "constitution" = club rules and documents | Yes |
+| L4 | National ID / date of birth visibility | ID masked, full view logged; DOB as age only |
+| L5 | Manual mandate "Mark authorised" | Keep as Super Admin-only key |
+| L6 | Tiny-club second approver | Super Admin on request |
+| L7 | Build suppliers, purchase orders and till cash-up | Later, after the pilot |
+| L8 | Family exclusions | Both account delegations and family groups |
+| L9 | Onboarding: automatic on a trusted match; 90-day temporary expiry; 7-day public claim notice; setup window length | Yes; yes; yes; 30 days |
+
+### Old to new numbering
+- **Old D1/D2:** decided (Chairman read-only finance + self-grant).
+- **D3:** decided (Super Admin = platform only).
+- **D4:** N4
+- **D5:** L7
+- **D6:** N2
+- **D7:** N3
+- **D8:** L1
+- **D9:** Bar Manager part decided; the rest is L2.
+- **D10:** L3
+- **D11:** L4
+- **D12:** L5
+- **D13:** P4
+- **D14:** L6, and also P3.
+- **D15:** L9
+- **D16:** P5
+- **D17:** L8
+- **D18:** P1
+- **D19:** P2
+- **D20:** N1
+- **D21:** P3
 
 ## Technical details
 - **Audited:** `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; `club_members` policies (admin/self/`members` key update; column grants exclude id_number, address, phone, email); `member_bar_pins` (hash, attempts, lock); `bar_counter_sessions`; `club_claim_requests` + `approve_club_claim`; `_shared/person-match.ts`, `useDuplicateGuard`, `account-recovery`; frontend `use-club-permissions.ts`, `use-club-billing.ts`, `use-door-control.ts`.

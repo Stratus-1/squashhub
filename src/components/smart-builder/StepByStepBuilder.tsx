@@ -870,7 +870,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           const fits = slots >= matches;
           return <div className={cn("rounded-md border p-2 text-xs", fits ? "border-border bg-muted/40" : "border-destructive/50 bg-destructive/5")} data-testid="round-capacity">
             <div className="font-medium">Will this round fit?</div>
-            <div>About <b>{matches}</b> matches in one round{guessed ? " (some groups use expected entries — no players picked yet)" : ""} · ~{perMatch} min each ≈ {Math.round(courtMin / 60)} court-hours.</div>
+            <div>About <b>{matches}</b> matches in one round{guessed ? " (some groups use expected entries — no players picked yet)" : ""} · ~{perMatch} min each{timeGuessed ? " (guessed — set your match time under Match time per slot above)" : ""} ≈ {Math.round(courtMin / 60)} court-hours.</div>
             <div>Available: <b>{slots}</b> match slots across {days.length} day{days.length === 1 ? "" : "s"} ({perDay.join(" + ")}).</div>
             <div className={fits ? "text-foreground" : "font-medium text-destructive"}>{fits
               ? (need < days.length ? `Fits with ${slots - matches} spare slots — ${need} day${need === 1 ? "" : "s"} would be enough. Consider removing a day, fewer courts or a shorter session.` : `Fits, with ${slots - matches} spare slots for delays.`)

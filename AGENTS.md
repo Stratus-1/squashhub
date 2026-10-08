@@ -40,4 +40,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 - Court grids share P and peak logic; why: no separate rules.
 
-- Personal menu order/hidden items live in `user_menu_preferences` (per user + club) and are applied only after permission filtering via `src/lib/menu-order.ts`; why: display preference must never reveal or grant access.
+- Menu order/hide prefs (`user_menu_preferences`) apply only after permission filtering; why: never grant access.

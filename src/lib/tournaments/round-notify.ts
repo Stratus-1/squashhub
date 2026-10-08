@@ -38,24 +38,17 @@ export type RoundDrawNotifyResult = {
 };
 
 /**
- * Every draw asks the organiser whether players must be told now — they may
- * want to test and check the draw first. One answer covers a burst of calls
- * for the same tournament (e.g. confirming all divisions at once).
+ * Generating, regenerating or confirming a draw NEVER messages players.
+ * Only an explicit organiser send (e.g. "Send draw to players", which passes
+ * `skipPrompt: true` after its own confirmation) reaches the backend.
  */
-const recentAnswers = new Map<string, { send: boolean; at: number }>();
-export function askSendDrawNotices(champId: string): boolean {
-  const prev = recentAnswers.get(champId);
-  if (prev && Date.now() - prev.at < 15_000) return prev.send;
-  const send = typeof window === "undefined" ? true : window.confirm(
-    "The draw is saved.\n\nSend the draw emails / notifications to the players NOW?\n\nOK = send now\nCancel = don't send (e.g. you still want to test and check the draw)",
-  );
-  recentAnswers.set(champId, { send, at: Date.now() });
-  return send;
+export function askSendDrawNotices(_champId: string): boolean {
+  return false;
 }
 
 /** Human summary for the confirmation toast. */
 export function roundNotifySummary(r: RoundDrawNotifyResult): string {
-  if (r.skipped) return "Draw saved — players were NOT notified.";
+  if (r.skipped) return "Draw saved — players were NOT notified. Use \"Send draw to players\" when you're ready.";
   if (r.sent === 0) return "No players to notify for this round.";
   const chans = r.channels.filter((c) => ["app", "email", "whatsapp"].includes(c));
   const label = chans
@@ -65,7 +58,8 @@ export function roundNotifySummary(r: RoundDrawNotifyResult): string {
 }
 
 export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<RoundDrawNotifyResult> {
-  if (!scope.skipPrompt && !askSendDrawNotices(scope.champId)) {
+  if (!scope.skipPrompt) {
+    // Draw generation paths call this without an explicit send: never dispatch.
     return { sent: 0, channels: [], whatsappSent: 0, whatsappFailed: 0, skipped: true };
   }
   const { data, error } = await (supabase as any).rpc("notify_champ_round_draw", {

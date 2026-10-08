@@ -2721,3 +2721,7 @@ Separate Bar and Shop switches (default on). When off, account charges that woul
 
 ## 2026-10-08 Treasurer approval link lands on dashboard (Nelspruit)
 Causes: (1) right after sign-in the permission check ran before member details loaded and bounced non-admin finance staff to /dashboard; (2) email link opened the Finance hub, not the payment; (3) approve/reject and pending reads were admin-only server-side, so Treasurers could not act. Fix: MemberContext loading key, deep link ?view=pending&tx=, RPC finance_decide_member_transaction (finance permission, row lock, pending-only, audit_events), finance read policy. Not fixed: rest of Club Books reads remain admin-only; post_journal has no caller permission check.
+
+## 2026-08-10 — View-only court display: notice legibility
+- Raised the sign-in notice to 12px phone / 14px desktop at medium weight and switched it from muted foreground to the shared accent token (text-accent), the same colour as the header clock. Wording, centring and header layout unchanged.
+- Validation: Uitsig token live at 1280x1800 and 390x844 — notice computed colour rgb(249,169,31) identical to the clock, centred 0px offset, one line desktop / two lines phone, no overlap, no console errors, peak P markers intact; courts-display-peak.test.tsx (6) passes. Preview only, not published.

@@ -115,35 +115,6 @@ export function CostingTab({ clubId }: { clubId: string }) {
         />
       </Card>
 
-      <Card className="p-4 space-y-3">
-        <div>
-          <h3 className="font-semibold text-sm">Member account charging</h3>
-          <p className="text-xs text-muted-foreground">
-            Off: a purchase put on a member's account is refused if it would take them past what their account allows —
-            prepaid credit first, plus any fees covered by an active monthly debit order (the same rule as court bookings).
-            They can pay by card or top up instead. Existing balances are never changed.
-          </p>
-        </div>
-        {(["bar", "shop"] as const).map((k) => {
-          const col = k === "bar" ? "bar_allow_member_debit" : "shop_allow_member_debit";
-          const label = `${k === "bar" ? "Bar" : "Shop"}: Allow member account to go into debit`;
-          return (
-            <div key={k} className="flex items-center justify-between gap-3">
-              <span className="text-sm">{label}</span>
-              <Switch
-                checked={settings?.[col] ?? true}
-                aria-label={label}
-                onCheckedChange={async (on) => {
-                  const { error } = await db.from("club_bar_settings").upsert({ club_id: clubId, costing_enabled: enabled, [col]: on });
-                  if (error) return toast.error(error.message);
-                  toast.success(on ? `${k === "bar" ? "Bar" : "Shop"} accounts may go into debit` : `${k === "bar" ? "Bar" : "Shop"} account charges now limited`);
-                  qc.invalidateQueries({ queryKey: ["bar-costing-settings", clubId] });
-                }}
-              />
-            </div>
-          );
-        })}
-      </Card>
 
       {enabled && (
         <>

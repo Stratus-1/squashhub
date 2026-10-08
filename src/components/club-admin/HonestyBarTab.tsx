@@ -1,3 +1,4 @@
+import { MemberDebitSwitches } from "@/components/club-admin/bar/MemberDebitSwitches";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
 import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
@@ -267,6 +268,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             </div>
           ))}
         </div>
+        {(club as any)?.bar_account_tab_enabled !== false && clubId && <MemberDebitSwitches clubId={clubId} />}
       </Card>
 
 

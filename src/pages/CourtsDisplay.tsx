@@ -91,10 +91,9 @@ export default function CourtsDisplay() {
               {data.bookings.filter((b) => b.court_id === c.id).map((b, i) => {
                 const s = toMin(b.start), e = toMin(b.end), live = now >= s && now < e, past = now >= e;
                 return (
-                  <div key={i} className={`absolute left-1 right-1 rounded-md px-2 py-1 overflow-hidden border ${live ? "bg-primary text-primary-foreground border-primary" : past ? "bg-muted text-muted-foreground border-border opacity-60" : "bg-accent text-accent-foreground border-border"}`}
+                  <div key={i} className={`absolute left-1 right-1 rounded-md px-2 py-1 overflow-hidden border flex items-center ${live ? "bg-primary text-primary-foreground border-primary" : past ? "bg-muted text-muted-foreground border-border opacity-60" : "bg-accent text-accent-foreground border-border"}`}
                     style={{ top: pct(s), height: `calc(${((e - s) / span) * 100}% - 2px)` }}>
-                    <div className="text-sm font-semibold tabular-nums">{b.start.slice(0, 5)}–{b.end.slice(0, 5)}</div>
-                    <div className="text-base font-medium truncate">{b.label}</div>
+                    <div className="text-base font-medium truncate">{b.label || "Booked"}</div>
                   </div>
                 );
               })}

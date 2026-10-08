@@ -389,7 +389,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
    - POS segregation: individual PINs, PIN admin, stocktake second approver, refunds.
    - Chairman handover and emergency votes on test accounts.
    - Audit trail completeness.
-5. **Regression for non-Riverside clubs:** automated same-answer comparison on every check. Spot flows (booking, bar sale, EFT approval, tournament entry) in Nelspruit with synthetic, rolled-back rows.
+5. **Regression for non-Riverside clubs:** an automated, read-only same-answer comparison on every check for every other club, including Nelspruit. In Phase 1, no test rows are written in Nelspruit or any other club. Flow tests (booking, bar sale, EFT approval, tournament entry) run only on Riverside test accounts.
 
 **Instant disable:**
 - Setting Riverside's gate OFF returns it to legacy answers immediately. No data is deleted.
@@ -405,12 +405,21 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 - The gate OFF/ON cycle has been tested once with no data change.
 - Approval notices delivered, with reminders at 24 hours and then daily.
 
-**Waves after the pilot:** each needs **explicit owner sign-off**.
-1. **Wave 1:** a few named clubs, e.g. Nelspruit plus clubs with active committees.
-2. **Wave 2:** clubs with recorded office bearers.
-3. **Wave 3:** remaining clubs.
+**Strict sequential rollout (owner decision, replaces the earlier wave idea):**
 
-Each wave gets a dry-run report, the same acceptance criteria, and its own rollback (gate OFF per club).
+| Phase | Clubs with gate ON | Starts only when |
+|---|---|---|
+| 1 | **Riverside only.** Every other club, including Nelspruit, unchanged | Owner approves the build |
+| 2 | **Nelspruit** (Riverside stays on) | The owner has tested Riverside and **explicitly approved** Phase 2 |
+| 3 | Other clubs, gradually, in small named batches | Nelspruit confirms it is satisfied **and** the owner explicitly approves each batch |
+
+- **No automatic promotion.** Nothing moves to the next phase or batch without the owner's written go-ahead.
+- **Phase 2 preparation for Nelspruit:**
+  - Advance notice to Nelspruit's committee (in-app and WhatsApp), e.g. 7 days before.
+  - A **permission preview**: each person sees what they will be able to do, with the source of each right, and can raise a query before the switch.
+  - A dry-run difference report for Nelspruit reviewed by the owner.
+- **Phase 3 batches:** each gets a dry-run report, notice and preview, and the same acceptance criteria.
+- **Activation and rollback are per club:** turning one club's gate OFF never affects another.
 
 **Stages:**
 1. **Add only.** New catalogue, assignments, overrides, append-only events, `legacy_mode=ON` per club, and `has_cap()`. While legacy mode is on, `has_cap()` returns the old answer.

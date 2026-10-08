@@ -43,8 +43,8 @@ describe("Step-by-Step: category board full-screen expand", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
     const dlg = await screen.findByRole("dialog", { name: /full screen/i });
     expect(within(dlg).getByTestId("pick-board")).toBeInTheDocument();
-    expect(within(dlg).getByText(/Mens A/)).toBeInTheDocument();
-    expect(within(dlg).getByText(/Ladies/)).toBeInTheDocument();
+    expect(within(dlg).getAllByText(/Mens A/).length).toBeGreaterThan(0);
+    expect(within(dlg).getAllByText(/Ladies/).length).toBeGreaterThan(0);
     // The inline board is replaced, not duplicated.
     expect(screen.getAllByTestId("pick-board")).toHaveLength(1);
   });
@@ -73,8 +73,9 @@ describe("Step-by-Step: category board full-screen expand", () => {
     // Each row carries a "Move <name> to" chooser; use it instead of dragging.
     const chooser = within(dlg).getByLabelText(/Move Anna to/i);
     fireEvent.change(chooser, { target: { value: "Ladies" } });
-    // Anna left Mens A and is now listed once, in Ladies.
-    expect(within(dlg).getAllByText("Anna")).toHaveLength(1);
-    expect(within(dlg).getByText(/Ladies/)).toBeInTheDocument();
+    // Anna left Mens A: one row only, and her own chooser now offers to leave Ladies.
+    await waitFor(() => expect(within(dlg).getAllByText("Anna")).toHaveLength(1));
+    expect(within(dlg).getAllByLabelText(/Move Anna to/i)).toHaveLength(1);
+    expect(within(dlg).getByLabelText(/Move Anna to/i).textContent).toMatch(/Remove from Ladies/);
   });
 });

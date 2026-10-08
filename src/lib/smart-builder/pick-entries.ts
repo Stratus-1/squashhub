@@ -43,14 +43,18 @@ export function blockedReason(eligible: boolean, categoryType: string | null | u
   return "Not eligible";
 }
 
-/** One server entrant item per (person, event); partner only in admin-paired doubles events. */
+/**
+ * One server entrant item per (person, event); partner only in admin-paired doubles events.
+ * Ticks for events that were renamed/removed are kept in `picks` (so renaming back restores
+ * them) but are NOT entrants — only keys that still exist in `unitKeys` are handed over.
+ */
 export function entrantsFromPicks(
   picks: Picks,
   unitKeys: string[],
   partnerIn: (id: string, key: string) => string | null,
 ): Array<{ memberId: string; partnerId: string | null; division: number | null }> {
-  return Object.keys(picks).flatMap((id) => placesOf(picks, id).map((k) => {
+  return Object.keys(picks).flatMap((id) => placesOf(picks, id).flatMap((k) => {
     const i = unitKeys.indexOf(k);
-    return { memberId: id, partnerId: partnerIn(id, k), division: i >= 0 ? i + 1 : null };
+    return i >= 0 ? [{ memberId: id, partnerId: partnerIn(id, k), division: i + 1 }] : [];
   }));
 }

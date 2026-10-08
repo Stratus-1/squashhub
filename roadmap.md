@@ -103,3 +103,5 @@
 
 ## Dashboard edit entry polish (2026-10-08)
 - [x] Edit dashboard entry made compact: 44px pencil icon in the member home header replaces the full-width "Edit dashboard" row (Riverside pilot gate unchanged). Editor behaviour untouched (drag/arrows/hide, Save/Cancel/Reset); menu-order tests 6/6 pass, build OK; verified signed-in Riverside at 390px (pencil 44x44, not stretched, editor opens with Save/Reset, old row gone). Preview only, not published.
+
+- [ ] Riverside pilot: wire has_cap into finance approvals (no self-approval), Bar & Shop incl. PINs, member editing; until then Club Admin screens follow old rules

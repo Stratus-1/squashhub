@@ -90,7 +90,7 @@ export function useMemberPermission(memberId: string | undefined) {
  * Captain/Admin roles always return true.
  */
 export function useHasPermission(permission: PermissionSlug): boolean {
-  const { activeMember, isAdmin, isLoading: memberCtxLoading } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const isSuperAdmin = useIsSuperAdmin();
   const memberId = activeMember?.id;
 
@@ -132,7 +132,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
  * Get all effective permissions for the current member.
  */
 export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading: boolean; isFullAdmin?: boolean } {
-  const { activeMember, isAdmin } = useMemberContext();
+  const { activeMember, isAdmin, isLoading: memberCtxLoading } = useMemberContext();
   const { isSuperAdmin, isLoading: superAdminLoading } = useSuperAdminStatus();
   const memberId = activeMember?.id;
 

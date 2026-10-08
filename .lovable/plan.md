@@ -369,6 +369,8 @@ Records are never overwritten; changes add new versions.
 
 **6. Proportionality:** the audit chain carries the safety. Permissions stay simple and low-friction; independent approval is kept only for sensitive finance and stock actions.
 
+**7. Audit never overrides a refusal.** Logging an action never lets someone do what they weren't given, or were explicitly denied. These still apply: no financial self-approval, a second approver for stock discrepancies, identity checks and club boundaries.
+
 ## 9. Onboarding (both pathways)
 
 **Activation is separate from data:** imported club rows, member rows and office names grant nothing.

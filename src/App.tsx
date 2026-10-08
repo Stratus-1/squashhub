@@ -12,6 +12,7 @@ import { ClubProvider, useClubContext } from "@/contexts/ClubContext";
 import { MemberProvider } from "@/contexts/MemberContext";
 import { BottomNav } from "@/components/BottomNav";
 import { DesktopShell } from "@/components/DesktopShell";
+import { MenuEditAnnouncement } from "@/components/MenuEditAnnouncement";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -496,6 +497,7 @@ function AppRoutes() {
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       {user && !isAdminRoute && <ClubBrandedBackground />}
+      {user && !isTvRoute && <MenuEditAnnouncement />}
       <DesktopShell enabled={shellEnabled}>
         <Suspense fallback={routeFallback}>
           <Routes location={routeLocation}>

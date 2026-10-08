@@ -1444,7 +1444,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     return (
                     <div key={id} className={cn("grid grid-cols-[11rem_1fr_auto] items-center gap-2 rounded-md border px-2 py-1", mine.length ? "border-border" : "border-destructive/50 bg-destructive/5")} data-testid={`pick-row-${id}`}>
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold" title={memberName(id)}>{memberName(id)}</div>
+                        <div className="truncate text-sm font-semibold" title={memberName(id)}>{memberName(id)}{enteredIds.has(id) && <span className="ml-1 rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">Entered</span>}</div>
                         <div className={cn("text-[11px]", mine.length ? "text-muted-foreground" : "font-medium text-destructive")}>{mine.length ? `${mine.length} event${mine.length === 1 ? "" : "s"}` : "No event yet"}</div>
                       </div>
                       <div className="flex flex-wrap gap-1 text-[11px]" role="group" aria-label={`Events for ${memberName(id)}`}>

@@ -13502,6 +13502,39 @@ export type Database = {
           },
         ]
       }
+      platform_change_log: {
+        Row: {
+          area: string
+          audience_hint: string
+          changed_on: string
+          created_at: string
+          created_by: string | null
+          id: string
+          summary: string
+          title: string
+        }
+        Insert: {
+          area?: string
+          audience_hint?: string
+          changed_on?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          summary?: string
+          title: string
+        }
+        Update: {
+          area?: string
+          audience_hint?: string
+          changed_on?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          summary?: string
+          title?: string
+        }
+        Relationships: []
+      }
       platform_league_associations: {
         Row: {
           created_at: string

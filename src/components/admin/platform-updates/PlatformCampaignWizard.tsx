@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Wand2, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "@/hooks/use-toast";
@@ -65,6 +67,49 @@ export function PlatformCampaignWizard({
     memberIds: duplicateOf?.audience_member_ids ?? [],
   });
   const [clubSearch, setClubSearch] = useState("");
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiAudience, setAiAudience] = useState<"admins" | "members">("admins");
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const { data: memberCount = 0 } = useQuery({
+    queryKey: ["platform-updates-member-count"],
+    enabled: audience.type === "members",
+    queryFn: async () => {
+      const { count } = await (supabase as any)
+        .from("club_members").select("id", { count: "exact", head: true })
+        .not("user_id", "is", null).neq("status", "resigned");
+      return count ?? 0;
+    },
+  });
+
+  const writeWithAi = async () => {
+    if (!aiTopic.trim()) { toast({ title: "Tell the AI what the update is about", variant: "destructive" }); return; }
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("draft-platform-update", {
+        body: { topic: aiTopic.trim(), audience: aiAudience },
+      });
+      if (error) {
+        let msg = error.message;
+        try { msg = (await (error as any).context.json())?.error ?? msg; } catch { /* keep */ }
+        throw new Error(msg);
+      }
+      const d = data?.draft;
+      if (!d) throw new Error(data?.error || "No draft returned");
+      setName(d.campaign_name || name);
+      setSubject(d.subject || "");
+      setBody(d.body_html || "");
+      setActionLabel(d.action_label || "");
+      setActionUrl(d.action_url || "");
+      setAudience((a) => ({ ...a, type: aiAudience === "members" ? "members" : "all" }));
+      if (aiAudience === "members") setChannels(["in_app"]);
+      toast({ title: "Draft ready", description: "Check and edit it before sending." });
+    } catch (e: any) {
+      toast({ title: "Could not write a draft", description: e?.message, variant: "destructive" });
+    } finally {
+      setAiBusy(false);
+    }
+  };
   const [adminSearch, setAdminSearch] = useState("");
 
   const { data: clubs = [] } = useQuery({
@@ -127,6 +172,9 @@ export function PlatformCampaignWizard({
 
   /** Recipient summary — mirrors the server's expansion + de-duplication. */
   const summary = useMemo(() => {
+    if (audience.type === "members") {
+      return { people: { length: memberCount } as any[], clubCount: clubs.length, withEmail: 0, withPhone: 0, noContact: 0 };
+    }
     let rows = admins as any[];
     if (audience.type === "clubs") rows = rows.filter((r) => audience.clubIds.includes(r.club_id));
     else if (audience.type === "admins") rows = rows.filter((r) => audience.memberIds.includes(r.id));
@@ -148,7 +196,7 @@ export function PlatformCampaignWizard({
     const noContact = people.filter((p) => !p.email && !normalisePhone(p.phone)).length;
     const clubCount = new Set(rows.map((r) => r.club_id)).size;
     return { people, clubCount, withEmail, withPhone, noContact };
-  }, [admins, audience, audienceClubIds]);
+  }, [admins, audience, audienceClubIds, memberCount, clubs.length]);
 
   const previewVars = {
     first_name: "Sam", surname: "Nkosi", name: "Sam Nkosi",
@@ -174,7 +222,7 @@ export function PlatformCampaignWizard({
         body_html: body,
         action_label: actionLabel.trim() || null,
         action_url: actionUrl.trim() || null,
-        channels,
+        channels: audience.type === "members" ? ["in_app"] : channels,
         audience_type: audience.type,
         audience_club_ids: audience.type === "clubs" ? audience.clubIds : [],
         audience_association_id: audience.type === "association" ? audience.associationId : null,
@@ -210,7 +258,7 @@ export function PlatformCampaignWizard({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Platform update — from SquashHub to club administrators</DialogTitle>
+          <DialogTitle>Platform update — from SquashHub</DialogTitle>
         </DialogHeader>
 
         <div className="flex items-center gap-1 text-[11px] mb-2">
@@ -224,6 +272,26 @@ export function PlatformCampaignWizard({
 
         {step === 0 && (
           <div className="space-y-3">
+            <Card className="p-3 space-y-2 border-primary/30 bg-primary/5">
+              <p className="text-sm font-semibold inline-flex items-center gap-2"><Wand2 className="w-4 h-4 text-primary" /> Write it with AI</p>
+              <p className="text-[11px] text-muted-foreground">
+                Say what the update is about (e.g. "the tournament improvements"). The AI uses SquashHub's recent change log and writes a proposed note you can edit.
+              </p>
+              <Textarea rows={2} value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder="What is this update about?" />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Who is it for?</span>
+                {([["admins", "Club admins only"], ["members", "All members"]] as const).map(([k, l]) => (
+                  <button key={k} type="button" onClick={() => setAiAudience(k)}
+                    className={`text-[11px] px-2 py-1 rounded-full border ${aiAudience === k ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
+                    {l}
+                  </button>
+                ))}
+                <Button size="sm" className="ml-auto" onClick={writeWithAi} disabled={aiBusy}>
+                  {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                  {aiBusy ? "Writing…" : "Write draft"}
+                </Button>
+              </div>
+            </Card>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-xs">Campaign name</Label>
@@ -254,7 +322,7 @@ export function PlatformCampaignWizard({
             <div className="flex flex-wrap gap-1">
               {([
                 ["all", "All active clubs"], ["clubs", "Selected clubs"], ["association", "Selected association"],
-                ["plan", "Subscription plan"], ["admins", "Named administrators"],
+                ["plan", "Subscription plan"], ["admins", "Named administrators"], ["members", "All members (in-app)"],
               ] as [PlatformAudienceType, string][]).map(([k, label]) => (
                 <button key={k} type="button" onClick={() => setAudience((a) => ({ ...a, type: k }))}
                   className={`text-[11px] px-2 py-1 rounded-full border ${audience.type === k ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
@@ -328,19 +396,21 @@ export function PlatformCampaignWizard({
             )}
 
             <p className="text-xs text-muted-foreground">
-              Only club administrators and captains receive platform updates — ordinary members never do.
+              {audience.type === "members"
+                ? `Every member with a login (${memberCount}) gets this in their Updates from SquashHub list and as a notification. In-app only — no emails or messages.`
+                : "Only club administrators and captains receive this update."}
             </p>
           </div>
         )}
 
         {step === 2 && (
           <div className="space-y-2">
-            {PLATFORM_CHANNELS.map((ch) => (
+            {PLATFORM_CHANNELS.filter((ch) => audience.type !== "members" || ch.key === "in_app").map((ch) => (
               <label key={ch.key} className="flex items-center gap-2 text-sm p-2 rounded border border-border">
                 <Checkbox checked={channels.includes(ch.key)} onCheckedChange={() => toggleChannel(ch.key)} />
                 <span className="flex-1">{ch.label}</span>
                 <span className="text-[11px] text-muted-foreground">
-                  {ch.key === "in_app" && `${summary.people.length} administrators`}
+                  {ch.key === "in_app" && `${summary.people.length} ${audience.type === "members" ? "members" : "administrators"}`}
                   {ch.key === "email" && `${summary.withEmail} with email`}
                   {(ch.key === "whatsapp" || ch.key === "sms") && `${summary.withPhone} with a mobile number`}
                 </span>
@@ -357,7 +427,7 @@ export function PlatformCampaignWizard({
           <div className="space-y-3">
             <Card className="p-3 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
               {[
-                ["Clubs", summary.clubCount], ["Administrators", summary.people.length],
+                ["Clubs", summary.clubCount], [audience.type === "members" ? "Members" : "Administrators", summary.people.length],
                 ["Email", summary.withEmail], ["Mobile", summary.withPhone], ["No contact", summary.noContact],
               ].map(([l, v]) => (
                 <div key={l as string}>
@@ -397,10 +467,10 @@ export function PlatformCampaignWizard({
               <Button
                 onClick={() => {
                   if (!summary.people.length) {
-                    toast({ title: "No administrators matched", variant: "destructive" });
+                    toast({ title: "No recipients matched", variant: "destructive" });
                     return;
                   }
-                  if (confirm(`Send "${name}" to ${summary.people.length} administrators across ${summary.clubCount} clubs?`)) {
+                  if (confirm(`Send "${name}" to ${summary.people.length} ${audience.type === "members" ? "members" : "administrators"}${audience.type === "members" ? " (in-app only)" : ` across ${summary.clubCount} clubs`}?`)) {
                     run.mutate(true);
                   }
                 }}

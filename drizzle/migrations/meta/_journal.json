@@ -722,6 +722,13 @@
       "when": 1791468954796,
       "tag": "0102_user_menu_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1791471363778,
+      "tag": "0103_migration",
+      "breakpoints": true
     }
   ]
 }

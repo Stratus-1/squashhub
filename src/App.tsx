@@ -39,6 +39,7 @@ const Ladder = lazy(() => import("./pages/Ladder"));
 const Challenges = lazy(() => import("./pages/Challenges"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const Updates = lazy(() => import("./pages/Updates"));
 const Events = lazy(() => import("./pages/Events"));
 const Tournaments = lazy(() => import("./pages/Tournaments"));
 const EventDetail = lazy(() => import("./pages/EventDetail"));
@@ -627,6 +628,7 @@ function AppRoutes() {
         <Route path="/c/:subdomain/t/:champId/withdraw" element={<TournamentGroupAction action="withdraw" />} />
 
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="/updates" element={<ProtectedRoute><Updates /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />

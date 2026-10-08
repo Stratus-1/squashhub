@@ -29,7 +29,7 @@ export const PLATFORM_MERGE_FIELDS = [
   { key: "action_url", label: "Action link" },
 ];
 
-export type PlatformAudienceType = "all" | "clubs" | "association" | "plan" | "admins";
+export type PlatformAudienceType = "all" | "clubs" | "association" | "plan" | "admins" | "members";
 
 /** Fill {{tokens}} for previews — the server does the same at send time. */
 export function renderMerge(text: string, vars: Record<string, string>) {

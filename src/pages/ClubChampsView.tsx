@@ -1223,7 +1223,12 @@ export default function ClubChampsView() {
 
 
 
-  const groupNumbers = [...new Set(standingsEntries.map((e: any) => e.group_number as number))].sort();
+  // Groups come from entries AND from generated fixtures: players placed
+  // straight into the draw (no entry row) must still see their schedule.
+  const groupNumbers = [...new Set([
+    ...standingsEntries.map((e: any) => e.group_number as number),
+    ...matches.map((m: any) => m.group_number as number),
+  ].filter((n) => n != null))].sort();
 
   const hcLabel = (h: any) => {
     const n = Number(h) || 0;
@@ -1393,7 +1398,10 @@ export default function ClubChampsView() {
 
 
   const myMatches = matches.filter(isMyMatch);
-  const myGroupNumbers = [...new Set(entries.filter((e: any) => e.club_member_id === myMemberId || e.partner_member_id === myMemberId).map((e: any) => e.group_number as number))];
+  const myGroupNumbers = [...new Set([
+    ...entries.filter((e: any) => e.club_member_id === myMemberId || e.partner_member_id === myMemberId).map((e: any) => e.group_number as number),
+    ...myMatches.map((m: any) => m.group_number as number),
+  ].filter((n) => n != null))].sort();
 
 
   const getCrossLeagueCsvHeaders = () => {

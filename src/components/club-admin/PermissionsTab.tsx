@@ -22,6 +22,7 @@ import {
 } from "@/hooks/use-club-permissions";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { permissionSlugsForTenant, permissionLabel, visibleSlugs } from "@/lib/permission-scope";
+import { NewPermissionsPanel, useNewPermissionsOn } from "./NewPermissionsPanel";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 /**
@@ -43,20 +44,25 @@ function useIsAssociationTenant(clubId: string): boolean {
 }
 
 export function PermissionsTab({ clubId }: { clubId: string }) {
+  const { data: newOn } = useNewPermissionsOn(clubId);
+  const touched = useRef(false);
   const [step, setStep] = useState("roles");
   const { data: roles = [] } = usePermissionRoles(clubId);
 
   const steps: SetupStep[] = [
-    { id: "roles", label: "Permission roles", description: "Create reusable roles like Treasurer or Committee, each with a preset list of what they may access.", complete: roles.length > 0 },
-    { id: "members", label: "Member permissions", description: "Assign a role — or individual permissions — to each member who helps run the club.", complete: roles.length > 0 },
+    ...(newOn ? [{ id: "new", label: "Offices & detailed permissions", description: "The new permissions for this club: offices, templates, personal grants and denies, with full history.", complete: true }] : []),
+    { id: "roles", label: newOn ? "Old permission roles" : "Permission roles", description: "Create reusable roles like Treasurer or Committee, each with a preset list of what they may access.", complete: roles.length > 0 },
+    { id: "members", label: newOn ? "Old member permissions" : "Member permissions", description: "Assign a role — or individual permissions — to each member who helps run the club.", complete: roles.length > 0 },
   ];
+  const current = newOn && step === "roles" && !touched.current ? "new" : step;
 
   return (
     <div className="space-y-4 mt-4">
-      <SetupSteps steps={steps} value={step} onChange={setStep} />
-      {step === "roles" && <RolesSection clubId={clubId} />}
-      {step === "members" && <MemberPermissionsSection clubId={clubId} />}
-      <SetupStepNav steps={steps} value={step} onChange={setStep} />
+      <SetupSteps steps={steps} value={current} onChange={(s) => { touched.current = true; setStep(s); }} />
+      {current === "new" && <NewPermissionsPanel clubId={clubId} />}
+      {current === "roles" && <RolesSection clubId={clubId} />}
+      {current === "members" && <MemberPermissionsSection clubId={clubId} />}
+      <SetupStepNav steps={steps} value={current} onChange={(s) => { touched.current = true; setStep(s); }} />
     </div>
   );
 }

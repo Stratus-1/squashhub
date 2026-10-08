@@ -85,3 +85,6 @@
 - [ ] Phase 2: admin-only Manage Tournament hub route + single button (custom "Tournaments" permission included)
 - [ ] Phase 3/3b: per-round Notifications (status, channels, preview, test-to-self, send changes, triggers Manual/Prompt/Automatic)
 - [ ] Phase 4/5: per-format parity check, then remove admin panels from member tournament page
+
+- [x] Permissions redesign Stage 1 (approved plan): additive migration 0099 — capability_catalogue, member_role_assignments, member_capability_overrides, club_offices (unique open Chairman), chairman_handovers, chairman_emergency_requests/votes, capability_nominations, permission_events, club_permission_settings (legacy_mode default ON), permission_shadow_log, permission_inventory_snapshots, has_cap()/can_grant() wrappers. Verified has_cap matches legacy answers; build OK. No club behaviour changed.
+- [ ] Stage 2+ (shadow mode, Riverside inventory/mapping, gate ON) — each needs separate owner approval per plan checklist.

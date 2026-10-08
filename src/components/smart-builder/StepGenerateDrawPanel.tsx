@@ -73,6 +73,15 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [dragId, setDragId] = useState<string | null>(null);
   const [venueErr, setVenueErr] = useState<string | null>(null);
   const [schedOk, setSchedOk] = useState(true);
+  const [seedFull, setSeedFull] = useState(false);
+  useEffect(() => {
+    if (!seedFull) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSeedFull(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [seedFull]);
 
   const load = async () => {
     setLoading(true);

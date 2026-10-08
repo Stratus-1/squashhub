@@ -943,10 +943,14 @@ export default function Tournaments() {
                  {koRound != null && <span className="font-medium min-w-0 break-words">{koCategories.length > 3 ? `${koCategories.length} categories` : koCategories.join(", ")}</span>}
                  {!isPool && playBy ? <span className="uppercase tracking-wider">· Play by {format(new Date(`${playBy}T00:00:00`), "dd MMM yyyy")}</span> : allScheduled && schedDates[0] ? (() => {
                    const times = Array.from(new Set(items.map((m: any) => m.scheduled_time ? String(m.scheduled_time).slice(0, 5) : null))).filter(Boolean) as string[];
-                   const own = Array.from(new Set(items.map((m: any) => m.scheduled_date).filter(Boolean))).sort() as string[];
-                   const day = own.length === 1 ? own[0] : schedDates[0];
+                   const first = schedDates[0];
+                   const last = schedDates[schedDates.length - 1];
                    const bell = times.length === 1 && items.every((m: any) => m.scheduled_time) ? ` · ${times[0]}` : "";
-                   return <span className="uppercase tracking-wider">· {format(new Date(`${day}T00:00:00`), "EEE dd MMM")}{bell}</span>;
+                   // Multi-day rounds read as a range (13–15 Oct), single days keep the weekday.
+                   const when = schedDates.length > 1
+                     ? `${format(new Date(`${first}T00:00:00`), "d")}–${format(new Date(`${last}T00:00:00`), "d MMM yyyy")}`
+                     : format(new Date(`${first}T00:00:00`), "EEE dd MMM");
+                   return <span className="uppercase tracking-wider">· {when}{bell}</span>;
                  })() : null}
                 <span className="text-muted-foreground font-normal">
                   {all.length > 0 && outstanding > 0

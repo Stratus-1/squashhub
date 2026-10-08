@@ -41,6 +41,15 @@ describe("target-stage schedule: pool 6 Oct -> QF 22 -> SF 25 -> Final 28", () =
     expect(canScheduleFixture(m, "x", { canManage: true, centrallyScheduled: true }).allowed).toBe(true);
   });
 
+  it("a fixed stage's real dates win over the fixture's leftover draw play_by", () => {
+    const idx = stageScheduleIndex(spec("fixed"));
+    const r = resolveFixtureSchedule(fx("po3", { play_by: "2026-10-13", scheduled_date: "2026-10-28", scheduled_time: "10:25", court_id: 20 }), { stage: idx.get("po3"), rows });
+    expect(r).toMatchObject({ mode: "scheduled", date: "2026-10-28", time: "10:25", playBy: null, bookable: false });
+    // play-by stages keep their own deadline
+    const by = resolveFixtureSchedule(fx("po1", { play_by: "2026-10-13" }), { stage: stageScheduleIndex(spec("play_by")).get("po1"), rows });
+    expect(by).toMatchObject({ mode: "play_by", playBy: "2026-10-13" });
+  });
+
   it("a staged fixture never borrows another stage's round row", () => {
     expect(fixtureRoundRow(fx("po3"), rows)?.id).toBe("r-f");
     expect(fixtureRoundRow(fx("po3", { round_id: "r-f" }), rows)?.id).toBe("r-f");

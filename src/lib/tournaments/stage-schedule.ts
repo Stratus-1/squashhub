@@ -92,9 +92,11 @@ export type FixtureSchedule =
 
 /**
  * Resolve ONE fixture's schedule from its target stage.
- *  1. The fixture's own play_by wins (what the organiser set when it was drawn).
- *  2. A structured stage configured "Play on scheduled date/time" is centrally scheduled: show its
- *     date/time/court, no Play by / Book by and no booking prompt for players.
+ *  1. A structured stage configured "Play on scheduled date/time" is centrally scheduled: show its
+ *     date/time/court, no Play by / Book by and no booking prompt for players. This wins over the
+ *     fixture's own play_by — that deadline is a leftover from the draw and the round's real dates
+ *     and courts take precedence.
+ *  2. Otherwise the fixture's own play_by wins (what the organiser set when it was drawn).
  *  3. A structured play-off stage configured "Play by a date" uses THAT stage's deadline.
  *  4. Otherwise the fixture's own round row (round_id / same stage), then `fallback()` — legacy
  *     tournaments without a structured spec only.
@@ -103,23 +105,23 @@ export function resolveFixtureSchedule(
   m: FixtureLikeForSchedule,
   opts: { stage?: StageScheduleInfo | null; rows?: RoundRowLike[]; fallback?: () => string | null | undefined; organiserScheduled?: boolean } = {},
 ): FixtureSchedule {
-  const own = m.play_by ? String(m.play_by).slice(0, 10) : "";
-  if (own) return { mode: "play_by", playBy: own, bookable: true };
   const st = opts.stage ?? null;
   const allocated = !!(m.court_id || m.booking_id);
   // A player booking also writes scheduled_date/time. Only the stage's fixed rule
   // (or an explicitly identified legacy organiser slot) makes it central.
-  if (st?.rule === "fixed" || opts.organiserScheduled) {
-    return {
-      mode: "scheduled",
-      date: (m.scheduled_date ? String(m.scheduled_date).slice(0, 10) : null) ?? st?.date ?? null,
-      time: m.scheduled_time ? String(m.scheduled_time).slice(0, 5) : null,
-      window: st?.timeFrom || st?.timeTo ? { from: st?.timeFrom ?? null, to: st?.timeTo ?? null } : null,
-      allocated,
-      playBy: null,
-      bookable: false,
-    };
-  }
+  const scheduled = (): FixtureSchedule => ({
+    mode: "scheduled",
+    date: (m.scheduled_date ? String(m.scheduled_date).slice(0, 10) : null) ?? st?.date ?? null,
+    time: m.scheduled_time ? String(m.scheduled_time).slice(0, 5) : null,
+    window: st?.timeFrom || st?.timeTo ? { from: st?.timeFrom ?? null, to: st?.timeTo ?? null } : null,
+    allocated,
+    playBy: null,
+    bookable: false,
+  });
+  if (st?.rule === "fixed") return scheduled();
+  const own = m.play_by ? String(m.play_by).slice(0, 10) : "";
+  if (own) return { mode: "play_by", playBy: own, bookable: true };
+  if (opts.organiserScheduled) return scheduled();
   if (st && st.order > 0 && st.rule === "play_by") {
     return st.deadline ? { mode: "play_by", playBy: st.deadline, bookable: true } : { mode: "none", playBy: null, bookable: true };
   }

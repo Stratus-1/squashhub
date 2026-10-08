@@ -22,6 +22,7 @@ function clubMonogram(name: string) {
   const words = name.split(/\s+/).filter(Boolean);
   const meaningful = words.filter((w) => !GENERIC_WORDS.test(w.replace(/[^\w]/g, "")));
   const source = meaningful.length ? meaningful : words;
+  if (source.length === 1) return source[0].replace(/[^\w]/g, "").slice(0, 2).toUpperCase();
   const monogram = source.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
   return monogram || name.slice(0, 2).toUpperCase();
 }

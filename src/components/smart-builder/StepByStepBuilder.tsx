@@ -1456,6 +1456,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         });
                         setA({ ...a, picks: n }); toast.success(`${moved} player${moved === 1 ? "" : "s"} re-placed by league.`);
                       }}>Re-place all by league</Button>)}
+                    <Button size="sm" variant="outline" title="Use the whole screen for the category columns" onClick={() => setBoardFull(true)}><Maximize2 className="mr-1 h-3.5 w-3.5" />Expand</Button>
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
                   <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Drag names between columns, or use Move to / + Add to on each name. Order within a column is the seeding — drag or use ▲▼ to change it."}</div>
@@ -1481,8 +1482,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const onDrop = (e: React.DragEvent, to: string, beforeId?: string) => { e.preventDefault(); e.stopPropagation(); const [id, from] = e.dataTransfer.getData("text/plain").split("|"); if (id) move(id, from ?? "", to, beforeId); };
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
                     const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...units.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
-                    return (
-                      <div className="grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="pick-board">
+                    const board = (
+                      <div className={cn("grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3", boardFull && "2xl:grid-cols-4")} data-testid="pick-board">
                         {cols.map((c) => (
                           <div key={c.key || "none"} className={cn("flex min-w-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
 
@@ -1490,7 +1491,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                               <span className="truncate text-sm font-semibold" title={c.label}>{c.label}</span>
                               <span className="text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key)!]}` : ""}</span>
                             </div>
-                            <ol className="max-h-[32rem] min-h-[4rem] space-y-1 overflow-auto p-1">
+                            <ol className={cn("min-h-[4rem] space-y-1 overflow-auto p-1", boardFull ? "max-h-[calc(100vh-10rem)]" : "max-h-[32rem]")}>
                               {c.ids.map((id, i) => {
                                 const mine = placesFor(id); const hit = q && memberName(id).toLowerCase().includes(q);
                                 const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
@@ -1527,6 +1528,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                           </div>
                         ))}
                       </div>);
+                    return boardFull ? createPortal(
+                      <div className="dark fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-background p-3" role="dialog" aria-modal="true" aria-label="Player categories — full screen">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">Picked: {counts.uniquePlayers} unique player{counts.uniquePlayers === 1 ? "" : "s"} · {counts.totalEntries} total entr{counts.totalEntries === 1 ? "y" : "ies"}</span>
+                          <span className="flex items-center gap-2">
+                            <Input aria-label="Search players" placeholder="Search players" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} className="h-8 w-48" />
+                            <Button size="sm" variant="outline" onClick={() => setBoardFull(false)}><Minimize2 className="mr-1 h-3.5 w-3.5" />Exit full screen</Button>
+                          </span>
+                        </div>
+                        {board}
+                      </div>, document.body) : board;
                   })()}
                 </div>
               )}

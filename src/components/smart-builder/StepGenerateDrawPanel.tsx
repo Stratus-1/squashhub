@@ -588,6 +588,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div className="flex flex-wrap gap-2">
             <Button size="sm" asChild><Link to={`/club-champs/${tournamentId}`}>Open draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Link></Button>
             <Button size="sm" variant="outline" asChild><Link to={`/beta-tournament/${tournamentId}`}>Manage stages / play-offs</Link></Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={placeOnCourts}>Place games on courts (as per setup)</Button>
             {existing.played === 0 && !rebuildOk && <Button size="sm" variant="destructive" onClick={() => setRebuildOk(true)}>Make a new draw (replace this one)</Button>}
           </div>
           <p className="text-muted-foreground">Results are entered on the draw page as usual. Play-off stages you planned are kept as "Define later" and are set up from Manage stages once the first stage finishes.</p>

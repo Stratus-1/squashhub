@@ -78,3 +78,8 @@
 
 ## Tournament registrations
 - [preview] Admin "Confirm registration" action on Registrations panel (next to Paid override) for invited players
+- [x] Manage Tournament plan Phase 1: draws/rounds never auto-send messages
+- [ ] Phase 0: read-only channel + backend permission audit (incl. Riverside)
+- [ ] Phase 2: admin-only Manage Tournament hub route + single button (custom "Tournaments" permission included)
+- [ ] Phase 3/3b: per-round Notifications (status, channels, preview, test-to-self, send changes, triggers Manual/Prompt/Automatic)
+- [ ] Phase 4/5: per-format parity check, then remove admin panels from member tournament page

@@ -44,3 +44,4 @@
 
 - Diamond fixtures use `tournamentMatchDays` in `schedule-order.ts` for date headings and time/court order, never generated rounds; why: division weeks span different nights. Display only; saved fixtures unchanged.
 - Knockout stages after the first play-off use fixed feeder paths (stage_winners by bracket_position); never reseed from standings — keeps brackets deterministic and auditable.
+- Draw/round generation never dispatches player messages: `notifyRoundDraw` only sends when called with `skipPrompt: true` from an explicit organiser send (Send draw to players / future Manage Tournament → Notifications); why: test and regenerated draws must never reach players.

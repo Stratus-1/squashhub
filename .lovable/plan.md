@@ -7,7 +7,7 @@ Design only. No code, migrations, access changes or publishing. Production stays
 2. Keep the platform Super Admin clearly separate from club-scoped roles.
 3. Audit first, map carefully and migrate in stages with rollback. Don't just rename or remove flags, because many flows depend on them.
 4. Finance, including read-only bank and ledger, is explicit per person. Read-only never implies any transaction right.
-5. Only the club's Chairman (own club) or the platform Super Admin grants finance and sensitive rights. The Chairman can't self-grant or change their own role, and only the Super Admin grants the Chairman's own rights. Grant authority gives no operating rights.
+5. Only the club's Chairman (own club) or the platform Super Admin grants finance and sensitive rights. Grant authority gives no operating rights by itself. **Latest owner decision (overrides the earlier rule):** the Chairman **may grant themselves** finance and other permissions in their own club. This is a deliberate policy exception, permanently audited, clearly marked as self-granted, with optional alerts and Super Admin oversight (section 3c). Nobody else may self-grant. **Self-approving transactions stays prohibited** for everyone, including the Chairman.
 6. Controlled delegation of operational Bar & Shop roles within the club. Nothing broader than the delegator's own scope, no cross-club grants, no self-change.
 7. Stocktake discrepancies and stock adjustments need a second person to approve. No self-approval.
 8. Counter PIN create/reset/disable is separate from using a PIN. PINs are never shown, and every change is audited.
@@ -85,7 +85,7 @@ There are also about 25 server functions and about 40 app files that check admin
 | F Finance (incl. read-only bank/ledger) | Chairman (own club), Super Admin | Never |
 | S Sensitive (members' private data, access/doors, devices, settings, communications to all, bar cost/approvals/PINs/settings, permission audit) | Chairman, Super Admin | Never (unless owner changes, see D3) |
 | O Operational (bookings ops, events, leagues, ladder, champs ops, visitors, bar selling/counting/receiving) | Chairman, Super Admin, or a holder with the delegate flag for that exact capability | Yes, same club, same or narrower |
-| Chairman's own F/S rights | Super Admin only | - |
+| Chairman's own F/S rights | The Chairman (self-grant exception, section 3c) or the Super Admin | - |
 
 Delegation rules:
 - You can only pass on capabilities you hold with the delegate flag.
@@ -144,7 +144,33 @@ effective rights = rights from their roles
 - **Individual grant:** adds one capability to one person, within the normal grant rules (finance and sensitive rights only by the Chairman or Super Admin; operational rights by the Chairman, Super Admin, or a holder with the delegate flag).
 - **Template changes:** apply to everyone holding the role, but never undo a personal deny. A personal grant stays until removed.
 - **Who may override:** the Chairman (own club) and the Super Admin. For an operational capability, a delegator may revoke only what they themselves granted.
-- **No self-changes:** nobody can add, deny or remove their own capabilities. The Chairman can't change their own roles or overrides; only the Super Admin can.
+- **No self-changes, with one exception:** nobody can add, deny or remove their own capabilities, **except the Chairman**, who may change their own permissions in their own club (section 3c). The Chairman still can't appoint or remove themselves as Chairman; only the Super Admin can.
+
+## 3c. Chairman self-grant exception (deliberate policy choice)
+
+**What is allowed:** the active Chairman may grant or remove their own capabilities, including finance and sensitive Bar & Shop rights, in their own club only.
+
+**What stays prohibited, for everyone including the Chairman:**
+- Self-approving transactions: approving your own EFT or deposit, your own payment or refund, your own or family account changes, stock adjustments or stocktake discrepancies you requested or counted, invoices you captured, journals you created, or your own mandate.
+- Appointing yourself Chairman, or changing the Chairman office.
+- Granting yourself anything in another club.
+
+**Two different things:**
+- **Permission self-grant** = "I may now do X". Allowed for the Chairman only.
+- **Transaction self-approval** = "I approve my own X". Never allowed.
+
+**Safeguards:**
+- **Permanent audit:** every self-grant or self-removal records the Chairman, capability, club, reason (required) and time. It can't be edited or deleted.
+- **Clear display:** self-granted rights show a "Self-granted by Chairman" badge on the Chairman's permissions page and in the club's permission list, visible to the Super Admin and to anyone holding permission-view rights.
+- **Alerts (optional, per club, default ON):** an in-app notice to the Treasurer (or all `fin.audit.view` holders) and to the Super Admin whenever the Chairman self-grants a finance or sensitive capability.
+- **Super Admin oversight:** a platform report of all Chairman self-grants. The Super Admin can revoke any of them (with a reason), or freeze the club's grants.
+- **Cooling-off (optional, see D19):** a finance self-grant takes effect after a set delay (e.g. 24 hours) unless the Super Admin confirms sooner.
+
+**Risks (for the record):**
+- A single person can hold full finance in a club with no second sign-off on the grant itself.
+- In a small club where the Chairman is also the only active finance person, the no-self-approval rule may block approvals. The fallback is the Super Admin as second approver.
+- A compromised Chairman account could grant itself finance. Alerts, the cooling-off delay and Super Admin revoke limit this.
+- Audit and alerts are detective controls, not preventive ones.
 - **Immediate effect:**
   - The server checks the effective rights on every action, so a deny applies to the next action straight away.
   - Open screens refresh the person's rights within seconds through a live update, plus a re-check on every save.
@@ -181,7 +207,7 @@ Offices are positions. Each office gets a **default role template** when someone
 
 | Office | Default template content | Finance |
 |---|---|---|
-| Chairman | Oversight: view of all non-finance areas; appoint offices; grant/revoke permissions (own club) | **None automatic.** Own finance and sensitive Bar & Shop rights only from the Super Admin. See D16 |
+| Chairman | Oversight: view of all non-finance areas; appoint offices; grant/revoke permissions (own club) | **None automatic.** The Chairman may self-grant (section 3c) or receive from the Super Admin. See D16 |
 | Vice-Chair | Broad club functions: Club Manager + Membership + Competitions + Court & Bookings + Communications (operational) | None. See D17 |
 | Secretary | Members and users (profile/contact view and edit, applications, login linking), club rules and constitution documents, communications to members | None |
 | Club Captain | Tournaments and events: Competitions Coordinator + events + Court & Bookings (operational) | None |

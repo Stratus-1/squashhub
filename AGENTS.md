@@ -41,3 +41,5 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Court grids share P and peak logic; why: no separate rules.
 
 - Menu order/hide prefs (`user_menu_preferences`) apply only after permission filtering; why: never grant access.
+- Every user-facing change gets a plain-English row in `platform_change_log`; why: the AI update writer (draft-platform-update) may only use logged facts.
+- Member-wide platform updates (`audience_type=members`) are in-app only; why: no mass email/SMS to members.

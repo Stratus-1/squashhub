@@ -96,5 +96,5 @@
 
 - [x] Sidebar: Bar/POS after Club Books; per-user/club menu reorder + hide items (Edit Menu, Save/Cancel/Reset)
 
-- [ ] Members-wide "Updates from SquashHub" list (separate menu item for all members) — awaiting owner go-ahead
-- [ ] Super Admin "New update" with AI-drafted note + audience (admins / all members), in-app
+- [x] Members-wide "Updates from SquashHub" list (separate menu item for all members) — awaiting owner go-ahead
+- [x] Super Admin "New update" with AI-drafted note + audience (admins / all members), in-app

@@ -838,12 +838,28 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   // Organiser overrides (events outside a player's scope) are allowed; only real blockers are listed.
+  // Events renamed or removed (e.g. "Mens X" → "Mens C") leave old ticks that can't be shown or unticked; drop them.
+  const unitKeySig = units.map((u) => u.key).join("|");
+  useEffect(() => {
+    if (!units.length) return;
+    const keys = new Set(units.map((u) => u.key));
+    let changed = false;
+    const next: typeof a.picks = {};
+    for (const [id, v] of Object.entries(a.picks)) {
+      const list = (Array.isArray(v) ? v : v ? [v] : []) as string[];
+      const kept = list.filter((k) => keys.has(k));
+      if (kept.length !== list.length) changed = true;
+      next[id] = kept as any;
+    }
+    if (changed) setA((prev: StepAnswers) => ({ ...prev, picks: next }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitKeySig, a.picks]);
   const pickProblems: string[] = (() => {
     const out: string[] = [];
     if (a.source === "select" && pickIds.length === 0) out.push("Pick at least one player.");
     for (const id of pickIds) {
       const stale = placesFor(id).filter((k) => !units.some((u) => u.key === k));
-      if (stale.length) out.push(`${memberName(id)}: ticked in an event that no longer exists — untick and re-pick.`);
+      if (stale.length) out.push(`${memberName(id)}: ticked in an event that no longer exists — clearing it…`);
       if (singleEvent && placesFor(id).length > 1) out.push(`${memberName(id)}: may only be in one event (timed format).`);
       if (pairMode && placesFor(id).length === 0) out.push(`${memberName(id)}: not in any event yet.`);
     }

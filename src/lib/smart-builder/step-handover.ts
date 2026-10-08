@@ -121,7 +121,7 @@ export function nextAction(h: Handover): { title: string; detail: string; availa
 }
 
 /** Setup "Match scoring" answer for one category — the result-entry rules the live tournament must use. */
-export type DivisionScoring = { mode: "standard" | "time_capped_points"; pointsPerGame?: number; bestOf?: number; winCondition?: "win_by_2" | "sudden_death"; /** Bells: slot = play + changeover; the marker's bell = slot - break. */ slotMinutes?: number | null; breakMinutes?: number | null };
+export type DivisionScoring = { mode: "standard" | "time_capped_points"; pointsPerGame?: number; bestOf?: number; playAllGames?: boolean; winCondition?: "win_by_2" | "sudden_death"; /** Bells: slot = play + changeover; the marker's bell = slot - break. */ slotMinutes?: number | null; breakMinutes?: number | null };
 
 /**
  * Map each category's setup scoring onto the live per-division columns the marker/result entry
@@ -135,6 +135,7 @@ export function divisionScoringColumns(divs: Array<{ scoring?: DivisionScoring |
     league_scoring_modes: pick((s) => s.mode),
     league_points_per_game: pick((s) => (s.pointsPerGame === 15 ? 15 : s.pointsPerGame === 11 ? 11 : undefined)),
     league_best_of: pick((s) => (s.bestOf === 3 ? 3 : s.bestOf === 5 ? 5 : undefined)),
+    league_play_all_games: pick((s) => (s.playAllGames != null ? s.playAllGames : undefined)),
     league_win_conditions: pick((s) => s.winCondition),
     ...(divs.some((d) => d.scoring?.mode === "time_capped_points" && Number(d.scoring.slotMinutes) > 0) ? {
       group_durations: pick((s) => (s.mode === "time_capped_points" && Number(s.slotMinutes) > 0 ? Number(s.slotMinutes) : undefined)),

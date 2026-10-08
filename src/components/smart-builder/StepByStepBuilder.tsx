@@ -257,7 +257,7 @@ const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: n
 /** A blank setup must never overwrite what is saved on the tournament. */
 const hasRealAnswers = (x: Partial<StepAnswers>) => !!(x.name?.trim() || (x.categories ?? []).some((c) => c?.trim()) || x.format?.kind || (x.stages ?? []).length);
 type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Guide" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Guide: "Structure guide", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Guide: "Structure guide", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick / Allocate players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -692,6 +692,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const anyManual = units.some((u) => eligOf(u.key).mode === "manual" || (eligOf(u.key).mode === "leagues" && !!eligOf(u.key).alsoPick));
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
+  /** Self-entry-only tournaments still get the board, to allocate and seed players who entered. */
+  const showPickStep = showPick || selfEntry;
   /** Admin selects AND assigns partners: pairing happens on the Pick step itself. */
   const adminPairUnits = showPick ? dblUnits.filter((u) => partnerOf(u.key) === "admin") : [];
   const adminPairKeys = new Set(adminPairUnits.map((u) => u.key));
@@ -889,9 +891,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const commsSteps: StepKey[] = selfEntry ? ["Invites", "Messaging"] : notifyOnly ? ["Messaging"] : [];
   const steps: StepKey[] = isChamps
     ? ["Type", "Basics", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-      ...(showPick ? ["Pick" as const] : []), ...commsSteps, "Fees", "Schedule", "Summary"]
+      ...(showPickStep ? ["Pick" as const] : []), ...commsSteps, "Fees", "Schedule", "Summary"]
     : ["Type", "Basics", "Entries", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-      ...(showPick ? ["Pick" as const] : []), ...commsSteps, "Fees", "Dates", "Courts", "Playoffs", "Summary"];
+      ...(showPickStep ? ["Pick" as const] : []), ...commsSteps, "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
 
@@ -1096,7 +1098,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const feeCents = fee.has ? Math.round(Math.max(0, ...amounts) * 100) : 0;
       const pms = dblUnits.map((u) => partnerOf(u.key)).filter((p): p is "admin" | "players" => p === "admin" || p === "players");
       // One entry per person per event; the person (registration) is never duplicated.
-      const entrants = notifyOnly || showPick ? entrantsFromPicks(a.picks, units.map((u) => u.key), pairPartner) : [];
+      const entrants = notifyOnly || showPickStep ? entrantsFromPicks(a.picks, units.map((u) => u.key), pairPartner) : [];
       const tid = await persistStepTournament({
         clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
         startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,

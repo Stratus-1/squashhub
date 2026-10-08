@@ -629,6 +629,37 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       </div>
       <p className="text-muted-foreground">Only current active entries are used; replaced or withdrawn players are left out. Outstanding fees don't exclude anyone because entries here are confirmed without payment. Doubles pairs are kept exactly as you paired them.</p>
 
+      {errors.length > 0 && (
+        <div className="rounded border border-destructive/50 bg-destructive/10 p-2">
+          <div className="flex items-center gap-1 font-medium"><AlertTriangle className="h-3 w-3" />Can't generate yet</div>
+          <ul className="list-disc pl-4">{[...new Set(errors)].map((e) => <li key={e}>{e}</li>)}</ul>
+        </div>
+      )}
+      {!(hasDraw && existing.played > 0) && (
+        <div className="space-y-2 rounded border border-primary/40 bg-primary/5 p-3" data-testid="draw-action-panel">
+          {hasDraw && existing.played === 0 && (
+            <label className="flex items-start gap-2"><Checkbox checked={rebuildOk} onCheckedChange={(v) => setRebuildOk(!!v)} />
+              <span>Replace the existing draw: all {existing.games} unplayed games are deleted and a new draw is made from the current entries. No results are lost (none exist). Players who already saw their games should be told.</span></label>
+          )}
+          <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
+          {false && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
+            {hasDraw && <Button type="button" variant="outline" onClick={() => navigate(fixturesUrl())}>Go to Fixtures</Button>}
+          </div>
+          {!canGenerate && !busy && (
+            <p className="text-muted-foreground" data-testid="draw-blocked-reason">
+              To {hasDraw ? "rebuild" : "generate"}: {[
+                hasDraw && !rebuildOk && "tick \"Replace the existing draw\" above",
+                !confirmed && "tick \"I confirm this is the final format\"",
+                errors.length > 0 && "fix the red items listed above",
+                !schedOk && "make the court times fit (see scheduling box below)",
+              ].filter(Boolean).join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+
       {seedFull && createPortal(
         <div className="dark fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-background p-3 text-xs" role="dialog" aria-modal="true" aria-label="Seeds and pools — full screen">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -805,40 +836,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <p className="mt-1 text-muted-foreground">No courts are booked and no court times are invented. Players are not messaged by this step.</p>
         </div>
       )}
-      {errors.length > 0 && (
-        <div className="rounded border border-destructive/50 bg-destructive/10 p-2">
-          <div className="flex items-center gap-1 font-medium"><AlertTriangle className="h-3 w-3" />Can't generate yet</div>
-          <ul className="list-disc pl-4">{[...new Set(errors)].map((e) => <li key={e}>{e}</li>)}</ul>
-        </div>
-      )}
-
-      {hasDraw && existing.played > 0 && <p className="text-destructive">Games have been played or started, so the draw can't be rebuilt here — results are protected. Use "Rebuild unplayed games" under Manage stages to drop withdrawn players' future games.</p>}
-      {hasDraw && existing.played === 0 && (
-        <label className="flex items-start gap-2"><Checkbox checked={rebuildOk} onCheckedChange={(v) => setRebuildOk(!!v)} />
-          <span>Replace the existing draw: all {existing.games} unplayed games are deleted and a new draw is made from the current entries. No results are lost (none exist). Players who already saw their games should be told.</span></label>
-      )}
       {seeded.some((d) => d.format.schedule.rule === "fixed") && errors.length === 0 && (
         <SchedulingPreferencesSection tournamentId={tournamentId} categories={seeded.map((d) => ({ group: d.group, label: d.label }))} previewGames={timedPreview} useSaved={hasDraw && !rebuildOk} onFeasible={setSchedOk} />
-      )}
-      {!(hasDraw && existing.played > 0) && (
-        <>
-          <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
-          {false && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
-            {hasDraw && <Button type="button" variant="outline" onClick={() => navigate(fixturesUrl())}>Go to Fixtures</Button>}
-          </div>
-          {!canGenerate && !busy && (
-            <p className="text-muted-foreground" data-testid="draw-blocked-reason">
-              To {hasDraw ? "rebuild" : "generate"}: {[
-                hasDraw && !rebuildOk && "tick \"Replace the existing draw\" above",
-                !confirmed && "tick \"I confirm this is the final format\"",
-                errors.length > 0 && "fix the red items listed above",
-                !schedOk && "make the court times fit (see scheduling box above)",
-              ].filter(Boolean).join(" · ")}
-            </p>
-          )}
-        </>
       )}
       <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>
         <DialogContent>

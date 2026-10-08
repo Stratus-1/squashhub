@@ -5,3 +5,5 @@
 - Help Center publisher releases use the manually dispatched, main-only workflow in `.github/workflows/deploy-help-center-publisher.yml`; store its project-scoped deploy token only in the protected GitHub environment and follow `docs/HELP_CENTER_PUBLISHER_DEPLOYMENT.md`; why: deployment credentials and product delivery gates must remain separate.
 
 - IoT connectivity alerts reuse the Shelly Cloud `online` flag via `iot-connectivity-monitor` (cron poll, read-only), with per-device outage state in `club_iot_device_health` (grace period, one offline + one recovery email via club SMTP) and settings in `club_iot_alert_settings` (≤2 member recipients); unknown status never alerts; why: no competing health mechanism, no false/noisy alerts, club-scoped.
+
+- Recurring-mandate lifecycle notices come only from DB trigger `notify_mandate_lifecycle` on `stitch_mandates` status changes, deduped by `mandate_lifecycle_notifications(mandate_id, event)` and sent in-app to `mandate_notification_recipients` (explicit `finance`/`recurring_payments` grants, not general admins); why: provider-confirmed status is the only trigger, one notice per event, least privilege.

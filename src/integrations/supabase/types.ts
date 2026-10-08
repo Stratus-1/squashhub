@@ -10372,6 +10372,36 @@ export type Database = {
           },
         ]
       }
+      mandate_lifecycle_notifications: {
+        Row: {
+          club_id: string
+          created_at: string
+          event: string
+          id: string
+          mandate_id: string
+          mandate_status: string
+          recipient_count: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          event: string
+          id?: string
+          mandate_id: string
+          mandate_status: string
+          recipient_count?: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          event?: string
+          id?: string
+          mandate_id?: string
+          mandate_status?: string
+          recipient_count?: number
+        }
+        Relationships: []
+      }
       match_correction_requests: {
         Row: {
           created_at: string
@@ -19232,6 +19262,13 @@ export type Database = {
       make_org_slug: {
         Args: { _abbrev?: string; _name: string }
         Returns: string
+      }
+      mandate_notification_recipients: {
+        Args: { _club_id: string }
+        Returns: {
+          club_member_id: string
+          user_id: string
+        }[]
       }
       md_admin_enable: {
         Args: { _id: string; _kind: string; _regenerate?: boolean }

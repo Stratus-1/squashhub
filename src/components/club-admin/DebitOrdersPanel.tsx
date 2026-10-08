@@ -173,6 +173,8 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     toast.success("Authorisation link copied");
   };
 
+  // Mandate notifications link to ?tab=finance&view=debit-orders&mandate=<id>.
+  const focusMandate = (() => { try { return new URLSearchParams(window.location.search).get("mandate"); } catch { return null; } })();
   const clubWaEnabled = useWhatsAppEnabled(clubId);
   const [waPreview, setWaPreview] = useState<Mandate | null>(null);
   const [waSending, setWaSending] = useState(false);
@@ -396,7 +398,7 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
           </p>
           <div className="border rounded divide-y text-xs">
             {(mandates || []).filter(m => m.status === "pending").map(m => (
-              <div key={m.id} className="px-2 py-1.5 flex items-center gap-2 flex-wrap">
+              <div key={m.id} id={`mandate-${m.id}`} className={`px-2 py-1.5 flex items-center gap-2 flex-wrap ${focusMandate === m.id ? "ring-2 ring-accent rounded-md" : ""}`}>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{m.club_members?.full_name || "—"}</div>
                   <div className="text-[10px] text-muted-foreground">

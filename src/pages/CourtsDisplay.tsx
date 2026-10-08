@@ -80,8 +80,12 @@ export default function CourtsDisplay() {
       </header>
 
       <div className="flex-1 flex min-h-0 rounded-xl border border-border overflow-hidden">
-        <div className="w-16 shrink-0 relative border-r border-border">
-          {hours.map((h) => <div key={h} className="absolute left-0 right-0 text-sm text-muted-foreground px-1 -translate-y-1/2" style={{ top: pct(h) }}>{h > start ? hhmm(h) : ""}</div>)}
+        <div className="w-16 shrink-0 flex flex-col border-r border-border">
+          {/* Spacer matching the court header row so hour labels line up with the booking grid. */}
+          <div aria-hidden className="text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>
+          <div className="flex-1 relative">
+            {hours.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
+          </div>
         </div>
         {data.courts.map((c) => (
           <div key={c.id} className="flex-1 flex flex-col min-w-0 border-r border-border last:border-r-0">

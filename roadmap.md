@@ -95,3 +95,5 @@
 - [ ] Permissions Stage 4b: wire has_cap into Riverside finance, Bar & Shop and member actions, then gate ON (owner go-ahead on scope)
 
 - [x] Sidebar: Bar/POS after Club Books; per-user/club menu reorder + hide items (Edit Menu, Save/Cancel/Reset)
+
+- [ ] Members-wide "Updates from SquashHub" list (separate menu item for all members) — awaiting owner go-ahead

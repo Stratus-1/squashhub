@@ -95,9 +95,11 @@ async function expandRecipients(c: any) {
   let q = admin
     .from("club_members")
     .select("id,club_id,user_id,name,email,phone,role,status,whatsapp_opt_out,sms_opt_out")
-    .in("club_id", clubs.map((cl) => cl.id))
     .in("role", ["admin", "captain"])
     .neq("status", "resigned");
+  // "all" covers every club; listing ~800 club IDs overflows the request URL
+  // and silently returned no admins, so only filter by club for narrower audiences.
+  if (c.audience_type !== "all") q = q.in("club_id", clubs.map((cl) => cl.id));
 
   if (c.audience_type === "admins") {
     const ids = (c.audience_member_ids ?? []) as string[];

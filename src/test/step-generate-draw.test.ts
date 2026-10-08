@@ -134,6 +134,29 @@ describe("Step-by-Step generate draw", () => {
     const p = previewDraw("T", d, { start: "2026-10-08", end: null });
     expect(p.divisions[0].perRound.map((r) => r.date)).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
   });
+  it("mixed setup (fixed day + play-by rounds) is read from Stages & scheduling — never re-asked as Decide later", () => {
+    const plan = {
+      format: { kind: "swiss", swissRounds: 6 },
+      stages: [
+        { id: "s1", phase: "main", name: "Round 1", mode: "scheduled", date: "2026-10-13", deadline: "2026-10-12" },
+        { id: "s2", phase: "main", name: "Round 2", mode: "play_by", deadline: "2026-10-13" },
+        { id: "s3", phase: "main", name: "Round 3", mode: "play_by", deadline: "2026-10-19" },
+      ],
+    };
+    const p = proposeFormat(plan as any, "Mens A");
+    expect(p.format.schedule.rule).toBe("play_by");
+    expect(p.format.schedule.deadlines).toEqual(["2026-10-13", "2026-10-13", "2026-10-19"]);
+    expect(p.notes.join()).not.toMatch(/Decide later/);
+    // Round 1 keeps its fixed day; later rounds fall to their play-by dates, in date order.
+    expect(roundDeadlines(p.format.schedule, 6).dates).toEqual(["2026-10-13", "2026-10-13", "2026-10-19", "2026-10-19", "2026-10-19", "2026-10-19"]);
+    const stage = (finalDrawSpec("T", [{ group: 1, label: "Mens A", doubles: false, units: [], format: p.format, notes: [], playoffs: [], playoffPlans: [], poolReview: null, poolAccepted: false, poolQualifiers: null, koPairs: null, blockers: [], manualPools: null } as any], "v1").divisions[0].stages[0].schedule as any);
+    expect(stage.rule).toBe("play_by");
+    expect(stage.roundDates).toEqual(["2026-10-13", "2026-10-13", "2026-10-19", "2026-10-19", "2026-10-19", "2026-10-19"]);
+    // Still blocks when a stage genuinely has no date.
+    const open = proposeFormat({ ...plan, stages: [...plan.stages, { id: "s4", phase: "main", name: "Round 4", mode: "later" }] } as any, "Mens A");
+    expect(open.format.schedule.rule).toBeNull();
+    expect(open.notes.join()).toMatch(/Decide later/);
+  });
   it("pool preview reuses the builder allocation and the organiser's move is exactly what is generated", () => {
     const base = divs()[0];
     const d: DrawDivision = { ...base, units: [...base.units, ...divs()[1].units], format: { ...fmt, kind: "pools", pools: 2 } };

@@ -102,7 +102,7 @@ export default function CourtsDisplay() {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
-      <header className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-border bg-card/60 px-3 py-2 sm:px-5 sm:py-2.5">
+      <header className="relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-card/60 px-3 py-2.5 sm:px-5 sm:py-3">
         <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
         <div className="flex items-center gap-3 sm:gap-4">
           <ClubMark logoUrl={data.club.logo_url} name={data.club.name} />

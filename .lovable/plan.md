@@ -174,6 +174,35 @@ effective rights = rights from their roles
 
 "Full Admin" is not offered for new grants. During the transition it is shown as **"Legacy all-access (being retired)"**.
 
+The owner confirmed the template list above.
+
+### Office-bearer default templates (owner defaults, editable per club)
+Offices are positions. Each office gets a **default role template** when someone is appointed. The template grants rights; the office itself grants nothing.
+
+| Office | Default template content | Finance |
+|---|---|---|
+| Chairman | Oversight: view of all non-finance areas; appoint offices; grant/revoke permissions (own club) | **None automatic.** Own finance and sensitive Bar & Shop rights only from the Super Admin. See D16 |
+| Vice-Chair | Broad club functions: Club Manager + Membership + Competitions + Court & Bookings + Communications (operational) | None. See D17 |
+| Secretary | Members and users (profile/contact view and edit, applications, login linking), club rules and constitution documents, communications to members | None |
+| Club Captain | Tournaments and events: Competitions Coordinator + events + Court & Bookings (operational) | None |
+| Treasurer | Treasurer template: most finance tasks. Excludes manual mandate authorise and granting | Yes (granted by Chairman or Super Admin) |
+
+### Template vs personal change
+| | Editing a role template | Personal override |
+|---|---|---|
+| Affects | Every holder of that role in the club | One person only |
+| Example | Add "communications.campaigns.schedule" to Communications Officer | Give only Jane (Communications Officer) "members.export" |
+| Who | Chairman, Super Admin. Finance and sensitive capabilities in templates follow the same grant rule | Chairman, Super Admin; delegators only for their own operational grants |
+| Personal denies | Never undone by template edits | — |
+| Audit | Template before/after, holder count affected | Person, capability, grant/deny, reason |
+
+### Holding a capability vs delegating it
+- **Holding (inherited from a role or granted personally)** lets you **perform** the action.
+- **Delegating** is a separate flag that lets you give that same capability to another member of the same club.
+- Delegating is possible only when the capability is marked **delegable** (operational only) **and** your grant includes the delegate flag. Role templates set this flag per capability (e.g. Bar Manager: delegate on bar.sell and bar.stocktake.count).
+- Finance and sensitive capabilities are never delegable. Only the Chairman or Super Admin assigns them.
+- Nobody edits their own roles, overrides or flags.
+
 ## 5. Mapping legacy access to new roles
 | Legacy | Proposed mapping (reviewed per club; nothing automatic removes access) |
 |---|---|
@@ -304,6 +333,12 @@ Operations preserved:
 - **D13.** Family exclusions based on account delegations, family groups, or both?
 - **D14.** Member data (section 3a): approve the Secretary default; choose which higher-risk protections, if any, to add (ID number, date of birth, suspension and billing, bulk export, face data).
 - **D15.** Personal overrides (section 3b): on revocation, should rights the person passed on be **flagged for review** (proposed) or **suspended at once until reviewed**? Should temporary grants or denies (with an expiry date) be allowed?
+- **D16. "Chairman has access to everything" — needs your confirmation.** This conflicts with earlier decisions: no automatic finance, Chairman's own finance only from the Super Admin, and no self-grant. Options:
+  - (a) **Proposed:** the Chairman sees and manages all non-finance club areas by default. Finance (view and transactions) and sensitive Bar & Shop rights only when the Super Admin grants them.
+  - (b) The Chairman gets read-only finance by default (balances, reports), but transactions only from the Super Admin.
+  - (c) The Chairman gets everything, including finance, automatically. This would reverse the earlier decisions.
+- **D17. Vice-Chair "broad functions except finance":** does that include granting permissions (proposed: no — only the Chairman and Super Admin grant), and does it cover sensitive Bar & Shop and access/doors (proposed: operational yes, sensitive no unless the Chairman adds them)?
+- **D18. Secretary and "constitution":** there is no constitution feature today. The nearest are club rules (`club_membership_rules`, rule acceptances) and club profile documents. Confirm the Secretary edits club rules and documents.
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

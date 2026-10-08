@@ -1258,8 +1258,8 @@ export default function Tournaments() {
     const isDoubles = champ?.match_type === "doubles" || !!m.partner_a_member_id || !!m.partner_b_member_id;
     const isPlaceholder = m.status === "placeholder";
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
-    const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a ?? m.n_a);
-    const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b ?? m.n_b);
+    const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles, m.is_bye) + hcLabel(m.handicap_a ?? m.n_a);
+    const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles, m.is_bye) + hcLabel(m.handicap_b ?? m.n_b);
 
     // Play-off heading always names its event, e.g. "Men's Singles · Semi-final 1 · Pool A #1 vs Pool B #2"
     const isPlayoffMatch = typeof m.stage === "string" && m.stage.startsWith("playoff");
@@ -1610,8 +1610,8 @@ export default function Tournaments() {
             getMatchLabel={(x) => {
               const c = champById.get(x.champ_id);
               const dbl = c?.match_type === "doubles";
-              const a = sideLabel(x.player_a, x.partner_a, x.placeholder_a, dbl);
-              const b = sideLabel(x.player_b, x.partner_b, x.placeholder_b, dbl);
+              const a = sideLabel(x.player_a, x.partner_a, x.placeholder_a, dbl, x.is_bye);
+              const b = sideLabel(x.player_b, x.partner_b, x.placeholder_b, dbl, x.is_bye);
               return `${a} vs ${b}`;
             }}
             getCourtName={(x) => x.court?.name || ""}
@@ -1713,8 +1713,8 @@ export default function Tournaments() {
       .map((m) => {
         const champ = champById.get(m.champ_id);
         const isDoubles = champ?.match_type === "doubles";
-        const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a);
-        const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b);
+        const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles, m.is_bye) + hcLabel(m.handicap_a);
+        const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles, m.is_bye) + hcLabel(m.handicap_b);
 
         const date = m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD";
         const time = m.scheduled_time?.slice(0, 5) || "";
@@ -1790,8 +1790,8 @@ export default function Tournaments() {
     matches.forEach((m) => {
       const champ = champById.get(m.champ_id);
       const isDoubles = champ?.match_type === "doubles";
-      const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a);
-      const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b);
+      const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles, m.is_bye) + hcLabel(m.handicap_a);
+      const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles, m.is_bye) + hcLabel(m.handicap_b);
 
       lines.push([
         m.scheduled_date || "",
@@ -2292,7 +2292,7 @@ export default function Tournaments() {
         match={scheduleMatch}
         canManage={canManageChamps || isClubAdmin}
         allowedCourtIds={(scheduleChamp as any)?.court_ids ?? []}
-        opponentName={scheduleMatch ? `${sideLabel(scheduleMatch.player_a, scheduleMatch.partner_a, scheduleMatch.placeholder_a, (scheduleChamp as any)?.match_type === "doubles")} vs ${sideLabel(scheduleMatch.player_b, scheduleMatch.partner_b, scheduleMatch.placeholder_b, (scheduleChamp as any)?.match_type === "doubles")}` : undefined}
+        opponentName={scheduleMatch ? `${sideLabel(scheduleMatch.player_a, scheduleMatch.partner_a, scheduleMatch.placeholder_a, (scheduleChamp as any)?.match_type === "doubles", scheduleMatch.is_bye)} vs ${sideLabel(scheduleMatch.player_b, scheduleMatch.partner_b, scheduleMatch.placeholder_b, (scheduleChamp as any)?.match_type === "doubles", scheduleMatch.is_bye)}` : undefined}
         durationMinutes={(scheduleChamp as any)?.match_duration_minutes ?? undefined}
       />
 
@@ -2338,8 +2338,8 @@ export default function Tournaments() {
         onOpenChange={(o) => { if (!o) setResultMatch(null); }}
         clubId={clubId}
         match={resultMatch}
-        playerAName={resultMatch ? sideLabel(resultMatch.player_a, resultMatch.partner_a, resultMatch.placeholder_a, (resultChamp as any)?.match_type === "doubles") : ""}
-        playerBName={resultMatch ? sideLabel(resultMatch.player_b, resultMatch.partner_b, resultMatch.placeholder_b, (resultChamp as any)?.match_type === "doubles") : ""}
+        playerAName={resultMatch ? sideLabel(resultMatch.player_a, resultMatch.partner_a, resultMatch.placeholder_a, (resultChamp as any)?.match_type === "doubles", resultMatch.is_bye) : ""}
+        playerBName={resultMatch ? sideLabel(resultMatch.player_b, resultMatch.partner_b, resultMatch.placeholder_b, (resultChamp as any)?.match_type === "doubles", resultMatch.is_bye) : ""}
         bestOf={(resultChamp as any)?.best_of}
         pointsTarget={(resultChamp as any)?.points_per_game}
         scoringMode={(resultChamp as any)?.scoring_mode ?? null}

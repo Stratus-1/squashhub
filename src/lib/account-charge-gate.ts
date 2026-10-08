@@ -54,3 +54,30 @@ export function barChargeErrorMessage(err: unknown, fallback: string): string {
     + `beyond what it allows (${rand(info.allowance)}). Pay by card, or top up the account first `
     + `(${rand(info.shortfall)} short). Nothing was charged.`;
 }
+
+export const EARLY_ACCOUNT_WARNING =
+  "Your member account cannot be charged for this purchase. Please pay by card or top up your account.";
+
+/**
+ * Early basket warning: given the club's switches and the member's current owing/allowance,
+ * decide whether the current basket can go on the member account. Recalculated on every change.
+ */
+export function previewBasketCharge(opts: {
+  preview: { bar_gated: boolean; shop_gated: boolean; current_owing: number; allowance: number } | null | undefined;
+  lines: { division?: string | null; total: number }[];
+}): { blocked: boolean; shortfall: number } {
+  const { preview, lines } = opts;
+  const total = lines.reduce((s, l) => s + Number(l.total || 0), 0);
+  if (!preview || total <= 0) return { blocked: false, shortfall: 0 };
+  const gated = lines.some((l) => Number(l.total) > 0
+    && (debitSwitchFor(l.division) === "shop" ? preview.shop_gated : preview.bar_gated));
+  if (!gated) return { blocked: false, shortfall: 0 };
+  const allowance = Number(preview.allowance || 0);
+  const r = computeAccountChargeGate({
+    currentOwing: Number(preview.current_owing || 0),
+    purchase: total,
+    fees: allowance > 0 ? [{ amount: allowance }] : [],
+    hasMandate: allowance > 0,
+  });
+  return { blocked: !r.allowed, shortfall: r.shortfall };
+}

@@ -17804,6 +17804,15 @@ export type Database = {
         }
         Returns: string
       }
+      bar_account_charge_preview: {
+        Args: { _club_member_id: string }
+        Returns: {
+          allowance: number
+          bar_gated: boolean
+          current_owing: number
+          shop_gated: boolean
+        }[]
+      }
       bar_allow_negative_stock: { Args: { _club: string }; Returns: boolean }
       bar_cost_of_sales: {
         Args: { _club: string; _from: string; _to: string }

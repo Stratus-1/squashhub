@@ -680,6 +680,13 @@
       "when": 1791461231360,
       "tag": "0096_finance_permission_approve_member_transaction",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1791461952663,
+      "tag": "0097_bar_account_charge_preview",
+      "breakpoints": true
     }
   ]
 }

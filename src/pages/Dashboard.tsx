@@ -58,7 +58,11 @@ import { usePendingEftApprovalToast } from "@/hooks/use-pending-eft-toast";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, type ReactNode } from "react";
+import { useMenuPrefs } from "@/hooks/use-menu-prefs";
+import { applyOrder } from "@/lib/menu-order";
+import { MenuOrderEditor } from "@/components/MenuOrderEditor";
+import { LayoutGrid } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -95,6 +99,10 @@ export default function Dashboard() {
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const clubId = effectiveClub?.id || clubData?.club?.id;
+  const [editDash, setEditDash] = useState(false);
+  // Pilot: Edit dashboard button shown in Riverside only for now (display-only feature).
+  const dashEditPilot = clubId === "11111111-1111-1111-1111-111111111111";
+  const { prefs: dashPrefs, save: dashSave } = useMenuPrefs("member-dashboard", clubId);
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr, clubId);
@@ -776,6 +784,49 @@ export default function Dashboard() {
     );
   }
 
+  // Member's own dashboard order/hide preferences. Display only: items are
+  // built from what the member can already see; hiding never removes access.
+  const tileDefs: { id: string; label: string; show: boolean }[] = [
+    { id: "court-bookings", label: "Court Bookings", show: !!(bookingsEnabled && !shortcutFlags.bookingsEnabled) },
+    { id: "ladder", label: "Club Ladder", show: !!ladderEnabled },
+    { id: "resume-marking", label: "Resume Marking", show: !!hasMarkerSession },
+    { id: "events", label: "Events", show: !!(eventsEnabled && (shortcutFlags.bookingsEnabled || !shortcutFlags.eventsEnabled)) },
+    { id: "leagues", label: "Leagues", show: !!hasLeagues },
+    { id: "tournaments", label: "Tournaments", show: !!tournamentsEnabled },
+    { id: "bar", label: "Bar / POS", show: !!(effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled) },
+    { id: "wifi", label: "Wi-Fi (when available)", show: true },
+    { id: "score-match", label: "Score a Match", show: !hasMarkerSession },
+    { id: "club-admin", label: "Club Admin", show: !!hasAnyAdminAccess },
+  ];
+  const secDefs: { id: string; label: string; show: boolean }[] = [
+    { id: "my-stats", label: "My Stats", show: !isPendingApplicant },
+    { id: "shortcuts", label: "Shortcut tiles", show: true },
+    { id: "rankings", label: "My Rankings", show: !isPendingApplicant },
+    { id: "league-games", label: "My Upcoming League & Tournament Games", show: !!(hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0) },
+    { id: "club-glance", label: "Club at a Glance", show: true },
+    { id: "upcoming-bookings", label: "My Upcoming Bookings", show: true },
+    { id: "match-results", label: "Match Results", show: true },
+    { id: "tournaments", label: "My Tournaments", show: true },
+    { id: "events", label: "Club Events", show: true },
+    { id: "todays-bookings", label: "Today's Bookings", show: true },
+    { id: "support", label: "Support Tickets", show: true },
+  ];
+  const tileOrder = applyOrder(tileDefs.map((t) => t.id), dashPrefs.groups.tiles, (x) => x);
+  const secOrderList = applyOrder(secDefs.map((t) => t.id), dashPrefs.groups.sections, (x) => x);
+  const dashHidden = new Set(dashPrefs.hidden);
+  const secOrder = (id: string) => (secOrderList.indexOf(id) + 1) * 10;
+  const sec = (id: string, node: ReactNode) =>
+    dashHidden.has(`s:${id}`) || !node ? null : <div style={{ order: secOrder(id) }}>{node}</div>;
+  const tile = (id: string, node: ReactNode) =>
+    dashHidden.has(`t:${id}`) || !node ? null : <div style={{ order: tileOrder.indexOf(id) }} className="grid empty:hidden">{node}</div>;
+  const dashGroups = [
+    { key: "sections", label: "Sections", items: secDefs.filter((d) => d.show).map((d) => ({ id: `s:${d.id}`, label: d.label })) },
+    { key: "tiles", label: "Shortcut tiles", items: tileDefs.filter((d) => d.show).map((d) => ({ id: `t:${d.id}`, label: d.label })) },
+  ];
+  const strip = (p: string[] | undefined) => (p || []).map((x) => x.slice(2));
+  const prefix = (pre: string, ids: string[] | undefined) => ids?.map((x) => `${pre}${x}`);
+  const editorPrefs = { groups: { sections: prefix("s:", dashPrefs.groups.sections) ?? [], tiles: prefix("t:", dashPrefs.groups.tiles) ?? [] }, hidden: dashPrefs.hidden };
+
   return (
     <div className="member-home bottom-nav-safe relative">
       <SEO title="Member Dashboard" description="Your squash hub — stats and bookings." path="/" noIndex />
@@ -897,96 +948,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {!isPendingApplicant && (
-        <div className="px-4 mt-3 space-y-3">
-          <MyStatsCard memberId={myMemberId} />
-        </div>
-      )}
-
-      {/* Features not already supplied by the persistent shortcuts. */}
-      <div className="px-4 mt-4">
-        <div className="member-feature-grid grid grid-cols-3 gap-2.5">
-          {bookingsEnabled && !shortcutFlags.bookingsEnabled && (
-<Button data-tone="courts" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/bookings")}>
-            <Calendar className="w-5 h-5" />
-            <span className="text-xs font-medium">Court Bookings</span>
-          </Button>
-)}
-          {ladderEnabled && (
-<Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/ladder")}>
-            <Trophy className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
-          </Button>
-)}
-          {/* Live scoring. Competition games are marked from their own screens
-              (league fixture, tournament game, booking), so this tile only
-              leads: while a game is being scored. Otherwise it sits at the end
-              of the grid as the entry point for social / ad-hoc games. */}
-          {hasMarkerSession && (
-            <Button data-tone="score"
-              variant="outline"
-              className="member-feature-tile flex-col py-3 gap-2 ring-2 ring-member-profile/40"
-              onClick={() => navigate("/match-marker")}
-            >
-              <Play className="w-5 h-5" />
-              <span className="text-xs font-medium leading-tight text-center">Resume Marking</span>
-            </Button>
-          )}
-
-          {eventsEnabled && (shortcutFlags.bookingsEnabled || !shortcutFlags.eventsEnabled) && (
-<Button data-tone="events" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/events")}>
-            <CalendarDays className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Events</span>
-          </Button>
-)}
-          {hasLeagues && (
-            <Button data-tone="leagues" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/league-games")}>
-              <Trophy className="w-5 h-5" />
-              <span className="text-xs font-medium leading-tight text-center">Leagues</span>
-            </Button>
-          )}
-          {tournamentsEnabled && (
-<Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/tournaments")}>
-            <Trophy className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
-          </Button>
-)}
-          {effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
-            <Button data-tone="bar"
-              variant="outline"
-              className="member-feature-tile flex-col py-3 gap-2"
-              onClick={() => navigate("/honesty-bar")}
-              title="Buy drinks & snacks — pay now or charge to your member account"
-            >
-              <Wine className="w-5 h-5" />
-              <span className="text-xs font-medium leading-tight text-center">Bar / POS</span>
-            </Button>
-          )}
-          <DashboardWifiCard asTile />
-          {!hasMarkerSession && (
-            <Button data-tone="score"
-              variant="outline"
-              className="member-feature-tile flex-col py-3 gap-2"
-              onClick={() => navigate("/match-marker")}
-              title="Score a social, ladder or practice game live — league and tournament games are marked from their own fixture screens"
-            >
-              <Crosshair className="w-5 h-5" />
-              <span className="text-xs font-medium leading-tight text-center">Score a Match</span>
-            </Button>
-          )}
-          {hasAnyAdminAccess && (
-            <Button data-tone="admin" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/club-admin")}>
-              <ShieldCheck className="w-5 h-5" />
-              <span className="text-xs font-medium leading-tight text-center">Club Admin</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {!isPendingApplicant && (
-        <div className="px-4 mt-3"><MyRankingsCard clubId={clubId} memberId={myMemberId} /></div>
-      )}
-
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />
 
@@ -997,11 +958,109 @@ export default function Dashboard() {
         <DashboardRouterCard />
       </div>
 
+      {dashEditPilot && <div className="px-4 mt-2 flex justify-end">
+        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setEditDash(true)}>
+          <LayoutGrid className="w-3.5 h-3.5" /> Edit dashboard
+        </Button>
+      </div>}
+
+      <div className="flex flex-col">
+      {sec("my-stats", !isPendingApplicant && (
+        <div className="px-4 mt-1 space-y-3">
+          <MyStatsCard memberId={myMemberId} />
+        </div>
+      ))}
+
+      {/* Features not already supplied by the persistent shortcuts. */}
+      {sec("shortcuts", <div className="px-4 mt-4">
+        <div className="member-feature-grid grid grid-cols-3 gap-2.5">
+          {tile("court-bookings", bookingsEnabled && !shortcutFlags.bookingsEnabled && (
+<Button data-tone="courts" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/bookings")}>
+            <Calendar className="w-5 h-5" />
+            <span className="text-xs font-medium">Court Bookings</span>
+          </Button>
+))}
+          {tile("ladder", ladderEnabled && (
+<Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/ladder")}>
+            <Trophy className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
+          </Button>
+))}
+          {/* Live scoring. Competition games are marked from their own screens
+              (league fixture, tournament game, booking), so this tile only
+              leads: while a game is being scored. Otherwise it sits at the end
+              of the grid as the entry point for social / ad-hoc games. */}
+          {tile("resume-marking", hasMarkerSession && (
+            <Button data-tone="score"
+              variant="outline"
+              className="member-feature-tile flex-col py-3 gap-2 ring-2 ring-member-profile/40"
+              onClick={() => navigate("/match-marker")}
+            >
+              <Play className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Resume Marking</span>
+            </Button>
+          ))}
+
+          {tile("events", eventsEnabled && (shortcutFlags.bookingsEnabled || !shortcutFlags.eventsEnabled) && (
+<Button data-tone="events" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/events")}>
+            <CalendarDays className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">Events</span>
+          </Button>
+))}
+          {tile("leagues", hasLeagues && (
+            <Button data-tone="leagues" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/league-games")}>
+              <Trophy className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Leagues</span>
+            </Button>
+          ))}
+          {tile("tournaments", tournamentsEnabled && (
+<Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/tournaments")}>
+            <Trophy className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
+          </Button>
+))}
+          {tile("bar", effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
+            <Button data-tone="bar"
+              variant="outline"
+              className="member-feature-tile flex-col py-3 gap-2"
+              onClick={() => navigate("/honesty-bar")}
+              title="Buy drinks & snacks — pay now or charge to your member account"
+            >
+              <Wine className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Bar / POS</span>
+            </Button>
+          ))}
+          {tile("wifi", <DashboardWifiCard asTile />)}
+          {tile("score-match", !hasMarkerSession && (
+            <Button data-tone="score"
+              variant="outline"
+              className="member-feature-tile flex-col py-3 gap-2"
+              onClick={() => navigate("/match-marker")}
+              title="Score a social, ladder or practice game live — league and tournament games are marked from their own fixture screens"
+            >
+              <Crosshair className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Score a Match</span>
+            </Button>
+          ))}
+          {tile("club-admin", hasAnyAdminAccess && (
+            <Button data-tone="admin" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/club-admin")}>
+              <ShieldCheck className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Club Admin</span>
+            </Button>
+          ))}
+        </div>
+      </div>)}
+
+      {sec("rankings", !isPendingApplicant && (
+        <div className="px-4 mt-3"><MyRankingsCard clubId={clubId} memberId={myMemberId} /></div>
+      ))}
+
+
 
 
 
       {/* My Upcoming League Games — dedicated section */}
-      {hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (
+      {sec("league-games", hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (
         <motion.div
           className="px-4 mt-4"
           initial={{ opacity: 0, y: 8 }}
@@ -1051,16 +1110,16 @@ export default function Dashboard() {
             ))}
           </div>
         </motion.div>
-      )}
+      ))}
 
       {/* Club at-a-glance stats */}
-      <div className="px-4 mt-4 space-y-3">
+      {sec("club-glance", <div className="px-4 mt-4 space-y-3">
         <ClubStatsCard clubId={clubId} />
         <ClubSetsPlayedCard clubId={clubId} />
-      </div>
+      </div>)}
 
       {/* My Upcoming Bookings */}
-      <motion.div
+      {sec("upcoming-bookings", <motion.div
         className="px-4 mt-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1093,10 +1152,10 @@ export default function Dashboard() {
             No upcoming bookings
           </Card>
         )}
-      </motion.div>
+      </motion.div>)}
 
       {/* Match History */}
-      <motion.div
+      {sec("match-results", <motion.div
         className="px-4 mt-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1190,8 +1249,8 @@ export default function Dashboard() {
             No match results yet
           </Card>
         )}
-      </motion.div>
-
+      </motion.div>)}
+      <div style={{ order: secOrder("match-results") + 5 }}>
       {trackableBooking && (
         <motion.div
           className="px-4 mt-3"
@@ -1288,21 +1347,20 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
+      </div>
 
 
-      {/* My Tournaments */}
-      <div className="px-4 mt-4">
+      {sec("tournaments", <div className="px-4 mt-4">
         <MyChampionships />
-      </div>
+      </div>)}
 
-      {/* Club Events */}
-      <div className="px-4 mt-4">
+      {sec("events", <div className="px-4 mt-4">
         <CreateClubEvent />
-      </div>
+      </div>)}
 
 
       {/* Today's Bookings */}
-      <motion.div
+      {sec("todays-bookings", <motion.div
         className="px-4 mt-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1341,10 +1399,9 @@ export default function Dashboard() {
             No bookings today
           </Card>
         )}
-      </motion.div>
+      </motion.div>)}
 
-      {/* Support Tickets — bottom of page */}
-      <div className="px-4 mt-5 mb-4">
+      {sec("support", <div className="px-4 mt-5 mb-4">
         <Button className="w-full justify-between h-12 px-3" onClick={() => navigate("/support")}>
           <span className="inline-flex items-center gap-2 font-semibold">
             <LifeBuoy className="w-4 h-4" />
@@ -1358,7 +1415,10 @@ export default function Dashboard() {
         <p className="text-[11px] text-muted-foreground text-center mt-1.5">
           Stuck or got a permission issue? Open a ticket — attach a screenshot and we'll respond in-app.
         </p>
+      </div>)}
       </div>
+      <MenuOrderEditor open={editDash} onOpenChange={setEditDash} title="Edit dashboard"
+        groups={dashGroups} prefs={editorPrefs} onSave={(p) => dashSave.mutateAsync(p ? { groups: { sections: strip(p.groups.sections), tiles: strip(p.groups.tiles) }, hidden: p.hidden } : null)} />
       <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
     </div>
   );

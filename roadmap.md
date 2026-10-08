@@ -98,3 +98,5 @@
 
 - [x] Members-wide "Updates from SquashHub" list (separate menu item for all members) — awaiting owner go-ahead
 - [x] Super Admin "New update" with AI-drafted note + audience (admins / all members), in-app
+- [x] Member "Edit dashboard": reorder/hide home tiles and sections (per person, per club); bottom tabs stay fixed and are never editable
+- [ ] Edit dashboard: show only in Riverside for test, then publish when user confirms

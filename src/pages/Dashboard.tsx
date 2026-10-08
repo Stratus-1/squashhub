@@ -99,6 +99,8 @@ export default function Dashboard() {
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const clubId = effectiveClub?.id || clubData?.club?.id;
+  const [editDash, setEditDash] = useState(false);
+  const { prefs: dashPrefs, save: dashSave } = useMenuPrefs("member-dashboard", clubId);
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr, clubId);
@@ -780,6 +782,49 @@ export default function Dashboard() {
     );
   }
 
+  // Member's own dashboard order/hide preferences. Display only: items are
+  // built from what the member can already see; hiding never removes access.
+  const tileDefs: { id: string; label: string; show: boolean }[] = [
+    { id: "court-bookings", label: "Court Bookings", show: !!(bookingsEnabled && !shortcutFlags.bookingsEnabled) },
+    { id: "ladder", label: "Club Ladder", show: !!ladderEnabled },
+    { id: "resume-marking", label: "Resume Marking", show: !!hasMarkerSession },
+    { id: "events", label: "Events", show: !!(eventsEnabled && (shortcutFlags.bookingsEnabled || !shortcutFlags.eventsEnabled)) },
+    { id: "leagues", label: "Leagues", show: !!hasLeagues },
+    { id: "tournaments", label: "Tournaments", show: !!tournamentsEnabled },
+    { id: "bar", label: "Bar / POS", show: !!(effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled) },
+    { id: "wifi", label: "Wi-Fi (when available)", show: true },
+    { id: "score-match", label: "Score a Match", show: !hasMarkerSession },
+    { id: "club-admin", label: "Club Admin", show: !!hasAnyAdminAccess },
+  ];
+  const secDefs: { id: string; label: string; show: boolean }[] = [
+    { id: "my-stats", label: "My Stats", show: !isPendingApplicant },
+    { id: "shortcuts", label: "Shortcut tiles", show: true },
+    { id: "rankings", label: "My Rankings", show: !isPendingApplicant },
+    { id: "league-games", label: "My Upcoming League & Tournament Games", show: !!(hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0) },
+    { id: "club-glance", label: "Club at a Glance", show: true },
+    { id: "upcoming-bookings", label: "My Upcoming Bookings", show: true },
+    { id: "match-results", label: "Match Results", show: true },
+    { id: "tournaments", label: "My Tournaments", show: true },
+    { id: "events", label: "Club Events", show: true },
+    { id: "todays-bookings", label: "Today's Bookings", show: true },
+    { id: "support", label: "Support Tickets", show: true },
+  ];
+  const tileOrder = applyOrder(tileDefs.map((t) => t.id), dashPrefs.groups.tiles, (x) => x);
+  const secOrderList = applyOrder(secDefs.map((t) => t.id), dashPrefs.groups.sections, (x) => x);
+  const dashHidden = new Set(dashPrefs.hidden);
+  const secOrder = (id: string) => (secOrderList.indexOf(id) + 1) * 10;
+  const sec = (id: string, node: ReactNode) =>
+    dashHidden.has(`s:${id}`) || !node ? null : <div style={{ order: secOrder(id) }}>{node}</div>;
+  const tile = (id: string, node: ReactNode) =>
+    dashHidden.has(`t:${id}`) || !node ? null : <div style={{ order: tileOrder.indexOf(id) }} className="grid empty:hidden">{node}</div>;
+  const dashGroups = [
+    { key: "sections", label: "Sections", items: secDefs.filter((d) => d.show).map((d) => ({ id: `s:${d.id}`, label: d.label })) },
+    { key: "tiles", label: "Shortcut tiles", items: tileDefs.filter((d) => d.show).map((d) => ({ id: `t:${d.id}`, label: d.label })) },
+  ];
+  const strip = (p: string[] | undefined) => (p || []).map((x) => x.slice(2));
+  const prefix = (pre: string, ids: string[] | undefined) => ids?.map((x) => `${pre}${x}`);
+  const editorPrefs = { groups: { sections: prefix("s:", dashPrefs.groups.sections) ?? [], tiles: prefix("t:", dashPrefs.groups.tiles) ?? [] }, hidden: dashPrefs.hidden };
+
   return (
     <div className="member-home bottom-nav-safe relative">
       <SEO title="Member Dashboard" description="Your squash hub — stats and bookings." path="/" noIndex />
@@ -927,23 +972,23 @@ export default function Dashboard() {
       {/* Features not already supplied by the persistent shortcuts. */}
       {sec("shortcuts", <div className="px-4 mt-4">
         <div className="member-feature-grid grid grid-cols-3 gap-2.5">
-          {bookingsEnabled && !shortcutFlags.bookingsEnabled && (
+          {tile("court-bookings", bookingsEnabled && !shortcutFlags.bookingsEnabled && (
 <Button data-tone="courts" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
             <span className="text-xs font-medium">Court Bookings</span>
           </Button>
-)}
-          {ladderEnabled && (
+))}
+          {tile("ladder", ladderEnabled && (
 <Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/ladder")}>
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
-)}
+))}
           {/* Live scoring. Competition games are marked from their own screens
               (league fixture, tournament game, booking), so this tile only
               leads: while a game is being scored. Otherwise it sits at the end
               of the grid as the entry point for social / ad-hoc games. */}
-          {hasMarkerSession && (
+          {tile("resume-marking", hasMarkerSession && (
             <Button data-tone="score"
               variant="outline"
               className="member-feature-tile flex-col py-3 gap-2 ring-2 ring-member-profile/40"
@@ -952,27 +997,27 @@ export default function Dashboard() {
               <Play className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Resume Marking</span>
             </Button>
-          )}
+          ))}
 
-          {eventsEnabled && (shortcutFlags.bookingsEnabled || !shortcutFlags.eventsEnabled) && (
+          {tile("events", eventsEnabled && (shortcutFlags.bookingsEnabled || !shortcutFlags.eventsEnabled) && (
 <Button data-tone="events" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/events")}>
             <CalendarDays className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Events</span>
           </Button>
-)}
-          {hasLeagues && (
+))}
+          {tile("leagues", hasLeagues && (
             <Button data-tone="leagues" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/league-games")}>
               <Trophy className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Leagues</span>
             </Button>
-          )}
-          {tournamentsEnabled && (
+          ))}
+          {tile("tournaments", tournamentsEnabled && (
 <Button data-tone="ladder" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/tournaments")}>
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
           </Button>
-)}
-          {effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
+))}
+          {tile("bar", effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled && (
             <Button data-tone="bar"
               variant="outline"
               className="member-feature-tile flex-col py-3 gap-2"
@@ -982,9 +1027,9 @@ export default function Dashboard() {
               <Wine className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Bar / POS</span>
             </Button>
-          )}
-          <DashboardWifiCard asTile />
-          {!hasMarkerSession && (
+          ))}
+          {tile("wifi", <DashboardWifiCard asTile />)}
+          {tile("score-match", !hasMarkerSession && (
             <Button data-tone="score"
               variant="outline"
               className="member-feature-tile flex-col py-3 gap-2"
@@ -994,13 +1039,13 @@ export default function Dashboard() {
               <Crosshair className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Score a Match</span>
             </Button>
-          )}
-          {hasAnyAdminAccess && (
+          ))}
+          {tile("club-admin", hasAnyAdminAccess && (
             <Button data-tone="admin" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/club-admin")}>
               <ShieldCheck className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Club Admin</span>
             </Button>
-          )}
+          ))}
         </div>
       </div>)}
 
@@ -1371,7 +1416,7 @@ export default function Dashboard() {
       </div>)}
       </div>
       <MenuOrderEditor open={editDash} onOpenChange={setEditDash} title="Edit dashboard"
-        groups={dashGroups} prefs={dashPrefs} onSave={(p) => dashSave.mutateAsync(p)} />
+        groups={dashGroups} prefs={editorPrefs} onSave={(p) => dashSave.mutateAsync(p ? { groups: { sections: strip(p.groups.sections), tiles: strip(p.groups.tiles) }, hidden: p.hidden } : null)} />
       <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
     </div>
   );

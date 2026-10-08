@@ -660,6 +660,30 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return () => { live = false; };
   }, [clubId, entryTournamentId, entryOwner, step]);
   const guideCounts = guideEntryCounts(cats, units.map((u) => u.key), a.picks, entrySnapshot.owner === entryOwner ? entrySnapshot.rows : []);
+  /** Players who already entered (invite/self-entry) are listed in Pick players with their chosen events; picking only adds. */
+  const enteredIds = new Set<string>();
+  const enteredPlaces = new Map<string, string[]>();
+  if (entrySnapshot.owner === entryOwner && entrySnapshot.state === "ready") {
+    for (const r of entrySnapshot.rows) {
+      if (/withdrawn|cancel|declin|reject|removed/i.test(r.status ?? "")) continue;
+      const ks = (r.division_choices?.length ? r.division_choices.map((n) => units[n - 1]?.key) : units.length === 1 ? [units[0].key] : []).filter(Boolean) as string[];
+      enteredIds.add(r.club_member_id);
+      enteredPlaces.set(r.club_member_id, [...new Set([...(enteredPlaces.get(r.club_member_id) ?? []), ...ks])]);
+    }
+  }
+  const enteredSig = [...enteredPlaces].map(([id, ks]) => `${id}:${ks.join(",")}`).sort().join("|");
+  useEffect(() => {
+    if (!enteredPlaces.size) return;
+    setA((prev: StepAnswers) => {
+      let picks = prev.picks; let changed = false;
+      enteredPlaces.forEach((ks, id) => {
+        if (!(id in picks)) { picks = { ...picks, [id]: [] }; changed = true; }
+        ks.forEach((k) => { const n = addPlace(picks, id, k, singleEvent); if (n !== picks) { picks = n; changed = true; } });
+      });
+      return changed ? { ...prev, picks } : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enteredSig]);
   const guideCountState = entrySnapshot.owner === entryOwner ? entrySnapshot.state : "loading";
   const anyManual = units.some((u) => eligOf(u.key).mode === "manual" || (eligOf(u.key).mode === "leagues" && !!eligOf(u.key).alsoPick));
   const selfEntry = a.source === "self" || a.source === "both";
@@ -1420,7 +1444,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     return (
                     <div key={id} className={cn("grid grid-cols-[11rem_1fr_auto] items-center gap-2 rounded-md border px-2 py-1", mine.length ? "border-border" : "border-destructive/50 bg-destructive/5")} data-testid={`pick-row-${id}`}>
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold" title={memberName(id)}>{memberName(id)}</div>
+                        <div className="truncate text-sm font-semibold" title={memberName(id)}>{memberName(id)}{enteredIds.has(id) && <span className="ml-1 rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">Entered</span>}</div>
                         <div className={cn("text-[11px]", mine.length ? "text-muted-foreground" : "font-medium text-destructive")}>{mine.length ? `${mine.length} event${mine.length === 1 ? "" : "s"}` : "No event yet"}</div>
                       </div>
                       <div className="flex flex-wrap gap-1 text-[11px]" role="group" aria-label={`Events for ${memberName(id)}`}>

@@ -2706,3 +2706,7 @@ Nelspruit Doubles League showed "No league rounds set up yet" despite 3 submitte
 
 ## 2026-10-08 Court Booking Rules: opt-in peak late-cancel restriction and penalties
 Added separate Peak Hours card (Edit/Save/Cancel), member events moved to section 3, booking-hours summary, opt-in restriction/penalty card, admin no-show confirmation and waivers. All clubs default OFF / R0.
+
+## 2026-10-08 — View-only court display: existing P peak indicator
+- Extracted the booking table's existing P marker into PeakTimeIndicator; same size, amber colours and top-right placement. Both grids reuse isPeakSlot and the club's weekday/weekend/day overrides. Token-scoped court_display_board now includes only the existing peak settings; no stored data, permissions, penalties or booking actions changed.
+- Validation: 15 focused tests passed, covering seven weekdays and 30/40/45/60-minute slots; sample display checked at 1280/1366/390/320px with 12 markers across four courts and no runtime errors. Both active display tokens return matching saved peak settings. Riverside has no active display token, so live browser token check unavailable without creating data. Preview build OK; not published; native configuration unchanged.

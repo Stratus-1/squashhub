@@ -9,7 +9,7 @@
 ## Before editing
 - Read relevant docs and issue history before touching federation, mobile, booking, payment or device flows.
 - Trace route → context → hooks → `src/lib` → tables/RLS/RPCs → Edge Functions → provider callbacks.
-- Install dependencies locally when possible; if external auth fails, stop and request re-authentication.
+- External auth failure requires re-authentication; why: no bypass.
 
 <!-- LOVABLE:BEGIN -->
 - Scope member-home and club bottom-nav presentation locally; deduplicate only mobile shortcuts, preserving desktop/association access and domain hooks.
@@ -38,3 +38,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Comms template channel versions are always loaded filtered by the club's template IDs, and the onboarding template is identified by `action.key = register_existing_member`, never by display name; why: unfiltered reads hit the 1000-row API cap for platform admins and renames must not break lookup.
 - Outstanding-balance plans (`mandate_arrears_plans`) are separate from fee mandates: they finance only `member_outstanding_breakdown().uncovered`, snapshot `covered_fee_ids`, and may share one combined debit, but each component is settled/tracked separately and the plan part drops off when done; why: no double-financing of membership.
 - Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
+- Court grids share P and peak logic; why: no separate rules.

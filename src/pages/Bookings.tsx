@@ -1,4 +1,5 @@
 import { isPeakSlot as isPeakSlotShared } from "@/lib/peak-hours";
+import { PeakTimeIndicator } from "@/components/PeakTimeIndicator";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -2234,14 +2235,7 @@ export default function Bookings() {
                             }
                           }}
                         >
-                          {isPeak && (
-                            <span
-                              className="absolute top-0.5 right-1 text-[9px] font-bold leading-none px-1 py-0.5 rounded bg-amber-500/80 text-amber-950"
-                              title="Peak time"
-                            >
-                              P
-                            </span>
-                          )}
+                          {isPeak && <PeakTimeIndicator />}
                           {booking ? (
                             <div className="px-1.5 w-full min-w-0 text-center leading-tight">
                               <p className={cn(

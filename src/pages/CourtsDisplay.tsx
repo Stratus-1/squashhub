@@ -3,9 +3,16 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Maximize } from "lucide-react";
 import { rpcExt } from "@/lib/supabase-ext";
+import { isPeakSlot, type PeakOverrides } from "@/lib/peak-hours";
+import { PeakTimeIndicator } from "@/components/PeakTimeIndicator";
 
 type Board = {
-  club: { name: string; logo_url: string | null; slot_minutes: number | null; open_time: string | null; last_slot_time: string | null };
+  club: {
+    name: string; logo_url: string | null; slot_minutes: number | null; open_time: string | null; last_slot_time: string | null;
+    peak_weekday_start?: string | null; peak_weekday_end?: string | null;
+    peak_weekend_start?: string | null; peak_weekend_end?: string | null;
+    peak_day_overrides?: PeakOverrides | null;
+  };
   date: string;
   courts: { id: number; name: string }[];
   bookings: { court_id: number; start: string; end: string; type: string | null; label: string }[];
@@ -85,12 +92,13 @@ export default function CourtsDisplay() {
 
   // Grid follows the club's real booking slots: any slot length, aligned to the club's opening
   // time, running through the END of the last configured slot (e.g. 21:45 slot -> 22:30).
-  const { start, end, slots } = displayGrid(data);
+  const { slot, start, end, slots } = displayGrid(data);
   const span = end - start;
   // Room for the closing-time label only when rows are tall enough not to overlap the last start label.
   const showEnd = gridH > 0 && (gridH - 44) / Math.max(slots.length, 1) >= 36;
   const pct = (m: number) => `${((m - start) / span) * 100}%`;
-  const dateLabel = new Date(data.date + "T12:00:00").toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" });
+  const boardDate = new Date(data.date + "T12:00:00");
+  const dateLabel = boardDate.toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
@@ -125,7 +133,6 @@ export default function CourtsDisplay() {
           <div key={c.id} className="flex-1 flex flex-col min-w-0 border-r border-border last:border-r-0">
             <div className="sticky top-0 z-20 text-center font-semibold text-xl py-2 border-b border-border bg-card truncate px-2">{c.name}</div>
             <div className="flex-1 relative">
-              {slots.map((h) => <div key={h} className={`absolute left-0 right-0 border-t ${h % 60 === 0 ? "border-border" : "border-border/40"}`} style={{ top: pct(h) }} />)}
               {data.bookings.filter((b) => b.court_id === c.id).map((b, i) => {
                 const s = toMin(b.start), e = toMin(b.end), live = now >= s && now < e, past = now >= e;
                 return (
@@ -135,6 +142,12 @@ export default function CourtsDisplay() {
                   </div>
                 );
               })}
+              {slots.map((h) => (
+                <div key={h} className={`absolute left-0 right-0 pointer-events-none border-t ${h % 60 === 0 ? "border-border" : "border-border/40"}`}
+                  style={{ top: pct(h), height: `${(slot / span) * 100}%` }}>
+                  {isPeakSlot(boardDate, hhmm(h), data.club) && <PeakTimeIndicator />}
+                </div>
+              ))}
               {now >= start && now <= end && <div className="absolute left-0 right-0 h-0.5 bg-destructive z-10" style={{ top: pct(now) }} />}
             </div>
           </div>

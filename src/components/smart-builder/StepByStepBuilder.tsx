@@ -56,8 +56,8 @@ import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHand
  */
 type Kind = "once_off" | "period" | null;
 type PlayType = "singles" | "doubles" | "both" | null;
-type MatchScoring = { mode: "standard" | "time_capped_points"; pointsPerGame: 11 | 15; bestOf: 3 | 5; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string; timeCapPlay: string; timeCapBreak: string };
-const DEFAULT_SCORING: MatchScoring = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
+type MatchScoring = { mode: "standard" | "time_capped_points"; pointsPerGame: 11 | 15; bestOf: 3 | 5; playAllGames?: boolean; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string; timeCapPlay: string; timeCapBreak: string };
+const DEFAULT_SCORING: MatchScoring = { mode: "standard", pointsPerGame: 11, bestOf: 5, playAllGames: false, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
 /** Slot time = playing time + break/changeover. Scheduling and capacity maths use the slot; playing time describes actual play. */
 const slotMinutes = (s: MatchScoring) => {
   const play = Number(s.timeCapPlay);
@@ -66,7 +66,7 @@ const slotMinutes = (s: MatchScoring) => {
 };
 const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
   ? `Time-capped / Bells${slotMinutes(s) > 0 ? ` · ${slotMinutes(s)} min slot per match` : " · time not set"}`
-  : `Standard play · PAR ${s.pointsPerGame} · best of ${s.bestOf} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
+  : `Standard play · PAR ${s.pointsPerGame} · ${s.playAllGames ? `play all ${s.bestOf} games` : `best of ${s.bestOf}`} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 /** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
@@ -2327,7 +2327,7 @@ function ScoringFields({ value, onChange, showMode = false }: { value: MatchScor
     </div>}
     {value.mode === "standard" ? <div className="grid gap-3 sm:grid-cols-3">
       <div><Label htmlFor={showMode ? undefined : "tournament-points"}>Points per game</Label><select aria-label="Points per game" id={showMode ? undefined : "tournament-points"} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.pointsPerGame} onChange={(e) => onChange({ pointsPerGame: Number(e.target.value) as 11 | 15 })}><option value="11">PAR 11</option><option value="15">PAR 15</option></select></div>
-      <div><Label>Games per match</Label><select aria-label="Games per match" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.bestOf} onChange={(e) => onChange({ bestOf: Number(e.target.value) as 3 | 5 })}><option value="3">Best of 3</option><option value="5">Best of 5</option></select></div>
+      <div><Label>Games per match</Label><select aria-label="Games per match" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.playAllGames ? `all${value.bestOf}` : String(value.bestOf)} onChange={(e) => { const v = e.target.value; onChange(v.startsWith("all") ? { bestOf: Number(v.slice(3)) as 3 | 5, playAllGames: true } : { bestOf: Number(v) as 3 | 5, playAllGames: false }); }}><option value="3">Best of 3</option><option value="5">Best of 5</option><option value="all3">Play all 3 games</option><option value="all5">Play all 5 games</option></select></div>
       <div><Label>At game point</Label><select aria-label="At game point" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.winCondition} onChange={(e) => onChange({ winCondition: e.target.value as MatchScoring["winCondition"] })}><option value="win_by_2">Win by 2</option><option value="sudden_death">Sudden death</option></select></div>
     </div> : <div className="max-w-[440px] space-y-2">
       <div className="grid grid-cols-2 gap-2">

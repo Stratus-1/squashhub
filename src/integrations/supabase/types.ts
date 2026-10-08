@@ -17357,6 +17357,33 @@ export type Database = {
           },
         ]
       }
+      user_menu_preferences: {
+        Row: {
+          club_id: string
+          id: string
+          item_order: Json
+          menu_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club_id?: string
+          id?: string
+          item_order?: Json
+          menu_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          id?: string
+          item_order?: Json
+          menu_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

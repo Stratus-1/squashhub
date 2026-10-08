@@ -48,8 +48,9 @@ Fields:
 - **Peak-hour no-show penalty fee (R).** Separate from the late-cancellation fee.
 
 Rules:
-- **Late window.** It starts when the slot immediately before the booking starts. It is one configured slot length (45 min at Uitsig, 60 min at an hourly club), never a fixed hour.
-- **Toggle OFF:** once the late window starts, the member cannot cancel. The button explains why. Admins with booking permission can still cancel without a penalty, and the reason is recorded.
+- **Opt-in:** the whole card is switched off by default for every existing and new club, with fees at R0. While it is off, cancellations work exactly as they do today.
+- **Late window.** It starts at the beginning of the slot immediately before the booking. It is one configured slot length (45 min at Uitsig, 60 min at an hourly club), never a fixed hour, with no grace period.
+- **Toggle OFF:** once the late window starts, the member cannot cancel. The button explains why. Authorised admins may still cancel with no penalty; who, when, why and the waiver are logged.
 - **Toggle ON:** the member may cancel in the late window. The late-cancellation fee is charged once.
 - **Non-peak bookings:** current cancellation behaviour stays unchanged, with no fees. This card applies to peak-hour bookings only.
 - **One penalty per booking:** a booking can get a late-cancellation fee OR a no-show fee, never both and never twice. The backend enforces this with one penalty record per booking.
@@ -57,7 +58,7 @@ Rules:
 
 ### How a no-show is established
 A no-show is never decided automatically from silence. The booking needs either:
-- (a) no check-in/attendance record, using the existing door/access or check-in events where the club has them, after a grace period (default: half a slot), **and**
+- (a) no check-in/attendance record, using the existing door/access or check-in events where the club has them, from the booking start with no grace period, **and**
 - (b) confirmation by an authorised admin in a "Possible no-shows" list.
 
 Clubs with no attendance source rely on admin confirmation alone. The penalty is posted only after confirmation.
@@ -75,7 +76,8 @@ Clubs with no attendance source rely on admin confirmation alone. The penalty is
 - Before saving the card, admins see a short preview of the rules.
 
 ## Technical details
-- New club settings fields (nullable, default off/0): `peak_late_cancel_allowed`, `peak_late_cancel_fee`, `peak_no_show_fee`, and an optional `no_show_grace_minutes`.
+- New club settings fields, added without changing existing data: `peak_penalties_enabled` (default false), `peak_late_cancel_allowed` (default false), `peak_late_cancel_fee` (default 0), `peak_no_show_fee` (default 0). There is no grace-period field. No existing club gets values filled in beyond these defaults.
+- Admin late cancellations write an audit row recording actor, time, reason and `waived`.
 - New `booking_penalties` table: one row per booking (unique `booking_id`), with kind (`late_cancel` | `no_show`), amount, ledger reference, status (`charged` | `waived`) and actor. RLS is scoped to the club.
 - Late-window and cancel checks run on the backend in the cancel action, using the same peak function as the booking cap. The browser check is only a convenience.
 - The no-show list comes from bookings plus existing attendance/access events. Admin confirmation calls an idempotent backend function.
@@ -92,6 +94,10 @@ Clubs with no attendance source rely on admin confirmation alone. The penalty is
   - booking-hours label for Uitsig (21:45 start, 22:30 close)
 - No publishing until Willem approves.
 
-## Questions to confirm on approval
-- Grace period default: half a slot?
-- Should admins be able to cancel in the late window without a penalty (proposed: yes, with a reason)?
+## Final decisions (8 Oct)
+- No grace period of any kind. The half-slot default has been removed.
+- Authorised admins may cancel in the late window with no penalty. Who, when, why and the waiver are all logged.
+- Rollout leaves every club's existing courts, bookings, fees and booking rules exactly as they are. The whole penalty feature is opt-in and switched off for existing and new clubs, with fees at R0. No penalty is posted until an admin turns it on and sets it up. Nothing is backdated.
+
+## One point to confirm
+- To keep today's behaviour by default, the card has a master switch, **"Enable peak-hour cancellation & no-show rules"**, which is OFF. The "Allow late cancellation" toggle (default OFF, meaning members are blocked in the late window) only takes effect once the master switch is ON. Please confirm this is what you meant.

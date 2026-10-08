@@ -121,7 +121,7 @@ export function nextAction(h: Handover): { title: string; detail: string; availa
 }
 
 /** Setup "Match scoring" answer for one category — the result-entry rules the live tournament must use. */
-export type DivisionScoring = { mode: "standard" | "time_capped_points"; pointsPerGame?: number; bestOf?: number; winCondition?: "win_by_2" | "sudden_death"; /** Bells: slot = play + changeover; the marker's bell = slot - break. */ slotMinutes?: number | null; breakMinutes?: number | null };
+export type DivisionScoring = { mode: "standard" | "time_capped_points"; pointsPerGame?: number; bestOf?: number; playAllGames?: boolean; winCondition?: "win_by_2" | "sudden_death"; /** Bells: slot = play + changeover; the marker's bell = slot - break. */ slotMinutes?: number | null; breakMinutes?: number | null };
 
 /**
  * Map each category's setup scoring onto the live per-division columns the marker/result entry

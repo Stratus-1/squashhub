@@ -2710,3 +2710,8 @@ Added separate Peak Hours card (Edit/Save/Cancel), member events moved to sectio
 ## 2026-10-08 — View-only court display: existing P peak indicator
 - Extracted the booking table's existing P marker into PeakTimeIndicator; same size, amber colours and top-right placement. Both grids reuse isPeakSlot and the club's weekday/weekend/day overrides. Token-scoped court_display_board now includes only the existing peak settings; no stored data, permissions, penalties or booking actions changed.
 - Validation: 15 focused tests passed, covering seven weekdays and 30/40/45/60-minute slots; sample display checked at 1280/1366/390/320px with 12 markers across four courts and no runtime errors. Both active display tokens return matching saved peak settings. Riverside has no active display token, so live browser token check unavailable without creating data. Preview build OK; not published; native configuration unchanged.
+
+## 2026-10-08 — View-only court display: header sign-in notice
+- Added a small, muted, horizontally centred line under the club row in the display header: "View only — To make changes to your booking, please log in to the SquashHub app." (11px phone / 14px desktop, muted foreground).
+- Header is now a two-row card: existing logo/club name/clock/full-screen row unchanged, notice below. Peak P markers, booking rules, penalties and permissions untouched.
+- Validation: courts-display-peak.test.tsx (6) passes, including the notice; Uitsig display token checked live at 1280x1800, 1280x800, 390x844 and 360x740 — notice centred (0px offset), single line on desktop, two lines on phone, no clipping/overlap, 20 peak markers, no console errors. Preview only, not published.

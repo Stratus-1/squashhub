@@ -1,4 +1,5 @@
 # Roadmap
+- [x] View-only court display header: centred "View only — log in to the SquashHub app" notice; 6 display tests pass, live token checked at 1280/390/360px with no overlap. Peak markers, rules and permissions unchanged; preview only, not published.
 - [x] Reuse P on the view-only court display: shared marker/peak logic, 15 tests, desktop/mobile sample checks and saved peak settings verified for both active tokens. No booking/data changes or publishing.
 - [x] Add admin Paid action for registered fee-due players, preserving online and member-account display. 33 focused tests pass; intercepted browser sample updates status and Paid total. Build OK; live authenticated payment writes intentionally not exercised, no real payments changed, preview only.
 - [x] Show bracketed entered/selected/combined totals beside guide estimates and per subcategory; 19 focused tests and isolated browser display check pass, build OK. Live club flow not exercised; no live data changes or publishing.

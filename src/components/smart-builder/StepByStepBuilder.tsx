@@ -1543,7 +1543,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                   ? `Players I pick${e.alsoEveryone ? " + everyone" : ""}`
                                   : `All eligible members${e.alsoPick ? " + players I pick" : ""}`;
                               return (
-                                <div className="mt-auto truncate border-t border-border bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground" title={leagueScoped ? `Leagues feeding this group: ${who}` : who}>
+                                <div
+                                  className="mt-auto line-clamp-3 break-words border-t border-border bg-muted/40 px-2 py-1 text-[9px] leading-snug text-muted-foreground"
+                                  title={leagueScoped ? `Leagues feeding this group: ${who}` : who}
+                                >
                                   {leagueScoped ? `Leagues: ${who}` : who}
                                 </div>
                               );

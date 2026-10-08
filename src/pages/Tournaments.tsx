@@ -828,8 +828,13 @@ export default function Tournaments() {
    * between leagues, so position in the plan means nothing), and finally to the
    * positional plan entry.
    */
-  const matchStage = (m: any): StageScheduleInfo | null =>
-    (m?.stage_key && stageSchedByChamp?.get(m.champ_id)?.get(m.stage_key)) || null;
+  const matchStage = (m: any): StageScheduleInfo | null => {
+    const st = (m?.stage_key && stageSchedByChamp?.get(m.champ_id)?.get(m.stage_key)) || null;
+    // A main-phase round set to fixed days in setup is centrally scheduled, even if the spec says play-by.
+    const fixed = (!st || st.order === 0) ? fixedRoundsByChamp?.get(m.champ_id)?.get(Number(m.round_number)) : undefined;
+    if (fixed) return { stageId: st?.stageId ?? String(m.stage_key ?? ""), name: st?.name ?? "", order: 0, rule: "fixed", date: fixed.from, deadline: null, timeFrom: fixed.timeFrom, timeTo: fixed.timeTo, courtIds: [] };
+    return st;
+  };
   const matchSchedule = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const milestones = parseMilestones((champ as any)?.milestone_play_by);

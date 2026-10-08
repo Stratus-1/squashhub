@@ -631,11 +631,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     setA({ ...a, picks: next });
     setImportReport({ added, problems });
   };
-  const placesFor = (id: string) => placesOf(a.picks, id);
+  const unitKeySet = new Set(units.map((u) => u.key));
+  /** Only current events count; ticks for renamed/removed events are kept but ignored until cleared. */
+  const placesFor = (id: string) => placesOf(a.picks, id).filter((k) => unitKeySet.has(k));
   const inUnit = (id: string, k: string) => placesFor(id).includes(k);
   /** Bells/time-capped: every event plays at the same time, so a person can enter only one. */
   const singleEvent = units.length > 0 && units.every((u) => (scoringFor(u.key) ?? scoring)?.mode === "time_capped_points");
-  const counts = pickCounts(a.picks);
+  const counts = pickCounts(Object.fromEntries(Object.keys(a.picks).map((id) => [id, placesOf(a.picks, id).filter((k) => unitKeySet.has(k))])));
   const [entrySnapshot, setEntrySnapshot] = useState<{ owner: string; rows: RegLite[]; state: "ready" | "loading" | "error" }>({ owner: "", rows: [], state: "loading" });
   const entryTournamentId = tournamentId ?? a.createdTournamentId;
   const entryOwner = `${clubId}:${entryTournamentId ?? "new"}`;
@@ -838,28 +840,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   // Organiser overrides (events outside a player's scope) are allowed; only real blockers are listed.
-  // Events renamed or removed (e.g. "Mens X" → "Mens C") leave old ticks that can't be shown or unticked; drop them.
-  const unitKeySig = units.map((u) => u.key).join("|");
-  useEffect(() => {
-    if (!units.length) return;
-    const keys = new Set(units.map((u) => u.key));
-    let changed = false;
-    const next: typeof a.picks = {};
-    for (const [id, v] of Object.entries(a.picks)) {
-      const list = (Array.isArray(v) ? v : v ? [v] : []) as string[];
-      const kept = list.filter((k) => keys.has(k));
-      if (kept.length !== list.length) changed = true;
-      next[id] = kept as any;
-    }
-    if (changed) setA((prev: StepAnswers) => ({ ...prev, picks: next }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unitKeySig, a.picks]);
+  // Ticks for events that were renamed/removed are ignored (never auto-deleted: typing a name must not wipe picks).
+  const stalePickCount = Object.keys(a.picks).filter((id) => placesOf(a.picks, id).some((k) => !unitKeySet.has(k))).length;
+  const clearStalePicks = () => setA((prev: StepAnswers) => {
+    const next: typeof prev.picks = {};
+    for (const id of Object.keys(prev.picks)) next[id] = placesOf(prev.picks, id).filter((k) => unitKeySet.has(k)) as any;
+    return { ...prev, picks: next };
+  });
   const pickProblems: string[] = (() => {
     const out: string[] = [];
     if (a.source === "select" && pickIds.length === 0) out.push("Pick at least one player.");
     for (const id of pickIds) {
-      const stale = placesFor(id).filter((k) => !units.some((u) => u.key === k));
-      if (stale.length) out.push(`${memberName(id)}: ticked in an event that no longer exists — clearing it…`);
       if (singleEvent && placesFor(id).length > 1) out.push(`${memberName(id)}: may only be in one event (timed format).`);
       if (pairMode && placesFor(id).length === 0) out.push(`${memberName(id)}: not in any event yet.`);
     }
@@ -1376,6 +1367,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.some((id) => placesFor(id).length === 0) && (
                       <Button size="sm" variant="outline" onClick={() => { const n = { ...a.picks }; pickIds.forEach((id) => { if (placesFor(id).length === 0) { const k = autoPlace(id); n[id] = k ? [k] : []; } }); setA({ ...a, picks: n }); }}>Place by league</Button>)}
                   </div>
+                  {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
                   <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Tap an event to add or remove it. A player stays picked even with no events."}</div>
                   <div className="max-h-[28rem] space-y-1 overflow-auto">
                   {pickIds.filter((id) => memberName(id).toLowerCase().includes(memberSearch.trim().toLowerCase())).map((id) => {

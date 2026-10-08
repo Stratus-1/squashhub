@@ -542,7 +542,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 ### Already decided — no need to answer again
 | Topic | Decision (prefilled from your messages) |
 |---|---|
-| Chairman finance | Finance **read-only** automatically. No execution by default. May self-grant execution (prominently audited). Never approves own transactions |
+| Chairman finance | Finance **read-only** automatically, plus a narrow default right to approve Treasurer-initiated transactions (no initiation). No execution by default. May self-grant execution (prominently audited). Never approves own transactions |
 | Other office bearers' finance | Vice-Chair, Secretary and committee members get no finance view by default. The Treasurer gets the defined finance functions |
 | Who grants finance and sensitive rights | Chairman (own club) and Super Admin; others may only nominate |
 | Office bearers | The Chairman alone appoints and removes them. Several roles per person are allowed |

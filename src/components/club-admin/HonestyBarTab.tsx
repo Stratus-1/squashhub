@@ -1291,6 +1291,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
       setItemId("");
       setQuantity(1);
       qc.invalidateQueries({ queryKey: ["bar-tab-recent"] });
+      qc.invalidateQueries({ queryKey: ["bar-account-charge-preview"] });
     }
   };
 
@@ -1330,6 +1331,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
           Add Charge{selectedItem ? ` (${money(selectedItem.price * quantity)})` : ""}
         </Button>
       </div>
+      <AccountChargeWarning show={chargePreview.blocked} />
     </Card>
   );
 }

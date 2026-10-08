@@ -27,3 +27,21 @@ describe("bar/shop account charge gate", () => {
     expect(barChargeErrorMessage({ message: "other" }, "x")).toBe("other");
   });
 });
+
+import { previewBasketCharge as pb } from "@/lib/account-charge-gate";
+describe("early basket warning", () => {
+  const p = (o: any) => ({ bar_gated: true, shop_gated: false, current_owing: 0, allowance: 0, ...o });
+  it("no warning for empty basket", () => expect(pb({ preview: p({}), lines: [] }).blocked).toBe(false));
+  it("warns when gated bar basket exceeds", () => expect(pb({ preview: p({}), lines: [{ division: "bar", total: 20 }] }).blocked).toBe(true));
+  it("recalculates as basket changes", () => {
+    const pr = p({ current_owing: -25 });
+    expect(pb({ preview: pr, lines: [{ division: "bar", total: 20 }] }).blocked).toBe(false);
+    expect(pb({ preview: pr, lines: [{ division: "bar", total: 30 }] }).blocked).toBe(true);
+  });
+  it("recurring allowance covers total → no warning", () =>
+    expect(pb({ preview: p({ current_owing: 450, allowance: 500 }), lines: [{ division: "bar", total: 40 }] }).blocked).toBe(false));
+  it("shop switch ON → no warning for shop-only basket", () => expect(pb({ preview: p({ current_owing: 900 }), lines: [{ division: "shop", total: 50 }] }).blocked).toBe(false));
+  it("mixed basket with gated line checks whole total", () =>
+    expect(pb({ preview: p({ current_owing: -30 }), lines: [{ division: "shop", total: 25 }, { division: "bar", total: 10 }] }).blocked).toBe(true));
+  it("no preview (unauthorised/error) fails open", () => expect(pb({ preview: null, lines: [{ total: 99 }] }).blocked).toBe(false));
+});

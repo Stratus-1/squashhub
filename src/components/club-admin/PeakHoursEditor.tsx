@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -23,7 +22,7 @@ type Form = {
  * (e.g. 40-minute slots), stored as start of first peak slot → end of last peak slot.
  * Days without an explicit setting keep the club's previously saved times.
  */
-export function PeakHoursEditor({ value, onChange }: { value: Form; onChange: (patch: Partial<Form>) => void }) {
+export function PeakHoursEditor({ value, onChange, readOnly = false }: { value: Form; onChange: (patch: Partial<Form>) => void; readOnly?: boolean }) {
   const step = value.booking_slot_minutes || 30;
   const slots = useMemo(
     () => clubSlotStarts(step, value.booking_open_time, value.booking_last_slot_time),
@@ -41,18 +40,24 @@ export function PeakHoursEditor({ value, onChange }: { value: Form; onChange: (p
     };
     const label = (t: string) => `${t}–${toHHMM(toMin(t) + step)}${slots.includes(t) ? "" : " (not a slot)"}`;
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="space-y-0.5">
+        <span className="block text-[10px] text-muted-foreground">Peak starts</span>
         <Select value={first} onValueChange={(v) => pick(v, last)}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{startOpts.map(t => <SelectItem key={t} value={t} className="text-xs">{label(t)}</SelectItem>)}</SelectContent>
         </Select>
-        <span className="text-[10px] text-muted-foreground shrink-0">to</span>
+        </div>
+        <div className="space-y-0.5">
+        <span className="block text-[10px] text-muted-foreground">Last peak slot</span>
         <Select value={last} onValueChange={(v) => pick(first, v)}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             {lastOpts.filter(t => toMin(t) >= toMin(first)).map(t => <SelectItem key={t} value={t} className="text-xs">{label(t)}</SelectItem>)}
           </SelectContent>
         </Select>
+        </div>
+        <span className="text-[11px] text-muted-foreground pb-2">Peak ends {toHHMM(toMin(last) + step)}</span>
       </div>
     );
   };
@@ -71,9 +76,8 @@ export function PeakHoursEditor({ value, onChange }: { value: Form; onChange: (p
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs font-semibold">3. Peak hours per day</Label>
-      <p className="text-[10px] text-muted-foreground">
-        Set each day's peak time from your {step}-minute court slots, or switch a day off. Days you don't change keep their current times.
+      <p className="text-[11px] text-muted-foreground">
+        Each day's peak time uses your {step}-minute court slots. Days you haven't changed keep their current times.
       </p>
 
       <div className="rounded-lg border divide-y">
@@ -82,6 +86,16 @@ export function PeakHoursEditor({ value, onChange }: { value: Form; onChange: (p
           const saved = savedFor(day);
           const cur = o && !o.off && o.start && o.end ? { start: o.start, end: o.end } : saved;
           const off = !!o?.off;
+          if (readOnly) {
+            return (
+              <div key={day} className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="text-xs font-medium">{DAY_LABELS[day]}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {off ? "No peak time" : `Peak starts ${cur.start.slice(0, 5)} · Peak ends ${cur.end.slice(0, 5)}`}
+                </span>
+              </div>
+            );
+          }
           return (
             <div key={day} className="flex flex-wrap items-center gap-2 px-2 py-1.5">
               <span className="text-[11px] font-medium w-20">{DAY_LABELS[day]}</span>

@@ -5,7 +5,7 @@ import { Maximize } from "lucide-react";
 import { rpcExt } from "@/lib/supabase-ext";
 
 type Board = {
-  club: { name: string; logo_url: string | null };
+  club: { name: string; logo_url: string | null; slot_minutes: number | null; open_time: string | null; last_slot_time: string | null };
   date: string;
   courts: { id: number; name: string }[];
   bookings: { court_id: number; start: string; end: string; type: string | null; label: string }[];

@@ -100,7 +100,7 @@ export default function Dashboard() {
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const [editDash, setEditDash] = useState(false);
   // Pilot: Edit dashboard button shown in Riverside only for now (display-only feature).
-  const dashEditPilot = clubId === "11111111-1111-1111-1111-111111111111";
+  const dashEditPilot = !!clubId;
   const { prefs: dashPrefs, save: dashSave } = useMenuPrefs("member-dashboard", clubId);
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");

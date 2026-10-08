@@ -1741,6 +1741,84 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_penalties: {
+        Row: {
+          actor_user_id: string | null
+          amount: number
+          booking_date: string | null
+          booking_id: string
+          booking_start: string | null
+          club_id: string
+          club_member_id: string | null
+          court_id: number | null
+          created_at: string
+          fee_payment_id: string | null
+          id: string
+          journal_ref: string | null
+          kind: string
+          reason: string | null
+          status: string
+          waive_reason: string | null
+          waived_at: string | null
+          waived_by: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          amount?: number
+          booking_date?: string | null
+          booking_id: string
+          booking_start?: string | null
+          club_id: string
+          club_member_id?: string | null
+          court_id?: number | null
+          created_at?: string
+          fee_payment_id?: string | null
+          id?: string
+          journal_ref?: string | null
+          kind: string
+          reason?: string | null
+          status: string
+          waive_reason?: string | null
+          waived_at?: string | null
+          waived_by?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          amount?: number
+          booking_date?: string | null
+          booking_id?: string
+          booking_start?: string | null
+          club_id?: string
+          club_member_id?: string | null
+          court_id?: number | null
+          created_at?: string
+          fee_payment_id?: string | null
+          id?: string
+          journal_ref?: string | null
+          kind?: string
+          reason?: string | null
+          status?: string
+          waive_reason?: string | null
+          waived_at?: string | null
+          waived_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_penalties_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_penalties_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           booking_type: string
@@ -6474,7 +6552,13 @@ export type Database = {
           payment_gateway_fee_percent: number | null
           payment_gateway_public_key: string | null
           payment_gateways: string[]
+          peak_cancel_restrict_enabled: boolean
           peak_day_overrides: Json
+          peak_late_cancel_allowed: boolean
+          peak_late_cancel_fee: number
+          peak_no_show_fee: number
+          peak_penalties_enabled: boolean
+          peak_penalties_enabled_at: string | null
           peak_weekday_end: string
           peak_weekday_start: string
           peak_weekend_end: string
@@ -6627,7 +6711,13 @@ export type Database = {
           payment_gateway_fee_percent?: number | null
           payment_gateway_public_key?: string | null
           payment_gateways?: string[]
+          peak_cancel_restrict_enabled?: boolean
           peak_day_overrides?: Json
+          peak_late_cancel_allowed?: boolean
+          peak_late_cancel_fee?: number
+          peak_no_show_fee?: number
+          peak_penalties_enabled?: boolean
+          peak_penalties_enabled_at?: string | null
           peak_weekday_end?: string
           peak_weekday_start?: string
           peak_weekend_end?: string
@@ -6780,7 +6870,13 @@ export type Database = {
           payment_gateway_fee_percent?: number | null
           payment_gateway_public_key?: string | null
           payment_gateways?: string[]
+          peak_cancel_restrict_enabled?: boolean
           peak_day_overrides?: Json
+          peak_late_cancel_allowed?: boolean
+          peak_late_cancel_fee?: number
+          peak_no_show_fee?: number
+          peak_penalties_enabled?: boolean
+          peak_penalties_enabled_at?: string | null
           peak_weekday_end?: string
           peak_weekday_start?: string
           peak_weekend_end?: string
@@ -17375,6 +17471,15 @@ export type Database = {
           sets_for: number
         }[]
       }
+      _post_booking_penalty: {
+        Args: {
+          _amount: number
+          _b: Database["public"]["Tables"]["bookings"]["Row"]
+          _kind: string
+          _reason: string
+        }
+        Returns: string
+      }
       accept_tournament_invite: {
         Args: {
           p_accept: boolean
@@ -17400,6 +17505,10 @@ export type Database = {
           _fee_type?: string
           _income_account: string
         }
+        Returns: Json
+      }
+      admin_confirm_booking_no_show: {
+        Args: { _booking_id: string; _note?: string }
         Returns: Json
       }
       admin_correct_rubber_participant: {
@@ -17518,6 +17627,10 @@ export type Database = {
           _status: string
           _until?: string
         }
+        Returns: Json
+      }
+      admin_waive_booking_penalty: {
+        Args: { _penalty_id: string; _reason: string }
         Returns: Json
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
@@ -17886,6 +17999,7 @@ export type Database = {
         Args: { p_booking: Database["public"]["Tables"]["bookings"]["Row"] }
         Returns: Json
       }
+      booking_peak_late_status: { Args: { _booking_id: string }; Returns: Json }
       booking_visitor_entitled: {
         Args: { p_club_id: string; p_club_member_id: string; p_user_id: string }
         Returns: boolean
@@ -17949,6 +18063,10 @@ export type Database = {
         Returns: boolean
       }
       cancel_arrears_plan: { Args: { p_plan_id: string }; Returns: undefined }
+      cancel_booking_checked: {
+        Args: { _booking_id: string; _reason?: string }
+        Returns: Json
+      }
       cancel_doubles_pair: {
         Args: { p_pair_id: string; p_token?: string; p_verify?: string }
         Returns: Json
@@ -18251,6 +18369,7 @@ export type Database = {
           member_id: string
         }[]
       }
+      club_squashhub_lighting: { Args: { _club_id: string }; Returns: boolean }
       club_submit_association_roster: {
         Args: {
           _association_id: string

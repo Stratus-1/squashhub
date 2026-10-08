@@ -467,11 +467,24 @@ export function useCancelBooking() {
         }
       }
 
-      const { error } = await supabase
-        .from("bookings")
-        .update({ status: "cancelled" })
-        .eq("id", bookingId);
+      // Rule-checked cancel: enforces the club's opt-in peak late-cancellation
+      // rules on the backend (admins must give a reason inside the late window).
+      const run = (reason: string | null) =>
+        (supabase.rpc as any)("cancel_booking_checked", { _booking_id: bookingId, _reason: reason });
+      let { data, error } = await run(null);
+      if (error && /reason is required/i.test(error.message || "")) {
+        const reason = typeof window !== "undefined"
+          ? window.prompt("This peak booking is inside the late-cancellation window. Reason for cancelling (logged, no penalty):")
+          : null;
+        if (!reason || !reason.trim()) throw new Error("Cancellation not done — a reason is required.");
+        ({ data, error } = await run(reason.trim()));
+      }
       if (error) throw error;
+      const fee = Number((data as any)?.fee || 0);
+      if ((data as any)?.penalty === "late_cancel" && fee > 0) {
+        const { toast } = await import("sonner");
+        toast.info(`Late-cancellation penalty of ${fee} has been added to the account.`);
+      }
     },
 
     onSuccess: () => {

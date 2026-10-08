@@ -652,6 +652,13 @@
       "when": 1791455141392,
       "tag": "0092_admin_resolve_duplicate_member",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1791456079334,
+      "tag": "0093_peak_cancel_rules_and_penalties",
+      "breakpoints": true
     }
   ]
 }

@@ -2246,8 +2246,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {a.kind && (
             <>
               {isChamps && basicsOk && <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={periodText} onClick={() => go("Basics")} />}
-              {isChamps && champsEstimate > 0 && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${champsEstimate} expected entries`} onClick={() => go("ExpEntries")}>
-                {units.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">~{a.unitEntries?.[u.key] || "?"}</span></TreeLeaf>)}
+              {isChamps && champsEstimate > 0 && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${champsEstimate} expected entries${champsActual > 0 ? ` · ${champsActual} actual` : ""}`} onClick={() => go("ExpEntries")}>
+                {units.map((u) => {
+                  const act = guideCounts[u.key]?.total ?? 0;
+                  return <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">~{a.unitEntries?.[u.key] || "?"} expected{act > 0 ? ` · ${act} actual` : ""}</span></TreeLeaf>;
+                })}
               </TreeNode>}
               {!isChamps && entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => go("Entries")} />}
               {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => go("What")} />}

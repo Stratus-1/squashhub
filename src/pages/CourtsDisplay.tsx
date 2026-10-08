@@ -15,6 +15,27 @@ const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const nowSast = () => { const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Johannesburg" })); return d.getHours() * 60 + d.getMinutes(); };
 
+/** Slot rows for the board: every configured slot start, plus the full end of the final slot. */
+export function displayGrid(data: Pick<Board, "club" | "bookings">) {
+  const raw = Number(data.club.slot_minutes);
+  const slot = Number.isFinite(raw) && raw >= 5 && raw <= 240 ? raw : 60;
+  const times = data.bookings.flatMap((b) => [toMin(b.start), toMin(b.end)]);
+  const openMin = data.club.open_time ? toMin(data.club.open_time) : times.length ? Math.min(...times) : 6 * 60;
+  const lastStart = data.club.last_slot_time ? toMin(data.club.last_slot_time) : null;
+  let start = openMin;
+  let end = lastStart != null && lastStart >= openMin ? lastStart + slot : times.length ? Math.max(...times) : openMin + 16 * 60;
+  // Extend (in whole slots, keeping the club's slot alignment) for any booking outside the configured day.
+  if (times.length) {
+    const lo = Math.min(...times), hi = Math.max(...times);
+    while (start > lo) start -= slot;
+    while (end < hi) end += slot;
+  }
+  end = Math.max(end, start + slot);
+  const slots: number[] = [];
+  for (let t = start; t < end; t += slot) slots.push(t);
+  return { slot, start, end, slots };
+}
+
 const GENERIC_WORDS = /^(squash|squashing|club|tc|tennis|racket|sports|association|federation|academy)$/i;
 
 /** Short club monogram used when the club has no logo on file. */

@@ -345,7 +345,7 @@ export function MyChampionships() {
                       <span className="font-medium truncate">vs {opponent}</span>
                       {m.court && <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{m.court.name}</Badge>}
                       {today && <Badge className="text-[9px] shrink-0">Today</Badge>}
-                        {perm.allowed && (
+                        {perm.allowed && !centrallyFixed && (
                           <Button
                             size="sm"
                             className="h-6 text-[10px] px-2 shrink-0 rounded-full bg-reschedule text-reschedule-foreground hover:bg-reschedule/90 font-semibold shadow-sm"

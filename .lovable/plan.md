@@ -143,7 +143,8 @@ Only 8 clubs have a Chairman recorded.
   - **X, execution:** finance or Bar & Shop execution. Nominate, then the Chairman approves; never delegable.
   - **G, governance:** appointing offices and granting permissions. Derived from the Chairman office, never a grantable key.
 - **Role template:** an editable bundle per club. Editing a template affects every holder; it never undoes a personal deny.
-- **Personal override:** a grant or deny for one person, with a required reason and an optional expiry.
+- **Role templates:** a standard baseline per role. The Chairman can customise it per club, with audited individual exceptions.
+- **Personal override:** a grant or deny for one person, with a reason. It stays until revoked by hand. Permissions don't expire (owner decision).
 - **Office:** a position (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain). Appointment applies the office's default template. Removal ends only what that template gave. A right stays if another role or a personal grant still provides it.
 
 ### Who can grant what
@@ -201,7 +202,7 @@ Any role a delegator assigns is stripped of its S, F and X capabilities, so exec
 - **Initial setup (one time per club):** after members are imported or created, the setup helper picks the initial office bearers (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain) from the member list and saves them in one step. No existing Chairman or Super Admin approval is needed.
 - **Setup capability:**
   - Narrow: it can only set the initial offices and basic club setup, and it is held only by the setup helper (the person who claimed or created the club, or a Super Admin helping them).
-  - Time-limited: it ends on the first successful save of a Chairman, or after the setup window (L9), whichever comes first.
+  - Time-limited: it ends on the first successful save of a Chairman, or after the setup window (L9), whichever comes first. This is a narrow onboarding safety measure, **not** a general expiring-permissions feature. Ordinary permissions never expire; they are revoked by hand, with an audit record.
   - Audited, and it can't be reused: once the club has an open Chairman row, the setup path is refused on the server.
 - **On save:** the exactly-one-Chairman check runs, office templates apply, and the Temporary Chairman status (if any) ends.
 - **From then on:** only the Chairman appoints or removes office bearers, and the succession and emergency rules apply.
@@ -344,7 +345,7 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
 - the scope (club, and e.g. one tournament or bar only);
 - how it was given: role, office, direct grant, delegated, nominated plus Chairman-approved, self-granted, or migration;
 - the parent grant it was delegated from;
-- every later change, expiry or revocation (who, when, why).
+- every later change or revocation (who, when, why).
 
 Records are never overwritten; changes add new versions.
 
@@ -442,7 +443,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 1. **Dry run for all clubs:** a read-only comparison of today's effective rights against the mapped new model, per person per club. Riverside is reviewed in detail; a summary is produced for all other clubs.
 2. **Riverside setup:**
    - Inventory, mapping and an impact report showing kept rights and intentional reductions.
-   - Test accounts: Chairman, Treasurer, Secretary, Club Captain, Bar Manager, two counter staff and an ordinary member (D18, D19).
+   - Test accounts: Chairman, Treasurer, Secretary, Club Captain, Bar Manager, two counter staff and an ordinary member (P2). Riverside's real data may be used.
 3. **Gate ON for Riverside only.** Other clubs keep today's behaviour.
 4. **Pilot tests in Riverside:**
    - Roles and multiple roles; custom grants and denies.
@@ -505,7 +506,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 - [ ] No pending approval requests are created by the migration (count = 0 verified).
 - [ ] Bookings, doors and lights, payment callbacks, marker, tills, notifications and automated jobs are tested per area before switching that area.
 - [ ] Pilot gate verified: only Riverside has `new_permissions_enabled`. Every other club passes the same-answer comparison before and after each pilot deploy.
-- [ ] Riverside members, bookings, finance and stock records untouched by the pilot (D18). Test accounts and synthetic rows are labelled and removable.
+- [ ] Riverside data may be used for the pilot (owner decision). Every pilot change is still audited and covered by the per-club rollback.
 - [ ] **Rollback:**
   - Set `legacy_mode` back ON per club, effective immediately.
   - Legacy flags and keys are never deleted during 30 days after the switch.
@@ -559,7 +560,6 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 ### Open — blocks Phase 1 (Riverside) build
 | # | Question | Proposed default |
 |---|---|---|
-| P1 | Riverside live-data exception: the pilot changes access checks and adds test accounts, roles and audit rows; it doesn't change members, bookings, finance or stock records | Approve, with labelled test accounts removed afterwards |
 | P2 | Riverside: real office bearers on the new model at activation, or test accounts first? | Test accounts first for 1 week, then real users |
 | P3 | Treasurer self-approval: a second finance holder or the Chairman must approve the Treasurer's own items | Yes; Super Admin as second approver only in tiny clubs |
 | P4 | `bar.pin.manage` default holder | The Bar Manager, after the Chairman grants it; first PIN via a one-time setup code |
@@ -575,7 +575,6 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 ### Open — can wait (not blocking)
 | # | Question | Proposed default |
 |---|---|---|
-| L1 | Temporary grants and denies with an expiry date | Allowed |
 | L2 | Built-in delegation for Court & Bookings and Communications Officers | Yes, operational only |
 | L3 | Vice-Chair excludes granting and sensitive rights; Secretary "constitution" = club rules and documents | Yes |
 | L4 | National ID / date of birth visibility | ID masked, full view logged; DOB as age only |
@@ -602,7 +601,8 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 - **D15:** L9
 - **D16:** P5
 - **D17:** L8
-- **D18:** P1
+- **D18:** decided (Riverside data may be used).
+- **D8 / L1:** removed (no expiring permissions).
 - **D19:** P2
 - **D20:** N1
 - **D21:** P3
@@ -610,7 +610,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 ## Technical details
 - **Audited:** `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; `club_members` policies (admin/self/`members` key update; column grants exclude id_number, address, phone, email); `member_bar_pins` (hash, attempts, lock); `bar_counter_sessions`; `club_claim_requests` + `approve_club_claim`; `_shared/person-match.ts`, `useDuplicateGuard`, `account-recovery`; frontend `use-club-permissions.ts`, `use-club-billing.ts`, `use-door-control.ts`.
 - **Proposed objects:**
-  - Catalogue and assignments: `capability_catalogue(key, area, class O/S/F/X/G, delegable)`, `member_role_assignments`, `member_capability_overrides(effect grant|deny, can_delegate, source role|personal|delegated|nominated|carry_over, granted_by, delegated_from, reason, expires_at)`, `effective_capabilities` view, `has_cap()`, `can_grant()`.
+  - Catalogue and assignments: `capability_catalogue(key, area, class O/S/F/X/G, delegable)`, `member_role_assignments`, `member_capability_overrides(effect grant|deny, can_delegate, source role|personal|delegated|nominated|self|migration, granted_by, delegated_from, reason, revoked_at, revoked_by)`, `effective_capabilities` view, `has_cap()`, `can_grant()`. No expiry column; only the onboarding setup capability has an end time.
   - Workflows: `capability_nominations` (status, reminders), `club_offices` (unique open Chairman per club), `chairman_handovers`, `chairman_emergency_requests` + `_votes` (unique voter per request).
   - Audit and switch-over: `permission_events` (append-only), `club_permission_settings(legacy_mode, thresholds)`, `permission_shadow_log`, `permission_inventory_snapshots`.
 - Approval notices use the existing notifications and club WhatsApp sending (respects club enablement and opt-outs).

@@ -1,212 +1,255 @@
-# Club Finance and Bar & Shop permissions — consolidated design (for owner approval)
+# Club-wide roles and permissions redesign (including Finance and Bar & Shop) — for owner approval
 
-Design only. No code, migrations, access changes or publishing. Production behaviour stays exactly as it is until each phase below is separately approved.
+Design only. No code, migrations, access changes or publishing. Production stays exactly as it is until each phase is separately approved.
 
-## 1. Owner decisions captured
-1. Admin status alone gives **no** finance access. This covers Admin, Club Admin, full admin, committee members, Treasurer-by-title and moderators.
-2. Finance access, **including read-only bank balances and ledger**, is an explicit permission per person and per club.
-3. Read-only banking (`bank.view`) never implies entering, importing, posting, editing, allocating, reconciling, approving or reversing anything.
-4. Only the **club's Chairman (own club only)** or the **platform Super Admin** may grant or revoke finance permissions and sensitive Bar & Shop permissions.
-5. Grant authority is not finance or Bar & Shop authority. The Chairman sees and does nothing in Finance or Bar & Shop unless granted.
-6. The Chairman can't self-grant or change their own role. Only the Super Admin grants the Chairman's personal finance and sensitive Bar & Shop rights.
-7. The Chairman designation itself is protected from admin manipulation.
-8. Controlled same-club delegation is allowed for **operational** Bar & Shop roles that explicitly permit it. Finance and other high-risk rights are not delegable.
-9. Counter PIN create/reset/disable is a separate permission from using a PIN. PINs are never displayed, and every change is audited.
-10. Mandate creation, provider authorisation and payment collection are three different things. Activation is provider-verified.
-11. Rename "Club Books" to **"Finance"** wherever members and staff see it.
+## 1. Owner direction captured
+1. Retire the overlapping labels "Full Admin", "Admin" and "Club Admin", and every implicit all-access path. Keep customisable named roles built from explicit capabilities.
+2. Keep the platform Super Admin clearly separate from club-scoped roles.
+3. Audit first, map carefully and migrate in stages with rollback. Don't just rename or remove flags, because many flows depend on them.
+4. Finance, including read-only bank and ledger, is explicit per person. Read-only never implies any transaction right.
+5. Only the club's Chairman (own club) or the platform Super Admin grants finance and sensitive rights. The Chairman can't self-grant or change their own role, and only the Super Admin grants the Chairman's own rights. Grant authority gives no operating rights.
+6. Controlled delegation of operational Bar & Shop roles within the club. Nothing broader than the delegator's own scope, no cross-club grants, no self-change.
+7. Stocktake discrepancies and stock adjustments need a second person to approve. No self-approval.
+8. Counter PIN create/reset/disable is separate from using a PIN. PINs are never shown, and every change is audited.
+9. Mandate creation vs provider authorisation vs collection stay distinct. Activation is provider-verified.
+10. Rename "Club Books" to "Finance" in everything users see.
 
-## 2. Current state audit (confirmed from code and database)
+## 2. Audit: how access works today (confirmed from code and database)
 
-| Label | What it is technically | Finance rights today |
+### Access paths
+| Path | Stored where | What it grants today |
 |---|---|---|
-| Platform Super Admin | `user_roles.role='admin'` (1 user) | Full finance in every club (via `is_club_admin_or_permitted`) |
-| Platform moderator | `user_roles.role='moderator'` | **Full finance in every club** (same check). `is_platform_admin` also counts moderators |
-| Federation super admin | `organisation_admins.role='super_admin'` (1 row) | None through club finance checks. A separate federation scope |
-| Club Admin / "Admin" | `club_members.role='admin'` | Full finance in that club |
-| Full admin | `club_member_permissions.is_full_admin` or role `is_full_admin` | Full finance in that club. The screens also treat full admin as finance (`use-club-billing.ts:153`) |
-| Treasurer / "Finance" role | Permission role; every new club gets "Finance" = `fees, banking, members, bar, finance` (`create_default_finance_role`) | Whatever keys the role holds |
-| Chairman | `clubs.chairman_member_id` → "Chairman" role via `auto_assign_officer_roles` | Only what that role holds |
+| Platform admin | `user_roles.role='admin'` (1 user) | Everything in every club (`is_club_admin`, `is_club_admin_or_permitted`, `has_role`) |
+| Platform moderator | `user_roles.role='moderator'` (0 users now) | Same as platform admin through `is_club_admin` / `is_club_admin_or_permitted` / `is_platform_admin` |
+| Federation super admin / association admin | `organisation_admins` (1 / 11) | Federation scope only; not club checks |
+| Club member role "admin" | `club_members.role='admin'` (29 members) | Full club admin (`is_club_admin`) |
+| Full admin flag | `club_member_permissions.is_full_admin` (6 people) or role `is_full_admin` (864 role templates) | Full club admin |
+| **Office bearers** | `clubs.chairman_member_id`, `secretary_member_id`, `club_captain_member_id` | **Full club admin via `is_club_admin`**, including all finance |
+| Permission keys | `custom_permissions` or role `permissions` | Per area: access, affiliation, banking, bar, bookings_unlimited(_non_peak), champs, club, communications, courts, devices, events, federation, fees, finance, ladder, leagues, members, ops_booking, settings, users, visitors |
+| Captain | `club_members.role='captain'` (35) | League-scoped only (`is_club_captain`) |
+| Bar staff | `bar_staff_can_serve` | Till, plus counter PIN and device management today |
 
-Gaps found:
-- These money actions check only `is_club_admin`, so finance-only staff are refused and admins pass: journal reverse/delete, and mandate "Mark authorised / reject" (`stitch-refresh-mandate`).
+### Role templates
+Auto-created in nearly every one of 799 clubs: Full Admin, Chairman, Treasurer, Secretary, Captain, Club Captain and Finance (`fees, banking, members, bar, finance`).
+
+Assigned in practice: Full Admin 9, Club Captain 8, Chairman 7, Secretary 5, Treasurer 4, Finance 2, Bar 2, a few custom roles, and 12 custom-only grants.
+
+Only 8 clubs have a Chairman recorded.
+
+### Where checks live
+| Check | Database functions | Access rules | Notes |
+|---|---|---|---|
+| `is_club_admin` | 71 | 202 | Bypasses all keys |
+| `is_club_admin_or_permitted` | 46 | 91 | Admin always passes |
+| `has_role` | 46 | 132 | |
+| `is_platform_admin` | 29 | 129 | Includes moderators |
+| `bar_staff_can_serve` | 15 | 1 | |
+
+There are also about 25 server functions and about 40 app files that check admin/full-admin directly. For example, the screens treat full admin as finance (`use-club-billing.ts:153`, `use-door-control.ts:115`).
+
+### Escalation risks found
+- `clubs` UPDATE is allowed for `is_club_admin_or_permitted(...,'club')`. Any club admin, or any holder of the `club` key, can set themselves as Chairman, Secretary or Club Captain, and so become a full club admin.
+- Office bearers silently get full finance.
+- Mandate "Mark authorised", journal reverse/delete and other money actions check only `is_club_admin`.
 - `post_journal` has no caller check.
-- The Chairman field can be edited by any club admin or holder of the `club` key, which is an escalation route.
-- Anyone passing `bar_staff_can_serve` can create or remove counter PINs and revoke devices.
-- Bar & Shop today has purchases (supplier text, invoice no/date, payment method), stock movements, stock-takes (count → finalise → optional ledger post) and tabs. There is **no** supplier list, purchase requisition, purchase order, receiving step or till open/close cash-up.
+- Any bar staff can manage counter PINs.
 
-Terminology proposal:
-- "Platform Super Admin" (app-wide), "Platform Support" (today's moderator), "Federation Admin" (federation only).
-- "Club Administrator" replaces both "Admin" and "Club Admin". "Full admin" is retired as a label.
-- "Chairman", "Treasurer" and "Bar Manager" are office or preset names, never sources of rights by themselves.
+### Who has full finance today
+- The platform admin, and any future moderator.
+- All 29 `role='admin'` members.
+- The 6 full-admin individuals.
+- Everyone holding a Full Admin role (9).
+- Chairman, Secretary and Club Captain office bearers in the 8 clubs that have them set.
+- Anyone holding `finance` (Treasurer and Finance roles), plus partial access through `fees`/`banking`.
 
-## 3. Permission model
-- Rights are **capability keys** held per person per club, given individually or through a preset.
-- Each key has two flags:
-  - **perform**: may do the action.
-  - **delegate**: may give that same key to another member of the same club. Only allowed where the key is marked delegable.
-- **Grant authority** is separate. It is derived only from being the active Chairman of that club, or the platform Super Admin. It is never a key and can't be delegated.
+## 3. Target model
 
-### Delegation classes
+### Scopes (never mixed)
+- **Platform:** Platform Super Admin (app-wide, logged support override), Platform Support (no club data by default; temporary, logged, club-approved access).
+- **Federation:** Federation and Association admins, unchanged and never club rights.
+- **Club:** named roles made of capabilities, held per person per club.
 
-| Class | Who may grant | Delegable? |
+### Building blocks
+- **Capability:** `area.action`, e.g. `members.edit`, `fin.bank.view`, `bar.stocktake.count`. Every current key splits into view and action capabilities (section 5).
+- **Role:** a club-editable named bundle of capabilities. Templates are provided, but templates never bypass checks.
+- **Office:** Chairman, Secretary, Club Captain and Treasurer are positions, recorded and displayed. **Holding an office gives no rights by itself.** Rights come only from the roles given to that person.
+- **Delegation class** on every capability:
+  - O operational: delegable if the holder has the delegate flag.
+  - S sensitive: Chairman or Super Admin only.
+  - F finance: Chairman or Super Admin only.
+  - G governance (permission management, office appointments): derived, never granted as a key.
+
+### Who can grant what
+| Capability class | Granted by | Delegable |
 |---|---|---|
-| F – Finance (all `fin.*`, incl. `bank.view`) | Chairman, Super Admin | Never |
-| S – Sensitive Bar & Shop (cost/valuation, adjustments approve, refunds/voids above limit, PINs, settings, supplier payments) | Chairman, Super Admin | Never (unless owner decides otherwise, see D3) |
-| O – Operational Bar & Shop (sell, count stock, receive deliveries, capture purchase drafts, view stock levels) | Chairman, Super Admin, or a holder of that key **with delegate flag** | Yes, same club, same or narrower scope |
-| G – Grant/admin of permissions | Derived: Chairman / Super Admin only | Never |
+| F Finance (incl. read-only bank/ledger) | Chairman (own club), Super Admin | Never |
+| S Sensitive (members' private data, access/doors, devices, settings, communications to all, bar cost/approvals/PINs/settings, permission audit) | Chairman, Super Admin | Never (unless owner changes, see D3) |
+| O Operational (bookings ops, events, leagues, ladder, champs ops, visitors, bar selling/counting/receiving) | Chairman, Super Admin, or a holder with the delegate flag for that exact capability | Yes, same club, same or narrower |
+| Chairman's own F/S rights | Super Admin only | - |
 
 Delegation rules:
-- You can only pass on keys you hold with the delegate flag.
-- The default is perform only: the recipient does not get the delegate flag unless the Chairman or Super Admin sets it.
-- No cross-club grants, no editing your own keys, and no reviving a key someone else revoked.
-- Revoking a delegator's key also flags (not auto-removes) the grants they made, for Chairman review.
+- You can only pass on capabilities you hold with the delegate flag.
+- Recipients get perform-only unless the Chairman sets the delegate flag.
+- Never cross-club, never to yourself, never to change your own roles.
+- Revoking a delegator flags (not auto-removes) the grants they made, for Chairman review.
 
-## 4. Finance matrix
-V view, I initiate/create, E edit, A approve/reject, Act activate/deactivate, S send/remind, R reconcile, Rf reverse/refund, C configure, X export. "-" means it doesn't apply.
+### Chairman appointment
+- Set only by the Super Admin, through one audited action with a reason. A guard refuses edits from anyone else.
+- An outgoing Chairman, or two office bearers, may **nominate** a successor; the Super Admin confirms.
+- The Chairman must be an active member with a login. Resignation or suspension ends grant authority immediately; existing grants remain and are flagged for review.
+- Secretary, Club Captain and Treasurer offices are set by the Chairman (or Super Admin). These offices carry no rights by themselves.
+- **Emergency recovery:** the Super Admin can freeze grants for a club, revoke any grant, or appoint an interim Chairman. Each needs a reason, is logged, notifies office bearers, and is reviewed after 30 days.
+
+## 4. Default role templates (renamed, editable, none implicit)
+| Template | Content (summary) | Class |
+|---|---|---|
+| Club Manager | members view/edit, bookings and courts ops, events, visitors, communications to own groups, settings view | O + some S (Chairman grants) |
+| Membership Officer | members view/edit/approve applications, onboarding comms | S |
+| Competitions Coordinator | leagues, ladder, champs/tournaments ops, results | O |
+| Court & Bookings Officer | courts, bookings ops, visitors, lights | O |
+| Communications Officer | communications campaigns | S |
+| Access & Devices Officer | access, devices, doors (no hardware in tests) | S |
+| Treasurer | all `fin.*` except manual mandate authorise | F |
+| Finance Viewer / Management read-only | `fin.overview.view`, `fin.bank.view`, `fin.reports.view` | F |
+| Billing Clerk, Payments Approver, Bookkeeper | see section 6 | F |
+| Bar Manager | operational bar keys with delegate flag | O |
+| Bar Staff | sell, charge account, stock view | O |
+| Stock Counter | stocktake count, stock view | O |
+| Bar Controller | cost view, approvals, prices, refunds, PINs, devices, settings | S |
+| Team Captain | league-scoped captain duties (unchanged) | O |
+
+"Full Admin" is not offered for new grants. During the transition it is shown as **"Legacy all-access (being retired)"**.
+
+## 5. Mapping legacy access to new roles
+| Legacy | Proposed mapping (reviewed per club; nothing automatic removes access) |
+|---|---|
+| `role='admin'` member | Proposed: Club Manager + Membership Officer + Competitions + Court & Bookings. **No finance** unless the Chairman grants it |
+| `is_full_admin` person or Full Admin role | Same as above, flagged for Chairman review |
+| Office bearer (Chairman/Secretary/Club Captain) | Office kept. Rights from the matching template only; the Chairman template carries no finance or bar rights |
+| Key `finance` | Treasurer |
+| Key `fees` | Billing Clerk + Finance Viewer |
+| Key `banking` | Bookkeeper |
+| Key `bar` | Bar Manager (operational) — sensitive bar keys need Chairman confirmation |
+| Keys `members`, `users`, `club`, `settings` | members.view/edit, permission view only, club.profile.edit, settings.view; settings.configure needs Chairman |
+| Keys `access`, `devices` | Access & Devices Officer |
+| Keys `champs`, `leagues`, `ladder`, `events`, `courts`, `visitors`, `ops_booking`, `bookings_unlimited*`, `communications`, `affiliation`, `federation` | Matching operational capabilities (1:1 view + action) |
+| Platform moderator | Platform Support (no club data by default) |
+
+## 6. Finance matrix (unchanged decisions, consolidated)
+V view, I initiate, E edit, A approve/reject, Act activate/deactivate, S send/remind, R reconcile, Rf reverse/refund, C configure, X export.
 
 | Function | V | I | E | A | Act | S | R | Rf | C | X |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Finance overview, debtors, statements | fin.overview.view | - | - | - | - | - | - | - | - | fin.export |
-| **Bank accounts, balances, bank ledger** | **fin.bank.view** (read-only) | fin.bank.transaction_create | fin.bank.edit (rules, matches) | - | - | - | fin.bank.reconcile | - | fin.settings.configure (account details) | fin.export |
-| Bank statement import | fin.bank.view | fin.bank.import | - | - | - | - | - | - | - | - |
-| Allocate receipts to members | fin.bank.view | fin.allocate | fin.allocate | - | - | - | - | - | - | - |
+| Overview, debtors, statements | fin.overview.view | - | - | - | - | - | - | - | - | fin.export |
+| **Bank accounts, balances, ledger** | **fin.bank.view (read-only)** | fin.bank.transaction_create | fin.bank.edit | - | - | - | fin.bank.reconcile | - | fin.settings.configure | fin.export |
+| Statement import | fin.bank.view | fin.bank.import | - | - | - | - | - | - | - | - |
+| Allocate receipts | fin.bank.view | fin.allocate | fin.allocate | - | - | - | - | - | - | - |
 | EFT/deposit top-ups | fin.eft.view | fin.eft.capture | - | fin.eft.approve | - | fin.eft.remind | - | fin.reverse | - | fin.export |
-| Member billing, invoices, renewal runs | fin.billing.view | fin.billing.create | fin.billing.edit (unpaid only) | - | - | fin.billing.remind | - | fin.billing.credit_note | - | fin.export |
-| Fee categories, waivers | fin.fees.view | fin.fees.create | fin.fees.edit | fin.fees.waive | fin.fees.activate | - | - | - | - | - |
-| Recurring card mandates | fin.mandates.view | (member only) | - | (provider only; see 5) | fin.mandates.cancel | fin.mandates.remind | fin.mandates.check_status | - | - | fin.export |
-| Mandate collections | fin.collections.view | fin.collections.queue | - | fin.collections.submit | - | - | fin.collections.reconcile | fin.collections.refund | - | fin.export |
-| Journals, opening balances | fin.journal.view | fin.journal.create | (posted never edited) | fin.journal.approve (over threshold) | - | - | - | fin.reverse | - | fin.export |
-| Association/league/national payables | fin.overview.view | fin.billing.create | - | fin.payables.pay | - | - | fin.bank.reconcile | fin.reverse | - | fin.export |
-| Supplier payments (bar invoices) | fin.payables.view | - | - | fin.payables.pay | - | - | fin.bank.reconcile | fin.reverse | - | fin.export |
-| Reports (trial balance, income) | fin.reports.view | - | - | - | - | - | - | - | - | fin.export |
-| Finance settings (gateways, recurring, thresholds) | fin.settings.view | - | - | - | - | - | - | - | fin.settings.configure | - |
-| Finance audit trail | fin.audit.view | - | - | - | - | - | - | - | - | fin.audit.export |
+| Billing, invoices, renewals | fin.billing.view | fin.billing.create | fin.billing.edit (unpaid) | - | - | fin.billing.remind | - | fin.billing.credit_note | - | fin.export |
+| Fees, waivers | fin.fees.view | fin.fees.create | fin.fees.edit | fin.fees.waive | fin.fees.activate | - | - | - | - | - |
+| Recurring mandates | fin.mandates.view | member only | - | provider only | fin.mandates.cancel | fin.mandates.remind | fin.mandates.check_status | - | - | fin.export |
+| Collections | fin.collections.view | fin.collections.queue | - | fin.collections.submit | - | - | fin.collections.reconcile | fin.collections.refund | - | fin.export |
+| Journals, opening balances | fin.journal.view | fin.journal.create | never after posting | fin.journal.approve (over threshold) | - | - | - | fin.reverse | - | fin.export |
+| Payables (association, supplier) | fin.payables.view | fin.billing.create | - | fin.payables.pay | - | - | fin.bank.reconcile | fin.reverse | - | fin.export |
+| Reports | fin.reports.view | - | - | - | - | - | - | - | - | fin.export |
+| Finance settings | fin.settings.view | - | - | - | - | - | - | - | fin.settings.configure | - |
+| Finance audit | fin.audit.view | - | - | - | - | - | - | - | - | fin.audit.export |
 
-- Every key shows only the records its action needs.
-- `fin.bank.view` holders see balances and ledger lines with no action buttons. The server refuses all banking writes without the matching action key.
+- **Mandates:** the member creates the mandate. It becomes active only on provider confirmation; notices and reminders never activate it.
+- Manual "Mark authorised" becomes a separate key, granted only by the Super Admin, needing a reason, never on yourself or family, and labelled "not provider-verified" until the first confirmed collection.
+- Collections count as paid only on provider confirmation.
 
-## 5. Mandate creation vs authorisation vs collection
-- **Creation:** the member starts the mandate. Staff can't create one on a member's behalf. Notices go to `fin.mandates.view` holders.
-- **Authorisation:** "active" only after the provider confirms it (webhook or Check status). Notices and reminders never change status.
-- **Manual "Mark authorised"** (for a provider with no confirmation): a separate key, `fin.mandates.manual_authorise`. Only the Super Admin can grant it, and no preset includes it. It needs a reason, is logged, and can't be used on yourself or linked family. The mandate is labelled "Manually marked — not provider-verified" until the first confirmed collection. Recommended: no holders.
-- **Collection:** a separate debit run, counted as paid only on provider confirmation. Reported apart from mandate status.
+## 7. Bar & Shop and inventory matrix
+| Function | Key | Class |
+|---|---|---|
+| View stock levels (quantities only) | bar.stock.view | O |
+| View cost prices, valuation, margins | bar.cost.view | S |
+| Start / count stocktake | bar.stocktake.start / .count | O |
+| **Approve stocktake discrepancies and post** | bar.stocktake.approve | S — **second person, never the counter** |
+| Request adjustment, write-off, transfer | bar.adjust.request | O |
+| **Approve adjustment/write-off/transfer** | bar.adjust.approve | S — **never the requester** |
+| Purchase requisition | bar.purchase.request | O (new feature) |
+| Approve purchase order | bar.purchase.approve | S (new feature) |
+| Place order | bar.purchase.order | O (new feature) |
+| Receive delivery | bar.receive | O |
+| Capture supplier invoice (cost) | bar.invoice.capture | S |
+| Approve/post supplier invoice | bar.invoice.approve | S — not the capturer |
+| Pay supplier | fin.payables.pay | F |
+| Supplier list | bar.suppliers | S (new; today free text) |
+| Items, categories, specials | bar.items | O |
+| Price changes | bar.prices | S |
+| Sell with own PIN / charge member account | bar.sell / bar.charge_account | O (debit limits apply) |
+| Discounts up to limit / over limit | bar.discount / bar.discount.over_limit | O / S |
+| Void same shift under limit / refunds | bar.void / bar.refund | O / S |
+| Till open-close / cash-up reconcile | bar.till.open_close / bar.till.reconcile | O / S (new feature) |
+| **Counter PINs create/reset/disable** | bar.pins | S — names only, PINs never shown or logged, not for your own PIN |
+| Counter devices pair/revoke | bar.devices | S |
+| Bar settings | bar.settings | S |
+| Reports (sales/qty) / with cost | bar.reports / bar.reports.cost | O / S |
 
-## 6. Bar & Shop and inventory matrix
-Class column: O operational (delegable if flagged), S sensitive (Chairman/Super Admin only), F links to Finance.
+- **Cross-module effects:** receiving, invoice capture and stocktake approval change stock value and journals; account charges create debtor balances; refunds and supplier payments move money. These are logged in both audit trails.
+- Finance staff can see the resulting ledger lines without any Bar & Shop key.
 
-| Function | Key | Class | Notes |
-|---|---|---|---|
-| View stock levels (quantities) | bar.stock.view | O | No costs shown |
-| View cost prices, stock valuation, margins | bar.cost.view | S | Hidden from tills and stock counters |
-| Start stocktake | bar.stocktake.start | O | |
-| Count stock | bar.stocktake.count | O | |
-| Approve/post stocktake adjustments | bar.stocktake.approve | S | Second person by default (see D5); posts valuation to the ledger |
-| Manual adjustments, write-offs, transfers (request) | bar.adjust.request | O | |
-| Approve adjustments/write-offs | bar.adjust.approve | S | Not the requester |
-| Purchase requisition (request stock) | bar.purchase.request | O | New feature |
-| Approve purchase order | bar.purchase.approve | S | New feature |
-| Place order with supplier | bar.purchase.order | O | New feature |
-| Receive delivery (quantities) | bar.receive | O | Increases stock via `bar_stock_apply` |
-| Capture supplier invoice/purchase (cost) | bar.invoice.capture | S | Changes average cost |
-| Approve/post supplier invoice | bar.invoice.approve | S | Not the capturer |
-| Pay supplier | fin.payables.pay | F | Finance only |
-| Supplier list maintenance | bar.suppliers | S | New feature (today free text) |
-| Items, categories, specials | bar.items | O | |
-| Price changes | bar.prices | S | Logged before/after |
-| Sell at till using own PIN | bar.sell | O | |
-| Charge member account at till | bar.charge_account | O | Club debit limits still apply |
-| Discounts | bar.discount (up to club limit) / bar.discount.over_limit | O / S | |
-| Voids and refunds | bar.void (same shift, under limit) / bar.refund | O / S | Refunds to card are F-linked |
-| Till open/close, cash-up | bar.till.open_close / bar.till.reconcile | O / S | New feature |
-| Counter PINs create/reset/disable | bar.pins | S | Names only; PINs never shown or logged; not for your own PIN |
-| Counter devices pair/revoke | bar.devices | S | |
-| Bar settings (payment methods, debit switches, costing, negative stock) | bar.settings | S | |
-| Bar reports (sales, quantities) | bar.reports | O | |
-| Bar reports with cost/COGS | bar.reports.cost | S | |
-
-### Cross-module effects
-- Receiving and capturing invoices change stock value and journals.
-- Stocktake approval posts variances to the ledger.
-- Member-account charges create debtor balances.
-- Refunds and supplier payments move money.
-
-These are logged in both the Bar & Shop and Finance audit trails. Finance staff can see the resulting ledger lines without holding any Bar & Shop key.
-
-## 7. Separation of duties (on by default; relaxing needs a reason and is logged)
-- No approving your own capture, request, count, refund or payment, or a linked family member's account or mandate.
-- The requester can't approve: adjustments, purchase orders, supplier invoices, journals over threshold, stocktake posting (per D5).
+## 8. Separation of duties (default on; relaxing needs a reason and is logged)
+- No self-approval anywhere: captures, counts, adjustments, invoices, refunds, journals, payments, and own or family accounts and mandates.
+- No changing your own roles, offices or delegate flags.
 - Holders of `fin.settings.configure` can't approve payments to an account they changed within 24 hours.
-- Screen warnings when one person holds capture + approve + pay, or `bar.invoice.capture` + `fin.payables.pay`.
-
-## 8. Chairman protection and emergency recovery
-- Only the Super Admin sets or changes the Chairman, through one audited function with a reason. A guard refuses all other edits to that field.
-- An outgoing Chairman may nominate a successor; the Super Admin confirms.
-- The Chairman must be an active member of that club with a login. Losing that status removes grant authority at once; grants already made remain.
-- Chairman self-requests (for finance or sensitive Bar & Shop rights) go to the Super Admin for approval.
-- **Recovery:** the Super Admin may freeze all grants for a club, revoke any grant, or appoint an interim Chairman. Each needs a reason, is logged, notifies the office bearers, and is reviewed after 30 days.
+- Screen warnings for capture + approve + pay combinations.
+- Small-club exception (only one active person available): the Super Admin may approve the second step on request, logged (see D5).
 
 ## 9. Audit
-- Every grant, revoke and delegation records: who, to whom, key, perform/delegate flags, club, reason and time.
-- So does every finance and sensitive Bar & Shop action, plus before/after values.
-- Audit records can't be edited or deleted. PIN values and card data are never recorded.
+- Every grant, revoke, delegation, office appointment and sensitive or finance action records: who, to whom/what, club, before/after, reason and time.
+- Records can't be edited or deleted. PINs and card data are never logged.
 
-## 10. "Club Books" → "Finance" rename
-- Change visible text only: Club Admin menu, page title, breadcrumbs, the pending-approval card and links text (`use-pending-eft-toast.tsx`), help articles (`lib/help/knowledge.ts`), module names (`lib/capabilities.ts`), emails and notices.
-- URLs (`?tab=finance`), capability keys, table and function names stay the same.
+## 10. "Club Books" → "Finance"
+Visible text only: menu, title, breadcrumbs, approval card, help articles, module names, emails and notices. URLs, keys and database names stay the same.
 
-## 11. Conflicts with the earlier plan (resolved here)
-- The earlier plan let the Chairman grant all keys and had a "Permissions manager" preset → replaced by Chairman/Super Admin-only grants for F and S, plus delegation for O only.
-- Earlier, any `fin.*` key implied viewing its records, and bank view was bundled → now `fin.bank.view` is a stand-alone, read-only, explicit key.
-- Earlier, "Bar Manager cannot delegate" vs the new "delegation within role" → Bar Manager may delegate **only** operational keys marked delegable, never sensitive ones.
-- Earlier, `perm.finance.grant` was a grantable key → removed; grant authority is derived only.
-- Earlier, a moderator view-only role was an open question → now proposed as no club finance access, with a separate logged support access mode.
+## 11. Staged migration and rollback
+1. **Add only (no behaviour change):** capability catalogue, delegate flags, `member_capabilities`, append-only `permission_events`, per-club `legacy_mode=ON`, an office-appointment function, and a new helper `has_cap()`. While legacy mode is on, `has_cap()` returns the **old answer**.
+2. **Early safety fix (separate approval):** lock office fields (Chairman/Secretary/Club Captain) to the Super Admin and Chairman flow. This closes the self-appointment escalation without removing anyone's current access.
+3. **Shadow mode:** all 71 + 46 database functions, about 425 access rules, about 25 server functions and about 40 app checks are switched one area at a time to `has_cap()`. Each still returns the legacy result while logging what the new model would decide. Per-club differences report.
+4. **Mapping proposals:** each club gets the section 5 mapping as a draft. The Chairman (or Super Admin, where there is no Chairman, which today is 791 clubs) reviews and confirms. Nothing applies automatically.
+5. **Per-club switch:** legacy mode OFF for that club only. Rollback means turning it back ON, at once, for 30 days; legacy flags are never deleted during this period.
+6. **Retire labels:** hide "Full Admin"/"Admin"/"Club Admin" in screens, stop creating Full Admin and Finance templates for new clubs, and stop office bearers auto-receiving admin.
+7. **Final cleanup (separate approval, after all clubs switched):** remove implicit paths from `is_club_admin`, map moderator to Platform Support, and mark legacy columns deprecated (kept, not dropped).
 
-## 12. Safe transition (each step separately approved)
-1. **Add only:** keys, delegate flags, audit tables, presets, Chairman guard (design reviewed first). A per-club **legacy mode stays ON**, so today's rules keep applying and no one loses access.
-2. **Shadow check:** every finance and bar action runs both the old and new rules and logs differences. A per-club report shows who would lose or gain what.
-3. **Screens:** Finance and Bar & Shop tick-boxes with perform/delegate flags, presets, warnings, and the shadow review. Rename to "Finance".
-4. **Per-club switch-over:** the Chairman (or Super Admin) assigns presets, then switches legacy mode OFF. It can be reverted for 30 days.
-5. **Later platform cleanup:** stop auto-creating the broad "Finance" role, retire the broad keys and the moderator auto-grant, and lock the Chairman field for all clubs.
+Operations preserved:
+- Bookings, doors/lights, payments callbacks, the marker, tills and notifications depend on admin checks. Each area moves only after its shadow logs show no unexpected refusals.
+- Automated jobs run as service and are unaffected.
 
-Note: the Chairman field guard closes an escalation route today. It could be approved early on its own.
+## 12. Tests (planned)
+- With legacy ON, every check answers exactly as today (snapshot comparison per club).
+- With legacy OFF, there is no implicit access for admin, full admin, office bearers or moderators. Each template allows its own capabilities and refuses others.
+- `fin.bank.view` can read balances and ledger; every banking write is refused on the server.
+- Grants: F/S only by the Chairman (own club) or Super Admin. Chairman self-grant is refused, and only the Super Admin can change the Chairman.
+- Delegation: only flagged capabilities, never wider than the delegator's own, never cross-club, never to yourself.
+- Second-person approval for stocktake discrepancies, adjustments, invoices and journals; self-approval refused.
+- PINs: management needs `bar.pins`, PINs are never returned, and every change is logged.
+- Mandates: provider-verified activation only; collections reported separately.
+- Club isolation; retry and duplicate safety; rollback restores the old answers.
 
-## 13. Proposed presets (editable)
-- **Treasurer:** all `fin.*` except `manual_authorise`. No grant authority.
-- **Finance viewer:** `fin.overview.view`, `fin.bank.view`, `fin.reports.view`.
-- **Management read-only:** `fin.bank.view`, `fin.overview.view` only.
-- **Billing clerk:** billing view/create/edit/remind, `fin.fees.view`.
-- **Payments approver:** EFT view/approve, collections view/submit/reconcile, mandates view/remind/check_status.
-- **Bookkeeper:** bank view/import/transaction_create/reconcile, allocate, journal view/create.
-- **Bar Manager:** stock view, stocktake start/count, adjust request, purchase request/order, receive, items, sell, discount, void, reports. Delegate flag on operational keys. Sensitive keys only if the Chairman adds them.
-- **Bar Staff:** sell, charge_account, stock view.
-- **Stock Counter:** stocktake count, stock view.
-- **Bar Controller (sensitive):** cost view, stocktake approve, adjust approve, invoice capture/approve, prices, refunds, till reconcile, PINs, devices, settings.
+## 13. Conflicts resolved from earlier plans
+- "Bar Manager cannot delegate" vs "delegation within role" → operational capabilities only, by flag.
+- Grantable `perm.finance.grant` / "Permissions manager" → removed; grant authority is derived only.
+- Finance view bundled with other keys → `fin.bank.view` is explicit and read-only.
+- Office bearers as admins → offices carry no rights.
 
-## 14. Tests (planned)
-- Admin, full admin, moderator, Treasurer-title and committee members with no keys are refused everywhere (legacy OFF) and keep current access (legacy ON).
-- `fin.bank.view` sees balances and ledger, and every banking write is refused on the server.
-- Only the Chairman of that club or the Super Admin grants F/S keys. Chairman self-grant is refused, and only the Super Admin can change the Chairman.
-- Delegation: only flagged keys, never wider than your own, never cross-club, never to yourself. Delegated keys are perform-only by default.
-- PIN management needs `bar.pins`; selling with a PIN doesn't give it; PINs are never returned.
-- Requester/approver separation on adjustments, POs, invoices, stocktakes and journals.
-- Mandates: notices and reminders never activate; collection is reported separately.
-- Retries refused: double approval, double collection, double reversal. Club isolation holds throughout.
-
-## 15. Decisions needed from the owner
-- **D1. Super Admin meaning:** confirm it is the platform Super Admin only (app-wide admin role), not the federation super admin or platform support. Proposed: yes.
-- **D2. Chairman's own rights:** Super Admin approval only (proposed), or also a second named office bearer?
-- **D3. Delegation tension:** you asked both "Chairman controls all Bar & Shop permissions" and "role holders may delegate within their role". Proposed: Chairman-only for sensitive (S) keys; delegation allowed for operational (O) keys marked delegable. Confirm the O/S split in section 6, or move keys between classes.
-- **D4. Who may delegate operational Bar & Shop keys:** only holders the Chairman marked with the delegate flag (proposed), or every Bar Manager preset holder automatically?
-- **D5. Stocktake posting:** require a second person to approve (proposed, with a small-club override by the Chairman), or let the counter post their own count?
-- **D6. Manual mandate "Mark authorised":** remove entirely, or keep as the Super Admin-granted key?
-- **D7. Thresholds:** discount, void and refund limits, and the journal second-approver amount (e.g. R500 / R1,000)?
-- **D8. Platform Support (moderators):** no club finance access (proposed), or view-only?
-- **D9. New Bar & Shop features** (suppliers, requisitions, purchase orders, receiving, till cash-up): permissions are designed now, but should building those features be in scope?
-- **D10. Early fix:** approve the Chairman-field guard ahead of the rest?
-- **D11. Family exclusions:** based on account delegations, family groups, or both?
+## 14. Decisions needed from the owner
+- **D1.** "Super Admin" = platform Super Admin only (`user_roles` admin), not federation or support? Proposed yes.
+- **D2.** Chairman's own rights: Super Admin only (proposed), or Super Admin + one named office bearer?
+- **D3.** Confirm the O/S/F class of each capability (sections 4, 6, 7). Should any sensitive capability become delegable?
+- **D4.** Who may delegate operational keys: only holders the Chairman flags (proposed), or every Bar Manager automatically?
+- **D5.** Second-person rule for tiny clubs: Super Admin as the second approver on request (proposed), or let the Chairman waive it?
+- **D6.** Clubs without a Chairman (791 of 799): Super Admin reviews their mapping, or they stay in legacy mode until they appoint one (proposed)?
+- **D7.** Default mapping for the 29 `role='admin'` members: proposed operational bundle with no finance. Confirm, or keep a "Legacy all-access" role per club until reviewed?
+- **D8.** Manual mandate "Mark authorised": remove, or keep as a Super Admin-only key?
+- **D9.** Thresholds for discount, void, refund and journal second approval?
+- **D10.** Platform Support (moderators): no club data by default, with temporary logged access (proposed)?
+- **D11.** Build the missing Bar & Shop features (suppliers, POs, receiving, till cash-up) as part of this work, or later?
+- **D12.** Approve the office-field lock (stage 2) early as a stand-alone fix?
+- **D13.** Family exclusions based on account delegations, family groups, or both?
 
 ## Technical details
-- Existing checks: `is_club_admin_or_permitted`, `is_club_admin`, `is_platform_admin` (admin + moderator), `has_role`, `bar_staff_can_serve`; tables `club_member_permissions` (custom_permissions, is_full_admin, permission_role_id), `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; clubs UPDATE policy `is_club_admin_or_permitted(...,'club')`.
-- Proposed new: `member_capabilities(club_id, club_member_id, key, can_delegate, granted_by, source)`, `permission_events` (append-only), `club_permission_settings(legacy_mode, thresholds, separation flags)`, `permission_shadow_log`, helpers `has_cap(user, club, key)` and `can_grant(user, club, key)`, an audited `set_club_chairman()` plus a guard trigger, and `self_grant_requests`.
-- The `mandate_notification_recipients` rule would move to `has_cap(..., 'fin.mandates.view')`.
-- The earlier EFT approver-attribution migration stays cancelled. Attribution will come from `permission_events`/finance audit events.
+- Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.
+- New (proposed): `capability_catalogue(key, area, class, delegable)`, `member_capabilities(club_id, club_member_id, key, can_delegate, granted_by, source)`, `club_offices(club_id, office, club_member_id, appointed_by, reason)`, `permission_events` (append-only), `club_permission_settings(legacy_mode, thresholds, separation flags)`, `permission_shadow_log`, `has_cap()`, `can_grant()`, `appoint_office()`, `self_grant_requests`.
+- `mandate_notification_recipients` moves to `has_cap(..., 'fin.mandates.view')`. The EFT attribution migration stays cancelled; attribution will come from audit events.

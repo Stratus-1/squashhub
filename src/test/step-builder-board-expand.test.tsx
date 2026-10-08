@@ -23,7 +23,7 @@ const SCORING = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: 
 /** Admin-picked players across two categories: the board has something to show. */
 const seed = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
   kind: "once_off", name: "Expand test", scope: "club", entries: "8", playType: "singles", scoring: SCORING,
-  categories: ["Mens A", "Ladies"], disc: { "Mens A": "singles", Ladies: "singles" },
+  categories: ["Mens A", "Ladies"], disc: { "Mens A": "singles", Ladies: "singles" }, categoryTypes: { "Mens A": "mens", Ladies: "ladies" },
   format: { kind: "knockout" }, seeding: "random", source: "select", elig: {},
   picks: { m1: "Mens A", m2: "Mens A", m3: "Ladies", m4: "Ladies" },
 }));

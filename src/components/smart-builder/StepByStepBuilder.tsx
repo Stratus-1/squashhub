@@ -677,8 +677,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     setA((prev: StepAnswers) => {
       let picks = prev.picks; let changed = false;
       enteredPlaces.forEach((ks, id) => {
-        if (!(id in picks)) { picks = { ...picks, [id]: [] }; changed = true; }
-        ks.forEach((k) => { const n = addPlace(picks, id, k, singleEvent); if (n !== picks) { picks = n; changed = true; } });
+        // Only add people not yet picked; an organiser's own placement is never overridden by older saved entries.
+        if (id in picks) return;
+        picks = { ...picks, [id]: [] }; changed = true;
+        ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
       });
       return changed ? { ...prev, picks } : prev;
     });

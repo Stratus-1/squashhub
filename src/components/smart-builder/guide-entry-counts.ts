@@ -3,7 +3,9 @@ import { unitsFor, type RegLite } from "@/lib/smart-builder/step-draw";
 
 export type GuideEntryCount = { entered: number; selected: number; total: number };
 /** Read-only player entries; overlapping saved registrations and local picks count once. */
-export function guideEntryCounts(cats: string[], keys: string[], picks: Picks, regs: RegLite[]) {
+export function guideEntryCounts(cats: string[], keys: string[], picks: Picks, allRegs: RegLite[]) {
+  // A player the organiser picked is placed by the picks (they are the latest choice); saved entry rows only add people not picked.
+  const regs = allRegs.filter((r) => !(r.club_member_id in picks));
   const counts: Record<string, GuideEntryCount> = {};
   keys.forEach((key, index) => {
     // Registrations with no chosen category are unassigned — never count them in every group.

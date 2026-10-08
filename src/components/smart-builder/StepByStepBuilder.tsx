@@ -1484,7 +1484,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
                     const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...units.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
                     const board = (
-                      <div className={cn("grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3", boardFull && "2xl:grid-cols-4")} data-testid="pick-board">
+                      <div className={cn("grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3", boardFull && "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5")} data-testid="pick-board">
                         {cols.map((c) => (
                           <div key={c.key || "none"} className={cn("flex min-w-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
 

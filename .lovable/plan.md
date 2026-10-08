@@ -93,12 +93,19 @@ Delegation rules:
 - Never cross-club, never to yourself, never to change your own roles.
 - Revoking a delegator flags (not auto-removes) the grants they made, for Chairman review.
 
-### Chairman appointment
-- Set only by the Super Admin, through one audited action with a reason. A guard refuses edits from anyone else.
-- An outgoing Chairman, or two office bearers, may **nominate** a successor; the Super Admin confirms.
-- The Chairman must be an active member with a login. Resignation or suspension ends grant authority immediately; existing grants remain and are flagged for review.
-- Secretary, Club Captain and Treasurer offices are set by the Chairman (or Super Admin). These offices carry no rights by themselves.
-- **Emergency recovery:** the Super Admin can freeze grants for a club, revoke any grant, or appoint an interim Chairman. Each needs a reason, is logged, notifies office bearers, and is reviewed after 30 days.
+### Chairman succession (owner decision: Chairman-to-Chairman, no Super Admin step)
+- **Only the current, active Chairman of that club can start a handover.** A server check refuses anyone else, including admins, office bearers and other clubs. The direct `clubs.chairman_member_id` edit is blocked by a guard; the only way to change it is the handover action.
+- **Handover steps:**
+  1. The Chairman picks a successor: an active member of the same club with a login. They re-authenticate (password or OTP), give a reason, and choose an effective time: now, or a set date and time.
+  2. The successor is notified and **accepts** (authenticated). Proposed: acceptance is required, so authority never goes to someone who doesn't know about it (D22). The outgoing Chairman can cancel until it takes effect.
+  3. At the effective time, one atomic step closes the old Chairman office and opens the new one.
+- **Never two Chairmen:** one open Chairman office per club, enforced by a database uniqueness rule. Only one pending handover per club; a new one replaces the old.
+- **What transfers:** Chairman authority (appointing offices, granting permissions). Rights the outgoing Chairman held personally (including any finance) do **not** transfer, and stay until the new Chairman reviews them. Grants made by the outgoing Chairman stay valid.
+- **Audit:** start, accept, cancel and effective handover are all recorded (who, successor, club, reason, times, re-authentication method). Office bearers get an in-app notice. The Super Admin can see the record but takes no part.
+- The Chairman cannot appoint themselves (they already hold the office) or remove themselves without naming a successor.
+- Secretary, Club Captain, Treasurer and Vice-Chair offices are set by the Chairman. These offices carry no rights by themselves; rights come from their templates.
+- **Super Admin oversight (not routine):** the Super Admin can freeze grants for a club or revoke a grant for a security incident. This needs a reason, is logged, and notifies office bearers.
+- **Absent or incapacitated Chairman:** this is not decided and is not routine; see D23.
 
 ## 3a. Member data and the Secretary (owner clarification)
 
@@ -144,7 +151,7 @@ effective rights = rights from their roles
 - **Individual grant:** adds one capability to one person, within the normal grant rules (finance and sensitive rights only by the Chairman or Super Admin; operational rights by the Chairman, Super Admin, or a holder with the delegate flag).
 - **Template changes:** apply to everyone holding the role, but never undo a personal deny. A personal grant stays until removed.
 - **Who may override:** the Chairman (own club) and the Super Admin. For an operational capability, a delegator may revoke only what they themselves granted.
-- **No self-changes, with one exception:** nobody can add, deny or remove their own capabilities, **except the Chairman**, who may change their own permissions in their own club (section 3c). The Chairman still can't appoint or remove themselves as Chairman; only the Super Admin can.
+- **No self-changes:** nobody can add, deny or remove their own capabilities. The Chairman may be an exception, depending on D20 (section 3c). The Chairman office changes only through the handover by the current Chairman.
 
 ## 3c. Chairman self-grant exception (deliberate policy choice)
 
@@ -370,7 +377,8 @@ Operations preserved:
 - With legacy ON, every check answers exactly as today (snapshot comparison per club).
 - With legacy OFF, there is no implicit access for admin, full admin, office bearers or moderators. Each template allows its own capabilities and refuses others.
 - `fin.bank.view` can read balances and ledger; every banking write is refused on the server.
-- Grants: F/S only by the Chairman (own club) or Super Admin. Chairman self-grant behaviour depends on D20 (allowed and audited under 3c, or refused). Only the Super Admin can change the Chairman. Self-approval of transactions is refused in both cases.
+- Grants: F/S only by the Chairman (own club) or Super Admin. Chairman self-grant behaviour depends on D20 (allowed and audited under 3c, or refused). Self-approval of transactions is refused in both cases.
+- Succession tests: a non-Chairman's handover is refused; a cross-club successor is refused; a successor who hasn't accepted gets nothing; at the effective time exactly one Chairman exists; a second concurrent handover replaces the first; the outgoing Chairman loses grant authority at once.
 - Delegation: only flagged capabilities, never wider than the delegator's own, never cross-club, never to yourself.
 - Second-person approval for stocktake discrepancies, adjustments, invoices and journals; self-approval refused.
 - PINs: management needs `bar.pins`, PINs are never returned, and every change is logged.
@@ -409,7 +417,7 @@ Operations preserved:
 - **D20. CONFLICTING INSTRUCTIONS — please choose.** At 13:24 you said the Chairman **may** grant themselves finance permissions, overriding the earlier rule. At 13:25 you said the Chairman **cannot** grant their own sensitive permissions, and that the Chairman's finance access comes via the Super Admin.
   - (a) **Self-grant allowed**, with the section 3c safeguards (audit, badge, alerts, Super Admin revoke).
   - (b) **Self-grant refused.** The Chairman's own finance and sensitive rights come only from the Super Admin. Section 3c is dropped.
-  - In both options, nobody may self-approve transactions, the Chairman can't appoint or remove themselves, and nothing crosses clubs. This plan keeps both written down until you choose. Until then, (b) is the safer default.
+  - In both options, nobody may self-approve transactions, the Chairman office changes only by handover, and nothing crosses clubs. This plan keeps both written down until you choose. Until then, (b) is the safer default.
 - **D21.** Approve the proposed office-bearer defaults in section 3d (Chairman, Vice-Chair, Secretary, Treasurer, Club Captain).
 
 ## Technical details

@@ -32,6 +32,7 @@ import { PeakHoursEditor } from "./PeakHoursEditor";
 import type { PeakOverrides } from "@/lib/peak-hours";
 import { BookingMessagesCard } from "./BookingMessagesCard";
 import { VisitorBookingRulesCard } from "./VisitorBookingRulesCard";
+import { CourtDisplayCard } from "./CourtDisplayCard";
 
 type RelayDevice = string;
 
@@ -201,6 +202,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       {step === "courts" && (
         <div className="space-y-4">
           <CourtsSection clubId={clubId} mode="list" relayDeviceType={"shelly"} />
+          <CourtDisplayCard clubId={clubId} clubName={club.name} logoUrl={(club as any).logo_url} />
           <HostingFeesCard club={club} />
           <ExternalBookingSection club={club} clubId={clubId} />
         </div>

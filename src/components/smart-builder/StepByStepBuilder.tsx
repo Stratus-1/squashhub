@@ -819,6 +819,38 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           <div className="space-y-1"><Label>Add another day for this round</Label><Input type="date" aria-label="Add another day" value="" disabled={!s.date} onChange={(e) => { const v = e.target.value; if (!v || v === s.date || (s.extraDays ?? []).some((x) => x.date === v)) return; const days = [...(s.extraDays ?? []), { date: v, from: s.from, to: s.to, courtIds: [...s.courtIds] }].sort((x, y) => x.date.localeCompare(y.date)); updStage(s.id, { extraDays: days }); }} /></div>
           <p className="pb-2 text-xs text-muted-foreground">{s.date ? "New days copy the first day's times and courts — change them per day if needed." : "Choose the first date before adding more days."}</p>
         </div>
+        {s.phase !== "playoff" && (() => {
+          // Capacity guide (advisory only): matches in ONE round vs court slots on the listed days.
+          const toMin = (t: string) => { const [h, m] = (t || "").split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
+          const scope = units.filter((u) => !s.unit || u.key === s.unit || u.key.startsWith(`${s.unit}::`));
+          let matches = 0; let courtMin = 0; let guessed = false;
+          for (const u of scope) {
+            let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length;
+            if (!n) { n = Number(a.unitEntries?.[u.key]) || 0; if (n) guessed = true; }
+            const entrants = u.disc === "doubles" ? Math.floor(n / 2) : n;
+            const m = Math.floor(entrants / 2);
+            const sc = scoringFor(u.key) ?? scoring;
+            const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]) || (sc?.bestOf === 5 ? 55 : 35);
+            matches += m; courtMin += m * per;
+          }
+          if (!matches) return null;
+          const perMatch = Math.round(courtMin / matches);
+          const days = [{ date: s.date, from: s.from, to: s.to, courtIds: s.courtIds }, ...(s.extraDays ?? [])].filter((d) => d.date);
+          const slotsOf = (d: { from: string; to: string; courtIds: string[] }) => { const w = toMin(d.to) - toMin(d.from); return w > 0 ? Math.floor(w / perMatch) * d.courtIds.length : 0; };
+          const perDay = days.map(slotsOf); const slots = perDay.reduce((t, x) => t + x, 0);
+          // Fewest days (in order) that still fit the round.
+          let need = 0, acc = 0; for (const x of perDay) { if (acc >= matches) break; acc += x; need++; }
+          const fits = slots >= matches;
+          return <div className={cn("rounded-md border p-2 text-xs", fits ? "border-border bg-muted/40" : "border-destructive/50 bg-destructive/5")} data-testid="round-capacity">
+            <div className="font-medium">Will this round fit?</div>
+            <div>About <b>{matches}</b> matches in one round{guessed ? " (some groups use expected entries — no players picked yet)" : ""} · ~{perMatch} min each ≈ {Math.round(courtMin / 60)} court-hours.</div>
+            <div>Available: <b>{slots}</b> match slots across {days.length} day{days.length === 1 ? "" : "s"} ({perDay.join(" + ")}).</div>
+            <div className={fits ? "text-foreground" : "font-medium text-destructive"}>{fits
+              ? (need < days.length ? `Fits with ${slots - matches} spare slots — ${need} day${need === 1 ? "" : "s"} would be enough. Consider removing a day, fewer courts or a shorter session.` : `Fits, with ${slots - matches} spare slots for delays.`)
+              : `Short by ${matches - slots} slots — add a day, another court or a longer session.`}</div>
+            <div className="text-muted-foreground">Estimate only: also allow for minimum rest between a player's matches. Change match time under Scheduling assumptions.</div>
+          </div>;
+        })()}
       </div>}
       {(a.periodStart && ((s.mode === "play_by" && s.deadline && s.deadline < a.periodStart) || (s.mode === "scheduled" && s.date && s.date < a.periodStart))) && <p className="text-xs text-muted-foreground">Note: this date is before the championship start.</p>}
     </div>

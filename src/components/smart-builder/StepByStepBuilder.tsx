@@ -2144,12 +2144,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   <Button type="button" size="sm" variant={playoff.choice === "playoffs" ? "default" : "outline"} aria-pressed={playoff.choice === "playoffs"} onClick={() => setPlayoff({ choice: "playoffs" })}>Yes — playoff stages below</Button>
                   <Button type="button" size="sm" variant={playoff.choice === "later" ? "default" : "outline"} aria-pressed={playoff.choice === "later"} onClick={() => setPlayoff({ choice: "later" })}>Decide later</Button>
                 </div>
-                {playoff.choice === "later" && <p className="text-xs text-muted-foreground">Left open for now — decide before the final format review. Until then nothing playoff is generated.</p>}
-                <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
-                {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
-                {playoffStages.map(renderStage)}
-                <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
-               {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
+                 {playoff.choice === "later" && <p className="text-xs text-muted-foreground">Left open for now — decide before the final format review. Until then nothing playoff is generated.{playoffStages.length > 0 ? ` Your ${playoffStages.length} planned playoff stage${playoffStages.length === 1 ? "" : "s"} ${playoffStages.length === 1 ? "is" : "are"} kept and will reappear if you choose "Yes — playoff stages below".` : ""}</p>}
+                 {playoff.choice === "none" && <p className="text-xs text-muted-foreground">No playoffs — the tournament finishes on the main rounds.{playoffStages.length > 0 ? ` Your ${playoffStages.length} planned playoff stage${playoffStages.length === 1 ? "" : "s"} ${playoffStages.length === 1 ? "is" : "are"} kept and will reappear if you choose "Yes — playoff stages below".` : ""}</p>}
+                 {playoff.choice === "playoffs" && <>
+                 <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
+                 {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
+                 {playoffStages.map(renderStage)}
+                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
+                {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
                  const q = poolQualification(u.key);
                  // First CONFIGURED play-off stage (own stages win, else shared) — never assume Quarterfinals.
                  const ms = milestoneFor(a as any, u.key);
@@ -2162,11 +2164,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                    <Label>Best runners-up</Label><Input type="number" min={0} className="h-8 w-20" aria-label={`Best runners-up for ${u.base}`} placeholder="0" value={q.runnersUp ?? ""} onChange={(e) => setPoolQualification(u.key, { runnersUp: e.target.value })} /></div>
                    <p className="text-muted-foreground">{field ? `${first?.name} needs ${field} qualifiers. ` : ""}{nPools && field ? `${nPools} estimated pools × ${Number(q.perPool) || "?"} per pool + ${Number(q.runnersUp) || 0} best runners-up${Number(q.perPool) ? ` = ${nPools * Number(q.perPool) + (Number(q.runnersUp) || 0)} planned qualifiers` : " (pool count confirmed after entries close)"}. ` : ""}Confirm the actual pool count and field size before the draw.</p>
                    {Number(q.runnersUp) > 0 && <p className="text-destructive">Best runners-up cannot be mapped automatically yet; the playoff stage must be set up after pool play.</p>}
-                 </div>;
-               })}
-              </div>
+                  </div>;
+                })}
+                </>}
+               </div>
               <ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} />
-              {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
+              {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages.filter((s) => s.phase !== "playoff" || playoff.choice === "playoffs")} unitName={stageUnit} when={stageWhen} /></div>}
               {a.planId && <StageCourtBookings clubId={clubId} planId={a.planId} label={a.name?.trim() || "Club Championships"} stages={stages.map((x) => ({ ...x, name: `${x.name} (${stageUnit(x.unit)})` }))} courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} />}
             </>
           )}

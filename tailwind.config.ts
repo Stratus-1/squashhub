@@ -72,6 +72,8 @@ export default {
         },
         court: "hsl(var(--court))",
         "court-line": "hsl(var(--court-line))",
+        "peak-indicator": "hsl(var(--peak-indicator))",
+        "peak-indicator-foreground": "hsl(var(--peak-indicator-foreground))",
         win: "hsl(var(--win))",
         "seed-top": "hsl(var(--seed-top))",
         "seed-lower": "hsl(var(--seed-lower))",

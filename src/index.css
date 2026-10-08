@@ -61,6 +61,9 @@
 
     --court: 30 40% 75%;
     --court-line: 0 0% 95%;
+    /* Existing booking-table amber marker, identical in both themes. */
+    --peak-indicator: 38 92% 50%;
+    --peak-indicator-foreground: 26 83% 14%;
     --win: 142 70% 45%;
     --loss: 0 72% 51%;
     --reschedule: 142 70% 45%;

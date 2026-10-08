@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS, CLUB_MEMBER_COLUMNS } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -261,6 +262,7 @@ export function MemberOnboardingWizard({
    *  (admin-created, CSV-imported, or matched via the trigger on signup).
    *  Pre-existing members keep their assigned numbers and are NEVER auto-numbered. */
   const [isExistingMember, setIsExistingMember] = useState(false);
+  const dup = useDuplicateGuard({ onUseEmail: () => supabase.auth.signOut() });
   /** Set only for a genuine self-application: its row receives step progress. */
   const [applicationRowId, setApplicationRowId] = useState<string | null>(null);
   const pendingResume = useRef<ApplicationProgress | null>(null);
@@ -726,6 +728,12 @@ export function MemberOnboardingWizard({
       }
     }
 
+    // Existing-member recognition BEFORE any membership row or joining fee is
+    // written. Google/Apple sign-ups reach this step without the email form's
+    // guard (Uitsig, Oct 2026: duplicate application + R200 raised). The
+    // platform matcher ignores middle names (first + last name), cell and email.
+    if (!isExistingMember && !(await dup.guard({ name: name.trim(), phone: phone.trim() }))) return;
+
     setSaving(true);
     try {
       // 1. Update profile
@@ -1159,6 +1167,8 @@ export function MemberOnboardingWizard({
   };
 
   return (
+    <>
+    {dup.dialog}
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
         className="sm:max-w-lg gap-0 p-0 overflow-hidden [&>button]:hidden max-h-[90vh] overflow-y-auto"

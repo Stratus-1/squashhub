@@ -103,44 +103,54 @@ Delegation rules:
 - **What transfers:** Chairman authority (appointing offices, granting permissions). Rights the outgoing Chairman held personally (including any finance) do **not** transfer, and stay until the new Chairman reviews them. Grants made by the outgoing Chairman stay valid.
 - **Audit:** start, accept, cancel and effective handover are all recorded (who, successor, club, reason, times, re-authentication method). Office bearers get an in-app notice. The Super Admin can see the record but takes no part.
 - The Chairman cannot appoint themselves (they already hold the office) or remove themselves without naming a successor.
-### New club onboarding: temporary Chairman (owner proposal)
+### Club onboarding: two pathways, both ending in a Temporary Chairman
 
 **Today (confirmed):**
 - Listed clubs are claimed through a claim request (`club_claim_requests`). The platform admin approves it (`approve_club_claim`). Approval makes the requester a **club admin** and fills the **Club Captain** office if empty, not the Chairman.
 - After that, any club admin can set the Chairman on the Club Info screen. This is the escalation route already noted.
-- How a brand-new club's creator is set up at registration was not traced in detail; it is assumed to make them a club admin, and must be confirmed before building.
+- How a brand-new club's creator is set up at registration was not traced in detail. It is assumed to make them a club admin, and must be confirmed before building.
 
-**Proposal:**
-- The first verified person for a truly new or unclaimed club becomes **Temporary Chairman (setup)**.
-- A clear message at the claim: "You are Temporary Chairman only to set the club up. You must hand over to your club's real Chairman once known."
-- A permanent "Temporary" badge shows in the header and in Permissions, with reminders (e.g. weekly in-app notices and a banner after 30 days).
-- They appoint the real Chairman through the normal handover. Their temporary authority ends at that moment, as one atomic step, with exactly one Chairman at a time.
+**Activation is separate from existing data.** A club row, imported member rows (e.g. from SportyHQ), or office fields copied from an import do **not** make a club "activated". A club is activated only when a verified person completes a claim (Pathway A) or creation (Pathway B). Imported office-bearer names grant nothing.
 
-**Guardrails:**
-- **Eligibility:** only a club with no members holding a login, no Chairman and no prior approved claim. A club with existing data (e.g. imported members) goes through the reviewed claim instead.
-- **Verified link to the club:** verified email and phone, plus one of the following:
-  - an email on the club's domain;
-  - a match to the club's listed contact;
-  - an affiliated association confirming it;
-  - a Super Admin review.
-- **Anti-takeover:**
-  - Only one pending claim per club.
-  - Other claimants are told the club is claimed and may dispute it.
-  - The association and Super Admin can see new temporary Chairmen.
-  - A dispute freezes the claim's grant authority until resolved.
-- **Audit:** the first claim (who, evidence, time, IP class) and the handover are permanently recorded.
-- **Proposed limits while temporary (for approval, D24):**
-  - No finance self-grants (finance view only of the club's own setup screens).
-  - No payout bank details changed without a Super Admin check.
-  - No member deletions or merges, no bulk export, no payment gateway credentials.
-  - No outbound bulk messaging to imported members.
+**Pathway A: existing preloaded club (most South African clubs)**
+1. **Find, don't create.** The person searches for and picks their club. Creating a new club is blocked when a close match exists (name, town, association), so no duplicate club is created.
+2. **Identity first:**
+   - Verified email and phone.
+   - The duplicate-person check links them to their existing **national person** record and their **imported club member row**, if one matches by SA ID, email or phone, instead of creating a new member.
+3. **Proof of link to the club** (one strong item, or two weaker ones):
+   - **Strong:**
+     - their verified email or phone matches the club's imported contact or an imported office bearer;
+     - the affiliated association confirms them;
+     - a Super Admin review.
+   - **Weaker:**
+     - they match an imported member of that club;
+     - an email on the club's domain;
+     - a short reason given with the claim.
+4. **Activation:** they become **Temporary Chairman (setup)** of that club. All imported members, history and records stay untouched. Imported members stay unlinked until they activate their own accounts.
+5. **Takeover protection, which matters most here:**
+   - One pending claim per club.
+   - A public "club claimed" notice on the club page for 7 days.
+   - Imported office bearers and the association are notified, where contact details exist.
+   - Anyone can dispute within that window. A dispute freezes grant authority and sensitive actions until it is resolved.
+   - Weaker evidence on its own means a quick review before activation (D24).
+
+**Pathway B: genuinely new club (not in the database, including international clubs)**
+1. The duplicate-club search runs first (worldwide). If no match is found, the person creates the club with country, town and contact details.
+2. Verified email and phone. The duplicate-person check runs (national person or an equivalent record for non-SA people).
+3. They become **Temporary Chairman (setup)** straight away. No association is needed. If they later link to an association, the association can see them.
+
+**In both pathways:**
+- A clear notice at activation, and a permanent "Temporary Chairman" badge with reminders: "You are Temporary Chairman only to set the club up. Hand over to your club's real Chairman once known."
+- Handover to the real Chairman uses the normal handover: atomic, exactly one Chairman, temporary rights end immediately. After that, the normal permission model applies.
+- **Audit:** claim or creation, the evidence, matches used, any dispute, and the handover are permanently recorded.
+- **Recovery:** a wrongful claim is reversed by the Super Admin (with a reason and evidence). This removes the temporary Chairman, keeps all club data, and logs the change. The committee emergency process applies once real office bearers exist.
+- **Proposed limits while temporary (D24):**
+  - No finance self-grants (setup screens only).
+  - No changes to payout bank details without a Super Admin check.
+  - No member deletes, merges or bulk export.
+  - No payment gateway credentials.
+  - No bulk messaging to imported members during the dispute window.
   - Normal setup stays open: courts, bookings, fees, inviting members and appointing offices.
-
-**Options (D24):**
-- (A) Temporary Chairman as above, with limits, verified automatically.
-- (B) Temporary Chairman only after a quick Super Admin or association check. This keeps today's claim review but grants the temporary Chairman role instead of club admin.
-- (C) Keep today's reviewed claim and give the claimant the "Club Manager" template without the Chairman office, until a Chairman is appointed.
-- Proposed: (A) for brand-new clubs, (B) for listed clubs with existing data.
 
 ### Other office bearers (owner decision)
 - **Only the Chairman** (own club) appoints, replaces or removes the Vice-Chair, Secretary, Treasurer, Club Captain and any other office. The Super Admin is not involved. A server check refuses anyone else, and the direct edit of the `clubs` office fields is blocked.
@@ -484,10 +494,11 @@ Operations preserved:
   - How long before a request expires? Proposed: 14 days.
   - What evidence is required?
   - Should the absent Chairman be notified and given a short objection window? Proposed: yes, 72 hours, where reachable.
-- **D24.** New-club onboarding:
-  - Option A, B or C for the temporary Chairman?
-  - Approve the proposed limits while temporary?
-  - Should temporary status expire, e.g. after 90 days, with grant authority frozen until a real Chairman is appointed?
+- **D24.** Onboarding (both pathways):
+  - **Pathway A (preloaded clubs):** activate automatically on strong evidence (proposed), or always after a quick review?
+  - Approve the limits while temporary.
+  - Should temporary status expire after 90 days, with grant authority frozen until a real Chairman is appointed?
+  - Approve the 7-day public "club claimed" notice for preloaded clubs.
 
 ## Technical details
 - Audited: `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers via `clubs.*_member_id`), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; triggers `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; frontend `use-club-permissions.ts` (`PERMISSION_SLUGS`, `useHasPermission`, `useMemberHasAdminAccess`), `use-club-billing.ts`, `use-door-control.ts`.

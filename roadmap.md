@@ -112,3 +112,4 @@
 - [x] Club Admin → Permissions: "Offices & detailed permissions" (grant/deny/undo, reason, history), Chairman/Super Admin only
 - [ ] Member editing enforcement (club_members write rules) — next
 - [ ] Office appointment / handover screens
+- [ ] Pick/Allocate board block tidy-up: + icon for add, arrow icon for move, entered names normal font and unentered italic, compact entered mark (label takes too much space). Preview only.

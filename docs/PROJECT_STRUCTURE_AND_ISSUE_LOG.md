@@ -2718,3 +2718,6 @@ Added separate Peak Hours card (Edit/Save/Cancel), member events moved to sectio
 
 ## 2026-10-08 Bar/Shop "Allow member account to go into debit"
 Separate Bar and Shop switches (default on). When off, account charges that would exceed the booking-gate allowance (credit + fees under active monthly mandate) are refused server-side; nothing posted. Tests: src/test/account-charge-gate.test.ts; rolled-back backend test on Riverside.
+
+## 2026-10-08 Treasurer approval link lands on dashboard (Nelspruit)
+Causes: (1) right after sign-in the permission check ran before member details loaded and bounced non-admin finance staff to /dashboard; (2) email link opened the Finance hub, not the payment; (3) approve/reject and pending reads were admin-only server-side, so Treasurers could not act. Fix: MemberContext loading key, deep link ?view=pending&tx=, RPC finance_decide_member_transaction (finance permission, row lock, pending-only, audit_events), finance read policy. Not fixed: rest of Club Books reads remain admin-only; post_journal has no caller permission check.

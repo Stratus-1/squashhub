@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
     const { data: perms } = await admin
       .from('club_member_permissions')
       .select('club_member_id, custom_permissions, is_full_admin, club_permission_roles(permissions, is_full_admin)')
+      .in('club_member_id', (members || []).map((m: any) => m.id))
 
     const permByMember = new Map<string, any>()
     for (const p of perms || []) permByMember.set(p.club_member_id, p)
@@ -101,9 +102,11 @@ Deno.serve(async (req) => {
     const amount = Number(tx.amount || 0).toFixed(2)
     const submittedAt = tx.created_at ? new Date(tx.created_at).toISOString().replace('T', ' ').slice(0, 16) : ''
     const subdomain = (club as any)?.subdomain
+    // Deep link straight to this payment in Club Books → Pending.
+    const reviewPath = `/club-admin?tab=finance&view=pending&tx=${encodeURIComponent(tx.id)}`
     const reviewUrl = subdomain
-      ? `https://${subdomain}.squashhub.co.za/club-admin?tab=finance`
-      : 'https://squashhub.co.za/club-admin?tab=finance'
+      ? `https://${subdomain}.squashhub.co.za${reviewPath}`
+      : `https://squashhub.co.za${reviewPath}`
 
     const templateData = {
       memberName: (submitter as any)?.name || 'A member',

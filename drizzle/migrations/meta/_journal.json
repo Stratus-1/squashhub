@@ -673,6 +673,13 @@
       "when": 1791460904166,
       "tag": "0095_bar_shop_member_debit_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1791461231360,
+      "tag": "0096_finance_permission_approve_member_transaction",
+      "breakpoints": true
     }
   ]
 }

@@ -383,129 +383,33 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     ? (journalEntries || [])
     : (journalEntries || []).filter((e: any) => e.account === accountFilter);
 
-  /* ─── Confirm EFT payment ─── */
-  const handleConfirmPayment = async (txId: string) => {
+  const linkedTxId = (() => { try { return new URLSearchParams(window.location.search).get("tx"); } catch { return null; } })();
+
+  /* ─── Confirm / reject EFT payment ───
+   * One server call (finance_decide_member_transaction) checks the club-scoped
+   * Club Books permission, locks the row and only acts while it is still
+   * pending — a second tap or second device can never post it twice. */
+  const decidePayment = async (txId: string, approve: boolean) => {
     try {
-      const tx = (pendingTransactions || []).find((t: any) => t.id === txId);
-      if (!tx) return;
-
-      const { error } = await fromExt("member_credit_transactions")
-        .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
-        .eq("id", txId);
+      const { data, error } = await (sbClient as any).rpc("finance_decide_member_transaction", {
+        _tx_id: txId, _approve: approve,
+      });
       if (error) throw error;
-
-      // Mark linked unpaid fees as paid — the journal_fee_payment_received trigger
-      // will automatically post Dr Bank / Cr Debtors for each fee.
-      let postedFromFees = false;
-      let remainder = 0;
-      if (tx.type === "debit" && tx.club_member_id) {
-        const { data: unpaidFees } = await fromExt("club_member_fee_payments")
-          .select("id, fee_label, amount, fee_type, created_at")
-          .eq("club_member_id", tx.club_member_id)
-          .eq("paid", false)
-          .order("created_at", { ascending: true });
-        const descStr = (tx.description || "") as string;
-        // A payment linked to an exact fee settles that fee first.
-        let feesToMark = tx.fee_payment_id
-          ? (unpaidFees || []).filter((f: any) => f.id === tx.fee_payment_id)
-          : [];
-        if (feesToMark.length === 0) {
-          feesToMark = (unpaidFees || []).filter((f: any) => descStr.includes(f.fee_label));
-        }
-
-        // Top-up confirmations have no fee label in the description — auto-settle
-        // outstanding fees (oldest first) up to the confirmed amount, mirroring the
-        // gateway top-up auto-settlement. Any remainder stays as wallet credit.
-        if (feesToMark.length === 0 && /top[- ]?up/i.test(descStr)) {
-          // A member on an active recurring arrangement is already paying their
-          // fees monthly — a top-up must stay as balance (it is there to cover
-          // lights, bar, court fees), not be swallowed by those same fees.
-          const { data: mandate } = await fromExt("stitch_mandates")
-            .select("id")
-            .eq("club_member_id", tx.club_member_id)
-            .eq("status", "active")
-            .eq("frequency", "monthly")
-            .is("suspended_at", null)
-            .maybeSingle();
-          const sweepable = mandate ? [] : (unpaidFees || []);
-          let remaining = Math.abs(Number(tx.amount));
-          for (const fee of sweepable) {
-            if (remaining <= 0) break;
-            const feeAmt = Number(fee.amount);
-            if (feeAmt <= 0) continue;
-            const deduction = Math.min(remaining, feeAmt);
-            remaining -= deduction;
-            feesToMark.push({ ...fee, __deduction: deduction });
-          }
-          remainder = Math.max(0, remaining);
-        }
-
-        // Partly-settled fees are reduced instead of marked paid, so the
-        // AFTER UPDATE OF paid trigger never fires for them — post the bank
-        // receipt for those amounts here so the cash is never lost.
-        let partialSettled = 0;
-        for (const fee of feesToMark) {
-          const deduction = (fee as any).__deduction;
-          if (deduction != null && deduction < Number(fee.amount) - 0.001) {
-            await fromExt("club_member_fee_payments")
-              .update({ amount: Number(fee.amount) - deduction })
-              .eq("id", fee.id);
-            partialSettled += Number(deduction);
-          } else {
-            await fromExt("club_member_fee_payments")
-              .update({ paid: true, paid_at: new Date().toISOString() })
-              .eq("id", fee.id);
-          }
-          postedFromFees = true;
-        }
-        queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
-
-        if (partialSettled > 0) {
-          const memberName = getMemberName(tx.club_member_id);
-          const desc = `Part payment received: ${tx.description || "EFT"} — ${memberName}`;
-          await postJournal(clubId, [
-            { account: "bank_current", debit: partialSettled, description: desc, member_id: tx.club_member_id },
-            { account: "debtors", credit: partialSettled, description: desc, member_id: tx.club_member_id },
-          ]);
-        }
+      if (data?.ok === false) {
+        toast.info(`This payment was already ${data.already === "confirmed" ? "approved" : data.already}.`);
+      } else {
+        toast.success(approve ? "Payment confirmed & recorded as income" : "Payment rejected");
       }
-
-      // Fallback: if no fee rows could be matched (e.g. ad-hoc top-ups, light fees),
-      // still record the cash receipt directly so the bank balance reflects it.
-      // For top-ups that auto-settled fees, only the unspent remainder goes to wallet.
-      if (!postedFromFees || remainder > 0) {
-        const memberName = getMemberName(tx.club_member_id);
-        const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
-        const amt = remainder > 0 ? remainder : Math.abs(Number(tx.amount));
-        await postJournal(clubId, [
-          { account: "bank_current", debit: amt, description: desc, member_id: tx.club_member_id },
-          { account: "member_credits", credit: amt, description: desc, member_id: tx.club_member_id },
-        ]);
-      }
-
-
-      toast.success("Payment confirmed & recorded as income");
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["pending-eft-approval-count"] });
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
     } catch (err: any) {
-      toast.error(err.message || "Failed to confirm");
+      toast.error(err.message || (approve ? "Failed to confirm" : "Failed to reject"));
     }
   };
-
-  const handleRejectPayment = async (txId: string) => {
-    try {
-      const { error } = await fromExt("member_credit_transactions")
-        .update({ status: "rejected" })
-        .eq("id", txId);
-      if (error) throw error;
-      toast.success("Payment rejected");
-      queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["pending-eft-approval-count"] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to reject");
-    }
-  };
+  const handleConfirmPayment = (txId: string) => decidePayment(txId, true);
+  const handleRejectPayment = (txId: string) => decidePayment(txId, false);
 
   /* ─── Manual transaction entry ─── */
   const handleRecordTransaction = async () => {
@@ -1104,6 +1008,11 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               <Clock className="w-4 h-4 text-amber-600" />
               <h3 className="font-semibold text-sm">Pending EFT Payments</h3>
             </div>
+            {!pendingLoading && linkedTxId && !(pendingTransactions || []).some((t: any) => t.id === linkedTxId) && (
+              <p role="status" className="text-xs rounded-md border border-border bg-muted/40 px-3 py-2">
+                The payment from your notification has already been dealt with (or isn't in this club). Nothing more to do.
+              </p>
+            )}
             {pendingLoading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (pendingTransactions || []).length === 0 ? (
@@ -1111,7 +1020,12 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
             ) : (
               <div className="space-y-2">
                 {(pendingTransactions || []).map((tx: any) => (
-                  <div key={tx.id} className="flex items-center justify-between border rounded-lg p-3 bg-muted/30">
+                  <div
+                    key={tx.id}
+                    data-tx-id={tx.id}
+                    ref={tx.id === linkedTxId ? (el) => el?.scrollIntoView({ block: "center" }) : undefined}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border rounded-lg p-3 bg-muted/30 ${tx.id === linkedTxId ? "ring-2 ring-primary" : ""}`}
+                  >
                     <div className="space-y-0.5">
                       <div className="font-medium text-sm">{getMemberName(tx.club_member_id)}</div>
                       <div className="text-xs text-muted-foreground">
@@ -1123,7 +1037,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                         {format(new Date(tx.created_at), "dd MMM yyyy HH:mm")}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {tx.proof_url ? (
                         <Button size="sm" variant="outline" onClick={async () => {
                           const { data, error } = await sbClient.storage.from("payment-proofs").createSignedUrl(tx.proof_url, 600);
@@ -2071,7 +1985,10 @@ interface FinanceHubProps {
 function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
   const Party = party === "club" ? "Club" : "Member";
   const partyLower = party === "club" ? "club" : "member";
-  const [view, setView] = useState<FinanceView>("");
+  // Approval emails link to ?tab=finance&view=pending&tx=<id>.
+  const [view, setView] = useState<FinanceView>(() => {
+    try { return new URLSearchParams(window.location.search).get("view") === "pending" ? "pending" : ""; } catch { return ""; }
+  });
   const [hubStep, setHubStep] = useState("0");
 
 

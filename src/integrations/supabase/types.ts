@@ -18490,6 +18490,10 @@ export type Database = {
         Args: { _accept: boolean; _family_member_id: string }
         Returns: boolean
       }
+      finance_decide_member_transaction: {
+        Args: { _approve: boolean; _reason?: string; _tx_id: string }
+        Returns: Json
+      }
       find_existing_club_member: {
         Args: {
           _club_id: string

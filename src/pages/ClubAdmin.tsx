@@ -187,6 +187,8 @@ export default function ClubAdmin() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [compactNav, setCompactNav] = useState(false);
+  const { prefs: menuPrefs, canEdit: canEditMenu, save: saveMenu } = useMenuPrefs("club-admin", club?.id);
+  const [menuEditing, setMenuEditing] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get
@@ -238,7 +240,17 @@ export default function ClubAdmin() {
   // The Step-by-Step builder now lives on the single Tournaments page; no separate Beta tile.
   const opsTabs = OPERATIONS_TABS;
   const visibleOps = opsTabs.filter(permFilter).filter(capFilter);
+  // Personal display order/hidden items — applied only to tabs already permitted above.
+  const tabId = (t: AdminTab) => t.value;
+  const shownSetup = visibleOnly(applyOrder(visibleSetup, menuPrefs.groups.setup, tabId), menuPrefs.hidden, tabId, [activeTab]);
+  const shownOps = visibleOnly(applyOrder(visibleOps, menuPrefs.groups.operations, tabId), menuPrefs.hidden, tabId, [activeTab]);
   const visibleTabs = [...visibleSetup, ...visibleOps];
+  const editMenuButton = canEditMenu && (
+    <Button type="button" variant="ghost" size="sm" onClick={() => { setMobileNavOpen(false); setMenuEditing(true); }}
+      className={cn("mt-2 h-9 w-full justify-start gap-2 text-xs text-muted-foreground", compactNav && "justify-center px-1")} aria-label="Edit menu" title="Edit menu">
+      <ListOrdered className="size-4" />{!compactNav && <span>Edit menu</span>}
+    </Button>
+  );
 
   // If active tab isn't visible, switch to first visible (safe: setState in render triggers rerender, doesn't change hook order)
   if (visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
@@ -341,8 +353,9 @@ export default function ClubAdmin() {
 
         <div className={cn("md:grid md:items-start md:gap-4 lg:gap-5", compactNav ? "md:grid-cols-[56px_minmax(0,1fr)]" : "md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)]")}>
           <nav aria-label="Club administration" className="hidden md:sticky md:top-4 md:block md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:pr-1">
-            <ClubAdminNavigation operations={navigationItems(visibleOps)} setup={navigationItems(visibleSetup, true)} activeTab={activeTab}
+            <ClubAdminNavigation operations={navigationItems(shownOps)} setup={navigationItems(shownSetup, true)} activeTab={activeTab}
               onSelect={setActiveTab} compact={compactNav} onCompactChange={() => setCompactNav(value => !value)} />
+            {editMenuButton}
           </nav>
 
           {activeTabMeta && (
@@ -369,12 +382,16 @@ export default function ClubAdmin() {
             </SheetHeader>
             <ScrollArea className="h-[calc(85dvh-85px)]">
               <div className="space-y-5 p-3 pb-8">
-                <ClubAdminNavigation operations={navigationItems(visibleOps)} setup={navigationItems(visibleSetup, true)} activeTab={activeTab}
+                <ClubAdminNavigation operations={navigationItems(shownOps)} setup={navigationItems(shownSetup, true)} activeTab={activeTab}
                   onSelect={value => { setActiveTab(value); setMobileNavOpen(false); }} />
+                {editMenuButton}
               </div>
             </ScrollArea>
           </SheetContent>
         </Sheet>
+        <MenuOrderEditor open={menuEditing} onOpenChange={setMenuEditing} title="Edit admin menu" prefs={menuPrefs} onSave={(p) => saveMenu.mutateAsync(p)}
+          groups={[{ key: "operations", label: "Club operations", items: visibleOps }, { key: "setup", label: "Club setup", items: visibleSetup }]
+            .map((g) => ({ key: g.key, label: g.label, items: g.items.map((t) => ({ id: t.value, label: t.label, icon: t.icon })) }))} />
         <QuickSetupWizard clubId={club.id} open={wizardOpen} onOpenChange={setWizardOpen} />
         <div className="flex justify-end border-t border-border/50 pt-3">
           <AppVersionBadge />

@@ -28,7 +28,7 @@ import {
 import { GoBookApiCard } from "./GoBookApiCard";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
-import { PeakHoursEditor } from "./PeakHoursEditor";
+import { PeakHoursCard, PeakPenaltyCard, BookingHoursSummary } from "./PeakRulesCards";
 import type { PeakOverrides } from "@/lib/peak-hours";
 import { BookingMessagesCard } from "./BookingMessagesCard";
 import { VisitorBookingRulesCard } from "./VisitorBookingRulesCard";
@@ -137,12 +137,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         booking_slot_minutes: rulesForm.booking_slot_minutes,
         booking_open_time: rulesForm.booking_open_time,
         booking_last_slot_time: rulesForm.booking_last_slot_time,
-        peak_weekday_start: rulesForm.peak_weekday_start,
-        peak_weekday_end: rulesForm.peak_weekday_end,
-        peak_weekend_start: rulesForm.peak_weekend_start,
-        peak_weekend_end: rulesForm.peak_weekend_end,
         max_peak_bookings_per_day: rulesForm.max_peak_bookings_per_day,
-        peak_day_overrides: rulesForm.peak_day_overrides,
         max_bookings_per_day: rulesForm.max_bookings_per_day,
         block_back_to_back_bookings: rulesForm.block_back_to_back_bookings,
         max_member_events_per_month: rulesForm.max_member_events_per_month,
@@ -274,7 +269,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             <Label className="text-xs font-semibold">Court booking hours</Label>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">First slot (courts open)</Label>
+                <Label className="text-[11px] text-muted-foreground">First booking starts</Label>
                 <Input
                   type="time" step={300}
                   className="h-8 text-xs"
@@ -283,7 +278,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Last slot starts</Label>
+                <Label className="text-[11px] text-muted-foreground">Last booking starts</Label>
                 <Input
                   type="time" step={300}
                   className="h-8 text-xs"
@@ -292,9 +287,11 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                 />
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              Default 05:00–22:00. The booking grid shows slots from the first slot up to and including the last slot start time.
-            </p>
+            <BookingHoursSummary
+              slotMinutes={rulesForm.booking_slot_minutes}
+              openTime={rulesForm.booking_open_time}
+              lastSlotTime={rulesForm.booking_last_slot_time}
+            />
           </div>
 
 
@@ -343,15 +340,9 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             </label>
           </div>
 
-          {/* 3. Peak hours */}
-          <PeakHoursEditor
-            value={rulesForm}
-            onChange={(patch) => setRulesForm(p => ({ ...p, ...patch }))}
-          />
-
-          {/* 4. Member-created events */}
+          {/* 3. Member-created events */}
           <div className="space-y-1 rounded-lg border p-3 bg-muted/30">
-            <Label className="text-xs font-semibold">4. Member-created events / sessions</Label>
+            <Label className="text-xs font-semibold">3. Member-created events / sessions</Label>
             <div className="flex items-center gap-2">
               <Input
                 type="number" min={0} max={50} step={1}
@@ -366,6 +357,12 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
         </EditLock>
         </Card>
+
+        {/* 4. Peak hours per day — its own Edit / Save / Cancel */}
+        <PeakHoursCard club={club} />
+
+        {/* 5. Peak-hour cancellation & no-show penalty fees — opt-in */}
+        <PeakPenaltyCard club={club} />
 
         {/* Minimum booking balance — independent of lights */}
         <Card className="p-4 space-y-3">

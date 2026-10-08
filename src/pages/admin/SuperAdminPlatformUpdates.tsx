@@ -11,11 +11,12 @@ import {
 } from "@/components/admin/platform-updates/PlatformTemplateEditor";
 import { PlatformCampaignWizard } from "@/components/admin/platform-updates/PlatformCampaignWizard";
 import { PlatformCampaignsPanel } from "@/components/admin/platform-updates/PlatformCampaignsPanel";
+import { PlatformUpdatesPanel } from "@/components/admin/platform-updates/PlatformUpdatesPanel";
 import { htmlToText } from "@/lib/platform-updates";
 
 export default function SuperAdminPlatformUpdates() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState("templates");
+  const [tab, setTab] = useState("updates");
   const [editing, setEditing] = useState<PlatformTemplate | null>(null);
   const [wizard, setWizard] = useState<{ template?: PlatformTemplate | null; duplicate?: any } | null>(null);
 
@@ -71,9 +72,14 @@ export default function SuperAdminPlatformUpdates() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
+          <TabsTrigger value="updates">Updates</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="updates" className="mt-3">
+          <PlatformUpdatesPanel />
+        </TabsContent>
 
         <TabsContent value="templates" className="mt-3">
           <Card className="p-3">

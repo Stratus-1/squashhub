@@ -25,8 +25,8 @@ export function PlatformCampaignsPanel({ onDuplicate }: { onDuplicate: (c: any) 
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ["platform-update-campaigns"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("platform_update_campaigns").select("*").order("created_at", { ascending: false });
+      const { data, error } = await (supabase as any)
+        .from("platform_update_campaigns").select("*").neq("kind", "update").order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },

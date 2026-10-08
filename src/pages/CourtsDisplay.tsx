@@ -5,7 +5,7 @@ import { Maximize } from "lucide-react";
 import { rpcExt } from "@/lib/supabase-ext";
 
 type Board = {
-  club: { name: string; logo_url: string | null };
+  club: { name: string; logo_url: string | null; slot_minutes: number | null; open_time: string | null; last_slot_time: string | null };
   date: string;
   courts: { id: number; name: string }[];
   bookings: { court_id: number; start: string; end: string; type: string | null; label: string }[];
@@ -53,11 +53,15 @@ export default function CourtsDisplay() {
   if (isLoading) return <div className="min-h-screen bg-background" />;
   if (!data) return <div className="min-h-screen bg-background text-foreground grid place-items-center text-xl">This display link is not valid or has been disabled.</div>;
 
+  // Grid rows follow the club's real booking slot length (30/40/45/60 min), not fixed hours.
+  const slot = [30, 40, 45, 60].includes(data.club.slot_minutes ?? 0) ? (data.club.slot_minutes as number) : 60;
+  const openMin = data.club.open_time ? toMin(data.club.open_time) : 6 * 60;
+  const closeMin = data.club.last_slot_time ? toMin(data.club.last_slot_time) + slot : 22 * 60;
   const times = data.bookings.flatMap((b) => [toMin(b.start), toMin(b.end)]);
-  const start = Math.min(6 * 60, ...times.length ? [Math.floor(Math.min(...times) / 60) * 60] : []);
-  const end = Math.max(22 * 60, ...times.length ? [Math.ceil(Math.max(...times) / 60) * 60] : []);
+  const start = times.length ? Math.min(openMin, Math.floor(Math.min(...times) / slot) * slot) : openMin;
+  const end = times.length ? Math.max(closeMin, Math.ceil(Math.max(...times) / slot) * slot) : closeMin;
   const span = end - start;
-  const hours = Array.from({ length: span / 60 }, (_, i) => start + i * 60);
+  const slots = Array.from({ length: Math.round(span / slot) }, (_, i) => start + i * slot);
   const pct = (m: number) => `${((m - start) / span) * 100}%`;
   const dateLabel = new Date(data.date + "T12:00:00").toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" });
 
@@ -84,14 +88,14 @@ export default function CourtsDisplay() {
           {/* Spacer matching the court header row so hour labels line up with the booking grid. */}
           <div aria-hidden className="text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>
           <div className="flex-1 relative">
-            {hours.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
+            {slots.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
           </div>
         </div>
         {data.courts.map((c) => (
           <div key={c.id} className="flex-1 flex flex-col min-w-0 border-r border-border last:border-r-0">
             <div className="text-center font-semibold text-xl py-2 border-b border-border bg-muted/40 truncate px-2">{c.name}</div>
             <div className="flex-1 relative">
-              {hours.map((h) => <div key={h} className="absolute left-0 right-0 border-t border-border/50" style={{ top: pct(h) }} />)}
+              {slots.map((h) => <div key={h} className={`absolute left-0 right-0 border-t ${h % 60 === 0 ? "border-border" : "border-border/40"}`} style={{ top: pct(h) }} />)}
               {data.bookings.filter((b) => b.court_id === c.id).map((b, i) => {
                 const s = toMin(b.start), e = toMin(b.end), live = now >= s && now < e, past = now >= e;
                 return (

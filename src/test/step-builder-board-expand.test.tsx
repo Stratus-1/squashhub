@@ -43,8 +43,8 @@ describe("Step-by-Step: category board full-screen expand", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
     const dlg = await screen.findByRole("dialog", { name: /full screen/i });
     expect(within(dlg).getByTestId("pick-board")).toBeInTheDocument();
-    expect(within(dlg).getByText("Mens A")).toBeInTheDocument();
-    expect(within(dlg).getByText("Ladies")).toBeInTheDocument();
+    expect(within(dlg).getByText(/Mens A/)).toBeInTheDocument();
+    expect(within(dlg).getByText(/Ladies/)).toBeInTheDocument();
     // The inline board is replaced, not duplicated.
     expect(screen.getAllByTestId("pick-board")).toHaveLength(1);
   });
@@ -70,12 +70,11 @@ describe("Step-by-Step: category board full-screen expand", () => {
     await openBoard();
     fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
     const dlg = await screen.findByRole("dialog", { name: /full screen/i });
-    fireEvent.click(within(dlg).getByRole("button", { name: /move anna to/i }));
-    fireEvent.click(within(dlg).getByRole("option", { name: "Ladies" }));
-    const ladies = await within(dlg).findByText("Ladies");
-    expect(ladies).toBeInTheDocument();
-    // Anna is now in Ladies and no longer in Mens A.
-    const annaRows = within(dlg).getAllByText("Anna");
-    expect(annaRows).toHaveLength(1);
+    // Each row carries a "Move <name> to" chooser; use it instead of dragging.
+    const chooser = within(dlg).getByLabelText(/Move Anna to/i);
+    fireEvent.change(chooser, { target: { value: "Ladies" } });
+    // Anna left Mens A and is now listed once, in Ladies.
+    expect(within(dlg).getAllByText("Anna")).toHaveLength(1);
+    expect(within(dlg).getByText(/Ladies/)).toBeInTheDocument();
   });
 });

@@ -75,6 +75,9 @@ describe("Step-by-Step: category board full-screen expand", () => {
     expect(within(board).getByLabelText(/Move Anna to/i)).toBeInTheDocument();
     expect(within(board).getByLabelText(/Add Anna to another event/i)).toBeInTheDocument();
     expect(within(board).queryByText("Entered")).toBeNull();
+    // Each column names the leagues feeding it, or says the group is open to all.
+    expect(within(board).getByText("Leagues: Men 1st, Men 2nd")).toBeInTheDocument();
+    expect(within(board).getByText("All eligible members")).toBeInTheDocument();
     // Nobody has entered this setup, so every name shows italic (picked by the admin).
     expect(within(board).getByText("Anna").className).toMatch(/italic/);
     // ▲▼ still re-orders within a column.

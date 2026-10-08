@@ -355,7 +355,10 @@ export default function Tournaments() {
   // Placeholder-aware side label — playoff/finals slots have no player yet
   // (player_a is null) but do have a human-readable placeholder like
   // "Winner Pool A". Fall back to that before showing "Unknown".
-  const sideLabel = (player: any, partner: any, placeholder: string | null | undefined, isDoubles: boolean) => {
+  // A bye round leaves one side without a player (is_bye) — show "BYE", never
+  // "Unknown", so odd-sized groups read cleanly.
+  const sideLabel = (player: any, partner: any, placeholder: string | null | undefined, isDoubles: boolean, isBye?: boolean) => {
+    if (!player && isBye) return "BYE";
     if (!player && placeholder) return placeholder;
     return isDoubles ? getTeam(player, partner) : getName(player);
   };

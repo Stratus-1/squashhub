@@ -165,7 +165,7 @@ Delegation rules:
   - Template-derived rights end immediately (next action on the server; screens refresh within seconds).
   - Club membership is untouched.
   - Personal grants tied to that office end with it. Unrelated personal grants stay, but are listed for the Chairman to keep or revoke on the removal screen.
-  - Grants the person delegated to others are flagged for review (D15).
+  - Grants the person delegated to others end automatically, if that removal ends the authority they were delegated under (owner decision).
 - Each appointment, replacement and removal is club-scoped and audited (Chairman, person, office, previous holder, reason, time). The person is notified.
 - The Chairman office itself changes only through the handover or emergency process.
 - **Super Admin oversight (not routine):** the Super Admin can freeze grants for a club or revoke a grant for a security incident. This needs a reason, is logged, and notifies office bearers.
@@ -268,7 +268,7 @@ effective rights = rights from their roles
   - Device sessions such as counter PINs are re-checked at each use.
 - **Clear display:** in Permissions → Person, each capability shows its source ("From role: Secretary", "Personal grant by Chairman 8 Oct", "Denied personally by Chairman 8 Oct: reason"). Overrides are highlighted. Role pages show "3 holders, 1 with personal changes".
 - **Audit:** every grant, deny, removal and expiry records who, for whom, which capability, club, reason and time. The reason is required.
-- **Rights passed on by a revoked person:** when someone loses a capability they had delegated, the grants they made are listed for the Chairman. Proposed: those grants keep working until reviewed but are flagged; the Chairman can then confirm or revoke them (see D15). Finance and sensitive rights are never delegated, so they are never affected this way.
+- **Rights passed on by a revoked person (owner decision):** when someone loses the capability or delegate right they delegated under, the grants they made **end automatically**, at the same moment and cascading down the chain. The Chairman can re-grant any of them directly. Finance and sensitive rights are never delegated, so they are never affected this way.
 - **Legacy mode:** overrides are recorded but only take effect when the club switches legacy mode off. They show in the shadow report beforehand.
 
 ## 3d. Office-bearer templates: what they carry today vs proposed defaults
@@ -352,6 +352,23 @@ Offices are positions. Each office gets a **default role template** when someone
 | Who | Chairman, Super Admin. Finance and sensitive capabilities in templates follow the same grant rule | Chairman, Super Admin; delegators only for their own operational grants |
 | Personal denies | Never undone by template edits | — |
 | Audit | Template before/after, holder count affected | Person, capability, grant/deny, reason |
+
+### Direct delegation by default for operational roles (owner decision, overrides the earlier proposal)
+- **No Chairman approval and no extra delegation toggle** is needed for these. The delegate right is part of the role template by default.
+- **Club Captain / Competitions Coordinator (owner confirmed):** may directly appoint any member of the same club as a tournament or event helper, and give them any subset of the tournament and event operational rights the delegator holds. Examples: entries, draws, scheduling, courts for the event, results and marking, event messages. Helpers don't get the delegate right unless it is passed on explicitly. Proposed: helpers cannot delegate further.
+- **Proposed for the same treatment (D25), operational only:**
+  - Court & Bookings Officer (booking help, court blocks);
+  - Communications Officer (draft and send to member groups; not exports);
+  - Bar Manager (bar.sell and bar.stocktake.count only).
+- **Never delegable:**
+  - office-bearer appointment, role template edits and permission management;
+  - all finance;
+  - sensitive Bar & Shop rights (cost price, stock adjustment approval, refunds and voids, PIN management, price changes);
+  - member ID/DOB view, export, merge;
+  - door and access devices.
+- **Limits:** same club only. Only rights the delegator currently holds. No self-grants. Nothing broader than their own scope (e.g. one tournament if their right is for one tournament).
+- **Audit:** who appointed whom, which rights, scope (e.g. which tournament), time, and end time.
+- The **Chairman** sees all delegated grants and can revoke any of them. Grants end automatically when the delegator's own authority ends.
 
 ### Holding a capability vs delegating it
 - **Holding (inherited from a role or granted personally)** lets you **perform** the action.
@@ -490,7 +507,8 @@ Operations preserved:
 - **D12.** Approve the office-field lock (stage 2) early as a stand-alone fix?
 - **D13.** Family exclusions based on account delegations, family groups, or both?
 - **D14.** Member data (section 3a): approve the Secretary default; choose which higher-risk protections, if any, to add (ID number, date of birth, suspension and billing, bulk export, face data).
-- **D15.** Personal overrides (section 3b): on revocation, should rights the person passed on be **flagged for review** (proposed) or **suspended at once until reviewed**? Should temporary grants or denies (with an expiry date) be allowed?
+- **D15.** The revocation question is decided: delegated grants end automatically. Still open: should temporary grants or denies (with an expiry date) be allowed? Proposed: yes.
+- **D25.** Confirm which roles get **direct delegation by default** (section "Direct delegation"): Club Captain/Competitions Coordinator (owner confirmed), plus the proposed Court & Bookings Officer, Communications Officer and Bar Manager (operational only).
 - **D16. "Chairman has access to everything" — needs your confirmation.** This conflicts with the earlier decision of no automatic finance. Options:
   - (a) **Proposed:** the Chairman sees and manages all non-finance club areas by default. Finance (view and transactions) and sensitive Bar & Shop rights only when the Super Admin grants them.
   - (b) The Chairman gets read-only finance by default (balances, reports), but transactions only from the Super Admin.

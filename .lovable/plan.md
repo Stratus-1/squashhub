@@ -249,10 +249,10 @@ Any role a delegator assigns is stripped of its S, F and X capabilities, so exec
 
 | Office | Default | Finance |
 |---|---|---|
-| Chairman | View of all club areas, members admin, appoint offices, grant permissions | **Finance read-only automatically.** May self-grant execution rights (audited); never approves own transactions |
+| Chairman | View of all club areas, members admin, appoint offices, grant permissions | **Finance read-only automatically, plus one narrow default approval right: may approve transactions the Treasurer (or another finance officer) initiated.** This approval right grants no initiation or execution. May self-grant execution rights (audited); never approves own transactions |
 | Vice-Chair | Club Manager + Competitions + Court & Bookings + Communications | None |
 | Secretary | Membership Officer + add/remove/status + club rules and documents + communications | None |
-| Treasurer | Treasurer template | Yes |
+| Treasurer | Treasurer template, **including the default right to approve transactions the Chairman initiated** | Yes |
 | Club Captain | Competitions Coordinator + events + court bookings | None |
 
 ## 5. Member data
@@ -335,7 +335,7 @@ Columns: V = view, I = initiate, E = edit, A = approve, Act = activate or cancel
 **Cross-module effects:** receiving, invoices and stocktake approval change stock value and journals; account charges create debts. Both audit trails record these. Finance staff can see the resulting ledger lines without any Bar & Shop key.
 
 ## 8. Separation of duties and audit
-- No self-approval anywhere: captures, counts, adjustments, invoices, refunds, journals, payments, and own or family accounts and mandates.
+- No self-approval anywhere: captures, counts, adjustments, invoices, refunds, journals, payments, and own or family accounts and mandates. **Independent approval is mutual:** if the Treasurer (or another finance officer) captures or initiates a transaction, the Chairman may approve it (a narrow default approval right, no initiation); if the Chairman captures or initiates one, the Treasurer or another specifically authorised finance approver approves it. Holding several roles never lets anyone approve their own transaction. Every capture, approval, authorisation source and timestamp is audited.
 - Nobody changes their own roles or offices. The only exception is the Chairman, who may self-grant execution rights (audited, badge, optional alerts). This never allows approving their own transactions.
 - A change to payout bank details is audited, and the Treasurer and Chairman are notified (no waiting period).
 - In tiny clubs, the Super Admin may act as the second approver on request, logged (D14).
@@ -563,7 +563,7 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 | # | Question | Proposed default |
 |---|---|---|
 | P2 | Riverside: real office bearers on the new model at activation, or test accounts first? | Test accounts first for 1 week, then real users |
-| ~~P3~~ | **Decided:** the Chairman approves transactions the Treasurer initiates. The Treasurer approves everyone else's. Nobody approves their own. No temporary permissions: people are appointed and removed by hand | — |
+| ~~P3~~ | **Decided (mutual independent approval):** the Chairman approves transactions the Treasurer or another finance officer initiates (a narrow default approval right, no initiation); the Treasurer or another authorised finance approver approves transactions the Chairman initiates. Nobody ever approves their own transaction, however many roles they hold. Capture, approval, authorisation source and timestamps are audited. No temporary permissions: people are appointed and removed by hand | — |
 | P4 | `bar.pin.manage` default holder | The Bar Manager, after the Chairman grants it; first PIN via a one-time setup code |
 | P5 | Early office-field lock as a stand-alone fix before the pilot | Yes |
 

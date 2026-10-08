@@ -27,6 +27,7 @@ import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
 import { MemberStandingDialog, type MemberStanding } from "./MemberStandingDialog";
+import { ResolveDuplicateDialog } from "./ResolveDuplicateDialog";
 import { useCompetitionStatus } from "@/hooks/use-competition-status";
 import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
@@ -426,6 +427,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const [affiliateMember, setAffiliateMember] = useState<ClubMember | null>(null);
   const [statusMember, setStatusMember] = useState<ClubMember | null>(null);
+  const [dupMember, setDupMember] = useState<ClubMember | null>(null);
   const [standingChange, setStandingChange] = useState<{ member: ClubMember; status: MemberStanding } | null>(null);
 
   const qc = useQueryClient();

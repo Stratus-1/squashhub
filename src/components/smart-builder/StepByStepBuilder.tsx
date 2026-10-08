@@ -31,7 +31,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -381,6 +383,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [importReport, setImportReport] = useState<{ added: number; problems: string[] } | null>(null);
   /** First player tapped while forming a pair, per doubles unit (UI-only). */
   const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
+  /** Category board shown across the whole screen (device-local view choice, not saved). */
+  const [boardFull, setBoardFull] = useState(false);
+  useEffect(() => {
+    if (!boardFull) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBoardFull(false); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [boardFull]);
   useEffect(() => {
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;
@@ -1445,9 +1457,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         });
                         setA({ ...a, picks: n }); toast.success(`${moved} player${moved === 1 ? "" : "s"} re-placed by league.`);
                       }}>Re-place all by league</Button>)}
+                    <Button size="sm" variant="outline" title="Use the whole screen for the category columns" onClick={() => setBoardFull(true)}><Maximize2 className="mr-1 h-3.5 w-3.5" />Expand</Button>
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
-                  <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Drag names between columns, or use Move to / + Add to on each name. Order within a column is the seeding — drag or use ▲▼ to change it."}</div>
+                  <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Drag names between columns, or use → to move and + to add on each name. Order within a column is the seeding — drag or use ▲▼ to change it. Names in italic are picked by you and have not entered yet."}</div>
                   {(() => {
                     const q = memberSearch.trim().toLowerCase();
                     const ladderOf = (id: string) => members.find((m) => m.id === id)?.ladder ?? 1e9;
@@ -1470,8 +1483,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const onDrop = (e: React.DragEvent, to: string, beforeId?: string) => { e.preventDefault(); e.stopPropagation(); const [id, from] = e.dataTransfer.getData("text/plain").split("|"); if (id) move(id, from ?? "", to, beforeId); };
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
                     const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...units.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
-                    return (
-                      <div className="grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="pick-board">
+                    const board = (
+                      <div className={cn("grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3", boardFull && "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5")} data-testid="pick-board">
                         {cols.map((c) => (
                           <div key={c.key || "none"} className={cn("flex min-w-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
 
@@ -1479,35 +1492,42 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                               <span className="truncate text-sm font-semibold" title={c.label}>{c.label}</span>
                               <span className="text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key)!]}` : ""}</span>
                             </div>
-                            <ol className="max-h-[32rem] min-h-[4rem] space-y-1 overflow-auto p-1">
+                            <ol className={cn("min-h-[4rem] space-y-1 overflow-auto p-1", boardFull ? "max-h-[calc(100vh-10rem)]" : "max-h-[32rem]")}>
                               {c.ids.map((id, i) => {
                                 const mine = placesFor(id); const hit = q && memberName(id).toLowerCase().includes(q);
                                 const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
                                 return (
                                   <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
-                                    className={cn("cursor-grab rounded border bg-background px-1.5 py-1 text-xs", hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
+                                    className={cn("cursor-grab rounded border bg-background px-1 py-1 text-xs", hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
                                     <div className="flex items-center gap-1">
-                                      {c.key && <span className="w-5 shrink-0 text-right font-mono text-muted-foreground">{i + 1}</span>}
-                                      <span className="min-w-0 flex-1 truncate font-medium" title={memberName(id)}>{memberName(id)}</span>
-                                      {enteredIds.has(id) && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">Entered</span>}
-                                      {mine.length > 1 && <span className="rounded bg-muted px-1 text-[10px]" title={mine.map(unitLabel).join(", ")}>+{mine.length - 1}</span>}
+                                      {c.key && <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>}
+                                      <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>
+                                      {mine.length > 1 && <span className="shrink-0 rounded bg-muted px-1 text-[10px]" title={mine.map(unitLabel).join(", ")}>+{mine.length - 1}</span>}
+                                      {why && <span className="shrink-0 text-[10px] text-destructive" title={`${why} · organiser override`}>⚠</span>}
                                       {c.key && <>
                                         <button type="button" aria-label={`Move ${memberName(id)} up`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0} onClick={() => nudge(c.key, id, -1)}>▲</button>
                                         <button type="button" aria-label={`Move ${memberName(id)} down`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === c.ids.length - 1} onClick={() => nudge(c.key, id, 1)}>▼</button>
                                       </>}
-                                    </div>
-                                    {why && <div className="text-[10px] text-muted-foreground">{why} · organiser override</div>}
-                                    <div className="mt-1 flex gap-1">
-                                      <select aria-label={`Move ${memberName(id)} to`} className="h-6 min-w-0 flex-1 rounded border border-input bg-background px-1 text-[11px]" value="" onChange={(e) => e.target.value && move(id, c.key, e.target.value === "__none" ? "" : e.target.value)}>
-                                        <option value="">Move to…</option>
-                                        {units.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
-                                        {c.key && <option value="__none">Remove from {c.label}</option>}
-                                      </select>
-                                      {!singleEvent && <select aria-label={`Add ${memberName(id)} to another event`} className="h-6 min-w-0 flex-1 rounded border border-input bg-background px-1 text-[11px]" value="" onChange={(e) => e.target.value && addTo(id, e.target.value)}>
-                                        <option value="">+ Add to…</option>
-                                        {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <option key={u.key} value={u.key}>{u.label}{w ? ` (${w})` : ""}</option>; })}
-                                      </select>}
-                                      {!c.key && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Remove ${memberName(id)}`} onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <button type="button" aria-label={`Move ${memberName(id)} to`} title="Move to another category" className="rounded px-0.5 text-muted-foreground hover:text-foreground"><ArrowRight className="h-3.5 w-3.5" /></button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
+                                          <DropdownMenuLabel>Move to</DropdownMenuLabel>
+                                          {units.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <DropdownMenuItem key={u.key} onSelect={() => move(id, c.key, u.key)}>{u.label}</DropdownMenuItem>)}
+                                          {c.key && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => move(id, c.key, "")}>Remove from {c.label}</DropdownMenuItem></>}
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                      {!singleEvent && <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <button type="button" aria-label={`Add ${memberName(id)} to another event`} title="Add to another category" className="rounded px-0.5 text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" /></button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
+                                          <DropdownMenuLabel>Add to</DropdownMenuLabel>
+                                          {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>}
+                                      {!c.key && <button type="button" aria-label={`Remove ${memberName(id)}`} title="Remove this player" className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>}
                                     </div>
                                   </li>);
                               })}
@@ -1516,6 +1536,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                           </div>
                         ))}
                       </div>);
+                    return boardFull ? createPortal(
+                      <div className="dark fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-background p-3" role="dialog" aria-modal="true" aria-label="Player categories — full screen">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">Picked: {counts.uniquePlayers} unique player{counts.uniquePlayers === 1 ? "" : "s"} · {counts.totalEntries} total entr{counts.totalEntries === 1 ? "y" : "ies"}</span>
+                          <span className="flex items-center gap-2">
+                            <Input aria-label="Search players" placeholder="Search players" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} className="h-8 w-48" />
+                            <Button size="sm" variant="outline" onClick={() => setBoardFull(false)}><Minimize2 className="mr-1 h-3.5 w-3.5" />Exit full screen</Button>
+                          </span>
+                        </div>
+                        {board}
+                      </div>, document.body) : board;
                   })()}
                 </div>
               )}

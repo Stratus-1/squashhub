@@ -1,27 +1,97 @@
-# Court Booking Rules — status check (read-only)
+# Court Booking Rules — revised plan (for review, not started)
 
-## Finding: no plan for this scope was ever drafted or approved
-- No saved or archived plan covers Court Booking Rules. Chat history has no request or plan about late-cancellation fees, no-show fees, takeover liability, moving Member Created Events, or an Edit/Save peak editor.
-- So the full scope you listed was never approved, and nothing beyond the items below was built.
+## 1. Status: what exists vs what is outstanding
+| Item | Status |
+|---|---|
+| Per-day peak hours on the club's real slot times (e.g. 45 min) | Built in preview: per-day storage, server-side peak cap, `PeakHoursEditor` |
+| No default weekday/weekend pickers; existing times kept | Built in preview |
+| Solo booking wording; free visitor bookings per year | Built in preview |
+| Publication of the above | Unconfirmed. The live site still shows the old screen. |
+| Everything in sections 2–5 below | **Not built and never approved before.** This plan is the first one for it. |
 
-## What was actually requested and built (preview code, no plan step)
-| Item | Requested | Code state |
-|---|---|---|
-| Per-day peak hours on real slot times (e.g. 40/45 min) | 6 Oct | Built: per-day storage in the backend, server-side peak cap, `PeakHoursEditor` |
-| Remove default weekday/weekend pickers; each day set manually, existing times kept | 8 Oct 02:01 | Built: each day has an on/off switch and a slot range |
-| "Allow members to make solo bookings" wording + free visitor bookings per year | 8 Oct | Built |
+No earlier plan covered the penalty items, so they were missing.
 
-## Not built (never approved)
-- Separate peak-hours block with Edit/Save buttons (the current editor saves with the main form and has no Edit/Save)
-- Moving Member Created Events to section 3 (it is still section 4)
-- Clearer "Peak start / Peak end" labels and clearer last-slot wording
-- Peak-hour late-cancellation toggle and penalty fee, no-show penalty fee, liability for the original booker when someone else takes the slot, and how these post to accounts
+## 2. Layout of Court Booking Rules (Club Admin only)
+Sections in order:
+1. Slot length and booking hours
+2. Per-member daily limits
+3. **Member Created Events / sessions** (moved up from section 4)
+4. **Peak Hours per Day** (standalone card)
+5. **Peak-Hour Cancellation and No-Show Penalty Fees** (new standalone card, directly after Peak Hours)
+6. Visitor settings (in their own card, separate from member rules)
+7. Messaging (shows which channels are active, e.g. "Email: on · WhatsApp: off · In-app: on", using the club's real settings)
 
-## Why the live app doesn't show the changes
-- Each change was reported as "preview only, not published."
-- One publish was started on 8 Oct during the Heyns fix. It should have included the per-day peak editor, but I couldn't confirm that from here. If the live site still shows the old weekday/weekend pickers, that publish either didn't finish or came before the change.
-- Blocker: (1) the wider scope has no approved plan; (2) whether the existing per-day editor was published is unconfirmed.
+Presentation:
+- More spacing and clearer headings.
+- Even two-column balance on desktop and a single column on phone.
+- Light and dark contrast both checked.
 
-## Next step (needs your decision)
-1. Publish the current preview so the per-day peak editor and solo/visitor wording go live. Check Court Rules on the live site afterwards.
-2. Approve a new plan for the items not built yet. The fee items need a design that keeps the accounting audit trail (reversible entries, nothing applied to existing bookings in hindsight) before any building starts.
+**Booking hours clarity.** This line is worked out from the club's slot length, opening time and last-slot settings, never hard-coded:
+
+```text
+First booking starts 05:15 · Last booking starts 21:45 · Courts close 22:30 (45-min slots)
+```
+
+## 3. Peak Hours per Day card
+- Read-only summary by default: Mon–Sun, each showing "Peak start – Peak end" or "No peak time".
+- **Edit** unlocks the card. **Save** stores only this card. **Cancel** throws away unsaved changes.
+- Nothing can be changed accidentally, and the main page save never touches this card.
+- Times are chosen only from the club's real slot times.
+- Existing per-day data is reused, so current club times stay exactly as they are.
+
+## 4. Peak-Hour Cancellation and No-Show Penalty Fees card (NEW, missing until now)
+This card works like Peak Hours: read-only until **Edit**, then its own **Save** and **Cancel**.
+
+Fields:
+- **Allow late cancellation of peak-hour bookings.** Default **OFF**.
+- **Late-cancellation penalty fee (R).** Only used when the toggle above is ON.
+- **Peak-hour no-show penalty fee (R).** Separate from the late-cancellation fee.
+
+Rules:
+- **Late window.** It starts when the slot immediately before the booking starts. It is one configured slot length (45 min at Uitsig, 60 min at an hourly club), never a fixed hour.
+- **Toggle OFF:** once the late window starts, the member cannot cancel. The button explains why. Admins with booking permission can still cancel without a penalty, and the reason is recorded.
+- **Toggle ON:** the member may cancel in the late window. The late-cancellation fee is charged once.
+- **Non-peak bookings:** current cancellation behaviour stays unchanged, with no fees. This card applies to peak-hour bookings only.
+- **One penalty per booking:** a booking can get a late-cancellation fee OR a no-show fee, never both and never twice. The backend enforces this with one penalty record per booking.
+- **Penalties are not backdated:** they apply only to bookings made after the settings are saved. Existing bookings, fees and club settings stay untouched.
+
+### How a no-show is established
+A no-show is never decided automatically from silence. The booking needs either:
+- (a) no check-in/attendance record, using the existing door/access or check-in events where the club has them, after a grace period (default: half a slot), **and**
+- (b) confirmation by an authorised admin in a "Possible no-shows" list.
+
+Clubs with no attendance source rely on admin confirmation alone. The penalty is posted only after confirmation.
+
+### Slot taken over by another member
+- The original booking is marked a no-show (or late-cancelled) and its court time is released.
+- The replacement booking is a new booking for the released time only. The existing overlap check stops two bookings occupying the same court.
+- Liability stays with the **original booker**. The replacement member is never charged a penalty and pays only normal booking fees. The original booker gets at most one penalty.
+
+## 5. Accounting, notifications and appeals
+- Penalties post through the existing member-account ledger as a normal fee with a reason and booking reference.
+- Waivers and appeals use the existing audited reversal. Nothing is ever deleted.
+- The member is notified through the club's active channels when a penalty is charged, with the booking, amount and how to appeal.
+- Admins can waive a penalty, with a reason, and it is logged.
+- Before saving the card, admins see a short preview of the rules.
+
+## Technical details
+- New club settings fields (nullable, default off/0): `peak_late_cancel_allowed`, `peak_late_cancel_fee`, `peak_no_show_fee`, and an optional `no_show_grace_minutes`.
+- New `booking_penalties` table: one row per booking (unique `booking_id`), with kind (`late_cancel` | `no_show`), amount, ledger reference, status (`charged` | `waived`) and actor. RLS is scoped to the club.
+- Late-window and cancel checks run on the backend in the cancel action, using the same peak function as the booking cap. The browser check is only a convenience.
+- The no-show list comes from bookings plus existing attendance/access events. Admin confirmation calls an idempotent backend function.
+- Late window = start of booking minus one configured slot length.
+- Tests:
+  - late window at 45/60/90-min slots
+  - toggle OFF blocks, toggle ON charges once
+  - no double penalty
+  - non-peak unaffected
+  - takeover charges the original booker only and creates no overlap
+  - waiver creates a reversal
+  - no backdating
+  - Peak card Edit/Save/Cancel isolation
+  - booking-hours label for Uitsig (21:45 start, 22:30 close)
+- No publishing until Willem approves.
+
+## Questions to confirm on approval
+- Grace period default: half a slot?
+- Should admins be able to cancel in the late window without a penalty (proposed: yes, with a reason)?

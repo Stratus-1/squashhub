@@ -1,4 +1,6 @@
 import { showBarChargeError } from "@/lib/bar-charge-toast";
+import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
+import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
 import { useRef, useState } from "react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -1268,6 +1270,8 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
 
   const activeItems = items.filter(i => i.active);
   const selectedItem = activeItems.find(i => i.id === itemId);
+  const chargePreview = useAccountChargePreview(memberId || null,
+    selectedItem ? [{ division: (selectedItem as any).division, total: selectedItem.price * quantity }] : []);
 
   const handleAdd = async () => {
     if (!memberId || !itemId || !selectedItem) return;

@@ -2164,9 +2164,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                    <Label>Best runners-up</Label><Input type="number" min={0} className="h-8 w-20" aria-label={`Best runners-up for ${u.base}`} placeholder="0" value={q.runnersUp ?? ""} onChange={(e) => setPoolQualification(u.key, { runnersUp: e.target.value })} /></div>
                    <p className="text-muted-foreground">{field ? `${first?.name} needs ${field} qualifiers. ` : ""}{nPools && field ? `${nPools} estimated pools × ${Number(q.perPool) || "?"} per pool + ${Number(q.runnersUp) || 0} best runners-up${Number(q.perPool) ? ` = ${nPools * Number(q.perPool) + (Number(q.runnersUp) || 0)} planned qualifiers` : " (pool count confirmed after entries close)"}. ` : ""}Confirm the actual pool count and field size before the draw.</p>
                    {Number(q.runnersUp) > 0 && <p className="text-destructive">Best runners-up cannot be mapped automatically yet; the playoff stage must be set up after pool play.</p>}
-                 </div>;
-               })}
-              </div>
+                  </div>;
+                })}
+                </>}
+               </div>
               <ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} />
               {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
               {a.planId && <StageCourtBookings clubId={clubId} planId={a.planId} label={a.name?.trim() || "Club Championships"} stages={stages.map((x) => ({ ...x, name: `${x.name} (${stageUnit(x.unit)})` }))} courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} />}

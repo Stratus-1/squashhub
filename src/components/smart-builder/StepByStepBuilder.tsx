@@ -170,6 +170,8 @@ export type StepAnswers = {
   /** Provisional seeding with category/subcategory exceptions. */
   seeding: SeedMethod | null;
   seedingOverrides: Record<string, SeedMethod>;
+  /** Admin seed order per event on the Pick players board (device-local plan). */
+  seedOrder?: Record<string, string[]>;
   /** Club Champs (over a period) only. */
   name: string;
   periodStart: string;
@@ -370,7 +372,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   }, [clubId]);
   const courtNames = (d: DayAvail) => clubCourts.filter((c) => d.courtIds?.includes(c.id)).map((c) => c.name).join(", ");
 
-  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [members, setMembers] = useState<{ id: string; name: string; ladder?: number | null }[]>([]);
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [leaguesByMember, setLeaguesByMember] = useState<Map<string, string[]>>(new Map());
   const [genderByMember, setGenderByMember] = useState<Map<string, string | null>>(new Map());
@@ -383,12 +385,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;
     (async () => {
-      const PAGE = 1000; const all: { id: string; name: string }[] = []; const genders = new Map<string, string | null>(); const contactMap = new Map<string, { email: string | null; phone: string | null }>();
+      const PAGE = 1000; const all: { id: string; name: string; ladder?: number | null }[] = []; const genders = new Map<string, string | null>(); const contactMap = new Map<string, { email: string | null; phone: string | null }>();
       for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabase.from("club_members").select("id, name, gender, email, phone").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
+        const { data, error } = await supabase.from("club_members").select("id, name, gender, email, phone, ladder_position").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
           .order("name").order("id").range(from, from + PAGE - 1);
         if (error || !data) break;
-        all.push(...(data as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member" })));
+        all.push(...(data as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member", ladder: m.ladder_position ?? null })));
         (data as any[]).forEach((m) => { genders.set(String(m.id), m.gender ?? null); contactMap.set(String(m.id), { email: m.email ?? null, phone: m.phone ?? null }); });
         if (data.length < PAGE) break;
       }
@@ -1442,33 +1444,75 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       }}>Re-place all by league</Button>)}
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
-                  <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Tap an event to add or remove it. A player stays picked even with no events."}</div>
-                  <div className="max-h-[28rem] space-y-1 overflow-auto">
-                  {pickIds.filter((id) => memberName(id).toLowerCase().includes(memberSearch.trim().toLowerCase())).map((id) => {
-                    const mine = placesFor(id);
+                  <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Drag names between columns, or use Move to / + Add to on each name. Order within a column is the seeding — drag or use ▲▼ to change it."}</div>
+                  {(() => {
+                    const q = memberSearch.trim().toLowerCase();
+                    const ladderOf = (id: string) => members.find((m) => m.id === id)?.ladder ?? 1e9;
+                    const orderFor = (k: string) => {
+                      const saved = a.seedOrder?.[k] ?? []; const r = (id: string) => { const i = saved.indexOf(id); return i < 0 ? 1e9 : i; };
+                      const bySeed = seedFor(k) === "ladder" || seedFor(k) === "ranking";
+                      return pickIds.filter((id) => placesFor(id).includes(k)).sort((x, y) => (r(x) - r(y)) || (bySeed ? ladderOf(x) - ladderOf(y) : 0) || memberName(x).localeCompare(memberName(y)));
+                    };
+                    const withOrder = (picks: typeof a.picks, k: string, list: string[]) => setA({ ...a, picks, seedOrder: { ...(a.seedOrder ?? {}), [k]: list } });
+                    const move = (id: string, from: string, to: string, beforeId?: string) => {
+                      if (from === to) { const l = orderFor(to).filter((x) => x !== id); const i = beforeId ? l.indexOf(beforeId) : -1; l.splice(i < 0 ? l.length : i, 0, id); withOrder(a.picks, to, l); return; }
+                      let p = from && placesFor(id).includes(from) ? togglePlace(a.picks, id, from, false) : a.picks;
+                      if (!to) { setA({ ...a, picks: p }); return; }
+                      if (!placesOf(p, id).includes(to)) p = addPlace(p, id, to, singleEvent);
+                      const l = orderFor(to).filter((x) => x !== id); const i = beforeId ? l.indexOf(beforeId) : -1; l.splice(i < 0 ? l.length : i, 0, id);
+                      withOrder(p, to, l);
+                    };
+                    const addTo = (id: string, to: string) => withOrder(addPlace(a.picks, id, to, singleEvent), to, [...orderFor(to).filter((x) => x !== id), id]);
+                    const nudge = (k: string, id: string, d: number) => { const l = orderFor(k); const i = l.indexOf(id); const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; withOrder(a.picks, k, l); };
+                    const onDrop = (e: React.DragEvent, to: string, beforeId?: string) => { e.preventDefault(); e.stopPropagation(); const [id, from] = e.dataTransfer.getData("text/plain").split("|"); if (id) move(id, from ?? "", to, beforeId); };
+                    const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
+                    const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...units.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
                     return (
-                    <div key={id} className={cn("grid grid-cols-[11rem_1fr_auto] items-center gap-2 rounded-md border px-2 py-1", mine.length ? "border-border" : "border-destructive/50 bg-destructive/5")} data-testid={`pick-row-${id}`}>
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold" title={memberName(id)}>{memberName(id)}{enteredIds.has(id) && <span className="ml-1 rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">Entered</span>}</div>
-                        <div className={cn("text-[11px]", mine.length ? "text-muted-foreground" : "font-medium text-destructive")}>{mine.length ? `${mine.length} event${mine.length === 1 ? "" : "s"}` : "No event yet"}</div>
-                      </div>
-                      <div className="flex flex-wrap gap-1 text-[11px]" role="group" aria-label={`Events for ${memberName(id)}`}>
-                        {units.map((u) => {
-                          const on = mine.includes(u.key);
-                          const why = blockedReason(fits(id, u.key), u.categoryType);
-                          // Organiser override: an event outside the player's scope can still be ticked; it's only flagged.
-                          return (
-                            <button key={u.key} type="button" aria-pressed={on} title={why ? `${why} — tap to add anyway (organiser override)` : undefined}
-                              onClick={() => setA({ ...a, picks: togglePlace(a.picks, id, u.key, singleEvent) })}
-                              className={cn("flex items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap", on ? "border-primary bg-primary text-primary-foreground" : why ? "border-dashed border-border text-muted-foreground opacity-70 hover:bg-muted hover:opacity-100" : "border-border hover:bg-muted")}>
-                              {on && <Check className="h-3 w-3" />}{u.label}{why && <span className="opacity-80">{on ? " · override" : ` · ${why}`}</span>}
-                            </button>);
-                        })}
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Remove ${memberName(id)}`} onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-4 w-4" /></Button>
-                    </div>);
-                  })}
-                  </div>
+                      <div className="flex gap-2 overflow-x-auto pb-2" data-testid="pick-board">
+                        {cols.map((c) => (
+                          <div key={c.key || "none"} className={cn("flex w-60 shrink-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
+                            <div className="sticky top-0 flex items-center justify-between border-b border-border bg-muted/60 px-2 py-1.5">
+                              <span className="truncate text-sm font-semibold" title={c.label}>{c.label}</span>
+                              <span className="text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key)!]}` : ""}</span>
+                            </div>
+                            <ol className="max-h-[32rem] min-h-[4rem] space-y-1 overflow-auto p-1">
+                              {c.ids.map((id, i) => {
+                                const mine = placesFor(id); const hit = q && memberName(id).toLowerCase().includes(q);
+                                const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
+                                return (
+                                  <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
+                                    className={cn("cursor-grab rounded border bg-background px-1.5 py-1 text-xs", hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
+                                    <div className="flex items-center gap-1">
+                                      {c.key && <span className="w-5 shrink-0 text-right font-mono text-muted-foreground">{i + 1}</span>}
+                                      <span className="min-w-0 flex-1 truncate font-medium" title={memberName(id)}>{memberName(id)}</span>
+                                      {enteredIds.has(id) && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">Entered</span>}
+                                      {mine.length > 1 && <span className="rounded bg-muted px-1 text-[10px]" title={mine.map(unitLabel).join(", ")}>+{mine.length - 1}</span>}
+                                      {c.key && <>
+                                        <button type="button" aria-label={`Move ${memberName(id)} up`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0} onClick={() => nudge(c.key, id, -1)}>▲</button>
+                                        <button type="button" aria-label={`Move ${memberName(id)} down`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === c.ids.length - 1} onClick={() => nudge(c.key, id, 1)}>▼</button>
+                                      </>}
+                                    </div>
+                                    {why && <div className="text-[10px] text-muted-foreground">{why} · organiser override</div>}
+                                    <div className="mt-1 flex gap-1">
+                                      <select aria-label={`Move ${memberName(id)} to`} className="h-6 min-w-0 flex-1 rounded border border-input bg-background px-1 text-[11px]" value="" onChange={(e) => e.target.value && move(id, c.key, e.target.value === "__none" ? "" : e.target.value)}>
+                                        <option value="">Move to…</option>
+                                        {units.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
+                                        {c.key && <option value="__none">Remove from {c.label}</option>}
+                                      </select>
+                                      {!singleEvent && <select aria-label={`Add ${memberName(id)} to another event`} className="h-6 min-w-0 flex-1 rounded border border-input bg-background px-1 text-[11px]" value="" onChange={(e) => e.target.value && addTo(id, e.target.value)}>
+                                        <option value="">+ Add to…</option>
+                                        {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <option key={u.key} value={u.key}>{u.label}{w ? ` (${w})` : ""}</option>; })}
+                                      </select>}
+                                      {!c.key && <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Remove ${memberName(id)}`} onClick={() => { const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
+                                    </div>
+                                  </li>);
+                              })}
+                              {c.ids.length === 0 && <li className="p-2 text-center text-[11px] text-muted-foreground">Drop players here</li>}
+                            </ol>
+                          </div>
+                        ))}
+                      </div>);
+                  })()}
                 </div>
               )}
               {adminPairUnits.map((u) => {

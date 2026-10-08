@@ -32,9 +32,9 @@ function ClubMark({ logoUrl, name }: { logoUrl: string | null; name: string }) {
   const [broken, setBroken] = useState(false);
   if (logoUrl && !broken) {
     return <img src={logoUrl} alt={`${name} logo`} onError={() => setBroken(true)}
-      className="h-16 w-16 shrink-0 rounded-xl border border-border bg-white/95 p-1.5 object-contain" />;
+      className="h-11 w-11 sm:h-16 sm:w-16 shrink-0 rounded-xl border border-border bg-white/95 p-1.5 object-contain" />;
   }
-  return <div aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-accent text-2xl font-extrabold text-accent-foreground">
+  return <div aria-hidden className="grid h-11 w-11 sm:h-16 sm:w-16 shrink-0 place-items-center rounded-xl bg-accent text-lg sm:text-2xl font-extrabold text-accent-foreground">
     {clubMonogram(name)}
   </div>;
 }
@@ -63,15 +63,15 @@ export default function CourtsDisplay() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
-      <header className="relative flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-card/60 px-5 py-3.5">
+      <header className="relative flex items-center gap-3 sm:gap-4 overflow-hidden rounded-xl border border-border bg-card/60 px-3 py-2.5 sm:px-5 sm:py-3.5">
         <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
         <ClubMark logoUrl={data.club.logo_url} name={data.club.name} />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-3xl font-extrabold tracking-tight md:text-4xl">{data.club.name}</h1>
+          <h1 className="truncate text-xl sm:text-3xl font-extrabold tracking-tight md:text-4xl">{data.club.name}</h1>
           <p className="truncate text-base text-muted-foreground md:text-lg">Court bookings · {dateLabel}</p>
         </div>
         <div className="shrink-0 text-right">
-          <div className="text-5xl font-extrabold tabular-nums text-accent md:text-6xl">{hhmm(now)}</div>
+          <div className="text-2xl sm:text-5xl font-extrabold tabular-nums text-accent md:text-6xl">{hhmm(now)}</div>
           <div className="text-xs uppercase tracking-widest text-muted-foreground">SAST</div>
         </div>
         <button aria-label="Full screen" className="shrink-0 p-2 text-muted-foreground hover:text-foreground" onClick={() => document.documentElement.requestFullscreen?.()}>
@@ -80,8 +80,12 @@ export default function CourtsDisplay() {
       </header>
 
       <div className="flex-1 flex min-h-0 rounded-xl border border-border overflow-hidden">
-        <div className="w-16 shrink-0 relative border-r border-border">
-          {hours.map((h) => <div key={h} className="absolute left-0 right-0 text-sm text-muted-foreground px-1 -translate-y-1/2" style={{ top: pct(h) }}>{h > start ? hhmm(h) : ""}</div>)}
+        <div className="w-16 shrink-0 flex flex-col border-r border-border">
+          {/* Spacer matching the court header row so hour labels line up with the booking grid. */}
+          <div aria-hidden className="text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>
+          <div className="flex-1 relative">
+            {hours.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
+          </div>
         </div>
         {data.courts.map((c) => (
           <div key={c.id} className="flex-1 flex flex-col min-w-0 border-r border-border last:border-r-0">

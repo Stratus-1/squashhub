@@ -58,7 +58,11 @@ import { usePendingEftApprovalToast } from "@/hooks/use-pending-eft-toast";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, type ReactNode } from "react";
+import { useMenuPrefs } from "@/hooks/use-menu-prefs";
+import { applyOrder } from "@/lib/menu-order";
+import { MenuOrderEditor } from "@/components/MenuOrderEditor";
+import { LayoutGrid } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -897,14 +901,31 @@ export default function Dashboard() {
         </div>
       )}
 
-      {!isPendingApplicant && (
-        <div className="px-4 mt-3 space-y-3">
+      {/* Arrears / suspension banner (always visible if applicable) */}
+      <MemberSuspensionBanner />
+
+
+
+      {/* Club internet / data bundle status (club admins only) */}
+      <div className="px-4 mt-2">
+        <DashboardRouterCard />
+      </div>
+
+      <div className="px-4 mt-2 flex justify-end">
+        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setEditDash(true)}>
+          <LayoutGrid className="w-3.5 h-3.5" /> Edit dashboard
+        </Button>
+      </div>
+
+      <div className="flex flex-col">
+      {sec("my-stats", !isPendingApplicant && (
+        <div className="px-4 mt-1 space-y-3">
           <MyStatsCard memberId={myMemberId} />
         </div>
-      )}
+      ))}
 
       {/* Features not already supplied by the persistent shortcuts. */}
-      <div className="px-4 mt-4">
+      {sec("shortcuts", <div className="px-4 mt-4">
         <div className="member-feature-grid grid grid-cols-3 gap-2.5">
           {bookingsEnabled && !shortcutFlags.bookingsEnabled && (
 <Button data-tone="courts" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/bookings")}>
@@ -981,27 +1002,18 @@ export default function Dashboard() {
             </Button>
           )}
         </div>
-      </div>
+      </div>)}
 
-      {!isPendingApplicant && (
+      {sec("rankings", !isPendingApplicant && (
         <div className="px-4 mt-3"><MyRankingsCard clubId={clubId} memberId={myMemberId} /></div>
-      )}
+      ))}
 
-      {/* Arrears / suspension banner (always visible if applicable) */}
-      <MemberSuspensionBanner />
-
-
-
-      {/* Club internet / data bundle status (club admins only) */}
-      <div className="px-4 mt-2">
-        <DashboardRouterCard />
-      </div>
 
 
 
 
       {/* My Upcoming League Games — dedicated section */}
-      {hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (
+      {sec("league-games", hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (
         <motion.div
           className="px-4 mt-4"
           initial={{ opacity: 0, y: 8 }}
@@ -1051,16 +1063,16 @@ export default function Dashboard() {
             ))}
           </div>
         </motion.div>
-      )}
+      ))}
 
       {/* Club at-a-glance stats */}
-      <div className="px-4 mt-4 space-y-3">
+      {sec("club-glance", <div className="px-4 mt-4 space-y-3">
         <ClubStatsCard clubId={clubId} />
         <ClubSetsPlayedCard clubId={clubId} />
-      </div>
+      </div>)}
 
       {/* My Upcoming Bookings */}
-      <motion.div
+      {sec("upcoming-bookings", <motion.div
         className="px-4 mt-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1093,10 +1105,10 @@ export default function Dashboard() {
             No upcoming bookings
           </Card>
         )}
-      </motion.div>
+      </motion.div>)}
 
       {/* Match History */}
-      <motion.div
+      {sec("match-results", <motion.div
         className="px-4 mt-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1290,19 +1302,17 @@ export default function Dashboard() {
       )}
 
 
-      {/* My Tournaments */}
-      <div className="px-4 mt-4">
+      {sec("tournaments", <div className="px-4 mt-4">
         <MyChampionships />
-      </div>
+      </div>)}
 
-      {/* Club Events */}
-      <div className="px-4 mt-4">
+      {sec("events", <div className="px-4 mt-4">
         <CreateClubEvent />
-      </div>
+      </div>)}
 
 
       {/* Today's Bookings */}
-      <motion.div
+      {sec("todays-bookings", <motion.div
         className="px-4 mt-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1341,10 +1351,9 @@ export default function Dashboard() {
             No bookings today
           </Card>
         )}
-      </motion.div>
+      </motion.div>)}
 
-      {/* Support Tickets — bottom of page */}
-      <div className="px-4 mt-5 mb-4">
+      {sec("support", <div className="px-4 mt-5 mb-4">
         <Button className="w-full justify-between h-12 px-3" onClick={() => navigate("/support")}>
           <span className="inline-flex items-center gap-2 font-semibold">
             <LifeBuoy className="w-4 h-4" />
@@ -1358,7 +1367,10 @@ export default function Dashboard() {
         <p className="text-[11px] text-muted-foreground text-center mt-1.5">
           Stuck or got a permission issue? Open a ticket — attach a screenshot and we'll respond in-app.
         </p>
+      </div>)}
       </div>
+      <MenuOrderEditor open={editDash} onOpenChange={setEditDash} title="Edit dashboard"
+        groups={dashGroups} prefs={dashPrefs} onSave={(p) => dashSave.mutateAsync(p)} />
       <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
     </div>
   );

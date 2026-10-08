@@ -16,6 +16,7 @@ import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { isCentrallyScheduled } from "@/lib/tournaments/fixture-scheduling";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 
 

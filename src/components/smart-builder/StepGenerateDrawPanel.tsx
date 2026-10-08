@@ -3,10 +3,11 @@ import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { setupConflicts } from "@/lib/smart-builder/consistency";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Loader2, ChevronRight, AlertTriangle } from "lucide-react";
+import { Loader2, ChevronRight, AlertTriangle, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -72,6 +73,15 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [dragId, setDragId] = useState<string | null>(null);
   const [venueErr, setVenueErr] = useState<string | null>(null);
   const [schedOk, setSchedOk] = useState(true);
+  const [seedFull, setSeedFull] = useState(false);
+  useEffect(() => {
+    if (!seedFull) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSeedFull(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [seedFull]);
 
   const load = async () => {
     setLoading(true);
@@ -568,8 +578,37 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         </div>
       )}
 
-      <div className="font-medium">{hasDraw ? "Rebuild the draw (optional)" : "Confirm final format"} — using the {seeded.reduce((s, d) => s + d.units.length, 0)} current entries</div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="font-medium">{hasDraw ? "Rebuild the draw (optional)" : "Confirm final format"} — using the {seeded.reduce((s, d) => s + d.units.length, 0)} current entries</div>
+        {seeded.some((d) => d.units.length > 0) && (
+          <Button type="button" size="sm" variant="outline" onClick={() => setSeedFull(true)}>
+            <Maximize2 className="mr-1 h-3.5 w-3.5" />Expand seeds full screen
+          </Button>
+        )}
+      </div>
       <p className="text-muted-foreground">Only current active entries are used; replaced or withdrawn players are left out. Outstanding fees don't exclude anyone because entries here are confirmed without payment. Doubles pairs are kept exactly as you paired them.</p>
+
+      {seedFull && createPortal(
+        <div className="dark fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-background p-3 text-xs" role="dialog" aria-modal="true" aria-label="Seeds and pools — full screen">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-semibold">Seeds & pools — {seeded.reduce((s, d) => s + d.units.length, 0)} entries</span>
+            <Button size="sm" variant="outline" onClick={() => setSeedFull(false)}><Minimize2 className="mr-1 h-3.5 w-3.5" />Exit full screen</Button>
+          </div>
+          <p className="text-muted-foreground">All groups side by side. Change seed order with ↑↓, move players between pools with drag or "Move to pool" — changes apply here and on the page behind.</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="seed-board">
+            {seeded.filter((d) => d.units.length > 0).map((d) => (
+              <div key={d.group} className="flex flex-col rounded border border-border p-1.5">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
+                  <span className="font-semibold">{d.label}</span>
+                  <span className="text-muted-foreground">{d.units.length} {d.doubles ? "pairs" : "players"}</span>
+                </div>
+                {poolEditor(d)}
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {seeded.map((d, i) => {
         const fam = rrScope(d) === "between" ? [d, ...seeded.filter((o) => siblings(d).includes(o.group))] : [d];

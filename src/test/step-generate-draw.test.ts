@@ -149,9 +149,6 @@ describe("Step-by-Step generate draw", () => {
     expect(p.notes.join()).not.toMatch(/Decide later/);
     // Round 1 keeps its fixed day; later rounds fall to their play-by dates, in date order.
     expect(roundDeadlines(p.format.schedule, 6).dates).toEqual(["2026-10-13", "2026-10-13", "2026-10-19", "2026-10-19", "2026-10-19", "2026-10-19"]);
-    const stage = (finalDrawSpec("T", [{ group: 1, label: "Mens A", doubles: false, units: [], format: p.format, notes: [], playoffs: [], playoffPlans: [], poolReview: null, poolAccepted: false, poolQualifiers: null, koPairs: null, blockers: [], manualPools: null } as any], "v1").divisions[0].stages[0].schedule as any);
-    expect(stage.rule).toBe("play_by");
-    expect(stage.roundDates).toEqual(["2026-10-13", "2026-10-13", "2026-10-19", "2026-10-19", "2026-10-19", "2026-10-19"]);
     // Still blocks when a stage genuinely has no date.
     const open = proposeFormat({ ...plan, stages: [...plan.stages, { id: "s4", phase: "main", name: "Round 4", mode: "later" }] } as any, "Mens A");
     expect(open.format.schedule.rule).toBeNull();

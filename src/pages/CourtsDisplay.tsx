@@ -105,6 +105,8 @@ export default function CourtsDisplay() {
           <div aria-hidden className="text-xl py-2 border-b border-border bg-muted/40 invisible">&nbsp;</div>
           <div className="flex-1 relative">
             {slots.map((h) => <div key={h} className="absolute left-0 right-0 text-sm leading-none text-muted-foreground px-1 pt-1" style={{ top: pct(h) }}>{hhmm(h)}</div>)}
+            {/* End of the final slot, kept inside the frame so it's never clipped. */}
+            <div className="absolute left-0 right-0 bottom-0 text-sm leading-none text-muted-foreground px-1 pb-1">{hhmm(end)}</div>
           </div>
         </div>
         {data.courts.map((c) => (

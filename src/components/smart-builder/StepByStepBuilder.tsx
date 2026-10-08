@@ -849,14 +849,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           // Capacity guide (advisory only): matches in ONE round vs court slots on the listed days.
           const toMin = (t: string) => { const [h, m] = (t || "").split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
           const scope = units.filter((u) => !s.unit || u.key === s.unit || u.key.startsWith(`${s.unit}::`));
-          let matches = 0; let courtMin = 0; let guessed = false;
+          let matches = 0; let courtMin = 0; let guessed = false; let timeGuessed = false;
           for (const u of scope) {
             let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length;
             if (!n) { n = Number(a.unitEntries?.[u.key]) || 0; if (n) guessed = true; }
             const entrants = u.disc === "doubles" ? Math.floor(n / 2) : n;
             const m = Math.floor(entrants / 2);
             const sc = scoringFor(u.key) ?? scoring;
-            const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]) || (sc?.bestOf === 5 ? 55 : 35);
+            const saved = Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]);
+            const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : saved > 0 ? saved : (timeGuessed = true, sc?.bestOf === 5 ? 55 : 35);
             matches += m; courtMin += m * per;
           }
           if (!matches) return null;

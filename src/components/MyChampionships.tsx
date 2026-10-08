@@ -266,6 +266,12 @@ export function MyChampionships() {
 
                   const unscheduled = isUnscheduled(m);
                   const perm = canSelfScheduleMatch(m, memberId);
+                  // Only "By Date" (play-by) matches are member-reschedulable.
+                  // Organiser-fixed games (date/time set by the club, no player
+                  // booking, no play-by) can only be moved by an admin.
+                  const centrallyFixed =
+                    !unscheduled &&
+                    isCentrallyScheduled({ ...m, scheduling_mode: champ.scheduling_mode });
                   // Entering an already-played score is independent of both the
                   // scheduling mode and any court booking.
                   const resultPerm = canEnterChampResult(m, memberId, { anyClubMember: true });

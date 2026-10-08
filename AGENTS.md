@@ -39,3 +39,5 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Outstanding-balance plans (`mandate_arrears_plans`) are separate from fee mandates: they finance only `member_outstanding_breakdown().uncovered`, snapshot `covered_fee_ids`, and may share one combined debit, but each component is settled/tracked separately and the plan part drops off when done; why: no double-financing of membership.
 - Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 - Court grids share P and peak logic; why: no separate rules.
+
+- Personal menu order/hidden items live in `user_menu_preferences` (per user + club) and are applied only after permission filtering via `src/lib/menu-order.ts`; why: display preference must never reveal or grant access.

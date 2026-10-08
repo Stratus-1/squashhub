@@ -93,4 +93,4 @@
 - [x] Permissions Stage 3: capability list (41), standard templates (16), office defaults, Riverside impact report
 - [ ] Permissions Stage 4: record Riverside offices + test accounts, re-run shadow, gate ON (needs owner approval of impact report)
 
-- [ ] Sidebar: Bar/POS after Club Books; per-user/club menu reorder + hide items (Edit Menu, Save/Cancel/Reset)
+- [x] Sidebar: Bar/POS after Club Books; per-user/club menu reorder + hide items (Edit Menu, Save/Cancel/Reset)

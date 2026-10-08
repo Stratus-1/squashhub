@@ -1533,6 +1533,21 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                               })}
                               {c.ids.length === 0 && <li className="p-2 text-center text-[11px] text-muted-foreground">Drop players here</li>}
                             </ol>
+                            {c.key && (() => {
+                              // Subcategories inherit their parent category's league scope unless set separately.
+                              const e = a.elig[c.key] ?? (c.key.includes("::") ? a.elig[c.key.split("::")[0]] : undefined) ?? DEFAULT_ELIG;
+                              const leagueScoped = e.mode === "leagues" && e.leagueIds.length > 0;
+                              const who = leagueScoped
+                                ? `${e.leagueIds.map(leagueName).join(", ")}${e.alsoEveryone ? " + everyone" : ""}${e.alsoPick ? " + players I pick" : ""}`
+                                : e.mode === "manual"
+                                  ? `Players I pick${e.alsoEveryone ? " + everyone" : ""}`
+                                  : `All eligible members${e.alsoPick ? " + players I pick" : ""}`;
+                              return (
+                                <div className="mt-auto truncate border-t border-border bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground" title={leagueScoped ? `Leagues feeding this group: ${who}` : who}>
+                                  {leagueScoped ? `Leagues: ${who}` : who}
+                                </div>
+                              );
+                            })()}
                           </div>
                         ))}
                       </div>);

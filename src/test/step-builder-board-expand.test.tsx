@@ -5,7 +5,8 @@ const MEMBERS = [
   { id: "m1", name: "Anna" }, { id: "m2", name: "Ben" }, { id: "m3", name: "Cara" }, { id: "m4", name: "Dan" },
 ];
 function chain(table: string): any {
-  const result = table === "club_members" ? { data: MEMBERS, error: null } : { data: [], error: null };
+  const data = table === "club_members" ? MEMBERS : table === "leagues" ? [{ id: "l1", name: "Men 1st" }, { id: "l2", name: "Men 2nd" }] : [];
+  const result = { data, error: null };
   const p: any = new Proxy(() => {}, {
     get: (_t, prop) => prop === "then" ? (res: any, rej: any) => Promise.resolve(result).then(res, rej) : () => p,
     apply: () => p,
@@ -24,7 +25,8 @@ const SCORING = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: 
 const seed = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
   kind: "once_off", name: "Expand test", scope: "club", entries: "8", playType: "singles", scoring: SCORING,
   categories: ["Mens A", "Ladies"], disc: { "Mens A": "singles", Ladies: "singles" }, categoryTypes: { "Mens A": "mens", Ladies: "ladies" },
-  format: { kind: "knockout" }, seeding: "random", source: "select", elig: {},
+  format: { kind: "knockout" }, seeding: "random", source: "select",
+  elig: { "Mens A": { mode: "leagues", leagueIds: ["l1", "l2"], placement: "auto" }, Ladies: { mode: "everyone", leagueIds: [], placement: "choose" } },
   picks: { m1: "Mens A", m2: "Mens A", m3: "Ladies", m4: "Ladies" },
 }));
 

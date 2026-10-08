@@ -2725,3 +2725,6 @@ Causes: (1) right after sign-in the permission check ran before member details l
 ## 2026-10-08 — View-only court display: notice legibility
 - Raised the sign-in notice to 12px phone / 14px desktop at medium weight and switched it from muted foreground to the shared accent token (text-accent), the same colour as the header clock. Wording, centring and header layout unchanged.
 - Validation: Uitsig token live at 1280x1800 and 390x844 — notice computed colour rgb(249,169,31) identical to the clock, centred 0px offset, one line desktop / two lines phone, no overlap, no console errors, peak P markers intact; courts-display-peak.test.tsx (6) passes. Preview only, not published.
+
+### 2026-10-08 Bar/Shop early account warning
+- Member Bar basket (Buy + My Tab) and admin Add Charge show "Your member account cannot be charged..." as the basket changes when the Bar/Shop no-debit switch would refuse it (same court-booking allowance rule). Final ACCOUNT_LIMIT refusals now stay until dismissed. `member_account_gate` no longer directly callable by signed-in users; new guarded `bar_account_charge_preview`.

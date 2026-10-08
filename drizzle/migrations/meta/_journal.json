@@ -708,6 +708,13 @@
       "when": 1791468688600,
       "tag": "0100_permissions_stage2_shadow",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1791468804035,
+      "tag": "0101_permissions_stage3_templates",
+      "breakpoints": true
     }
   ]
 }

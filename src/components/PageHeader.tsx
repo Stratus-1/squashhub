@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -45,6 +46,8 @@ interface PageHeaderProps {
   backTo?: string;
   actionsOnly?: boolean;
   showHelp?: boolean;
+  /** Optional extra control shown in the header's icon row (e.g. Edit dashboard). */
+  actions?: ReactNode;
 }
 
 export function PageHeader({
@@ -58,6 +61,7 @@ export function PageHeader({
   backTo,
   actionsOnly = false,
   showHelp = false,
+  actions,
 }: PageHeaderProps) {
   const { user, signOut } = useAuth();
   const { activeMember } = useMemberContext();
@@ -165,6 +169,7 @@ export function PageHeader({
                 <CircleHelp className="h-5 w-5" />
               </Button>
             )}
+            {actions}
             <ThemeToggle />
             {isStandalonePWA() && (
               <Button

@@ -30,7 +30,7 @@ import { MyStatsCard } from "@/components/dashboard/MyStatsCard";
 
 import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
-import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap, Hash } from "lucide-react";
+import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap, Hash, Pencil } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -62,7 +62,6 @@ import { useMemo, useState, useEffect, type ReactNode } from "react";
 import { useMenuPrefs } from "@/hooks/use-menu-prefs";
 import { applyOrder } from "@/lib/menu-order";
 import { MenuOrderEditor } from "@/components/MenuOrderEditor";
-import { LayoutGrid } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -856,7 +855,13 @@ export default function Dashboard() {
       />
       
 
-      <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile showHelp />
+      <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile showHelp
+        actions={dashEditPilot ? (
+          <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground" aria-label="Edit dashboard" title="Edit dashboard — arrange or hide items on your home screen" onClick={() => setEditDash(true)}>
+            <Pencil className="h-[18px] w-[18px]" />
+          </Button>
+        ) : undefined}
+      />
 
       {/* Door / lights controls first, so Open Door is at the top of the screen */}
       {!isPendingApplicant && (
@@ -958,11 +963,6 @@ export default function Dashboard() {
         <DashboardRouterCard />
       </div>
 
-      {dashEditPilot && <div className="px-4 mt-2 flex justify-end">
-        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setEditDash(true)}>
-          <LayoutGrid className="w-3.5 h-3.5" /> Edit dashboard
-        </Button>
-      </div>}
 
       <div className="flex flex-col">
       {sec("my-stats", !isPendingApplicant && (

@@ -50,7 +50,7 @@ const MemberContext = createContext<MemberContextType>({
 export function MemberProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { club: contextClub } = useClubContext();
-  const { data: myClubData } = useMyClub();
+  const { data: myClubData, isLoading: myClubLoading } = useMyClub();
   const club = contextClub || myClubData?.club || null;
   const [linkedMembers, setLinkedMembers] = useState<LinkedMember[]>([]);
   const [allMembers, setAllMembers] = useState<LinkedMember[]>([]);
@@ -58,6 +58,11 @@ export function MemberProvider({ children }: { children: ReactNode }) {
   const [activeMemberId, setActiveMemberId] = useState<string | null>(null);
   const [selfMemberId, setSelfMemberId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Which user+club the member data was last loaded for. Until it matches,
+  // permission-gated pages must wait instead of treating the user as having
+  // no permissions (that bounced a Treasurer from an approval link to /dashboard).
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const currentKey = user?.id && club?.id ? `${user.id}:${club.id}` : null;
 
   useEffect(() => {
     if (!user?.id || !club?.id) {
@@ -163,6 +168,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         console.warn("[MemberContext] Failed to fetch members:", e);
       } finally {
         setIsLoading(false);
+        setLoadedKey(`${user.id}:${club.id}`);
       }
     };
 
@@ -197,7 +203,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       isViewingAs,
       switchMember,
       resetToSelf,
-      isLoading,
+      isLoading: isLoading || (!!user?.id && (currentKey ? loadedKey !== currentKey : (!contextClub && myClubLoading))),
     }}>
       {children}
     </MemberContext.Provider>

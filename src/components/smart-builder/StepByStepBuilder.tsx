@@ -2169,7 +2169,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 </>}
                </div>
               <ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} />
-              {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
+              {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages.filter((s) => s.phase !== "playoff" || playoff.choice === "playoffs")} unitName={stageUnit} when={stageWhen} /></div>}
               {a.planId && <StageCourtBookings clubId={clubId} planId={a.planId} label={a.name?.trim() || "Club Championships"} stages={stages.map((x) => ({ ...x, name: `${x.name} (${stageUnit(x.unit)})` }))} courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} />}
             </>
           )}

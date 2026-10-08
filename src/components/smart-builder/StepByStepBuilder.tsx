@@ -849,14 +849,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           // Capacity guide (advisory only): matches in ONE round vs court slots on the listed days.
           const toMin = (t: string) => { const [h, m] = (t || "").split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
           const scope = units.filter((u) => !s.unit || u.key === s.unit || u.key.startsWith(`${s.unit}::`));
-          let matches = 0; let courtMin = 0; let guessed = false;
+          let matches = 0; let courtMin = 0; let guessed = false; let timeGuessed = false;
           for (const u of scope) {
             let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length;
             if (!n) { n = Number(a.unitEntries?.[u.key]) || 0; if (n) guessed = true; }
             const entrants = u.disc === "doubles" ? Math.floor(n / 2) : n;
             const m = Math.floor(entrants / 2);
             const sc = scoringFor(u.key) ?? scoring;
-            const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]) || (sc?.bestOf === 5 ? 55 : 35);
+            const saved = Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]);
+            const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : saved > 0 ? saved : (timeGuessed = true, sc?.bestOf === 5 ? 55 : 35);
             matches += m; courtMin += m * per;
           }
           if (!matches) return null;
@@ -869,12 +870,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           const fits = slots >= matches;
           return <div className={cn("rounded-md border p-2 text-xs", fits ? "border-border bg-muted/40" : "border-destructive/50 bg-destructive/5")} data-testid="round-capacity">
             <div className="font-medium">Will this round fit?</div>
-            <div>About <b>{matches}</b> matches in one round{guessed ? " (some groups use expected entries — no players picked yet)" : ""} · ~{perMatch} min each ≈ {Math.round(courtMin / 60)} court-hours.</div>
+            <div>About <b>{matches}</b> matches in one round{guessed ? " (some groups use expected entries — no players picked yet)" : ""} · ~{perMatch} min each{timeGuessed ? " (guessed — set your match time under Match time per slot above)" : ""} ≈ {Math.round(courtMin / 60)} court-hours.</div>
             <div>Available: <b>{slots}</b> match slots across {days.length} day{days.length === 1 ? "" : "s"} ({perDay.join(" + ")}).</div>
             <div className={fits ? "text-foreground" : "font-medium text-destructive"}>{fits
               ? (need < days.length ? `Fits with ${slots - matches} spare slots — ${need} day${need === 1 ? "" : "s"} would be enough. Consider removing a day, fewer courts or a shorter session.` : `Fits, with ${slots - matches} spare slots for delays.`)
               : `Short by ${matches - slots} slots — add a day, another court or a longer session.`}</div>
-            <div className="text-muted-foreground">Estimate only: also allow for minimum rest between a player's matches. Change match time under Scheduling assumptions.</div>
+            <div className="text-muted-foreground">Estimate only: also allow for minimum rest between a player's matches. Change match time under Match time per slot above.</div>
           </div>;
         })()}
       </div>}
@@ -2022,6 +2023,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {a.playoffSync === true && <p className="text-xs text-muted-foreground">Common dates don't mean identical structures: a category starting at quarterfinals plays them before the common Semifinals Night. Categories progress at their own pace and those that finish early wait for the common date.</p>}
               </div>
               {stages.length === 0 && <Button variant="outline" size="sm" onClick={suggestStages}>Suggest a starting plan from your choices</Button>}
+              <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Scheduling assumptions">
+                <div><div className="font-semibold">Match time per slot</div>
+                  <p className="text-xs text-muted-foreground">Court-time estimates used by the "Will this round fit?" guide and court planning. Planning only — they don't change scoring or time-capped rules.</p></div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
+                    <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
+                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] ?? ""}
+                        onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />
+                        <span className="text-xs text-muted-foreground">min</span></span></label>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-3">
                 <div className="text-sm font-semibold">Main rounds</div>
                 {mainStages.length === 0 && <p className="text-xs text-muted-foreground">No main rounds yet.</p>}

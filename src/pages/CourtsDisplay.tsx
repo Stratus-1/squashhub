@@ -95,7 +95,7 @@ export default function CourtsDisplay() {
           <div key={c.id} className="flex-1 flex flex-col min-w-0 border-r border-border last:border-r-0">
             <div className="text-center font-semibold text-xl py-2 border-b border-border bg-muted/40 truncate px-2">{c.name}</div>
             <div className="flex-1 relative">
-              {hours.map((h) => <div key={h} className="absolute left-0 right-0 border-t border-border/50" style={{ top: pct(h) }} />)}
+              {slots.map((h) => <div key={h} className={`absolute left-0 right-0 border-t ${h % 60 === 0 ? "border-border" : "border-border/40"}`} style={{ top: pct(h) }} />)}
               {data.bookings.filter((b) => b.court_id === c.id).map((b, i) => {
                 const s = toMin(b.start), e = toMin(b.end), live = now >= s && now < e, past = now >= e;
                 return (

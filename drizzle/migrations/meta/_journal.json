@@ -687,6 +687,13 @@
       "when": 1791461952663,
       "tag": "0097_bar_account_charge_preview",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1791464359852,
+      "tag": "0098_mandate_lifecycle_notifications",
+      "breakpoints": true
     }
   ]
 }

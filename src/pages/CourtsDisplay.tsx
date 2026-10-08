@@ -15,6 +15,30 @@ const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const nowSast = () => { const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Johannesburg" })); return d.getHours() * 60 + d.getMinutes(); };
 
+const GENERIC_WORDS = /^(squash|squashing|club|tc|tennis|racket|sports|association|federation|academy)$/i;
+
+/** Short club monogram used when the club has no logo on file. */
+function clubMonogram(name: string) {
+  const words = name.split(/\s+/).filter(Boolean);
+  const meaningful = words.filter((w) => !GENERIC_WORDS.test(w.replace(/[^\w]/g, "")));
+  const source = meaningful.length ? meaningful : words;
+  if (source.length === 1) return source[0].replace(/[^\w]/g, "").slice(0, 2).toUpperCase();
+  const monogram = source.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+  return monogram || name.slice(0, 2).toUpperCase();
+}
+
+/** Club badge: the uploaded logo on a light tile so dark logos stay readable, or a monogram. */
+function ClubMark({ logoUrl, name }: { logoUrl: string | null; name: string }) {
+  const [broken, setBroken] = useState(false);
+  if (logoUrl && !broken) {
+    return <img src={logoUrl} alt={`${name} logo`} onError={() => setBroken(true)}
+      className="h-16 w-16 shrink-0 rounded-xl border border-border bg-white/95 p-1.5 object-contain" />;
+  }
+  return <div aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-accent text-2xl font-extrabold text-accent-foreground">
+    {clubMonogram(name)}
+  </div>;
+}
+
 /** Public, view-only full-screen court schedule for today. No booking actions. */
 export default function CourtsDisplay() {
   const { token = "" } = useParams();
@@ -39,14 +63,18 @@ export default function CourtsDisplay() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col p-4 gap-3 select-none">
-      <header className="flex items-center gap-4">
-        {data.club.logo_url && <img src={data.club.logo_url} alt="" className="h-14 w-14 object-contain rounded" />}
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">{data.club.name}</h1>
-          <p className="text-lg text-muted-foreground">Court bookings · {dateLabel}</p>
+      <header className="relative flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-card/60 px-5 py-3.5">
+        <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
+        <ClubMark logoUrl={data.club.logo_url} name={data.club.name} />
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-3xl font-extrabold tracking-tight md:text-4xl">{data.club.name}</h1>
+          <p className="truncate text-base text-muted-foreground md:text-lg">Court bookings · {dateLabel}</p>
         </div>
-        <div className="text-5xl font-bold tabular-nums text-primary">{hhmm(now)}</div>
-        <button aria-label="Full screen" className="p-2 text-muted-foreground hover:text-foreground" onClick={() => document.documentElement.requestFullscreen?.()}>
+        <div className="shrink-0 text-right">
+          <div className="text-5xl font-extrabold tabular-nums text-accent md:text-6xl">{hhmm(now)}</div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">SAST</div>
+        </div>
+        <button aria-label="Full screen" className="shrink-0 p-2 text-muted-foreground hover:text-foreground" onClick={() => document.documentElement.requestFullscreen?.()}>
           <Maximize className="w-6 h-6" />
         </button>
       </header>

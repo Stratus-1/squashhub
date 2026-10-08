@@ -18,7 +18,7 @@ Nothing is implemented, migrated or changed by this plan. Live access stays exac
 
 ## Capability keys (one per action family)
 `fin.<area>.<action>`. Areas: `overview`, `eft`, `billing`, `fees`, `mandates`, `collections`, `bank`, `journal`, `pos`, `reports`, `settings`, `audit`. Actions: view, create, edit, approve, activate, remind, reconcile, reverse, configure, export.
-Separate key outside finance: `perm.finance.grant` (may grant or remove finance keys; gives no money powers).
+Grant authority is not a key anyone can be given. It is derived only from being the club's designated Chairman, or from being platform super admin, and it gives no money powers.
 
 ## Permission matrix
 Columns: V view, C create/initiate, E edit, A approve/reject, Act activate/deactivate, S send/remind, R reconcile, Rev reverse/refund, Cfg configure, X export. A dash means it doesn't apply.
@@ -52,8 +52,26 @@ Every key also lets the holder see the records needed for that action, and nothi
 - No approving your own capture, your own payment, your own or your linked family members' account, or your own mandate.
 - The person who creates a journal, refund or reversal can't approve it when a second approver is needed above the club threshold.
 - Holders of `settings.configure` can't approve payments into a bank account or gateway they changed within the last 24 hours.
-- `perm.finance.grant` holders can't grant themselves keys and can't grant keys they don't hold. Proposed default: only the club's designated owner and platform super admin hold it at first.
-- Warnings in the admin screen when one person would hold billing + approve + reverse, or grant + any money key.
+- Nobody can grant finance keys to themselves (see below for the Chairman).
+- Warnings in the admin screen when one person would hold billing + approve + reverse.
+
+## Who may grant finance permissions (owner decision)
+- **Only two people may grant, change or revoke any club finance permission:** that club's formally designated **Chairman**, and the **platform super admin**. Club Admin, ordinary admin, Treasurer, committee members, full-admin members, federation admins and platform moderators can't, whatever their role.
+- **Grant authority is not finance access.** The Chairman can assign finance rights to named members (including view-only) but sees no balances or transactions and can't act on money unless separately granted.
+- **The Chairman can't grant themselves finance rights.** If the Chairman needs finance rights, they request them in-app with a reason. A platform super admin must approve that request, and the Chairman can't approve it themselves. Proposed: platform super admin only, with no club-level exception.
+- **The super admin's own grants** are logged with a reason, and the club Chairman is notified of every grant the super admin makes in their club.
+- **What a grant may include:** the Chairman may grant any finance key except `manual_authorise`, which only the super admin can grant (if it exists at all).
+
+### Chairman designation is protected
+- Today `clubs.chairman_member_id` can be changed by any club admin or anyone with the `club` permission. That would let an ordinary admin make themselves Chairman and gain grant authority.
+- Proposed: only the platform super admin can set or change the Chairman, through one audited function with a reason. A guard on the club record refuses any other change to that field. An outgoing Chairman can nominate a successor, which takes effect only after super admin confirmation.
+- The Chairman must be an active member of that club with a linked login. Resigning or being suspended removes grant authority immediately, while grants already made stay in place.
+- Chairman authority is checked per club. Being Chairman in club A gives nothing in club B.
+
+### Emergency recovery (no Chairman, Chairman unavailable, or a compromised account)
+- The platform super admin can, with a written reason: freeze all finance grants for a club (read-only mode), revoke any grant, or appoint an interim Chairman. Each action is logged and the club's office bearers are notified.
+- Proposed: a request from at least two club office bearers (e.g. secretary + treasurer) is recorded before the super admin acts, unless it's a security incident.
+- All recovery actions appear in the finance audit trail. They can't be edited or deleted, and they expire or are reviewed after 30 days.
 
 ## Presets (starting points, editable per club)
 - **Treasurer (full finance):** everything except `manual_authorise` and `perm.finance.grant`.
@@ -62,7 +80,7 @@ Every key also lets the holder see the records needed for that action, and nothi
 - **Payments approver:** eft view/approve, collections view/approve/reconcile, mandates view/remind/reconcile.
 - **Bookkeeper:** bank view/create/reconcile, journal view/create, reports.
 - **Bar cash-up:** pos view/reconcile/approve.
-- **Permissions manager:** `perm.finance.grant` only, with no money access.
+- Grant authority is not a preset. It comes only from being the club's designated Chairman, or from being platform super admin (see "Who may grant finance permissions").
 
 ## Server enforcement
 - One helper, `has_fin(user, club, key)`, used by every finance function, read rule, edge function and `post_journal`. It does **not** treat club admin, full admin or platform moderator as finance on its own. Platform super admin keeps a separate, logged support override.
@@ -90,7 +108,9 @@ Every finance action and every grant or removal writes a permanent event: who, c
 - Retries and duplicates refused (approval twice, collection twice, reversal twice).
 
 ## Unresolved decisions for owner review
-1. Who holds `perm.finance.grant` at first: the club owner, a named chairperson, or platform super admin only?
+1. Chairman finance rights: second-party approval by the platform super admin only (proposed), or also a named committee member?
+1a. Confirm "Super Admin" means the platform super admin (the app-wide admin role), and NOT the federation organisation super admin. Proposed: federation admins get no club finance grant authority.
+1b. Changing the Chairman: platform super admin only (proposed), or an outgoing Chairman + super admin confirmation?
 2. Should `manual_authorise` exist at all, or should mandates be provider-verified only, with no manual path?
 3. Default second-approver thresholds for refunds, journals and waivers (e.g. R1,000)? Should they be skipped for one-treasurer clubs?
 4. Platform moderators: keep a view-only support role, or nothing?

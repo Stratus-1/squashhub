@@ -23,6 +23,9 @@ describe("duplicate-person safeguard", () => {
     const twins = [...existing, { name: "Fanus Coetzee", phone: "0839998888", user_id: "u2" }];
     expect(classifyMatch({ name: "Fanus Coetzee", phone: "0710000000" }, twins)).toBe("name");
   });
+  it("middle names never defeat matching (Uitsig Heyns)", () => {
+    expect(classifyMatch({ name: "Michiel Philip Heyns", phone: "0700000000" }, [{ name: "Michiel Heyns", phone: "0711111111" }])).toBe("name");
+  });
   it("accents and middle names still match on first + last", () => {
     expect(sameName("Andrés Pieter du Toit", "andres toit")).toBe(true);
   });
@@ -46,5 +49,10 @@ describe("duplicate-person safeguard", () => {
     expect(club).not.toMatch(/check_member_duplicate_hint/);
     expect(readFileSync("src/pages/LeagueSignup.tsx", "utf8")).toMatch(/dup\.guard\(/);
     expect(readFileSync("src/components/NoClubAccess.tsx", "utf8")).toMatch(/dup\.guard\(/);
+    // Google/Apple sign-ups reach the signup steps directly: guard before row + fees.
+    const wiz = readFileSync("src/components/MemberOnboardingWizard.tsx", "utf8");
+    expect(wiz.indexOf("dup.guard(")).toBeGreaterThan(0);
+    expect(wiz.indexOf("dup.guard(")).toBeLessThan(wiz.indexOf(".insert(feeRecords)"));
+    expect(wiz.indexOf("dup.guard(")).toBeLessThan(wiz.indexOf("role: \"member\""));
   });
 });

@@ -2696,3 +2696,9 @@ Nelspruit Doubles League showed "No league rounds set up yet" despite 3 submitte
 - Stateful devices: green border/tint = On, red = Off, grey "Unavailable" when the device reports an error (off is never shown as unreachable).
 - Momentary/access devices flash green ~2.5s on success, then return to rest; confirmation dialog, permissions, BLE rescue, geofence and desktop rows unchanged.
 - Tests: src/test/dashboard-device-controls.test.tsx (13) pass. Preview only, not published.
+
+### 2026-10-08 — Uitsig: Google signup skipped existing-member check; erroneous import SSA/NSA charges
+- Cause: Google/Apple signups go straight to the signup steps (`MemberOnboardingWizard`), which created the membership row and R200 Registration with no duplicate guard. A "Michiel Philip Heyns" application slipped past existing "Michiel Heyns" records.
+- Fix: the wizard now calls `useDuplicateGuard` (first + last name, cell) before any row or fee insert. A source test enforces that order.
+- Data: 46 SSA R300/NSA R160 postings from the 30 Aug 2026 import (23 members, R10,580, no fee lines, no payments) were reversed with linked reversing journals plus audit_events (`reverse_erroneous_import_fees`). The originals are kept.
+- Open: the pending Heyns application and its R200 stay untouched until the club confirms identity (its ID number and cell differ from the existing member's).

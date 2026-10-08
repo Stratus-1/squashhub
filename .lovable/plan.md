@@ -367,6 +367,51 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 3. **Carry-over, not revocation:** any current right not covered by the new defaults is kept as a "Legacy carry-over" personal grant, marked as such. Nothing is removed until the Chairman or Super Admin reviews it. No pending requests are created.
 4. **Prospective only:** after rollout, the nomination and approval workflow applies only to new sensitive or execution grants. The Chairman and Super Admin can grant directly at any time, audited.
 
+### Pilot: Riverside only, then owner-approved waves
+
+**Club gate:**
+- Each club has a setting, `club_permission_settings.new_permissions_enabled` (default **OFF**). It is set only by the Super Admin.
+- Shared checks use one wrapper: if the club's gate is OFF, it returns exactly today's legacy answer (the existing functions, unchanged). If ON, it uses `has_cap()` and the new workflows.
+- The existing functions (`is_club_admin`, `is_club_admin_or_permitted`, `bar_staff_can_serve`, …) are **not edited** during the pilot. The wrapper sits beside them and is adopted area by area.
+- All schema is additive (new tables and columns with defaults) and invisible to clubs with the gate OFF.
+
+**Pilot steps:**
+1. **Dry run for all clubs:** a read-only comparison of today's effective rights against the mapped new model, per person per club. Riverside is reviewed in detail; a summary is produced for all other clubs.
+2. **Riverside setup:**
+   - Inventory and mapping with carry-overs.
+   - Test accounts: Chairman, Treasurer, Secretary, Club Captain, Bar Manager, two counter staff and an ordinary member (D18, D19).
+3. **Gate ON for Riverside only.** Other clubs keep today's behaviour.
+4. **Pilot tests in Riverside:**
+   - Roles and multiple roles; custom grants and denies.
+   - Delegation (Club Captain helpers) and nominations with Chairman approval.
+   - In-app and WhatsApp approval notices and reminders (WhatsApp to test numbers only).
+   - Finance segregation: view-only bank; EFT approval not by the initiator.
+   - POS segregation: individual PINs, PIN admin, stocktake second approver, refunds.
+   - Chairman handover and emergency votes on test accounts.
+   - Audit trail completeness.
+5. **Regression for non-Riverside clubs:** automated same-answer comparison on every check. Spot flows (booking, bar sale, EFT approval, tournament entry) in Nelspruit with synthetic, rolled-back rows.
+
+**Instant disable:**
+- Setting Riverside's gate OFF returns it to legacy answers immediately. No data is deleted.
+- New-model records (grants, nominations, audit) stay stored but inactive.
+- Real transactions made during the pilot are normal records, valid under either model.
+
+**Pilot acceptance criteria (all needed before any wider wave):**
+- Zero unexpected refusals for Riverside's real legitimate users over at least 2 weeks.
+- Every test scenario in section 13 passes in Riverside.
+- Non-Riverside comparison shows zero differences.
+- Zero pending approval requests created by the migration.
+- Audit records are complete for every pilot action.
+- The gate OFF/ON cycle has been tested once with no data change.
+- Approval notices delivered, with reminders at 24 hours and then daily.
+
+**Waves after the pilot:** each needs **explicit owner sign-off**.
+1. **Wave 1:** a few named clubs, e.g. Nelspruit plus clubs with active committees.
+2. **Wave 2:** clubs with recorded office bearers.
+3. **Wave 3:** remaining clubs.
+
+Each wave gets a dry-run report, the same acceptance criteria, and its own rollback (gate OFF per club).
+
 **Stages:**
 1. **Add only.** New catalogue, assignments, overrides, append-only events, `legacy_mode=ON` per club, and `has_cap()`. While legacy mode is on, `has_cap()` returns the old answer.
 2. **Early safety fix** (separate approval): lock the office fields to the Chairman flows. Nobody loses access.
@@ -384,7 +429,8 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 - [ ] Shadow report per club: no current legitimate user loses a right they use. Any difference becomes a carry-over.
 - [ ] No pending approval requests are created by the migration (count = 0 verified).
 - [ ] Bookings, doors and lights, payment callbacks, marker, tills, notifications and automated jobs are tested per area before switching that area.
-- [ ] Riverside live data untouched; Nelspruit used for test flows with synthetic rows rolled back.
+- [ ] Pilot gate verified: only Riverside has `new_permissions_enabled`. Every other club passes the same-answer comparison before and after each pilot deploy.
+- [ ] Riverside members, bookings, finance and stock records untouched by the pilot (D18). Test accounts and synthetic rows are labelled and removable.
 - [ ] **Rollback:**
   - Set `legacy_mode` back ON per club, effective immediately.
   - Legacy flags and keys are never deleted during 30 days after the switch.
@@ -438,6 +484,8 @@ Visible text only: menus, titles, breadcrumbs, approval cards, help, emails and 
 - **D15.** Onboarding: automatic activation on a trusted match (proposed)? Approve the limits while temporary, a 90-day expiry for temporary status, and the 7-day notice?
 - **D16.** Approve the early office-field lock as a stand-alone fix?
 - **D17.** Family exclusions based on account delegations, family groups, or both?
+- **D18. Riverside pilot vs "never alter Riverside's live data" (standing rule).** The pilot changes how access is checked for Riverside's real users. It also adds test accounts, roles and audit rows there. It doesn't change members, bookings, finance or stock records. Please confirm this exception for the pilot. Test accounts would be clearly named, billing-exempt, hidden from public lists and removed afterwards. Test finance and POS flows would use synthetic rows that are reversed, never real member balances.
+- **D19.** Who in Riverside fills the real Chairman, Treasurer, Secretary, Club Captain and Bar Manager roles during the pilot? Or should it run with test accounts only, with real users left on today's mapping (carry-over)?
 
 ## Technical details
 - **Audited:** `is_club_admin` (platform admin/moderator, `role='admin'`, `is_full_admin`, office bearers), `is_club_admin_or_permitted`, `is_platform_admin`, `has_role`, `bar_staff_can_serve`, `is_club_captain`; `club_member_permissions`, `club_permission_roles`; `create_default_finance_role`, `auto_assign_officer_roles`; `clubs` UPDATE policy; `club_members` policies (admin/self/`members` key update; column grants exclude id_number, address, phone, email); `member_bar_pins` (hash, attempts, lock); `bar_counter_sessions`; `club_claim_requests` + `approve_club_claim`; `_shared/person-match.ts`, `useDuplicateGuard`, `account-recovery`; frontend `use-club-permissions.ts`, `use-club-billing.ts`, `use-door-control.ts`.

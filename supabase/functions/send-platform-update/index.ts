@@ -92,23 +92,38 @@ async function expandRecipients(c: any) {
   if (!clubs.length) return { clubs, recipients: [] as any[] };
   const clubById = new Map(clubs.map((cl) => [cl.id, cl]));
 
-  let q = admin
-    .from("club_members")
-    .select("id,club_id,user_id,name,email,phone,role,status,whatsapp_opt_out,sms_opt_out")
-    .in("role", ["admin", "captain"])
-    .neq("status", "resigned");
-  // "all" covers every club; listing ~800 club IDs overflows the request URL
-  // and silently returned no admins, so only filter by club for narrower audiences.
-  if (c.audience_type !== "all") q = q.in("club_id", clubs.map((cl) => cl.id));
+  let rows: any[] = [];
+  if (c.audience_type === "members") {
+    // Every active member with a login, across all clubs (in-app only).
+    for (let from = 0; ; from += 1000) {
+      const { data } = await admin
+        .from("club_members")
+        .select("id,club_id,user_id,name,email,phone,role,status,whatsapp_opt_out,sms_opt_out")
+        .not("user_id", "is", null)
+        .neq("status", "resigned")
+        .order("id")
+        .range(from, from + 999);
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+  } else {
+    let q = admin
+      .from("club_members")
+      .select("id,club_id,user_id,name,email,phone,role,status,whatsapp_opt_out,sms_opt_out")
+      .in("role", ["admin", "captain"])
+      .neq("status", "resigned");
+    // "all" covers every club; listing ~800 club IDs overflows the request URL
+    // and silently returned no admins, so only filter by club for narrower audiences.
+    if (c.audience_type !== "all") q = q.in("club_id", clubs.map((cl) => cl.id));
 
-  if (c.audience_type === "admins") {
-    const ids = (c.audience_member_ids ?? []) as string[];
-    if (!ids.length) return { clubs, recipients: [] };
-    q = q.in("id", ids);
+    if (c.audience_type === "admins") {
+      const ids = (c.audience_member_ids ?? []) as string[];
+      if (!ids.length) return { clubs, recipients: [] };
+      q = q.in("id", ids);
+    }
+    const { data } = await q;
+    rows = data ?? [];
   }
-
-  const { data } = await q;
-  const rows = data ?? [];
 
   // De-duplicate the same human across several clubs, but keep every club.
   const byPerson = new Map<string, any>();

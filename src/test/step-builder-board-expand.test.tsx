@@ -79,7 +79,7 @@ describe("Step-by-Step: category board full-screen expand", () => {
     const column = within(board).getByText(/Mens A/).closest("div")!.parentElement!;
     const names = () => Array.from(column.querySelectorAll("ol > li")).map((li) => li.querySelector("span.truncate")?.textContent);
     expect(names()).toEqual(["Anna", "Ben"]);
-    fireEvent.click(within(board).getByLabelText(/Move Ben down/i));
+    fireEvent.click(within(board).getByLabelText(/Move Anna down/i));
     await waitFor(() => expect(names()).toEqual(["Ben", "Anna"]));
   });
 });

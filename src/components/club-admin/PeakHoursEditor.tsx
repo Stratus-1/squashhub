@@ -19,8 +19,9 @@ type Form = {
 };
 
 /**
- * Peak hours are picked from the club's real court slots (e.g. 40-minute slots),
- * stored as start of first peak slot → end of last peak slot.
+ * Peak hours are set per day, picked from the club's real court slots
+ * (e.g. 40-minute slots), stored as start of first peak slot → end of last peak slot.
+ * Days without an explicit setting keep the club's previously saved times.
  */
 export function PeakHoursEditor({ value, onChange }: { value: Form; onChange: (patch: Partial<Form>) => void }) {
   const step = value.booking_slot_minutes || 30;
@@ -56,7 +57,8 @@ export function PeakHoursEditor({ value, onChange }: { value: Form; onChange: (p
     );
   };
 
-  const defaultFor = (day: number) =>
+  /** Previously saved times for a day (kept intact for existing clubs). */
+  const savedFor = (day: number) =>
     day === 0 || day === 6
       ? { start: value.peak_weekend_start, end: value.peak_weekend_end }
       : { start: value.peak_weekday_start, end: value.peak_weekday_end };
@@ -69,51 +71,31 @@ export function PeakHoursEditor({ value, onChange }: { value: Form; onChange: (p
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs font-semibold">3. Peak hours</Label>
+      <Label className="text-xs font-semibold">3. Peak hours per day</Label>
       <p className="text-[10px] text-muted-foreground">
-        Choose the first and last peak slot from your {step}-minute court slots. Defaults apply to every day unless you override that day below.
+        Set each day's peak time from your {step}-minute court slots, or switch a day off. Days you don't change keep their current times.
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div className="space-y-1 rounded-lg border p-2">
-          <Label className="text-[11px] font-semibold">Default weekday (Mon–Fri)</Label>
-          <SlotRange start={value.peak_weekday_start} end={value.peak_weekday_end}
-            onSet={(s, e) => onChange({ peak_weekday_start: s, peak_weekday_end: e })} />
-        </div>
-        <div className="space-y-1 rounded-lg border p-2">
-          <Label className="text-[11px] font-semibold">Default weekend (Sat–Sun)</Label>
-          <SlotRange start={value.peak_weekend_start} end={value.peak_weekend_end}
-            onSet={(s, e) => onChange({ peak_weekend_start: s, peak_weekend_end: e })} />
-        </div>
-      </div>
 
       <div className="rounded-lg border divide-y">
         {DAY_ORDER.map(day => {
           const o = (value.peak_day_overrides || {})[String(day)];
-          const custom = !!o;
-          const def = defaultFor(day);
+          const saved = savedFor(day);
+          const cur = o && !o.off && o.start && o.end ? { start: o.start, end: o.end } : saved;
+          const off = !!o?.off;
           return (
             <div key={day} className="flex flex-wrap items-center gap-2 px-2 py-1.5">
               <span className="text-[11px] font-medium w-20">{DAY_LABELS[day]}</span>
               <label className="flex items-center gap-1.5 text-[11px]">
-                <Switch checked={custom} onCheckedChange={(c) => setOverride(day, c ? { start: def.start.slice(0, 5), end: def.end.slice(0, 5) } : null)} />
-                Override
+                <Switch checked={!off} onCheckedChange={(c) => setOverride(day, c ? { start: cur.start.slice(0, 5), end: cur.end.slice(0, 5) } : { off: true })} />
+                Peak this day
               </label>
-              {!custom && <span className="text-[11px] text-muted-foreground">Default {def.start.slice(0, 5)}–{def.end.slice(0, 5)}</span>}
-              {custom && (
-                <>
-                  <label className="flex items-center gap-1.5 text-[11px]">
-                    <Switch checked={!o.off} onCheckedChange={(c) => setOverride(day, c ? { start: def.start.slice(0, 5), end: def.end.slice(0, 5) } : { off: true })} />
-                    Peak this day
-                  </label>
-                  {!o.off && (
-                    <div className="flex-1 min-w-[220px]">
-                      <SlotRange start={o.start || def.start} end={o.end || def.end}
-                        onSet={(s, e) => setOverride(day, { start: s, end: e })} />
-                    </div>
-                  )}
-                  {o.off && <span className="text-[11px] text-muted-foreground">No peak time</span>}
-                </>
+              {!off && (
+                <div className="flex-1 min-w-[220px]">
+                  <SlotRange start={cur.start} end={cur.end}
+                    onSet={(s, e) => setOverride(day, { start: s, end: e })} />
+                </div>
               )}
+              {off && <span className="text-[11px] text-muted-foreground">No peak time</span>}
             </div>
           );
         })}

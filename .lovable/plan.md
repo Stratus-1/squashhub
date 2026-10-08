@@ -359,7 +359,7 @@ Offices are positions. Each office gets a **default role template** when someone
 - **Proposed for the same treatment (D25), operational only:**
   - Court & Bookings Officer (booking help, court blocks);
   - Communications Officer (draft and send to member groups; not exports);
-  - Bar Manager (bar.sell and bar.stocktake.count only).
+  - Bar Manager: non-execution tasks only, such as stocktake counting without posting and viewing stock levels without cost prices. All Bar & Shop execution rights need the Chairman's approval (next section).
 - **Never delegable:**
   - office-bearer appointment, role template edits and permission management;
   - all finance;
@@ -369,6 +369,34 @@ Offices are positions. Each office gets a **default role template** when someone
 - **Limits:** same club only. Only rights the delegator currently holds. No self-grants. Nothing broader than their own scope (e.g. one tournament if their right is for one tournament).
 - **Audit:** who appointed whom, which rights, scope (e.g. which tournament), time, and end time.
 - The **Chairman** sees all delegated grants and can revoke any of them. Grants end automatically when the delegator's own authority ends.
+
+### Sensitive execution rights: nominate, Chairman approves (owner decision)
+**Rule:** finance execution and Bar & Shop execution rights can **never** be delegated by any holder, including the Treasurer or the Bar Manager. A holder may **nominate** someone. The person gets the right only after the **Chairman** (or Super Admin) approves it.
+
+**Classification** (new class "X", sensitive execution, stored on each capability in the catalogue; class X is never delegable):
+| Class | Meaning | Examples | How someone gets it |
+|---|---|---|---|
+| X: finance execution | Moves money or changes the books | EFT/deposit approval, payments and allocation, refunds, reversals, journals, billing runs, bank import and reconcile, mandate actions, payouts | Chairman/Super Admin grant only; others may nominate |
+| X: Bar & Shop execution | Changes stock value or money | stock purchases, receiving and posting supplier invoices, stock adjustments/write-offs/transfers, stocktake posting or approval, price changes, discounts, voids/refunds, till cash-up, account charges, PIN management | Chairman/Super Admin grant only; others may nominate |
+| O: operational, delegable | No money or stock-value effect | tournament/event helpers, booking help, communications drafting, stocktake counting (no posting), viewing stock levels without cost | Delegable by a holder with the delegate right |
+| Open (D26) | Taking sales at set prices | bar.sell | Proposed: class X |
+
+**Nomination workflow:**
+1. A holder (e.g. the Treasurer) nominates a same-club member for specific class-X capabilities, with scope (e.g. only bar or only shop) and a reason.
+2. The Chairman gets an in-app request: approve, change scope (narrower only), or decline. Nothing is effective before that.
+3. On approval, the grant is recorded as "Granted by Chairman, nominated by Treasurer".
+4. The nominator can withdraw the nomination before it is decided.
+5. Self-nomination is refused. Nominating someone for a capability the nominator doesn't hold is refused.
+6. If the Chairman is the nominee, normal Chairman self-grant rules apply (D20).
+
+**No indirect bypass:**
+- Class X is never included in what a delegator can pass on, even inside a role. Any role a delegator assigns is stripped of its class-X capabilities. Those need a separate Chairman grant.
+- Role templates containing class-X capabilities can only be assigned by the Chairman or Super Admin.
+- Template edits that add class-X capabilities are Chairman/Super Admin only.
+- Device PINs and counter devices only work for people who personally hold the class-X capability being used.
+- The server check `can_grant()` refuses class X for anyone but the Chairman or Super Admin. The same check applies to roles, personal grants, templates and imports.
+
+**Audit:** nomination (who, nominee, capabilities, scope, reason), decision (Chairman, outcome, changes, time), and each later revocation.
 
 ### Holding a capability vs delegating it
 - **Holding (inherited from a role or granted personally)** lets you **perform** the action.
@@ -508,7 +536,8 @@ Operations preserved:
 - **D13.** Family exclusions based on account delegations, family groups, or both?
 - **D14.** Member data (section 3a): approve the Secretary default; choose which higher-risk protections, if any, to add (ID number, date of birth, suspension and billing, bulk export, face data).
 - **D15.** The revocation question is decided: delegated grants end automatically. Still open: should temporary grants or denies (with an expiry date) be allowed? Proposed: yes.
-- **D25.** Confirm which roles get **direct delegation by default** (section "Direct delegation"): Club Captain/Competitions Coordinator (owner confirmed), plus the proposed Court & Bookings Officer, Communications Officer and Bar Manager (operational only).
+- **D25.** Confirm which roles get **direct delegation by default** (section "Direct delegation"): Club Captain/Competitions Coordinator (owner confirmed), plus the proposed Court & Bookings Officer, Communications Officer, and Bar Manager (non-execution tasks only).
+- **D26.** Is **taking sales at the till** (selling at set prices, which deducts stock and takes payment) a sensitive execution right that needs the Chairman's approval (proposed, safer), or an ordinary Bar Staff task the Bar Manager may delegate? The same question applies to stocktake counting without posting (proposed: ordinary).
 - **D16. "Chairman has access to everything" — needs your confirmation.** This conflicts with the earlier decision of no automatic finance. Options:
   - (a) **Proposed:** the Chairman sees and manages all non-finance club areas by default. Finance (view and transactions) and sensitive Bar & Shop rights only when the Super Admin grants them.
   - (b) The Chairman gets read-only finance by default (balances, reports), but transactions only from the Super Admin.

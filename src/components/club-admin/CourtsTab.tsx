@@ -28,6 +28,7 @@ import {
 import { GoBookApiCard } from "./GoBookApiCard";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
+import { PeakNoShowPanel } from "./PeakNoShowPanel";
 import { PeakHoursCard, PeakPenaltyCard, BookingHoursSummary } from "./PeakRulesCards";
 import type { PeakOverrides } from "@/lib/peak-hours";
 import { BookingMessagesCard } from "./BookingMessagesCard";
@@ -363,6 +364,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
         {/* 5. Peak-hour cancellation & no-show penalty fees — opt-in */}
         <PeakPenaltyCard club={club} />
+        <PeakNoShowPanel club={club} />
 
         {/* Minimum booking balance — independent of lights */}
         <Card className="p-4 space-y-3">

@@ -1398,6 +1398,19 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   <div className="flex items-center justify-between"><Label>Picked: {counts.uniquePlayers} unique player{counts.uniquePlayers === 1 ? "" : "s"} · {counts.totalEntries} total entr{counts.totalEntries === 1 ? "y" : "ies"}</Label>
                     {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.some((id) => placesFor(id).length === 0) && (
                       <Button size="sm" variant="outline" onClick={() => { const n = { ...a.picks }; pickIds.forEach((id) => { if (placesFor(id).length === 0) { const k = autoPlace(id); n[id] = k ? [k] : []; } }); setA({ ...a, picks: n }); }}>Place by league</Button>)}
+                    {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.length > 0 && (
+                      <Button size="sm" variant="outline" title="Use after changing which leagues feed each category" onClick={() => {
+                        if (!window.confirm("Re-place every picked player by their current league? Events linked to leagues are replaced; other events (e.g. Ladies or open events) stay ticked.")) return;
+                        const leagueKeys = new Set(units.filter((u) => eligOf(u.key).mode === "leagues").map((u) => u.key));
+                        const n = { ...a.picks }; let moved = 0;
+                        pickIds.forEach((id) => {
+                          const cur = placesFor(id); const k = autoPlace(id);
+                          const next = [...cur.filter((x) => !leagueKeys.has(x)), ...(k ? [k] : cur.filter((x) => leagueKeys.has(x)))];
+                          if (next.join("|") !== cur.join("|")) moved++;
+                          n[id] = [...new Set(next)];
+                        });
+                        setA({ ...a, picks: n }); toast.success(`${moved} player${moved === 1 ? "" : "s"} re-placed by league.`);
+                      }}>Re-place all by league</Button>)}
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
                   <div className="text-xs text-muted-foreground">{singleEvent ? "Time-capped events all play at the same time, so each player enters one event." : "Tap an event to add or remove it. A player stays picked even with no events."}</div>

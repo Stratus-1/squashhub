@@ -2283,6 +2283,17 @@ export default function ClubChampsView() {
             toast.success(`Marked ${ids.length} as invited`);
             qc.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
           };
+          const confirmAll = async (rows: any[]) => {
+            const ids = rows.filter((r: any) => !r.confirmed_at).map((r: any) => r.id);
+            if (!ids.length) return;
+            const { error } = await fromExt("club_champs_registrations")
+              .update({ confirmed_at: new Date().toISOString(), confirmation_source: "admin" })
+              .in("id", ids)
+              .is("confirmed_at", null);
+            if (error) { toast.error(error.message); return; }
+            toast.success(`Confirmed ${ids.length} player${ids.length === 1 ? "" : "s"}`);
+            qc.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
+          };
           const toggleConfirmed = async (r: any) => {
             const patch: any = r.confirmed_at
               ? { confirmed_at: null, confirmed_by: null, confirmation_source: null }
@@ -2355,6 +2366,16 @@ export default function ClubChampsView() {
                       onClick={() => markInvited(buckets.notInvited.map((r: any) => r.id))}
                     >
                       Mark all {buckets.notInvited.length} as invited
+                    </Button>
+                  )}
+                  {buckets.invitedPending.some((r: any) => !r.confirmed_at) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => confirmAll(buckets.invitedPending)}
+                    >
+                      Confirm all {buckets.invitedPending.filter((r: any) => !r.confirmed_at).length} awaiting
                     </Button>
                   )}
                   <Button

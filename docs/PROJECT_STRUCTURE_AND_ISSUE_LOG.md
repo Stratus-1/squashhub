@@ -2731,3 +2731,6 @@ Causes: (1) right after sign-in the permission check ran before member details l
 
 ### 2026-10-08 Sidebar personalisation
 Bar / POS moved after Club Books in Club Admin. Users can reorder/hide their own permitted menu items (main side menu + Club Admin) via Edit menu; stored per user/club; display only.
+
+### 2026-10-08 — Platform updates "all clubs" audience matched no admins
+send-platform-update filtered club_members by ~800 club IDs, overflowing the request URL and returning no rows. Fix: skip the club filter when audience_type = all.

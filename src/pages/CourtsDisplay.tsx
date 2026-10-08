@@ -76,7 +76,7 @@ export default function CourtsDisplay() {
 
   // Grid follows the club's real booking slots: any slot length, aligned to the club's opening
   // time, running through the END of the last configured slot (e.g. 21:45 slot -> 22:30).
-  const { slot, start, end, slots } = displayGrid(data);
+  const { start, end, slots } = displayGrid(data);
   const span = end - start;
   const pct = (m: number) => `${((m - start) / span) * 100}%`;
   const dateLabel = new Date(data.date + "T12:00:00").toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" });

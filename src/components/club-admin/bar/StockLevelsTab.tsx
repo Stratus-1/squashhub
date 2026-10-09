@@ -19,7 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
-import { ClipboardList, Download, Upload, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useBarCategories, useBarDivisions, allCategories, categoryLabel, divisionLabel } from "@/lib/bar-categories";
+import { ClipboardList, Search, Download, Upload, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface Level {
   bar_item_id: string;
@@ -241,7 +242,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
 
   function downloadSheet() {
     const header = ["Item", "Category", "Expected qty", "Counted qty"];
-    const body = rows.map((r) => [r.name, r.category ?? "", r.expected, r.counted ?? ""]);
+    const body = grouped.flatMap((g) => g.items).map((r) => [r.name, categoryLabel(customCats as any, r.category || "other"), r.expected, r.counted ?? ""]);
     const csv = [header, ...body].map((line) => line.map(csvEscape).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
@@ -380,6 +381,21 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
         </Card>
       )}
 
+      <Card className="p-3 flex flex-wrap items-center gap-2">
+        <div className="flex gap-1" role="group" aria-label="Division">
+          {[{ key: "all", label: divisions.map((d) => d.label).join(" & ") || "All" }, ...divisions].map((d) => (
+            <Button key={d.key} size="sm" variant={divFilter === d.key ? "default" : "outline"} onClick={() => setDivFilter(d.key)} aria-pressed={divFilter === d.key}>
+              {d.label}
+            </Button>
+          ))}
+        </div>
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search item or category…" className="h-9 pl-8" aria-label="Search items" />
+        </div>
+        <span className="text-xs text-muted-foreground">{visibleCount} of {rows.length} items</span>
+      </Card>
+
       <Card className="p-0 overflow-hidden">
         <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-2 text-[11px] font-medium text-muted-foreground border-b">
           <span>Item</span>
@@ -394,8 +410,16 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
           </div>
         ) : rows.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">No active bar products yet.</div>
+        ) : visibleCount === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">No items match.</div>
         ) : (
-          rows.map((r) => (
+          grouped.map((g, gi) => (
+          <div key={g.key}>
+            {divFilter === "all" && (gi === 0 || grouped[gi - 1].div !== g.div) && (
+              <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide bg-primary/10 text-primary border-b">{divisionLabel(divisions, g.div)}</div>
+            )}
+            <div className="px-3 py-1 text-[11px] font-semibold bg-muted/60 border-b">{g.label} <span className="text-muted-foreground font-normal">({g.items.length})</span></div>
+          {g.items.map((r) => (
             <div key={r.bar_item_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-1.5 text-xs items-center border-b last:border-0">
               <span className="truncate">{r.name}{r.y > 1 ? ` (${r.unit_label || "tot"}s: ${r.y} per unit)` : ""}</span>
               <span className="text-right w-16 tabular-nums">{r.expected}</span>
@@ -442,6 +466,8 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
                 {r.variance === null ? "—" : `${r.variance > 0 ? "+" : ""}${r.variance}`}
               </span>
             </div>
+          ))}
+          </div>
           ))
         )}
       </Card>

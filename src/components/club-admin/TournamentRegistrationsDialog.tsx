@@ -162,6 +162,24 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Undo an organiser Paid/Waive mark. Online (gateway) payments are never undone here — those need a refund.
+  const markUnpaid = useMutation({
+    mutationFn: async (reg: any) => {
+      const adminMark = (reg.status === "paid" && String(reg.payment_ref ?? "").startsWith("ADMIN-")) || reg.status === "waived";
+      if (!champId || reg.champ_id !== champId || !adminMark) throw new Error("Only admin-recorded payments can be undone here.");
+      if (reg.fee_payment_id) {
+        const { error: feeErr } = await fromExt("club_member_fee_payments").update({ paid: false, paid_at: null }).eq("id", reg.fee_payment_id);
+        if (feeErr) throw feeErr;
+      }
+      const { error } = await fromExt("club_champs_registrations")
+        .update({ status: "pending_payment", fee_paid_cents: 0, paid_at: null, payment_ref: null })
+        .eq("id", reg.id).eq("champ_id", champId).select("id").single();
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Marked as not paid"); invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const waiveFee = useMutation({
     mutationFn: async (reg: any) => {
       const { error } = await fromExt("club_champs_registrations")
@@ -535,6 +553,11 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         (r.fee_status ? !["paid", "waived", "not_required"].includes(r.fee_status) : !["paid", "waived"].includes(r.status)) && (
                         <Button size="sm" variant="outline" className="h-7 text-xs" title="Record payment received or an agreed payment arrangement" aria-label={`Mark ${getName(r.member)} paid`} onClick={() => markPaid.mutate(r)} disabled={markPaid.isPending}>
                           {markPaid.isPending && markPaid.variables?.id === r.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}Paid
+                        </Button>
+                      )}
+                      {feeRequired && ((r.status === "paid" && String(r.payment_ref ?? "").startsWith("ADMIN-")) || r.status === "waived") && (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" title="Undo an admin Paid/Waive mark made in error" aria-label={`Mark ${getName(r.member)} unpaid`} onClick={() => { if (window.confirm(`Mark ${getName(r.member)} as NOT paid? Their fee will show as outstanding again.`)) markUnpaid.mutate(r); }} disabled={markUnpaid.isPending}>
+                          Unpay
                         </Button>
                       )}
                       {(r.status === "pending_payment" || r.status === "pending_eft") && (

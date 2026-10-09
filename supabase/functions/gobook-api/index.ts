@@ -212,14 +212,16 @@ const bookerNameFrom = (value: any) => String(
 
 // Booking/List returns the provider's whole register (all dates) per call, so
 // one read is shared per service for a short window and concurrent requests
-// reuse the same in-flight call instead of each hitting GoBook.
+// reuse the same in-flight call instead of each hitting GoBook. GoBook has no
+// date filter, but it does support excluding past bookings — the courts page
+// only ever needs today and future, so we ask for that to shrink each read.
 const REGISTER_TTL_MS = 3 * 60 * 1000;
 const registerCache = new Map<string, { at: number; value: Promise<unknown> }>();
 function cachedRegister(token: string, providerServiceId: number, date: string) {
   const key = `${providerServiceId}`;
   const hit = registerCache.get(key);
   if (hit && Date.now() - hit.at < REGISTER_TTL_MS) return hit.value;
-  const value = apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}`);
+  const value = apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}&includePast=false`);
   registerCache.set(key, { at: Date.now(), value });
   value.catch(() => registerCache.delete(key));
   return value;
@@ -507,7 +509,8 @@ Deno.serve(async (req) => {
       const r = await resolveMyClient();
       if (r.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);
       if (!r.clientId) return json({ success: true, clientId: null, bookings: [] });
-      const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}`)) ?? [];
+      const includePast = payload.include_past === true;
+      const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}${includePast ? "" : "&includePast=false"}`)) ?? [];
       const hhmm = (n: number) => `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
       // Club-local "today" (SAST) so a member only sees bookings they can still cancel.
       const todayLocal = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10);

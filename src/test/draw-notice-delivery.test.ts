@@ -21,7 +21,10 @@ import { sendDrawNotice } from "@/lib/smart-builder/draw-notice";
 
 describe("draw delivery without real sends", () => {
   it("renders personal email and separate pay/tournament WhatsApp URLs for owing players only", async () => {
-    const campaign = await sendDrawNotice("club", "test", "Club champs", "See the new draw", ["email", "whatsapp", "in_app"], undefined, true);
+    await sendDrawNotice("club", "test", "Club champs", "See the new draw", ["email", "whatsapp", "in_app"], undefined, true);
+    const campaign = send.mock.calls[0]?.[0];
+    expect(campaign).toBeDefined();
+    if (!campaign) return;
     const action = tournamentMessageAction({ key: "tournament_view", label: "View", appPath: "/club-champs/test", webUrl: "https://example.test/club-champs/test", hasAction: true }, "https://example.test/md/permanent");
     const vars = { name: "Test Player", ...campaign.memberVars?.owing };
     const email = renderChannel("email", campaign.content.email, vars, action);

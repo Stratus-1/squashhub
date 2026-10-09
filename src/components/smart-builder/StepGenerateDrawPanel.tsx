@@ -1,6 +1,7 @@
 import { patchTournamentPlanFormat } from "@/lib/smart-builder/step-storage";
 import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
-import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
+import { DEFAULT_DRAW_NOTICE, sendDrawNotice } from "@/lib/smart-builder/draw-notice";
+import { DrawNoticeEditor } from "./DrawNoticeEditor";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -69,6 +70,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [askSend, setAskSend] = useState<{ after: boolean } | null>(null);
   const [sendCh, setSendCh] = useState<{ app: boolean; email: boolean }>({ app: true, email: false });
   const [sending, setSending] = useState(false);
+  const [drawMessage, setDrawMessage] = useState(DEFAULT_DRAW_NOTICE);
   const [rebuildOk, setRebuildOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
@@ -531,13 +533,10 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     if (!want.length) { toast.error("Choose In-app and/or Email."); return; }
     setSending(true);
     try {
-      // The notice goes out through the tournament's channels: set app/email to this choice, keep any others.
-      const { data: t } = await fromExt("tournaments").select("invite_methods").eq("id", tournamentId).maybeSingle();
-      const others = (((t as any)?.invite_methods ?? []) as string[]).filter((c) => c !== "app" && c !== "email");
-      const { error } = await fromExt("tournaments").update({ invite_methods: [...want, ...others] }).eq("id", tournamentId);
-      if (error) throw error;
-      const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1, skipPrompt: true });
-      toast.success(roundNotifySummary(r));
+      const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : [])];
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels);
+      if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
+      toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
       closeAsk();
     } catch (e: any) { toast.error(`Players weren't notified: ${e.message ?? e}`); }
     finally { setSending(false); }
@@ -620,6 +619,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
   return (
     <div className="space-y-3 text-xs">
+      <DrawNoticeEditor value={drawMessage} onChange={setDrawMessage} disabled={sending} />
       {hasDraw && (
         <div className="rounded border border-primary/50 bg-primary/10 p-2 space-y-1">
           <div className="font-medium">Draw saved · {existing.games} game{existing.games === 1 ? "" : "s"}{existing.played ? ` · ${existing.played} played or started` : " · none played yet"}</div>
@@ -821,15 +821,16 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Send draw to players now?</DialogTitle>
-            <DialogDescription>Each Round 1 player is told who they play, the opponent's phone number and their court/time or play-by date. Nothing has been sent yet.</DialogDescription>
+            <DialogDescription>This wording goes to Round 1 players with a button to the tournament draw and match details. Nothing has been sent yet.</DialogDescription>
           </DialogHeader>
+          <DrawNoticeEditor value={drawMessage} onChange={setDrawMessage} disabled={sending} />
           <div className="space-y-2 text-sm">
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.app} onCheckedChange={(v) => setSendCh((c) => ({ ...c, app: !!v }))} />In-app</label>
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeAsk} disabled={sending}>Not now</Button>
-            <Button onClick={sendDraw} disabled={sending || (!sendCh.app && !sendCh.email)}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
+            <Button onClick={sendDraw} disabled={sending || !drawMessage.trim() || (!sendCh.app && !sendCh.email)}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

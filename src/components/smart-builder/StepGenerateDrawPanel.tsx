@@ -1,6 +1,7 @@
 import { patchTournamentPlanFormat } from "@/lib/smart-builder/step-storage";
 import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
-import { DEFAULT_DRAW_NOTICE, sendDrawNotice } from "@/lib/smart-builder/draw-notice";
+import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients } from "@/lib/smart-builder/draw-notice";
+import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor } from "./DrawNoticeEditor";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
@@ -41,9 +42,12 @@ const SEED_LABEL: Record<DrawSeeding, string> = { entry_order: "Entry order", ra
  */
 const fmtDay = (iso: string) => { const t = new Date(`${iso}T00:00:00`); return isNaN(+t) ? iso : t.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }); };
 
-export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revisiting }: {
-  clubId: string; tournamentId: string; revisiting: boolean; onGenerated: (info: { games: number }) => void;
+export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revisiting, onEditSetup }: {
+  clubId: string; tournamentId: string; revisiting: boolean; onGenerated: (info: { games: number }) => void; onEditSetup?: () => void;
 }) {
+  const waEnabled = useWhatsAppEnabled(clubId);
+  const [recips, setRecips] = useState<Array<{ id: string; name: string }> | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   // Canonical Fixtures/Tournament Games view for this tournament, preserving club context.
   const fixturesUrl = () => {
@@ -68,7 +72,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [confirmed, setConfirmed] = useState(false);
   const [notifyDraw, setNotifyDraw] = useState(true);
   const [askSend, setAskSend] = useState<{ after: boolean } | null>(null);
-  const [sendCh, setSendCh] = useState<{ app: boolean; email: boolean }>({ app: true, email: false });
+  const [sendCh, setSendCh] = useState<{ app: boolean; email: boolean; wa: boolean }>({ app: true, email: false, wa: false });
   const [sending, setSending] = useState(false);
   const [drawMessage, setDrawMessage] = useState(DEFAULT_DRAW_NOTICE);
   const [rebuildOk, setRebuildOk] = useState(false);
@@ -527,14 +531,20 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     finally { setBusy(false); }
   };
 
+  useEffect(() => {
+    if (!askSend) return;
+    setRecips(null);
+    loadDrawNoticeRecipients(tournamentId).then((r) => { setRecips(r); setPicked(new Set(r.map((x) => x.id))); }).catch((e) => { setRecips([]); toast.error(String(e.message ?? e)); });
+  }, [askSend, tournamentId]);
   const closeAsk = () => { const after = askSend?.after; setAskSend(null); if (after) navigate(fixturesUrl()); };
   const sendDraw = async () => {
-    const want = [sendCh.app && "app", sendCh.email && "email"].filter(Boolean) as string[];
-    if (!want.length) { toast.error("Choose In-app and/or Email."); return; }
+    const want = [sendCh.app && "app", sendCh.email && "email", sendCh.wa && waEnabled && "wa"].filter(Boolean) as string[];
+    if (!want.length) { toast.error("Choose at least one channel."); return; }
+    if (!picked.size) { toast.error("Choose at least one player."); return; }
     setSending(true);
     try {
-      const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : [])];
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels);
+      const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : []), ...(sendCh.wa && waEnabled ? ["whatsapp" as const] : [])];
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked]);
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
       closeAsk();
@@ -636,11 +646,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="font-medium">{hasDraw ? "Rebuild the draw (optional)" : "Confirm final format"} — using the {seeded.reduce((s, d) => s + d.units.length, 0)} current entries</div>
-        {seeded.some((d) => d.units.length > 0 && (d.format.kind === "pools" || isPooledKnockout(d.format))) && (
-          <Button type="button" size="sm" variant="outline" onClick={() => setSeedFull(true)}>
-            <Maximize2 className="mr-1 h-3.5 w-3.5" />Expand pools full screen
-          </Button>
-        )}
       </div>
       <p className="text-muted-foreground">Only current active entries are used; replaced or withdrawn players are left out. Outstanding fees don't exclude anyone because entries here are confirmed without payment. Doubles pairs are kept exactly as you paired them.</p>
 
@@ -697,103 +702,36 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         document.body,
       )}
 
-      {seeded.map((d, i) => {
-        const fam = rrScope(d) === "between" ? [d, ...seeded.filter((o) => siblings(d).includes(o.group))] : [d];
-        const block = fam.length > 1 && fam.every((o) => rrScope(o) === "between");
-        if (block && fam.some((o) => seeded.indexOf(o) < i)) return null; // rendered with the first subcategory
-        const targets = fam.map((o) => seeded.indexOf(o));
-        const apply = (patch: Partial<DivFormat>) => (block ? targets : [i]).forEach((j) => setFmt(j, patch));
-        const applySch = (patch: Partial<DivSchedule>) => apply({ schedule: { ...d.format.schedule, ...patch } });
-        const issues = block ? [...new Set(fam.flatMap((o) => divisionIssues(o, divs)))] : divisionIssues(d, divs);
-        const f = d.format;
-        const pr = d.poolReview;
-        const controls = (
-          <>
-            {pr && (pr.line || pr.warnings.length > 0) && <div className="space-y-1 rounded border border-border bg-muted/30 p-2">
-              {pr.line && <p><span className="font-medium">Pools:</span> {pr.line}{(f.kind === "pools" || isPooledKnockout(f)) && pr.recommended.length > 1 && (f.pools !== pr.recommended.length) ? ` Currently set: ${f.pools} pools — ${sizesText(balancedSizes(d.units.length, f.pools))}.` : ""}</p>}
-              {pr.mode !== "none" && f.kind !== "cross" && <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant={d.poolAccepted ? "outline" : "default"} onClick={() => { const k = pr.recommended.length; apply(f.kind === "knockout" ? { pools: Math.max(1, k) } : { kind: k > 1 ? "pools" : "round_robin", pools: Math.max(1, k) }); acceptPools(block ? targets : [i]); }}>{d.poolAccepted ? "Use the recommendation again" : "Accept recommended pools"}</Button>
-                {d.poolAccepted ? <span className="text-muted-foreground">Accepted — adjust the number of pools or move {d.doubles ? "pairs" : "players"} below if you want.</span> : <span className="text-destructive">Pools must be accepted or adjusted before fixtures can be generated.</span>}
-              </div>}
-              {pr.mode !== "none" && <p className="text-muted-foreground">{f.kind === "knockout" ? `Knockout inside each pool: losers are eliminated within their pool until it is down to ${pooledKnockoutTarget(d)} (${f.ko?.label ? `for ${f.ko.label}` : "its pool winner"}); then the play-offs take over. No round robin.` : "Within this group each pool plays its own round robin — pools don't play each other."}</p>}
-              {pr.warnings.map((w) => <p key={w} className="text-amber-600 dark:text-amber-400">⚠ {w} {f.kind !== "cross" && <button type="button" className="text-primary underline" onClick={() => { const k = Math.max(2, Math.round(d.units.length / 5)); apply({ kind: "pools", pools: k }); acceptPools(block ? targets : [i]); }}>Split into pools of about 5</button>}</p>)}
-            </div>}
-            <div className="grid gap-2 sm:grid-cols-3">
-              <label className="space-y-0.5"><span className="text-muted-foreground">Format</span>
-                <select className="w-full rounded border border-input bg-background p-1" value={f.kind ?? ""} onChange={(e) => apply({ kind: (e.target.value || null) as DrawKind | null })}>
-                  <option value="">Choose…</option>{(Object.keys(KIND_LABEL) as DrawKind[]).map((k) => <option key={k} value={k}>{k === "knockout" && isPooledKnockout(f) ? "Knockout within pools/groups" : KIND_LABEL[k]}</option>)}
-                </select></label>
-              {(f.kind === "pools" || (f.kind === "knockout" && pr && pr.mode !== "none")) && <label className="space-y-0.5"><span className="text-muted-foreground">Number of pools</span><Input type="number" min={2} className="h-7" value={f.pools} onChange={(e) => { apply({ pools: Number(e.target.value) || 1 }); acceptPools(block ? targets : [i]); }} /></label>}
-              {f.kind === "swiss" && <label className="space-y-0.5"><span className="text-muted-foreground">Swiss rounds</span><Input type="number" min={1} className="h-7" value={f.swissRounds} onChange={(e) => apply({ swissRounds: Number(e.target.value) || 0 })} /></label>}
-              {d.scoringText && <div className="space-y-0.5"><span className="text-muted-foreground">Match format (from setup)</span><p>{d.scoringText}</p></div>}
-              {f.kind === "knockout" && (() => {
-                const pace = f.ko?.pace ?? "paced", pairing = f.ko?.pairing ?? "progressive";
-                const choose = (c: { pace?: "paced" | "immediate"; pairing?: "progressive" | "traditional" }) => {
-                  (block ? targets : [i]).forEach((j) => setFmt(j, withKnockoutChoice(divs[j].format, c)));
-                  void saveKnockoutChoice((block ? targets : [i]).map((j) => divs[j].label), { ...(c.pace ? { koPace: c.pace } : {}), ...(c.pairing ? { koPairing: c.pairing } : {}) });
-                };
-                return <div className="space-y-2 sm:col-span-3 rounded border border-border p-2" aria-label={`Knockout settings for ${d.label}`}>
-                  <div className="space-y-1" role="radiogroup" aria-label="Knockout pace">
-                    <div className="font-medium">Knockout pace</div>
-                    <label className="flex items-start gap-2"><input type="radio" name={`pace-${d.group}`} checked={pace === "paced"} onChange={() => choose({ pace: "paced" })} /><span><span className="font-medium">Pace eliminations across these rounds</span> (recommended) — only the eliminations needed to reach {f.ko?.label ?? "the next stage"} are spread over the play-by rounds; nobody is knocked out sooner than needed.</span></label>
-                    <label className="flex items-start gap-2"><input type="radio" name={`pace-${d.group}`} checked={pace === "immediate"} onChange={() => choose({ pace: "immediate" })} /><span><span className="font-medium">Immediate knockout</span> — each round plays as many matches as the field allows, progressing as fast as results come in.</span></label>
-                  </div>
-                  <div className="space-y-1" role="radiogroup" aria-label="Pairing strategy">
-                    <div className="font-medium">Pairing strategy</div>
-                    <label className="flex items-start gap-2"><input type="radio" name={`pair-${d.group}`} checked={pairing === "progressive"} onChange={() => choose({ pairing: "progressive" })} /><span><span className="font-medium">Progressive / closer-ranked</span> — closer-strength pairings in early rounds, giving weaker players more opportunity before the field tightens.</span></label>
-                    <label className="flex items-start gap-2"><input type="radio" name={`pair-${d.group}`} checked={pairing === "traditional"} onChange={() => choose({ pairing: "traditional" })} /><span><span className="font-medium">Traditional seeded knockout</span> — strongest v weakest (1 v N, 2 v N−1…).</span></label>
-                  </div>
-                  <p className="text-muted-foreground">{knockoutNeedText(d, poolMode)} You can change any suggested pairing later in Manage Tournament.</p>
-                </div>;
-              })()}
-            </div>
-            {(f.kind === "cross" || f.kind === "round_robin") && crossSection(i, d)}
-            {f.kind === "knockout" && proposals.has(d.group) && showProposal && round1Editor(d)}
-            {d.playoffs.length > 0 && <p className="text-muted-foreground">Planned play-offs: {d.playoffs.join(" → ")} — kept as "Define later", created after this stage finishes.</p>}
-            {d.notes.map((n) => <p key={n} className="text-muted-foreground">• {n}</p>)}
-            {issues.length > 0 && <p className="text-destructive">Fix: {issues.join(" · ")}</p>}
-          </>
-        );
-        const shared = block ? preview?.divisions.find((p) => p.groups.includes(d.group)) : null;
-        if (block) return (
-          <div key={d.group} className="rounded border border-primary/40 p-2 space-y-2" aria-label={`${unitParentOf(d.label)} between subcategories`}>
-            <div className="font-semibold">{fam.map((o) => o.label).join(" vs ")}</div>
-            <div className="text-xs text-muted-foreground">{unitParentOf(d.label)} — Between subcategories</div>
-            <div className="flex flex-col gap-2 md:flex-row md:items-stretch">
-              {fam.map((o, k) => (
-                <div key={o.group} className="contents">
-                  {k > 0 && <div className="flex items-center justify-center font-bold text-primary md:px-1" aria-hidden="true">VS</div>}
-                  <div className="flex-1 min-w-0 rounded border border-border p-1.5 space-y-1">
-                    <div className="flex flex-wrap items-center justify-between gap-1">
-                      <span className="font-semibold">{o.label}</span>
-                      <span className="text-muted-foreground">{o.units.length} {o.doubles ? "pairs" : "players"}{k > 0 ? ` · plays ${fam[0].label}` : ""}</span>
-                    </div>
-                    {o.units.length > 0 && poolEditor(o)}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {shared && (
-              <div className="rounded bg-muted/40 p-1.5">
-                <div className="font-medium">Shared rounds — {shared.games} games over {shared.rounds} round{shared.rounds === 1 ? "" : "s"}</div>
-                <ul className="grid gap-0.5 sm:grid-cols-2 lg:grid-cols-3">{shared.perRound.map((r) => <li key={r.round}>Round {r.round} · {r.games} games</li>)}</ul>
-              </div>
-            )}
-            <p className="text-muted-foreground">Settings below apply to {fam.map((o) => o.label).join(" and ")} together.</p>
-            {controls}
-          </div>
-        );
-        return (
-          <div key={d.group} className="rounded border border-border p-2 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold">{d.label}</span>
-              {(d.format.kind === "pools" || isPooledKnockout(d.format)) ? <Button type="button" size="sm" variant="ghost" onClick={() => setShowPairs(showPairs === i ? null : i)} aria-expanded={showPairs !== i}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "show pools" : "hide pools"}</Button> : <span className="text-muted-foreground">{d.units.length} {d.doubles ? "pairs" : "players"}</span>}
-            </div>
-            {showPairs !== i && d.units.length > 0 && poolEditor(d)}
-            {controls}
-          </div>
-        );
-      })}
+      <div className="rounded border border-border" data-testid="draw-category-summary">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-2 py-1">
+          <span className="font-medium">Categories (from setup — read only)</span>
+          {onEditSetup && <Button type="button" size="sm" variant="outline" className="h-7" onClick={onEditSetup}>Change in setup</Button>}
+        </div>
+        <table className="w-full text-left">
+          <thead className="text-muted-foreground"><tr><th className="px-2 py-1 font-normal">Category</th><th className="px-2 py-1 font-normal">Entries</th><th className="px-2 py-1 font-normal">Draw format</th><th className="px-2 py-1 font-normal">Match format</th></tr></thead>
+          <tbody>
+            {seeded.map((d, i) => {
+              const f = d.format;
+              const issues = divisionIssues(d, divs);
+              const pr = d.poolReview;
+              const kind = f.kind ? (f.kind === "knockout" && isPooledKnockout(f) ? "Knockout within pools" : KIND_LABEL[f.kind]) : "Not set";
+              const extra = f.kind === "pools" || isPooledKnockout(f) ? ` · ${f.pools} pools` : f.kind === "swiss" ? ` · ${f.swissRounds} rounds` : f.kind === "cross" ? " · vs other groups" : "";
+              return (
+                <tr key={d.group} className="border-t border-border align-top">
+                  <td className="px-2 py-1 font-medium">{d.label}
+                    {d.playoffs.length > 0 && <div className="font-normal text-muted-foreground">Play-offs: {d.playoffs.join(" → ")}</div>}
+                    {issues.length > 0 && <div className="font-normal text-destructive">Fix in setup: {issues.join(" · ")}</div>}
+                    {pr && pr.mode !== "none" && f.kind !== "cross" && !d.poolAccepted && <div className="font-normal text-destructive">Pools not confirmed. <button type="button" className="underline" onClick={() => acceptPools([i])}>Confirm setup pools</button></div>}
+                  </td>
+                  <td className="px-2 py-1">{d.units.length} {d.doubles ? "pairs" : "players"}</td>
+                  <td className="px-2 py-1">{kind}{extra}</td>
+                  <td className="px-2 py-1">{d.scoringText ?? <span className="text-muted-foreground">Not set</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {crossPairs.length > 0 && (
         <div className="rounded border border-border p-2" aria-label="Cross-league matchups">
@@ -827,10 +765,25 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div className="space-y-2 text-sm">
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.app} onCheckedChange={(v) => setSendCh((c) => ({ ...c, app: !!v }))} />In-app</label>
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>
+            {waEnabled && <label className="flex items-center gap-2"><Checkbox checked={sendCh.wa} onCheckedChange={(v) => setSendCh((c) => ({ ...c, wa: !!v }))} />WhatsApp</label>}
+          </div>
+          <div className="space-y-1 text-sm" data-testid="draw-recipient-picker">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">Send to {picked.size} of {recips?.length ?? 0} players</span>
+              <span className="flex gap-2 text-xs">
+                <button type="button" className="text-primary underline" onClick={() => setPicked(new Set((recips ?? []).map((r) => r.id)))}>All</button>
+                <button type="button" className="text-primary underline" onClick={() => setPicked(new Set())}>None</button>
+              </span>
+            </div>
+            {!recips ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading players…</div> : (
+              <div className="grid max-h-48 grid-cols-1 gap-1 overflow-auto rounded border border-border p-2 sm:grid-cols-2">
+                {recips.map((r) => <label key={r.id} className="flex items-center gap-2 text-xs"><Checkbox checked={picked.has(r.id)} onCheckedChange={(v) => setPicked((s) => { const n = new Set(s); v ? n.add(r.id) : n.delete(r.id); return n; })} />{r.name}</label>)}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeAsk} disabled={sending}>Not now</Button>
-            <Button onClick={sendDraw} disabled={sending || !drawMessage.trim() || (!sendCh.app && !sendCh.email)}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
+            <Button onClick={sendDraw} disabled={sending || !drawMessage.trim() || !picked.size || (!sendCh.app && !sendCh.email && !(sendCh.wa && waEnabled))}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

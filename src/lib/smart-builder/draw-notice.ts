@@ -16,7 +16,7 @@ export function drawNoticeRecipients(matches: Array<{ status?: string | null; pl
 }
 
 /** Explicit send only; reuses the club-scoped Communications engine and its delivery log. */
-export async function sendDrawNotice(clubId: string, tournamentId: string, name: string, message: string, channels: CommsChannel[]) {
+export async function sendDrawNotice(clubId: string, tournamentId: string, name: string, message: string, channels: CommsChannel[], onlyIds?: string[]) {
   if (!message.trim() || message.length > 2000) throw new Error("Enter notification wording (up to 2,000 characters).");
   if (!channels.length) throw new Error("Choose a delivery channel.");
   const { data: tournament, error: tournamentError } = await supabase.from("tournaments").select("id").eq("id", tournamentId).eq("club_id", clubId).maybeSingle();
@@ -24,7 +24,8 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
   if (!tournament) throw new Error("Tournament not found in this club.");
   const { data, error } = await supabase.from("club_champs_matches").select("status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, bye_member_id").eq("champ_id", tournamentId).eq("round_number", 1);
   if (error) throw error;
-  const memberIds = drawNoticeRecipients(data ?? []);
+  const all = drawNoticeRecipients(data ?? []);
+  const memberIds = onlyIds ? all.filter((id) => onlyIds.includes(id)) : all;
   if (!memberIds.length) throw new Error("No Round 1 players to notify.");
   return sendComms({
     clubId, name: `${name} — Round 1 draw`, channels,
@@ -33,4 +34,14 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
     action: { key: "tournament_view", label: "View tournament & score match", params: { tournament_id: tournamentId } },
     meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw" },
   });
+}
+/** Round 1 players (for picking who gets the notice), sorted by name. */
+export async function loadDrawNoticeRecipients(tournamentId: string) {
+  const { data, error } = await supabase.from("club_champs_matches").select("status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, bye_member_id").eq("champ_id", tournamentId).eq("round_number", 1);
+  if (error) throw error;
+  const ids = drawNoticeRecipients(data ?? []);
+  if (!ids.length) return [];
+  const { data: mem } = await supabase.from("club_members").select("id, name").in("id", ids);
+  const names = new Map((mem ?? []).map((m: any) => [m.id, m.name as string]));
+  return ids.map((id) => ({ id, name: names.get(id) ?? "Unknown player" })).sort((a, b) => a.name.localeCompare(b.name));
 }

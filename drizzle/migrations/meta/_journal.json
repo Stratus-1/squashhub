@@ -750,6 +750,13 @@
       "when": 1791490507196,
       "tag": "0106_perm_matrix_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1791540937189,
+      "tag": "0107_finance_staff_view_ledgers",
+      "breakpoints": true
     }
   ]
 }

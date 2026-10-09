@@ -1,0 +1,4 @@
+CREATE POLICY "Finance staff view club journal entries" ON public.club_journal_entries FOR SELECT TO authenticated USING (public.is_club_admin_or_permitted(auth.uid(), club_id, 'finance'));
+CREATE POLICY "Finance staff view club bank transactions" ON public.club_bank_transactions FOR SELECT TO authenticated USING (public.is_club_admin_or_permitted(auth.uid(), club_id, 'finance'));
+CREATE POLICY "Finance staff view club bank statements" ON public.club_bank_statements FOR SELECT TO authenticated USING (public.is_club_admin_or_permitted(auth.uid(), club_id, 'finance'));
+CREATE POLICY "Finance staff view club member fee payments" ON public.club_member_fee_payments FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.club_members cm WHERE cm.id = club_member_fee_payments.club_member_id AND public.is_club_admin_or_permitted(auth.uid(), cm.club_id, 'finance')));

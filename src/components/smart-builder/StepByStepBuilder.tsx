@@ -1457,6 +1457,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         });
                         setA({ ...a, picks: n }); toast.success(`${moved} player${moved === 1 ? "" : "s"} re-placed by league.`);
                       }}>Re-place all by league</Button>)}
+                    {Object.keys(a.seedOrder ?? {}).length > 0 && <Button size="sm" variant="outline" title="Clear your manual order and re-sort every column by the current club ladder" onClick={() => {
+                      if (!window.confirm("Refresh seeding by the current ladder? Your manual order in every column is cleared. Players stay in their categories.")) return;
+                      setA({ ...a, seedOrder: {} }); toast.success("Seeding refreshed by the current ladder.");
+                    }}>Refresh by ladder</Button>}
                     <Button size="sm" variant="outline" title="Use the whole screen for the category columns" onClick={() => setBoardFull(true)}><Maximize2 className="mr-1 h-3.5 w-3.5" />Expand</Button>
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}

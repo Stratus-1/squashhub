@@ -870,6 +870,10 @@ Deno.serve(async (req) => {
       body = `${body}\n\n${drawCta.copy}`;
     }
 
+    const entryTournamentCta = type === "tournament_paid" && !drawCta
+      ? await resolveEntryTournamentCta(data, notifUrl)
+      : null;
+
     const managePrefsUrl = absoluteUrl(siteUrl, "/");
     const mergeVars: Record<string, string> = {
       name: String((profile as any)?.name || payloadName || ""),

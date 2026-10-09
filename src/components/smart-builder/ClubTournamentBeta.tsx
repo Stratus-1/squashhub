@@ -96,7 +96,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
 
   if (picker) {
     return (
-      <div className="dark rounded-xl bg-background p-4 text-foreground">
+      <div className="rounded-xl bg-background p-4 text-foreground">
         <TemplatePicker clubId={clubId} mode={picker} onClose={() => setPicker(null)}
           onStartStep={() => { setPicker(null); openNew(false); setEditAt("Summary"); }}
           onOpenDraft={(id) => { setPicker(null); setDraftId(id); }}

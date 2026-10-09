@@ -320,7 +320,8 @@ Deno.serve(async (req) => {
 
       for (const ch of channels) {
         if (alreadySent.has(`${m.id}:${ch}`)) { sent++; continue; }
-        const rendered = renderChannel(ch, content[ch] ?? {}, vars, recipientAction);
+        const channelVars = ch === "email" && action.key === "tournament_view" ? { ...vars, name: escapeHtml(vars.name) } : vars;
+        const rendered = renderChannel(ch, content[ch] ?? {}, channelVars, recipientAction);
         const base = {
           campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id,
           channel: ch, recipient_name: m.name ?? null,

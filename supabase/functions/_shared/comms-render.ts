@@ -89,6 +89,9 @@ export function actionButtonHtml(action: ResolvedAction): string {
   // Keep in sync with welcome_template_email_body().
   const url = escapeHtml(action.webUrl);
   const label = escapeHtml(action.label || "Open");
+  if (action.key === "tournament_view") {
+    return `<div style="margin:20px 0"><a href="${url}" style="display:inline-block;background:#1E3A5F;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;font-size:14px">${label}</a></div>`;
+  }
   return `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:54px;v-text-anchor:middle;width:340px;" arcsize="20%" stroke="f" fillcolor="#1E3A5F"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;">${label}</center></v:roundrect><![endif]--><!--[if !mso]><!-- --><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0"><tr><td bgcolor="#1E3A5F" style="background-color:#1E3A5F;border-radius:10px"><a href="${url}" style="display:inline-block;padding:16px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;line-height:1.4;color:#ffffff;text-decoration:none;border-radius:10px"><span style="color:#ffffff">${label}</span></a></td></tr></table><!--<![endif]-->`;
 }
 

@@ -13,6 +13,7 @@
 
 <!-- LOVABLE:BEGIN -->
 - Scope member-home and club bottom-nav presentation locally; deduplicate only mobile shortcuts, preserving desktop/association access and domain hooks.
+- Generate draw leaves player ordering and scheduling in setup; only format confirmation, read-only scoring and necessary pool allocation appear here; why: avoid conflicting copies.
 <!-- LOVABLE:END -->
 
 ## Architecture rules

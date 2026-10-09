@@ -1,3 +1,6 @@
+### 2026-10-09 — Generate draw repeated setup information
+- Removed repeated schedule summaries and preview dates, seeding selector and non-pool seed display. Retained format confirmation, read-only scoring and real pool allocation. Generation logic and club data unchanged; preview only.
+
 ### 2026-10-07 — Admin registrations lacked Paid action on organiser-selected players
 - The existing EFT paid action was limited to pending_payment/pending_eft, hiding it on registered organiser entries with fee_status=due. Added one-click Paid for unsettled active fee entries, retaining existing linked-fee settlement and RLS. Manual references use ADMIN rather than claiming EFT; paid/on-account display uses authoritative fee_status, with account charges counted separately from money received. Actions wrap on narrow screens; no payment-provider, mandate, fixture or permission changes.
 - Verification: 33 focused registration/status/handover tests pass; isolated browser sample with intercepted reads/writes confirms the button disappears after payment and Paid total updates to 1. Preview build OK. Live authenticated payment writes intentionally not exercised to avoid altering club payments; no real payment data changed, no publishing.

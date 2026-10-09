@@ -427,11 +427,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const groups = pools ?? [d.units.map(unitId)];
     const isPools = d.format.kind === "pools" || isPooledKnockout(d.format);
     const title = (pi: number) => isPools ? `Pool ${String.fromCharCode(65 + pi)}` : d.format.kind === "cross" ? (rrScope(d) === "between" ? "Seed order" : `${d.label} (plays the other selected groups)`) : d.format.kind === "round_robin" ? "Round robin (one group)" : "Seed order";
-    if (!isPools) return (
-      <p className="text-muted-foreground" aria-label={`Seeds for ${d.label}`}>
-        {d.units.length} {d.doubles ? "pairs" : "players"} · seeded {boardOrder[d.group] ? "in the order you set" : "by " + SEED_LABEL[d.format.seeding].toLowerCase()} on the Pick / Allocate players board. To change who is in this category or the seeding, use that board in setup.
-      </p>
-    );
+    if (!isPools) return null;
     return (
       <div className="space-y-2" aria-label={`Pools and seeds for ${d.label}`}>
         <div className={isPools ? "grid gap-2 sm:grid-cols-2" : ""}>
@@ -640,9 +636,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="font-medium">{hasDraw ? "Rebuild the draw (optional)" : "Confirm final format"} — using the {seeded.reduce((s, d) => s + d.units.length, 0)} current entries</div>
-        {seeded.some((d) => d.units.length > 0) && (
+        {seeded.some((d) => d.units.length > 0 && (d.format.kind === "pools" || isPooledKnockout(d.format))) && (
           <Button type="button" size="sm" variant="outline" onClick={() => setSeedFull(true)}>
-            <Maximize2 className="mr-1 h-3.5 w-3.5" />Expand seeds full screen
+            <Maximize2 className="mr-1 h-3.5 w-3.5" />Expand pools full screen
           </Button>
         )}
       </div>
@@ -687,7 +683,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           </div>
           <p className="text-muted-foreground">All groups side by side. Change seed order with ↑↓, move players between pools with drag or "Move to pool" — changes apply here and on the page behind.</p>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-testid="seed-board">
-            {seeded.filter((d) => d.units.length > 0).map((d) => (
+            {seeded.filter((d) => d.units.length > 0 && (d.format.kind === "pools" || isPooledKnockout(d.format))).map((d) => (
               <div key={d.group} className="flex flex-col rounded border border-border p-1.5">
                 <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
                   <span className="font-semibold">{d.label}</span>
@@ -729,13 +725,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 </select></label>
               {(f.kind === "pools" || (f.kind === "knockout" && pr && pr.mode !== "none")) && <label className="space-y-0.5"><span className="text-muted-foreground">Number of pools</span><Input type="number" min={2} className="h-7" value={f.pools} onChange={(e) => { apply({ pools: Number(e.target.value) || 1 }); acceptPools(block ? targets : [i]); }} /></label>}
               {f.kind === "swiss" && <label className="space-y-0.5"><span className="text-muted-foreground">Swiss rounds</span><Input type="number" min={1} className="h-7" value={f.swissRounds} onChange={(e) => apply({ swissRounds: Number(e.target.value) || 0 })} /></label>}
-              <label className="space-y-0.5"><span className="text-muted-foreground">Seeding</span>
-                <select className="w-full rounded border border-input bg-background p-1" value={f.seeding} onChange={(e) => apply({ seeding: e.target.value as DrawSeeding })}>
-                  {(Object.keys(SEED_LABEL) as DrawSeeding[]).map((k) => <option key={k} value={k}>{SEED_LABEL[k]}</option>)}
-                 </select></label>
               {d.scoringText && <div className="space-y-0.5"><span className="text-muted-foreground">Match format (from setup)</span><p>{d.scoringText}</p></div>}
-              <div className="space-y-0.5 sm:col-span-3"><span className="text-muted-foreground">When games are played</span>
-                <p>{f.schedule.rule === "fixed" ? `Fixed days: ${f.schedule.dates.map(fmtDay).join(", ")}` : f.schedule.rule === "play_by" && f.schedule.deadlines.filter(Boolean).length ? `As set in Stages & scheduling (${f.schedule.deadlines.filter(Boolean).map(fmtDay).join(", ")})` : "Not set — choose dates in Stages & scheduling"}</p></div>
               {f.kind === "knockout" && (() => {
                 const pace = f.ko?.pace ?? "paced", pairing = f.ko?.pairing ?? "progressive";
                 const choose = (c: { pace?: "paced" | "immediate"; pairing?: "progressive" | "traditional" }) => {
@@ -786,7 +776,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             {shared && (
               <div className="rounded bg-muted/40 p-1.5">
                 <div className="font-medium">Shared rounds — {shared.games} games over {shared.rounds} round{shared.rounds === 1 ? "" : "s"}</div>
-                <ul className="grid gap-0.5 sm:grid-cols-2 lg:grid-cols-3">{shared.perRound.map((r) => <li key={r.round}>Round {r.round} · {r.games} games{r.date ? ` · Play by ${fmtDay(r.date)}` : ""}</li>)}</ul>
+                <ul className="grid gap-0.5 sm:grid-cols-2 lg:grid-cols-3">{shared.perRound.map((r) => <li key={r.round}>Round {r.round} · {r.games} games</li>)}</ul>
               </div>
             )}
             <p className="text-muted-foreground">Settings below apply to {fam.map((o) => o.label).join(" and ")} together.</p>
@@ -797,7 +787,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div key={d.group} className="rounded border border-border p-2 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold">{d.label}</span>
-              <button type="button" className="text-primary underline" onClick={() => setShowPairs(showPairs === i ? null : i)} aria-expanded={showPairs !== i}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "show pools & seeds" : "hide pools & seeds"}</button>
+              {(d.format.kind === "pools" || isPooledKnockout(d.format)) ? <Button type="button" size="sm" variant="ghost" onClick={() => setShowPairs(showPairs === i ? null : i)} aria-expanded={showPairs !== i}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "show pools" : "hide pools"}</Button> : <span className="text-muted-foreground">{d.units.length} {d.doubles ? "pairs" : "players"}</span>}
             </div>
             {showPairs !== i && d.units.length > 0 && poolEditor(d)}
             {controls}
@@ -816,10 +806,10 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         <div className="rounded border border-border bg-muted/40 p-2">
           <div className="font-medium">Preview — {preview.total} games will be created</div>
           <ul className="mt-1 space-y-0.5">{preview.divisions.map((p) => (
-            <li key={p.label}>{p.label}: {p.units} entries{p.pools > 1 ? ` in ${p.pools} ${seeded.some((d) => d.format.kind === "cross" && p.label.includes(" v ")) ? "groups" : "pools"}` : ""} · {p.games} games over {p.rounds} round{p.rounds === 1 ? "" : "s"}{p.byes ? ` · ${p.byes} bye${p.byes === 1 ? "" : "s"}` : ""} · {p.schedule}</li>
+            <li key={p.label}>{p.label}: {p.units} entries{p.pools > 1 ? ` in ${p.pools} ${seeded.some((d) => d.format.kind === "cross" && p.label.includes(" v ")) ? "groups" : "pools"}` : ""} · {p.games} games over {p.rounds} round{p.rounds === 1 ? "" : "s"}{p.byes ? ` · ${p.byes} bye${p.byes === 1 ? "" : "s"}` : ""}</li>
           ))}</ul>
-          <details className="mt-1"><summary className="cursor-pointer text-primary">Games per round and due dates</summary>
-            {preview.divisions.map((p) => <div key={p.label} className="mt-1"><span className="font-medium">{p.label}:</span> {p.perRound.map((r) => `R${r.round} ${r.games}${r.date ? ` (${r.date})` : ""}`).join(" · ")}</div>)}
+          <details className="mt-1"><summary className="cursor-pointer text-primary">Games per round</summary>
+            {preview.divisions.map((p) => <div key={p.label} className="mt-1"><span className="font-medium">{p.label}:</span> {p.perRound.map((r) => `R${r.round} ${r.games}`).join(" · ")}</div>)}
           </details>
           <p className="mt-1 text-muted-foreground">No courts are booked and no court times are invented. Players are not messaged by this step.</p>
         </div>

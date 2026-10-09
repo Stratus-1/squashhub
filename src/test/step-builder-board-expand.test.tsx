@@ -51,6 +51,38 @@ describe("Step-by-Step: category board full-screen expand", () => {
     expect(screen.getAllByTestId("pick-board")).toHaveLength(1);
   });
 
+  it("shows individual lock state and keeps bulk actions separate", async () => {
+    seed();
+    await openBoard();
+    expect(screen.getByRole("button", { name: "Unlock all", exact: true })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Lock Anna in place" }));
+    expect(screen.getByTestId("pick-row-m1")).toHaveAttribute("data-locked", "true");
+    expect(screen.getByRole("button", { name: "Unlock Anna" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("1 of 4 players locked")).toBeInTheDocument();
+    expect(screen.getByTestId("pick-row-m2")).toHaveAttribute("data-locked", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Lock all", exact: true }));
+    expect(screen.getByText("4 of 4 players locked")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lock all", exact: true })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Unlock Anna" }));
+    expect(screen.getByTestId("pick-row-m1")).toHaveAttribute("data-locked", "false");
+    expect(screen.getByTestId("pick-row-m2")).toHaveAttribute("data-locked", "true");
+    expect(screen.getByText("3 of 4 players locked")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Unlock all", exact: true }));
+    expect(screen.getByText("0 of 4 players locked")).toBeInTheDocument();
+  });
+
+  it("keeps bulk and individual locking available in full screen", async () => {
+    seed();
+    await openBoard();
+    fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
+    const dlg = await screen.findByRole("dialog", { name: /full screen/i });
+    fireEvent.click(within(dlg).getByRole("button", { name: "Lock all", exact: true }));
+    expect(within(dlg).getByText("4 of 4 players locked")).toBeInTheDocument();
+    fireEvent.click(within(dlg).getByRole("button", { name: "Unlock Ben" }));
+    expect(within(dlg).getByTestId("pick-row-m2")).toHaveAttribute("data-locked", "false");
+    expect(within(dlg).getByTestId("pick-row-m1")).toHaveAttribute("data-locked", "true");
+  });
+
   it("closes again with Escape and with the Exit button", async () => {
     seed();
     await openBoard();

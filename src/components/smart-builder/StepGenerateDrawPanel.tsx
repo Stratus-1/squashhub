@@ -549,7 +549,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setSending(true);
     try {
       const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : []), ...(sendCh.wa && waEnabled ? ["whatsapp" as const] : [])];
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], withFee);
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], true);
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
       closeAsk();
@@ -772,7 +772,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>
             {waEnabled && <label className="flex items-center gap-2"><Checkbox checked={sendCh.wa} onCheckedChange={(v) => setSendCh((c) => ({ ...c, wa: !!v }))} />WhatsApp</label>}
           </div>
-          <label className="flex items-start gap-2 text-sm"><Checkbox checked={withFee} onCheckedChange={(v) => setWithFee(!!v)} /><span>Add each player's fee status — "Your fee has been paid" or "Your fee is outstanding" with a <b>Pay my fee</b> button (member account, card or whichever payment options this tournament allows). Skipped when there is no entry fee.</span></label>
+          <p className="text-sm text-muted-foreground">Each player's fee status is always added: "Your fee has been paid", or "Your fee is outstanding" with a <b>Pay my fee</b> button. Entered is not the same as paid. Skipped when there is no entry fee.</p>
           <div className="space-y-1 text-sm" data-testid="draw-recipient-picker">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium">Send to {picked.size} of {recips?.length ?? 0} players</span>

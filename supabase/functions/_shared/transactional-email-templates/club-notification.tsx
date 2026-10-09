@@ -71,6 +71,9 @@ const ClubNotification = ({
             </Text>
           ))}
           {url ? <Button href={url} style={button}>{ctaLabel}</Button> : null}
+          {secondaryUrl ? (
+            <Button href={secondaryUrl} style={secondaryButton}>{secondaryLabel}</Button>
+          ) : null}
         </Container>
       </Body>
     </Html>

@@ -79,6 +79,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [venueErr, setVenueErr] = useState<string | null>(null);
   const [schedOk, setSchedOk] = useState(true);
   const [seedFull, setSeedFull] = useState(false);
+  /** Seed order the admin set on the Pick / Allocate players board, per group — the one source of truth for seeding. */
+  const [boardOrder, setBoardOrder] = useState<Record<number, string[]>>({});
   useEffect(() => {
     if (!seedFull) return;
     const prev = document.body.style.overflow;
@@ -181,6 +183,10 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       if (dropped) toast.warning("Entries changed, so your manual seed/pool changes for that category were reset.");
       return kept;
     });
+    const so = (tt as any)?.beta_lifecycle?.answers?.seedOrder ?? {};
+    const bo: Record<number, string[]> = {};
+    labels.forEach((l, k) => { const v = so[unitKeyOf(l)]; if (Array.isArray(v) && v.length) bo[k + 1] = v; });
+    setBoardOrder(bo);
     setBaseUnits(units); setDivs(defaultCrossAll(list, unspecifiedCross)); setPairErrors(errs); setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tournamentId]);
@@ -190,10 +196,12 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const base = baseUnits[i] ?? [];
     const rk = d.format.seeding === "ranking" ? rankingIssue(base, scope, points) : null;
     let units = orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points });
+    const bo = boardOrder[d.group];
+    if (bo) { const at = (id: string) => { const i = bo.indexOf(id); return i < 0 ? 1e9 : i; }; const r = (u: (typeof units)[number]) => Math.min(at(u.member), u.partner ? at(u.partner) : 1e9); units = units.map((u, k) => ({ u, k })).sort((x, y) => (r(x.u) - r(y.u)) || (x.k - y.k)).map((x) => x.u); }
     const mo = manual[d.group]?.order;
     if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
     return { ...d, koPairs: manual[d.group]?.pairs ?? null, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: (d.format.kind === "pools" || isPooledKnockout(d.format)) && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
-  }), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts]);
+  }), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts, boardOrder]);
   /** Round 1 matches the engine proposes for each paced knockout (before organiser edits) — reviewed below before anything is created. */
   const proposals = useMemo(() => meta ? proposedKnockoutRound1(meta.name, seeded, poolMode) : new Map<number, Array<Array<[string, string]>>>(), [meta, seeded, poolMode]);
   const round1Of = (g: number) => manual[g]?.pairs ?? proposals.get(g) ?? null;
@@ -419,6 +427,11 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const groups = pools ?? [d.units.map(unitId)];
     const isPools = d.format.kind === "pools" || isPooledKnockout(d.format);
     const title = (pi: number) => isPools ? `Pool ${String.fromCharCode(65 + pi)}` : d.format.kind === "cross" ? (rrScope(d) === "between" ? "Seed order" : `${d.label} (plays the other selected groups)`) : d.format.kind === "round_robin" ? "Round robin (one group)" : "Seed order";
+    if (!isPools) return (
+      <p className="text-muted-foreground" aria-label={`Seeds for ${d.label}`}>
+        {d.units.length} {d.doubles ? "pairs" : "players"} · seeded {boardOrder[d.group] ? "in the order you set" : "by " + SEED_LABEL[d.format.seeding].toLowerCase()} on the Pick / Allocate players board. To change who is in this category or the seeding, use that board in setup.
+      </p>
+    );
     return (
       <div className="space-y-2" aria-label={`Pools and seeds for ${d.label}`}>
         <div className={isPools ? "grid gap-2 sm:grid-cols-2" : ""}>

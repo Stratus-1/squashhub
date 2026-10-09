@@ -1,3 +1,6 @@
+### 2026-10-09 — Editable draw notice
+- Generate draw shows editable notice wording and the tournament button; the same edited wording appears in the post-draw send confirmation. Explicit sends reuse the Communications engine with deduplicated Round 1 players/partners and only checked channels; no implicit sends, notification RPC/schema changes or real messages sent during testing.
+
 ### 2026-10-09 — Generate draw repeated setup information
 - Removed repeated schedule summaries and preview dates, seeding selector and non-pool seed display. Retained format confirmation, read-only scoring and real pool allocation. Generation logic and club data unchanged; preview only.
 

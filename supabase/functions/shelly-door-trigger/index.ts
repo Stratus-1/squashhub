@@ -371,6 +371,17 @@ Deno.serve(async (req) => {
       },
     });
 
+    // A confirmed pulse proves the door is reachable: clear any stale
+    // "offline" error on the matching access device so the app stops
+    // showing it as Unavailable.
+    await admin.from("club_devices")
+      .update({ last_error: null })
+      .eq("club_id", club_id)
+      .eq("category", "access")
+      .ilike("name", door_name)
+      .not("last_error", "is", null);
+
+
     return new Response(JSON.stringify({ ok: true, online: verification.online, output_confirmed: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

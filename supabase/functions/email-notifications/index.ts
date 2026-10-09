@@ -137,6 +137,8 @@ async function sendViaPlatform(args: {
   text: string;
   url?: string;
   ctaLabel?: string;
+  secondaryUrl?: string;
+  secondaryLabel?: string;
   recipientName?: string;
   clubName?: string;
   clubLogoUrl?: string;
@@ -152,6 +154,8 @@ async function sendViaPlatform(args: {
         messageBody: args.text,
         url: args.url || "",
         ctaLabel: args.ctaLabel || "Open in SquashHub",
+        secondaryUrl: args.secondaryUrl || "",
+        secondaryLabel: args.secondaryLabel || "",
         recipientName: args.recipientName || "",
         clubName: args.clubName || "",
         clubLogoUrl: args.clubLogoUrl || "",

@@ -142,6 +142,8 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         </CardContent></Card>
       )}
 
+      {/* The link & QR tab shows only the link card; the stage panel (incl. Generate draw & fixtures) is hidden so nothing is duplicated. */}
+      {!qrOpen && (
       <Card className="border-primary/50"><CardContent className="space-y-3 p-4">
         {revisiting ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-muted/40 p-2 text-xs">
@@ -225,6 +227,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             }} />
         )}
       </CardContent></Card>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2 text-xs">
         <div className="rounded border border-border p-3">

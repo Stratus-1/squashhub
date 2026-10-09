@@ -258,6 +258,9 @@ Deno.serve(async (req) => {
     // Probe instead: keep `redirect_url` when Stitch serves the page (nsc 200),
     // fall back to the bare link where that club hasn't whitelisted the host.
     const authUrl = await appendRedirectIfReachable(stitchUrl, safeReturn);
+    if (!authUrl.includes("redirect_url=")) {
+      console.error(`[stitch-create-mandate] RETURN_URL_MISSING club=${club_id} return=${safeReturn}`);
+    }
 
 
 

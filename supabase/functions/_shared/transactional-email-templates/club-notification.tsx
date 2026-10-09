@@ -103,3 +103,4 @@ const caption = { color: '#64748b', fontSize: '12px', fontWeight: '700' as const
 const heading = { color: '#1e3a5f', fontSize: '24px', margin: '4px 0 18px' }
 const bodyText = { color: '#1d2733', fontSize: '15px', lineHeight: '24px', margin: '0 0 14px' }
 const button = { backgroundColor: '#1e3a5f', color: '#ffffff', padding: '12px 18px', borderRadius: '4px', textDecoration: 'none' }
+const secondaryButton = { backgroundColor: '#ffffff', color: '#1e3a5f', border: '2px solid #1e3a5f', padding: '10px 16px', borderRadius: '4px', textDecoration: 'none', fontWeight: 700, marginTop: '10px' }

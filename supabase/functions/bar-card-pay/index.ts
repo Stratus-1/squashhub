@@ -240,12 +240,20 @@ Deno.serve(async (req) => {
     }
 
 
+    // Stitch return: EXACTLY the wallet top-up contract (stitch-create-payment):
+    // the club's own https://<sub>.squashhub.co.za/my-account, which every club
+    // has in its Stitch redirect allow-list. Never the shared www /pay/return.
+    const stitchSub = String((club as any).subdomain || "").trim().toLowerCase();
+    const stitchReturn = /^[a-z0-9-]{2,32}$/.test(stitchSub) && !["www", "app", "admin"].includes(stitchSub)
+      ? `https://${stitchSub}.squashhub.co.za/my-account`
+      : "https://squashhub.co.za/my-account";
+
     try {
       const request = await createPaymentRequest({
         clientId, clientSecret, amount, reference,
         payerName: (buyer_name || "Bar customer").slice(0, 40),
         payerId: String(sale.id),
-        redirectUri,
+        redirectUri: stitchReturn,
       });
       await admin.from("bar_visitor_sales")
         .update({ payment_reference: request.id }).in("id", saleIds);
@@ -274,6 +282,8 @@ Deno.serve(async (req) => {
         currency: "ZAR",
         payerName: (buyer_name || "Bar customer").slice(0, 40),
         merchantReference: reference,
+        merchantRedirectUrl: stitchReturn,
+        redirectUrl: stitchReturn,
       }),
     });
     const plJson = await plResp.json().catch(() => ({}));
@@ -284,13 +294,12 @@ Deno.serve(async (req) => {
     }
     await admin.from("bar_visitor_sales")
       .update({ payment_reference: String(plJson.data.payment.id) }).in("id", saleIds);
-    // Stitch Express permits only a small redirect allow-list. Every club uses
-    // the one shared SquashHub callback; that page forwards back to the bar.
-    return json({
-      sale_id: sale.id,
-      sale_ids: saleIds,
-      redirect_url: await appendRedirectIfReachable(String(link), redirectUri),
-    });
+    // Same as top-ups: redirect_url on the hosted link, probed; log when refused.
+    const hosted = await appendRedirectIfReachable(String(link), stitchReturn);
+    if (!hosted.includes("redirect_url=")) {
+      console.error(`[bar-card-pay] RETURN_URL_MISSING club=${club.id} return=${stitchReturn}`);
+    }
+    return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: hosted });
 
   } catch (e: any) {
     console.error("bar-card-pay error:", e);

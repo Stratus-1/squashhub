@@ -32,8 +32,9 @@ describe("Stitch return URL contract", () => {
 
 describe("Bar card payments use the top-up return contract", () => {
   const bar = read("bar-card-pay/index.ts");
-  it("returns to the club's /my-account, never the shared www /pay/return for Stitch", () => {
-    expect(bar).toMatch(/\.squashhub\.co\.za\/my-account/);
+  it("returns to the club host public success page, never the shared www /pay/return for Stitch", () => {
+    expect(bar).toMatch(/\.squashhub\.co\.za`/);
+    expect(bar).toMatch(/\/s\/\$\{encodeURIComponent\(String\(code\)\)\}\/success/);
     expect(bar).toMatch(/appendRedirectIfReachable\(String\(link\), stitchReturn\)/);
     expect(bar).toMatch(/redirectUri: stitchReturn/);
     expect(bar).toMatch(/RETURN_URL_MISSING/);

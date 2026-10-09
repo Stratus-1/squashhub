@@ -174,6 +174,8 @@ export type StepAnswers = {
   seedingOverrides: Record<string, SeedMethod>;
   /** Admin seed order per event on the Pick players board (device-local plan). */
   seedOrder?: Record<string, string[]>;
+  /** Players locked in place on the board — Refresh by ladder skips them. */
+  lockedIds?: string[];
   /** Club Champs (over a period) only. */
   name: string;
   periodStart: string;

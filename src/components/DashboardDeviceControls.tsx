@@ -124,7 +124,7 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
 
   if (compact) return (
     <CompactDeviceButton name="Main door" action="Open" busy={loading} icon={DoorOpen}
-      onActivate={() => door.openDoor("manual", { allowBluetooth: false })} />
+      onActivate={() => door.openDoor("manual")} />
   );
 
   return (
@@ -169,7 +169,7 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
       </div>
       <Button
         size="sm"
-        onClick={() => door.openDoor("manual", { allowBluetooth: false })}
+        onClick={() => door.openDoor("manual")}
         disabled={loading}
         variant={adminOverride ? "outline" : "default"}
         className="gap-1.5 shrink-0"
@@ -239,16 +239,22 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
    * door still opens it over BLE. Other categories deliberately don't — a
    * geyser can wait for the network.
    */
-  const bleRescue = async (cloudError: string, trigger: "manual" | "geofence" = "manual") => {
+  /**
+   * Bluetooth rescue for every access door and light: when the club's internet
+   * (or the relay's Wi-Fi) is down, a member at the club still works the relay
+   * over BLE. Only attempted after the internet path fails.
+   */
+  const bleCapable = device.category === "access" || device.category === "lights";
+  const bleRescue = async (
+    cloudError: string,
+    trigger: "manual" | "geofence" = "manual",
+    action: "on" | "off" | "pulse" = "pulse",
+  ) => {
     const secrets: any = clubSecrets || {};
-    // Manual taps use the server action only (Web Bluetooth opened Chrome's
-    // Nearby-devices chooser); the automatic geofence unlock keeps BLE rescue.
-    if (trigger === "manual" || device.category !== "access" || !secrets.ble_fallback_enabled) {
+    if (!bleCapable || !secrets.ble_fallback_enabled) {
       toast.error(cloudError);
       return false;
     }
-    // The offline Bluetooth path can't reach the server, so the age gate is
-    // checked here from the member's own ID/DOB before pulsing.
     if (minAge) {
       const m: any = activeMember || {};
       const gate = checkAgeGate(minAge, resolveAge({ dob: m.date_of_birth ?? null, idNumbers: [m.id_number] }));
@@ -257,6 +263,7 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
         return false;
       }
     }
+    const autoOff = Number(d.auto_off_seconds) || 0;
     setBleBusy(true);
     try {
       await pulseAccessDeviceBle({
@@ -267,13 +274,24 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
         shellyDeviceId: d.shelly_device_id,
         password: secrets.shelly_ble_control_password,
         channel: d.shelly_channel ?? 0,
+        turn: action === "off" ? "off" : "on",
         pulseMs:
-          trigger === "geofence"
+          action === "off" ? 0
+          : action === "on" ? (autoOff > 0 ? autoOff * 1000 : 0)
+          : trigger === "geofence"
             ? Math.min(120, Math.max(1, Number(d.auto_unlock_seconds ?? 12))) * 1000
             : d.pulse_ms ?? 3000,
         cloudError,
       });
-      toast.success(`${device.name} opened over Bluetooth (club internet is down)`);
+      if (action !== "pulse") {
+        if (compact) { setCompactState(action === "on"); setCompactUnavailable(false); }
+        else setOptimistic(action === "on");
+      }
+      toast.success(
+        action === "pulse"
+          ? `${device.name} opened over Bluetooth (club internet is down)`
+          : `${device.name} switched ${action} over Bluetooth (club internet is down)`,
+      );
       return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : cloudError);
@@ -299,6 +317,7 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
       } else {
         if (compact) {
           if (res?.ok === false || res?.online === false) {
+            if (bleCapable) return await bleRescue(`${device.name} is unavailable.`, trigger, action);
             setCompactUnavailable(true);
             toast.error(`${device.name} is unavailable.`);
             return false;
@@ -322,8 +341,8 @@ function DeviceRow({ device, clubId, compact }: { device: ClubDevice; clubId: st
         showAgeDenied(code, msg);
         return false;
       }
-      if (action === "pulse" && device.category === "access") {
-        return await bleRescue(msg, trigger);
+      if (bleCapable) {
+        return await bleRescue(msg, trigger, action);
       }
       toast.error(msg);
       return false;

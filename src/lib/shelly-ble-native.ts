@@ -65,7 +65,8 @@ export async function pulseShellyBleNative(params: BlePulseParams): Promise<void
       params: {
         id: params.channel ?? 0,
         on: (params.turn ?? "on") === "on",
-        toggle_after: Math.max(1, Math.round((params.pulseMs ?? 3000) / 1000)),
+        // pulseMs 0 = stay switched (lights on/off); otherwise auto-release.
+        ...(params.pulseMs === 0 ? {} : { toggle_after: Math.max(1, Math.round((params.pulseMs ?? 3000) / 1000)) }),
       },
     };
     const exchange = async (encoded: Uint8Array): Promise<Uint8Array> => {

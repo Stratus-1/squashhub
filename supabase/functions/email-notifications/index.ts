@@ -987,6 +987,8 @@ Deno.serve(async (req) => {
       text: body,
       url: link,
       ctaLabel: drawCta ? DRAW_CTA_LABEL : type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
+      secondaryUrl: entryTournamentCta || undefined,
+      secondaryLabel: "View tournament & score match",
       recipientName: String((profile as any)?.name || payloadName || "").trim(),
       clubName: clubMail?.clubName || clubBrand.name || "",
       clubLogoUrl: clubMail?.clubLogoUrl || clubBrand.logoUrl || "",

@@ -470,75 +470,47 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                       );
                     })()}
                     <div className="flex flex-wrap gap-1">
-                      {r.invited_by_admin && normalisePhoneForWhatsApp(r.member?.phone) && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs text-emerald-600 hover:text-emerald-700"
-                          title="Send WhatsApp invitation"
-                          onClick={() => {
-                            const name = getName(r.member);
-                            const first = String(name).split(/\s+/)[0] || name;
-                            const feeLine = entryFee > 0 ? `\nEntry fee: R${entryFee.toFixed(2)}` : "";
-                            const msg =
-                              `🏆 ${champ?.name}\n\n` +
-                              `Hi ${first}, you're invited to play in *${champ?.name}*.${feeLine}\n\n` +
-                              `Open the app to accept: ${window.location.origin}/tournaments`;
-                            openWhatsApp(r.member?.phone, msg);
-                          }}
-                        >
-                          <MessageCircle className="w-3 h-3 mr-1" />WhatsApp
-                        </Button>
-                      )}
                       {normalisePhoneForWhatsApp(r.member?.phone) && (
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-7 text-xs text-emerald-700 hover:text-emerald-800"
-                          title="Send WhatsApp login reminder"
+                          title="Send a WhatsApp with the tournament link (and pay link if the fee is outstanding)"
                           onClick={async () => {
+                            // One WhatsApp button: invitation / login help / reminder, always with the
+                            // tournament's permanent link, plus a personal pay link when the fee is outstanding.
                             const name = getName(r.member);
                             const first = String(name).split(/\s+/)[0] || name;
-                            const host = window.location.host.startsWith("id-preview")
-                              ? "squashhub.co.za"
-                              : window.location.host;
-                            const s = signupMap.get(r.club_member_id);
-                            let msg: string;
-                            if (s && !s.has_signed_in) {
-                              // Not activated yet — try to generate a one-tap magic link
-                              let magicLink: string | null = null;
-                              try {
-                                const { supabase } = await import("@/integrations/supabase/client");
-                                const { data, error } = await supabase.functions.invoke("generate-member-magic-link", {
-                                  body: { club_member_id: r.club_member_id },
-                                });
-                                if (!error && (data as any)?.magic_link) magicLink = (data as any).magic_link;
-                                else if (error) toast.error("Could not create magic link — sending fallback reminder.");
-                              } catch (e) {
-                                toast.error("Could not create magic link — sending fallback reminder.");
-                              }
-                              if (magicLink) {
-                                msg =
-                                  `🏆 ${champ?.name}\n\n` +
-                                  `Hi ${first}, you're registered but haven't activated your SquashHub login yet.\n\n` +
-                                  `👉 One-tap sign in (opens the app & lets you set a password):\n${magicLink}\n\n` +
-                                  `Once in, tap *Club Tournaments* → *My Games* to see your fixtures.`;
-                              } else {
-                                msg =
-                                  `🏆 ${champ?.name}\n\n` +
-                                  `Hi ${first}, quick reminder to log in and view your fixtures 👉 https://${host}\n\n` +
-                                  `You're already registered with the email the organisers have on file — just tap *Log in* → *Forgot password* to set yours, then go to *Club Tournaments* → *My Games*.`;
-                              }
-                            } else {
-                              msg =
-                                `🏆 ${champ?.name}\n\n` +
-                                `Hi ${first}, quick reminder to check your fixtures 👉 https://${host}\n\n` +
-                                `Go to *Club Tournaments* → *My Games*.`;
+                            const title = champ?.name ?? "Tournament";
+                            const owes = feeRequired && !["paid", "waived"].includes(String(r.status));
+                            const [tLink, payLinks, magicLink] = await Promise.all([
+                              tournamentLink(clubId, champId).catch(() => null),
+                              owes ? entryPayLinks(clubId, champId).catch(() => ({} as Record<string, string>)) : Promise.resolve({} as Record<string, string>),
+                              (async () => {
+                                const s = signupMap.get(r.club_member_id);
+                                if (!s || s.has_signed_in) return null;
+                                try {
+                                  const { supabase } = await import("@/integrations/supabase/client");
+                                  const { data, error } = await supabase.functions.invoke("generate-member-magic-link", { body: { club_member_id: r.club_member_id } });
+                                  return !error && (data as any)?.magic_link ? String((data as any).magic_link) : null;
+                                } catch { return null; }
+                              })(),
+                            ]);
+                            const lines: string[] = [`*${title}*`, ""];
+                            if (r.invited_by_admin && r.status === "invited") lines.push(`Hi ${first}, you're invited to play in *${title}*.`);
+                            else lines.push(`Hi ${first}, a quick reminder about *${title}*.`);
+                            if (tLink) lines.push("", `View the tournament, your draw and score your match:`, tLink);
+                            if (owes) {
+                              const due = entryDueCents(Math.round(entryFee * 100), (r as any).division_choices) / 100;
+                              const pay = payLinks[r.club_member_id];
+                              lines.push("", `Please pay your outstanding entry fee of R${due.toFixed(2)}.`);
+                              if (pay) lines.push(`Pay here (no login needed): ${pay}`);
                             }
-                            openWhatsApp(r.member?.phone, msg);
+                            if (magicLink) lines.push("", `Activate your SquashHub login (one tap):`, magicLink);
+                            openWhatsApp(r.member?.phone, lines.join("\n"));
                           }}
                         >
-                          <MessageCircle className="w-3 h-3 mr-1" />Remind
+                          <MessageCircle className="w-3 h-3 mr-1" />WhatsApp
                         </Button>
                       )}
                       {r.proof_url && (

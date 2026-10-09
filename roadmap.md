@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Shorten the WhatsApp club notice opening line to "Update from <club>:" — waiting on Meta: new template `squashhub_club_notice_v5` submitted 2026-10-09 (status received, up to 48h); cutover is one row update on `club_notice` (body + content_sid) once approved, no code change.
 - [x] 2026-10-09: Published the accumulated tournament work (builder visual refresh, lock controls, link & QR tab, personalised draw email/WhatsApp) to https://squashhub.lovable.app.
 - [x] Clarify player locks: coloured Locked rows/badges, separate Lock all / Unlock all with status count, individual toggles in inline/full-screen board; 7 tests and intercepted saved-setup browser checks passed, no live writes or publishing.
 - [x] Tournament Builder visual-only refresh: preserved all 19 saved Club Champs steps/flow; improved navigator/options/summary and verified desktop/mobile/tablet in light/dark with live writes blocked. Preview only; four pre-existing pairing test failures remain outside this task.

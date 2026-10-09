@@ -63,7 +63,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
 
   if (managing) {
     return (
-      <div className="dark rounded-xl bg-background p-4 text-foreground">
+      <div className="rounded-xl bg-background p-4 text-foreground">
         <StepTournamentManagement key={managing} clubId={clubId} tournamentId={managing}
           onBack={() => { setManaging(null); setEditTid(null); }}
           onEditSetup={(at) => { setEditTid(managing); setManaging(null); setEditAt(at ?? "Summary"); setBuilderKey((k) => k + 1); setStepByStepOpen(true); }} />
@@ -73,7 +73,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
 
   if (stepByStepOpen) {
     return (
-      <div className="dark rounded-xl bg-background p-4 text-foreground">
+      <div className="rounded-xl bg-background p-4 text-foreground">
         <StepByStepBuilder key={`${editTid ?? "new"}-${builderKey}`} clubId={clubId} clubName={clubName} initialStep={editAt ?? undefined} tournamentId={editTid ?? undefined}
           onCompleted={(tid) => { setStepByStepOpen(false); setEditAt(null); setEditTid(null); setManaging(tid); }} />
       </div>

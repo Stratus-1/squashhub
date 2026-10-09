@@ -48,7 +48,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const waEnabled = useWhatsAppEnabled(clubId);
   const [recips, setRecips] = useState<Array<{ id: string; name: string }> | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [withFee, setWithFee] = useState(true);
   const navigate = useNavigate();
   // Canonical Fixtures/Tournament Games view for this tournament, preserving club context.
   const fixturesUrl = () => {

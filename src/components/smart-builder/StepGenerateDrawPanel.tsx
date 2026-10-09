@@ -48,6 +48,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const waEnabled = useWhatsAppEnabled(clubId);
   const [recips, setRecips] = useState<Array<{ id: string; name: string }> | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [withFee, setWithFee] = useState(true);
   const navigate = useNavigate();
   // Canonical Fixtures/Tournament Games view for this tournament, preserving club context.
   const fixturesUrl = () => {
@@ -544,7 +545,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setSending(true);
     try {
       const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : []), ...(sendCh.wa && waEnabled ? ["whatsapp" as const] : [])];
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked]);
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], withFee);
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
       closeAsk();
@@ -767,6 +768,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>
             {waEnabled && <label className="flex items-center gap-2"><Checkbox checked={sendCh.wa} onCheckedChange={(v) => setSendCh((c) => ({ ...c, wa: !!v }))} />WhatsApp</label>}
           </div>
+          <label className="flex items-start gap-2 text-sm"><Checkbox checked={withFee} onCheckedChange={(v) => setWithFee(!!v)} /><span>Add each player's fee status — "Your fee has been paid" or "Your fee is outstanding" with a <b>Pay my fee</b> button (member account, card or whichever payment options this tournament allows). Skipped when there is no entry fee.</span></label>
           <div className="space-y-1 text-sm" data-testid="draw-recipient-picker">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium">Send to {picked.size} of {recips?.length ?? 0} players</span>

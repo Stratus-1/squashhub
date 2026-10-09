@@ -518,7 +518,7 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
           </DialogHeader>
           {waPreview && (
             <div className="rounded-md border bg-muted/40 p-2 text-xs whitespace-pre-wrap break-words">
-              {`Update from *your club* about your club account:\n\n${waMessage(waPreview)}\n\nView the details in your account here: ${waPreview.auth_url}\n\nThank you.`}
+              {`Update from *your club*:\n\n${waMessage(waPreview)}\n\nView the details in your account here: ${waPreview.auth_url}\n\nThank you.`}
             </div>
           )}
           <DialogFooter>

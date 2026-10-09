@@ -1,3 +1,6 @@
+### 2026-10-09 — Special availability time selection
+- Replaced native minute pickers in the bar special form with 24-hour quarter-hour dropdowns, retaining Any time and existing off-grid saved times without rounding. No stock, validity rules or stored records changed; preview only.
+
 ### 2026-10-09 — Player locks were unclear
 - Added persistent separate Lock all and Unlock all actions with locked-player count, visible coloured Locked row badges and accessible individual toggle states. Bulk controls also appear in the expanded board. Existing saved lockedIds and ladder refresh behaviour retained; no allocation or scoring changes.
 - Seven focused tests pass. Authenticated saved Riverside setup exercised with backend writes intercepted: individual lock, bulk lock, individual unlock and bulk unlock, including full-screen and mobile; no runtime errors or horizontal overflow. Preview only, no live records changed or publishing.

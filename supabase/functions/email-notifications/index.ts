@@ -944,17 +944,26 @@ Deno.serve(async (req) => {
           </p>`
         : "";
 
+      const entryCtaHtml = entryTournamentCta
+        ? `<p style="margin:0 0 18px 0">
+            <a href="${escapeHtml(entryTournamentCta)}" style="display:inline-block; padding:10px 14px; background:#ffffff; color:#1a5c3a; border:2px solid #1a5c3a; text-decoration:none; border-radius:8px; font-weight:700">
+              View tournament &amp; score match
+            </a>
+          </p>`
+        : "";
+
       html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
           ${logoHeaderHtml}
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
           ${greetingHtml}
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
-          <p style="margin:0 0 ${isTournamentInvite ? "6" : "18"}px 0">
+          <p style="margin:0 0 ${isTournamentInvite || entryCtaHtml ? "10" : "18"}px 0">
             <a href="${safeLink}" style="display:inline-block; padding:${drawCta ? "14px 22px; font-weight:700; font-size:15px; letter-spacing:.3px; max-width:100%; text-align:center" : "10px 14px"}; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
               ${escapeHtml(ctaLabel)}
             </a>
           </p>
+          ${entryCtaHtml}
           ${inviteExplainerHtml}
           <p style="margin:0; font-size:12px; color:#64748b">
             If you prefer not to receive these emails, you’ll be able to disable transactional emails in your profile settings.
@@ -962,7 +971,7 @@ Deno.serve(async (req) => {
         </div>
       `.trim();
 
-      text = `${title}\n\n${greetingName ? `Dear ${greetingName},\n\n` : ""}${body}\n\n${ctaLabel}: ${link}\n`;
+      text = `${title}\n\n${greetingName ? `Dear ${greetingName},\n\n` : ""}${body}\n\n${ctaLabel}: ${link}\n${entryTournamentCta ? `View tournament & score match: ${entryTournamentCta}\n` : ""}`;
     }
 
 

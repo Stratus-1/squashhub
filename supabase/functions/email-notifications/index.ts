@@ -8,6 +8,16 @@ import { DRAW_CTA_LABEL, champIdFromUrl, drawCtaCopy, tournamentDestinationUrl, 
  * recipient's latest round-draw notification. Uses the tournament's existing
  * persistent Match Day token — never mints a new one.
  */
+async function resolveTournamentDestination(champId: string): Promise<string | null> {
+  const { data: champ } = await supabaseAdmin.from("club_champs").select("club_id").eq("id", champId).maybeSingle();
+  if (!champ) return null;
+  const { data: club } = await supabaseAdmin.from("clubs").select("subdomain").eq("id", (champ as any).club_id).maybeSingle();
+  const sub = (club as any)?.subdomain ?? null;
+  const { data: access } = await supabaseAdmin.from("match_day_access").select("token")
+    .eq("competition_kind", "tournament").eq("competition_id", champId).eq("status", "active").maybeSingle();
+  return (access as any)?.token ? tournamentDestinationUrl((access as any).token, sub) : tournamentFallbackUrl(champId, sub);
+}
+
 async function resolveDrawCta(data: any, notifUrl: string): Promise<{ url: string; copy: string } | null> {
   let champId: string | null = data?.champ_id ? String(data.champ_id) : champIdFromUrl(notifUrl);
   let matchId: string | null = data?.match_id ? String(data.match_id) : null;
@@ -22,19 +32,25 @@ async function resolveDrawCta(data: any, notifUrl: string): Promise<{ url: strin
     }
   }
   if (!champId) return null;
-  const { data: champ } = await supabaseAdmin.from("club_champs").select("club_id").eq("id", champId).maybeSingle();
-  if (!champ) return null;
-  const { data: club } = await supabaseAdmin.from("clubs").select("subdomain").eq("id", (champ as any).club_id).maybeSingle();
-  const sub = (club as any)?.subdomain ?? null;
   let round: number | null = null;
   if (matchId) {
     const { data: m } = await supabaseAdmin.from("club_champs_matches").select("round_number").eq("id", matchId).maybeSingle();
     round = (m as any)?.round_number ?? null;
   }
-  const { data: access } = await supabaseAdmin.from("match_day_access").select("token")
-    .eq("competition_kind", "tournament").eq("competition_id", champId).eq("status", "active").maybeSingle();
-  const url = (access as any)?.token ? tournamentDestinationUrl((access as any).token, sub) : tournamentFallbackUrl(champId, sub);
+  const url = await resolveTournamentDestination(champId);
+  if (!url) return null;
   return { url, copy: drawCtaCopy(round) };
+}
+
+/**
+ * Entry-confirmed (tournament_paid) emails keep the "Open in SquashHub" button
+ * and add a second button that opens the same permanent tournament destination
+ * the Match Day QR encodes — never a new or email-only URL.
+ */
+async function resolveEntryTournamentCta(data: any, notifUrl: string): Promise<string | null> {
+  const champId = data?.champ_id ? String(data.champ_id) : champIdFromUrl(notifUrl);
+  if (!champId) return null;
+  return resolveTournamentDestination(champId).catch((e) => { console.warn("[email-notifications] entry tournament CTA", e); return null; });
 }
 
 const corsHeaders = {

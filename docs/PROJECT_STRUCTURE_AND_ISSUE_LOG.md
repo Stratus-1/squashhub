@@ -2753,3 +2753,8 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 - `tournament_paid` (entry confirmed) emails keep "Open in SquashHub" and gain a second button via new `resolveEntryTournamentCta`: the same permanent destination the Match Day QR encodes (`/md/<token>`, fallback `/club-champs/<id>`), reusing `resolveTournamentDestination` extracted from `resolveDrawCta` — no new URL per email.
 - `club-notification.tsx` template gains optional `secondaryUrl`/`secondaryLabel` (outline button) so the second button also renders on the platform sender (no club SMTP / SMTP fallback); other template senders unaffected.
 - Text versions append the second link; queued outbox sends resolve the champ from the `/club-champs/<id>` URL. Code only — edge functions not yet deployed (awaiting approval, together with the draw-email CTA).
+
+## 2026-10-09 — "Tournament link & QR" tab repeated the draw step
+- `StepTournamentManagement.tsx`: the stage card (draw/fixture generation, "Revisiting Generate draw & fixtures" banner, deferred stage dates, draw notification wording) is now rendered only when `qrOpen` is false, so the new link & QR tab shows the Match Day Access card alone; the lifecycle pill row and the Entries & payment status / Decided later summary stay visible.
+- Clicking any stage pill sets `qrOpen` false, so the draw step returns unchanged. No routing, permission or Match Day Access behaviour change; the tab remains reachable at every lifecycle stage.
+- Verified signed-in Riverside "club champs": link & QR tab shows Match Day Access only (draw action panel 0, "Revisiting" banner 0), clicking the "Generate draw & fixtures" pill restores the panel (1) and clears the pressed link tab.

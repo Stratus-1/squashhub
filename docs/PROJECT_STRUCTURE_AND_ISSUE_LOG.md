@@ -2734,3 +2734,8 @@ Bar / POS moved after Club Books in Club Admin. Users can reorder/hide their own
 
 ### 2026-10-08 — Platform updates "all clubs" audience matched no admins
 send-platform-update filtered club_members by ~800 club IDs, overflowing the request URL and returning no rows. Fix: skip the club filter when audience_type = all.
+
+## 2026-10-09 — Round-draw email "VIEW TOURNAMENT & SCORE MATCH" button
+- `email-notifications` (type `tournament_round_draw`) now links to the tournament's existing overall Match Day link (`/md/<token>`, same as the QR "All Courts" link) via `_shared/match-day-cta.ts`; falls back to `/club-champs/<id>` when Match Day Access is off. Queued (outbox) sends recover the tournament from the recipient's latest round-draw notification.
+- `/md/<token>` shows a signed-in participant their own next match (own session, checked before anonymous device mode) with a button into the normal signed-in tournament page. No new token, route or scoring path.
+- Tests: `src/test/match-day-draw-cta.test.ts`.

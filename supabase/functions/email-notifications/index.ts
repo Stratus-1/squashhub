@@ -1,5 +1,41 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { sendAppEmail } from '../_shared/send-app-email.ts'
+import { DRAW_CTA_LABEL, champIdFromUrl, drawCtaCopy, tournamentDestinationUrl, tournamentFallbackUrl } from '../_shared/match-day-cta.ts'
+
+/**
+ * Round-draw CTA: tournament id comes from the notification data, the
+ * /club-champs/<id> link, or (queued outbox sends, which carry no data) the
+ * recipient's latest round-draw notification. Uses the tournament's existing
+ * persistent Match Day token — never mints a new one.
+ */
+async function resolveDrawCta(data: any, notifUrl: string): Promise<{ url: string; copy: string } | null> {
+  let champId: string | null = data?.champ_id ? String(data.champ_id) : champIdFromUrl(notifUrl);
+  let matchId: string | null = data?.match_id ? String(data.match_id) : null;
+  if (!champId && data?.outbox_id) {
+    const { data: ob } = await supabaseAdmin.from("email_outbox").select("club_member_id,created_at").eq("id", data.outbox_id).maybeSingle();
+    if (ob?.club_member_id) {
+      const { data: n } = await supabaseAdmin.from("notifications").select("data")
+        .eq("club_member_id", ob.club_member_id).eq("type", "tournament_round_draw")
+        .lte("created_at", ob.created_at).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      champId = (n as any)?.data?.champ_id ?? null;
+      matchId = (n as any)?.data?.match_id ?? null;
+    }
+  }
+  if (!champId) return null;
+  const { data: champ } = await supabaseAdmin.from("club_champs").select("club_id").eq("id", champId).maybeSingle();
+  if (!champ) return null;
+  const { data: club } = await supabaseAdmin.from("clubs").select("subdomain").eq("id", (champ as any).club_id).maybeSingle();
+  const sub = (club as any)?.subdomain ?? null;
+  let round: number | null = null;
+  if (matchId) {
+    const { data: m } = await supabaseAdmin.from("club_champs_matches").select("round_number").eq("id", matchId).maybeSingle();
+    round = (m as any)?.round_number ?? null;
+  }
+  const { data: access } = await supabaseAdmin.from("match_day_access").select("token")
+    .eq("competition_kind", "tournament").eq("competition_id", champId).eq("status", "active").maybeSingle();
+  const url = (access as any)?.token ? tournamentDestinationUrl((access as any).token, sub) : tournamentFallbackUrl(champId, sub);
+  return { url, copy: drawCtaCopy(round) };
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -746,7 +782,7 @@ Deno.serve(async (req) => {
     const payloadEmail = String(payload?.targetEmail || "").trim();
     const payloadName = String(payload?.targetName || "").trim();
     const title = String(payload?.title || "Notification");
-    const body = String(payload?.body || "");
+    let body = String(payload?.body || "");
     const notifUrl = String(payload?.url || "/notifications");
     const type = String(payload?.type || "");
     const data = payload?.data ?? null;
@@ -806,7 +842,17 @@ Deno.serve(async (req) => {
     }
 
     const siteUrl = (Deno.env.get("SITE_URL") || "https://www.squashhub.co.za").trim();
-    const link = absoluteUrl(siteUrl, notifUrl);
+    let link = absoluteUrl(siteUrl, notifUrl);
+
+    // Round-draw emails: the button opens the SAME permanent destination the
+    // tournament's Match Day QR encodes, with the standard supporting copy.
+    const drawCta = type === "tournament_round_draw"
+      ? await resolveDrawCta(data, notifUrl).catch((e) => { console.warn("[email-notifications] draw CTA", e); return null; })
+      : null;
+    if (drawCta) {
+      link = drawCta.url;
+      body = `${body}\n\n${drawCta.copy}`;
+    }
 
     const managePrefsUrl = absoluteUrl(siteUrl, "/");
     const mergeVars: Record<string, string> = {
@@ -854,8 +900,9 @@ Deno.serve(async (req) => {
       const safeBody = renderBodyHtml(body);
       const safeLink = escapeHtml(link);
 
-      const ctaLabel =
-        type === "tournament_invite" || type === "tournament_partner_invite"
+      const ctaLabel = drawCta
+        ? DRAW_CTA_LABEL
+        : type === "tournament_invite" || type === "tournament_partner_invite"
           ? "Accept / Register"
           : "Open in SquashHub";
 
@@ -884,7 +931,7 @@ Deno.serve(async (req) => {
           ${greetingHtml}
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
           <p style="margin:0 0 ${isTournamentInvite ? "6" : "18"}px 0">
-            <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
+            <a href="${safeLink}" style="display:inline-block; padding:${drawCta ? "14px 22px; font-weight:700; font-size:15px; letter-spacing:.3px; max-width:100%; text-align:center" : "10px 14px"}; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
               ${escapeHtml(ctaLabel)}
             </a>
           </p>
@@ -906,7 +953,7 @@ Deno.serve(async (req) => {
       subject,
       text: body,
       url: link,
-      ctaLabel: type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
+      ctaLabel: drawCta ? DRAW_CTA_LABEL : type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
       recipientName: String((profile as any)?.name || payloadName || "").trim(),
       clubName: clubMail?.clubName || clubBrand.name || "",
       clubLogoUrl: clubMail?.clubLogoUrl || clubBrand.logoUrl || "",

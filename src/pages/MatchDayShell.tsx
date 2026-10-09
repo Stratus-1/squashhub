@@ -11,6 +11,7 @@ import { LogOut, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchDayDeviceContext, type MatchDayDevice } from "@/contexts/MatchDayDevice";
 import { enableMatchDayDevice, disableMatchDayDevice, matchDayDeviceId } from "@/lib/match-day/device";
+import { findMyTournamentMatch } from "@/lib/match-day/my-match";
 
 const LeagueGames = lazy(() => import("./LeagueGames"));
 const LeagueGameDetail = lazy(() => import("./LeagueGameDetail"));
@@ -66,15 +67,32 @@ export default function MatchDayShell() {
   }, [token]);
 
   const isLeague = info?.ok && (info.kind === "league_season" || info.kind === "tournament");
+  const [mine, setMine] = useState<{ champId: string; label: string } | null>(null);
 
   useEffect(() => {
     if (!isLeague) return;
-    // Drop any member-session cache, then scope every request to this link.
-    qc.clear();
-    enableMatchDayDevice(token, court);
-    setReady(true);
-    return () => { disableMatchDayDevice(); qc.clear(); };
-  }, [isLeague, token, court, qc]);
+    let alive = true;
+    let enabled = false;
+    (async () => {
+      // A signed-in participant is identified with their OWN session (before
+      // the link's anonymous device mode takes over) and offered their own
+      // match in the normal signed-in tournament page, where scoring uses
+      // their member permissions. Nothing here grants any extra rights.
+      if (info.kind === "tournament") {
+        try {
+          const found = await findMyTournamentMatch(info.competition_id, info.club_id);
+          if (alive) setMine(found);
+        } catch { /* viewing never depends on this */ }
+      }
+      if (!alive) return;
+      // Drop any member-session cache, then scope every request to this link.
+      qc.clear();
+      enableMatchDayDevice(token, court);
+      enabled = true;
+      setReady(true);
+    })();
+    return () => { alive = false; if (enabled) { disableMatchDayDevice(); qc.clear(); } };
+  }, [isLeague, token, court, qc, info]);
 
   const device = useMemo<MatchDayDevice | null>(() => {
     if (!isLeague) return null;
@@ -112,6 +130,14 @@ export default function MatchDayShell() {
       : <Tournaments />;
     return (
       <MatchDayDeviceContext.Provider value={device}>
+        {mine && court == null && (
+          <div className="sticky top-0 z-40 border-b border-primary/30 bg-primary/10 px-3 py-2 backdrop-blur" data-testid="md-my-match">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 text-[13px]">
+              <span className="text-foreground"><span className="font-semibold">Your match:</span> {mine.label}</span>
+              <a href={`/club-champs/${mine.champId}`} className="rounded-md bg-primary px-3 py-1.5 font-semibold text-primary-foreground">Score / enter my result</a>
+            </div>
+          </div>
+        )}
         <Suspense fallback={<Spinner />}>{page}</Suspense>
         <ExitMatchDay />
       </MatchDayDeviceContext.Provider>

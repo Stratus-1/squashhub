@@ -210,7 +210,7 @@ const bookerNameFrom = (value: any) => String(
   ?? "",
 ).trim() || null;
 
-// Booking/List returns the provider's whole register (all dates) per call, so
+// Booking/List with pastBookings=false returns current and future bookings only, so
 // one read is shared per service for a short window and concurrent requests
 // reuse the same in-flight call instead of each hitting GoBook.
 const REGISTER_TTL_MS = 3 * 60 * 1000;
@@ -219,7 +219,7 @@ function cachedRegister(token: string, providerServiceId: number, date: string) 
   const key = `${providerServiceId}`;
   const hit = registerCache.get(key);
   if (hit && Date.now() - hit.at < REGISTER_TTL_MS) return hit.value;
-  const value = apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}`);
+  const value = apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}&pastBookings=false`);
   registerCache.set(key, { at: Date.now(), value });
   value.catch(() => registerCache.delete(key));
   return value;
@@ -508,7 +508,7 @@ Deno.serve(async (req) => {
       if (r.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);
       if (!r.clientId) return json({ success: true, clientId: null, bookings: [] });
       const includePast = payload.include_past === true;
-      const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}`)) ?? [];
+      const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}${includePast ? "" : "&pastBookings=false"}`)) ?? [];
       const hhmm = (n: number) => `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
       // Club-local "today" (SAST) so a member only sees bookings they can still cancel.
       const todayLocal = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -540,7 +540,7 @@ Deno.serve(async (req) => {
 
       // Never trust a client-supplied booking id alone. Confirm GoBook lists it
       // under the selected, server-verified member before sending the destructive action.
-      const ownedBookings = rowsFrom((await apiGet(token, `/Booking/List?clientId=${target.clientId}`)) ?? []);
+      const ownedBookings = rowsFrom((await apiGet(token, `/Booking/List?clientId=${target.clientId}&pastBookings=false`)) ?? []);
       const owned = ownedBookings.some((b) => {
         const status = String(b.status ?? b.bookingStatus ?? "").toLowerCase();
         return Number(b.bookingId ?? b.BookingId ?? b.booking_id ?? b.id) === bookingId
@@ -837,7 +837,7 @@ Deno.serve(async (req) => {
       const expectedStart = String(payload.start_time ?? "").slice(0, 5);
       const expectedEnd = payload.end_time ? String(payload.end_time).slice(0, 5) : null;
       const beforeBookings = activeProviderBookings(
-        (await apiGet(token, `/Booking/List?clientId=${clientId}`)) ?? [],
+        (await apiGet(token, `/Booking/List?clientId=${clientId}&pastBookings=false`)) ?? [],
       );
       const existing = expectedStart
         ? matchingProviderBooking(beforeBookings, {
@@ -879,7 +879,7 @@ Deno.serve(async (req) => {
         for (let attempt = 0; attempt < 3 && !createdBookingId; attempt++) {
           if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 300));
           const afterBookings = activeProviderBookings(
-            (await apiGet(token, `/Booking/List?clientId=${clientId}`)) ?? [],
+            (await apiGet(token, `/Booking/List?clientId=${clientId}&pastBookings=false`)) ?? [],
           );
           const recovered = matchingProviderBooking(afterBookings, {
             date: bookingDate,

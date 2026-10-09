@@ -271,9 +271,17 @@ Deno.serve(async (req) => {
     // club's Stitch portal (5 Oct 2026: nsc/gb 200, riverside 404), so probe
     // and fall back to the bare link only for that club.
     const redirectUrl = await appendRedirectIfReachable(payment.link as string, safeReturnWithSession);
+    const returnMissing = !redirectUrl.includes("redirect_url=");
+    if (returnMissing) {
+      // Monitoring: Stitch refused this club's return address, so the payer
+      // will stay on Stitch's own success page. Almost always means the club's
+      // Stitch Redirect URL list does not contain https://<sub>.squashhub.co.za/my-account.
+      console.error(`[stitch-create-payment] RETURN_URL_MISSING club=${clubSubdomain || club_id} return=${safeReturnWithSession}`);
+    }
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,
+      metadata: { ...(sessionMeta || {}), return_url: safeReturnWithSession, return_missing: returnMissing },
     }).eq("id", session.id);
 
     return json({ session_id: session.id, redirect_url: redirectUrl, request_id: payment.id, redirect_mode: "direct" });

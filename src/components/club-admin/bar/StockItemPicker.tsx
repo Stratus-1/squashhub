@@ -120,6 +120,7 @@ export function StockItemPicker({
 
   return (
     <Popover
+      modal
       open={open}
       onOpenChange={o => {
         setOpen(o);

@@ -67,7 +67,8 @@ export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle }: {
               const st = live.length ? (live.every((x) => x.state === "completed") ? "Completed" : live.some((x) => x.state === "active") ? "In play" : live.some((x) => x.state === "ready" || x.state === "blocked") ? "Next" : "Planned") : s.phase === "playoff" ? "Planned" : "";
               const extra = ((s as any).extraDays ?? []) as Array<{ date?: string }>;
               const lastDay = extra.map((d) => d.date).filter(Boolean).sort().pop();
-              const when = s.mode === "scheduled" && s.date ? `${s.date}${lastDay && lastDay !== s.date ? ` to ${lastDay} (${extra.filter((d) => d.date).length + 1} days)` : ""}${s.from ? ` · ${s.from}–${s.to ?? ""}` : ""}` : s.deadline ? `Play by ${s.deadline}` : "Date: decide later";
+              // Honour the chosen mode: a round switched to "Decide later" keeps an old deadline in storage, which must not show.
+              const when = s.mode === "scheduled" && s.date ? `${s.date}${lastDay && lastDay !== s.date ? ` to ${lastDay} (${extra.filter((d) => d.date).length + 1} days)` : ""}${s.from ? ` · ${s.from}–${s.to ?? ""}` : ""}` : s.mode === "play_by" && s.deadline ? `Play by ${s.deadline}` : "Date: decide later";
               return (
                 <li key={s.id} className="flex flex-wrap gap-x-2">
                   <span className="font-medium">{s.name}</span>

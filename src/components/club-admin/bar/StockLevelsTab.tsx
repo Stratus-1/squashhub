@@ -120,6 +120,43 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
     [levels, takeLines, counts, opens],
   );
 
+  // Division filter, search and category grouping (display only — counts/finalise still cover all rows).
+  const { divisions } = useBarDivisions(clubId);
+  const { data: customCats = [] } = useBarCategories(clubId);
+  const { data: itemDivs = {} } = useQuery({
+    queryKey: ["bar-item-divisions", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("bar_items").select("id, division").eq("club_id", clubId);
+      if (error) throw error;
+      return Object.fromEntries((data ?? []).map((d: any) => [d.id, d.division || "bar"])) as Record<string, string>;
+    },
+  });
+  const [divFilter, setDivFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const grouped = useMemo(() => {
+    const cats = allCategories(customCats as any, true);
+    const order = new Map(cats.map((c, i) => [c.value, i]));
+    const q = search.trim().toLowerCase();
+    const divOf = (r: (typeof rows)[number]) =>
+      itemDivs[r.bar_item_id] || cats.find((c) => c.value === r.category)?.division || "bar";
+    const visible = rows.filter((r) =>
+      (divFilter === "all" || divOf(r) === divFilter) &&
+      (!q || r.name.toLowerCase().includes(q) || categoryLabel(customCats as any, r.category || "other").toLowerCase().includes(q)));
+    const map = new Map<string, { key: string; label: string; div: string; items: typeof rows }>();
+    for (const r of visible) {
+      const cat = r.category || "other";
+      const div = divOf(r);
+      const key = `${div}|${cat}`;
+      if (!map.has(key)) map.set(key, { key, label: categoryLabel(customCats as any, cat), div, items: [] });
+      map.get(key)!.items.push(r);
+    }
+    const divOrder = (k: string) => { const i = divisions.findIndex((d) => d.key === k); return i < 0 ? 99 : i; };
+    return [...map.values()]
+      .map((g) => ({ ...g, cat: g.key.split("|")[1], items: [...g.items].sort((a, b) => a.name.localeCompare(b.name)) }))
+      .sort((a, b) => divOrder(a.div) - divOrder(b.div) || (order.get(a.cat) ?? 999) - (order.get(b.cat) ?? 999) || a.label.localeCompare(b.label));
+  }, [rows, customCats, itemDivs, divFilter, search, divisions]);
+  const visibleCount = grouped.reduce((s, g) => s + g.items.length, 0);
+
   const counted = rows.filter((r) => r.counted !== null);
   const deviations = counted.filter((r) => (r.variance ?? 0) !== 0);
   const varianceValue = deviations.reduce((s, r) => s + (r.variance ?? 0) * Number(r.cost_price || 0), 0);

@@ -468,7 +468,8 @@ function CompactDeviceButton({ name, action, busy, icon: Icon, error, isOn, onAc
   const unavailable = !!error;
 
   const handleActivate = async () => {
-    if (pressing || busy || unavailable) return;
+    // A stored error may be stale, so an "Unavailable" button stays tappable as a retry.
+    if (pressing || busy) return;
     setPressing(true);
     try {
     const succeeded = await onActivate();
@@ -494,7 +495,7 @@ function CompactDeviceButton({ name, action, busy, icon: Icon, error, isOn, onAc
       <Button
         type="button"
         variant="outline"
-        disabled={busy || pressing || unavailable}
+        disabled={busy || pressing}
         onClick={() => { void handleActivate(); }}
         aria-label={`${name}: ${unavailable ? "Unavailable" : action}`}
         aria-busy={busy || pressing}

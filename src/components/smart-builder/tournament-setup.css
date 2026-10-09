@@ -8,6 +8,7 @@
 .tournament-setup .tournament-setup-step { min-height: 44px; }
 .tournament-setup .tournament-setup-content [role="alert"] { border-color: hsl(var(--warning) / .4); background: hsl(var(--warning) / .06); color: hsl(var(--warning-foreground)); }
 .tournament-setup button[aria-pressed="true"], .tournament-setup button[role="radio"][aria-checked="true"] { border-color: hsl(var(--primary)); background-color: hsl(var(--primary) / .12); color: hsl(var(--foreground)); }
+.tournament-setup [data-locked="true"] button[aria-pressed="true"] { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
 .tournament-setup .tournament-setup-panel { border-radius: 8px; box-shadow: none; }
 .tournament-setup .tournament-setup-content { overflow-wrap: anywhere; }
 .tournament-setup .tournament-setup-content .min-w-0 { max-width: 100%; }

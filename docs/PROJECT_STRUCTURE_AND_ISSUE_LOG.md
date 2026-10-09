@@ -1,3 +1,7 @@
+### 2026-10-09 — Player locks were unclear
+- Added persistent separate Lock all and Unlock all actions with locked-player count, visible coloured Locked row badges and accessible individual toggle states. Bulk controls also appear in the expanded board. Existing saved lockedIds and ladder refresh behaviour retained; no allocation or scoring changes.
+- Seven focused tests pass. Authenticated saved Riverside setup exercised with backend writes intercepted: individual lock, bulk lock, individual unlock and bulk unlock, including full-screen and mobile; no runtime errors or horizontal overflow. Preview only, no live records changed or publishing.
+
 ### 2026-10-09 — Tournament Builder visual-only refresh
 - Scoped step-by-step presentation: ordered navigator with current/validated/neutral states and position count, selected choice checkmarks, consistent panel headings and Back/Next layout, readable tournament summary and mobile wrapping/stacked save controls. All conditional steps, labels, saved answers, validations and tournament logic retained.
 - Verified the saved Riverside Club Champs configuration contains 19 steps; exercised all 19 in an isolated authenticated render, with backend write requests intercepted. Desktop light/dark, tablet and mobile checks show no runtime errors or horizontal overflow, including Summary. No tournament records changed and nothing published. Existing pairing suite still has the same four failures documented on 2026-10-07; no domain changes made to address its outdated fixtures/selectors.

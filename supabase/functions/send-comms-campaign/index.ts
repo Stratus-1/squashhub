@@ -13,7 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js@0.1.0";
 import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
 import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
-import { tournamentMessageAction, noticeTemplateVariables } from "../_shared/match-day-cta.ts";
+import { tournamentMessageAction, noticeTemplateVariables, loginEmailButton } from "../_shared/match-day-cta.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -347,7 +347,8 @@ Deno.serve(async (req) => {
               }).catch(() => null);
               if (links) mdBlock = matchDayEmailBlock(links);
             }
-            const html = `${rendered.body}${mdBlock}${sigBlock}${disclaimerBlock}`;
+            const loginBlock = action.key === "tournament_view" ? loginEmailButton(club?.subdomain) : "";
+            const html = `${rendered.body}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}`;
             if (useManagedEmail) {
               // Main SquashHub domain (managed sending): suppression and rate
               // limits are enforced server-side; a suppressed recipient is skipped.

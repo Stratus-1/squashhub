@@ -46,3 +46,16 @@ export function champIdFromUrl(url: string | null | undefined): string | null {
   const m = String(url || "").match(new RegExp(`/club-champs/(${UUID.source})`, "i"));
   return m ? m[1].toLowerCase() : null;
 }
+
+export const LOGIN_CTA_LABEL = "LOG IN TO SQUASHHUB";
+
+/** The club's own landing page, where members log in to manage their account. */
+export function clubLoginUrl(subdomain?: string | null): string {
+  return `${base(subdomain)}/`;
+}
+
+/** Third email button, same size as the other buttons. */
+export function loginEmailButton(subdomain?: string | null): string {
+  return `<div style="margin:20px 0"><a href="${clubLoginUrl(subdomain)}" style="display:inline-block;background:#1E3A5F;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;font-size:14px">${LOGIN_CTA_LABEL}</a></div>` +
+    '<p style="font-size:12px;color:#64748b;margin:0">Log in to SquashHub to manage your account.</p>';
+}

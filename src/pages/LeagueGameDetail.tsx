@@ -37,6 +37,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
+import { FixturePenaltyBar } from "@/components/league-games/FixturePenaltyBar";
 import { TeamLogo } from "@/components/league-games/TeamLogo";
 import { DndContext, useDroppable, useDraggable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { RotateToggle } from "@/components/RotateToggle";
@@ -2978,6 +2979,13 @@ export default function LeagueGameDetail() {
             </span>
           </div>
         </div>
+        {!md && isSubmittedRaw && fixtureRulesAssociationId && (
+          <FixturePenaltyBar
+            associationId={fixtureRulesAssociationId}
+            fixture={{ id: fixture.id, date: fixture.fixture_date, label: `${homeTeamName || homeCode} v ${awayTeamName || awayCode}` }}
+            teams={[{ code: homeCode, name: homeTeamName }, { code: awayCode, name: awayTeamName }]}
+          />
+        )}
 
         {/* Match format selection — only during setup */}
         {!setupDone && !isSubmitted && !nsaPreSetup && (() => {

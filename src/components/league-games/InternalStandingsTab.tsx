@@ -26,6 +26,9 @@ import {
   type StandingsRound,
   type Tier,
 } from "@/lib/leagues/team-standings";
+import { activeSeasonPenalties, applyTeamPenalties } from "@/lib/leagues/team-penalties";
+import { useTeamPenalties } from "@/hooks/use-league-penalties";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 
 type ClubLeague = {
@@ -154,6 +157,9 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
   const tiers: Tier[] = seasonData?.tiers ?? [];
+  // Team penalties deduct from season standings only (never fixture scores).
+  const { data: allPenalties = [] } = useTeamPenalties(associationId);
+  const seasonPenalties = useMemo(() => activeSeasonPenalties(allPenalties, seasonWindow), [allPenalties, seasonWindow]);
 
   // Map team_code -> { name, logo_url }, scoped to the selected season so a
   // future season's team cannot relabel historical standings rows.
@@ -371,7 +377,9 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
       )}
 
       {!isLoading &&
-        (data || []).map(({ tier, weeks, rows }) => {
+        (data || []).map(({ tier, weeks, rows: rawRows }) => {
+          const rows = applyTeamPenalties(rawRows, seasonPenalties);
+          const anyPen = rows.some((r) => r.penalty > 0);
           const mineHere = rows.some((r) => myCodes.has(r.team_code));
           return (
             <div key={tier}>
@@ -392,6 +400,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                         <TableHead className="w-8 text-center">#</TableHead>
                         <TableHead>Team</TableHead>
                         <TableHead className="text-center w-14 font-bold">Total</TableHead>
+                        {anyPen && <TableHead className="text-center w-12" title="Penalty points deducted">Pen</TableHead>}
                         <TableHead className="text-center w-12">P</TableHead>
                         <TableHead className="text-center w-14" title="Average points per game played">Avg</TableHead>
                         {weeks.map((d) => (
@@ -432,7 +441,38 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-center font-bold">{s.total}</TableCell>
+                            <TableCell className="text-center font-bold">
+                              {s.penalty > 0 ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button type="button" className="inline-flex items-center gap-0.5 underline decoration-dotted"
+                                      aria-label={`${s.adjusted} points after ${s.penalty} penalty points deducted from ${s.total}. Show penalty details`}>
+                                      {s.adjusted}<span className="text-destructive" aria-hidden>*</span>
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-72 text-xs space-y-2">
+                                    <div className="font-semibold">{s.total} earned − {s.penalty} penalty = {s.adjusted}</div>
+                                    {s.penalties.map((p) => (
+                                      <div key={p.id} className="border-t pt-1">
+                                        <div><span className="text-destructive font-semibold">−{p.points}</span> {p.rule_name}</div>
+                                        <div className="text-muted-foreground">
+                                          {format(new Date(p.effective_date), "d MMM yyyy")} · {p.fixture_id ? "Fixture penalty" : "Season penalty"}
+                                        </div>
+                                        {p.reason && <div>{p.reason}</div>}
+                                        {p.fixture_id && (
+                                          <button type="button" className="text-primary underline" onClick={() => navigate(`/league-games/${p.fixture_id}`)}>View fixture</button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </PopoverContent>
+                                </Popover>
+                              ) : s.total}
+                            </TableCell>
+                            {anyPen && (
+                              <TableCell className="text-center text-xs font-semibold text-destructive">
+                                {s.penalty > 0 ? `−${s.penalty}` : ""}
+                              </TableCell>
+                            )}
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {s.played}
                             </TableCell>

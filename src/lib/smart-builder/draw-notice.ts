@@ -20,13 +20,15 @@ export const FEE_PAID_LINE = "Your fee has been paid.";
 export const feeOutstandingLine = (cents: number) => `Your fee of R${(cents / 100).toFixed(2)} is outstanding. Please use the "Pay my fee" button to pay.`;
 
 /** Per-player fee status from their own entry; partners without their own entry get no fee line. */
-export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: string; paid_at?: string | null; fee_paid_cents?: number | null }>) {
+export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: string; paid_at?: string | null; fee_paid_cents?: number | null; fee_status?: string | null; status?: string | null }>) {
   const out: Record<string, { owes: boolean; outstanding: number }> = {};
   if (feeCents <= 0) return out;
   for (const r of regs) {
+    // Entered/registered is not paid: only a settled fee status (paid, waived, on account) counts.
     const paid = Number(r.fee_paid_cents ?? 0);
-    const owes = !r.paid_at && paid < feeCents;
-    out[r.club_member_id] = { owes, outstanding: owes ? feeCents - paid : 0 };
+    const settled = r.fee_status != null ? ["paid", "waived", "on_account"].includes(r.fee_status) : (!!r.paid_at || paid >= feeCents);
+    const owes = !settled;
+    out[r.club_member_id] = { owes, outstanding: owes ? Math.max(feeCents - paid, 0) || feeCents : 0 };
   }
   return out;
 }
@@ -34,7 +36,7 @@ export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: str
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
 
 /** Explicit send only; reuses the club-scoped Communications engine and its delivery log. */
-export async function sendDrawNotice(clubId: string, tournamentId: string, name: string, message: string, channels: CommsChannel[], onlyIds?: string[], includeFee = false) {
+export async function sendDrawNotice(clubId: string, tournamentId: string, name: string, message: string, channels: CommsChannel[], onlyIds?: string[], includeFee = true) {
   if (!message.trim() || message.length > 2000) throw new Error("Enter notification wording (up to 2,000 characters).");
   if (!channels.length) throw new Error("Choose a delivery channel.");
   const { data: tournament, error: tournamentError } = await supabase.from("tournaments").select("id").eq("id", tournamentId).eq("club_id", clubId).maybeSingle();
@@ -51,7 +53,7 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
   if (includeFee) {
     const [{ data: t }, { data: regs }] = await Promise.all([
       supabase.from("club_champs").select("entry_fee_cents, payment_required").eq("id", tournamentId).maybeSingle(),
-      supabase.from("club_champs_registrations").select("club_member_id, paid_at, fee_paid_cents, status").eq("champ_id", tournamentId),
+      supabase.from("club_champs_registrations").select("club_member_id, paid_at, fee_paid_cents, fee_status, status").eq("champ_id", tournamentId),
     ]);
     const fee = (t as any)?.payment_required ? Number((t as any)?.entry_fee_cents ?? 0) : 0;
     const status = feeStatusFor(fee, ((regs ?? []) as any[]).filter((r) => !["withdrawn", "replaced", "cancelled"].includes(r.status)));

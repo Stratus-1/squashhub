@@ -757,6 +757,13 @@
       "when": 1791540937189,
       "tag": "0107_finance_staff_view_ledgers",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1791550696396,
+      "tag": "0108_league_team_penalties",
+      "breakpoints": true
     }
   ]
 }

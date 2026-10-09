@@ -9220,6 +9220,60 @@ export type Database = {
           },
         ]
       }
+      league_penalty_rules: {
+        Row: {
+          association_id: string
+          created_at: string
+          created_by: string | null
+          default_points: number
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          created_by?: string | null
+          default_points: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          created_by?: string | null
+          default_points?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_penalty_rules_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "league_penalty_rules_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_reserve_players: {
         Row: {
           association_id: string
@@ -9678,6 +9732,99 @@ export type Database = {
           },
           {
             foreignKeyName: "league_team_pairs_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_team_penalties: {
+        Row: {
+          applied_at: string
+          applied_by: string
+          association_id: string
+          effective_date: string
+          fixture_id: string | null
+          id: string
+          points: number
+          reason: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
+          rule_id: string | null
+          rule_name: string
+          season_id: string | null
+          season_year: number
+          team_code: string
+        }
+        Insert: {
+          applied_at?: string
+          applied_by: string
+          association_id: string
+          effective_date: string
+          fixture_id?: string | null
+          id?: string
+          points: number
+          reason?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          rule_id?: string | null
+          rule_name: string
+          season_id?: string | null
+          season_year: number
+          team_code: string
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string
+          association_id?: string
+          effective_date?: string
+          fixture_id?: string | null
+          id?: string
+          points?: number
+          reason?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          rule_id?: string | null
+          rule_name?: string
+          season_id?: string | null
+          season_year?: number
+          team_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_team_penalties_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "league_team_penalties_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_team_penalties_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_team_penalties_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "league_penalty_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_team_penalties_season_id_fkey"
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "league_seasons"
@@ -19886,6 +20033,34 @@ export type Database = {
       ladder_pyramid_row: {
         Args: { _position: number; _row_sizes?: Json }
         Returns: number
+      }
+      league_apply_team_penalty: {
+        Args: {
+          _association_id: string
+          _effective_date?: string
+          _fixture_id?: string
+          _points: number
+          _reason: string
+          _rule_id: string
+          _season_id?: string
+          _team_code: string
+        }
+        Returns: string
+      }
+      league_penalty_rule_save: {
+        Args: {
+          _association_id: string
+          _default_points: number
+          _description: string
+          _is_active: boolean
+          _name: string
+          _rule_id: string
+        }
+        Returns: string
+      }
+      league_reverse_team_penalty: {
+        Args: { _penalty_id: string; _reason: string }
+        Returns: undefined
       }
       leave_club_event: {
         Args: { _club_member_id: string; _event_id: string }

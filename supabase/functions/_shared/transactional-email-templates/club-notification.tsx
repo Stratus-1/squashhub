@@ -11,6 +11,8 @@ interface Props {
   messageBody?: string
   url?: string
   ctaLabel?: string
+  secondaryUrl?: string
+  secondaryLabel?: string
   recipientName?: string
   clubLogoUrl?: string
 }
@@ -21,6 +23,8 @@ const ClubNotification = ({
   messageBody = '',
   url,
   ctaLabel = 'Open in SquashHub',
+  secondaryUrl,
+  secondaryLabel = 'View tournament',
   recipientName,
   clubLogoUrl,
 }: Props) => {

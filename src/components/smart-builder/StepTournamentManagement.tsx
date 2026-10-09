@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, ChevronRight, Pencil, ArrowLeft, Lock, RotateCcw } from "lucide-react";
@@ -11,6 +11,8 @@ import {
 import { StepInformPanel } from "./StepInformPanel";
 import { StepInvitePanel } from "./StepInvitePanel";
 import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
+import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
+import { QrCode } from "lucide-react";
 import { StepRunOverview } from "./StepRunOverview";
 import { StepKnockoutRoundsPanel } from "./StepKnockoutRoundsPanel";
 import { StandingsAwardsSection } from "./StandingsAwardsSection";
@@ -80,6 +82,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
     saveHandover(n); setH(n); setView(null);
     if (life) setLifecycle({ ...life, stage: n.stage, completed: n.completed }).catch(() => {});
   };
+  const [qrOpen, setQrOpen] = useState(false);
   const cur = lifecycleIndex(h.stage);
   const shown: LifecycleKey = view ?? h.stage;
   const revisiting = shown !== h.stage;
@@ -112,9 +115,15 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         {LIFECYCLE.map((l, i) => {
           const done = h.completed.includes(l.key);
           const reachable = (done || i === cur) && l.key !== "planning";
-          return (
-            <li key={l.key} aria-current={i === cur ? "step" : undefined}>
-              <button type="button" disabled={!reachable} onClick={() => setView(i === cur ? null : l.key)}
+          return (<Fragment key={l.key}>
+            {l.key === "generate" && (
+              // Not a lifecycle stage: always available, so the link/QR can be made before draws go out.
+              <li><button type="button" onClick={() => setQrOpen((o) => !o)} aria-pressed={qrOpen}
+                className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1", qrOpen ? "border-primary bg-primary/10 font-semibold text-primary ring-2 ring-primary/60" : "border-primary/50 text-primary hover:bg-primary/10")}>
+                <QrCode className="h-3 w-3" />Tournament link &amp; QR</button></li>
+            )}
+            <li aria-current={i === cur ? "step" : undefined}>
+              <button type="button" disabled={!reachable} onClick={() => { setQrOpen(false); setView(i === cur ? null : l.key); }}
                 title={reachable ? (i === cur ? "Current stage" : "Revisit — nothing later is undone") : l.key === "planning" ? "Use Edit tournament setup" : "Locked until earlier stages are done"}
                 className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1",
                   i === cur ? "border-primary bg-primary font-semibold text-primary-foreground" : done ? "border-primary/50 text-primary hover:bg-primary/10" : "border-border text-muted-foreground",
@@ -122,9 +131,16 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
                 {done && <Check className="h-3 w-3" />}{!done && i > cur && <Lock className="h-3 w-3" />}{l.label}{done && i !== cur && l.key !== "planning" && <span className="ml-1 text-[10px] opacity-80">· Completed ✓ · View / manage</span>}
               </button>
             </li>
-          );
+          </Fragment>);
         })}
       </ol>
+
+      {qrOpen && (
+        <Card><CardContent className="space-y-2 p-4">
+          <p className="text-xs text-muted-foreground">Switch on the tournament link here before sending draws — every draw, reminder and entry email then carries this same link. Print the QR for the venue.</p>
+          <MatchDayAccessCard kind="tournament" competitionId={tournamentId} competitionName={h.name} />
+        </CardContent></Card>
+      )}
 
       <Card className="border-primary/50"><CardContent className="space-y-3 p-4">
         {revisiting ? (

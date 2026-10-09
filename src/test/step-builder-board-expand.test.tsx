@@ -54,20 +54,20 @@ describe("Step-by-Step: category board full-screen expand", () => {
   it("shows individual lock state and keeps bulk actions separate", async () => {
     seed();
     await openBoard();
-    expect(screen.getByRole("button", { name: "Unlock all", exact: true })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Unlock all$/ })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Lock Anna in place" }));
     expect(screen.getByTestId("pick-row-m1")).toHaveAttribute("data-locked", "true");
     expect(screen.getByRole("button", { name: "Unlock Anna" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("1 of 4 players locked")).toBeInTheDocument();
     expect(screen.getByTestId("pick-row-m2")).toHaveAttribute("data-locked", "false");
-    fireEvent.click(screen.getByRole("button", { name: "Lock all", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Lock all$/ }));
     expect(screen.getByText("4 of 4 players locked")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Lock all", exact: true })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Lock all$/ })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Unlock Anna" }));
     expect(screen.getByTestId("pick-row-m1")).toHaveAttribute("data-locked", "false");
     expect(screen.getByTestId("pick-row-m2")).toHaveAttribute("data-locked", "true");
     expect(screen.getByText("3 of 4 players locked")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Unlock all", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Unlock all$/ }));
     expect(screen.getByText("0 of 4 players locked")).toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe("Step-by-Step: category board full-screen expand", () => {
     await openBoard();
     fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
     const dlg = await screen.findByRole("dialog", { name: /full screen/i });
-    fireEvent.click(within(dlg).getByRole("button", { name: "Lock all", exact: true }));
+    fireEvent.click(within(dlg).getByRole("button", { name: /^Lock all$/ }));
     expect(within(dlg).getByText("4 of 4 players locked")).toBeInTheDocument();
     fireEvent.click(within(dlg).getByRole("button", { name: "Unlock Ben" }));
     expect(within(dlg).getByTestId("pick-row-m2")).toHaveAttribute("data-locked", "false");

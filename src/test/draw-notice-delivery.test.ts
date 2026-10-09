@@ -35,7 +35,11 @@ describe("draw delivery without real sends", () => {
     expect(email.body).toContain("padding:11px 20px");
     const wa = renderChannel("whatsapp", campaign.content.whatsapp, vars, action);
     const slots = noticeTemplateVariables(wa.body, wa.url, action.label);
-    expect(slots.message).toContain("Pay my fee: https://example.test/i/personal");
+    // The pay link is carried separately (pay_link + pay_token) so the WhatsApp
+    // sender can use a tappable "Pay my fee" button; it is never in the body.
+    expect(slots.message).not.toContain("Pay my fee: https://example.test/i/personal");
+    expect(campaign.memberVars?.owing?.pay_link).toBe("https://example.test/i/personal");
+    expect(campaign.memberVars?.owing?.pay_token).toBe("personal");
     expect(slots.message).not.toContain("/md/permanent");
     expect(slots.link).toBe("https://example.test/md/permanent");
     const paid = renderChannel("whatsapp", campaign.content.whatsapp, { name: "Paid Player", ...campaign.memberVars?.paid }, action);

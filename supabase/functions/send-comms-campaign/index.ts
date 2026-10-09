@@ -276,6 +276,18 @@ Deno.serve(async (req) => {
       campaign.audience_type === "selected" && campaign.audience_filter && typeof campaign.audience_filter.member_vars === "object"
         ? campaign.audience_filter.member_vars : {};
 
+    // The WhatsApp "Pay my fee" button template is used only once Meta has
+    // approved it, and only for recipients carrying a pay_token (outstanding fee).
+    let payTemplateReady = false;
+    if (channels.includes("whatsapp") && Object.values(memberVars).some((v) => v && "pay_token" in v)) {
+      const { data: payTpl } = await admin
+        .from("whatsapp_templates")
+        .select("approval_status")
+        .eq("key", "club_notice_pay")
+        .maybeSingle();
+      payTemplateReady = payTpl?.approval_status === "approved";
+    }
+
     for (const m of recipients) {
       if (Date.now() > deadline && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) { outOfTime = true; break; }
       const vars = await mergeVarsFor(m, club, campaign.audience_league_id);
@@ -396,6 +408,12 @@ Deno.serve(async (req) => {
               skipped++; await logDelivery({ ...base, target: null, status: "skipped", error_message: "No mobile number" });
               continue;
             }
+            // Members with an outstanding fee get the "Pay my fee" button template
+            // once Meta approves it; until then the pay link is appended to the
+            // message as plain text (the generic club_notice template).
+            const payToken = String(channelVars.pay_token ?? "");
+            const payLink = String(channelVars.pay_link ?? "");
+            const usePayButton = payTemplateReady && /^[A-Za-z0-9]{16,64}$/.test(payToken);
             const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
@@ -403,8 +421,14 @@ Deno.serve(async (req) => {
                 club_id: campaign.club_id,
                 recipients: [{ member_id: m.id, phone: m.phone }],
                 body: rendered.body,
-                template_key: "club_notice",
-                template_variables: noticeTemplateVariables(rendered.body, rendered.url || "", recipientAction.label),
+                template_key: usePayButton ? "club_notice_pay" : "club_notice",
+                template_variables: usePayButton
+                  ? { message: rendered.body, pay_token: payToken }
+                  : noticeTemplateVariables(
+                      payLink && !rendered.body.includes(payLink) ? `${rendered.body}\n\nPay my fee: ${payLink}` : rendered.body,
+                      rendered.url || "",
+                      recipientAction.label,
+                    ),
                 kind: "campaign",
                 category: "marketing",
               }),
@@ -422,13 +446,17 @@ Deno.serve(async (req) => {
               skipped++; await logDelivery({ ...base, target: null, status: "skipped", error_message: "No mobile number" });
               continue;
             }
+            // SMS has no buttons: the pay link always rides along as plain text.
+            const payLinkSms = String(channelVars.pay_link ?? "");
+            const smsBase = rendered.text || rendered.body;
+            const smsBody = payLinkSms && !smsBase.includes(payLinkSms) ? `${smsBase}\n\nPay my fee: ${payLinkSms}` : smsBase;
             const res = await fetch(`${SUPABASE_URL}/functions/v1/send-sms`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
               body: JSON.stringify({
                 club_id: campaign.club_id,
                 recipients: [{ member_id: m.id, phone: m.phone }],
-                body: rendered.text || rendered.body,
+                body: smsBody,
                 kind: "campaign",
               }),
             });

@@ -17785,6 +17785,7 @@ export type Database = {
           last_synced_at: string | null
           quick_replies: Json
           updated_at: string
+          url_button: Json
           variables: Json
         }
         Insert: {
@@ -17802,6 +17803,7 @@ export type Database = {
           last_synced_at?: string | null
           quick_replies?: Json
           updated_at?: string
+          url_button?: Json
           variables?: Json
         }
         Update: {
@@ -17819,6 +17821,7 @@ export type Database = {
           last_synced_at?: string | null
           quick_replies?: Json
           updated_at?: string
+          url_button?: Json
           variables?: Json
         }
         Relationships: []

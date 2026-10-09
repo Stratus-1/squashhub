@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DRAW_NOTICE, drawNoticeContent, drawNoticeRecipients } from "@/lib/smart-builder/draw-notice";
+import { DEFAULT_DRAW_NOTICE, drawNoticeContent, drawNoticeRecipients, feeStatusFor } from "@/lib/smart-builder/draw-notice";
 
 describe("editable draw notices", () => {
   it("sends the edited wording only through selected channels", () => {
@@ -20,5 +20,16 @@ describe("editable draw notices", () => {
   it("keeps default wording independent of unknown dates or opponents", () => {
     expect(DEFAULT_DRAW_NOTICE).toContain("first-round match");
     expect(DEFAULT_DRAW_NOTICE).not.toContain("play by");
+  });
+  it("works out paid vs outstanding fees per player", () => {
+    const st = feeStatusFor(20000, [
+      { club_member_id: "a", paid_at: "2026-10-01" },
+      { club_member_id: "b", fee_paid_cents: 5000 },
+      { club_member_id: "c", fee_paid_cents: 20000 },
+    ]);
+    expect(st.a.owes).toBe(false);
+    expect(st.b).toEqual({ owes: true, outstanding: 15000 });
+    expect(st.c.owes).toBe(false);
+    expect(feeStatusFor(0, [{ club_member_id: "a" }])).toEqual({});
   });
 });

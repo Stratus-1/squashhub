@@ -1518,7 +1518,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                 const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
                                 return (
                                   <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
-                                    className={cn("cursor-grab rounded border bg-background px-1 py-1 text-xs", hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
+                                    className={cn("cursor-grab rounded border bg-background px-1 py-1 text-xs", lockedSet.has(id) ? "border-primary/70 bg-primary/10" : hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
                                     <div className="flex items-center gap-1">
                                       {c.key && <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>}
                                       <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>

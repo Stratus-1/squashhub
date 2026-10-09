@@ -57,6 +57,7 @@ import { TeamLogo } from "@/components/league-games/TeamLogo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
+import { TeamPenaltiesManager } from "@/components/league-games/TeamPenaltiesManager";
 import { Settings2, Send } from "lucide-react";
 import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
@@ -3463,7 +3464,13 @@ function AssociationRulesPenaltiesDialog({ association, open, onOpenChange }: { 
             <AssociationRulesTab associationId={association.id} readOnly={!isInternal} />
           </TabsContent>
           <TabsContent value="penalties" className="mt-3">
-            <AssociationPenaltiesTab associationId={association.id} />
+            <div className="space-y-4">
+              <TeamPenaltiesManager associationId={association.id} />
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Penalties published by the league's official site</h3>
+                <AssociationPenaltiesTab associationId={association.id} />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

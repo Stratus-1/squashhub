@@ -1488,6 +1488,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       return pickIds.filter((id) => placesFor(id).includes(k)).sort((x, y) => (r(x) - r(y)) || (bySeed ? ladderOf(x) - ladderOf(y) : 0) || memberName(x).localeCompare(memberName(y)));
                     };
                     const withOrder = (picks: typeof a.picks, k: string, list: string[]) => setA({ ...a, picks, seedOrder: { ...(a.seedOrder ?? {}), [k]: list } });
+                    const lockedSet = new Set(a.lockedIds ?? []);
+                    const toggleLock = (id: string) => { const n = new Set(lockedSet); if (n.has(id)) n.delete(id); else n.add(id); setA({ ...a, lockedIds: [...n] }); };
                     const move = (id: string, from: string, to: string, beforeId?: string) => {
                       if (from === to) { const l = orderFor(to).filter((x) => x !== id); const i = beforeId ? l.indexOf(beforeId) : -1; l.splice(i < 0 ? l.length : i, 0, id); withOrder(a.picks, to, l); return; }
                       let p = from && placesFor(id).includes(from) ? togglePlace(a.picks, id, from, false) : a.picks;

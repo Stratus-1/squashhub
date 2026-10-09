@@ -73,6 +73,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
     setH((cur) => { if (!cur) return cur; const n = { ...cur, stage: l.stage, completed: l.completed, informedAt: l.inform?.at ?? cur.informedAt }; saveHandover(n); return n; });
   };
   const [needPay, setNeedPay] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false); // must stay above the early returns below
   useEffect(() => { if (h?.feeDue) loadConfirmNeedsPay(tournamentId).then(setNeedPay).catch(() => {}); }, [tournamentId, h?.feeDue]);
   if (diamond !== false) return diamond ? <div className="text-sm">Diamond League keeps its existing tournament view. <Link className="underline" to={`/club-champs/${tournamentId}`}>Open tournament</Link></div> : null;
   if (!h && rebuilding) return <div className="text-sm text-muted-foreground">Loading tournament…</div>;
@@ -82,7 +83,6 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
     saveHandover(n); setH(n); setView(null);
     if (life) setLifecycle({ ...life, stage: n.stage, completed: n.completed }).catch(() => {});
   };
-  const [qrOpen, setQrOpen] = useState(false);
   const cur = lifecycleIndex(h.stage);
   const shown: LifecycleKey = view ?? h.stage;
   const revisiting = shown !== h.stage;

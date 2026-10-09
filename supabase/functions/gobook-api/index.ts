@@ -212,9 +212,7 @@ const bookerNameFrom = (value: any) => String(
 
 // Booking/List returns the provider's whole register (all dates) per call, so
 // one read is shared per service for a short window and concurrent requests
-// reuse the same in-flight call instead of each hitting GoBook. GoBook has no
-// date filter, but it does support excluding past bookings — the courts page
-// only ever needs today and future, so we ask for that to shrink each read.
+// reuse the same in-flight call instead of each hitting GoBook.
 const REGISTER_TTL_MS = 3 * 60 * 1000;
 const registerCache = new Map<string, { at: number; value: Promise<unknown> }>();
 function cachedRegister(token: string, providerServiceId: number, date: string) {

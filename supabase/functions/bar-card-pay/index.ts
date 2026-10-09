@@ -240,13 +240,15 @@ Deno.serve(async (req) => {
     }
 
 
-    // Stitch return: EXACTLY the wallet top-up contract (stitch-create-payment):
-    // the club's own https://<sub>.squashhub.co.za/my-account, which every club
-    // has in its Stitch redirect allow-list. Never the shared www /pay/return.
+    // Stitch return: same host + probe contract as wallet top-ups (the club's
+    // own https://<sub>.squashhub.co.za, covered by the club's "/*" Stitch
+    // allow-list entry). QR payers are usually NOT logged in, so they return to
+    // the public bar confirmation page, not /my-account (which needs a login).
     const stitchSub = String((club as any).subdomain || "").trim().toLowerCase();
-    const stitchReturn = /^[a-z0-9-]{2,32}$/.test(stitchSub) && !["www", "app", "admin"].includes(stitchSub)
-      ? `https://${stitchSub}.squashhub.co.za/my-account`
-      : "https://squashhub.co.za/my-account";
+    const stitchOrigin = /^[a-z0-9-]{2,32}$/.test(stitchSub) && !["www", "app", "admin"].includes(stitchSub)
+      ? `https://${stitchSub}.squashhub.co.za`
+      : "https://squashhub.co.za";
+    const stitchReturn = `${stitchOrigin}/s/${encodeURIComponent(String(code))}/success`;
 
     try {
       const request = await createPaymentRequest({

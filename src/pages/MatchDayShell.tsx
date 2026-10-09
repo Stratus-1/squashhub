@@ -11,6 +11,7 @@ import { LogOut, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchDayDeviceContext, type MatchDayDevice } from "@/contexts/MatchDayDevice";
 import { enableMatchDayDevice, disableMatchDayDevice, matchDayDeviceId } from "@/lib/match-day/device";
+import { findMyTournamentMatch } from "@/lib/match-day/my-match";
 
 const LeagueGames = lazy(() => import("./LeagueGames"));
 const LeagueGameDetail = lazy(() => import("./LeagueGameDetail"));

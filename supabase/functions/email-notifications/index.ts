@@ -8,6 +8,16 @@ import { DRAW_CTA_LABEL, champIdFromUrl, drawCtaCopy, tournamentDestinationUrl, 
  * recipient's latest round-draw notification. Uses the tournament's existing
  * persistent Match Day token — never mints a new one.
  */
+async function resolveTournamentDestination(champId: string): Promise<string | null> {
+  const { data: champ } = await supabaseAdmin.from("club_champs").select("club_id").eq("id", champId).maybeSingle();
+  if (!champ) return null;
+  const { data: club } = await supabaseAdmin.from("clubs").select("subdomain").eq("id", (champ as any).club_id).maybeSingle();
+  const sub = (club as any)?.subdomain ?? null;
+  const { data: access } = await supabaseAdmin.from("match_day_access").select("token")
+    .eq("competition_kind", "tournament").eq("competition_id", champId).eq("status", "active").maybeSingle();
+  return (access as any)?.token ? tournamentDestinationUrl((access as any).token, sub) : tournamentFallbackUrl(champId, sub);
+}
+
 async function resolveDrawCta(data: any, notifUrl: string): Promise<{ url: string; copy: string } | null> {
   let champId: string | null = data?.champ_id ? String(data.champ_id) : champIdFromUrl(notifUrl);
   let matchId: string | null = data?.match_id ? String(data.match_id) : null;
@@ -22,19 +32,25 @@ async function resolveDrawCta(data: any, notifUrl: string): Promise<{ url: strin
     }
   }
   if (!champId) return null;
-  const { data: champ } = await supabaseAdmin.from("club_champs").select("club_id").eq("id", champId).maybeSingle();
-  if (!champ) return null;
-  const { data: club } = await supabaseAdmin.from("clubs").select("subdomain").eq("id", (champ as any).club_id).maybeSingle();
-  const sub = (club as any)?.subdomain ?? null;
   let round: number | null = null;
   if (matchId) {
     const { data: m } = await supabaseAdmin.from("club_champs_matches").select("round_number").eq("id", matchId).maybeSingle();
     round = (m as any)?.round_number ?? null;
   }
-  const { data: access } = await supabaseAdmin.from("match_day_access").select("token")
-    .eq("competition_kind", "tournament").eq("competition_id", champId).eq("status", "active").maybeSingle();
-  const url = (access as any)?.token ? tournamentDestinationUrl((access as any).token, sub) : tournamentFallbackUrl(champId, sub);
+  const url = await resolveTournamentDestination(champId);
+  if (!url) return null;
   return { url, copy: drawCtaCopy(round) };
+}
+
+/**
+ * Entry-confirmed (tournament_paid) emails keep the "Open in SquashHub" button
+ * and add a second button that opens the same permanent tournament destination
+ * the Match Day QR encodes — never a new or email-only URL.
+ */
+async function resolveEntryTournamentCta(data: any, notifUrl: string): Promise<string | null> {
+  const champId = data?.champ_id ? String(data.champ_id) : champIdFromUrl(notifUrl);
+  if (!champId) return null;
+  return resolveTournamentDestination(champId).catch((e) => { console.warn("[email-notifications] entry tournament CTA", e); return null; });
 }
 
 const corsHeaders = {
@@ -121,6 +137,8 @@ async function sendViaPlatform(args: {
   text: string;
   url?: string;
   ctaLabel?: string;
+  secondaryUrl?: string;
+  secondaryLabel?: string;
   recipientName?: string;
   clubName?: string;
   clubLogoUrl?: string;
@@ -136,6 +154,8 @@ async function sendViaPlatform(args: {
         messageBody: args.text,
         url: args.url || "",
         ctaLabel: args.ctaLabel || "Open in SquashHub",
+        secondaryUrl: args.secondaryUrl || "",
+        secondaryLabel: args.secondaryLabel || "",
         recipientName: args.recipientName || "",
         clubName: args.clubName || "",
         clubLogoUrl: args.clubLogoUrl || "",
@@ -854,6 +874,10 @@ Deno.serve(async (req) => {
       body = `${body}\n\n${drawCta.copy}`;
     }
 
+    const entryTournamentCta = type === "tournament_paid" && !drawCta
+      ? await resolveEntryTournamentCta(data, notifUrl)
+      : null;
+
     const managePrefsUrl = absoluteUrl(siteUrl, "/");
     const mergeVars: Record<string, string> = {
       name: String((profile as any)?.name || payloadName || ""),
@@ -924,17 +948,26 @@ Deno.serve(async (req) => {
           </p>`
         : "";
 
+      const entryCtaHtml = entryTournamentCta
+        ? `<p style="margin:0 0 18px 0">
+            <a href="${escapeHtml(entryTournamentCta)}" style="display:inline-block; padding:10px 14px; background:#ffffff; color:#1a5c3a; border:2px solid #1a5c3a; text-decoration:none; border-radius:8px; font-weight:700">
+              View tournament &amp; score match
+            </a>
+          </p>`
+        : "";
+
       html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
           ${logoHeaderHtml}
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
           ${greetingHtml}
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
-          <p style="margin:0 0 ${isTournamentInvite ? "6" : "18"}px 0">
+          <p style="margin:0 0 ${isTournamentInvite || entryCtaHtml ? "10" : "18"}px 0">
             <a href="${safeLink}" style="display:inline-block; padding:${drawCta ? "14px 22px; font-weight:700; font-size:15px; letter-spacing:.3px; max-width:100%; text-align:center" : "10px 14px"}; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
               ${escapeHtml(ctaLabel)}
             </a>
           </p>
+          ${entryCtaHtml}
           ${inviteExplainerHtml}
           <p style="margin:0; font-size:12px; color:#64748b">
             If you prefer not to receive these emails, you’ll be able to disable transactional emails in your profile settings.
@@ -942,7 +975,7 @@ Deno.serve(async (req) => {
         </div>
       `.trim();
 
-      text = `${title}\n\n${greetingName ? `Dear ${greetingName},\n\n` : ""}${body}\n\n${ctaLabel}: ${link}\n`;
+      text = `${title}\n\n${greetingName ? `Dear ${greetingName},\n\n` : ""}${body}\n\n${ctaLabel}: ${link}\n${entryTournamentCta ? `View tournament & score match: ${entryTournamentCta}\n` : ""}`;
     }
 
 
@@ -954,6 +987,8 @@ Deno.serve(async (req) => {
       text: body,
       url: link,
       ctaLabel: drawCta ? DRAW_CTA_LABEL : type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
+      secondaryUrl: entryTournamentCta || undefined,
+      secondaryLabel: "View tournament & score match",
       recipientName: String((profile as any)?.name || payloadName || "").trim(),
       clubName: clubMail?.clubName || clubBrand.name || "",
       clubLogoUrl: clubMail?.clubLogoUrl || clubBrand.logoUrl || "",

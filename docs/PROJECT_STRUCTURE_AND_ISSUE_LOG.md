@@ -2745,3 +2745,8 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 - `email-notifications` (type `tournament_round_draw`) now links to the tournament's existing overall Match Day link (`/md/<token>`, same as the QR "All Courts" link) via `_shared/match-day-cta.ts`; falls back to `/club-champs/<id>` when Match Day Access is off. Queued (outbox) sends recover the tournament from the recipient's latest round-draw notification.
 - `/md/<token>` shows a signed-in participant their own next match (own session, checked before anonymous device mode) with a button into the normal signed-in tournament page. No new token, route or scoring path.
 - Tests: `src/test/match-day-draw-cta.test.ts`.
+
+## 2026-10-09 — Entry-confirmed email: second "View tournament & score match" button
+- `tournament_paid` (entry confirmed) emails keep "Open in SquashHub" and gain a second button via new `resolveEntryTournamentCta`: the same permanent destination the Match Day QR encodes (`/md/<token>`, fallback `/club-champs/<id>`), reusing `resolveTournamentDestination` extracted from `resolveDrawCta` — no new URL per email.
+- `club-notification.tsx` template gains optional `secondaryUrl`/`secondaryLabel` (outline button) so the second button also renders on the platform sender (no club SMTP / SMTP fallback); other template senders unaffected.
+- Text versions append the second link; queued outbox sends resolve the champ from the `/club-champs/<id>` URL. Code only — edge functions not yet deployed (awaiting approval, together with the draw-email CTA).

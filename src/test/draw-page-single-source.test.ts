@@ -10,10 +10,12 @@ describe("Generate draw presentation", () => {
     expect(source).not.toContain("value={f.seeding}");
     expect(source).not.toContain("{p.schedule}");
   });
-  it("keeps scoring and confirmation but only renders player tables for pools", () => {
-    expect(source).toContain("Match format (from setup)");
+  it("shows a compact read-only category summary with match format and a setup link", () => {
+    expect(source).toContain("Categories (from setup — read only)");
+    expect(source).toContain("Match format");
+    expect(source).toContain("Change in setup");
     expect(source).toContain("I confirm this is the final format for these entries.");
-    expect(source).toContain("if (!isPools) return null;");
-    expect(source).toContain("Expand pools full screen");
+    expect(source).toContain("draw-recipient-picker");
+    expect(source).not.toContain("Number of pools");
   });
 });

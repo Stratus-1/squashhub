@@ -377,7 +377,11 @@ export async function sendInform(i: {
   }
   // Email can't rely on an app session: owing players get their entry's existing
   // secure link (256-bit token, same one the invitation page and no-login payment use).
-  const emailPayLinks = i.feeDue && i.channels.includes("email")
+  // Owing players get their personal no-login pay link on email (a button), and
+  // on WhatsApp/SMS via pay_link + pay_token: the WhatsApp sender shows a tappable
+  // "Pay my fee" button once the pay template is approved, and appends the link
+  // as plain text until then.
+  const emailPayLinks = i.feeDue && (i.channels.includes("email") || i.channels.includes("whatsapp") || i.channels.includes("sms"))
     ? await entryPayLinks(i.clubId, i.tournamentId)
     : {};
   const memberVars: Record<string, Record<string, string>> = {};
@@ -389,6 +393,7 @@ export async function sendInform(i: {
       personal_message: t, personal_message_html: esc(t).replace(/\n/g, "<br>"),
       email_pay_html: link ? emailPayButton(link, emailPayLabel(t)) : "",
       ...(owes ? { pay_url: payRoute(i.tournamentId), pay_label: payLabel(t) } : {}),
+      ...(owes && link ? { pay_link: link, pay_token: link.split("/i/").pop() || "" } : {}),
       ...(i.waUrl ? { wa_url: i.waUrl } : {}),
     };
   }

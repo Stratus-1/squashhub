@@ -27,6 +27,7 @@ type Row = {
   language: string;
   body: string;
   quick_replies: string[] | null;
+  url_button: Array<{ title: string; url: string }> | null;
   content_sid: string | null;
   approval_status: string;
 };
@@ -87,7 +88,7 @@ Deno.serve(async (req) => {
 
     let query = admin
       .from("whatsapp_templates")
-      .select("id, key, friendly_name, category, language, body, quick_replies, content_sid, approval_status");
+      .select("id, key, friendly_name, category, language, body, quick_replies, url_button, content_sid, approval_status");
     if (payload.keys?.length) query = query.in("key", payload.keys);
     if (payload.pending_only) query = query.neq("approval_status", "approved");
     const { data: rows, error: rowsErr } = await query;
@@ -103,12 +104,26 @@ Deno.serve(async (req) => {
       try {
         // 1. Create the content resource if we do not have one yet.
         if (!contentSid) {
-          const varCount = [...row.body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1]));
+          // Variables live in the body AND in URL button links (a {{3}} suffix).
+          const varCount = [
+            ...row.body.matchAll(/\{\{(\d+)\}\}/g),
+            ...(row.url_button ?? []).flatMap((b) => [...String(b.url ?? "").matchAll(/\{\{(\d+)\}\}/g)]),
+          ].map((m) => Number(m[1]));
           const variables: Record<string, string> = {};
           for (const n of new Set(varCount)) variables[String(n)] = `sample ${n}`;
 
           const quick = Array.isArray(row.quick_replies) ? row.quick_replies : [];
-          const types: Record<string, unknown> = quick.length
+          const buttons = Array.isArray(row.url_button) ? row.url_button : [];
+          const types: Record<string, unknown> = buttons.length
+            ? {
+                // URL button template: Meta reviews the button wording and the
+                // fixed link base; the personal suffix arrives as a variable.
+                "twilio/call-to-action": {
+                  body: row.body,
+                  actions: buttons.map((b) => ({ type: "URL", title: b.title, url: b.url })),
+                },
+              }
+            : quick.length
             ? {
                 "twilio/quick-reply": {
                   body: row.body,

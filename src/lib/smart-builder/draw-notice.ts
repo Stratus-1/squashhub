@@ -67,8 +67,12 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
         memberVars[id] = {
           personal_message: text, personal_message_html: esc(text).replace(/\n/g, "<br>"),
           email_pay_html: st?.owes && links[id] ? emailPayButton(links[id], "Pay my fee") : "",
-          personal_message_plain: st?.owes && links[id] ? `${text}\n\nPay my fee: ${links[id]}` : text,
+          // The pay link lives in pay_link / pay_token: the WhatsApp sender turns
+          // it into a tappable "Pay my fee" button (approved template) or appends
+          // it as plain text; it is never pasted into the message body itself.
+          personal_message_plain: text,
           ...(st?.owes ? { pay_url: payRoute(tournamentId), pay_label: "Pay my fee" } : {}),
+          ...(st?.owes && links[id] ? { pay_link: links[id], pay_token: links[id].split("/i/").pop() || "" } : {}),
         };
       }
       content = Object.fromEntries(channels.map((c) => [c, { subject, body: c === "email" ? "<p>Dear {{name}},</p><p>{{personal_message_html}}</p>{{email_pay_html}}" : c === "in_app" ? "{{personal_message}}" : "{{personal_message_plain}}" }]));

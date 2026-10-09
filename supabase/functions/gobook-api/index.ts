@@ -221,7 +221,7 @@ function cachedRegister(token: string, providerServiceId: number, date: string) 
   const key = `${providerServiceId}`;
   const hit = registerCache.get(key);
   if (hit && Date.now() - hit.at < REGISTER_TTL_MS) return hit.value;
-  const value = apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}&showPast=false`);
+  const value = apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}`);
   registerCache.set(key, { at: Date.now(), value });
   value.catch(() => registerCache.delete(key));
   return value;
@@ -510,7 +510,7 @@ Deno.serve(async (req) => {
       if (r.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);
       if (!r.clientId) return json({ success: true, clientId: null, bookings: [] });
       const includePast = payload.include_past === true;
-      const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}${includePast ? "" : "&showPast=false"}`)) ?? [];
+      const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}${includePast ? "" : ""}`)) ?? [];
       const hhmm = (n: number) => `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
       // Club-local "today" (SAST) so a member only sees bookings they can still cancel.
       const todayLocal = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10);

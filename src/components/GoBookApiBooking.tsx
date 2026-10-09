@@ -58,6 +58,8 @@ export function GoBookApiBooking({ clubId, clubMemberId }: { clubId: string; clu
     queryKey: ["gobook-my-bookings", clubId, clubMemberId],
     queryFn: () => invoke("my_bookings"),
     enabled: !!linkQ.data?.clientId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const dates: Array<{ date: string; label: string }> = datesQ.data?.dates ?? [];

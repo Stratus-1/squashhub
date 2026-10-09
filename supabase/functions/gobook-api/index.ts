@@ -210,6 +210,21 @@ const bookerNameFrom = (value: any) => String(
   ?? "",
 ).trim() || null;
 
+// Booking/List returns the provider's whole register (all dates) per call, so
+// one read is shared per service for a short window and concurrent requests
+// reuse the same in-flight call instead of each hitting GoBook.
+const REGISTER_TTL_MS = 3 * 60 * 1000;
+const registerCache = new Map<string, { at: number; value: Promise<unknown> }>();
+function cachedRegister(token: string, providerServiceId: number, date: string) {
+  const key = `${providerServiceId}`;
+  const hit = registerCache.get(key);
+  if (hit && Date.now() - hit.at < REGISTER_TTL_MS) return hit.value;
+  const value = apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}`);
+  registerCache.set(key, { at: Date.now(), value });
+  value.catch(() => registerCache.delete(key));
+  return value;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -662,7 +677,7 @@ Deno.serve(async (req) => {
       // GoBook's slot endpoint only returns still-bookable slots, so existing
       // bookings never appear there. Booking/List returns the provider's real
       // booking register (all dates), which we filter down to the day asked for.
-      const listResponse = await apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}`);
+      const listResponse = await cachedRegister(token, providerServiceId, date);
       if (!hasRowsEnvelope(listResponse)) {
         return json({ error: "GoBook returned an unreadable booking list; existing bookings were left unchanged" }, 502);
       }

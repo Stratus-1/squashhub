@@ -647,6 +647,11 @@ export default function Bookings() {
     const key = `${myClub.id}:${dateStr}`;
     if (gobookSyncedDayRef.current === key) return;
     gobookSyncedDayRef.current = key;
+    // Throttle per device: re-opening the page within 3 minutes reuses the last sync.
+    const stamp = `sh.gobook.sync.${key}`;
+    const last = Number(sessionStorage.getItem(stamp) ?? 0);
+    if (Date.now() - last < 3 * 60 * 1000) return;
+    sessionStorage.setItem(stamp, String(Date.now()));
     void syncGobookApiDay(dateStr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gobookApiMode, myClub?.id, dateStr]);

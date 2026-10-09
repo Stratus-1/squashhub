@@ -1,4 +1,5 @@
 # Roadmap
+- [x] 2026-10-09: Published the accumulated tournament work (builder visual refresh, lock controls, link & QR tab, personalised draw email/WhatsApp) to https://squashhub.lovable.app.
 - [x] Clarify player locks: coloured Locked rows/badges, separate Lock all / Unlock all with status count, individual toggles in inline/full-screen board; 7 tests and intercepted saved-setup browser checks passed, no live writes or publishing.
 - [x] Tournament Builder visual-only refresh: preserved all 19 saved Club Champs steps/flow; improved navigator/options/summary and verified desktop/mobile/tablet in light/dark with live writes blocked. Preview only; four pre-existing pairing test failures remain outside this task.
 - [x] Remove the duplicated draw/fixture panel from the Tournament link & QR tab; stage card hidden while that tab is open, restored by any stage pill. Verified signed-in Riverside club champs in the preview. Preview only, no data or publishing.

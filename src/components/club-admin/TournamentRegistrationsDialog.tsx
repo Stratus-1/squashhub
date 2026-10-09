@@ -47,6 +47,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
   const [showProofOnly, setShowProofOnly] = useState(false);
+  const [search, setSearch] = useState("");
   const [withdrawReg, setWithdrawReg] = useState<any | null>(null);
   const [withdrawGroup, setWithdrawGroup] = useState<string>("all");
 
@@ -317,9 +318,14 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const proofPendingCount = activeRegistrations.filter(awaitingProofCheck).length;
 
   const baseRegistrations = showCancelled ? registrations : activeRegistrations;
-  const visibleRegistrations = showProofOnly
+  const q = search.trim().toLowerCase();
+  const visibleRegistrations = (showProofOnly
     ? baseRegistrations.filter(awaitingProofCheck)
-    : baseRegistrations;
+    : baseRegistrations
+  )
+    .filter((r: any) => !q || getName(r.member).toLowerCase().includes(q) || (r.partner && getName(r.partner).toLowerCase().includes(q)))
+    .slice()
+    .sort((a: any, b: any) => getName(a.member).localeCompare(getName(b.member)));
 
   const feeRequired = entryFee > 0 && !!champ?.payment_required;
   const participatingCount = activeRegistrations.filter((r: any) => isParticipatingEntrant(r, { paymentRequired: feeRequired })).length;
@@ -407,6 +413,13 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             </div>
           )}
 
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by player or partner name…"
+            className="h-8 text-sm"
+          />
+
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
           ) : visibleRegistrations.length === 0 ? (
@@ -419,7 +432,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                 <div key={r.id} className="p-2 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{getName(r.member)}</p>
+                      <p className="font-medium break-words">{getName(r.member)}</p>
                       {isDoubles && (
                         <p className="text-xs text-muted-foreground truncate">
                           Partner: {r.partner ? getName(r.partner) : <span className="italic">none</span>}

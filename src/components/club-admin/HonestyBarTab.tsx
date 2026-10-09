@@ -43,6 +43,10 @@ import { ImportItemsDialog } from "./bar/ImportItemsDialog";
 import { ComponentPicker } from "./bar/ComponentPicker";
 import { categoryLabel } from "@/lib/bar-categories";
 
+const SPECIAL_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) =>
+  `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`,
+);
+
 interface BarItem {
   id: string;
   club_id: string;
@@ -833,8 +837,23 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
           <div className="grid grid-cols-2 gap-2">
             <div><Label className="text-[11px]">From date</Label><Input type="date" value={form.valid_from} onChange={e => setForm(p => ({ ...p, valid_from: e.target.value }))} /></div>
             <div><Label className="text-[11px]">To date</Label><Input type="date" value={form.valid_to} onChange={e => setForm(p => ({ ...p, valid_to: e.target.value }))} /></div>
-            <div><Label className="text-[11px]">From time</Label><Input type="time" step={300} value={form.valid_start_time} onChange={e => setForm(p => ({ ...p, valid_start_time: e.target.value }))} /></div>
-            <div><Label className="text-[11px]">To time</Label><Input type="time" step={300} value={form.valid_end_time} onChange={e => setForm(p => ({ ...p, valid_end_time: e.target.value }))} /></div>
+            {(["valid_start_time", "valid_end_time"] as const).map((field, index) => {
+              const label = index === 0 ? "From time" : "To time";
+              const currentTime = form[field].slice(0, 5);
+              return (
+                <div key={field} className="min-w-0">
+                  <Label htmlFor={`special-${field}`} className="text-[11px]">{label}</Label>
+                  <Select value={currentTime || "any"} onValueChange={value => setForm(p => ({ ...p, [field]: value === "any" ? "" : value }))}>
+                    <SelectTrigger id={`special-${field}`} aria-label={label}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any time</SelectItem>
+                      {currentTime && !SPECIAL_TIME_OPTIONS.includes(currentTime) && <SelectItem value={currentTime}>{currentTime}</SelectItem>}
+                      {SPECIAL_TIME_OPTIONS.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
           </div>
           <div className="flex flex-wrap gap-1">
             {WEEKDAYS.map((d, i) => {

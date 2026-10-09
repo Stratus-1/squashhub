@@ -63,7 +63,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
 
   if (managing) {
     return (
-      <div className="dark rounded-xl bg-background p-4 text-foreground">
+      <div className="rounded-xl bg-background p-4 text-foreground">
         <StepTournamentManagement key={managing} clubId={clubId} tournamentId={managing}
           onBack={() => { setManaging(null); setEditTid(null); }}
           onEditSetup={(at) => { setEditTid(managing); setManaging(null); setEditAt(at ?? "Summary"); setBuilderKey((k) => k + 1); setStepByStepOpen(true); }} />
@@ -73,7 +73,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
 
   if (stepByStepOpen) {
     return (
-      <div className="dark rounded-xl bg-background p-4 text-foreground">
+      <div className="rounded-xl bg-background p-4 text-foreground">
         <StepByStepBuilder key={`${editTid ?? "new"}-${builderKey}`} clubId={clubId} clubName={clubName} initialStep={editAt ?? undefined} tournamentId={editTid ?? undefined}
           onCompleted={(tid) => { setStepByStepOpen(false); setEditAt(null); setEditTid(null); setManaging(tid); }} />
       </div>
@@ -96,7 +96,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
 
   if (picker) {
     return (
-      <div className="dark rounded-xl bg-background p-4 text-foreground">
+      <div className="rounded-xl bg-background p-4 text-foreground">
         <TemplatePicker clubId={clubId} mode={picker} onClose={() => setPicker(null)}
           onStartStep={() => { setPicker(null); openNew(false); setEditAt("Summary"); }}
           onOpenDraft={(id) => { setPicker(null); setDraftId(id); }}
@@ -107,45 +107,45 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
 
   return (
     <div className="space-y-4">
-    <div className="dark rounded-xl bg-background p-4 text-foreground">
+    <div className="rounded-xl bg-background p-4 text-foreground">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Wand2 className="w-5 h-5 text-amber-300" /> Tournaments
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Wand2 className="w-5 h-5 text-amber-600 dark:text-amber-300" /> Tournaments
         </h2>
-        {!home && <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1">
+        {!home && <span className="rounded-full border border-amber-500/40 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-200 flex items-center gap-1">
           {clubName ?? "this club"}
         </span>}
       </div>
-      <p className="mt-4 max-w-xl text-xs text-white/60">
+      <p className="mt-4 max-w-xl text-xs text-muted-foreground">
         Set up your tournament by answering simple questions, one step at a time. Nothing is fixed until you confirm it.
       </p>
       <div className="mt-4 grid max-w-4xl gap-3 md:grid-cols-[1.4fr_1fr]">
       <button
         onClick={() => (draft ? setAskDraft(true) : openNew(true))}
-        className="block w-full rounded-xl border border-amber-300/40 bg-amber-300/10 p-5 text-left transition-colors hover:bg-amber-300/15"
+        className="block w-full rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 text-left transition-colors hover:bg-amber-500/15"
       >
-        <div className="flex items-center gap-2 font-semibold text-white">
-          <ListChecks className="w-5 h-5 text-amber-300" />
+        <div className="flex items-center gap-2 font-semibold">
+          <ListChecks className="w-5 h-5 text-amber-600 dark:text-amber-300" />
           Build your tournament step by step
-          <ArrowRight className="ml-auto w-4 h-4 text-amber-200" />
+          <ArrowRight className="ml-auto w-4 h-4 text-amber-600 dark:text-amber-200" />
         </div>
-        <div className="mt-1 text-xs text-white/60">
+        <div className="mt-1 text-xs text-muted-foreground">
           Walk through the what, who, format, schedule and payment questions in order — then review everything before anything is created.
         </div>
       </button>
       <div className="grid gap-3">
-        <button onClick={() => setPicker("mine")} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white"><Layers className="h-4 w-4 text-amber-300" />Use one of my templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
-          <div className="mt-1 text-[11px] text-white/60">Start from a setup your club saved before, e.g. last year's Club Championships.</div>
+        <button onClick={() => setPicker("mine")} className="rounded-xl border p-4 text-left transition-colors hover:bg-muted/50">
+          <div className="flex items-center gap-2 text-sm font-semibold"><Layers className="h-4 w-4 text-amber-600 dark:text-amber-300" />Use one of my templates<ArrowRight className="ml-auto h-4 w-4 text-amber-600 dark:text-amber-200" /></div>
+          <div className="mt-1 text-[11px] text-muted-foreground">Start from a setup your club saved before, e.g. last year's Club Championships.</div>
         </button>
-        <button onClick={() => setPicker("prebuilt")} className="rounded-xl border border-white/15 p-4 text-left transition-colors hover:bg-white/5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white"><Gem className="h-4 w-4 text-amber-300" />Pre-built templates<ArrowRight className="ml-auto h-4 w-4 text-amber-200" /></div>
-          <div className="mt-1 text-[11px] text-white/60">Standard SquashHub formats.</div>
+        <button onClick={() => setPicker("prebuilt")} className="rounded-xl border p-4 text-left transition-colors hover:bg-muted/50">
+          <div className="flex items-center gap-2 text-sm font-semibold"><Gem className="h-4 w-4 text-amber-600 dark:text-amber-300" />Pre-built templates<ArrowRight className="ml-auto h-4 w-4 text-amber-600 dark:text-amber-200" /></div>
+          <div className="mt-1 text-[11px] text-muted-foreground">Standard SquashHub formats.</div>
         </button>
       </div>
       </div>
       {askDraft && draft && (
-        <div role="alertdialog" className="mt-3 max-w-xl space-y-2 rounded-lg border border-amber-300/40 p-3 text-sm text-white">
+        <div role="alertdialog" className="mt-3 max-w-xl space-y-2 rounded-lg border border-amber-500/40 p-3 text-sm">
           <div>You have an unfinished new tournament draft{draft.name ? ` ("${draft.name}")` : ""} on this device. Start a fresh tournament (the draft is discarded) or continue the draft?</div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => { setAskDraft(false); openNew(true); }}>Start a new tournament</Button>
@@ -156,10 +156,10 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
       )}
       {draft && (
         <div className="mt-4 max-w-md space-y-1">
-          <div className="text-xs text-white/60">Unfinished draft</div>
-          <div className="flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1">
-            <Button variant="ghost" className="min-w-0 flex-1 justify-between text-white" onClick={() => openNew(false)}>
-              <span className="truncate">Continue draft{draft.name ? `: ${draft.name}` : ""}</span><ArrowRight className="h-4 w-4 shrink-0 text-amber-200" />
+          <div className="text-xs text-muted-foreground">Unfinished draft</div>
+          <div className="flex items-center gap-1 rounded-lg border px-2 py-1">
+            <Button variant="ghost" className="min-w-0 flex-1 justify-between" onClick={() => openNew(false)}>
+              <span className="truncate">Continue draft{draft.name ? `: ${draft.name}` : ""}</span><ArrowRight className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-200" />
             </Button>
             <Button variant="ghost" size="icon" title="Remove unfinished draft" aria-label="Remove unfinished draft" onClick={() => setRemoveTarget("draft")}><Trash2 className="h-4 w-4" /></Button>
           </div>

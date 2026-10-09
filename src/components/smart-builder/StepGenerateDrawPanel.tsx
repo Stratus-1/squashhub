@@ -1,6 +1,7 @@
 import { patchTournamentPlanFormat } from "@/lib/smart-builder/step-storage";
 import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
-import { DEFAULT_DRAW_NOTICE, sendDrawNotice } from "@/lib/smart-builder/draw-notice";
+import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients } from "@/lib/smart-builder/draw-notice";
+import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor } from "./DrawNoticeEditor";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
@@ -41,9 +42,12 @@ const SEED_LABEL: Record<DrawSeeding, string> = { entry_order: "Entry order", ra
  */
 const fmtDay = (iso: string) => { const t = new Date(`${iso}T00:00:00`); return isNaN(+t) ? iso : t.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }); };
 
-export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revisiting }: {
-  clubId: string; tournamentId: string; revisiting: boolean; onGenerated: (info: { games: number }) => void;
+export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revisiting, onEditSetup }: {
+  clubId: string; tournamentId: string; revisiting: boolean; onGenerated: (info: { games: number }) => void; onEditSetup?: () => void;
 }) {
+  const waEnabled = useWhatsAppEnabled(clubId);
+  const [recips, setRecips] = useState<Array<{ id: string; name: string }> | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   // Canonical Fixtures/Tournament Games view for this tournament, preserving club context.
   const fixturesUrl = () => {
@@ -68,7 +72,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [confirmed, setConfirmed] = useState(false);
   const [notifyDraw, setNotifyDraw] = useState(true);
   const [askSend, setAskSend] = useState<{ after: boolean } | null>(null);
-  const [sendCh, setSendCh] = useState<{ app: boolean; email: boolean }>({ app: true, email: false });
+  const [sendCh, setSendCh] = useState<{ app: boolean; email: boolean; wa: boolean }>({ app: true, email: false, wa: false });
   const [sending, setSending] = useState(false);
   const [drawMessage, setDrawMessage] = useState(DEFAULT_DRAW_NOTICE);
   const [rebuildOk, setRebuildOk] = useState(false);
@@ -527,14 +531,20 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     finally { setBusy(false); }
   };
 
+  useEffect(() => {
+    if (!askSend) return;
+    setRecips(null);
+    loadDrawNoticeRecipients(tournamentId).then((r) => { setRecips(r); setPicked(new Set(r.map((x) => x.id))); }).catch((e) => { setRecips([]); toast.error(String(e.message ?? e)); });
+  }, [askSend, tournamentId]);
   const closeAsk = () => { const after = askSend?.after; setAskSend(null); if (after) navigate(fixturesUrl()); };
   const sendDraw = async () => {
-    const want = [sendCh.app && "app", sendCh.email && "email"].filter(Boolean) as string[];
-    if (!want.length) { toast.error("Choose In-app and/or Email."); return; }
+    const want = [sendCh.app && "app", sendCh.email && "email", sendCh.wa && waEnabled && "wa"].filter(Boolean) as string[];
+    if (!want.length) { toast.error("Choose at least one channel."); return; }
+    if (!picked.size) { toast.error("Choose at least one player."); return; }
     setSending(true);
     try {
-      const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : [])];
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels);
+      const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : []), ...(sendCh.wa && waEnabled ? ["whatsapp" as const] : [])];
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked]);
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
       closeAsk();
@@ -636,11 +646,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="font-medium">{hasDraw ? "Rebuild the draw (optional)" : "Confirm final format"} — using the {seeded.reduce((s, d) => s + d.units.length, 0)} current entries</div>
-        {seeded.some((d) => d.units.length > 0 && (d.format.kind === "pools" || isPooledKnockout(d.format))) && (
-          <Button type="button" size="sm" variant="outline" onClick={() => setSeedFull(true)}>
-            <Maximize2 className="mr-1 h-3.5 w-3.5" />View pools full screen
-          </Button>
-        )}
       </div>
       <p className="text-muted-foreground">Only current active entries are used; replaced or withdrawn players are left out. Outstanding fees don't exclude anyone because entries here are confirmed without payment. Doubles pairs are kept exactly as you paired them.</p>
 
@@ -760,10 +765,25 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div className="space-y-2 text-sm">
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.app} onCheckedChange={(v) => setSendCh((c) => ({ ...c, app: !!v }))} />In-app</label>
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>
+            {waEnabled && <label className="flex items-center gap-2"><Checkbox checked={sendCh.wa} onCheckedChange={(v) => setSendCh((c) => ({ ...c, wa: !!v }))} />WhatsApp</label>}
+          </div>
+          <div className="space-y-1 text-sm" data-testid="draw-recipient-picker">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">Send to {picked.size} of {recips?.length ?? 0} players</span>
+              <span className="flex gap-2 text-xs">
+                <button type="button" className="text-primary underline" onClick={() => setPicked(new Set((recips ?? []).map((r) => r.id)))}>All</button>
+                <button type="button" className="text-primary underline" onClick={() => setPicked(new Set())}>None</button>
+              </span>
+            </div>
+            {!recips ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading players…</div> : (
+              <div className="grid max-h-48 grid-cols-1 gap-1 overflow-auto rounded border border-border p-2 sm:grid-cols-2">
+                {recips.map((r) => <label key={r.id} className="flex items-center gap-2 text-xs"><Checkbox checked={picked.has(r.id)} onCheckedChange={(v) => setPicked((s) => { const n = new Set(s); v ? n.add(r.id) : n.delete(r.id); return n; })} />{r.name}</label>)}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeAsk} disabled={sending}>Not now</Button>
-            <Button onClick={sendDraw} disabled={sending || !drawMessage.trim() || (!sendCh.app && !sendCh.email)}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
+            <Button onClick={sendDraw} disabled={sending || !drawMessage.trim() || !picked.size || (!sendCh.app && !sendCh.email && !(sendCh.wa && waEnabled))}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

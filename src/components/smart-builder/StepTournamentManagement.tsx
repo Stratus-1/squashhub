@@ -195,7 +195,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           </div>
         )}
         {shown === "generate" && (
-          <StepGenerateDrawPanel clubId={clubId} tournamentId={tournamentId} revisiting={revisiting}
+          <StepGenerateDrawPanel clubId={clubId} tournamentId={tournamentId} revisiting={revisiting} onEditSetup={() => askEdit()}
             onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
         )}
         {diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}

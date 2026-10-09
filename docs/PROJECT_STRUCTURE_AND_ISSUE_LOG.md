@@ -1,3 +1,7 @@
+### 2026-10-09 — Stock purchase lines lacked item search
+- Purchase invoice lines now use a searchable item picker: type part of an item or category name, filter by Bar or Shop, and choose from items grouped under the same category headings the menu and stock take use, with a per-item measure hint and an X of Y count. Archived items, specials and option rows stay excluded, and selection still reports the same value with unit cost auto-filled as before.
+- Verified in Riverside Bar / POS: the picker opens, searching "beer" narrows 237 items to 6, and choosing "Coke Bulk" fills the line (qty 1, cost R10, total R10) with no errors. The invoice was not recorded, so no stock, ledger or supplier data changed. Preview only, nothing published.
+
 ### 2026-10-09 — Special availability time selection
 - Replaced native minute pickers in the bar special form with 24-hour quarter-hour dropdowns, retaining Any time and existing off-grid saved times without rounding. No stock, validity rules or stored records changed; preview only.
 

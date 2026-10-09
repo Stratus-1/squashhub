@@ -2,7 +2,7 @@ import { MemberDebitSwitches } from "@/components/club-admin/bar/MemberDebitSwit
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
 import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -42,6 +42,7 @@ import { CategoryManagerDialog } from "./bar/CategoryManagerDialog";
 import { ImportItemsDialog } from "./bar/ImportItemsDialog";
 import { ComponentPicker } from "./bar/ComponentPicker";
 import { categoryLabel } from "@/lib/bar-categories";
+import { StockItemPicker } from "./bar/StockItemPicker";
 
 const SPECIAL_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) =>
   `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`,
@@ -1079,6 +1080,12 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
   const [lines, setLines] = useState<InvoiceLine[]>([{ bar_item_id: "", quantity: "1", unit_cost: "" }]);
   const [submitting, setSubmitting] = useState(false);
 
+  /** Only real stock lines can be bought in — specials and option rows are left out. */
+  const stockItems = useMemo(
+    () => items.filter(i => !i.archived_at && (i.item_kind || "stock") === "stock"),
+    [items],
+  );
+
   const addLine = () => setLines(prev => [...prev, { bar_item_id: "", quantity: "1", unit_cost: "" }]);
   const removeLine = (idx: number) => setLines(prev => prev.filter((_, i) => i !== idx));
   const updateLine = (idx: number, field: keyof InvoiceLine, value: string) => {
@@ -1218,18 +1225,16 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                     <div key={idx} className="grid grid-cols-[1fr_80px_100px_60px_30px] gap-2 items-end">
                       <div>
                         {idx === 0 && <Label className="text-[10px] text-muted-foreground">Item</Label>}
-                        <Select value={line.bar_item_id} onValueChange={v => {
-                          updateLine(idx, "bar_item_id", v);
-                          const item = items.find(i => i.id === v);
-                          if (item?.cost_price) updateLine(idx, "unit_cost", String(item.cost_price));
-                        }}>
-                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select item" /></SelectTrigger>
-                          <SelectContent>
-                            {items.filter(i => !i.archived_at && (i.item_kind || "stock") === "stock").map(i => (
-                              <SelectItem key={i.id} value={i.id}>{i.name}{(i as { stock_measure?: string }).stock_measure === "volume" ? " (litres)" : (i.unit_yield || 1) > 1 ? ` (per ${i.stock_unit_label || "bottle"})` : ""}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <StockItemPicker
+                          clubId={clubId}
+                          items={stockItems}
+                          value={line.bar_item_id}
+                          onChange={v => {
+                            updateLine(idx, "bar_item_id", v);
+                            const item = items.find(i => i.id === v);
+                            if (item?.cost_price) updateLine(idx, "unit_cost", String(item.cost_price));
+                          }}
+                        />
                       </div>
                       <div>
                         {idx === 0 && <Label className="text-[10px] text-muted-foreground">Qty</Label>}

@@ -13,6 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js@0.1.0";
 import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
 import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
+import { tournamentMessageAction, noticeTemplateVariables } from "../_shared/match-day-cta.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -204,7 +205,13 @@ Deno.serve(async (req) => {
       .select("name,email,phone,subdomain,email_signature_html,email_disclaimer")
       .eq("id", campaign.club_id).maybeSingle();
 
-    const action = resolveAction(campaign.action, club?.subdomain);
+    const resolvedAction = resolveAction(campaign.action, club?.subdomain);
+    const tournamentId = campaign.action?.params?.tournament_id;
+    // Resolve once per send. Never mint a token or change scoring authority.
+    const tournamentLinks = resolvedAction.key === "tournament_view" && tournamentId
+      ? await matchDayLinks(admin, { kind: "tournament", competitionId: String(tournamentId), subdomain: club?.subdomain })
+      : null;
+    const action = tournamentMessageAction(resolvedAction, tournamentLinks?.url);
 
     const recipients = await expandRecipients(campaign.club_id, campaign);
     if (!recipients.length) {
@@ -331,7 +338,7 @@ Deno.serve(async (req) => {
             let mdBlock = "";
             const af = campaign.audience_filter || {};
             const mdKind = af.league_season_id ? "league_season" : af.tournament_id ? "tournament" : null;
-            if (mdKind && !String(af.purpose || "").includes("invite")) {
+            if (mdKind && action.key !== "tournament_view" && !String(af.purpose || "").includes("invite")) {
               const mv: any = memberVars[m.id] ?? {};
               const links = await matchDayLinks(admin, {
                 kind: mdKind, competitionId: String(af.league_season_id || af.tournament_id),
@@ -395,7 +402,7 @@ Deno.serve(async (req) => {
                 recipients: [{ member_id: m.id, phone: m.phone }],
                 body: rendered.body,
                 template_key: "club_notice",
-                template_variables: { message: rendered.body, link: rendered.url || "" },
+                template_variables: noticeTemplateVariables(rendered.body, rendered.url || "", recipientAction.label),
                 kind: "campaign",
                 category: "marketing",
               }),

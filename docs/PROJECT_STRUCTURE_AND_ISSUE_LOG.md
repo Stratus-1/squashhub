@@ -1,3 +1,6 @@
+### 2026-10-09 — Draw email and WhatsApp destination mismatch
+- Draw emails greet each recipient by name. Tournament-view campaigns resolve the existing overall QR URL before rendering instead of appending a second Match Day button after a signed-in link. In-app navigation and scoring rights remain unchanged. Outstanding-fee WhatsApp/SMS draw notices include the existing personal entry payment link; the approved WhatsApp template receives the tournament URL only in its separate link variable. No live messages, payments or deployment during verification.
+
 ### 2026-10-09 — Editable draw notice
 - Generate draw shows editable notice wording and the tournament button; the same edited wording appears in the post-draw send confirmation. Explicit sends reuse the Communications engine with deduplicated Round 1 players/partners and only checked channels; no implicit sends, notification RPC/schema changes or real messages sent during testing.
 

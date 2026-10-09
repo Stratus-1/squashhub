@@ -2,10 +2,25 @@ import { describe, it, expect } from "vitest";
 import { matchDayUrl } from "@/lib/match-day/access";
 import { pickMyMatch } from "@/lib/match-day/my-match";
 import {
-  DRAW_CTA_LABEL, drawCtaCopy, tournamentDestinationUrl, tournamentFallbackUrl, champIdFromUrl,
+  DRAW_CTA_LABEL, drawCtaCopy, tournamentDestinationUrl, tournamentFallbackUrl, champIdFromUrl, tournamentMessageAction, noticeTemplateVariables,
 } from "../../supabase/functions/_shared/match-day-cta";
 
 describe("round-draw email CTA", () => {
+  it("uses the QR destination while preserving the signed-in route and other actions", () => {
+    const action = { key: "tournament_view", label: "View", webUrl: "https://riverside.squashhub.co.za/club-champs/id", appPath: "/club-champs/id" };
+    const qr = tournamentDestinationUrl("stable-token", "riverside");
+    expect(tournamentMessageAction(action, qr)).toEqual({ ...action, webUrl: qr, label: DRAW_CTA_LABEL });
+    expect(tournamentMessageAction(action, null)).toBe(action);
+    expect(tournamentMessageAction({ ...action, key: "tournament_entry" }, qr).webUrl).toBe(action.webUrl);
+  });
+  it("retains payment URL but puts the tournament URL only in its template slot", () => {
+    const url = "https://riverside.squashhub.co.za/md/stable-token";
+    const body = `Dear Test Player\nPay my fee: https://riverside.squashhub.co.za/i/personal-token\n\nView: ${url}`;
+    const slots = noticeTemplateVariables(body, url, "View");
+    expect(slots.message).toContain("/i/personal-token");
+    expect(slots.message).not.toContain(url);
+    expect(slots.link).toBe(url);
+  });
   it("uses the required label and first-round copy", () => {
     expect(DRAW_CTA_LABEL).toBe("VIEW TOURNAMENT & SCORE MATCH");
     expect(drawCtaCopy(1)).toMatch(/^Your first-round match has been drawn\. Use the button below/);

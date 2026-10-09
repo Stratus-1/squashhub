@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Clarify player locks with visible row status, separate bulk controls and individual toggles; verify without live changes.
+- [x] Clarify player locks: coloured Locked rows/badges, separate Lock all / Unlock all with status count, individual toggles in inline/full-screen board; 7 tests and intercepted saved-setup browser checks passed, no live writes or publishing.
 - [x] Tournament Builder visual-only refresh: preserved all 19 saved Club Champs steps/flow; improved navigator/options/summary and verified desktop/mobile/tablet in light/dark with live writes blocked. Preview only; four pre-existing pairing test failures remain outside this task.
 - [x] Remove the duplicated draw/fixture panel from the Tournament link & QR tab; stage card hidden while that tab is open, restored by any stage pill. Verified signed-in Riverside club champs in the preview. Preview only, no data or publishing.
 - [x] Personalise draw email; one permanent QR destination and matching payment/tournament button styling; outstanding-fee WhatsApp link and duplicate template link removed. 21 focused tests pass, preview build OK. Sample paid/unpaid dispatch verified; real delivery and live changes await deployment approval, no messages sent.

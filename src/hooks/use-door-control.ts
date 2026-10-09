@@ -144,8 +144,7 @@ export function useDoorControl(): DoorControl {
               ? Math.min(120, Math.max(1, Number(club?.door_auto_unlock_seconds ?? 12))) * 1000
               : null,
           ble: {
-            // Member dashboard taps must never open the browser's
-            // Bluetooth/Nearby-devices chooser; they use the server path only.
+            // Bluetooth is only tried after the internet path fails.
             enabled: opts.allowBluetooth !== false && !!s.ble_fallback_enabled,
             mac: s.shelly_door_ble_mac,
             password: s.shelly_ble_control_password,

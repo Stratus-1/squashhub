@@ -159,6 +159,8 @@ export async function pulseAccessDeviceBle(opts: {
   password?: string | null;
   channel?: number | null;
   pulseMs?: number | null;
+  /** Defaults to "on". Lights use "off" with pulseMs 0. */
+  turn?: "on" | "off";
   cloudError: string;
 }): Promise<void> {
   const mac = resolveBleMac(opts.mac, opts.shellyDeviceId);
@@ -176,7 +178,7 @@ export async function pulseAccessDeviceBle(opts: {
       password: opts.password ?? undefined,
       channel: opts.channel ?? 0,
       pulseMs: opts.pulseMs ?? 3000,
-      turn: "on",
+      turn: opts.turn ?? "on",
     });
   } catch (e) {
     bleErr = e;

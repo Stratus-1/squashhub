@@ -27,7 +27,7 @@ export function describeDoorCompatibility(i: DoorCompatInput): DoorCompat {
   }
   if (internet === "offline") {
     advice = bluetooth === "ok"
-      ? "You're offline. Stand near the door and tap Open — your phone will use Bluetooth."
+      ? "You're offline. Stand near the door and tap Open — your phone will use Bluetooth (pick the door if your phone asks)."
       : i.ios
       ? "You're offline and this iPhone can't use Bluetooth here. Reconnect to WiFi or mobile data, or install the SquashHub app."
       : "You're offline and Bluetooth isn't available. Reconnect to WiFi or mobile data.";

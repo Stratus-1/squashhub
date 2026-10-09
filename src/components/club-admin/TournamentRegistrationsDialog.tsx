@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, X, Check, UserPlus, Lock, Unlock, MessageCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { isPlayerEligibleForCategory, validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
-import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
+import { openWhatsApp, normalisePhoneForWhatsApp, buildWhatsAppLink } from "@/lib/whatsapp";
+import { tournamentLink } from "@/lib/tournaments/tournament-link";
+import { entryPayLinks } from "@/lib/smart-builder/step-handover";
 import {
   classifyEntrant,
   ENTRANT_CATEGORY_VARIANT,
@@ -479,6 +481,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           onClick={async () => {
                             // One WhatsApp button: invitation / login help / reminder, always with the
                             // tournament's permanent link, plus a personal pay link when the fee is outstanding.
+                            const win = window.open("about:blank", "_blank"); // open now so the browser doesn't block it after loading links
                             const name = getName(r.member);
                             const first = String(name).split(/\s+/)[0] || name;
                             const title = champ?.name ?? "Tournament";
@@ -507,7 +510,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                               if (pay) lines.push(`Pay here (no login needed): ${pay}`);
                             }
                             if (magicLink) lines.push("", `Activate your SquashHub login (one tap):`, magicLink);
-                            openWhatsApp(r.member?.phone, lines.join("\n"));
+                            if (win) win.location.href = buildWhatsAppLink(r.member?.phone, lines.join("\n")); else openWhatsApp(r.member?.phone, lines.join("\n"));
                           }}
                         >
                           <MessageCircle className="w-3 h-3 mr-1" />WhatsApp

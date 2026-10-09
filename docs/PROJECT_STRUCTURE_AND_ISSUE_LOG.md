@@ -2794,3 +2794,7 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 ## 2026-10-09 — Riverside Stitch payment parked on express.stitch.money/pay/complete
 - Evidence: since 6 Oct every nsc link carries `?redirect_url=https://nsc.squashhub.co.za/my-account` and returns members. Riverside's 9 Oct tournament link was bare. Probe: bare link 200, `?redirect_url=https://riverside.squashhub.co.za/my-account` 404. Stitch refuses the address because Riverside's own Stitch Redirect URL list does not include it, so the probe falls back to the bare link.
 - Not a code regression. Fix: register `https://riverside.squashhub.co.za/my-account` (and `/*`) in Riverside's Stitch Express dashboard. Added `RETURN_URL_MISSING` error logs + `metadata.return_missing` on sessions, plus `src/test/stitch-return-url.test.ts`.
+
+### 2026-10-09 — Gordon's Bay Main door showed "Unavailable" after it was back online
+- Cause: the Main door opens through `shelly-door-trigger`, but its registered `club_devices` row only had `last_error` set/cleared by `device-control`. An Oct 6 offline error stayed on the row; when the near-door-only button was hidden, the device row rendered as a disabled "Unavailable" button.
+- Fix: `shelly-door-trigger` clears `last_error` on the matching access device after a confirmed pulse (deployed); compact device buttons stay tappable when showing a stored error (preview). Verified cleared after a real open on 2026-10-09 16:00 UTC.

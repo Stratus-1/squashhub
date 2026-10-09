@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
 import { createPortal } from "react-dom";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -174,6 +174,8 @@ export type StepAnswers = {
   seedingOverrides: Record<string, SeedMethod>;
   /** Admin seed order per event on the Pick players board (device-local plan). */
   seedOrder?: Record<string, string[]>;
+  /** Players locked in place on the board — Refresh by ladder skips them. */
+  lockedIds?: string[];
   /** Club Champs (over a period) only. */
   name: string;
   periodStart: string;
@@ -1457,10 +1459,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         });
                         setA({ ...a, picks: n }); toast.success(`${moved} player${moved === 1 ? "" : "s"} re-placed by league.`);
                       }}>Re-place all by league</Button>)}
-                    {Object.keys(a.seedOrder ?? {}).length > 0 && <Button size="sm" variant="outline" title="Clear your manual order and re-sort every column by the current club ladder" onClick={() => {
-                      if (!window.confirm("Refresh seeding by the current ladder? Your manual order in every column is cleared. Players stay in their categories.")) return;
-                      setA({ ...a, seedOrder: {} }); toast.success("Seeding refreshed by the current ladder.");
+                     {Object.keys(a.seedOrder ?? {}).length > 0 && <Button size="sm" variant="outline" title="Re-sort every column by the current club ladder. Locked players keep their exact spot." onClick={() => {
+                      const locked = new Set(a.lockedIds ?? []);
+                      if (!window.confirm(locked.size > 0 ? `Refresh seeding by the current ladder? ${locked.size} locked player${locked.size === 1 ? "" : "s"} keep their exact spot; everyone else is re-sorted. Players stay in their categories.` : "Refresh seeding by the current ladder? Your manual order in every column is cleared. Players stay in their categories.")) return;
+                      if (locked.size === 0) { setA({ ...a, seedOrder: {} }); toast.success("Seeding refreshed by the current ladder."); return; }
+                      const ladderOf2 = (id: string) => members.find((m) => m.id === id)?.ladder ?? 1e9;
+                      const next: Record<string, string[]> = {};
+                      units.forEach((u) => {
+                        const saved = a.seedOrder?.[u.key] ?? []; const r = (id: string) => { const i = saved.indexOf(id); return i < 0 ? 1e9 : i; };
+                        const bySeed = seedFor(u.key) === "ladder" || seedFor(u.key) === "ranking";
+                        const list = pickIds.filter((id) => placesFor(id).includes(u.key)).sort((x, y) => (r(x) - r(y)) || (bySeed ? ladderOf2(x) - ladderOf2(y) : 0) || memberName(x).localeCompare(memberName(y)));
+                        const free = list.filter((id) => !locked.has(id)).sort((x, y) => (bySeed ? ladderOf2(x) - ladderOf2(y) : 0) || memberName(x).localeCompare(memberName(y)));
+                        let f = 0; next[u.key] = list.map((id) => (locked.has(id) ? id : free[f++]));
+                      });
+                      setA({ ...a, seedOrder: next }); toast.success("Seeding refreshed by the current ladder — locked players kept their spots.");
                     }}>Refresh by ladder</Button>}
+                    {(a.lockedIds ?? []).length > 0 && <Button size="sm" variant="outline" title="Unlock every player so a ladder refresh can move them again" onClick={() => { setA({ ...a, lockedIds: [] }); toast.success("All players unlocked."); }}><LockOpen className="mr-1 h-3.5 w-3.5" />Unlock all ({(a.lockedIds ?? []).length})</Button>}
                     <Button size="sm" variant="outline" title="Use the whole screen for the category columns" onClick={() => setBoardFull(true)}><Maximize2 className="mr-1 h-3.5 w-3.5" />Expand</Button>
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
@@ -1474,6 +1488,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       return pickIds.filter((id) => placesFor(id).includes(k)).sort((x, y) => (r(x) - r(y)) || (bySeed ? ladderOf(x) - ladderOf(y) : 0) || memberName(x).localeCompare(memberName(y)));
                     };
                     const withOrder = (picks: typeof a.picks, k: string, list: string[]) => setA({ ...a, picks, seedOrder: { ...(a.seedOrder ?? {}), [k]: list } });
+                    const lockedSet = new Set(a.lockedIds ?? []);
+                    const toggleLock = (id: string) => { const n = new Set(lockedSet); if (n.has(id)) n.delete(id); else n.add(id); setA({ ...a, lockedIds: [...n] }); };
                     const move = (id: string, from: string, to: string, beforeId?: string) => {
                       if (from === to) { const l = orderFor(to).filter((x) => x !== id); const i = beforeId ? l.indexOf(beforeId) : -1; l.splice(i < 0 ? l.length : i, 0, id); withOrder(a.picks, to, l); return; }
                       let p = from && placesFor(id).includes(from) ? togglePlace(a.picks, id, from, false) : a.picks;
@@ -1502,7 +1518,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                 const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
                                 return (
                                   <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
-                                    className={cn("cursor-grab rounded border bg-background px-1 py-1 text-xs", hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
+                                    className={cn("cursor-grab rounded border bg-background px-1 py-1 text-xs", lockedSet.has(id) ? "border-primary/70 bg-primary/10" : hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
                                     <div className="flex items-center gap-1">
                                       {c.key && <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>}
                                       <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>
@@ -1531,6 +1547,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                           {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
+                                      <button type="button" aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Unlock — a ladder refresh can move this player again" : "Lock — keeps this exact spot when you refresh by ladder"} className={cn("rounded px-0.5", lockedSet.has(id) ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <Lock className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}</button>
                                       <button type="button" aria-label={c.key ? `Remove ${memberName(id)} from ${c.label}` : `Remove ${memberName(id)}`} title={c.key ? `Remove from ${c.label}${mine.length <= 1 ? " (goes to Not placed)" : ""}` : "Remove this player from the tournament list"} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { if (c.key) { move(id, c.key, ""); return; } const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>
                                     </div>
                                   </li>);

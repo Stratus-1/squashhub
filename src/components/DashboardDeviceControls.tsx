@@ -17,6 +17,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { pulseAccessDeviceBle } from "@/lib/shelly-door";
 import { formatLatLngDM } from "@/lib/geo-format";
 import { useGeofenceAutoUnlock } from "@/hooks/use-geofence-auto-unlock";
+import { DoorCompatibilityCheck } from "@/components/DoorCompatibilityCheck";
 import {
   DEVICE_CATEGORY_LIST,
   DEVICE_CATEGORY_META,
@@ -144,6 +145,7 @@ function DoorRow({ door, compact }: { door: DoorControl; compact: boolean }) {
             ? "Unlock the clubhouse door · opens automatically when you arrive"
             : "Unlock the clubhouse door"}
         </p>
+        <DoorCompatibilityCheck className="mt-1.5" />
         {proximity.active && (
           <>
             <p className="text-[11px] text-muted-foreground/80 mt-0.5 tabular-nums">

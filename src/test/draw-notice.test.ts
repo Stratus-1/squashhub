@@ -5,7 +5,7 @@ describe("editable draw notices", () => {
   it("sends the edited wording only through selected channels", () => {
     const content = drawNoticeContent("Round 1", "New wording\nSee you at <court>", ["in_app", "email"]);
     expect(content.in_app.body).toBe("New wording\nSee you at <court>");
-    expect(content.email.body).toBe("<p>New wording<br>See you at &lt;court&gt;</p>");
+    expect(content.email.body).toBe("<p>Dear {{name}},</p><p>New wording<br>See you at &lt;court&gt;</p>");
     expect(content).not.toHaveProperty("whatsapp");
     expect(content).not.toHaveProperty("sms");
   });

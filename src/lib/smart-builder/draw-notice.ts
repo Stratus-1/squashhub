@@ -8,7 +8,7 @@ export const DEFAULT_DRAW_NOTICE = "Your first-round match has been drawn. Open 
 export function drawNoticeContent(subject: string, message: string, channels: CommsChannel[]) {
   const escape = (text: string) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
   return Object.fromEntries(channels.map((channel) => [channel, {
-    subject, body: channel === "email" ? `<p>${escape(message).replace(/\n/g, "<br>")}</p>` : message,
+    subject, body: channel === "email" ? `<p>Dear {{name}},</p><p>${escape(message).replace(/\n/g, "<br>")}</p>` : message,
   }]));
 }
 
@@ -56,7 +56,7 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
     const fee = (t as any)?.payment_required ? Number((t as any)?.entry_fee_cents ?? 0) : 0;
     const status = feeStatusFor(fee, ((regs ?? []) as any[]).filter((r) => !["withdrawn", "replaced", "cancelled"].includes(r.status)));
     if (fee > 0) {
-      const links = channels.includes("email") ? await entryPayLinks(clubId, tournamentId) : {};
+      const links = channels.some((c) => c === "email" || c === "whatsapp" || c === "sms") ? await entryPayLinks(clubId, tournamentId) : {};
       memberVars = {};
       for (const id of memberIds) {
         const st = status[id];
@@ -65,10 +65,11 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
         memberVars[id] = {
           personal_message: text, personal_message_html: esc(text).replace(/\n/g, "<br>"),
           email_pay_html: st?.owes && links[id] ? emailPayButton(links[id], "Pay my fee") : "",
+          personal_message_plain: st?.owes && links[id] ? `${text}\n\nPay my fee: ${links[id]}` : text,
           ...(st?.owes ? { pay_url: payRoute(tournamentId), pay_label: "Pay my fee" } : {}),
         };
       }
-      content = Object.fromEntries(channels.map((c) => [c, { subject, body: c === "email" ? "<p>{{personal_message_html}}</p>{{email_pay_html}}" : "{{personal_message}}" }]));
+      content = Object.fromEntries(channels.map((c) => [c, { subject, body: c === "email" ? "<p>Dear {{name}},</p><p>{{personal_message_html}}</p>{{email_pay_html}}" : c === "in_app" ? "{{personal_message}}" : "{{personal_message_plain}}" }]));
     }
   }
   return sendComms({

@@ -6,6 +6,21 @@ export const PRODUCTION_ROOT = "squashhub.co.za";
 
 export const DRAW_CTA_LABEL = "VIEW TOURNAMENT & SCORE MATCH";
 
+/** Keep signed-in navigation; external messages reuse the overall QR destination. */
+export function tournamentMessageAction<T extends { key: string; webUrl: string; label: string }>(action: T, qrUrl?: string | null): T {
+  return action.key === "tournament_view" && qrUrl
+    ? { ...action, webUrl: qrUrl, label: DRAW_CTA_LABEL }
+    : action;
+}
+
+/** Approved notice templates already have a separate link variable. */
+export function noticeTemplateVariables(body: string, url: string, label: string) {
+  if (!url) return { message: body, link: "" };
+  const suffix = `${label ? `${label}: ` : ""}${url}`;
+  const message = body.endsWith(suffix) ? body.slice(0, -suffix.length).trimEnd() : body;
+  return { message, link: url };
+}
+
 export function drawCtaCopy(roundNumber: number | null | undefined): string {
   const lead = roundNumber === 1 ? "Your first-round match has been drawn." : "Your match has been drawn.";
   return `${lead} Use the button below to view the tournament, follow the draw, score your match live, or submit your result after the match.`;

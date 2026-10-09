@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Tournament Builder visual-only refresh: preserved all 19 saved Club Champs steps/flow; improved navigator/options/summary and verified desktop/mobile/tablet in light/dark with live writes blocked. Preview only; four pre-existing pairing test failures remain outside this task.
 - [x] Remove the duplicated draw/fixture panel from the Tournament link & QR tab; stage card hidden while that tab is open, restored by any stage pill. Verified signed-in Riverside club champs in the preview. Preview only, no data or publishing.
 - [x] Personalise draw email; one permanent QR destination and matching payment/tournament button styling; outstanding-fee WhatsApp link and duplicate template link removed. 21 focused tests pass, preview build OK. Sample paid/unpaid dispatch verified; real delivery and live changes await deployment approval, no messages sent.
 - [x] View-only court display header: centred "View only — log in to the SquashHub app" notice; 6 display tests pass, live token checked at 1280/390/360px with no overlap. Peak markers, rules and permissions unchanged; preview only, not published.

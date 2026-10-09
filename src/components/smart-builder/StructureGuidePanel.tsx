@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Lightbulb } from "lucide-react";
+import { Check, Lightbulb } from "lucide-react";
 import { guideCountText, type GuideEntryCount } from "./guide-entry-counts";
 import { evaluateStructures, poolStageText, guideCapacity, shareSlots, capacityFit, DEFAULT_MATCH_MINUTES, STRUCTURE_LABEL, type CapacityFit, type GuideAnswers, type GuideOutcome, type GuideStrength, type StructureOption } from "@/lib/smart-builder/structure-guide";
 
@@ -26,9 +26,10 @@ export function guideRecommendations(cats: string[], guide: GuideAnswers, isCham
 
 function Pick({ active, onClick, title, desc }: { active: boolean; onClick: () => void; title: string; desc: string }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={cn("rounded-lg border p-3 text-left transition-colors", active ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}>
-      <div className="text-sm font-semibold">{title}</div><div className="text-xs text-muted-foreground">{desc}</div>
-    </button>
+    <Button variant="outline" type="button" onClick={onClick} aria-pressed={active} className={cn("h-auto items-start justify-start gap-2 whitespace-normal rounded-lg border p-3 text-left transition-colors hover:bg-muted", active ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}>
+      <span aria-hidden="true" className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary bg-primary text-primary-foreground" : "border-input")}>{active && <Check />}</span>
+      <span className="min-w-0"><span className="block text-sm font-semibold">{title}</span><span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">{desc}</span></span>
+    </Button>
   );
 }
 const H = ({ n, t, h }: { n: number; t: string; h: string }) => <div><h3 className="text-sm font-semibold">{n}. {t}</h3><p className="text-xs text-muted-foreground">{h}</p></div>;

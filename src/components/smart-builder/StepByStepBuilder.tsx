@@ -28,6 +28,8 @@ import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency
 import { SaveAsTemplateButton, TemplateReviewBanner } from "./StepTemplates";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TournamentSetupNavigator } from "./TournamentSetupNavigator";
+import "./tournament-setup.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1178,30 +1180,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   );
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-      <div className="space-y-4">
+    <div className="tournament-setup grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="min-w-0 space-y-5">
         {!tournamentId && <TemplateReviewBanner clubId={clubId} />}
         {/* progress */}
-        <ol className="flex flex-wrap gap-1.5">
-          {steps.map((s, i) => (
-            <li key={s}>
-              <button
-                type="button"
-                disabled={i > reached}
-                onClick={() => setStep(i)}
-                className={cn(
-                  "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs",
-                  i === step ? "border-primary bg-primary text-primary-foreground" : i < reached ? "border-primary/50 text-foreground" : "border-border text-muted-foreground",
-                  i > reached && "opacity-50",
-                )}
-              >
-                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {s === "Pick" && pairMode ? "Select & pair players" : s === "Messaging" && notifyOnly ? "Entry notification" : STEP_LABEL[s]}
-              </button>
-            </li>
-          ))}
-        </ol>
+        <TournamentSetupNavigator current={step} reached={reached} onSelect={setStep} steps={steps.map((s) => ({
+          key: s, label: s === "Pick" && pairMode ? "Select & pair players" : s === "Messaging" && notifyOnly ? "Entry notification" : STEP_LABEL[s],
+          validated: okFor[s] && !["Guide", "Playoffs", "Split", "Summary"].includes(s),
+        }))} />
 
-        <Card><CardContent className="space-y-4 p-5">
+        <Card className="tournament-setup-panel"><CardContent className="tournament-setup-content min-w-0 space-y-5 p-4 sm:p-6">
           {cur === "Type" && (
             <>
               <Q t="What type of tournament is this?" h="Pick the one that sounds most like your event." />
@@ -2365,18 +2353,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </div>
           )}
           {cur !== "Summary" && (
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" size="sm" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
-              <Button size="sm" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+              <Button variant="outline" size="sm" className="min-h-10 min-w-24" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
+              <Button size="sm" className="min-h-10 min-w-24" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
             </div>
           )}
         </CardContent></Card>
       </div>
 
       {/* growing tree */}
-      <aside aria-label="Your tournament so far" className="rounded-xl border border-border p-4">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your tournament so far</div>
-        {a.name?.trim() && <div className="mb-1 text-sm font-semibold">{a.name}</div>}
+      <aside aria-label="Your tournament so far" className="tournament-setup-summary min-w-0 rounded-lg border border-border bg-muted/40 p-4">
+        <h2 className="mb-3 border-b border-border pb-3 text-sm font-semibold text-foreground">Your tournament so far</h2>
+        {a.name?.trim() && <div className="mb-2 text-base font-semibold leading-snug">{a.name}</div>}
         {a.scope && <button type="button" onClick={() => go("Basics")} className="mb-2 block rounded px-1 text-left text-xs text-muted-foreground hover:bg-muted">{ownerText}</button>}
         <TreeNode icon={<Trophy className="h-4 w-4" />} title={a.kind === "once_off" ? "Once-off / weekend" : a.kind === "period" ? "Club Championships (over a period)" : "Type not chosen"} onClick={() => go("Type")}>
           {a.kind && (
@@ -2469,7 +2457,7 @@ function SectionHead({ children }: { children: React.ReactNode }) {
 }
 
 function Q({ t, h }: { t: string; h: string }) {
-  return <div><h3 className="text-base font-semibold">{t}</h3><p className="text-sm text-muted-foreground">{h}</p></div>;
+  return <div className="space-y-2"><h3 className="text-lg font-semibold leading-snug text-foreground">{t}</h3><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{h}</p></div>;
 }
 function PlayoffFields({ value, onChange, format }: { value: PlayoffPlan; onChange: (patch: Partial<PlayoffPlan>) => void; format: CompKind | null }) {
   if (format === "knockout") return <p className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">A knockout already has its own rounds (e.g. quarterfinals, semifinals, final), so no separate playoffs are planned here.</p>;
@@ -2589,9 +2577,10 @@ function ScoringFields({ value, onChange, showMode = false }: { value: MatchScor
 }
 function Choice({ active, onClick, title, desc }: { active: boolean; onClick: () => void; title: string; desc: string }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={cn("rounded-lg border p-4 text-left transition-colors", active ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}>
-      <div className="text-sm font-semibold">{title}</div><div className="text-xs text-muted-foreground">{desc}</div>
-    </button>
+    <Button variant="outline" type="button" onClick={onClick} aria-pressed={active} className={cn("h-auto items-start justify-start gap-3 whitespace-normal rounded-lg border p-4 text-left transition-colors hover:bg-muted", active ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/50")}>
+      <span aria-hidden="true" className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border", active ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background")}>{active && <Check />}</span>
+      <span className="min-w-0"><span className="block text-sm font-semibold">{title}</span><span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">{desc}</span></span>
+    </Button>
   );
 }
 function DoublesOption({ label, description, value, onChange }: { label: string; description: string; value: boolean | null; onChange: (value: boolean | null) => void }) {
@@ -2620,16 +2609,16 @@ function SummaryRow({ icon, label, children, onEdit }: { icon: React.ReactNode; 
 }
 function TreeNode({ icon, title, children, onClick }: { icon: React.ReactNode; title: string; children?: React.ReactNode; onClick: () => void }) {
   return (
-    <div className="text-sm">
-      <button type="button" onClick={onClick} className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted">
-        <span className="text-primary">{icon}</span>{title}
-      </button>
-      {children && <div className="ml-3 mt-1 space-y-1 border-l border-border pl-3">{children}</div>}
+    <div className="tournament-tree-node min-w-0 text-sm">
+      <Button variant="ghost" type="button" onClick={onClick} className="h-auto w-full items-start justify-start gap-2 whitespace-normal rounded px-1 py-1 text-left text-xs leading-relaxed hover:bg-muted">
+        <span className="mt-0.5 shrink-0 text-primary">{icon}</span><span className="min-w-0 break-words">{title}</span>
+      </Button>
+      {children && <div className="tournament-tree-children ml-3 mt-1 space-y-1 border-l border-border pl-3">{children}</div>}
     </div>
   );
 }
 function TreeLeaf({ children }: { children: React.ReactNode }) {
-  return <div className="text-xs">{children}</div>;
+  return <div className="tournament-tree-leaf min-w-0 text-xs">{children}</div>;
 }
 
 function DiscPick({ value, onChange }: { value?: Disc; onChange: (d: Disc) => void }) {

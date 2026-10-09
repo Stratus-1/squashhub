@@ -1,3 +1,7 @@
+### 2026-10-09 — Tournament Builder visual-only refresh
+- Scoped step-by-step presentation: ordered navigator with current/validated/neutral states and position count, selected choice checkmarks, consistent panel headings and Back/Next layout, readable tournament summary and mobile wrapping/stacked save controls. All conditional steps, labels, saved answers, validations and tournament logic retained.
+- Verified the saved Riverside Club Champs configuration contains 19 steps; exercised all 19 in an isolated authenticated render, with backend write requests intercepted. Desktop light/dark, tablet and mobile checks show no runtime errors or horizontal overflow, including Summary. No tournament records changed and nothing published. Existing pairing suite still has the same four failures documented on 2026-10-07; no domain changes made to address its outdated fixtures/selectors.
+
 ### 2026-10-09 — Draw email and WhatsApp destination mismatch
 - Draw emails greet each recipient by name. Tournament-view campaigns resolve the existing overall QR URL before rendering instead of appending a second Match Day button after a signed-in link. In-app navigation and scoring rights remain unchanged. Outstanding-fee WhatsApp/SMS draw notices include the existing personal entry payment link; the approved WhatsApp template receives the tournament URL only in its separate link variable. No live messages, payments or deployment during verification.
 

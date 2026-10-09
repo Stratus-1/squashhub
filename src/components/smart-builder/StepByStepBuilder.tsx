@@ -1179,6 +1179,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     </div>
   );
 
+  const pickedLockedCount = pickIds.filter((id) => (a.lockedIds ?? []).includes(id)).length;
+  const playerLockControls = <div className="flex flex-wrap items-center gap-2">
+    <span className="text-xs font-medium text-muted-foreground" role="status">{pickedLockedCount} of {pickIds.length} players locked</span>
+    <Button size="sm" variant="outline" disabled={pickedLockedCount === pickIds.length} title="Lock all picked players in their current ladder-refresh positions" onClick={() => { setA({ ...a, lockedIds: [...new Set([...(a.lockedIds ?? []), ...pickIds])] }); toast.success("All picked players locked."); }}><Lock className="h-3.5 w-3.5" />Lock all</Button>
+    <Button size="sm" variant="outline" disabled={pickedLockedCount === 0} title="Unlock all players" onClick={() => { setA({ ...a, lockedIds: [] }); toast.success("All players unlocked."); }}><LockOpen className="h-3.5 w-3.5" />Unlock all</Button>
+  </div>;
+
   return (
     <div className="tournament-setup grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="min-w-0 space-y-5">
@@ -1462,7 +1469,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       });
                       setA({ ...a, seedOrder: next }); toast.success("Seeding refreshed by the current ladder — locked players kept their spots.");
                     }}>Refresh by ladder</Button>}
-                    {(a.lockedIds ?? []).length > 0 && <Button size="sm" variant="outline" title="Unlock every player so a ladder refresh can move them again" onClick={() => { setA({ ...a, lockedIds: [] }); toast.success("All players unlocked."); }}><LockOpen className="mr-1 h-3.5 w-3.5" />Unlock all ({(a.lockedIds ?? []).length})</Button>}
+                    {!boardFull && playerLockControls}
                     <Button size="sm" variant="outline" title="Use the whole screen for the category columns" onClick={() => setBoardFull(true)}><Maximize2 className="mr-1 h-3.5 w-3.5" />Expand</Button>
                   </div>
                   {stalePickCount > 0 && <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"><span>{stalePickCount} player{stalePickCount === 1 ? " has" : "s have"} ticks for events that were renamed or removed (ignored).</span><Button size="sm" variant="ghost" onClick={clearStalePicks}>Clear old ticks</Button></div>}
@@ -1506,7 +1513,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                 const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
                                 return (
                                   <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
-                                    className={cn("cursor-grab rounded border bg-background px-1 py-1 text-xs", lockedSet.has(id) ? "border-primary/70 bg-primary/10" : hit ? "border-primary ring-1 ring-primary" : "border-border")} data-testid={`pick-row-${id}`}>
+                                    className={cn("cursor-grab rounded border px-1 py-1 text-xs", lockedSet.has(id) ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary/40" : hit ? "bg-background border-primary ring-1 ring-primary" : "bg-background border-border")} data-testid={`pick-row-${id}`} data-locked={lockedSet.has(id)}>
                                     <div className="flex items-center gap-1">
                                       {c.key && <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>}
                                       <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>
@@ -1535,7 +1542,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                           {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
-                                      <button type="button" aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Unlock — a ladder refresh can move this player again" : "Lock — keeps this exact spot when you refresh by ladder"} className={cn("rounded px-0.5", lockedSet.has(id) ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <Lock className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}</button>
+                                      <Button type="button" size="sm" variant="ghost" aria-pressed={lockedSet.has(id)} aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Locked — click to unlock this player only" : "Unlocked — click to lock this player's ladder-refresh position"} className={cn("h-auto min-h-0 shrink-0 gap-1 rounded px-1 py-0.5 text-[10px]", lockedSet.has(id) ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <><Lock className="h-3.5 w-3.5" /><span>Locked</span></> : <LockOpen className="h-3.5 w-3.5" />}</Button>
                                       <button type="button" aria-label={c.key ? `Remove ${memberName(id)} from ${c.label}` : `Remove ${memberName(id)}`} title={c.key ? `Remove from ${c.label}${mine.length <= 1 ? " (goes to Not placed)" : ""}` : "Remove this player from the tournament list"} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { if (c.key) { move(id, c.key, ""); return; } const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>
                                     </div>
                                   </li>);
@@ -1572,6 +1579,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             <Button size="sm" variant="outline" onClick={() => setBoardFull(false)}><Minimize2 className="mr-1 h-3.5 w-3.5" />Exit full screen</Button>
                           </span>
                         </div>
+                        {playerLockControls}
                         {board}
                       </div>, document.body) : board;
                   })()}

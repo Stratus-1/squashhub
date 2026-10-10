@@ -1342,7 +1342,7 @@ export default function Tournaments() {
     // Dragging is only allowed once the admin has actually grabbed the handle.
     // Making the whole row draggable meant a normal finger-scroll over the
     // list could pick a fixture up and drop it on another slot.
-    const canDrag = isClubAdmin && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
+    const canDrag = isClubAdmin && !isByeFixture(m) && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
     const armed = dragArmedId === m.id;
     const isDragging = dragId === m.id;
     const draggingMatch = dragId ? (allMatches as any[]).find((x) => x.id === dragId) : null;

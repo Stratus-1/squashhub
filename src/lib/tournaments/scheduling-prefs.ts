@@ -10,7 +10,12 @@
 
 export type RestPref = "none" | "avoid" | "one" | "two";
 export type CourtPref = "any" | "rotate" | "category";
-export type CategoryCourtRule = { key: string; courtIds: number[]; rule: "preferred" | "only" };
+/**
+ * Per category (or subcategory override) court + evening preference. `weekdays` are JS day numbers
+ * (0 = Sun … 6 = Sat), applied to every round's planned dates. `rule` covers both courts and evenings.
+ * Key = unit key ("Mens" or "Mens::A"); a subcategory rule replaces its category's rule entirely.
+ */
+export type CategoryCourtRule = { key: string; courtIds: number[]; rule: "preferred" | "only"; weekdays?: number[] };
 export type SchedulingPrefs = { rest: RestPref; courts: CourtPref; categoryCourts: CategoryCourtRule[] };
 
 export const DEFAULT_SCHEDULING_PREFS: SchedulingPrefs = { rest: "none", courts: "any", categoryCourts: [] };
@@ -24,7 +29,7 @@ export const REST_LABEL: Record<RestPref, string> = {
 export const COURT_LABEL: Record<CourtPref, string> = {
   any: "Any available court",
   rotate: "Rotate courts where possible",
-  category: "Assign courts by category/group",
+  category: "Assign courts & evenings by category/group",
 };
 
 /** Saved value → safe prefs. Missing/junk = defaults (existing behaviour). */
@@ -34,7 +39,11 @@ export function normaliseSchedulingPrefs(raw: any): SchedulingPrefs {
   const categoryCourts: CategoryCourtRule[] = Array.isArray(raw?.categoryCourts)
     ? raw.categoryCourts
         .filter((r: any) => r && typeof r.key === "string")
-        .map((r: any) => ({ key: r.key, rule: r.rule === "only" ? "only" : "preferred", courtIds: ((r.courtIds ?? []) as any[]).map(Number).filter(Number.isFinite) }))
+        .map((r: any) => {
+          const out: CategoryCourtRule = { key: r.key, rule: r.rule === "only" ? "only" : "preferred", courtIds: ((r.courtIds ?? []) as any[]).map(Number).filter(Number.isFinite) };
+          if (Array.isArray(r.weekdays)) out.weekdays = [...new Set((r.weekdays as any[]).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))];
+          return out;
+        })
     : [];
   return { rest, courts, categoryCourts };
 }
@@ -43,6 +52,20 @@ export function normaliseSchedulingPrefs(raw: any): SchedulingPrefs {
 export function prefsActive(p: SchedulingPrefs): boolean {
   return p.rest !== "none" || p.courts !== "any";
 }
+
+/** Division label → unit key ("Mens › A · Doubles" → "Mens::A"). */
+export const prefUnitKey = (label: string) => String(label ?? "").replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
+
+/** Effective rule for a label: exact label, then subcategory key, then parent category key. */
+export function ruleForLabel(prefs: SchedulingPrefs, label: string | undefined): CategoryCourtRule | undefined {
+  if (!label) return undefined;
+  const k = prefUnitKey(label);
+  const has = (r: CategoryCourtRule) => r.courtIds.length > 0 || (r.weekdays?.length ?? 0) > 0;
+  for (const key of [label, k, k.split("::")[0]]) { const r = prefs.categoryCourts.find((x) => x.key === key && has(x)); if (r) return r; }
+  return undefined;
+}
+
+export const weekdayOf = (iso: string) => new Date(`${String(iso).slice(0, 10)}T00:00:00`).getDay();
 
 export type PrefGame = { id: string; round: number; people: string[]; groups: number[] };
 export type PrefDay = { date: string; from: string; to: string; courtIds: number[] };
@@ -55,15 +78,21 @@ const toHHMM = (n: number) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${
 
 /** Courts a game may use (hard) and would like (soft), from its categories' mappings. */
 export function gameCourtRules(groups: number[], prefs: SchedulingPrefs, keyOf: (g: number) => string | undefined) {
-  if (prefs.courts !== "category") return { only: null as number[] | null, preferred: [] as number[] };
-  const rules = groups.map((g) => prefs.categoryCourts.find((r) => r.key === keyOf(g))).filter((r): r is CategoryCourtRule => !!r && r.courtIds.length > 0);
+  if (prefs.courts !== "category") return { only: null as number[] | null, preferred: [] as number[], onlyDays: null as number[] | null, preferredDays: null as number[] | null };
+  const all = groups.map((g) => ruleForLabel(prefs, keyOf(g))).filter((r): r is CategoryCourtRule => !!r);
+  const rules = all.filter((r) => r.courtIds.length > 0);
   const onlySets = rules.filter((r) => r.rule === "only").map((r) => r.courtIds);
   const only = onlySets.length ? onlySets.reduce((a, b) => a.filter((c) => b.includes(c))) : null;
   const preferred = [...new Set(rules.filter((r) => r.rule === "preferred").flatMap((r) => r.courtIds))];
-  return { only, preferred };
+  const dayRules = all.filter((r) => (r.weekdays?.length ?? 0) > 0);
+  const onlyDaySets = dayRules.filter((r) => r.rule === "only").map((r) => r.weekdays!);
+  const onlyDays = onlyDaySets.length ? onlyDaySets.reduce((a, b) => a.filter((d) => b.includes(d))) : null;
+  const prefDaySets = dayRules.filter((r) => r.rule === "preferred").map((r) => r.weekdays!);
+  const preferredDays = prefDaySets.length ? [...new Set(prefDaySets.flat())] : null;
+  return { only, preferred, onlyDays, preferredDays };
 }
 
-function pack(o: { games: PrefGame[]; days: PrefDay[]; step: number; busy: PrefBusy[]; prefs: SchedulingPrefs; keyOf: (g: number) => string | undefined; rest: number }) {
+function pack(o: { games: PrefGame[]; days: PrefDay[]; step: number; busy: PrefBusy[]; prefs: SchedulingPrefs; keyOf: (g: number) => string | undefined; rest: number; softDays: boolean }) {
   const queue = o.games.map((g, i) => ({ g, i, ...gameCourtRules(g.groups, o.prefs, o.keyOf) }));
   const reserved = new Set(o.prefs.courts === "category" ? o.prefs.categoryCourts.flatMap((r) => r.courtIds) : []);
   const last = new Map<string, { date: string; idx: number }>();
@@ -72,6 +101,7 @@ function pack(o: { games: PrefGame[]; days: PrefDay[]; step: number; busy: PrefB
   let available = 0;
   let backToBack = 0;
   for (const d of o.days) {
+    const wd = weekdayOf(d.date);
     let idx = 0;
     for (let t = toMin(d.from); t + o.step <= toMin(d.to); t += o.step, idx++) {
       let free = d.courtIds.filter((c) => !o.busy.some((b) => b.date === d.date && b.courtId === c && toMin(b.start) < t + o.step && toMin(b.end) > t));
@@ -81,6 +111,8 @@ function pack(o: { games: PrefGame[]; days: PrefDay[]; step: number; busy: PrefB
         const q = queue[i];
         const ps = q.g.people;
         if (ps.some((p) => inWave.has(p))) { i++; continue; }
+        if (q.onlyDays && !q.onlyDays.includes(wd)) { i++; continue; }
+        if (!o.softDays && q.preferredDays && !q.preferredDays.includes(wd)) { i++; continue; }
         if (o.rest > 0 && ps.some((p) => { const l = last.get(p); return !!l && l.date === d.date && idx - l.idx <= o.rest; })) { i++; continue; }
         const cands = q.only ? free.filter((c) => q.only!.includes(c)) : free;
         if (!cands.length) { i++; continue; }
@@ -114,21 +146,33 @@ export function planPrefWaves(o: { games: PrefGame[]; days: PrefDay[]; minutes: 
   const base = { games, days, step, busy: o.busy ?? [], prefs: o.prefs, keyOf: o.keyOf };
   const notes: string[] = [];
   const hardRest = o.prefs.rest === "one" ? 1 : o.prefs.rest === "two" ? 2 : 0;
-  let res = pack({ ...base, rest: o.prefs.rest === "avoid" ? 1 : hardRest });
+  const hasPrefDays = o.prefs.courts === "category" && o.prefs.categoryCourts.some((r) => r.rule === "preferred" && (r.weekdays?.length ?? 0) > 0);
+  // Preferred evenings: honour them as if required first; spill to other evenings only when needed.
+  const run = (rest: number) => {
+    const strict = pack({ ...base, rest, softDays: false });
+    if (!strict.left.length || !hasPrefDays) return { ...strict, spilled: false };
+    return { ...pack({ ...base, rest, softDays: true }), spilled: true };
+  };
+  let res = run(o.prefs.rest === "avoid" ? 1 : hardRest);
   if (o.prefs.rest === "avoid") {
-    if (res.left.length) { res = pack({ ...base, rest: 0 }); notes.push(res.backToBack ? `Back-to-back games needed to fit (${res.backToBack}).` : "Back-to-back avoided where possible."); }
+    if (res.left.length) { res = run(0); notes.push(res.backToBack ? `Back-to-back games needed to fit (${res.backToBack}).` : "Back-to-back avoided where possible."); }
     else notes.push("Back-to-back avoided.");
   } else if (hardRest) notes.push(`At least ${hardRest} slot${hardRest === 1 ? "" : "s"} rest between games.`);
   if (o.prefs.courts === "rotate") notes.push("Courts rotated where possible.");
   if (o.prefs.courts === "category" && o.prefs.categoryCourts.some((r) => r.courtIds.length)) notes.push("Category/group courts applied.");
+  if (o.prefs.courts === "category" && o.prefs.categoryCourts.some((r) => (r.weekdays?.length ?? 0) > 0)) notes.push(res.spilled ? "Preferred evenings were full, so some games moved to other evenings." : "Category evenings applied.");
   const issues: string[] = [];
   if (res.left.length) {
     const n = res.left.length;
+    const noDay = res.left.filter((q) => q.onlyDays && !days.some((d) => q.onlyDays!.includes(weekdayOf(d.date))));
+    const dayLeft = res.left.filter((q) => q.onlyDays);
     const impossible = res.left.filter((q) => q.only && !q.only.some((c) => days.some((d) => d.courtIds.includes(c))));
     const onlyLeft = res.left.filter((q) => q.only);
     const s = n === 1 ? "match" : "matches";
-    if (impossible.length) issues.push(`"Only these courts" leaves ${impossible.length} ${impossible.length === 1 ? "match" : "matches"} with no usable court on the configured dates. Change the court rule to Preferred or pick courts available on those dates.`);
+    if (noDay.length) issues.push(`"Only these evenings" leaves ${noDay.length} ${noDay.length === 1 ? "match" : "matches"} with no planned date on those weekdays. Change the rule to Preferred or pick another evening.`);
+    else if (impossible.length) issues.push(`"Only these courts" leaves ${impossible.length} ${impossible.length === 1 ? "match" : "matches"} with no usable court on the configured dates. Change the court rule to Preferred or pick courts available on those dates.`);
     else if (hardRest) issues.push(`Requiring ${hardRest}-slot rest leaves ${n} ${s} that cannot fit. Change rest to "Avoid back-to-back", extend the window, or add another date.`);
+    else if (dayLeft.length && !onlyLeft.length) issues.push(`"Only these evenings" leaves ${n} ${s} that cannot fit. Change the rule to Preferred, extend the window, or add another date.`);
     else if (onlyLeft.length) issues.push(`"Only these courts" leaves ${n} ${s} that cannot fit. Change the court rule to Preferred, extend the window, or add another date.`);
     else issues.push(`${required} games need a slot but only ${required - n} could be placed (${res.available} court slots, ${step} min per slot, no player on two courts at once). Extend the window, add courts or add another date.`);
   }

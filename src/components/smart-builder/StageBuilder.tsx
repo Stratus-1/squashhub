@@ -191,7 +191,17 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                 </>
               )}
               {sel0.kind === "swiss" && (
+                <>
                 <Q label="4. Number of Swiss rounds"><Input className={f} inputMode="numeric" value={sel0.swissRounds ?? ""} onChange={(e) => editStage((s) => { s.swissRounds = e.target.value ? Number(e.target.value) : null; })} /></Q>
+                <Q label="Tie-break when match wins are level">
+                  <select className={sel} data-field={`stage.${sel0.id}.swissTieBreaks`} value={(sel0.tieBreaks ?? []).join(",")} onChange={(e) => editStage((s) => { s.tieBreaks = e.target.value ? (e.target.value.split(",") as typeof s.tieBreaks) : undefined; })}>
+                    <option value="">Buchholz → Sonneborn-Berger → original seed (default)</option>
+                    <option value="sonneborn_berger,buchholz,seed">Sonneborn-Berger → Buchholz → original seed</option>
+                    <option value="buchholz,seed">Buchholz → original seed</option>
+                    <option value="seed">Original seed only</option>
+                  </select>
+                </Q>
+                </>
               )}
               {sel0.kind === "knockout" && (
                 <Q label="4. Rounds">

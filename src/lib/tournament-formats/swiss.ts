@@ -20,4 +20,9 @@ export const SwissFormat: TournamentFormat = {
     "Players are re-paired every round against opponents on similar scores. Admin sets pools per league and rounds; pairings are done manually round-by-round.",
   markerLabel: "Mark game",
   badge: { label: "Swiss", variant: "secondary" },
+  // Swiss ranks by MATCH wins (the standings page replaces this with the shared swissTable incl.
+  // Buchholz / Sonneborn-Berger / seed). Games won never decide Swiss points.
+  rankStandings(a, b) {
+    return b.won - a.won || b.gameDiff - a.gameDiff;
+  },
 };

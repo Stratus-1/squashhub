@@ -42,3 +42,26 @@ export function swissRoundGate(fixtures: GateFixture[], swissRounds: number | nu
   if (current >= rounds) return { state: "finished", round: current, message: `All ${rounds} Swiss rounds are complete — standings are final.` };
   return { state: "ready", round: current, nextRound: current + 1, message: `Round ${current} is complete. Standings updated — you can generate Round ${current + 1} of ${rounds}.` };
 }
+
+export type SwissStandingsStatus =
+  | { state: "not_started"; total: number }
+  | { state: "in_progress"; round: number; total: number; done: number; of: number }
+  | { state: "after_round"; round: number; total: number }
+  | { state: "final"; round: number; total: number };
+
+/** Standings heading status from actual fixture state: a round counts only once every
+ *  real fixture in it is final (byes always final). Round created ≠ round completed. */
+export function swissStandingsStatus(fixtures: GateFixture[], swissRounds: number | null | undefined): SwissStandingsStatus {
+  const total = Math.max(0, Number(swissRounds) || 0);
+  const current = Math.max(0, ...fixtures.map((f) => Number(f.round) || 1));
+  if (!fixtures.length || current === 0) return { state: "not_started", total };
+  const inRound = fixtures.filter((f) => (Number(f.round) || 1) === current);
+  const real = inRound.filter((f) => f.a && f.b);
+  const done = real.filter(isFinalFixture).length;
+  if (done < real.length || inRound.some((f) => !isFinalFixture(f))) {
+    if (current === 1 && done === 0) return { state: "not_started", total };
+    return { state: "in_progress", round: current, total, done, of: real.length };
+  }
+  if (total > 0 && current >= total) return { state: "final", round: current, total };
+  return { state: "after_round", round: current, total };
+}

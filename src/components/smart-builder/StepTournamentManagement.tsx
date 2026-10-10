@@ -168,7 +168,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
       {shown === "invite" && h.mode !== "inform" && (
         <>
           {!open
-            ? <Button disabled={blockersFor(h, "invite").length > 0} onClick={() => setOpen(true)}>Invite players<ChevronRight className="ml-1 h-4 w-4" /></Button>
+            ? <Button disabled={blockersFor(h, "invite").length > 0} title={blockersFor(h, "invite").map((d) => `${d.label}: ${d.why}`).join("\n")} onClick={() => setOpen(true)}>Invite players<ChevronRight className="ml-1 h-4 w-4" /></Button>
             : <StepInvitePanel h={h} lifecycle={life} onLifecycle={setLifecycle} onSent={reloadRegs} />}
         </>
       )}

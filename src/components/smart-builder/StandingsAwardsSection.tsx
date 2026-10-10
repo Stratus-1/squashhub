@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { structuredMatchups } from "@/lib/tournaments/structured-matchups";
 import {
-  defaultStandingsAwards, OUTCOME_LABEL, readStandingsAwards, type ChampionshipOutcome, type StandingsAwards,
+  decidingByCategory, defaultStandingsAwards, OUTCOME_LABEL, type CategoryDeciding, readStandingsAwards, type ChampionshipOutcome, type StandingsAwards,
 } from "@/lib/tournaments/standings-outcome";
 
 /**
@@ -16,10 +16,11 @@ export function StandingsAwardsSection({ tournamentId, onSaved }: { tournamentId
   const [saved, setSaved] = useState(false);
   const [open, setOpen] = useState(false);
   const [live, setLive] = useState<"completed" | "running" | null>(null);
+  const [deciding, setDeciding] = useState<CategoryDeciding[]>([]);
 
   useEffect(() => {
     void (async () => {
-      const { data } = await fromExt("tournaments").select("beta_lifecycle, builder_spec, match_type, status").eq("id", tournamentId).maybeSingle();
+      const { data } = await fromExt("tournaments").select("beta_lifecycle, builder_spec, builder_architecture, match_type, status").eq("id", tournamentId).maybeSingle();
       const t: any = data ?? {};
       const existing = readStandingsAwards(t.beta_lifecycle);
       setSaved(!!existing);
@@ -28,7 +29,17 @@ export function StandingsAwardsSection({ tournamentId, onSaved }: { tournamentId
         .eq("champ_id", tournamentId).eq("status", "completed");
       const st = String(t.status ?? "").toLowerCase();
       setLive(st === "completed" ? "completed" : (count ?? 0) > 0 ? "running" : null);
-      setCfg(existing ?? defaultStandingsAwards({ doubles, betweenGroups: structuredMatchups(t.builder_spec).length > 0 }));
+      const dec = t.builder_architecture === "structured" ? decidingByCategory(t.builder_spec, t.beta_lifecycle?.format_plan?.stages) : [];
+      setDeciding(dec);
+      const swissOnly = dec.length > 0 && dec.every((d) => d.kind === "swiss");
+      const betweenGroups = structuredMatchups(t.builder_spec).length > 0;
+      const def = defaultStandingsAwards({ doubles, betweenGroups, swissOnly });
+      setCfg(existing ?? def);
+      // Smart default for Swiss-only events that never saved awards (never overwrites a saved choice).
+      if (!existing && swissOnly && !betweenGroups) {
+        const { error } = await fromExt("tournaments").update({ beta_lifecycle: { ...(t.beta_lifecycle ?? {}), standings_awards: def } } as any).eq("id", tournamentId);
+        if (!error) setSaved(true);
+      }
     })();
   }, [tournamentId]);
 
@@ -70,6 +81,15 @@ export function StandingsAwardsSection({ tournamentId, onSaved }: { tournamentId
             </label>
           ))}
         </div>
+        {deciding.some((d) => d.kind !== "other") && (
+          <ul className="space-y-0.5 rounded bg-muted/40 p-1.5" data-testid="awards-deciding">
+            {deciding.filter((d) => d.kind !== "other").map((d) => (
+              <li key={d.label}><b>{d.label}:</b> {d.kind === "swiss"
+                ? `winner, runner-up and positions 1–N come from the final Swiss standings (match points, then tie-breaks) after all ${d.swissRounds ?? ""} rounds — shown as "Current leader" until then.`
+                : "winner and runner-up come from the play-off final; Swiss standings only decide who qualifies."}</li>
+            ))}
+          </ul>
+        )}
         <p className="text-muted-foreground">Who wins comes from how this tournament is decided (final match, play-offs or final standings). Wooden Spoon and Top scorer are only awarded once all games are complete; before that the top scorer shows as current leader.</p>
       </>}
     </div>

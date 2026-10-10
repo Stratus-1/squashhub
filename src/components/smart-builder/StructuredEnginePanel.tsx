@@ -17,6 +17,7 @@ import {
 import { progressionOf } from "@/lib/tournaments/contract";
 import { stageTable } from "@/lib/tournaments/engine-service";
 import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
+import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
 import { swissRoundGate } from "@/lib/tournaments/swiss-round-gate";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
@@ -88,13 +89,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
                   <Button size="sm" variant="outline" disabled={!!busy || gate.state !== "ready"} onClick={() => {
                     if (gate.state !== "ready") return;
                     if (!confirm(`Generate Round ${gate.nextRound} for ${d.label}? Pairings use the latest results, Swiss score groups and tie-breaks, and avoid repeat opponents.`)) return;
-                    run(`sw${s.id}`, () => atomically(supabaseDb, champId, commitStructured, async (db) => {
-                      const full = await loadEntrants(db, champId, spec);
-                      const div = full.divisions[di];
-                      const rows = matches.filter((m) => m.group_number === di + 1).map((m) => toFixtureRow(d.divisionId, m, d.stages.find((x) => x.id === m.stage_key)?.kind ?? "swiss"));
-                      const next = nextSwissRound(champId, div, s.id, rows);
-                      await insertFixtures(db, champId, full, await persistStructure(db, champId, full), next, rows);
-                    }), `Round ${gate.nextRound} generated`);
+                    run(`sw${s.id}`, () => generateNextSwissRound(champId, spec, di, s.id, matches), `Round ${gate.nextRound} generated`);
                   }}>Generate Round {nextN}</Button>
                 )}
             </div>

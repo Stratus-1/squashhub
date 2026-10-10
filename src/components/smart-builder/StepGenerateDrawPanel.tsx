@@ -621,6 +621,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     return (
       <div className="space-y-2 rounded border border-primary/50 bg-primary/10 p-3 text-xs" data-testid="draw-running-notice">
         <div className="font-medium">Tournament is running · {existing.games} game{existing.games === 1 ? "" : "s"} saved · {existing.played} played or started</div>
+        <p className="font-medium">Next Swiss rounds are set up and drawn from Manage Tournament → "Swiss rounds — next steps per category".</p>
         <p>Round pairings and fixture approvals are managed in Manage Tournament. Structural settings (pace, pairing strategy, pools, play-by dates, play-off stages) can still be reviewed here, but saving them never regenerates or deletes existing games. If a change would no longer fit the running draw, make it from Manage Tournament instead.</p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" asChild><Link to={`/club-admin?${q.toString()}`}>Go to Manage Tournament<ChevronRight className="ml-1 h-4 w-4" /></Link></Button>

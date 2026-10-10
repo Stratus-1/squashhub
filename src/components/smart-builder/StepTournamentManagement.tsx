@@ -14,6 +14,7 @@ import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { QrCode } from "lucide-react";
 import { StepRunOverview } from "./StepRunOverview";
+import { StepSwissRoundsPanel } from "./StepSwissRoundsPanel";
 import { StepKnockoutRoundsPanel } from "./StepKnockoutRoundsPanel";
 import { StandingsAwardsSection } from "./StandingsAwardsSection";
 import { fromExt } from "@/lib/supabase-ext";
@@ -29,7 +30,7 @@ const money = (c: number) => `R${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
  * Payment status comes from club_champs_registrations.status (the tournament's normal payment flow).
  */
 export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, onBack }: {
-  clubId: string; tournamentId: string; onEditSetup: (at?: "Summary" | "Messaging" | "Guide") => void; onBack: () => void;
+  clubId: string; tournamentId: string; onEditSetup: (at?: "Summary" | "Messaging" | "Guide" | "Schedule") => void; onBack: () => void;
 }) {
   const [h, setH] = useState<Handover | null>(() => loadHandover(clubId, tournamentId));
   const [rebuilding, setRebuilding] = useState(() => !loadHandover(clubId, tournamentId));
@@ -210,6 +211,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
         )}
         {diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}
+        {diamond === false && <StepSwissRoundsPanel tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
         {!revisiting && diamond === false && <StepKnockoutRoundsPanel tournamentId={tournamentId} plan={life?.format_plan as any} />}
         {!revisiting && (
           <StepRunOverview clubId={clubId} tournamentId={tournamentId} plan={life?.format_plan as any}

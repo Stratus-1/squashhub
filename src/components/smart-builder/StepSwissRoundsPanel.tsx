@@ -42,8 +42,6 @@ export function StepSwissRoundsPanel({ tournamentId, onSetupRound }: { tournamen
     return matches.filter((m) => m.group_number === di + 1 && m.stage_key === sid).map((m) => toFixtureRow(d.divisionId, m, "swiss"));
   }, plan);
   if (!rows.length) return null;
-  const nameOf = (id: string | null) => id ?? "TBD";
-  void nameOf;
 
   const generate = async (r: SwissDivisionProgress) => {
     if (r.gate.state !== "ready") return;
@@ -54,7 +52,7 @@ export function StepSwissRoundsPanel({ tournamentId, onSetupRound }: { tournamen
       await generateNextSwissRound(tournamentId, spec, r.divisionIndex, r.stageId, fresh);
       try {
         const rs = await applySetupSessions(supabase, tournamentId);
-        const mine = rs.find((x) => x.round === r.gate.state === "ready" ? (r.gate as any).nextRound : -1);
+        const mine = rs.find((x) => x.round === (r.gate as any).nextRound);
         if (mine?.unplaced) toast.error(`${mine.unplaced} game(s) could not be given a court time in ${mine.name} — widen the times or add courts.`);
       } catch (e: any) { toast.error(`Games created but not placed on courts: ${e.message ?? e}`); }
       toast.success(`${r.label}: Round ${(r.gate as any).nextRound} draw generated. No messages were sent.`);

@@ -2825,3 +2825,8 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 
 - 2026-10-10 Swiss Round 2 not offered in Manage Tournament: Generate Round button only lived in the collapsed admin card on the draw page; added StepSwissRoundsPanel (per-category Set up / Generate Round N Draw, detects saved round schedule). Mens B bye (null opponent, status scheduled) counts as final.
 - 2026-10-10 No "Send draw to players now?" after Swiss Round 2: new Generate Round N Draw path never prompted and the saved draw_notify setting was never read (Round 1 path always asked). Added DrawNoticeDialog per category+round, draw_notices log, Sent/Resend.
+
+## 2026-10-10 — Tournaments Standings tab: auto-open single tournament (replaces inline embed)
+- Problem: inline embedding of full ClubChampsView inside Tournaments.tsx was unsafe (disabled registration/doubles-pair reads, missing beta_lifecycle, duplicate marker-lock polling, whole 4k-line controller mounted).
+- Fix (src/pages/Tournaments.tsx only): removed InlineTournamentStandings/ClubChampsView/DiamondStandings usage from the Standings tab. When exactly one active tournament exists, opening the Standings tab navigates once per session (sessionStorage key sh.autoOpenChamp.<id>) to the existing /club-champs/<id> view with full data/actions. Browser Back returns to Tournaments and shows the compact View Standings card without re-navigating (no loop). Multiple tournaments keep compact cards; zero state unchanged.
+- Verified: tsgo clean; 3 regression tests pass; Playwright desktop+mobile Riverside: Standings click → /club-champs/0980bb1e-… with working Standings | Fixtures & Results tabs; Back → compact card, no redirect loop. No data writes; nothing published.

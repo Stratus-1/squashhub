@@ -56,9 +56,6 @@ import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromCh
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
-import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
-import ClubChampsView from "@/pages/ClubChampsView";
-import { InlineTournamentStandings } from "@/components/tournaments/InlineTournamentStandings";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
@@ -538,6 +535,21 @@ export default function Tournaments() {
 
   // Members always land on what is running/coming up; history is one tap away.
   const [champTab, setChampTab] = useState<string>("upcoming");
+  // Exactly one active tournament: opening the Standings tab navigates to that
+  // tournament's full championship view (once per session) instead of embedding
+  // it here. Browser Back returns to this tab and shows the compact card
+  // without re-navigating (no loop).
+  const singleChampId = champs.length === 1 ? ((champs[0] as any).id as string) : null;
+  const [autoOpenedChamp, setAutoOpenedChamp] = useState<string | null>(null);
+  useEffect(() => {
+    if (!singleChampId || champTab !== "standings") return;
+    const key = `sh.autoOpenChamp.${singleChampId}`;
+    try {
+      if (sessionStorage.getItem(key) === "1") { setAutoOpenedChamp(singleChampId); return; }
+      sessionStorage.setItem(key, "1");
+    } catch { /* storage unavailable: still navigate once */ }
+    navigate(`/club-champs/${singleChampId}`);
+  }, [singleChampId, champTab, navigate]);
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
@@ -2172,15 +2184,12 @@ export default function Tournaments() {
                 </Card>
               )}
               {champs.map((champ: any) => {
-                const champEntries = allEntries.filter((entry: any) => entry.champ_id === champ.id);
-                const champMatches = allMatches.filter((match: any) => match.champ_id === champ.id);
-                if (champs.length === 1 && (diamondTournamentSet.has(champ.id) || champEntries.length > 0 || champMatches.length > 0)) {
-                  return <InlineTournamentStandings key={champ.id} tournamentId={champ.id} name={champ.name}>
-                    {diamondTournamentSet.has(champ.id)
-                      ? <DiamondStandings tournamentId={champ.id} canManage={canManageChamps || isClubAdmin} />
-                      : <ClubChampsView inlineStandings={{ champ, entries: champEntries, matches: champMatches,
-                        rounds: roundsByChamp.get(champ.id) ?? [], arch: stageArchRows.find((row: any) => row.id === champ.id) ?? null }} />}
-                  </InlineTournamentStandings>;
+                if (champs.length === 1 && autoOpenedChamp !== champ.id) {
+                  return (
+                    <Card key={champ.id} className="p-6 text-center text-sm text-muted-foreground" role="status">
+                      <Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />Opening standings…
+                    </Card>
+                  );
                 }
                 return (
 

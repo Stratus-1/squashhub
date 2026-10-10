@@ -3930,10 +3930,10 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
     );
     const categoryViewsNode = activeCat ? (
       <Card key="category-views" className={cn("rounded-none overflow-hidden", activeCat.leading && "border-primary/40")}>
-        {!inlineStandings && <div role="tablist" aria-label="Tournament view" className="flex">
+        <div role="tablist" aria-label="Tournament view" className="flex">
           {tabBtn("standings", "Standings")}
           {tabBtn("fixtures", `Fixtures & Results`)}
-        </div>}
+        </div>
         {categoryViews.length > 1 && (
           <div className="border-b bg-muted/40 px-3 py-2">
             <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Category">
@@ -3957,7 +3957,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             </div>
           </div>
         )}
-        <CardContent id="cat-tabpanel" role={inlineStandings ? "region" : "tabpanel"} aria-label={inlineStandings ? "Category standings" : undefined} aria-labelledby={inlineStandings ? undefined : `cat-tab-${catTab}`} className="pt-4 space-y-4">
+        <CardContent id="cat-tabpanel" role="tabpanel" aria-labelledby={`cat-tab-${catTab}`} className="pt-4 space-y-4">
           <h3 className="text-lg font-semibold">
             {activeCat.title}
             {catTab === "fixtures" && <span className="sr-only"> — Fixtures & Results</span>}

@@ -3870,6 +3870,66 @@ export default function ClubChampsView() {
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
 
+    // Standings / Fixtures & Results — solid rectangular tabs, one category at a time.
+    const activeCat = categoryViews.find((c) => c.gn === catGroup) ?? categoryViews[0];
+    const tabBtn = (key: "standings" | "fixtures", label: string) => (
+      <button
+        type="button"
+        role="tab"
+        id={`cat-tab-${key}`}
+        aria-selected={catTab === key}
+        aria-controls="cat-tabpanel"
+        onClick={() => setCatTab(key)}
+        className={cn(
+          "flex-1 px-4 py-2.5 text-sm font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          catTab === key
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-muted text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground",
+        )}
+      >
+        {label}
+      </button>
+    );
+    const categoryViewsNode = activeCat ? (
+      <Card key="category-views" className={cn("rounded-none overflow-hidden", activeCat.leading && "border-primary/40")}>
+        <div role="tablist" aria-label="Tournament view" className="flex">
+          {tabBtn("standings", "Standings")}
+          {tabBtn("fixtures", `Fixtures & Results`)}
+        </div>
+        {categoryViews.length > 1 && (
+          <div className="border-b bg-muted/40 px-3 py-2">
+            <label htmlFor="cat-select" className="sr-only">Category</label>
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Category">
+              {categoryViews.map((c) => (
+                <button
+                  key={c.gn}
+                  type="button"
+                  aria-pressed={c.gn === activeCat.gn}
+                  onClick={() => setCatGroup(c.gn)}
+                  className={cn(
+                    "shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    c.gn === activeCat.gn
+                      ? "bg-secondary text-secondary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground",
+                  )}
+                >
+                  {c.label}
+                  {catTab === "fixtures" && <span className="ml-1 opacity-70 tabular-nums">({c.count})</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <CardContent id="cat-tabpanel" role="tabpanel" aria-labelledby={`cat-tab-${catTab}`} className="pt-4 space-y-4">
+          <h3 className="text-lg font-semibold">
+            {activeCat.title}
+            {catTab === "fixtures" && <span className="sr-only"> — Fixtures & Results</span>}
+          </h3>
+          {catTab === "standings" ? activeCat.standings : activeCat.fixtures}
+        </CardContent>
+      </Card>
+    ) : null;
+
     // Play-offs card — grouped by bracket_position (position-based) or a
     // single knockout list when there's only one league.
     const playoffCard = playoffsExist ? (() => {
@@ -3990,6 +4050,7 @@ export default function ClubChampsView() {
 
         {!diamondEvent && woodenSpoonsCard}
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
+          {!diamondEvent && categoryViewsNode}
           {!diamondEvent && standingsCards}
           {fixtureCards}
           {combinedFixtures}

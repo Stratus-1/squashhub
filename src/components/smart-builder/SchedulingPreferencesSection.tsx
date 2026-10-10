@@ -65,7 +65,11 @@ export function SchedulingPreferencesSection({ tournamentId, categories, preview
   useEffect(() => { onFeasible?.(!plan || plan.issues.length === 0 || !prefsActive(prefs)); }, [plan, prefs]);
 
   if (ctx === undefined) return <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Checking scheduling…</div>;
-  if (!ctx || !ctx.days.length) return null; // no fixed date/window/courts: players book or games stay unscheduled
+  if (!ctx || !ctx.days.length) return (
+    <div className="rounded border border-border p-2 text-xs text-muted-foreground" data-testid="scheduling-preferences">
+      No scheduled sessions yet — set dates, times and courts for each round in Stages & scheduling (setup). Until then players book their own games by the play-by date.
+    </div>
+  );
   const applicable = prefsApplicable(ctx);
   const allCourts = [...new Set(ctx.days.flatMap((d) => d.courtIds))];
   const step = ctx.minutes;

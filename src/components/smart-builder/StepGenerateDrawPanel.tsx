@@ -526,6 +526,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       if (r.noSlot) toast.error(`${r.name}: enter "Match time per slot" in Stages & scheduling so games can be placed on courts.`);
       else if (r.unplaced) toast.warning(`${r.name}: ${r.placed} of ${r.games} games placed on courts (${r.slots} slots). ${r.unplaced} keep their play-by date — add a day, courts or time.`);
       else if (r.games) toast.success(`${r.name}: all ${r.placed} games placed on courts (${r.slots - r.placed} slots spare).`);
+      if (r.note) toast.warning(r.note);
     }
   };
   const placeOnCourts = async () => {
@@ -756,7 +757,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <p className="mt-1 text-muted-foreground">No courts are booked and no court times are invented. Players are not messaged by this step.</p>
         </div>
       )}
-      {seeded.some((d) => d.format.schedule.rule === "fixed") && errors.length === 0 && (
+      {(seeded.some((d) => d.format.schedule.rule === "fixed") || hasDraw) && (
         <SchedulingPreferencesSection tournamentId={tournamentId} categories={seeded.map((d) => ({ group: d.group, label: d.label }))} previewGames={timedPreview} useSaved={hasDraw && !rebuildOk} onFeasible={setSchedOk} />
       )}
       <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>

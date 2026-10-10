@@ -316,6 +316,8 @@ export type TimedGame = { id: string; round: number; group: number; bracket: num
 export type TimedContext = {
   days: TimedDay[]; minutes: number; bells: boolean; waves: boolean; roundDates: string[];
   prefs: SchedulingPrefs; labels: Record<string, string>; entryGroup: Map<string, number>;
+  /** Rounds (1-based) whose sessions are configured in Stages & scheduling ("Scheduled" rounds). */
+  scheduledRounds: number[];
   /** Court occupancy on the plan's dates/courts, excluding this tournament's own games. */
   busyOther: Array<Busy & { date: string }>;
   fixedStages: boolean;
@@ -330,7 +332,21 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
   const spec: any = (t as any).builder_spec;
   const plan: any = (t as any).beta_lifecycle?.format_plan;
   const fixed = ((spec?.divisions ?? []) as any[]).flatMap((d) => d.stages ?? []).filter((s: any) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
-  const days = planDays(plan);
+  // Plan days first; a tournament scheduled through Stages & scheduling ("Scheduled" rounds)
+  // stores its sessions in answers.stages instead — those become the days when the plan has none.
+  let days = planDays(plan);
+  const scheduledRounds: number[] = [];
+  if (!days.length) {
+    const stages: any[] = ((t as any).beta_lifecycle?.answers?.stages ?? []).filter((s: any) => (s.phase ?? "main") === "main");
+    for (let i = 0; i < stages.length; i++) {
+      const s = stages[i];
+      if (s.mode !== "scheduled") continue;
+      scheduledRounds.push(i + 1);
+      const courtIds = ((s.courtIds ?? []) as any[]).map(Number).filter(Number.isFinite);
+      for (const d of [s, ...(s.extraDays ?? [])]) if (d?.date && d?.from && d?.to)
+        days.push({ date: String(d.date).slice(0, 10), from: String(d.from).slice(0, 5), to: String(d.to).slice(0, 5), courtIds });
+    }
+  }
   const rulesMode = ([] as any[]).concat((t as any).rules ?? [])[0]?.scoring_mode;
   const fmt = resolveTimedFormat({ plan, labels: ((t as any).group_labels ?? {}) as Record<string, string>, rulesMode, matchMinutes: Number((t as any).match_duration_minutes) || null });
   const { bells, minutes } = fmt;
@@ -351,6 +367,7 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
   }
   return {
     days, minutes, bells, waves: !!plan?.waves, fixedStages: fixed.length > 0,
+    scheduledRounds,
     roundDates: ((fixed[0]?.schedule?.roundDates ?? []) as string[]).map((x) => String(x).slice(0, 10)),
     prefs: normaliseSchedulingPrefs((t as any).beta_lifecycle?.scheduling_prefs),
     labels: ((t as any).group_labels ?? {}) as Record<string, string>, entryGroup, busyOther,
@@ -420,14 +437,16 @@ export function timedGameFromRow(m: any, entryGroup: Map<string, number>): Timed
  */
 export async function scheduleTimedRounds(champId: string, opts: { dryRun?: boolean } = {}) {
   const ctx = await loadTimedContext(champId);
-  if (!ctx || !ctx.fixedStages || !ctx.days.length) return null;
+  if (!ctx || !ctx.days.length) return null;
   const [{ data: rows }, steps] = await Promise.all([
     fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId),
     loadPlanSteps(champId),
   ]);
   const movable = (m: any) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()) && m.player_a_member_id && m.player_b_member_id;
   const all = (rows ?? []) as any[];
-  const own = all.filter((m) => movable(m) && !findStep(steps, String(m.stage_label ?? "")));
+  let own = all.filter((m) => movable(m) && !findStep(steps, String(m.stage_label ?? "")));
+  // Rounds scheduled through Stages & scheduling own their games; play-by rounds keep player booking.
+  if (!ctx.fixedStages && ctx.scheduledRounds.length) own = own.filter((m) => ctx.scheduledRounds.includes(Number(m.round_number) || 1));
   if (!own.length) return { label: "Round robin", scheduled: 0, overflow: [], required: 0, available: 0, issues: [] as string[], notes: [] as string[] };
   const ownIds = new Set(own.map((m) => m.id));
   // This tournament's fixed (played/booked/other-stage) games keep their slots.

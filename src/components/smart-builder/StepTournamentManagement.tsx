@@ -155,13 +155,6 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <div className="text-base font-semibold">{next.title}</div>
           <p className="text-sm text-muted-foreground">{next.detail}</p>
         </>}
-        {blockers.length > 0 && (
-          <div className="rounded border border-destructive/50 bg-destructive/10 p-2 text-xs">
-            <div className="font-medium">Decide these first (you chose "Decide later"):</div>
-            <ul className="list-disc pl-4">{blockers.map((d) => <li key={d.id}>{d.label} — <span className="text-muted-foreground">{d.why}</span></li>)}</ul>
-            <Button size="sm" variant="outline" className="mt-2" onClick={() => askEdit()}>Decide now in setup</Button>
-          </div>
-        )}
         {shown === "invite" && h.mode === "inform" && life && blockersFor(h, "invite").length === 0 && (
           <StepInformPanel h={h} lifecycle={life} onLifecycle={setLifecycle} onAddGroup={() => askEdit("Messaging")} />
         )}

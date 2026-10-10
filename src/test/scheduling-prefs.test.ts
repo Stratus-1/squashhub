@@ -139,3 +139,14 @@ describe("category evenings", () => {
     expect(r.slots).toEqual([]); expect(r.issues[0]).toMatch(/Only these evenings/);
   });
 });
+
+import { isTournamentReservation } from "@/lib/tournaments/scheduling-prefs";
+describe("tournament court reservations", () => {
+  it("recognises club block bookings, the tick, and sbs sessions; member bookings still block", () => {
+    expect(isTournamentReservation({ external_booker_name: "Club Championships" }, "Uitsig Club Champs 2026")).toBe(true);
+    expect(isTournamentReservation({ ops_note: "Reserved: Uitsig Club Champs 2026" }, "Uitsig Club Champs 2026")).toBe(true);
+    expect(isTournamentReservation({ external_id: "sbs:x" }, null)).toBe(true);
+    expect(isTournamentReservation({ external_booker_name: "Duane Rossouw" }, "Uitsig Club Champs 2026")).toBe(false);
+    expect(isTournamentReservation({ external_booker_name: "Duane Rossouw" }, "X", true)).toBe(true);
+  });
+});

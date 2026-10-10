@@ -107,6 +107,11 @@ export function SchedulingPreferencesSection({ tournamentId, categories, preview
             <select aria-label="Court allocation" className="w-full rounded border border-input bg-background p-1" value={prefs.courts} onChange={(e) => void save({ ...prefs, courts: e.target.value as CourtPref })}>
               {(Object.keys(COURT_LABEL) as CourtPref[]).map((k) => <option key={k} value={k}>{COURT_LABEL[k]}</option>)}
             </select></label>
+          <label className="sm:col-span-2 flex items-start gap-2">
+            <input type="checkbox" aria-label="Courts already booked for this tournament" className="mt-0.5" checked={!!prefs.courtsPreBooked} onChange={(e) => void save({ ...prefs, courtsPreBooked: e.target.checked })} />
+            <span><span className="font-medium">Courts already booked for this tournament</span>
+              <span className="block text-muted-foreground">Tick if the club booked the courts itself. Bookings inside the tournament's evenings and courts are then used for the games instead of blocking them. Without the tick, SquashHub still recognises bookings named after the tournament or "Club Championships".</span></span>
+          </label>
           {prefs.courts === "category" && (
             <div className="sm:col-span-2 space-y-1" aria-label="Courts by category">
               <div className="space-y-1">

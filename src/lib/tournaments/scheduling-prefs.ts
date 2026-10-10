@@ -16,7 +16,9 @@ export type CourtPref = "any" | "rotate" | "category";
  * Key = unit key ("Mens" or "Mens::A"); a subcategory rule replaces its category's rule entirely.
  */
 export type CategoryCourtRule = { key: string; courtIds: number[]; rule: "preferred" | "only"; weekdays?: number[] };
-export type SchedulingPrefs = { rest: RestPref; courts: CourtPref; categoryCourts: CategoryCourtRule[] };
+/** `courtsPreBooked`: organiser confirms the club already booked the courts for this tournament,
+ *  so existing bookings inside the planned session windows are treated as the tournament's own room. */
+export type SchedulingPrefs = { rest: RestPref; courts: CourtPref; categoryCourts: CategoryCourtRule[]; courtsPreBooked?: boolean };
 
 export const DEFAULT_SCHEDULING_PREFS: SchedulingPrefs = { rest: "none", courts: "any", categoryCourts: [] };
 
@@ -45,7 +47,24 @@ export function normaliseSchedulingPrefs(raw: any): SchedulingPrefs {
           return out;
         })
     : [];
-  return { rest, courts, categoryCourts };
+  return raw?.courtsPreBooked === true ? { rest, courts, categoryCourts, courtsPreBooked: true } : { rest, courts, categoryCourts };
+}
+
+/**
+ * True when an existing booking is the club's own reservation for this tournament (so the games
+ * go INTO it rather than treating it as a clash): Step-by-Step "sbs:" sessions, any booking when the
+ * organiser ticked "courts already booked", or a booking whose booker/note names the tournament or
+ * reads as a club-championship/tournament block (e.g. GoBook "Club Championships").
+ */
+export function isTournamentReservation(b: { external_id?: string | null; external_booker_name?: string | null; ops_note?: string | null; guest_name?: string | null }, tournamentName: string | null | undefined, preBooked = false): boolean {
+  if (String(b.external_id ?? "").startsWith("sbs:")) return true;
+  if (preBooked) return true;
+  const norm = (x: any) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const text = [b.external_booker_name, b.ops_note, b.guest_name].map(norm).join(" | ");
+  if (!text.replace(/[ |]/g, "")) return false;
+  const name = norm(tournamentName);
+  if (name.length >= 4 && text.includes(name)) return true;
+  return /\bclub champ|\bchampionships?\b|\btournament\b/.test(text);
 }
 
 /** True when the organiser chose anything other than the defaults. */

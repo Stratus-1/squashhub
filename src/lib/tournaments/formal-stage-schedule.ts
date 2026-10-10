@@ -358,11 +358,14 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
   if (dates.length && courts.length) {
     const [{ data: dayGames }, { data: bk }] = await Promise.all([
       fromExt("club_champs_matches").select("id, champ_id, court_id, scheduled_date, scheduled_time").in("scheduled_date", dates).in("court_id", courts),
-      fromExt("bookings").select("court_id, date, start_time, end_time, external_id").in("date", dates).eq("status", "active").in("court_id", courts),
+      fromExt("bookings").select("court_id, date, start_time, end_time, external_id, external_booker_name, ops_note, guest_name").in("date", dates).eq("status", "active").in("court_id", courts),
     ]);
+    const prefsNow = normaliseSchedulingPrefs((t as any).beta_lifecycle?.scheduling_prefs);
+    // Only a booking that sits inside one of the tournament's own sessions can be its reservation.
+    const inPlannedWindow = (b: any) => days.some((d) => d.date === String(b.date).slice(0, 10) && d.courtIds.includes(Number(b.court_id)) && String(b.start_time).slice(0, 5) < d.to && String(b.end_time).slice(0, 5) > d.from);
     busyOther = [
       ...((dayGames ?? []) as any[]).filter((m) => m.champ_id !== champId && m.scheduled_time).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM(toMin(m.scheduled_time) + minutes) })),
-      ...((bk ?? []) as any[]).filter((b) => !String(b.external_id ?? "").startsWith("sbs:")).map((b) => ({ date: String(b.date).slice(0, 10), courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) })),
+      ...((bk ?? []) as any[]).filter((b) => !(isTournamentReservation(b, (t as any).name, prefsNow.courtsPreBooked) && inPlannedWindow(b))).map((b) => ({ date: String(b.date).slice(0, 10), courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) })),
     ];
   }
   return {

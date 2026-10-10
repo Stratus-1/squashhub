@@ -87,6 +87,7 @@ const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'",
 import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
+import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwardsSection";

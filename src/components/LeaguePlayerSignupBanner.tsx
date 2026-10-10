@@ -30,20 +30,17 @@ export function LeaguePlayerSignupBanner({ clubSubdomain, clubName, signupUrl }:
 
       <div className="relative flex items-center gap-4 bg-landing-navy/90 border border-white/10 px-4 py-3 rounded-xl backdrop-blur-xl shadow-lg overflow-hidden">
         {/* Content */}
-        <div className="relative flex-1 flex items-center gap-3 min-w-0">
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold tracking-widest uppercase shrink-0">
+        <div className="relative flex-1 min-w-0 space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold tracking-widest uppercase">
             <Trophy className="w-3 h-3" />
             NSA League
           </div>
-
-          <div className="min-w-0">
-            <h2 className="text-white text-sm md:text-base font-bold font-heading tracking-tight leading-snug truncate">
-              NSA league player{clubName ? ` at ${clubName}` : ""}?
-            </h2>
-            <p className="text-white/60 text-xs">
-              Register for free to enjoy NSA league functionality.
-            </p>
-          </div>
+          <h2 className="text-white text-sm md:text-base font-bold font-heading tracking-tight leading-snug">
+            NSA league player{clubName ? ` at ${clubName}` : ""}?
+          </h2>
+          <p className="text-white/60 text-xs">
+            Register for free to enjoy NSA league functionality.
+          </p>
         </div>
 
         <div className="flex items-center gap-1 text-accent font-bold shrink-0 group/btn">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarPlus, CheckCircle2, Clock, Loader2, Shuffle } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarPlus, CheckCircle2, Clock, Loader2, Shuffle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -44,7 +44,7 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
   const rows = swissDivisionProgress(spec.divisions as any, (di, sid) => {
     const d = spec.divisions[di];
     return matches.filter((m) => m.group_number === di + 1 && m.stage_key === sid).map((m) => toFixtureRow(d.divisionId, m, "swiss"));
-  }, plan);
+  }, plan, { stages: plan, format: bl.answers?.format ?? bl.format_plan?.format ?? null, formatOverrides: bl.answers?.formatOverrides ?? null });
   if (!rows.length) return null;
 
   const generate = async (r: SwissDivisionProgress) => {
@@ -96,6 +96,28 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
                 </div>;
               })()}
               {r.action === "final" && <div className="flex items-center gap-1.5 font-medium"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Final standings — all {r.swissRounds} rounds complete</div>}
+              {r.action === "playoffs" && r.transition?.kind === "playoff_next" && (
+                <div className="flex items-start gap-1.5 font-medium" data-testid="swiss-playoffs-next"><ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span>All {r.swissRounds} Swiss rounds are complete — {r.transition.name} is next. Generate it from the stage steps on this page; you'll be asked to confirm before any game is created.</span></div>
+              )}
+              {r.action === "plan_conflict" && r.transition?.kind === "conflict" && (() => {
+                const t = r.transition;
+                const keep = r.gate.state === "ready";
+                return (
+                  <div className="space-y-1.5 rounded border border-destructive/50 bg-destructive/5 p-2" role="alert" data-testid="swiss-plan-conflict">
+                    <div className="flex items-start gap-1.5 font-semibold"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />Stage plan doesn't match the live draw</div>
+                    <p>{t.message}</p>
+                    <p className="text-muted-foreground">Setup: {t.setupRounds ?? "?"} Swiss round{t.setupRounds === 1 ? "" : "s"}, then {t.playoffs.join(" → ")} after Round {t.playoffAfterRound}. Live draw: {t.liveRounds} Swiss rounds, {t.liveHasPlayoff ? `then ${t.playoffs[0]} (set up later) after Round ${t.liveRounds}` : "no play-off stage"}.</p>
+                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                      <Button size="sm" onClick={onSetupRound}>Review stage plan in setup</Button>
+                      {keep && r.action === "plan_conflict" && (r.schedule
+                        ? <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setAsk(r)}>{busy === r.divisionId ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Shuffle className="mr-1 h-4 w-4" />}Keep {t.liveRounds} rounds — Generate Round {next} Draw</Button>
+                        : <Button size="sm" variant="outline" onClick={onSetupRound}><CalendarPlus className="mr-1 h-4 w-4" />Keep {t.liveRounds} rounds — Set up Round {next}</Button>)}
+                    </div>
+                    {t.reason !== "setup_rounds" && <p className="text-muted-foreground">Ending the Swiss stage early{t.liveHasPlayoff ? "" : ` and adding ${t.playoffs[0]}`} on a draw that has already started can't be done from this screen yet. Nothing has been generated or changed — results and standings stay as they are.</p>}
+                  </div>
+                );
+              })()}
               {r.action === "setup_round" && (
                 <div className="flex flex-wrap items-center gap-2">
                   <span>Round {r.current.round} is finished. Add Round {next}'s dates, times and courts first.</span>

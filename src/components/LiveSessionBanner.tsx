@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { resolveBleMac } from "@/lib/shelly-ble-mac";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyBookings } from "@/hooks/use-data";

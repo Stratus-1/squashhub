@@ -305,6 +305,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   });
   // Editing on a device without the plan: load the setup saved on the tournament (any device), never start blank.
   const [serverReady, setServerReady] = useState(hasLocalPlan);
+  /** Weeks between the previous main round and the next one added (copy-forward). */
+  const [nextRoundGapWeeks, setNextRoundGapWeeks] = useState("1");
   useEffect(() => {
     if (hasLocalPlan || !tournamentId) return;
     let live = true;
@@ -2153,7 +2155,31 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <div className="text-sm font-semibold">Main rounds</div>
                 {mainStages.length === 0 && <p className="text-xs text-muted-foreground">No main rounds yet.</p>}
                 {mainStages.map(renderStage)}
-                <Button variant="outline" size="sm" onClick={() => setStages([...stages, newStage(`Round ${mainStages.length + 1}`, "play_by", "", "main")])}><Plus className="mr-1 h-4 w-4" />Add main round</Button>
+                {(() => {
+                  const prev = mainStages[mainStages.length - 1];
+                  const canCopy = !!prev && (!!prev.date || !!prev.deadline || prev.mode === "later");
+                  const shift = (d: string, w: number) => { if (!d) return d; const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + w * 7); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+                  const add = () => {
+                    const name = `Round ${mainStages.length + 1}`;
+                    if (!canCopy || !prev) { setStages([...stages, newStage(name, "play_by", "", "main")]); return; }
+                    const w = Math.max(0, Math.min(52, Number(nextRoundGapWeeks) || 1));
+                    const copy: ClubStage = { ...prev, id: Math.random().toString(36).slice(2), name, deadline: shift(prev.deadline, w), date: shift(prev.date, w), courtIds: [...prev.courtIds],
+                      extraDays: prev.extraDays?.map((d) => ({ ...d, date: shift(d.date, w), courtIds: [...d.courtIds] })) };
+                    setStages([...stages, copy]);
+                  };
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={add}><Plus className="mr-1 h-4 w-4" />Add main round</Button>
+                      {canCopy && prev && (
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          Copies {prev.name || "the last round"} exactly, starting
+                          <Input type="number" min={0} max={52} className="h-8 w-16" aria-label="Weeks after previous round" value={nextRoundGapWeeks} onChange={(e) => setNextRoundGapWeeks(e.target.value)} />
+                          week(s) later
+                        </label>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
               <div className="rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">▼ Playoffs begin</div>

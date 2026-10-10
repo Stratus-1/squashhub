@@ -56,7 +56,6 @@ import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromCh
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
-import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 

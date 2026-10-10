@@ -1506,6 +1506,10 @@ export default function ClubChampsView() {
   const qc = useQueryClient();
   const navigate = useMdNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
+  // Standings / Fixtures & Results view: one category at a time, shared
+  // across both tabs so switching tabs keeps the same category selected.
+  const [catTab, setCatTab] = useState<"standings" | "fixtures">("standings");
+  const [catGroup, setCatGroup] = useState<number | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);

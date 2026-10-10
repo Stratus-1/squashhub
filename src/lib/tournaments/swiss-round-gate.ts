@@ -59,7 +59,8 @@ export function swissStandingsStatus(fixtures: GateFixture[], swissRounds: numbe
   const real = inRound.filter((f) => f.a && f.b);
   const done = real.filter(isFinalFixture).length;
   if (done < real.length || inRound.some((f) => !isFinalFixture(f))) {
-    if (current === 1 && done === 0) return { state: "not_started", total };
+    // Round created but no result yet = not underway: standings still reflect the previous round.
+    if (done === 0) return current === 1 ? { state: "not_started", total } : { state: "after_round", round: current - 1, total };
     return { state: "in_progress", round: current, total, done, of: real.length };
   }
   if (total > 0 && current >= total) return { state: "final", round: current, total };

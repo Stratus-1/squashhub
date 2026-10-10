@@ -2187,15 +2187,12 @@ export default function Tournaments() {
                 </Card>
               )}
               {champs.map((champ: any) => {
-                const champEntries = allEntries.filter((entry: any) => entry.champ_id === champ.id);
-                const champMatches = allMatches.filter((match: any) => match.champ_id === champ.id);
-                if (champs.length === 1 && (diamondTournamentSet.has(champ.id) || champEntries.length > 0 || champMatches.length > 0)) {
-                  return <InlineTournamentStandings key={champ.id} tournamentId={champ.id} name={champ.name}>
-                    {diamondTournamentSet.has(champ.id)
-                      ? <DiamondStandings tournamentId={champ.id} canManage={canManageChamps || isClubAdmin} />
-                      : <ClubChampsView inlineStandings={{ champ, entries: champEntries, matches: champMatches,
-                        rounds: roundsByChamp.get(champ.id) ?? [], arch: stageArchRows.find((row: any) => row.id === champ.id) ?? null }} />}
-                  </InlineTournamentStandings>;
+                if (champs.length === 1 && autoOpenedChamp !== champ.id) {
+                  return (
+                    <Card key={champ.id} className="p-6 text-center text-sm text-muted-foreground" role="status">
+                      <Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />Opening standings…
+                    </Card>
+                  );
                 }
                 return (
 

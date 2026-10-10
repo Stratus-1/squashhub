@@ -102,7 +102,7 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
     clubId, name: subject, channels, content, memberVars,
     audience: { type: "selected", memberIds },
     action: { key: "tournament_view", label: "View tournament & score match", params: { tournament_id: tournamentId } },
-    meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw", round: scope.round, group_number: scope.groupNumber ?? null },
+    meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw", round: String(scope.round), group_number: String(scope.groupNumber ?? "all") },
   });
 }
 /** Round 1 players (for picking who gets the notice), sorted by name. */

@@ -97,7 +97,7 @@ describe("scheduling preferences", () => {
     expect(normaliseSchedulingPrefs(undefined)).toEqual(DEFAULT_SCHEDULING_PREFS);
     expect(normaliseSchedulingPrefs({ rest: "x", courts: 4 })).toEqual(DEFAULT_SCHEDULING_PREFS);
   });
-  const ctx = (prefs: SchedulingPrefs) => ({ days: day([20, 21, 24]), minutes: 13, bells: true, waves: false, roundDates: [], prefs, labels: { "1": keyOf(1)!, "2": keyOf(2)! }, busyOther: [] });
+  const ctx = (prefs: SchedulingPrefs) => ({ days: day([20, 21, 24]), minutes: 13, bells: true, waves: false, roundDates: [], scheduledRounds: [], prefs, labels: { "1": keyOf(1)!, "2": keyOf(2)! }, busyOther: [] });
   const timed = () => cross().map((g, k) => ({ ...g, group: 1, bracket: k }));
   it("11. preview and generation share one planner: same input, same slots", () => {
     const prefs = P({ rest: "avoid", courts: "rotate" });

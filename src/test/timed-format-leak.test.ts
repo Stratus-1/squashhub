@@ -12,7 +12,7 @@ describe("timed scheduler play format (no Bells leakage)", () => {
     expect(f.bells).toBe(false); expect(f.mixed).toBe(false); expect(f.minutes).toBe(40);
     // 11 games in round 1 on 3 courts: Standard packs them, no "same bell" capacity error.
     const games: TimedGame[] = Array.from({ length: 11 }, (_, i) => ({ id: `g${i}`, round: 1, group: 1, bracket: i, people: [`a${i}`, `b${i}`], groups: [1] }));
-    const r = planTimedSchedule({ days: [{ date: "2026-10-10", from: "08:00", to: "18:00", courtIds: [1, 2, 3] }], minutes: f.minutes, bells: f.bells, waves: false, roundDates: [], prefs: DEFAULT_SCHEDULING_PREFS, labels, busyOther: [] }, games);
+    const r = planTimedSchedule({ days: [{ date: "2026-10-10", from: "08:00", to: "18:00", courtIds: [1, 2, 3] }], minutes: f.minutes, bells: f.bells, waves: false, roundDates: [], scheduledRounds: [], prefs: DEFAULT_SCHEDULING_PREFS, labels, busyOther: [] }, games);
     expect(r.issues).toEqual([]);
     expect(r.slots).toHaveLength(11);
     expect(r.issues.join(" ")).not.toMatch(/bell/i);

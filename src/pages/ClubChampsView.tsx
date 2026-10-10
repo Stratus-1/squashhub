@@ -917,6 +917,7 @@ export default function ClubChampsView() {
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
               const rowStyle = getRankRowStyle(i, competitors.length);
+              const tinted = !(opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed));
               const isWinner = !opts?.koStatus && allPlayed && i === 0;
               const isLast = !opts?.koStatus && allPlayed && i === competitors.length - 1;
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);

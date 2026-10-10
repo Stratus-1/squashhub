@@ -41,11 +41,10 @@ export function LeaguePlayerSignupBanner({ clubSubdomain, clubName, signupUrl }:
           <p className="text-white/60 text-xs">
             Register for free to enjoy NSA league functionality.
           </p>
-        </div>
-
-        <div className="flex items-center gap-1 text-accent font-bold shrink-0 group/btn">
-          <span className="text-[11px] uppercase tracking-widest">Start registration</span>
-          <ArrowRight className="w-4 h-4 transform transition-transform group-hover/btn:translate-x-1" />
+          <div className="flex items-center gap-1 text-accent font-bold group/btn pt-0.5">
+            <span className="text-[11px] uppercase tracking-widest">Start registration</span>
+            <ArrowRight className="w-4 h-4 transform transition-transform group-hover/btn:translate-x-1" />
+          </div>
         </div>
 
         {/* QR code */}

@@ -316,6 +316,8 @@ export type TimedGame = { id: string; round: number; group: number; bracket: num
 export type TimedContext = {
   days: TimedDay[]; minutes: number; bells: boolean; waves: boolean; roundDates: string[];
   prefs: SchedulingPrefs; labels: Record<string, string>; entryGroup: Map<string, number>;
+  /** Rounds (1-based) whose sessions are configured in Stages & scheduling ("Scheduled" rounds). */
+  scheduledRounds: number[];
   /** Court occupancy on the plan's dates/courts, excluding this tournament's own games. */
   busyOther: Array<Busy & { date: string }>;
   fixedStages: boolean;

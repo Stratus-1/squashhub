@@ -97,10 +97,18 @@ import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
-export default function ClubChampsView() {
+export interface InlineStandingsData {
+  champ: any;
+  entries: any[];
+  matches: any[];
+  rounds: any[];
+  arch: any;
+}
+
+export default function ClubChampsView({ inlineStandings }: { inlineStandings?: InlineStandingsData } = {}) {
   const md = useMatchDayDevice();
   const { champId: routeChampId } = useParams<{ champId: string }>();
-  const champId = md?.kind === "tournament" ? md.competitionId : routeChampId;
+  const champId = inlineStandings?.champ.id ?? (md?.kind === "tournament" ? md.competitionId : routeChampId);
   // Diamond League (team) tournaments show team standings only — the
   // per-player league tables don't apply. Shares DiamondStandings' cache key.
   const { data: diamondEvent } = useQuery({
@@ -110,23 +118,24 @@ export default function ClubChampsView() {
       if (error) throw error;
       return data || null;
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
   });
   const { activeMember: sessionMember } = useMemberContext();
   const activeMember = md ? null : sessionMember;
   const myMemberId = activeMember?.id;
 
-  const { data: champ, isLoading } = useQuery({
+  const { data: fetchedChamp, isLoading } = useQuery({
     queryKey: ["club-champ", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs").select("*").eq("id", champId!).single();
       if (error) throw error;
       return data;
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
   });
+  const champ = inlineStandings?.champ ?? fetchedChamp;
 
-  const { data: entries = [] } = useQuery({
+  const { data: fetchedEntries = [] } = useQuery({
     queryKey: ["club-champ-entries", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_entries")
@@ -135,20 +144,23 @@ export default function ClubChampsView() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
   });
+  const entries = inlineStandings?.entries ?? fetchedEntries;
 
-  const { data: champRounds = [] } = useChampRounds(champId);
+  const { data: fetchedRounds = [] } = useChampRounds(inlineStandings ? null : champId);
+  const champRounds = inlineStandings?.rounds ?? fetchedRounds;
 
   // Architecture discriminator: structured (Beta) tournaments never use the legacy generators below.
-  const { data: arch } = useQuery({
+  const { data: fetchedArch } = useQuery({
     queryKey: ["club-champ-arch", champId],
     queryFn: async () => {
       const { data } = await fromExt("tournaments").select("builder_architecture,builder_spec,beta_lifecycle").eq("id", champId!).maybeSingle();
       return data as { builder_architecture?: string; builder_spec?: any; beta_lifecycle?: any } | null;
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
   });
+  const arch = inlineStandings?.arch ?? fetchedArch;
   const isStructured = arch?.builder_architecture === "structured";
   const stageSched = useMemo(() => stageScheduleIndex(arch?.builder_spec), [arch?.builder_spec]);
   const centrallyScheduled = (m: any) =>
@@ -160,7 +172,7 @@ export default function ClubChampsView() {
   // Beta "between subcategories" matchups: several entry groups share one set of games.
   const matchups = useMemo(() => (isStructured ? structuredMatchups(arch?.builder_spec) : []), [isStructured, arch?.builder_spec]);
 
-  const { data: matches = [] } = useQuery({
+  const { data: fetchedMatches = [] } = useQuery({
     queryKey: ["club-champ-matches", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
@@ -187,14 +199,16 @@ export default function ClubChampsView() {
       }
       return rows;
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
     refetchInterval: 5000,
   });
+  const matches = inlineStandings?.matches ?? fetchedMatches;
 
   const isDoubles = champ?.match_type === "doubles";
 
   // Arriving from an invitation accept (`?pay=1`): jump straight to the entry-fee card.
   useEffect(() => {
+    if (inlineStandings) return;
     if (typeof window === "undefined") return;
     if (new URLSearchParams(window.location.search).get("pay") !== "1") return;
     let tries = 0;
@@ -224,7 +238,7 @@ export default function ClubChampsView() {
       const { data } = await fromExt("clubs").select("payment_gateway").eq("id", champ!.club_id).maybeSingle();
       return data as { payment_gateway: string | null } | null;
     },
-    enabled: !!champ?.club_id,
+    enabled: !!champ?.club_id && !inlineStandings,
   });
 
   // Sections on this page open by default only when the club runs a single
@@ -238,7 +252,7 @@ export default function ClubChampsView() {
         .eq("club_id", champ!.club_id!);
       return (data || []) as { id?: string; status?: string | null; start_date?: string | null; end_date?: string | null }[];
     },
-    enabled: !!champ?.club_id,
+    enabled: !!champ?.club_id && !inlineStandings,
   });
   const singleCurrentTournament = useMemo(() => {
     const { current } = splitTournamentsByLifecycle(clubChampLifecycle);
@@ -265,7 +279,7 @@ export default function ClubChampsView() {
       }
       return rows;
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
   });
 
   // Admin-only: include cancelled (declined) rows so admins can see who said no
@@ -278,7 +292,7 @@ export default function ClubChampsView() {
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
   });
 
   // Doubles pairings (names only) so a doubles tournament lists teams, not singles.
@@ -289,7 +303,7 @@ export default function ClubChampsView() {
       if (error) throw error;
       return (Array.isArray(data) ? data : []) as any[];
     },
-    enabled: !!champId,
+    enabled: !!champId && !inlineStandings,
   });
 
   /**
@@ -2088,7 +2102,7 @@ export default function ClubChampsView() {
   // never re-seeded automatically. Editing slot times never triggers this.
   const autoPlayoffKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!canManage || !enablePlayoffs || isStructured) return;
+    if (inlineStandings || !canManage || !enablePlayoffs || isStructured) return;
     if (generatePlayoffs.isPending || playoffsComplete) return;
     if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
 
@@ -2204,6 +2218,8 @@ export default function ClubChampsView() {
   if (!champ) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Tournament not found.</div>;
   }
+
+  if (inlineStandings) return renderAllGroups();
 
 
   return (
@@ -3914,10 +3930,10 @@ export default function ClubChampsView() {
     );
     const categoryViewsNode = activeCat ? (
       <Card key="category-views" className={cn("rounded-none overflow-hidden", activeCat.leading && "border-primary/40")}>
-        <div role="tablist" aria-label="Tournament view" className="flex">
+        {!inlineStandings && <div role="tablist" aria-label="Tournament view" className="flex">
           {tabBtn("standings", "Standings")}
           {tabBtn("fixtures", `Fixtures & Results`)}
-        </div>
+        </div>}
         {categoryViews.length > 1 && (
           <div className="border-b bg-muted/40 px-3 py-2">
             <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Category">
@@ -3941,7 +3957,7 @@ export default function ClubChampsView() {
             </div>
           </div>
         )}
-        <CardContent id="cat-tabpanel" role="tabpanel" aria-labelledby={`cat-tab-${catTab}`} className="pt-4 space-y-4">
+        <CardContent id="cat-tabpanel" role={inlineStandings ? "region" : "tabpanel"} aria-label={inlineStandings ? "Category standings" : undefined} aria-labelledby={inlineStandings ? undefined : `cat-tab-${catTab}`} className="pt-4 space-y-4">
           <h3 className="text-lg font-semibold">
             {activeCat.title}
             {catTab === "fixtures" && <span className="sr-only"> — Fixtures & Results</span>}
@@ -3969,6 +3985,22 @@ export default function ClubChampsView() {
         </CardContent>
       </Card>
     ) : null;
+
+    if (inlineStandings) {
+      if (categoryViewsNode) return categoryViewsNode;
+      const gn = orderedGroups.find((group) => group === catGroup) ?? orderedGroups[0];
+      if (gn == null) return <p className="text-sm text-muted-foreground">No standings available yet.</p>;
+      return <div className="space-y-3">
+        <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Category">
+          {orderedGroups.map((group) => <Button key={group} size="sm" variant={group === gn ? "default" : "outline"}
+            className="shrink-0 rounded-none" aria-pressed={group === gn} onClick={() => setCatGroup(group)}>
+            {getGroupLabel(champ, group)}
+          </Button>)}
+        </div>
+        <h3 className="text-lg font-semibold">{getGroupLabel(champ, gn)}</h3>
+        {renderGroupStandings(gn)}
+      </div>;
+    }
 
     // Play-offs card — grouped by bracket_position (position-based) or a
     // single knockout list when there's only one league.

@@ -57,6 +57,8 @@ import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
+import ClubChampsView from "@/pages/ClubChampsView";
+import { InlineTournamentStandings } from "@/components/tournaments/InlineTournamentStandings";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
@@ -165,16 +167,19 @@ export default function Tournaments() {
     enabled: !!muChampIdsKey,
   });
   // Target-stage schedules (structured tournaments): stage_key → planned rule/date/time/courts.
-  const { data: stageSchedByChamp } = useQuery({
+  const { data: stageArchRows = [], isLoading: stageArchLoading } = useQuery({
     queryKey: ["structured-stage-schedules", muChampIdsKey],
     queryFn: async () => {
       const { data } = await fromExt("tournaments").select("id,builder_architecture,builder_spec").in("id", muChampIdsKey.split(","));
-      const m = new Map<string, Map<string, StageScheduleInfo>>();
-      for (const t of (data || []) as any[]) if (t.builder_architecture === "structured") m.set(t.id, stageScheduleIndex(t.builder_spec));
-      return m;
+      return (data || []) as any[];
     },
     enabled: !!muChampIdsKey,
   });
+  const stageSchedByChamp = useMemo(() => {
+    const map = new Map<string, Map<string, StageScheduleInfo>>();
+    for (const t of stageArchRows) if (t.builder_architecture === "structured") map.set(t.id, stageScheduleIndex(t.builder_spec));
+    return map;
+  }, [stageArchRows]);
   // Step-by-step setup keeps per-round modes (Round 1 fixed days, later rounds play-by) that the
   // compressed structured spec loses: round_number → fixed range from the setup.
   const { data: fixedRoundsByChamp } = useQuery({
@@ -245,13 +250,13 @@ export default function Tournaments() {
     return rows;
   };
 
-  const { data: allEntries = [] } = useQuery({
+  const { data: allEntries = [], isLoading: entriesLoading } = useQuery({
     queryKey: ["tournaments-all-entries", champIds],
     queryFn: async () => {
       if (!champIds.length) return [];
       return fetchAllPages(() =>
         fromExt("club_champs_entries")
-          .select("*, club_members:club_member_id(id, name, profiles:user_id(name)), partner:partner_member_id(id, name, profiles:user_id(name))")
+          .select("*, club_members:club_member_id(id, name, user_id, ladder_position, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, ladder_position, profiles:user_id(name))")
           .in("champ_id", champIds)
           .order("id"),
       );
@@ -260,7 +265,7 @@ export default function Tournaments() {
   });
 
   // All scheduled matches per tournament (full schedule view)
-  const { data: allMatches = [] } = useQuery({
+  const { data: allMatches = [], isLoading: matchesLoading } = useQuery({
     queryKey: ["tournaments-all-matches", champIds, md?.court ?? null],
     queryFn: async () => {
       if (!champIds.length) return [];
@@ -282,12 +287,12 @@ export default function Tournaments() {
 
   // Rounds created later from the draw hold the live play-by dates (round 4
   // added after setup, etc.) — they beat the plan captured in the wizard.
-  const { data: allRounds = [] } = useQuery({
+  const { data: allRounds = [], isLoading: roundsLoading } = useQuery({
     queryKey: ["tournaments-all-rounds", champIds],
     queryFn: async () => {
       if (!champIds.length) return [];
       const { data, error } = await fromExt("club_champs_rounds")
-        .select("id, champ_id, round_number, group_number, section_number, label, play_by, stage_key")
+        .select("*")
         .in("champ_id", champIds);
       if (error) throw error;
       return (data || []) as any[];
@@ -2160,13 +2165,23 @@ export default function Tournaments() {
 
 
             <TabsContent value="standings" className="mt-4 space-y-3">
+              {(entriesLoading || matchesLoading || stageArchLoading || roundsLoading) ? <div role="status" className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading standings…</div> : <>
               {champs.length === 0 && (
                 <Card className="p-6 text-center text-sm text-muted-foreground">
                   No tournament is running. Standings for finished events are under <span className="font-medium">Past</span>.
                 </Card>
               )}
               {champs.map((champ: any) => {
-                if (diamondTournamentSet.has(champ.id)) return <DiamondStandings key={champ.id} tournamentId={champ.id} canManage={canManageChamps || isClubAdmin} />;
+                const champEntries = allEntries.filter((entry: any) => entry.champ_id === champ.id);
+                const champMatches = allMatches.filter((match: any) => match.champ_id === champ.id);
+                if (champs.length === 1 && (diamondTournamentSet.has(champ.id) || champEntries.length > 0 || champMatches.length > 0)) {
+                  return <InlineTournamentStandings key={champ.id} tournamentId={champ.id} name={champ.name}>
+                    {diamondTournamentSet.has(champ.id)
+                      ? <DiamondStandings tournamentId={champ.id} canManage={canManageChamps || isClubAdmin} />
+                      : <ClubChampsView inlineStandings={{ champ, entries: champEntries, matches: champMatches,
+                        rounds: roundsByChamp.get(champ.id) ?? [], arch: stageArchRows.find((row: any) => row.id === champ.id) ?? null }} />}
+                  </InlineTournamentStandings>;
+                }
                 return (
 
                   <Card key={champ.id}>
@@ -2198,6 +2213,7 @@ export default function Tournaments() {
                   </Card>
                 );
               })}
+              </>}
             </TabsContent>
 
             <TabsContent value="past" className="mt-4 space-y-3">

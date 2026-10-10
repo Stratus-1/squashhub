@@ -963,7 +963,8 @@ export default function ClubChampsView() {
                       <td className="py-2 text-center">{s.won}</td>
                       <td className="py-2 text-center">{s.lost}</td>
                       {!opts?.koStatus && standingsColumns.map((col) => (
-                        <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
+                        // On rank-tinted rows, muted text fails contrast — inherit the row's readable colour instead.
+                        <td key={col.key} className={cn("py-2 text-center", tinted ? col.cellClassName?.replace("text-muted-foreground", "") : col.cellClassName)}>{col.render(s)}</td>
                       ))}
                     </>
                   )}

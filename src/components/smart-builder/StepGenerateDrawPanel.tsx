@@ -526,6 +526,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       if (r.noSlot) toast.error(`${r.name}: enter "Match time per slot" in Stages & scheduling so games can be placed on courts.`);
       else if (r.unplaced) toast.warning(`${r.name}: ${r.placed} of ${r.games} games placed on courts (${r.slots} slots). ${r.unplaced} keep their play-by date — add a day, courts or time.`);
       else if (r.games) toast.success(`${r.name}: all ${r.placed} games placed on courts (${r.slots - r.placed} slots spare).`);
+      if (r.note) toast.warning(r.note);
     }
   };
   const placeOnCourts = async () => {

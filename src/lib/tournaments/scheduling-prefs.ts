@@ -47,7 +47,7 @@ export function normaliseSchedulingPrefs(raw: any): SchedulingPrefs {
           return out;
         })
     : [];
-  return { rest, courts, categoryCourts, courtsPreBooked: raw?.courtsPreBooked === true };
+  return raw?.courtsPreBooked === true ? { rest, courts, categoryCourts, courtsPreBooked: true } : { rest, courts, categoryCourts };
 }
 
 /**

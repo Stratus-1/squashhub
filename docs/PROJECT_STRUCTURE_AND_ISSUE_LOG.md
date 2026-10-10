@@ -2810,3 +2810,4 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 ## 2026-10-10 — Swiss standings disagreed with Swiss pairing (Riverside Men's A)
 - Cause: standings page ranked structured Swiss groups by games won (Pts = sets won) because the tournament kept legacy `scoring_mode=standard`; pairing used match wins. "Pool winner" shown after round 1.
 - Fix: shared `swissTable` used by the page and `nextSwissRound`; Swiss detected per stage; "Current leader" until the last Swiss round is complete; tie-break picker in Stage Builder; tests `src/test/swiss-standings-agreement.test.ts`. No data changed.
+- 2026-10-10 follow-up: Swiss round gate (one round at a time, progress message, admin confirm, server trigger `guard_swiss_round_progression`, tests `src/test/swiss-round-gate.test.ts`).

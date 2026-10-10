@@ -17,6 +17,7 @@ import {
 import { progressionOf } from "@/lib/tournaments/contract";
 import { stageTable } from "@/lib/tournaments/engine-service";
 import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
+import { swissRoundGate } from "@/lib/tournaments/swiss-round-gate";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */
@@ -71,18 +72,36 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
           </select>
         )}
       </div>
-      {matches.length > 0 && spec.divisions.map((d, di) => d.stages.filter((s) => s.kind === "swiss").map((s) => (
-        <div key={`sw-${d.divisionId}/${s.id}`} className="flex items-center gap-2">
-          <span className="text-muted-foreground">{d.label} · {s.name}</span>
-          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`sw${s.id}`, () => atomically(supabaseDb, champId, commitStructured, async (db) => {
-            const full = await loadEntrants(db, champId, spec);
-            const div = full.divisions[di];
-            const rows = matches.filter((m) => m.group_number === di + 1).map((m) => toFixtureRow(d.divisionId, m, d.stages.find((x) => x.id === m.stage_key)?.kind ?? "swiss"));
-            const next = nextSwissRound(champId, div, s.id, rows);
-            await insertFixtures(db, champId, full, await persistStructure(db, champId, full), next, rows);
-          }), "Next Swiss round created")}>Next Swiss round</Button>
-        </div>
-      )))}
+      {matches.length > 0 && spec.divisions.map((d, di) => d.stages.filter((s) => s.kind === "swiss").map((s) => {
+        // One rule (swissRoundGate) for the button, the engine and the DB trigger: Round N+1 only after
+        // every real Round N fixture is final; never skip, never exceed the configured rounds.
+        const mineRows = matches.filter((m) => m.group_number === di + 1 && m.stage_key === s.id).map((m) => toFixtureRow(d.divisionId, m, "swiss"));
+        const gate = swissRoundGate(mineRows, s.swissRounds);
+        const nextN = gate.state === "ready" ? gate.nextRound : gate.state === "in_progress" ? gate.round + 1 : null;
+        return (
+          <div key={`sw-${d.divisionId}/${s.id}`} className="flex flex-col gap-1 rounded-md border p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">{d.label} · {s.name}</span>
+              {gate.state === "finished"
+                ? <span className="font-medium">Final standings — all {s.swissRounds} rounds complete</span>
+                : nextN && (
+                  <Button size="sm" variant="outline" disabled={!!busy || gate.state !== "ready"} onClick={() => {
+                    if (gate.state !== "ready") return;
+                    if (!confirm(`Generate Round ${gate.nextRound} for ${d.label}? Pairings use the latest results, Swiss score groups and tie-breaks, and avoid repeat opponents.`)) return;
+                    run(`sw${s.id}`, () => atomically(supabaseDb, champId, commitStructured, async (db) => {
+                      const full = await loadEntrants(db, champId, spec);
+                      const div = full.divisions[di];
+                      const rows = matches.filter((m) => m.group_number === di + 1).map((m) => toFixtureRow(d.divisionId, m, d.stages.find((x) => x.id === m.stage_key)?.kind ?? "swiss"));
+                      const next = nextSwissRound(champId, div, s.id, rows);
+                      await insertFixtures(db, champId, full, await persistStructure(db, champId, full), next, rows);
+                    }), `Round ${gate.nextRound} generated`);
+                  }}>Generate Round {nextN}</Button>
+                )}
+            </div>
+            <span className="text-xs text-muted-foreground">{gate.message}</span>
+          </div>
+        );
+      }))}
       {spec.divisions.map((d) => d.stages.filter((s) => s.order > 0).map((s) => {
         // Stage keys repeat across draws: a stage "exists" only when THIS draw's stage row has games.
         const gi0 = spec.divisions.indexOf(d) + 1;

@@ -1,5 +1,6 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { swissTable } from "./swiss-standings";
+import { swissRoundGate } from "./swiss-round-gate";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
@@ -185,17 +186,21 @@ export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureR
   return swissTable(d.entrants.map((e) => e.id), mine.map((f) => ({ a: f.a, b: f.b, winner: swissWinner(f) })), st.tieBreaks as SwissTieBreak[] | undefined);
 }
 
-/** Next Swiss round from completed results. Refuses to exceed the configured round count. */
+/**
+ * Next Swiss round from the latest final results. Only ever Round N+1 after Round N is fully final
+ * (shared `swissRoundGate`); never skips, never exceeds the configured count. Mirrored server-side.
+ */
 export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[]): EngineFixture[] {
   const st = d.stages.find((s) => s.id === stageId);
   if (!st || st.kind !== "swiss") throw new IntegrityError("stage_kind", "Only Swiss stages pair by results.");
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === stageId);
-  const last = Math.max(0, ...mine.map((f) => f.round ?? 1));
-  if (last >= (st.swissRounds ?? 0)) throw new IntegrityError("swiss_done", `All ${st.swissRounds} Swiss rounds have been created.`);
-  if (!mine.filter((f) => (f.round ?? 1) === last).every((f) => swissWinner(f))) throw new IntegrityError("prereq", "Current Swiss round is not finished.");
+  const gate = swissRoundGate(mine, st.swissRounds);
+  if (gate.state === "not_started") throw new IntegrityError("prereq", gate.message);
+  if (gate.state === "in_progress") throw new IntegrityError("prereq", gate.message);
+  if (gate.state === "finished") throw new IntegrityError("swiss_done", gate.message);
   const table = swissStandings(d, st, rows);
   const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a!, f.b!)));
-  return swissFixtures(tid, d, st, last + 1, table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
+  return swissFixtures(tid, d, st, gate.nextRound, table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
 }
 
 /** Organiser-confirmed pairings must be real, distinct entrants of the right field/pool — never guessed or repaired. */

@@ -34,7 +34,7 @@ describe("swiss → play-off transition vs setup plan", () => {
   it("Riverside Men's A: R5 final, setup 5 + QF, live draw 6 rounds → conflict, never a plain 'Set up Round 6'", () => {
     const r = swissDivisionProgress([live("Mens A")], () => through(5), plan, setup5)[0];
     expect(r.action).toBe("plan_conflict");
-    expect(r.transition).toMatchObject({ kind: "conflict", reason: "live_rounds", setupRounds: 5, liveRounds: 6, playoffs: ["Quarterfinal", "Semifinal"] });
+    expect(r.transition).toMatchObject({ kind: "conflict", reason: "live_rounds", setupRounds: 5, liveRounds: 6, liveHasPlayoff: false, playoffs: ["Quarterfinal", "Semifinal"] });
     expect(r.gate).toMatchObject({ state: "ready", nextRound: 6 }); // keep-6 path still available, never silently skipped
   });
   it("setup still says 6 Swiss rounds but QF follows Round 5 → setup conflict surfaced", () => {
@@ -63,5 +63,24 @@ describe("swiss → play-off transition vs setup plan", () => {
   it("no play-offs in setup → unchanged behaviour (setup_round / final)", () => {
     expect(swissDivisionProgress([live("Mens A")], () => through(5), rounds(5), { stages: rounds(5), format: { swissRounds: 6 } })[0].action).toBe("setup_round");
     expect(swissDivisionProgress([live("Mens A")], () => through(6), rounds(6), { stages: rounds(6), format: { swissRounds: 6 } })[0].action).toBe("final");
+  });
+});
+
+describe("Riverside shape: QF/SF saved as Define-later on a 6-round live Swiss stage", () => {
+  const plan = [...Array.from({ length: 5 }, (_, i) => ({ name: `Round ${i + 1}`, phase: "main", mode: "scheduled", date: "2026-11-01", unit: "" })),
+    { name: "Quarterfinal", phase: "playoff", unit: "" }, { name: "Semifinal", phase: "playoff", unit: "" }];
+  const d = { divisionId: "g1", label: "Mens A · Singles", stages: [{ id: "s", kind: "swiss", swissRounds: 6, order: 0 }], deferredStages: [{ name: "Quarterfinal" }, { name: "Semifinal" }] };
+  const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ a: "a", b: "b", round: i + 1, status: "completed", winner: "a" }));
+  it("after R5 → conflict naming the saved QF that only unlocks after Round 6", () => {
+    const r = swissDivisionProgress([d], () => rows(5), plan, { stages: plan, format: { swissRounds: "5" } })[0];
+    expect(r.action).toBe("plan_conflict");
+    expect(r.transition).toMatchObject({ reason: "live_rounds", liveHasPlayoff: true, setupRounds: 5, liveRounds: 6 });
+    expect((r.transition as any).message).toContain("only becomes available after Round 6");
+  });
+  it("before R5 nothing changes", () => {
+    expect(swissDivisionProgress([d], () => rows(3), plan, { stages: plan, format: { swissRounds: "5" } })[0].transition).toBeNull();
+  });
+  it("after all 6 live rounds → hand over to the QF stage", () => {
+    expect(swissDivisionProgress([d], () => rows(6), plan, { stages: plan, format: { swissRounds: "5" } })[0]).toMatchObject({ action: "playoffs", transition: { kind: "playoff_next", name: "Quarterfinal" } });
   });
 });

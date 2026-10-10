@@ -107,14 +107,14 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
                   <div className="space-y-1.5 rounded border border-destructive/50 bg-destructive/5 p-2" role="alert" data-testid="swiss-plan-conflict">
                     <div className="flex items-start gap-1.5 font-semibold"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />Stage plan doesn't match the live draw</div>
                     <p>{t.message}</p>
-                    <p className="text-muted-foreground">Setup: {t.setupRounds ?? "?"} Swiss round{t.setupRounds === 1 ? "" : "s"}, then {t.playoffs.join(" → ")} after Round {t.playoffAfterRound}. Live draw: {t.liveRounds} Swiss rounds{t.reason === "not_in_draw" || t.reason === "live_rounds" ? ", no play-off stage" : ""}.</p>
+                    <p className="text-muted-foreground">Setup: {t.setupRounds ?? "?"} Swiss round{t.setupRounds === 1 ? "" : "s"}, then {t.playoffs.join(" → ")} after Round {t.playoffAfterRound}. Live draw: {t.liveRounds} Swiss rounds, {t.liveHasPlayoff ? `then ${t.playoffs[0]} (set up later) after Round ${t.liveRounds}` : "no play-off stage"}.</p>
                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
                       <Button size="sm" onClick={onSetupRound}>Review stage plan in setup</Button>
                       {keep && r.action === "plan_conflict" && (r.schedule
                         ? <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setAsk(r)}>{busy === r.divisionId ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Shuffle className="mr-1 h-4 w-4" />}Keep {t.liveRounds} rounds — Generate Round {next} Draw</Button>
                         : <Button size="sm" variant="outline" onClick={onSetupRound}><CalendarPlus className="mr-1 h-4 w-4" />Keep {t.liveRounds} rounds — Set up Round {next}</Button>)}
                     </div>
-                    {t.reason !== "setup_rounds" && <p className="text-muted-foreground">Ending the Swiss stage early and adding {t.playoffs[0]} to a draw that has already started can't be done from this screen yet. Nothing has been generated or changed — results and standings stay as they are.</p>}
+                    {t.reason !== "setup_rounds" && <p className="text-muted-foreground">Ending the Swiss stage early{t.liveHasPlayoff ? "" : ` and adding ${t.playoffs[0]}`} on a draw that has already started can't be done from this screen yet. Nothing has been generated or changed — results and standings stay as they are.</p>}
                   </div>
                 );
               })()}

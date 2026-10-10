@@ -29,7 +29,7 @@ export type SwissTransition =
      *  setup_rounds: setup itself disagrees (N Swiss rounds configured, play-offs placed after round M).
      *  not_in_draw: every live Swiss round is done, setup plans play-offs, the live draw has none. */
     reason: "live_rounds" | "setup_rounds" | "not_in_draw";
-    setupRounds: number | null; playoffAfterRound: number; liveRounds: number; playoffs: string[]; message: string;
+    setupRounds: number | null; playoffAfterRound: number; liveRounds: number; playoffs: string[]; liveHasPlayoff: boolean; message: string;
   };
 
 const unitMatches = (unit: string | undefined, label: string) => {
@@ -74,23 +74,25 @@ export function swissTransition(args: {
   if (finished && liveHasNextStage) return { kind: "playoff_next", name: args.liveNextName || "the next stage" };
   const mine = (setup?.stages ?? []).filter((s) => unitMatches(s?.unit, label));
   const playoffs = mine.filter((s) => s?.phase === "playoff").map((s) => String(s.name || "Play-off"));
-  if (!playoffs.length || liveHasNextStage) return null;
+  if (!playoffs.length) return null;
   const mainRounds = mine.filter((s) => (s?.phase ?? "main") === "main").length;
   const setupRounds = setupSwissRounds(setup, label);
-  const after = mainRounds || setupRounds || 0;
   const po = joinNames(playoffs);
+  const base = { liveRounds, playoffs, liveHasPlayoff: liveHasNextStage };
   if (finished) return {
-    kind: "conflict", reason: "not_in_draw", setupRounds, playoffAfterRound: after || round, liveRounds, playoffs,
+    kind: "conflict", reason: "not_in_draw", setupRounds, playoffAfterRound: mainRounds || setupRounds || round, ...base,
     message: `All ${liveRounds} Swiss rounds are complete. Setup plans ${po} next, but the live draw has no ${playoffs[0]} stage yet, so nothing can be generated from here.`,
   };
   if (setupRounds && mainRounds && setupRounds !== mainRounds && round === mainRounds) return {
-    kind: "conflict", reason: "setup_rounds", setupRounds, playoffAfterRound: mainRounds, liveRounds, playoffs,
+    kind: "conflict", reason: "setup_rounds", setupRounds, playoffAfterRound: mainRounds, ...base,
     message: `${setupRounds} Swiss rounds are configured, but ${playoffs[0]} is set to follow Round ${mainRounds}. Decide which is right before continuing — Round ${round + 1} is not skipped automatically.`,
   };
   const end = setupRounds ?? mainRounds;
   if (end && round >= end && end < liveRounds) return {
-    kind: "conflict", reason: "live_rounds", setupRounds: end, playoffAfterRound: end, liveRounds, playoffs,
-    message: `Setup plans ${end} Swiss rounds followed by ${po}, but this category's live draw was created with ${liveRounds} Swiss rounds and has no ${playoffs[0]} stage. Round ${round + 1} is not created automatically and ${playoffs[0]} can't be generated until the live draw matches setup.`,
+    kind: "conflict", reason: "live_rounds", setupRounds: end, playoffAfterRound: end, ...base,
+    message: liveHasNextStage
+      ? `Setup plans ${end} Swiss rounds followed by ${po}. ${playoffs[0]} is saved on the live draw, but this category's live Swiss stage is still set to ${liveRounds} rounds, so ${playoffs[0]} only becomes available after Round ${liveRounds}. Round ${round + 1} is not created automatically.`
+      : `Setup plans ${end} Swiss rounds followed by ${po}, but this category's live draw was created with ${liveRounds} Swiss rounds and has no ${playoffs[0]} stage. Round ${round + 1} is not created automatically and ${playoffs[0]} can't be generated until the live draw matches setup.`,
   };
   return null;
 }

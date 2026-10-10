@@ -39,18 +39,27 @@ export function placeGamesInSessions(gameIds: string[], days: SessionDay[], slot
  * (except the tournament's own "sbs:" session reservation, which is the room games go into).
  */
 export async function applySetupSessions(db: any, tournamentId: string) {
-  const { data: t } = await db.from("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
-  const ans = t?.beta_lifecycle?.answers ?? {};
+  const [{ data: t }, { data: entries }] = await Promise.all([
+    db.from("tournaments").select("beta_lifecycle, group_labels").eq("id", tournamentId).maybeSingle(),
+    db.from("club_champs_entries").select("club_member_id, partner_member_id, group_number").eq("champ_id", tournamentId),
+  ]);
+  const bl: any = (t as any)?.beta_lifecycle ?? {};
+  const ans = bl?.answers ?? {};
   const slot = Number(ans?.scheduling?.singles) || 0;
+  const prefs = normaliseSchedulingPrefs(bl?.scheduling_prefs);
+  const labels: Record<string, string> = ((t as any)?.group_labels ?? {}) as Record<string, string>;
+  const keyOf = (g: number) => labels[String(g)];
+  const entryGroup = new Map<string, number>();
+  for (const e of (entries ?? []) as any[]) { entryGroup.set(e.club_member_id, Number(e.group_number)); if (e.partner_member_id) entryGroup.set(e.partner_member_id, Number(e.group_number)); }
   const stages: any[] = (ans?.stages ?? []).filter((s: any) => (s.phase ?? "main") === "main");
-  const results: Array<{ round: number; name: string; games: number; placed: number; slots: number; unplaced: number; noSlot?: boolean }> = [];
+  const results: Array<{ round: number; name: string; games: number; placed: number; slots: number; unplaced: number; noSlot?: boolean; note?: string }> = [];
   const placedNow: BusyCell[] = [];
   for (let i = 0; i < stages.length; i++) {
     const s = stages[i];
     if (s.mode !== "scheduled") continue;
     const days: SessionDay[] = [{ date: s.date, from: s.from, to: s.to, courtIds: s.courtIds ?? [] }, ...(s.extraDays ?? [])];
     const { data: ms } = await db.from("club_champs_matches")
-      .select("id, status, winner_member_id, booking_id, scheduled_time, player_a_member_id, player_b_member_id, created_at")
+      .select("id, status, winner_member_id, booking_id, scheduled_time, group_number, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, created_at")
       .eq("champ_id", tournamentId).eq("round_number", i + 1).order("created_at").order("id");
     const open = ((ms ?? []) as any[]).filter((m) => m.player_a_member_id && m.player_b_member_id && !m.winner_member_id && !m.booking_id && !m.scheduled_time
       && !["completed", "confirmed", "in_progress", "live", "walkover", "forfeit"].includes(String(m.status ?? "").toLowerCase()));
@@ -69,13 +78,34 @@ export async function applySetupSessions(db: any, tournamentId: string) {
       for (const b of (bk ?? []) as any[]) if (!String(b.external_id ?? "").startsWith("sbs:"))
         busy.push({ date: String(b.date).slice(0, 10), court: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) });
     }
-    const r = placeGamesInSessions(open.map((m) => m.id), days, slot, busy);
-    for (const p of r.placed) {
+    // Active preferences use the shared planner (category courts/evenings, rest) — same rules as the
+    // Generate-draw preview. When preferences cannot fit everything, fall back to plain placement.
+    let placed: SlotAssignment[] = [];
+    let slots = 0, unplaced = 0, note: string | undefined;
+    if (prefsActive(prefs)) {
+      const prefGames = open.map((m) => {
+        const people = [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
+        const groups = [...new Set([entryGroup.get(m.player_a_member_id), entryGroup.get(m.player_b_member_id)].filter((g): g is number => g != null))];
+        return { id: m.id, round: i + 1, people, groups: groups.length ? groups : [Number(m.group_number) || 0] };
+      });
+      const prefBusy = busy.map((b) => ({ date: b.date, courtId: Number(b.court), start: b.start, end: b.end }));
+      const plan = planPrefWaves({ games: prefGames, days: days as any, minutes: slot, busy: prefBusy, prefs, keyOf });
+      if (plan.issues.length) note = `${s.name}: scheduling preferences could not fit every game (${plan.issues[0]}). Games were placed without them.`;
+      else {
+        placed = plan.slots.map((sl) => ({ id: sl.id, scheduled_date: sl.date, scheduled_time: sl.time, court_id: sl.courtId }));
+        slots = plan.available; unplaced = 0;
+      }
+    }
+    if (!placed.length) {
+      const r = placeGamesInSessions(open.map((m) => m.id), days, slot, busy);
+      placed = r.placed; slots = r.slots; unplaced = r.unplaced.length;
+    }
+    for (const p of placed) {
       const { error } = await db.from("club_champs_matches").update({ scheduled_date: p.scheduled_date, scheduled_time: p.scheduled_time, court_id: p.court_id }).eq("id", p.id);
       if (error) throw new Error(error.message);
       placedNow.push({ date: p.scheduled_date, court: p.court_id, start: p.scheduled_time, end: toHHMM(toMin(p.scheduled_time) + slot) });
     }
-    results.push({ round: i + 1, name: s.name, games: open.length, placed: r.placed.length, slots: r.slots, unplaced: r.unplaced.length });
+    results.push({ round: i + 1, name: s.name, games: open.length, placed: placed.length, slots, unplaced, ...(note ? { note } : {}) });
   }
   return results;
 }

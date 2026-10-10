@@ -754,6 +754,38 @@ export default function ClubChampsView() {
       } as any);
     });
 
+    // Swiss stages (structured or legacy): the SAME shared table the next-round pairing uses —
+    // match wins, then Buchholz → Sonneborn-Berger (or the stage's configured order), then seed.
+    // Games won / game difference stay on the row as information only.
+    const swiss = !mu && !isCrossLeague ? swissStageFor(groupNum) : null;
+    if (swiss) {
+      const keyOf = (r: any) => (isDoubles && r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id);
+      const byMember = new Map<string, string>();
+      rows.forEach((r: any) => { byMember.set(r.club_member_id, keyOf(r)); if (r.partner_member_id) byMember.set(r.partner_member_id, keyOf(r)); });
+      const seeded = [...groupEntries].sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0)).map(keyOf);
+      const seedOrder = [...seeded, ...rows.map(keyOf).filter((k: string) => !seeded.includes(k))];
+      const games = [
+        ...groupMatches.map((m: any) => ({
+          a: byMember.get(m.player_a_member_id) ?? null,
+          b: byMember.get(m.player_b_member_id) ?? null,
+          winner: m.winner_member_id ? byMember.get(m.winner_member_id) ?? null : null,
+        })).filter((g) => g.a && g.b),
+        ...groupByes.filter((m: any) => isPoolStage(m)).map((m: any) => ({ a: byMember.get(m.bye_member_id || m.player_a_member_id) ?? null, b: null, winner: null })).filter((g) => g.a),
+      ];
+      const table = swissTable(seedOrder, games, swiss.tieBreaks);
+      const byKey = new Map(table.map((t) => [t.id, t]));
+      const swissGames = groupMatchesAll.filter((m: any) => (m.round_number ?? 0) > 0);
+      const lastRound = Math.max(0, ...swissGames.map((m: any) => Number(m.round_number) || 0));
+      const allDone = swissGames.length > 0 && swissGames.every((m: any) => m.status === "completed");
+      const finished = allDone && (swiss.rounds == null || lastRound >= swiss.rounds);
+      return rows
+        .map((r: any) => {
+          const t = byKey.get(keyOf(r));
+          return { ...r, points: t?.points ?? 0, won: t?.wins ?? r.won, buchholz: t?.buchholz ?? 0, sonnebornBerger: t?.sonnebornBerger ?? 0, swissPosition: t?.position ?? 1e9, swissInProgress: !finished };
+        })
+        .sort((a: any, b: any) => a.swissPosition - b.swissPosition);
+    }
+
     // Structured (Beta) pools/round robins: the SAME tie-break engine as play-off qualification, so the
     // table can never show a different order from the one the next stage is built from.
     const spec = isStructured ? arch?.builder_spec : null;

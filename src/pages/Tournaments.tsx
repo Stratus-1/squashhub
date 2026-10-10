@@ -535,6 +535,21 @@ export default function Tournaments() {
 
   // Members always land on what is running/coming up; history is one tap away.
   const [champTab, setChampTab] = useState<string>("upcoming");
+  // Exactly one active tournament: opening the Standings tab navigates to that
+  // tournament's full championship view (once per session) instead of embedding
+  // it here. Browser Back returns to this tab and shows the compact card
+  // without re-navigating (no loop).
+  const singleChampId = champs.length === 1 ? ((champs[0] as any).id as string) : null;
+  const [autoOpenedChamp, setAutoOpenedChamp] = useState<string | null>(null);
+  useEffect(() => {
+    if (!singleChampId || champTab !== "standings") return;
+    const key = `sh.autoOpenChamp.${singleChampId}`;
+    try {
+      if (sessionStorage.getItem(key) === "1") { setAutoOpenedChamp(singleChampId); return; }
+      sessionStorage.setItem(key, "1");
+    } catch { /* storage unavailable: still navigate once */ }
+    navigate(`/club-champs/${singleChampId}`);
+  }, [singleChampId, champTab, navigate]);
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");

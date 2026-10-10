@@ -110,3 +110,32 @@ describe("scheduling preferences", () => {
     expect(planTimedSchedule(ctx(DEFAULT_SCHEDULING_PREFS), g).slots).toEqual(before.slots);
   });
 });
+
+describe("category evenings", () => {
+  const twoDays = [{ date: "2026-10-05", from: "18:00", to: "21:00", courtIds: [1, 2] }, { date: "2026-10-07", from: "18:00", to: "21:00", courtIds: [1, 2] }]; // Mon, Wed
+  const games = (g: number, n: number, pre: string): PrefGame[] => Array.from({ length: n }, (_, i) => ({ id: `${pre}${i}`, round: 1, people: [`${pre}a${i}`, `${pre}b${i}`], groups: [g] }));
+  const kOf = (g: number) => (g === 1 ? "Ladies › A · Singles" : g === 2 ? "Mens › B · Singles" : undefined);
+  it("required evening keeps a category on that weekday only", () => {
+    const g = [...games(1, 4, "l"), ...games(2, 4, "m")];
+    const r = planPrefWaves({ games: g, days: twoDays, minutes: 30, keyOf: kOf, prefs: P({ courts: "category", categoryCourts: [{ key: "Ladies", courtIds: [], weekdays: [3], rule: "only" }] }) });
+    expect(r.issues).toEqual([]);
+    expect(r.slots.filter((s) => s.id.startsWith("l")).every((s) => s.date === "2026-10-07")).toBe(true);
+  });
+  it("subcategory override beats category", () => {
+    const g = games(2, 3, "m");
+    const r = planPrefWaves({ games: g, days: twoDays, minutes: 30, keyOf: kOf, prefs: P({ courts: "category", categoryCourts: [{ key: "Mens", courtIds: [], weekdays: [1], rule: "only" }, { key: "Mens::B", courtIds: [2], weekdays: [3], rule: "only" }] }) });
+    expect(r.issues).toEqual([]);
+    expect(r.slots.every((s) => s.date === "2026-10-07" && s.courtId === 2)).toBe(true);
+  });
+  it("preferred evening spills to other evenings when full", () => {
+    const g = games(1, 16, "l"); // Mon holds 12 (6 slots × 2 courts)
+    const r = planPrefWaves({ games: g, days: twoDays, minutes: 30, keyOf: kOf, prefs: P({ courts: "category", categoryCourts: [{ key: "Ladies", courtIds: [], weekdays: [1], rule: "preferred" }] }) });
+    expect(r.issues).toEqual([]);
+    expect(r.slots.filter((s) => s.date === "2026-10-05")).toHaveLength(12);
+    expect(r.notes.join(" ")).toMatch(/moved to other evenings/);
+  });
+  it("required evening with no matching date blocks clearly", () => {
+    const r = planPrefWaves({ games: games(1, 2, "l"), days: twoDays, minutes: 30, keyOf: kOf, prefs: P({ courts: "category", categoryCourts: [{ key: "Ladies", courtIds: [], weekdays: [5], rule: "only" }] }) });
+    expect(r.slots).toEqual([]); expect(r.issues[0]).toMatch(/Only these evenings/);
+  });
+});

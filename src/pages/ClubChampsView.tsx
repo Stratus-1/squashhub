@@ -3898,7 +3898,6 @@ export default function ClubChampsView() {
         </div>
         {categoryViews.length > 1 && (
           <div className="border-b bg-muted/40 px-3 py-2">
-            <label htmlFor="cat-select" className="sr-only">Category</label>
             <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Category">
               {categoryViews.map((c) => (
                 <button

@@ -758,7 +758,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <details className="mt-1"><summary className="cursor-pointer text-primary">Games per round</summary>
             {preview.divisions.map((p) => <div key={p.label} className="mt-1"><span className="font-medium">{p.label}:</span> {p.perRound.map((r) => `R${r.round} ${r.games}`).join(" · ")}</div>)}
           </details>
-          <p className="mt-1 text-muted-foreground">No courts are booked and no court times are invented. Players are not messaged by this step.</p>
+          <p className="mt-1 text-muted-foreground">Games are placed into the court times shown under "Schedule fits" above. No new court bookings are made and players are not messaged by this step.</p>
         </div>
       )}
       <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>

@@ -236,7 +236,7 @@ export function LiveSessionBanner() {
         courtId: currentBooking.court_id,
         courtName: court?.name,
         clubMemberId: activeMember?.id ?? null,
-        courtRelayBleMac: court?.relay_ble_mac ?? null,
+        courtRelayBleMac: resolveBleMac(court?.relay_ble_mac, court?.relay_device_id),
         ble: {
           enabled: !!s.ble_fallback_enabled,
           password: s.shelly_ble_control_password,

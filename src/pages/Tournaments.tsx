@@ -1258,6 +1258,8 @@ export default function Tournaments() {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles" || !!m.partner_a_member_id || !!m.partner_b_member_id;
     const isPlaceholder = m.status === "placeholder";
+    // A bye has no opponent — nothing to schedule, mark or score.
+    const isBye = isByeFixture(m);
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
     const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles, m) + hcLabel(m.handicap_a ?? m.n_a);
     const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles, m) + hcLabel(m.handicap_b ?? m.n_b);

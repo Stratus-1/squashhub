@@ -1,3 +1,4 @@
+import { isByeFixture } from "@/lib/tournaments/bye-side";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -266,11 +267,11 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
     // Placeholder-aware side label — reserved playoff/finals slots have no
     // player yet but carry a human-readable placeholder ("Winner Pool A").
     const sideLabel = (player: any, playerId: string | null, partner: any, partnerId: string | null, placeholder: string | null, isBye: boolean) => {
-      if (!playerId) return placeholder || (isBye ? "Bye" : "TBC");
+      if (!playerId) return placeholder || (isBye ? "BYE" : "TBC");
       return isDoubles ? getTeam(player, playerId, partner, partnerId) : getName(player, playerId);
     };
-    const teamA = sideLabel(m.player_a, m.player_a_member_id, m.partner_a, m.partner_a_member_id, m.placeholder_a, !!m.is_bye) + (Number(m.handicap_a) ? ` (${Number(m.handicap_a)})` : "");
-    const teamB = sideLabel(m.player_b, m.player_b_member_id, m.partner_b, m.partner_b_member_id, m.placeholder_b, !!m.is_bye) + (Number(m.handicap_b) ? ` (${Number(m.handicap_b)})` : "");
+    const teamA = sideLabel(m.player_a, m.player_a_member_id, m.partner_a, m.partner_a_member_id, m.placeholder_a, isByeFixture(m)) + (Number(m.handicap_a) ? ` (${Number(m.handicap_a)})` : "");
+    const teamB = sideLabel(m.player_b, m.player_b_member_id, m.partner_b, m.partner_b_member_id, m.placeholder_b, isByeFixture(m)) + (Number(m.handicap_b) ? ` (${Number(m.handicap_b)})` : "");
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const bKey = bucketKeyOf(m);

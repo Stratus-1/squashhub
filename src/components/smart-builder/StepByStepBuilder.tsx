@@ -984,6 +984,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     setA(next);
     toast.success(`${c}: ${o.title} planned — you can still change it in Planned format.`);
   };
+  /** True once ANY saved fixture exists for this tournament (first draw generated) — read from saved games, never from dates. */
+  const [drawSaved, setDrawSaved] = useState(false);
+  useEffect(() => {
+    if (!tournamentId) { setDrawSaved(false); return; }
+    let live = true;
+    void fromExt("club_champs_matches").select("id", { count: "exact", head: true }).eq("champ_id", tournamentId)
+      .then(({ count }: any) => { if (live) setDrawSaved((count ?? 0) > 0); });
+    return () => { live = false; };
+  }, [tournamentId]);
   /** Categories whose picked field materially differs from the estimate and hasn't been reviewed yet. */
   const fieldReview = cats.map((c) => ({ c, est: catEstimate(c), act: catActual(c) }))
     .filter((r) => materiallyDifferent(r.est, r.act) && guide.reviewedActual?.[r.c] !== r.act);
@@ -2136,7 +2145,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
 
           {cur === "Schedule" && (
             <>
-              {renderFieldReview()}
+              {!drawSaved && renderFieldReview()}
               <Q t="How will each stage be scheduled?" h="This is the whole timeline, from Round 1 to the final. Playoffs follow once a category's rounds are done — no separate question needed." />
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Play by a date: players arrange and book their own match before the deadline — no courts are blocked. Scheduled: a set date, time window and courts. Categories progress independently through main rounds. Stage names are a plan; the real rounds come from the format you confirm after registrations close.</div>
               <div className="space-y-2 rounded-lg border border-border p-3">

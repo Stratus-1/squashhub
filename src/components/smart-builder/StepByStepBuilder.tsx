@@ -988,8 +988,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const fieldReview = cats.map((c) => ({ c, est: catEstimate(c), act: catActual(c) }))
     .filter((r) => materiallyDifferent(r.est, r.act) && guide.reviewedActual?.[r.c] !== r.act);
   const fieldRecs = guideRecommendations(cats, guide, isChamps, (c) => catActual(c) >= 2 ? catActual(c) : catEstimate(c));
-  const renderFieldReview = () => fieldReview.length === 0 ? null : (
-    <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="field-review">
+  const reviewMode = fieldReviewMode(drawSaved, fieldReview.length);
+  const renderFieldReview = () => reviewMode === "none" ? null : reviewMode === "collapsed" ? (
+    <details className="rounded-md border border-border px-3 py-2 text-xs" data-testid="field-review-collapsed">
+      <summary className="cursor-pointer select-none text-primary">Review original format recommendations</summary>
+      <p className="mt-2 text-muted-foreground">The draw has been generated, so these planning suggestions are for reference only. Nothing here changes the running tournament unless you click "Use recommendation" — and changes that don't fit the running draw must be made from Manage Tournament.</p>
+      <div className="mt-2">{fieldReviewBody()}</div>
+    </details>
+  ) : (
+    <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="field-review">{fieldReviewBody()}</div>
+  );
+  const fieldReviewBody = () => (
+    <div className="space-y-2">
       <div className="text-sm font-semibold">Your actual field differs from the estimate. Review the recommended tournament structure.</div>
       <p className="text-xs text-muted-foreground">Your chosen structure is not changed unless you click "Use recommendation".</p>
       <div className="rounded-md border border-border bg-background/40 p-2 text-xs" data-testid="field-breakdown">

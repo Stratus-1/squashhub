@@ -65,3 +65,20 @@ describe("standings unit validation", () => {
     expect(issues.some((i) => /no partner/.test(i.message))).toBe(true);
   });
 });
+
+import { decidingByCategory as _dec, defaultStandingsAwards as _def } from "@/lib/tournaments/standings-outcome";
+describe("Swiss award defaults", () => {
+  const spec = { divisions: [
+    { label: "Mens A · Singles", stages: [{ id: "s", kind: "swiss", order: 0, swissRounds: 6 }] },
+    { label: "Ladies · Singles", stages: [{ id: "s", kind: "swiss", order: 0 }, { id: "k", kind: "knockout", order: 1 }] },
+    { label: "Mens B · Singles", stages: [{ id: "p", kind: "pools", order: 0 }] },
+  ] };
+  it("classifies each category independently", () => {
+    expect(_dec(spec).map((d) => d.kind)).toEqual(["swiss", "swiss_playoffs", "other"]);
+    expect(_dec({ divisions: [spec.divisions[0]] }, [{ phase: "playoff", unit: "Mens A" }])[0].kind).toBe("swiss_playoffs");
+  });
+  it("Swiss-only turns on winner, runner-up and final positions, never wooden spoon", () => {
+    expect(_def({ swissOnly: true })).toMatchObject({ outcome: "individual", champion: true, runnerUp: true, finalPositions: true, woodenSpoon: false, topScorer: false });
+    expect(_def({})).toMatchObject({ runnerUp: false, finalPositions: false });
+  });
+});

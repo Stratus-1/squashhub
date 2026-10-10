@@ -7,10 +7,11 @@ import {
   findStep, loadPlanSteps, loadTimedContext, planTimedSchedule, prefsApplicable, scheduleTimedRounds, timedGameFromRow, type TimedContext, type TimedGame,
 } from "@/lib/tournaments/formal-stage-schedule";
 import {
-  COURT_LABEL, DEFAULT_SCHEDULING_PREFS, prefsActive, REST_LABEL, type CategoryCourtRule, type CourtPref, type RestPref, type SchedulingPrefs,
+  COURT_LABEL, DEFAULT_SCHEDULING_PREFS, prefsActive, prefUnitKey, REST_LABEL, weekdayOf, type CategoryCourtRule, type CourtPref, type RestPref, type SchedulingPrefs,
 } from "@/lib/tournaments/scheduling-prefs";
 
 const TERMINAL = ["completed", "forfeited", "walkover", "cancelled", "in_progress", "live", "confirmed"];
+const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const fmtShort = (iso: string) => { const t = new Date(`${iso}T00:00:00`); return isNaN(+t) ? iso : t.toLocaleDateString("en-ZA", { day: "2-digit", month: "short" }); };
 
 /**
@@ -68,11 +69,22 @@ export function SchedulingPreferencesSection({ tournamentId, categories, preview
   const applicable = prefsApplicable(ctx);
   const allCourts = [...new Set(ctx.days.flatMap((d) => d.courtIds))];
   const step = ctx.minutes;
-  const rule = (key: string): CategoryCourtRule => prefs.categoryCourts.find((r) => r.key === key) ?? { key, courtIds: [], rule: "preferred" };
+  const own = (key: string) => prefs.categoryCourts.find((r) => r.key === key);
+  const rule = (key: string): CategoryCourtRule => own(key) ?? { key, courtIds: [], rule: "preferred", weekdays: [] };
   const setRule = (key: string, patch: Partial<CategoryCourtRule>) => {
     const rest = prefs.categoryCourts.filter((r) => r.key !== key);
     void save({ ...prefs, categoryCourts: [...rest, { ...rule(key), ...patch }] });
   };
+  const clearRule = (key: string) => void save({ ...prefs, categoryCourts: prefs.categoryCourts.filter((r) => r.key !== key) });
+  const weekdays = [...new Set(ctx.days.map((d) => weekdayOf(d.date)))].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+  // Category rows, each followed by its subcategories (which inherit unless overridden).
+  const rows: Array<{ key: string; label: string; sub: boolean }> = [];
+  for (const c of categories) {
+    const k = prefUnitKey(c.label); const parent = k.split("::")[0];
+    if (!rows.some((r) => r.key === parent)) rows.push({ key: parent, label: parent, sub: false });
+    if (k !== parent && !rows.some((r) => r.key === k)) rows.push({ key: k, label: k.split("::").slice(1).join(" › "), sub: true });
+  }
+  rows.sort((a, b) => a.key.split("::")[0].localeCompare(b.key.split("::")[0]) || Number(a.sub) - Number(b.sub) || a.key.localeCompare(b.key));
   const window = ctx.days.map((d) => `${fmtShort(d.date)} ${d.from}–${d.to}`).join("; ");
 
   return (
@@ -93,21 +105,38 @@ export function SchedulingPreferencesSection({ tournamentId, categories, preview
             </select></label>
           {prefs.courts === "category" && (
             <div className="sm:col-span-2 space-y-1" aria-label="Courts by category">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-2 gap-y-1 items-center">
-                <span className="text-muted-foreground">Category/group</span><span className="text-muted-foreground">Court(s)</span><span className="text-muted-foreground">Rule</span>
-                {categories.map((c) => { const r = rule(c.label); return (
-                  <div key={c.label} className="contents">
-                    <span className="truncate">{c.label}</span>
-                    <span className="flex flex-wrap gap-1">{allCourts.map((id) => (
-                      <label key={id} className="flex items-center gap-0.5"><input type="checkbox" aria-label={`${c.label} ${courtNames.get(id) ?? `Court ${id}`}`} checked={r.courtIds.includes(id)} onChange={(e) => setRule(c.label, { courtIds: e.target.checked ? [...r.courtIds, id] : r.courtIds.filter((x) => x !== id) })} />{courtNames.get(id) ?? `Court ${id}`}</label>
-                    ))}</span>
-                    <select aria-label={`${c.label} court rule`} className="rounded border border-input bg-background p-0.5" value={r.rule} onChange={(e) => setRule(c.label, { rule: e.target.value as "preferred" | "only" })}>
-                      <option value="preferred">Preferred</option><option value="only">Only these courts</option>
-                    </select>
-                  </div>
-                ); })}
+              <div className="space-y-1">
+                {rows.map((row) => {
+                  const r = rule(row.key);
+                  const inherit = row.sub && !own(row.key);
+                  return (
+                    <div key={row.key} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-border p-1.5 ${row.sub ? "ml-4" : ""}`} data-testid={`pref-row-${row.key}`}>
+                      <span className="min-w-[6rem] font-medium">{row.label}</span>
+                      {inherit ? (
+                        <>
+                          <span className="text-muted-foreground">Same as {row.key.split("::")[0]}</span>
+                          <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { const p = own(row.key.split("::")[0]); setRule(row.key, { courtIds: p?.courtIds ?? [], weekdays: p?.weekdays ?? [], rule: p?.rule ?? "preferred" }); }}>Set own</Button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex flex-wrap gap-1" aria-label={`${row.label} courts`}>{allCourts.map((id) => (
+                            <label key={id} className="flex items-center gap-0.5"><input type="checkbox" aria-label={`${row.key} ${courtNames.get(id) ?? `Court ${id}`}`} checked={r.courtIds.includes(id)} onChange={(e) => setRule(row.key, { courtIds: e.target.checked ? [...r.courtIds, id] : r.courtIds.filter((x) => x !== id) })} />{courtNames.get(id) ?? `Court ${id}`}</label>
+                          ))}</span>
+                          <span className="flex flex-wrap gap-1" aria-label={`${row.label} evenings`}>{weekdays.map((d) => {
+                            const on = (r.weekdays ?? []).includes(d);
+                            return <button key={d} type="button" aria-pressed={on} aria-label={`${row.key} ${WD[d]}`} onClick={() => setRule(row.key, { weekdays: on ? (r.weekdays ?? []).filter((x) => x !== d) : [...(r.weekdays ?? []), d] })} className={`rounded border px-1.5 py-0.5 ${on ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background"}`}>{WD[d]}</button>;
+                          })}</span>
+                          <select aria-label={`${row.key} court rule`} className="rounded border border-input bg-background p-0.5" value={r.rule} onChange={(e) => setRule(row.key, { rule: e.target.value as "preferred" | "only" })}>
+                            <option value="preferred">Preferred</option><option value="only">Required</option>
+                          </select>
+                          {row.sub && <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => clearRule(row.key)}>Use category</Button>}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-muted-foreground">Applies to the whole tournament. A court is only used on dates where it was selected.</p>
+              <p className="text-muted-foreground">Tick courts and/or evenings (weekdays of the planned dates, applied to every round). Preferred = used first, spills over when full; Required = never elsewhere. Leave blank for any court or evening. A court is only used on dates where it was selected.</p>
             </div>
           )}
         </div>

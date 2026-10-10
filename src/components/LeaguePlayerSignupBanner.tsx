@@ -10,7 +10,7 @@ interface Props {
 }
 
 /**
- * Prominent NSA league player CTA card shown on tenant ClubAuth pages and the
+ * Compact NSA league player CTA card shown on tenant ClubAuth pages and the
  * root landing. Targets NSA/NSF-numbered players with a clear, high-contrast
  * "register for free" value proposition and an integrated scan-to-join QR code.
  */
@@ -26,47 +26,39 @@ export function LeaguePlayerSignupBanner({ clubSubdomain, clubName, signupUrl }:
       aria-label="Register for free as an NSA league player"
     >
       {/* Ambient glow */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-accent to-orange-500 rounded-[2rem] blur opacity-25 group-hover:opacity-45 transition duration-700 group-hover:duration-200" />
+      <div className="absolute -inset-1 bg-gradient-to-r from-accent to-orange-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-700 group-hover:duration-200" />
 
-      <div className="relative flex flex-col md:flex-row items-center gap-6 md:gap-8 bg-landing-navy/90 border border-white/10 p-6 md:p-8 rounded-[1.5rem] backdrop-blur-xl shadow-2xl overflow-hidden">
-        {/* Decorative ambient orbs */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 bg-accent/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-orange-500/5 rounded-full blur-3xl" />
-
+      <div className="relative flex items-center gap-4 bg-landing-navy/90 border border-white/10 px-4 py-3 rounded-xl backdrop-blur-xl shadow-lg overflow-hidden">
         {/* Content */}
-        <div className="relative flex-1 space-y-4 text-center md:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold tracking-widest uppercase">
-            <Trophy className="w-4 h-4" />
-            NSA League Access
+        <div className="relative flex-1 min-w-0 space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold tracking-widest uppercase">
+            <Trophy className="w-3 h-3" />
+            NSA League
           </div>
-
-          <div className="space-y-1">
-            <h2 className="text-white text-2xl md:text-3xl font-extrabold font-heading tracking-tight leading-tight">
-              NSA league player{clubName ? ` at ${clubName}` : ""}?
-            </h2>
-            <p className="text-white/70 text-base md:text-lg">
-              Register for free to enjoy NSA league functionality.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-center md:justify-start gap-2 text-accent font-bold group/btn">
-            <span className="text-sm uppercase tracking-widest">Start registration</span>
-            <ArrowRight className="w-5 h-5 transform transition-transform group-hover/btn:translate-x-1.5" />
+          <h2 className="text-white text-sm md:text-base font-bold font-heading tracking-tight leading-snug">
+            NSA league player{clubName ? ` at ${clubName}` : ""}?
+          </h2>
+          <p className="text-white/60 text-xs">
+            Register for free to enjoy NSA league functionality.
+          </p>
+          <div className="flex items-center gap-1 text-accent font-bold group/btn pt-0.5">
+            <span className="text-[11px] uppercase tracking-widest">Start registration</span>
+            <ArrowRight className="w-4 h-4 transform transition-transform group-hover/btn:translate-x-1" />
           </div>
         </div>
 
         {/* QR code */}
         <div className="relative flex-shrink-0">
-          <div className="bg-white p-3 rounded-2xl shadow-xl transform rotate-2 group-hover:rotate-0 transition-transform duration-500">
+          <div className="bg-white p-1.5 rounded-lg shadow-md transform rotate-2 group-hover:rotate-0 transition-transform duration-500">
             <QRCodeSVG
               value={href}
-              size={120}
+              size={56}
               bgColor="#ffffff"
               fgColor="#1E3A5F"
               level="M"
             />
           </div>
-          <div className="absolute -bottom-2 -right-2 bg-accent text-accent-foreground px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter shadow-lg">
+          <div className="absolute -bottom-1.5 -right-1.5 bg-accent text-accent-foreground px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter shadow">
             Scan to join
           </div>
         </div>

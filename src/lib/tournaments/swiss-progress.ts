@@ -4,7 +4,7 @@
  * round already has a schedule record in setup (main-phase plan stage N = Round N). A schedule record
  * is only a date/court plan; it never means the round's games exist.
  */
-import { swissRoundGate, type GateFixture, type SwissGate } from "./swiss-round-gate";
+import { isFinalFixture, swissRoundGate, type GateFixture, type SwissGate } from "./swiss-round-gate";
 
 export type PlanStage = { id?: string; name?: string; phase?: string; unit?: string; mode?: string; date?: string; deadline?: string };
 export type SwissDivisionProgress = {
@@ -43,8 +43,8 @@ export function swissDivisionProgress(
     const gate = swissRoundGate(rows, s.swissRounds);
     const round = Math.max(0, ...rows.map((f) => Number(f.round) || 1));
     const real = rows.filter((f) => (Number(f.round) || 1) === round && f.a && f.b);
-    const gateDone = gate.state === "in_progress" ? real.length - (real.length - (real.filter((f) => f.winner || ["completed", "walkover", "cancelled", "canceled", "void", "voided", "bye", "forfeit"].includes(String(f.status ?? "").toLowerCase()) || String(f.score ?? "").startsWith("No result")).length)) : real.length;
-    const pending = gate.state === "in_progress" ? real.filter((f) => !(f.winner || ["completed", "walkover", "cancelled", "canceled", "void", "voided", "bye", "forfeit"].includes(String(f.status ?? "").toLowerCase()) || String(f.score ?? "").startsWith("No result"))) : [];
+    const pending = real.filter((f) => !isFinalFixture(f));
+    const gateDone = real.length - pending.length;
     const schedule = gate.state === "ready" ? scheduleForRound(plan, gate.nextRound, d.label) : null;
     const action = gate.state === "finished" ? "final" : gate.state === "in_progress" ? "wait" : gate.state === "ready" ? (schedule ? "generate" : "setup_round") : "none";
     out.push({ divisionId: d.divisionId, divisionIndex: di, label: d.label, stageId: s.id, swissRounds: Number(s.swissRounds) || 0, gate,

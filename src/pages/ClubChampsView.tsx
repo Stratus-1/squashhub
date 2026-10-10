@@ -1150,7 +1150,10 @@ export default function ClubChampsView() {
       const specDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
       const rows = getGroupStandings(gn);
       const statuses = specDivision ? historicalPoolStatuses(specDivision, (matches as any[]).filter((m: any) => m.group_number === gn), rows.map((r: any) => ({ memberId: r.club_member_id, partnerId: r.partner_member_id }))) : undefined;
-      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision, statuses });
+      // Swiss groups keep the live rank heat colours (and the Current leader /
+      // Winner badge logic) even in structured tournaments — they are ongoing,
+      // not historical pools.
+      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn), statuses });
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view
@@ -1232,7 +1235,7 @@ export default function ClubChampsView() {
                 </>
               }
             >
-              {s.length > 0 ? renderStandingsTable(s, { historical: true, statuses }) : (
+              {s.length > 0 ? renderStandingsTable(s, { historical: !swissStageFor(gn), statuses }) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
               )}
             </CollapsibleSection>

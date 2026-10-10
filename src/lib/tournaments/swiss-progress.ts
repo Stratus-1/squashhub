@@ -52,7 +52,7 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 /** Setup's Swiss round count for one category (category/subcategory override → tournament format). */
 export function setupSwissRounds(setup: SwissSetupPlan | null | undefined, label: string): number | null {
   const o = setup?.formatOverrides ?? {};
-  const key = Object.keys(o).filter((k) => o[k] && norm(label).startsWith(norm(k.split("::").join(" "))) || (o[k] && norm(label).startsWith(norm(k.split("::")[0]))))
+  const key = Object.keys(o).filter((k) => !!o[k] && norm(label).startsWith(norm(k.split("::")[0])))
     .sort((x, y) => y.length - x.length)[0];
   const n = Number((key ? o[key]?.swissRounds : undefined) ?? setup?.format?.swissRounds);
   return Number.isFinite(n) && n > 0 ? n : null;

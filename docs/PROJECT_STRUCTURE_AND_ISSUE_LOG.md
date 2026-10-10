@@ -2811,3 +2811,5 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 - Cause: standings page ranked structured Swiss groups by games won (Pts = sets won) because the tournament kept legacy `scoring_mode=standard`; pairing used match wins. "Pool winner" shown after round 1.
 - Fix: shared `swissTable` used by the page and `nextSwissRound`; Swiss detected per stage; "Current leader" until the last Swiss round is complete; tie-break picker in Stage Builder; tests `src/test/swiss-standings-agreement.test.ts`. No data changed.
 - 2026-10-10 follow-up: Swiss round gate (one round at a time, progress message, admin confirm, server trigger `guard_swiss_round_progression`, tests `src/test/swiss-round-gate.test.ts`).
+
+- 2026-10-10 Swiss Round 2 not offered in Manage Tournament: Generate Round button only lived in the collapsed admin card on the draw page; added StepSwissRoundsPanel (per-category Set up / Generate Round N Draw, detects saved round schedule). Mens B bye (null opponent, status scheduled) counts as final.

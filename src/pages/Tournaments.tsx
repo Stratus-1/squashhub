@@ -57,8 +57,6 @@ import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
-import ClubChampsView from "@/pages/ClubChampsView";
-import { InlineTournamentStandings } from "@/components/tournaments/InlineTournamentStandings";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 

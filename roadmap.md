@@ -9,3 +9,7 @@
 - [x] Nelspruit bar door not closing (2026-10-10) — resolved itself; Shelly was online, last pulse 14:22 SA, door closing by 14:25
 - [x] EFT approval "DELETE requires a WHERE clause" (2026-10-10) — fixed: TRUNCATE replaces bare DELETE in finance_decide_member_transaction (migration 0111)
 - [x] Member Tournaments Standings tab (2026-10-10) — removed risky inline ClubChampsView embed; single active tournament auto-navigates once per session to /club-champs/<id>; Back shows compact card, no loop; multiple/zero states unchanged
+
+## Pick players toolbar redesign (in progress, preview only)
+- Presentation-only rebuild of the Pick Players toolbar in `src/components/smart-builder/StepByStepBuilder.tsx`: row 1 = picked counts + lock-status badge, grouped action rows (Placement / Locks / View) with nowrap buttons and separators, guidance text moved to its own full-width muted row below. No selection, placement, locking or seeding logic changed.
+- Playwright check blocked so far: draft with picks not reachable in headless run (visible draft "Jhb club champs" has no picked players; toolbar renders only when picks exist). Still to do: screenshot toolbar at desktop/tablet/mobile in the Riverside draft with 71 picks. Do not publish.

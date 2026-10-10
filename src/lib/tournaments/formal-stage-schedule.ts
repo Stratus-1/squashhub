@@ -13,7 +13,7 @@
  * "Play by a date" keeps player booking; "Decide later" stays intentionally unscheduled.
  */
 import { fromExt } from "@/lib/supabase-ext";
-import { normaliseSchedulingPrefs, planPrefWaves, prefsActive, type SchedulingPrefs } from "./scheduling-prefs";
+import { isTournamentReservation, normaliseSchedulingPrefs, planPrefWaves, prefsActive, type SchedulingPrefs } from "./scheduling-prefs";
 
 export type SlotGame = { id: string; group: number; bracket: number };
 export type Busy = { courtId: number; start: string; end: string };
@@ -97,10 +97,10 @@ export async function planStageFromDb(champId: string, step: FormalStep, extra: 
   const date = step.date.slice(0, 10);
   const courtIds = step.courtIds!.map(Number);
   const [{ data: t }, { data: rows }, { data: dayGames }, { data: bk }] = await Promise.all([
-    fromExt("tournaments").select("builder_spec, match_duration_minutes").eq("id", champId).maybeSingle(),
+    fromExt("tournaments").select("name, builder_spec, beta_lifecycle, match_duration_minutes").eq("id", champId).maybeSingle(),
     fromExt("club_champs_matches").select("id, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id").eq("champ_id", champId),
     fromExt("club_champs_matches").select("id, court_id, scheduled_time, stage_label, champ_id, status, winner_member_id, booking_id").eq("scheduled_date", date).in("court_id", courtIds),
-    fromExt("bookings").select("court_id, start_time, end_time, external_id").eq("date", date).eq("status", "active").in("court_id", courtIds),
+    fromExt("bookings").select("court_id, start_time, end_time, external_id, external_booker_name, ops_note, guest_name").eq("date", date).eq("status", "active").in("court_id", courtIds),
   ]);
   const spec: any = (t as any)?.builder_spec;
   const groupOrder: number[] = ((spec?.divisions ?? []) as any[]).map((d, i) => Number(d.groupNumber ?? i + 1));
@@ -112,7 +112,7 @@ export async function planStageFromDb(champId: string, step: FormalStep, extra: 
     // Other games already on these courts that day (any stage/tournament) that we are not re-slotting.
     ...((dayGames ?? []) as any[]).filter((m) => !ownIds.has(m.id) && m.scheduled_time).map((m) => ({ courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM(toMin(m.scheduled_time) + minutes) })),
     // Bookings, except the stage's own central session reservation ("sbs:") — that is the room the games go into.
-    ...((bk ?? []) as any[]).filter((b) => !String(b.external_id ?? "").startsWith("sbs:")).map((b) => ({ courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) })),
+    ...((bk ?? []) as any[]).filter((b) => !(isTournamentReservation(b, (t as any)?.name, normaliseSchedulingPrefs((t as any)?.beta_lifecycle?.scheduling_prefs).courtsPreBooked) && String(b.start_time).slice(0, 5) < step.to && String(b.end_time).slice(0, 5) > step.from)).map((b) => ({ courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) })),
   ];
   const games: SlotGame[] = [...own.map((m) => ({ id: m.id, group: Number(m.group_number), bracket: Number(m.bracket_position) || 1 })), ...extra];
   const plan = planFormalStageSlots({ games, groupOrder, window: { date, from: step.from, to: step.to, courtIds }, minutes, busy });
@@ -325,7 +325,7 @@ export type TimedContext = {
 
 export async function loadTimedContext(champId: string): Promise<TimedContext | null> {
   const [{ data: t }, { data: entries }] = await Promise.all([
-    fromExt("tournaments").select("builder_spec, beta_lifecycle, group_labels, match_duration_minutes, rules:tournament_rules(scoring_mode)").eq("id", champId).maybeSingle(),
+    fromExt("tournaments").select("name, builder_spec, beta_lifecycle, group_labels, match_duration_minutes, rules:tournament_rules(scoring_mode)").eq("id", champId).maybeSingle(),
     fromExt("club_champs_entries").select("club_member_id, partner_member_id, group_number").eq("champ_id", champId),
   ]);
   if (!t) return null;

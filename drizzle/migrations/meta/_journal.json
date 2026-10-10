@@ -792,6 +792,13 @@
       "when": 1791661573283,
       "tag": "0112_guard_swiss_round_progression",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1791661608488,
+      "tag": "0113_guard_swiss_round_progression_v2",
+      "breakpoints": true
     }
   ]
 }

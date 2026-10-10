@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { swissRoundGate } from "@/lib/tournaments/swiss-round-gate";
-import { nextSwissRound, generateFromSpec } from "@/lib/tournaments/engine-service";
+import { nextSwissRound, swissFirstRound } from "@/lib/tournaments/engine-service";
 import type { FixtureRow } from "@/lib/tournaments/contract";
 
 const ids = Array.from({ length: 16 }, (_, i) => `p${i + 1}`);
@@ -13,7 +13,7 @@ const r1 = (done: number): FixtureRow[] => Array.from({ length: 8 }, (_, i) => (
 
 describe("Swiss round gate", () => {
   it("draw generation creates Round 1 only", () => {
-    const fx = generateFromSpec({ version: 1, architecture: "structured", name: "t", divisions: [division()] } as any, "t");
+    const fx = swissFirstRound("t", division(), stage());
     expect(new Set(fx.map((f) => f.round))).toEqual(new Set([1]));
     expect(fx).toHaveLength(8);
   });

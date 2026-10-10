@@ -1,3 +1,8 @@
+### 2026-10-10 — Inline tournament view hid Fixtures & Results
+- **Cause:** The existing category tab strip was explicitly hidden by `!inlineStandings`, leaving no way to select the already-renderable fixtures panel.
+- **Fix:** Show the existing tab strip in inline mode and restore its associated tabpanel semantics. Shared category selection, round/result rendering, expansion defaults, queries and scoring remain unchanged.
+- **Guard:** Source regression coverage checks the tab strip is not suppressed in inline mode; browser verification checks both panels and category retention without permitting tournament writes.
+
 ### 2026-10-10 — Single current tournament standings required another navigation
 - **Symptom:** Member Tournaments Standings showed only a compact View Standings card for Riverside.
 - **Finding:** The tab never used the category standings renderer.

@@ -1,4 +1,5 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
+import { swissTable } from "./swiss-standings";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
@@ -175,26 +176,13 @@ const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 /** A bye (no opponent) counts as a win. */
 const swissWinner = (f: FixtureRow) => (f.a && !f.b ? f.a : f.winner ?? null);
 
-/** Swiss standings: wins first, then the stage's tie-breaks in order, then seed. */
+/**
+ * Swiss standings: match wins first, then the stage's tie-breaks (default Buchholz → Sonneborn-Berger),
+ * then original seed. Delegates to the shared `swissTable` that the standings page also uses.
+ */
 export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureRow[]) {
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === st.id);
-  const pts = new Map(d.entrants.map((e) => [e.id, 0]));
-  const opps = new Map(d.entrants.map((e) => [e.id, [] as string[]]));
-  const beat = new Map(d.entrants.map((e) => [e.id, [] as string[]]));
-  for (const f of mine) {
-    const w = swissWinner(f);
-    if (w && pts.has(w)) pts.set(w, pts.get(w)! + 1);
-    if (f.a && f.b) { opps.get(f.a)?.push(f.b); opps.get(f.b)?.push(f.a); if (w) beat.get(w)?.push(w === f.a ? f.b : f.a); }
-  }
-  const seed = new Map(d.entrants.map((e, i) => [e.id, i + 1]));
-  const tb = (id: string, k: SwissTieBreak) =>
-    k === "buchholz" ? (opps.get(id) ?? []).reduce((s, o) => s + (pts.get(o) ?? 0), 0)
-      : k === "sonneborn_berger" ? (beat.get(id) ?? []).reduce((s, o) => s + (pts.get(o) ?? 0), 0)
-        : -(seed.get(id) ?? 0);
-  const order = [...(st.tieBreaks ?? []), "seed" as const];
-  const table = d.entrants.map((e) => ({ id: e.id, points: pts.get(e.id) ?? 0, tie: order.map((k) => tb(e.id, k)) }));
-  table.sort((x, y) => y.points - x.points || x.tie.reduce((r, _, i) => r || y.tie[i] - x.tie[i], 0));
-  return table;
+  return swissTable(d.entrants.map((e) => e.id), mine.map((f) => ({ a: f.a, b: f.b, winner: swissWinner(f) })), st.tieBreaks as SwissTieBreak[] | undefined);
 }
 
 /** Next Swiss round from completed results. Refuses to exceed the configured round count. */

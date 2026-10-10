@@ -1330,6 +1330,11 @@ export default function ClubChampsView() {
     return tournamentSummary(categories, matches as SummaryFixture[]);
   })() : [];
 
+  // Hide categories with no playoffs configured and no playoff fixtures (e.g. pure Swiss).
+  const summaryRows = structuredSummary.filter((r) => r.category.firstStage || r.quarterfinals.length || r.semifinals.length || r.finals.length);
+  // Playoffs "started" = a real playoff fixture with both sides filled, not just placeholders.
+  const playoffsStarted = summaryRows.some((r) => [...r.quarterfinals, ...r.semifinals, ...r.finals].some((m: any) => m.player_a_member_id && m.player_b_member_id));
+
   // Configured championship outcome + awards (null = keep existing behaviour).
   const awardsCfg = isStructured && !diamondEvent ? readStandingsAwards(arch?.beta_lifecycle) : null;
   const toOutcomeRow = (g: number) => (r: any): OutcomeRow => ({
@@ -4033,20 +4038,17 @@ export default function ClubChampsView() {
         )}
         {summary}
         {renderOutcomeSummary()}
-        {structuredSummary.length > 0 && awardsCfg?.outcome !== "team" && <Card data-testid="tournament-summary">
-          <CardHeader className="py-3 px-4"><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4 text-primary" />Tournament Summary</CardTitle></CardHeader>
-          <CardContent className="px-4 pb-3 pt-0">
+        {summaryRows.length > 0 && awardsCfg?.outcome !== "team" && <CollapsibleSummary storageKey={`sh.champ-summary-open.${champId}`} defaultOpen={playoffsStarted}>
             <div className="hidden md:grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)] gap-3 border-b pb-1 text-xs text-muted-foreground font-medium">
               <span>Category</span><span>Semifinals</span><span>Final</span><span>Winner</span>
             </div>
-            {structuredSummary.map((r) => <div key={r.category.group} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)] gap-2 md:gap-3 border-b last:border-b-0 py-2.5 min-w-0">
+            {summaryRows.map((r) => <div key={r.category.group} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)] gap-2 md:gap-3 border-b last:border-b-0 py-2.5 min-w-0">
               <div className="min-w-0"><span className="font-semibold text-sm break-words">{r.category.label}</span><p className="text-xs text-muted-foreground">{r.status}</p></div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Semifinals</span>{r.semifinals.length ? r.semifinals.map(summaryMatch) : <span className="text-xs text-muted-foreground">{r.quarterfinals.length ? "Quarterfinals in progress" : r.category.firstStage === "final" ? "Not configured" : r.category.fieldReady ? "Field ready" : "Awaiting qualification"}</span>}</div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Final</span>{r.finals.length ? r.finals.map(summaryMatch) : <span className="text-xs text-muted-foreground">Awaiting finalists</span>}</div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Winner</span>{r.champion ? <span className="inline-flex items-start gap-1 text-xs font-bold text-primary break-words"><Trophy className="h-3.5 w-3.5 shrink-0" />{playoffResult(r.champion).winnerSide === "a" ? getMatchTeamA(r.champion) : getMatchTeamB(r.champion)}</span> : <span className="text-xs text-muted-foreground">{awardsCfg?.outcome === "none" ? "No overall winner" : "—"}</span>}</div>
             </div>)}
-          </CardContent>
-        </Card>}
+        </CollapsibleSummary>}
         {!isStructured && <TournamentNextActionBar
           champId={champId!}
           canManage={canManage}
@@ -4123,4 +4125,26 @@ export default function ClubChampsView() {
 
   }
 
+}
+
+
+/** Tournament Summary card: collapsed until playoffs start; remembers a manual toggle per tournament. */
+function CollapsibleSummary({ storageKey, defaultOpen, children }: { storageKey: string; defaultOpen: boolean; children: React.ReactNode }) {
+  const [manual, setManual] = React.useState<boolean | null>(() => {
+    try { const v = localStorage.getItem(storageKey); return v === "1" ? true : v === "0" ? false : null; } catch { return null; }
+  });
+  const open = manual ?? defaultOpen;
+  const toggle = () => { const next = !open; setManual(next); try { localStorage.setItem(storageKey, next ? "1" : "0"); } catch { /* ignore */ } };
+  const id = `${storageKey}-panel`;
+  return <Card data-testid="tournament-summary" data-open={open}>
+    <CardHeader className="p-0">
+      <button type="button" onClick={toggle} aria-expanded={open} aria-controls={id} className="flex w-full items-center gap-2 px-4 py-3 text-left min-h-11">
+        <CardTitle className="flex flex-1 items-center gap-2 text-base"><Trophy className="h-4 w-4 text-primary" />Tournament Summary</CardTitle>
+        {!open && !defaultOpen && <span className="text-xs text-muted-foreground">Playoffs not started</span>}
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
+        <span className="sr-only">{open ? "Collapse" : "Expand"} tournament summary</span>
+      </button>
+    </CardHeader>
+    {open && <CardContent id={id} className="px-4 pb-3 pt-0">{children}</CardContent>}
+  </Card>;
 }

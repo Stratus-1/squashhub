@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { resolveBleMac } from "@/lib/shelly-ble-mac";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyBookings } from "@/hooks/use-data";
@@ -236,7 +237,7 @@ export function LiveSessionBanner() {
         courtId: currentBooking.court_id,
         courtName: court?.name,
         clubMemberId: activeMember?.id ?? null,
-        courtRelayBleMac: court?.relay_ble_mac ?? null,
+        courtRelayBleMac: resolveBleMac(court?.relay_ble_mac, court?.relay_device_id),
         ble: {
           enabled: !!s.ble_fallback_enabled,
           password: s.shelly_ble_control_password,

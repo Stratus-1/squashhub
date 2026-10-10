@@ -1258,6 +1258,8 @@ export default function Tournaments() {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles" || !!m.partner_a_member_id || !!m.partner_b_member_id;
     const isPlaceholder = m.status === "placeholder";
+    // A bye has no opponent — nothing to schedule, mark or score.
+    const isBye = isByeFixture(m);
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
     const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles, m) + hcLabel(m.handicap_a ?? m.n_a);
     const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles, m) + hcLabel(m.handicap_b ?? m.n_b);
@@ -1340,7 +1342,7 @@ export default function Tournaments() {
     // Dragging is only allowed once the admin has actually grabbed the handle.
     // Making the whole row draggable meant a normal finger-scroll over the
     // list could pick a fixture up and drop it on another slot.
-    const canDrag = isClubAdmin && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
+    const canDrag = isClubAdmin && !isByeFixture(m) && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
     const armed = dragArmedId === m.id;
     const isDragging = dragId === m.id;
     const draggingMatch = dragId ? (allMatches as any[]).find((x) => x.id === dragId) : null;
@@ -1529,7 +1531,7 @@ export default function Tournaments() {
           // Set / move the court & time. Available to the two players in this
           // match and to club / tournament admins — same rule as the standings
           // page, so a player can arrange their own game from the games list.
-          if (isPlaceholder) return null;
+          if (isPlaceholder || isBye) return null;
           const perm = canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin, centrallyScheduled: isMatchCentrallyScheduled(m) });
           if (!perm.allowed) return null;
           return (
@@ -1548,7 +1550,7 @@ export default function Tournaments() {
           // Capture a score for a game already played away from the marker.
           // Allowed for the two players in THIS match, club/tournament admins
           // and super admins — never for an uninvolved player.
-          if (isPlaceholder) return null;
+          if (isPlaceholder || isBye) return null;
           const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps || isClubAdmin, anyClubMember: true });
           if (!perm.allowed) return null;
           return (
@@ -1572,7 +1574,7 @@ export default function Tournaments() {
             format's marker button; self-scheduled knockout matches offer the
             same thing to the two players as "Score it live". */}
         {(() => {
-          if (isPlaceholder) return null;
+          if (isPlaceholder || isBye) return null;
           const selfScheduled = stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "self";
           if (selfScheduled) {
             const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
@@ -1602,7 +1604,7 @@ export default function Tournaments() {
           );
         })()}
 
-        {isClubAdmin && m.scheduled_date && m.scheduled_time && (
+        {isClubAdmin && !isBye && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton
             match={m}
             allMatches={allMatches.filter((x: any) => x.champ_id === m.champ_id && x.id !== m.id && x.status !== "placeholder" && x.status !== "completed")}
@@ -1627,7 +1629,7 @@ export default function Tournaments() {
           />
         )}
 
-        {(isClubAdmin || canManageChamps) && (
+        {(isClubAdmin || canManageChamps) && !isBye && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

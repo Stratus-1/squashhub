@@ -153,7 +153,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     fireEvent.click(screen.getByRole("button", { name: /Close registrations & finalise entries/ }));
     await waitFor(() => expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step"));
     expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
-    expect(screen.getByText(/Decide these first/).parentElement?.textContent).toMatch(/Seeding/);
+    expect(screen.getByText(/Blocked because/).textContent).toMatch(/Seeding/);
     expect(screen.getByText(/expected 8 pairs/)).toBeInTheDocument();
     screen.getAllByRole("button", { name: /Generate draw & fixtures/ }).forEach((b) => expect(b).toBeDisabled());
 

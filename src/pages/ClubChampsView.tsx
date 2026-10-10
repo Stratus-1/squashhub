@@ -1,3 +1,4 @@
+import * as React from "react";
 import { KnockoutNextActions } from "@/components/smart-builder/KnockoutNextActions";
 import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
 import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";

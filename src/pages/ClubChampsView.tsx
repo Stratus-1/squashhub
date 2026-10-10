@@ -920,7 +920,7 @@ export default function ClubChampsView() {
                   <td className="py-2 font-medium min-w-24">
                     <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2", opts?.koStatus && progress?.eliminated ? "text-destructive" : (isPulledOut(s) || progress?.eliminated) && "text-muted-foreground")}>{s.name}</span>
                     {isPulledOut(s) && <Badge variant="outline" className="text-[9px] ml-1">Withdrawn</Badge>}
-                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge variant="secondary" className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>}{!opts?.historical && isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
+                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && (s.swissInProgress ? <Badge variant="outline" className="text-[9px] ml-1 whitespace-nowrap" title="Swiss rounds still to play — the winner is decided after the last round">Current leader</Badge> : <Badge variant="secondary" className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>)}{!opts?.historical && isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
                     {progress?.label && <span className="block text-[10px] font-normal text-muted-foreground no-underline leading-tight mt-0.5">{progress.label}</span>}
                   </td>
                   {showPool && (

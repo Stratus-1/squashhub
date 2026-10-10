@@ -682,7 +682,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 hasDraw && !rebuildOk && "tick \"Replace the existing draw\" above",
                 !confirmed && "tick \"I confirm this is the final format\"",
                 errors.length > 0 && "fix the red items listed above",
-                !schedOk && "make the court times fit (see scheduling box below)",
+                !schedOk && "make the court times fit (see scheduling box above)",
               ].filter(Boolean).join(" · ")}
             </p>
           )}

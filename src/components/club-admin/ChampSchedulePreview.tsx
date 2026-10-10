@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { fromExt } from "@/lib/supabase-ext";
+import { isByeFixture } from "@/lib/tournaments/bye-side";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/swiss-pairing";
@@ -266,11 +267,11 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
     // Placeholder-aware side label — reserved playoff/finals slots have no
     // player yet but carry a human-readable placeholder ("Winner Pool A").
     const sideLabel = (player: any, playerId: string | null, partner: any, partnerId: string | null, placeholder: string | null, isBye: boolean) => {
-      if (!playerId) return placeholder || (isBye ? "Bye" : "TBC");
+      if (!playerId) return placeholder || (isBye ? "BYE" : "TBC");
       return isDoubles ? getTeam(player, playerId, partner, partnerId) : getName(player, playerId);
     };
-    const teamA = sideLabel(m.player_a, m.player_a_member_id, m.partner_a, m.partner_a_member_id, m.placeholder_a, !!m.is_bye) + (Number(m.handicap_a) ? ` (${Number(m.handicap_a)})` : "");
-    const teamB = sideLabel(m.player_b, m.player_b_member_id, m.partner_b, m.partner_b_member_id, m.placeholder_b, !!m.is_bye) + (Number(m.handicap_b) ? ` (${Number(m.handicap_b)})` : "");
+    const teamA = sideLabel(m.player_a, m.player_a_member_id, m.partner_a, m.partner_a_member_id, m.placeholder_a, isByeFixture(m)) + (Number(m.handicap_a) ? ` (${Number(m.handicap_a)})` : "");
+    const teamB = sideLabel(m.player_b, m.player_b_member_id, m.partner_b, m.partner_b_member_id, m.placeholder_b, isByeFixture(m)) + (Number(m.handicap_b) ? ` (${Number(m.handicap_b)})` : "");
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const bKey = bucketKeyOf(m);

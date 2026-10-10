@@ -37,7 +37,8 @@ import { divisionPools } from "@/lib/tournaments/active-draw";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { loadLeagueAverageStandings } from "@/lib/tournament-formats/league-average-handicap";
-import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
+import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton"
+import { isByeFixture } from "@/lib/tournaments/bye-side";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
 import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
@@ -1239,11 +1240,11 @@ export default function ClubChampsView() {
   const getMatchTeamA = (m: any) =>
     (m.player_a_member_id
       ? (matchIsDoubles(m) ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a))
-      : (m.placeholder_a || "TBD")) + hcLabel(m.handicap_a);
+      : (m.placeholder_a || (isByeFixture(m) ? "BYE" : "TBD"))) + hcLabel(m.handicap_a);
   const getMatchTeamB = (m: any) =>
     (m.player_b_member_id
       ? (matchIsDoubles(m) ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b))
-      : (m.placeholder_b || "TBD")) + hcLabel(m.handicap_b);
+      : (m.placeholder_b || (isByeFixture(m) ? "BYE" : "TBD"))) + hcLabel(m.handicap_b);
 
   // Saved games, not pool rank/colour, determine the late-stage overview.
   const structuredSummary = isStructured && !diamondEvent && arch?.builder_spec?.divisions?.length ? (() => {
@@ -2639,7 +2640,7 @@ export default function ClubChampsView() {
                       const opponent = isA ? getMatchTeamB(m) : getMatchTeamA(m);
                       const won = m.winner_member_id === myMemberId;
                       const lost = m.winner_member_id && m.winner_member_id !== myMemberId;
-                      const isBye = !!m.is_bye;
+                      const isBye = isByeFixture(m);
 
                       const dateLabel = m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : isBye ? `Round ${m.round_number}` : "TBD";
                       const timeLabel = isBye ? "—" : (m.scheduled_time?.slice(0, 5) || "TBD");

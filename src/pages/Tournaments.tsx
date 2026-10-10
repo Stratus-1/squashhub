@@ -1574,7 +1574,7 @@ export default function Tournaments() {
             format's marker button; self-scheduled knockout matches offer the
             same thing to the two players as "Score it live". */}
         {(() => {
-          if (isPlaceholder) return null;
+          if (isPlaceholder || isBye) return null;
           const selfScheduled = stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "self";
           if (selfScheduled) {
             const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
@@ -1604,7 +1604,7 @@ export default function Tournaments() {
           );
         })()}
 
-        {isClubAdmin && m.scheduled_date && m.scheduled_time && (
+        {isClubAdmin && !isBye && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton
             match={m}
             allMatches={allMatches.filter((x: any) => x.champ_id === m.champ_id && x.id !== m.id && x.status !== "placeholder" && x.status !== "completed")}
@@ -1629,7 +1629,7 @@ export default function Tournaments() {
           />
         )}
 
-        {(isClubAdmin || canManageChamps) && (
+        {(isClubAdmin || canManageChamps) && !isBye && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

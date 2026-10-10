@@ -785,6 +785,13 @@
       "when": 1791635063935,
       "tag": "0111_fix_finance_decide_temp_table_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1791661573283,
+      "tag": "0112_guard_swiss_round_progression",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { swissTable } from "./swiss-standings";
+import { swissRoundGate } from "./swiss-round-gate";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";

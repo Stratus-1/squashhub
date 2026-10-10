@@ -527,6 +527,22 @@ export default function ClubChampsView() {
     return isSwissMode;
   };
   const swissPoolsCfg: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
+  /**
+   * Is this group's main stage Swiss? Structured tournaments decide per stage from the spec (the
+   * legacy `scoring_mode` may still say "standard" and must not decide Swiss ranking); legacy
+   * tournaments fall back to their Swiss config. Returns the tie-break order and round count.
+   */
+  const swissStageFor = (gn: number): { tieBreaks?: string[]; rounds: number | null } | null => {
+    if (isStructured) {
+      const spec = arch?.builder_spec;
+      const d = (spec?.divisions ?? []).find((x: any) => divisionGroup(spec, x) === gn);
+      const st = [...(d?.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
+      return st?.kind === "swiss" ? { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null } : null;
+    }
+    if (!isSwissForLeague(gn)) return null;
+    const r = Number(((champ as any)?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
+    return { rounds: Number.isFinite(r) && r > 0 ? r : null };
+  };
   /** Round robin divisions can also be split into pools (post-pool playoffs). */
   const isRoundRobinForLeague = (gn: number) => {
     const perLeague = leagueFormatsCfg?.[String(gn)];

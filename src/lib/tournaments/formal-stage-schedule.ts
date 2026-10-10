@@ -332,7 +332,21 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
   const spec: any = (t as any).builder_spec;
   const plan: any = (t as any).beta_lifecycle?.format_plan;
   const fixed = ((spec?.divisions ?? []) as any[]).flatMap((d) => d.stages ?? []).filter((s: any) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
-  const days = planDays(plan);
+  // Plan days first; a tournament scheduled through Stages & scheduling ("Scheduled" rounds)
+  // stores its sessions in answers.stages instead — those become the days when the plan has none.
+  let days = planDays(plan);
+  const scheduledRounds: number[] = [];
+  if (!days.length) {
+    const stages: any[] = ((t as any).beta_lifecycle?.answers?.stages ?? []).filter((s: any) => (s.phase ?? "main") === "main");
+    for (let i = 0; i < stages.length; i++) {
+      const s = stages[i];
+      if (s.mode !== "scheduled") continue;
+      scheduledRounds.push(i + 1);
+      const courtIds = ((s.courtIds ?? []) as any[]).map(Number).filter(Number.isFinite);
+      for (const d of [s, ...(s.extraDays ?? [])]) if (d?.date && d?.from && d?.to)
+        days.push({ date: String(d.date).slice(0, 10), from: String(d.from).slice(0, 5), to: String(d.to).slice(0, 5), courtIds });
+    }
+  }
   const rulesMode = ([] as any[]).concat((t as any).rules ?? [])[0]?.scoring_mode;
   const fmt = resolveTimedFormat({ plan, labels: ((t as any).group_labels ?? {}) as Record<string, string>, rulesMode, matchMinutes: Number((t as any).match_duration_minutes) || null });
   const { bells, minutes } = fmt;

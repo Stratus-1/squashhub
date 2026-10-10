@@ -39,7 +39,11 @@ export function normaliseSchedulingPrefs(raw: any): SchedulingPrefs {
   const categoryCourts: CategoryCourtRule[] = Array.isArray(raw?.categoryCourts)
     ? raw.categoryCourts
         .filter((r: any) => r && typeof r.key === "string")
-        .map((r: any) => ({ key: r.key, rule: r.rule === "only" ? "only" : "preferred", courtIds: ((r.courtIds ?? []) as any[]).map(Number).filter(Number.isFinite), weekdays: [...new Set(((r.weekdays ?? []) as any[]).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] }))
+        .map((r: any) => {
+          const out: CategoryCourtRule = { key: r.key, rule: r.rule === "only" ? "only" : "preferred", courtIds: ((r.courtIds ?? []) as any[]).map(Number).filter(Number.isFinite) };
+          if (Array.isArray(r.weekdays)) out.weekdays = [...new Set((r.weekdays as any[]).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))];
+          return out;
+        })
     : [];
   return { rest, courts, categoryCourts };
 }

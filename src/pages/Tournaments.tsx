@@ -151,21 +151,6 @@ export default function Tournaments() {
   // agrees on what "current" means (see src/lib/tournaments/lifecycle.ts).
   const { current: champs, past: pastChamps, needsDates: undatedChamps } =
     splitTournamentsByLifecycle(allChamps as any[], todayStr);
-  // Exactly one active tournament: open its full championship view directly
-  // (once per session) instead of embedding it here. Browser Back returns to
-  // this tab and shows the compact card without re-navigating (no loop).
-  const singleChamp = champs.length === 1 ? (champs[0] as any) : null;
-  const singleChampId = singleChamp?.id ?? null;
-  const [autoOpenedChamp, setAutoOpenedChamp] = useState<string | null>(null);
-  useEffect(() => {
-    if (!singleChampId) return;
-    const key = `sh.autoOpenChamp.${singleChampId}`;
-    try {
-      if (sessionStorage.getItem(key) === "1") { setAutoOpenedChamp(singleChampId); return; }
-      sessionStorage.setItem(key, "1");
-    } catch { /* storage unavailable: still navigate once */ }
-    navigate(`/club-champs/${singleChampId}`);
-  }, [singleChampId, navigate]);
   // Beta matchups (e.g. Men's A vs Men's B): games are stored under the first group, so labels must name both sides.
   const muChampIdsKey = (allChamps as any[]).map((c: any) => c.id).sort().join(",");
   const { data: matchupsByChamp } = useQuery({

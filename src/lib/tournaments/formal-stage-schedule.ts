@@ -367,6 +367,7 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
   }
   return {
     days, minutes, bells, waves: !!plan?.waves, fixedStages: fixed.length > 0,
+    scheduledRounds,
     roundDates: ((fixed[0]?.schedule?.roundDates ?? []) as string[]).map((x) => String(x).slice(0, 10)),
     prefs: normaliseSchedulingPrefs((t as any).beta_lifecycle?.scheduling_prefs),
     labels: ((t as any).group_labels ?? {}) as Record<string, string>, entryGroup, busyOther,

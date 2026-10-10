@@ -211,7 +211,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
         )}
         {diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}
-        {diamond === false && <StepSwissRoundsPanel tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
+        {diamond === false && <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
         {!revisiting && diamond === false && <StepKnockoutRoundsPanel tournamentId={tournamentId} plan={life?.format_plan as any} />}
         {!revisiting && (
           <StepRunOverview clubId={clubId} tournamentId={tournamentId} plan={life?.format_plan as any}

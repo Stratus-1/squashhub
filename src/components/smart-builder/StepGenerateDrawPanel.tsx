@@ -1,6 +1,6 @@
 import { patchTournamentPlanFormat } from "@/lib/smart-builder/step-storage";
 import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
-import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients } from "@/lib/smart-builder/draw-notice";
+import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients, drawNotifyOn, recordDrawNotice } from "@/lib/smart-builder/draw-notice";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor } from "./DrawNoticeEditor";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
@@ -113,6 +113,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       fromExt("club_champs_matches").select("id, status, winner_member_id").eq("champ_id", tournamentId),
     ]);
     const tt = t as any;
+    // Saved "Draw notifications" setting: Ask me after each draw (default) vs Off.
+    setNotifyDraw(drawNotifyOn(tt?.beta_lifecycle));
     setPoolMode(normalisePoolAllocation(tt?.pool_allocation));
     const games = (ms ?? []) as any[];
     setExisting({ games: games.length, played: games.filter((m) => m.winner_member_id || ["completed", "confirmed", "in_progress", "live", "walkover", "forfeit"].includes(String(m.status ?? "").toLowerCase())).length });
@@ -552,6 +554,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], true);
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
+      await recordDrawNotice(tournamentId, "all:r1", dispatched?.sent ?? 0).catch(() => {});
       closeAsk();
     } catch (e: any) { toast.error(`Players weren't notified: ${e.message ?? e}`); }
     finally { setSending(false); }

@@ -12,31 +12,35 @@ import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { swissDivisionProgress, type SwissDivisionProgress } from "@/lib/tournaments/swiss-progress";
 import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
 import { applySetupSessions } from "@/lib/smart-builder/session-slots";
+import { drawNoticeKey, drawNoticeSent, drawNotifyOn, type DrawScope } from "@/lib/smart-builder/draw-notice";
+import { DrawNoticeDialog } from "./DrawNoticeDialog";
+import { Send } from "lucide-react";
 
 /**
  * Admin-guided Swiss progression in Manage Tournament, one card per division:
  * finish Round X → Set up Round X+1 (setup › Stages & scheduling) → Generate Round X+1 Draw (confirm).
  * A saved round schedule is detected so it never has to be set up twice.
  */
-export function StepSwissRoundsPanel({ tournamentId, onSetupRound }: { tournamentId: string; onSetupRound: () => void }) {
+export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { clubId: string; tournamentId: string; onSetupRound: () => void }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [ask, setAsk] = useState<SwissDivisionProgress | null>(null);
+  const [notice, setNotice] = useState<DrawScope | null>(null);
   const { data, refetch } = useQuery({
     queryKey: ["step-swiss-rounds", tournamentId],
     refetchInterval: 30000,
     queryFn: async () => {
       const [{ data: t }, { data: matches }] = await Promise.all([
-        fromExt("tournaments").select("builder_spec, builder_architecture, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
+        fromExt("tournaments").select("name, builder_spec, builder_architecture, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
         fromExt("club_champs_matches").select("*").eq("champ_id", tournamentId),
       ]);
       const spec = (t as any)?.builder_architecture === "structured" ? ((t as any)?.builder_spec as TournamentSpec | null) : null;
       const bl = (t as any)?.beta_lifecycle ?? {};
-      return { spec, matches: (matches ?? []) as any[], plan: (bl.answers?.stages ?? bl.format_plan?.stages ?? []) as any[] };
+      return { name: String((t as any)?.name ?? "Tournament"), bl, spec, matches: (matches ?? []) as any[], plan: (bl.answers?.stages ?? bl.format_plan?.stages ?? []) as any[] };
     },
   });
   if (!data?.spec || !data.matches.length) return null;
-  const { spec, matches, plan } = data;
+  const { spec, matches, plan, bl, name } = data;
   const rows = swissDivisionProgress(spec.divisions as any, (di, sid) => {
     const d = spec.divisions[di];
     return matches.filter((m) => m.group_number === di + 1 && m.stage_key === sid).map((m) => toFixtureRow(d.divisionId, m, "swiss"));
@@ -55,8 +59,11 @@ export function StepSwissRoundsPanel({ tournamentId, onSetupRound }: { tournamen
         const mine = rs.find((x) => x.round === (r.gate as any).nextRound);
         if (mine?.unplaced) toast.error(`${mine.unplaced} game(s) could not be given a court time in ${mine.name} — widen the times or add courts.`);
       } catch (e: any) { toast.error(`Games created but not placed on courts: ${e.message ?? e}`); }
-      toast.success(`${r.label}: Round ${(r.gate as any).nextRound} draw generated. No messages were sent.`);
-      await refetch();
+      const round = (r.gate as any).nextRound as number;
+      toast.success(`${r.label}: Round ${round} draw generated.`);
+      const latest = await refetch();
+      // Saved "Draw notifications": Ask me after each draw → prompt now (never auto-send); Off → no prompt.
+      if (drawNotifyOn(latest.data?.bl)) setNotice({ round, groupNumber: r.divisionIndex + 1, label: r.label });
       qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(tournamentId) });
     } catch (e: any) {
       toast.error(String(e.message ?? e));
@@ -80,6 +87,14 @@ export function StepSwissRoundsPanel({ tournamentId, onSetupRound }: { tournamen
                 <div className="flex items-start gap-1.5"><Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span>{r.gate.message}{r.current.pending.length > 0 && r.current.pending.length <= 6 ? " Still open: " + r.current.pending.length + " match(es)." : ""}</span></div>
               )}
+              {r.current.round >= 1 && r.action !== "none" && (() => {
+                const sc: DrawScope = { round: r.current.round, groupNumber: r.divisionIndex + 1, label: r.label };
+                const sent = drawNoticeSent(bl, drawNoticeKey(sc));
+                return <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setNotice(sc)}><Send className="mr-1 h-3.5 w-3.5" />{sent ? `Resend Round ${sc.round} draw` : `Send Round ${sc.round} draw to players`}</Button>
+                  <span className="text-muted-foreground">{sent ? `Sent ${new Date(sent.at).toLocaleString()} · ${sent.sent} deliveries` : "Not sent yet"}</span>
+                </div>;
+              })()}
               {r.action === "final" && <div className="flex items-center gap-1.5 font-medium"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Final standings — all {r.swissRounds} rounds complete</div>}
               {r.action === "setup_round" && (
                 <div className="flex flex-wrap items-center gap-2">
@@ -101,12 +116,14 @@ export function StepSwissRoundsPanel({ tournamentId, onSetupRound }: { tournamen
         })}
       </ul>
       <p className="text-muted-foreground">Each category moves on by itself. Only one round is ever created at a time; finished rounds and results are never changed. <Link className="text-primary underline" to={`/club-champs/${tournamentId}`}>Open draw & results</Link></p>
+      <DrawNoticeDialog open={!!notice} onClose={() => setNotice(null)} clubId={clubId} tournamentId={tournamentId} tournamentName={name}
+        scope={notice} sentBefore={notice ? drawNoticeSent(bl, drawNoticeKey(notice)) : null} onSent={() => refetch()} />
       <AlertDialog open={!!ask} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Generate Round {ask?.gate.state === "ready" ? ask.gate.nextRound : ""} draw for {ask?.label}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Players are paired by match wins and tie-breaks from the latest results, without repeat opponents, and games are placed into the saved round schedule. Nothing is sent to players.
+              Players are paired by match wins and tie-breaks from the latest results, without repeat opponents, and games are placed into the saved round schedule. Nothing is sent automatically — you'll be asked whether to send the draw.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,3 +1,9 @@
+### 2026-10-10 — Single current tournament standings required another navigation
+- **Symptom:** Member Tournaments Standings showed only a compact View Standings card for Riverside.
+- **Finding:** The tab never used the category standings renderer.
+- **Fix:** Exactly one current tournament with standings renders inline, with category switching and a manual collapse control; multiple tournaments retain compact selections. Parent-owned entries, matches, rounds and architecture are passed into the existing renderer. Inline mode disables duplicate primary reads and legacy auto-progression; loading waits for standings inputs.
+- **Guard:** Component tests cover default expansion and collapse/reopen; authenticated Riverside desktop/mobile checks preserve results and verify category switching. No stored results, draws, ranking calculations or leagues changed.
+
 ### 2026-10-09 — Stock purchase lines lacked item search
 - Purchase invoice lines now use a searchable item picker: type part of an item or category name, filter by Bar or Shop, and choose from items grouped under the same category headings the menu and stock take use, with a per-item measure hint and an X of Y count. Archived items, specials and option rows stay excluded, and selection still reports the same value with unit cost auto-filled as before.
 - Verified in Riverside Bar / POS: the picker opens, searching "beer" narrows 237 items to 6, and choosing "Coke Bulk" fills the line (qty 1, cost R10, total R10) with no errors. The invoice was not recorded, so no stock, ledger or supplier data changed. Preview only, nothing published.

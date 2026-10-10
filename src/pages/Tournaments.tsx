@@ -1531,7 +1531,7 @@ export default function Tournaments() {
           // Set / move the court & time. Available to the two players in this
           // match and to club / tournament admins — same rule as the standings
           // page, so a player can arrange their own game from the games list.
-          if (isPlaceholder) return null;
+          if (isPlaceholder || isBye) return null;
           const perm = canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin, centrallyScheduled: isMatchCentrallyScheduled(m) });
           if (!perm.allowed) return null;
           return (
@@ -1550,7 +1550,7 @@ export default function Tournaments() {
           // Capture a score for a game already played away from the marker.
           // Allowed for the two players in THIS match, club/tournament admins
           // and super admins — never for an uninvolved player.
-          if (isPlaceholder) return null;
+          if (isPlaceholder || isBye) return null;
           const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps || isClubAdmin, anyClubMember: true });
           if (!perm.allowed) return null;
           return (

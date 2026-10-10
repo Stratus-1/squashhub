@@ -2,7 +2,11 @@
  * Places a round's games into the court sessions set up in Stages & scheduling
  * (day → start/end time → courts), one game per court per slot of `slotMinutes`.
  * Pure: returns assignments; games that don't fit stay unscheduled (play-by).
+ * Active scheduling preferences (category courts/evenings, rest) use the shared
+ * `planPrefWaves` planner; when they cannot fit everything, plain placement is used.
  */
+import { normaliseSchedulingPrefs, planPrefWaves, prefsActive } from "@/lib/tournaments/scheduling-prefs";
+
 export type SessionDay = { date: string; from: string; to: string; courtIds: Array<string | number> };
 export type SlotAssignment = { id: string; scheduled_date: string; scheduled_time: string; court_id: number };
 

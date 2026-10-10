@@ -917,6 +917,7 @@ export default function ClubChampsView() {
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
               const rowStyle = getRankRowStyle(i, competitors.length);
+              const tinted = !(opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed));
               const isWinner = !opts?.koStatus && allPlayed && i === 0;
               const isLast = !opts?.koStatus && allPlayed && i === competitors.length - 1;
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
@@ -963,7 +964,8 @@ export default function ClubChampsView() {
                       <td className="py-2 text-center">{s.won}</td>
                       <td className="py-2 text-center">{s.lost}</td>
                       {!opts?.koStatus && standingsColumns.map((col) => (
-                        <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
+                        // On rank-tinted rows, muted text fails contrast — inherit the row's readable colour instead.
+                        <td key={col.key} className={cn("py-2 text-center", tinted ? col.cellClassName?.replace("text-muted-foreground", "") : col.cellClassName)}>{col.render(s)}</td>
                       ))}
                     </>
                   )}
@@ -1150,7 +1152,10 @@ export default function ClubChampsView() {
       const specDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
       const rows = getGroupStandings(gn);
       const statuses = specDivision ? historicalPoolStatuses(specDivision, (matches as any[]).filter((m: any) => m.group_number === gn), rows.map((r: any) => ({ memberId: r.club_member_id, partnerId: r.partner_member_id }))) : undefined;
-      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision, statuses });
+      // Swiss groups keep the live rank heat colours (and the Current leader /
+      // Winner badge logic) even in structured tournaments — they are ongoing,
+      // not historical pools.
+      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn), statuses });
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view
@@ -1232,7 +1237,7 @@ export default function ClubChampsView() {
                 </>
               }
             >
-              {s.length > 0 ? renderStandingsTable(s, { historical: true, statuses }) : (
+              {s.length > 0 ? renderStandingsTable(s, { historical: !swissStageFor(gn), statuses }) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
               )}
             </CollapsibleSection>

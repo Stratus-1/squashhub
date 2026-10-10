@@ -87,6 +87,7 @@ const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'",
 import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
+import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwardsSection";
@@ -527,6 +528,22 @@ export default function ClubChampsView() {
     return isSwissMode;
   };
   const swissPoolsCfg: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
+  /**
+   * Is this group's main stage Swiss? Structured tournaments decide per stage from the spec (the
+   * legacy `scoring_mode` may still say "standard" and must not decide Swiss ranking); legacy
+   * tournaments fall back to their Swiss config. Returns the tie-break order and round count.
+   */
+  const swissStageFor = (gn: number): { tieBreaks?: string[]; rounds: number | null } | null => {
+    if (isStructured) {
+      const spec = arch?.builder_spec;
+      const d = (spec?.divisions ?? []).find((x: any) => divisionGroup(spec, x) === gn);
+      const st = [...(d?.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
+      return st?.kind === "swiss" ? { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null } : null;
+    }
+    if (!isSwissForLeague(gn)) return null;
+    const r = Number(((champ as any)?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
+    return { rounds: Number.isFinite(r) && r > 0 ? r : null };
+  };
   /** Round robin divisions can also be split into pools (post-pool playoffs). */
   const isRoundRobinForLeague = (gn: number) => {
     const perLeague = leagueFormatsCfg?.[String(gn)];
@@ -754,6 +771,38 @@ export default function ClubChampsView() {
       } as any);
     });
 
+    // Swiss stages (structured or legacy): the SAME shared table the next-round pairing uses —
+    // match wins, then Buchholz → Sonneborn-Berger (or the stage's configured order), then seed.
+    // Games won / game difference stay on the row as information only.
+    const swiss = !mu && !isCrossLeague ? swissStageFor(groupNum) : null;
+    if (swiss) {
+      const keyOf = (r: any) => (isDoubles && r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id);
+      const byMember = new Map<string, string>();
+      rows.forEach((r: any) => { byMember.set(r.club_member_id, keyOf(r)); if (r.partner_member_id) byMember.set(r.partner_member_id, keyOf(r)); });
+      const seeded = [...groupEntries].sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0)).map(keyOf);
+      const seedOrder = [...seeded, ...rows.map(keyOf).filter((k: string) => !seeded.includes(k))];
+      const games = [
+        ...groupMatches.map((m: any) => ({
+          a: byMember.get(m.player_a_member_id) ?? null,
+          b: byMember.get(m.player_b_member_id) ?? null,
+          winner: m.winner_member_id ? byMember.get(m.winner_member_id) ?? null : null,
+        })).filter((g) => g.a && g.b),
+        ...groupByes.filter((m: any) => isPoolStage(m)).map((m: any) => ({ a: byMember.get(m.bye_member_id || m.player_a_member_id) ?? null, b: null, winner: null })).filter((g) => g.a),
+      ];
+      const table = swissTable(seedOrder, games, swiss.tieBreaks);
+      const byKey = new Map(table.map((t) => [t.id, t]));
+      const swissGames = groupMatchesAll.filter((m: any) => (m.round_number ?? 0) > 0);
+      const lastRound = Math.max(0, ...swissGames.map((m: any) => Number(m.round_number) || 0));
+      const allDone = swissGames.length > 0 && swissGames.every((m: any) => m.status === "completed");
+      const finished = allDone && (swiss.rounds == null || lastRound >= swiss.rounds);
+      return rows
+        .map((r: any) => {
+          const t = byKey.get(keyOf(r));
+          return { ...r, points: t?.points ?? 0, won: t?.wins ?? r.won, buchholz: t?.buchholz ?? 0, sonnebornBerger: t?.sonnebornBerger ?? 0, swissPosition: t?.position ?? 1e9, swissInProgress: !finished };
+        })
+        .sort((a: any, b: any) => a.swissPosition - b.swissPosition);
+    }
+
     // Structured (Beta) pools/round robins: the SAME tie-break engine as play-off qualification, so the
     // table can never show a different order from the one the next stage is built from.
     const spec = isStructured ? arch?.builder_spec : null;
@@ -871,7 +920,7 @@ export default function ClubChampsView() {
                   <td className="py-2 font-medium min-w-24">
                     <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2", opts?.koStatus && progress?.eliminated ? "text-destructive" : (isPulledOut(s) || progress?.eliminated) && "text-muted-foreground")}>{s.name}</span>
                     {isPulledOut(s) && <Badge variant="outline" className="text-[9px] ml-1">Withdrawn</Badge>}
-                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && <Badge variant="secondary" className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>}{!opts?.historical && isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
+                    {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}{isWinner && !isPulledOut(s) && (s.swissInProgress ? <Badge variant="outline" className="text-[9px] ml-1 whitespace-nowrap" title="Swiss rounds still to play — the winner is decided after the last round">Current leader</Badge> : <Badge variant="secondary" className="text-[9px] ml-1 whitespace-nowrap">🏆 {opts?.historical ? "Pool winner" : "Winner"}</Badge>)}{!opts?.historical && isLast && <Badge variant="outline" className="text-[9px] ml-1">Last</Badge>}
                     {progress?.label && <span className="block text-[10px] font-normal text-muted-foreground no-underline leading-tight mt-0.5">{progress.label}</span>}
                   </td>
                   {showPool && (

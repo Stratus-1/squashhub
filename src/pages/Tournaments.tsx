@@ -881,6 +881,8 @@ export default function Tournaments() {
     const groups = new Map<string, any[]>();
     const order = new Map<string, number>();
     list.forEach((m) => {
+      // A bye is not a game to play — it never appears in the games list.
+      if (isByeFixture(m)) return;
       const n = Number(m.round_number);
       const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
       const key = num === 0 ? "\u0000pool" : roundGroupKey(m);
@@ -935,7 +937,7 @@ export default function Tournaments() {
           // the filtered view — and only for the tournaments shown here.
           const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
-            if (m.status === "placeholder" || !champsHere.has(m.champ_id)) return false;
+            if (m.status === "placeholder" || isByeFixture(m) || !champsHere.has(m.champ_id)) return false;
             const r = Number(m.round_number);
             const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
             return isPool ? num === 0 : num !== 0 && roundGroupKey(m) === key;

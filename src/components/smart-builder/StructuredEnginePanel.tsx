@@ -89,7 +89,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
                   <Button size="sm" variant="outline" disabled={!!busy || gate.state !== "ready"} onClick={() => {
                     if (gate.state !== "ready") return;
                     if (!confirm(`Generate Round ${gate.nextRound} for ${d.label}? Pairings use the latest results, Swiss score groups and tie-breaks, and avoid repeat opponents.`)) return;
-                    run(`sw${s.id}`, () => generateNextSwissRound(champId, spec, di, s.id, matches), `Round ${gate.nextRound} generated`);
+                    run(`sw${s.id}`, () => generateNextSwissRound(champId, spec, di, s.id, matches), `Round ${gate.nextRound} generated — send it to players from Manage Tournament → Swiss rounds`);
                   }}>Generate Round {nextN}</Button>
                 )}
             </div>

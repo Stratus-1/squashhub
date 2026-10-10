@@ -2813,3 +2813,4 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 - 2026-10-10 follow-up: Swiss round gate (one round at a time, progress message, admin confirm, server trigger `guard_swiss_round_progression`, tests `src/test/swiss-round-gate.test.ts`).
 
 - 2026-10-10 Swiss Round 2 not offered in Manage Tournament: Generate Round button only lived in the collapsed admin card on the draw page; added StepSwissRoundsPanel (per-category Set up / Generate Round N Draw, detects saved round schedule). Mens B bye (null opponent, status scheduled) counts as final.
+- 2026-10-10 No "Send draw to players now?" after Swiss Round 2: new Generate Round N Draw path never prompted and the saved draw_notify setting was never read (Round 1 path always asked). Added DrawNoticeDialog per category+round, draw_notices log, Sent/Resend.

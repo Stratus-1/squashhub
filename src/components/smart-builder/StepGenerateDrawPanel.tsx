@@ -649,6 +649,10 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         </div>
       )}
 
+      {(seeded.some((d) => d.format.schedule.rule === "fixed") || hasDraw) && (
+        <SchedulingPreferencesSection tournamentId={tournamentId} categories={seeded.map((d) => ({ group: d.group, label: d.label }))} previewGames={timedPreview} useSaved={hasDraw && !rebuildOk} onFeasible={setSchedOk} />
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="font-medium">{hasDraw ? "Rebuild the draw (optional)" : "Confirm final format"} — using the {seeded.reduce((s, d) => s + d.units.length, 0)} current entries</div>
       </div>
@@ -678,7 +682,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 hasDraw && !rebuildOk && "tick \"Replace the existing draw\" above",
                 !confirmed && "tick \"I confirm this is the final format\"",
                 errors.length > 0 && "fix the red items listed above",
-                !schedOk && "make the court times fit (see scheduling box below)",
+                !schedOk && "make the court times fit (see scheduling box above)",
               ].filter(Boolean).join(" · ")}
             </p>
           )}
@@ -756,9 +760,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           </details>
           <p className="mt-1 text-muted-foreground">No courts are booked and no court times are invented. Players are not messaged by this step.</p>
         </div>
-      )}
-      {(seeded.some((d) => d.format.schedule.rule === "fixed") || hasDraw) && (
-        <SchedulingPreferencesSection tournamentId={tournamentId} categories={seeded.map((d) => ({ group: d.group, label: d.label }))} previewGames={timedPreview} useSaved={hasDraw && !rebuildOk} onFeasible={setSchedOk} />
       )}
       <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>
         <DialogContent>

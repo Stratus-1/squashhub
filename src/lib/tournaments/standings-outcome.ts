@@ -39,12 +39,39 @@ export function readStandingsAwards(betaLifecycle: any): StandingsAwards | null 
   };
 }
 
-/** Suggested starting point — only Champion on; new awards are always opt-in. */
-export function defaultStandingsAwards(opts: { doubles?: boolean; betweenGroups?: boolean }): StandingsAwards {
+/**
+ * Suggested starting point — only Champion on; new awards are always opt-in.
+ * When every category is decided by FINAL Swiss standings (no play-offs), winner = #1, runner-up = #2
+ * and the full 1..N ranking come from that table, so Champion, Runner-up and Final positions start on.
+ */
+export function defaultStandingsAwards(opts: { doubles?: boolean; betweenGroups?: boolean; swissOnly?: boolean }): StandingsAwards {
+  const swiss = !!opts.swissOnly && !opts.betweenGroups;
   return {
     outcome: opts.betweenGroups ? "team" : opts.doubles ? "pair" : "individual",
-    champion: true, runnerUp: false, topScorer: false, woodenSpoon: false, finalPositions: false,
+    champion: true, runnerUp: swiss, topScorer: false, woodenSpoon: false, finalPositions: swiss,
   };
+}
+
+export type DecidingKind = "swiss" | "swiss_playoffs" | "other";
+export interface CategoryDeciding { label: string; kind: DecidingKind; swissRounds?: number }
+
+/**
+ * How each category's winner is decided. Swiss with no later stage and no planned play-off for that
+ * category = "swiss" (final Swiss standings); Swiss followed by knockout/play-offs = "swiss_playoffs"
+ * (Swiss is qualification only); anything else keeps existing behaviour.
+ */
+export function decidingByCategory(spec: any, planStages?: Array<{ phase?: string; unit?: string }> | null): CategoryDeciding[] {
+  const norm = (x: string) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ((spec?.divisions ?? []) as any[]).map((d) => {
+    const stages = [...(d.stages ?? [])].sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    const swissIdx = stages.findIndex((s: any) => s.kind === "swiss");
+    const label = String(d.label ?? "");
+    if (swissIdx < 0) return { label, kind: "other" as const };
+    const later = stages.slice(swissIdx + 1).length > 0;
+    const plannedPlayoff = (planStages ?? []).some((p) => p?.phase === "playoff"
+      && (!String(p.unit ?? "").trim() || String(p.unit).split("::").some((u) => u && norm(label).startsWith(norm(u)))));
+    return { label, kind: later || plannedPlayoff ? "swiss_playoffs" as const : "swiss" as const, swissRounds: stages[swissIdx].swissRounds };
+  });
 }
 
 export interface OutcomeRow {

@@ -1136,6 +1136,7 @@ export default function Tournaments() {
       if (schedule.some((m: any) => roundOf(m) > 0)) {
         const groups = new Map<number, any[]>();
         schedule.forEach((m: any) => {
+          if (isByeFixture(m)) return; // a bye is not a game to play
           const n = roundOf(m);
           if (!groups.has(n)) groups.set(n, []);
           groups.get(n)!.push(m);
@@ -1150,6 +1151,7 @@ export default function Tournaments() {
               const all = (allMatches as any[]).filter(
                 (m: any) =>
                   m.status !== "placeholder" &&
+                  !isByeFixture(m) &&
                   champIdsHere.has(m.champ_id) &&
                   (isUnslotted ? roundOf(m) === 0 : roundOf(m) === n),
               );

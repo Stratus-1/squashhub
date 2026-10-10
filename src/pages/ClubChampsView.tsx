@@ -88,6 +88,7 @@ import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
+import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
 import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwardsSection";
@@ -533,6 +534,8 @@ export default function ClubChampsView() {
    * legacy `scoring_mode` may still say "standard" and must not decide Swiss ranking); legacy
    * tournaments fall back to their Swiss config. Returns the tie-break order and round count.
    */
+  // Per-render: Swiss standings heading status per group, filled by the standings calculation.
+  const swissStatusByGroup = new Map<number, SwissStandingsStatus>();
   const swissStageFor = (gn: number): { tieBreaks?: string[]; rounds: number | null } | null => {
     if (isStructured) {
       const spec = arch?.builder_spec;
@@ -793,8 +796,16 @@ export default function ClubChampsView() {
       const byKey = new Map(table.map((t) => [t.id, t]));
       const swissGames = groupMatchesAll.filter((m: any) => (m.round_number ?? 0) > 0);
       const lastRound = Math.max(0, ...swissGames.map((m: any) => Number(m.round_number) || 0));
-      const allDone = swissGames.length > 0 && swissGames.every((m: any) => m.status === "completed");
-      const finished = allDone && (swiss.rounds == null || lastRound >= swiss.rounds);
+      const status = swissStandingsStatus(
+        swissGames.map((m: any) => ({
+          a: m.player_a_member_id ?? m.bye_member_id ?? null,
+          b: m.is_bye ? null : m.player_b_member_id ?? null,
+          round: Number(m.round_number) || 1, status: m.status, winner: m.winner_member_id, score: m.score,
+        })),
+        swiss.rounds ?? lastRound,
+      );
+      swissStatusByGroup.set(groupNum, status);
+      const finished = status.state === "final";
       return rows
         .map((r: any) => {
           const t = byKey.get(keyOf(r));
@@ -3924,6 +3935,25 @@ export default function ClubChampsView() {
             {activeCat.title}
             {catTab === "fixtures" && <span className="sr-only"> — Fixtures & Results</span>}
           </h3>
+          {catTab === "standings" && (() => {
+            const st = swissStatusByGroup.get(activeCat.gn);
+            if (!st) return null;
+            const label = st.state === "not_started" ? "Standings — Not Started"
+              : st.state === "in_progress" ? `Round ${st.round} In Progress`
+              : st.state === "final" ? "Final Standings"
+              : `Standings After Round ${st.round}${st.total ? ` of ${st.total}` : ""}`;
+            return (
+              <div className="-mt-2 flex flex-wrap items-center gap-2 text-sm" aria-live="polite">
+                <span className="font-medium text-muted-foreground">{label}</span>
+                {st.state === "in_progress" && (
+                  <>
+                    <Badge variant="outline" className="text-[10px] border-primary text-primary">Provisional Standings</Badge>
+                    <span className="text-xs text-muted-foreground tabular-nums">{st.done} of {st.of} results in{st.total ? ` · Round ${st.round} of ${st.total}` : ""}</span>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           {catTab === "standings" ? activeCat.standings : activeCat.fixtures}
         </CardContent>
       </Card>

@@ -23,6 +23,7 @@ import { attachPlannedPlayoffs } from "@/lib/smart-builder/step-draw";
 import { fromExt } from "@/lib/supabase-ext";
 import { playoffSlotPlan, schedulePlannedPlayoffGames, type ScheduleReport } from "@/lib/smart-builder/playoff-schedule";
 import { SwissPlayoffSetupDialog } from "./SwissPlayoffSetupDialog";
+import { PostDrawActions } from "./PostDrawActions";
 import { swissSetupPilot } from "./swiss-playoff-setup";
 
 const scheduleToast = (r: ScheduleReport) => {
@@ -412,6 +413,7 @@ function ConfirmStageDialog({ champId, spec, status, nameOf, exec, onClose, onDo
   const st = spec.divisions.find((d) => d.divisionId === status.divisionKey)?.stages.find((x) => x.id === status.stageKey);
   const { data: rows, error, isLoading } = useQuery({ queryKey: ["stage-preview", champId, status.stageKey, status.divisionKey], queryFn: () => previewNextStage(supabaseDb, champId, status.divisionKey, status.stageKey) });
   const [busy, setBusy] = useState(false);
+  const [generated, setGenerated] = useState(false);
   const side = (p: string | null, q: string | null) => [p, q].filter(Boolean).map((x) => nameOf(x as string)).join(" & ");
   const sch = st?.schedule;
   const go = async () => {
@@ -419,11 +421,13 @@ function ConfirmStageDialog({ champId, spec, status, nameOf, exec, onClose, onDo
     try {
       await confirmNextStage(supabaseDb, champId, status.divisionKey, status.stageKey, exec);
       toast.success(`${status.name} created`);
-      scheduleToast(await schedulePlannedPlayoffGames(champId));
-      await notifyStage(champId, spec, status.divisionKey, status.stageKey);
-      onDone();
+      setGenerated(true);
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
+  if (generated) {
+    const d = spec.divisions.find((x) => x.divisionId === status.divisionKey);
+    return <PostDrawActions champId={champId} stageKey={status.stageKey} stageName={status.name} groupNumber={d ? divisionGroup(spec, d) : undefined} label={status.divisionLabel} onFinished={onDone} />;
+  }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
@@ -434,7 +438,7 @@ function ConfirmStageDialog({ champId, spec, status, nameOf, exec, onClose, onDo
           {rows && <ol className="list-decimal space-y-1 pl-5" data-testid="stage-preview">{rows.map((r) => <li key={r.id}>{side(r.player_a_member_id, r.partner_a_member_id)} <span className="text-muted-foreground">v</span> {side(r.player_b_member_id, r.partner_b_member_id)}</li>)}</ol>}
           {st?.mapping?.source === "stage_winners" && <p className="text-xs text-muted-foreground">Played by the winners of the previous stage, in game order.</p>}
           {sch?.rule === "fixed" && <PlayoffSlotOrderNote champId={champId} spec={spec} stageKey={status.stageKey} />}
-          {sch && <p className="text-xs text-muted-foreground">{sch.rule === "fixed" ? `Scheduled ${sch.date}${sch.timeFrom ? ` · ${sch.timeFrom}–${sch.timeTo}` : ""}${sch.courtIds?.length ? ` · ${sch.courtIds.length} courts — games are booked into free court slots in this session` : ""}` : sch.rule === "play_by" ? `Play by ${sch.deadline}` : ""}</p>}
+          {sch && <p className="text-xs text-muted-foreground">{sch.rule === "fixed" ? `Scheduled ${sch.date}${sch.timeFrom ? ` · ${sch.timeFrom}–${sch.timeTo}` : ""}${sch.courtIds?.length ? ` · ${sch.courtIds.length} courts — games get free court slots in this session (preview if they don't all fit)` : ""}` : sch.rule === "play_by" ? `Play by ${sch.deadline}` : ""}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>

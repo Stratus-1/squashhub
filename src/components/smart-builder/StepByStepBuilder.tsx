@@ -2569,7 +2569,7 @@ function PlayoffFields({ value, onChange, format }: { value: PlayoffPlan; onChan
   </div>;
 }
 function SwissRoundsFields({ value, onChange, stages = [], unit = "" }: { value: FormatPlan; onChange: (patch: Partial<FormatPlan>) => void; stages?: { name: string; phase?: string; unit?: string }[]; unit?: string }) {
-  const [draft, setDraft] = React.useState(value.swissRoundsConfirmed ?? "");
+  const [draft, setDraft] = useState(value.swissRoundsConfirmed ?? "");
   const issues = draft ? swissConfirmIssues(draft) : [];
   const prog = swissProgression(value, stages, unit);
   return <div className="space-y-3">

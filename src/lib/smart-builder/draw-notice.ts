@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { sendComms } from "@/lib/comms/send";
 import { entryPayLinks, emailPayButton, payRoute } from "@/lib/smart-builder/step-handover";
 import type { CommsChannel } from "@/lib/comms/actions";
+import { matchDetailsFor, matchDetailsHtml, matchDetailsText, type DetailContext, type DetailMatch } from "@/lib/smart-builder/draw-match-details";
 
 export const DEFAULT_DRAW_NOTICE = "Your first-round match has been drawn. Open the tournament to view the draw, check your opponent and match details, score your match live, or submit your result afterwards.";
 
@@ -56,6 +57,75 @@ export function drawNoticeSent(betaLifecycle: any, key: string): { at: string; s
   return betaLifecycle?.draw_notices?.[key] ?? null;
 }
 
+/** Everything the per-player match block needs for this scope, read through the admin's normal access. */
+export async function loadMatchDetailsContext(clubId: string, tournamentId: string, name: string, scope: DrawScope): Promise<DetailContext> {
+  let q: any = supabase.from("club_champs_matches").select("id, group_number, round_number, stage_label, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, bye_member_id, is_bye, scheduled_date, scheduled_time, court_id, play_by, booking_id").eq("champ_id", tournamentId).eq("round_number", scope.round);
+  if (scope.groupNumber != null) q = q.eq("group_number", scope.groupNumber);
+  const [{ data: matches, error }, { data: t }, { data: club }] = await Promise.all([
+    q, (supabase as any).from("tournaments").select("builder_spec").eq("id", tournamentId).maybeSingle(),
+    (supabase as any).from("clubs").select("name").eq("id", clubId).maybeSingle(),
+  ]);
+  if (error) throw error;
+  const rows = (matches ?? []) as DetailMatch[];
+  const ids = [...new Set(rows.flatMap((m) => [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id, m.bye_member_id]).filter(Boolean) as string[])];
+  const courtIds = [...new Set(rows.map((m) => m.court_id).filter(Boolean) as string[])];
+  const bookingIds = [...new Set(rows.map((m) => m.booking_id).filter(Boolean) as string[])];
+  const [mem, bk] = await Promise.all([
+    ids.length ? supabase.from("club_members").select("id, name").in("id", ids) : Promise.resolve({ data: [] as any[] }),
+    bookingIds.length ? (supabase as any).from("bookings").select("id, status, date, start_time, end_time, court_id").in("id", bookingIds) : Promise.resolve({ data: [] as any[] }),
+  ]);
+  const allCourts = [...new Set([...courtIds, ...((bk.data ?? []) as any[]).map((b) => b.court_id).filter(Boolean)])];
+  const { data: cts } = allCourts.length ? await (supabase as any).from("courts").select("id, name, venue_name").in("id", allCourts) : { data: [] };
+  const labels = new Map<number, string>(((t?.builder_spec?.divisions ?? []) as any[]).map((d) => [Number(d.groupNumber), String(d.label ?? "").replace(/ · Singles$| · Doubles$/, "")]));
+  return {
+    tournamentName: name, matches: rows,
+    names: Object.fromEntries(((mem.data ?? []) as any[]).map((m) => [m.id, m.name ?? "Player"])),
+    categoryOf: (g) => (g != null && labels.get(Number(g))) || (scope.label ?? (g != null ? `Category ${g}` : "Tournament")),
+    courts: Object.fromEntries(((cts ?? []) as any[]).map((c) => [c.id, c])),
+    bookings: Object.fromEntries(((bk.data ?? []) as any[]).map((b) => [b.id, b])),
+    clubVenue: club?.name ?? null,
+  };
+}
+
+/** Fee status + pay links for these players (empty when there is no fee). */
+export async function loadDrawFeeContext(clubId: string, tournamentId: string, withLinks: boolean) {
+  const [{ data: t }, { data: regs }] = await Promise.all([
+    supabase.from("club_champs").select("entry_fee_cents, payment_required").eq("id", tournamentId).maybeSingle(),
+    supabase.from("club_champs_registrations").select("club_member_id, paid_at, fee_paid_cents, fee_status, status").eq("champ_id", tournamentId),
+  ]);
+  const fee = (t as any)?.payment_required ? Number((t as any)?.entry_fee_cents ?? 0) : 0;
+  const status = feeStatusFor(fee, ((regs ?? []) as any[]).filter((r) => !["withdrawn", "replaced", "cancelled"].includes(r.status)));
+  const links: Record<string, string> = fee > 0 && withLinks ? await entryPayLinks(clubId, tournamentId) : {};
+  return { fee, status, links };
+}
+
+/**
+ * The ONE per-player composer used by both the admin preview and the real send:
+ * saved wording + fee line (only when actually owed) + "Your match details" + Pay button.
+ */
+export function composeDrawNoticeVars(id: string, message: string, ctx: DetailContext, feeCtx: { fee: number; status: Record<string, { owes: boolean; outstanding: number }>; links: Record<string, string> } | null, tournamentId: string) {
+  const st = feeCtx && feeCtx.fee > 0 ? feeCtx.status[id] : undefined;
+  const line = st ? (st.owes ? feeOutstandingLine(st.outstanding) : FEE_PAID_LINE) : "";
+  const text = line ? `${message.trim()}\n\n${line}` : message.trim();
+  const items = matchDetailsFor(id, ctx);
+  const detailsText = matchDetailsText(items);
+  const link = st?.owes ? feeCtx?.links[id] : undefined;
+  return {
+    items,
+    vars: {
+      personal_message: detailsText ? `${text}\n\n${detailsText}` : text,
+      personal_message_html: esc(text).replace(/\n/g, "<br>"),
+      match_details_html: matchDetailsHtml(items),
+      email_pay_html: st?.owes && link ? emailPayButton(link, "Pay my fee") : "",
+      personal_message_plain: detailsText ? `${text}\n\n${detailsText}` : text,
+      ...(st?.owes ? { pay_url: payRoute(tournamentId), pay_label: "Pay my fee" } : {}),
+      ...(st?.owes && link ? { pay_link: link, pay_token: link.split("/i/").pop() || "" } : {}),
+    } as Record<string, string>,
+  };
+}
+
+export const DRAW_EMAIL_BODY = "<p>Dear {{name}},</p><p>{{personal_message_html}}</p>{{match_details_html}}{{email_pay_html}}";
+
 export async function sendDrawNotice(clubId: string, tournamentId: string, name: string, message: string, channels: CommsChannel[], onlyIds?: string[], includeFee = true, scope: DrawScope = { round: 1 }, activation?: { include: boolean; intro: string }) {
   if (!message.trim() || message.length > 2000) throw new Error("Enter notification wording (up to 2,000 characters).");
   if (!channels.length) throw new Error("Choose a delivery channel.");
@@ -68,42 +138,39 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
   const memberIds = onlyIds ? all.filter((id) => onlyIds.includes(id)) : all;
   if (!memberIds.length) throw new Error(`No Round ${scope.round} players to notify.`);
   const subject = `${name} — ${scope.label ? `${scope.label} · ` : ""}Round ${scope.round} draw`;
-  let memberVars: Record<string, Record<string, string>> | undefined;
-  let content = drawNoticeContent(subject, message.trim(), channels);
-  if (includeFee) {
-    const [{ data: t }, { data: regs }] = await Promise.all([
-      supabase.from("club_champs").select("entry_fee_cents, payment_required").eq("id", tournamentId).maybeSingle(),
-      supabase.from("club_champs_registrations").select("club_member_id, paid_at, fee_paid_cents, fee_status, status").eq("champ_id", tournamentId),
-    ]);
-    const fee = (t as any)?.payment_required ? Number((t as any)?.entry_fee_cents ?? 0) : 0;
-    const status = feeStatusFor(fee, ((regs ?? []) as any[]).filter((r) => !["withdrawn", "replaced", "cancelled"].includes(r.status)));
-    if (fee > 0) {
-      const links = channels.some((c) => c === "email" || c === "whatsapp" || c === "sms") ? await entryPayLinks(clubId, tournamentId) : {};
-      memberVars = {};
-      for (const id of memberIds) {
-        const st = status[id];
-        const line = st ? (st.owes ? feeOutstandingLine(st.outstanding) : FEE_PAID_LINE) : "";
-        const text = line ? `${message.trim()}\n\n${line}` : message.trim();
-        memberVars[id] = {
-          personal_message: text, personal_message_html: esc(text).replace(/\n/g, "<br>"),
-          email_pay_html: st?.owes && links[id] ? emailPayButton(links[id], "Pay my fee") : "",
-          // The pay link lives in pay_link / pay_token: the WhatsApp sender turns
-          // it into a tappable "Pay my fee" button (approved template) or appends
-          // it as plain text; it is never pasted into the message body itself.
-          personal_message_plain: text,
-          ...(st?.owes ? { pay_url: payRoute(tournamentId), pay_label: "Pay my fee" } : {}),
-          ...(st?.owes && links[id] ? { pay_link: links[id], pay_token: links[id].split("/i/").pop() || "" } : {}),
-        };
-      }
-      content = Object.fromEntries(channels.map((c) => [c, { subject, body: c === "email" ? "<p>Dear {{name}},</p><p>{{personal_message_html}}</p>{{email_pay_html}}" : c === "in_app" ? "{{personal_message}}" : "{{personal_message_plain}}" }]));
-    }
-  }
+  const ctx = await loadMatchDetailsContext(clubId, tournamentId, name, scope);
+  const feeCtx = includeFee ? await loadDrawFeeContext(clubId, tournamentId, channels.some((c) => c === "email" || c === "whatsapp" || c === "sms")) : null;
+  const memberVars: Record<string, Record<string, string>> = {};
+  for (const id of memberIds) memberVars[id] = composeDrawNoticeVars(id, message, ctx, feeCtx, tournamentId).vars;
+  const content = Object.fromEntries(channels.map((c) => [c, { subject, body: c === "email" ? DRAW_EMAIL_BODY : c === "in_app" ? "{{personal_message}}" : "{{personal_message_plain}}" }]));
   return sendComms({
     clubId, name: subject, channels, content, memberVars,
     audience: { type: "selected", memberIds },
     action: { key: "tournament_view", label: "View tournament & score match", params: { tournament_id: tournamentId } },
     meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw", round: String(scope.round), group_number: String(scope.groupNumber ?? "all"),
       ...(activation?.include && channels.includes("email") ? { include_activation: "true", activation_intro: activation.intro.trim().slice(0, 300) } : {}) },
+  });
+}
+
+/**
+ * Test email to the signed-in admin's OWN member record in this club, showing the chosen player's
+ * details. No pay link or activation link (those are personal to the player). Explicit click only.
+ */
+export async function sendDrawNoticeTest(clubId: string, tournamentId: string, name: string, message: string, scope: DrawScope, previewFor: string) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Sign in first.");
+  const { data: me } = await supabase.from("club_members").select("id, email").eq("club_id", clubId).eq("user_id", u.user.id).limit(1).maybeSingle();
+  if (!me?.id || !(me as any).email) throw new Error("Your member record in this club has no email address.");
+  const ctx = await loadMatchDetailsContext(clubId, tournamentId, name, scope);
+  const feeCtx = await loadDrawFeeContext(clubId, tournamentId, false);
+  const { vars } = composeDrawNoticeVars(previewFor, message, ctx, feeCtx, tournamentId);
+  delete vars.pay_url; delete vars.pay_link; delete vars.pay_token;
+  const subject = `[TEST] ${name} — ${scope.label ? `${scope.label} · ` : ""}Round ${scope.round} draw (as ${ctx.names[previewFor] ?? "player"})`;
+  return sendComms({
+    clubId, name: subject, channels: ["email"], content: { email: { subject, body: DRAW_EMAIL_BODY } } as any,
+    memberVars: { [me.id]: vars }, audience: { type: "selected", memberIds: [me.id] },
+    action: { key: "tournament_view", label: "View tournament & score match", params: { tournament_id: tournamentId } },
+    meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw_test", round: String(scope.round) },
   });
 }
 /** Round 1 players (for picking who gets the notice), sorted by name. */

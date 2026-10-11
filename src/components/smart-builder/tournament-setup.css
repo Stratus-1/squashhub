@@ -1,4 +1,13 @@
 /* Scoped to the step-by-step wizard; no member, legacy or management styling. */
+.player-board-full { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+/* Native drag/drop uses DOM targets, not manual pointer coordinates. CSS zoom keeps layout/scroll extents aligned. */
+@media (pointer: coarse) {
+  .player-board-full { grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); }
+  .player-board-full li > .flex { flex-wrap: wrap; }
+  .player-board-full li > .flex > span.flex-1 { flex-basis: calc(100% - 3rem); }
+  .player-board-full button { min-width: calc(44px / var(--player-board-zoom)); min-height: calc(44px / var(--player-board-zoom)); }
+  .player-board-dialog > .flex button, .player-board-dialog > .flex input { min-height: 44px; }
+}
 .tournament-setup { font-size: 13px; line-height: 1.5; letter-spacing: 0; }
 .tournament-setup-nav { padding-block: 4px 16px; border-bottom: 1px solid hsl(var(--border)); }
 .tournament-setup .tournament-setup-step:disabled { background: hsl(var(--muted) / .35); color: hsl(var(--muted-foreground)); opacity: 1; }

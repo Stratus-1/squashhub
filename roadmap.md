@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] Full-screen Pick Players board: board-only zoom, name tooltips, responsive columns; verify controls and desktop/mobile without data writes or publishing.
 - [x] GoBook disappearing bookings: removed cached/shared register reads from day sync; five real-handler simulated regressions pass (new booking, separate days, cancellation, invalid/failed reads). No live writes/deployment.
 - [x] Swiss next-stage CTA and previous-round notices: existing setup/confirmation dialogs reused, 49 focused tests pass; Riverside desktop/mobile verified with writes blocked; no publishing. Existing playoff-suite failures and unset QF pairing remain separate limitations.
 - [x] Restore existing category Standings / Fixtures & Results tabs in the single-event expanded view; Riverside desktop/mobile, category retention, scores and multiple-event cards verified with writes blocked; 14 tests pass, preview build OK.

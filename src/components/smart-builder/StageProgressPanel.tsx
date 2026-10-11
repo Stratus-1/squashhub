@@ -22,6 +22,8 @@ import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { attachPlannedPlayoffs } from "@/lib/smart-builder/step-draw";
 import { fromExt } from "@/lib/supabase-ext";
 import { playoffSlotPlan, schedulePlannedPlayoffGames, type ScheduleReport } from "@/lib/smart-builder/playoff-schedule";
+import { SwissPlayoffSetupDialog } from "./SwissPlayoffSetupDialog";
+import { swissSetupPilot } from "./swiss-playoff-setup";
 
 const scheduleToast = (r: ScheduleReport) => {
   if (r.booked) toast.success(`${r.booked} game${r.booked === 1 ? "" : "s"} booked into the planned session.`);
@@ -201,6 +203,24 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
 }
 
 function SetupDialog({ champId, spec, status, exec, nameOf, onClose, onDone }: { champId: string; spec: TournamentSpec; status: StageStatus; exec: Exec; nameOf: (id: string | null) => string; onClose: () => void; onDone: () => void }) {
+  const division = spec.divisions.find((d) => d.divisionId === status.divisionKey);
+  const source = division?.stages.find((s) => s.id === status.afterStageKey) ?? division?.stages.slice().sort((a, b) => b.order - a.order)[0];
+  const { data, isLoading } = useQuery({
+    queryKey: ["swiss-setup-pilot", champId], enabled: source?.kind === "swiss",
+    queryFn: async () => {
+      const [tournament] = await supabaseDb.select("tournaments", { id: champId });
+      if (!tournament?.club_id) return { tournament, optedIn: false };
+      const flags = await supabaseDb.select("club_beta_features", { club_id: tournament.club_id, feature: "tournament_beta" });
+      return { tournament, optedIn: flags.length > 0 };
+    },
+  });
+  if (source?.kind === "swiss" && isLoading) return <Dialog open onOpenChange={(open) => !open && onClose()}><DialogContent><DialogHeader><DialogTitle>Set up {status.name}</DialogTitle></DialogHeader><p>Reading saved playoff setup…</p></DialogContent></Dialog>;
+  if (division && source && swissSetupPilot(data?.tournament?.club_id, data?.optedIn === true, source.kind))
+    return <SwissPlayoffSetupDialog {...{ champId, spec, status, exec, nameOf, onClose, onDone, division, source }} tournament={data?.tournament} />;
+  return <LegacySetupDialog {...{ champId, spec, status, exec, nameOf, onClose, onDone }} />;
+}
+
+function LegacySetupDialog({ champId, spec, status, exec, nameOf, onClose, onDone }: { champId: string; spec: TournamentSpec; status: StageStatus; exec: Exec; nameOf: (id: string | null) => string; onClose: () => void; onDone: () => void }) {
   const d = spec.divisions.find((x) => x.divisionId === status.divisionKey)!;
   const src = [...d.stages].sort((a, b) => b.order - a.order)[0];
   const pools = sourcePoolCount(src);

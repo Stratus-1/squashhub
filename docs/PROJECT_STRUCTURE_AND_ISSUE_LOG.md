@@ -2870,3 +2870,6 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 - Fix: trigger treats `payment_timing='after_acceptance'` as non-gating (fee stays in `fee_status`); Uitsig rows recomputed (71 registered, all fee due). Card now shows unique players · category entries · paid · outstanding. Riverside club champs (79 affected rows) recomputes on its next row update — not bulk-recomputed.
 
 - 2026-10-11 — Tournament messages: `send-comms-campaign` now delivers to entrants registered via another club (only members with a `club_champs_registrations` row in the host club's own tournament); tournament invitations and draw notices automatically include a personal activation link for players with no login (own-club page, single-use, 14 days).
+
+### 2026-10-11 — Riverside club champs Men's A Swiss→QF config repair (Step 2, approved)
+- Live data only (audit_events f1e0308f-…): g1 deferred QF pairing later→seeded, SF later→winners, Final (vmv0p0b27-po3, 26 Nov, courts 20/21/26) added. Guarded on 40/40 completed Swiss games; Men's B/C/Ladies, games, results, fees untouched. QF stage NOT created, no draw generated.

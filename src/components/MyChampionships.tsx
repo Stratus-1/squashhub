@@ -23,6 +23,8 @@ import { mySide, myRecord, myScheduleState, myFixturesHref, isUpcomingFixture } 
 import { supabase } from "@/integrations/supabase/client";
 
 
+const COLS = "id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by, best_of, points_per_game, court_ids, match_duration_minutes, club_id";
+
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
 export function MyChampionships() {
@@ -39,10 +41,11 @@ export function MyChampionships() {
 
   // Get all active champs for the club
   const { data: allChamps = [] } = useQuery({
-    queryKey: ["club-champs-active", clubId],
+    queryKey: ["club-champs-active", clubId, idsKey],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_champs")
-        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by, best_of, points_per_game, court_ids, match_duration_minutes")
+      // eslint-disable-next-line prefer-const
+      let { data, error } = await fromExt("club_champs")
+        .select(COLS)
         .eq("club_id", clubId!)
         .order("start_date");
       if (error) throw error;
@@ -100,19 +103,19 @@ export function MyChampionships() {
   const myChampIds = champIds;
 
   const { data: myMatches = [] } = useQuery({
-    queryKey: ["my-champ-matches-dashboard", memberId, myChampIds],
+    queryKey: ["my-champ-matches-dashboard", idsKey, myChampIds],
     queryFn: async () => {
-      if (!myChampIds.length || !memberId) return [];
+      if (!myChampIds.length || !idsKey) return [];
       const { data, error } = await fromExt("club_champs_matches")
         .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name)")
         .in("champ_id", myChampIds)
-        .or(`player_a_member_id.eq.${memberId},player_b_member_id.eq.${memberId},partner_a_member_id.eq.${memberId},partner_b_member_id.eq.${memberId}`)
+        .or(`player_a_member_id.in.(${idsKey}),player_b_member_id.in.(${idsKey}),partner_a_member_id.in.(${idsKey}),partner_b_member_id.in.(${idsKey})`)
         .order("scheduled_date")
         .order("scheduled_time");
       if (error) throw error;
       return data || [];
     },
-    enabled: myChampIds.length > 0 && !!memberId,
+    enabled: myChampIds.length > 0 && !!idsKey,
   });
 
   // My registrations across active champs (to filter what to offer)
@@ -181,12 +184,8 @@ export function MyChampionships() {
 
   // Self-scheduled tournaments create matches with no court/date/time — those
   // are "upcoming" too, and the players themselves arrange them.
-  const upcomingMatches = myMatches.filter(
-    (m: any) =>
-      m.status === "scheduled" &&
-      !m.is_bye &&
-      (!m.scheduled_date || !isPast(new Date(m.scheduled_date + "T23:59:59"))),
-  );
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const upcomingMatches = myMatches.filter((m: any) => isUpcomingFixture(m, todayStr));
   const completedMatches = myMatches.filter((m: any) => m.status === "completed");
 
   // Graduated knockouts intentionally place a player in several sections
@@ -274,8 +273,8 @@ export function MyChampionships() {
 
             {champUpcoming.length > 0 ? (
               <div className="space-y-1 mt-1.5">
-                {champUpcoming.slice(0, 2).map((m: any) => {
-                  const isA = m.player_a_member_id === memberId || m.partner_a_member_id === memberId;
+                {champUpcoming.slice(0, 3).map((m: any) => {
+                  const isA = mySide(m, myIds) === "a";
                   const opponent = isA
                     ? (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b))
                     : (isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a));
@@ -360,7 +359,13 @@ export function MyChampionships() {
                         {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
                       </span>
                       <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
-                      <span className="font-medium truncate">vs {opponent}</span>
+                      <span className="min-w-0 truncate">
+                        <span className="font-medium">vs {opponent}</span>
+                        {(m.stage_label || m.round_number) && (
+                          <span className="text-muted-foreground"> · {m.stage_label || `Round ${m.round_number}`}</span>
+                        )}
+                        {m.status === "in_progress" && <span className="text-primary"> · Live</span>}
+                      </span>
                       {m.court && <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{m.court.name}</Badge>}
                       {today && <Badge className="text-[9px] shrink-0">Today</Badge>}
                         {perm.allowed && !centrallyFixed && (
@@ -387,12 +392,12 @@ export function MyChampionships() {
                     </div>
                   );
                 })}
-                {champUpcoming.length > 2 && (
+                {champUpcoming.length > 3 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 w-full text-[11px]"
-                    onClick={(e) => { e.stopPropagation(); navigate(`/club-champs/${champ.id}`); }}
+                    onClick={(e) => { e.stopPropagation(); navigate(myFixturesHref(champ.id)); }}
                   >
                     View all {champUpcoming.length} upcoming games <ChevronRight className="w-3 h-3 ml-1" />
                   </Button>
@@ -400,20 +405,32 @@ export function MyChampionships() {
               </div>
             ) : (
               <p className="text-[11px] text-muted-foreground mt-1">
-                {champCompleted.length > 0 ? `${champCompleted.length} matches played` : `${champ.start_date} – ${champ.end_date}`}
+                {myScheduleState(myMatches.filter((m: any) => m.champ_id === champ.id), todayStr) === "finished"
+                  ? `No upcoming matches · ${champCompleted.length} played`
+                  : "Schedule not yet available"}
               </p>
             )}
 
-            {champCompleted.length > 0 && (
-              <div className="flex gap-3 mt-1.5 text-[11px]">
-                <span className="text-primary font-medium">
-                  W {champCompleted.filter((m: any) => m.winner_member_id === memberId).length}
-                </span>
-                <span className="text-destructive font-medium">
-                  L {champCompleted.filter((m: any) => m.winner_member_id && m.winner_member_id !== memberId).length}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-3 mt-1.5 text-[11px]">
+              {champCompleted.length > 0 && (() => {
+                const rec = myRecord(champCompleted, myIds);
+                return (
+                  <>
+                    <span className="text-muted-foreground">{champCompleted.length} played</span>
+                    <span className="text-primary font-medium">W {rec.w}</span>
+                    <span className="text-destructive font-medium">L {rec.l}</span>
+                  </>
+                );
+              })()}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-[11px] ml-auto"
+                onClick={(e) => { e.stopPropagation(); navigate(myFixturesHref(champ.id)); }}
+              >
+                View my fixtures <ChevronRight className="w-3 h-3 ml-0.5" />
+              </Button>
+            </div>
           </Card>
         );
       })}

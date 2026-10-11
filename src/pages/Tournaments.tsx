@@ -1045,7 +1045,7 @@ export default function Tournaments() {
                             e.preventDefault(); e.stopPropagation();
                             try {
                               // Structured stage games (Swiss→KO, RR→KO, play-offs…): preview the stage's own saved session first.
-                              const staged = unallocated.filter((m: any) => m.stage_key);
+                              const staged = unallocated.filter((m: any) => m.stage_key && !String(m.stage_key).startsWith("dl:"));
                               if (staged.length && champIdsHere.length === 1) { setAssignFor({ champId: champIdsHere[0], ids: staged.map((m: any) => m.id) }); return; }
                               let booked = 0; const notes: string[] = [];
                               for (const id of champIdsHere) {

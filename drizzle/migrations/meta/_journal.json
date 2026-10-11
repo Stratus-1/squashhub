@@ -841,6 +841,13 @@
       "when": 1791730743878,
       "tag": "0119_person_contact_sharing",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1791731074331,
+      "tag": "0120_contact_my_member_ids_revoke",
+      "breakpoints": true
     }
   ]
 }

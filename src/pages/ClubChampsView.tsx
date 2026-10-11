@@ -78,6 +78,7 @@ import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog, Star, Utensil
 import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolsFromGames, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
+import { splitFixtures, tabFromParam, type TournamentTab } from "@/lib/tournaments/fixture-split";
 import { computeFinalPlacements, placementSlotLabel } from "@/lib/tournaments/final-standings";
 import { StructuredEnginePanel } from "@/components/smart-builder/StructuredEnginePanel";
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
@@ -1544,7 +1545,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   // Standings / Fixtures & Results view: one category at a time, shared
   // across both tabs so switching tabs keeps the same category selected.
-  const [catTab, setCatTab] = useState<"standings" | "fixtures">("standings");
+  // Standings | Upcoming Fixtures | Results — shared by the signed-in page and the public QR view.
+  const [catTab, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
   const [catGroup, setCatGroup] = useState<number | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
@@ -3660,7 +3662,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
     const fixtureCards: JSX.Element[] = [];
     const categoryViews: {
       gn: number; label: string; title: JSX.Element; leading: boolean; count: number;
-      standings: JSX.Element; fixtures: JSX.Element;
+      standings: JSX.Element; upcoming: JSX.Element; results: JSX.Element; upcomingCount: number; resultsCount: number;
     }[] = [];
 
 
@@ -3765,26 +3767,28 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             );
           })
         ) : rows.map((m: any) => renderMatchRow(m));
-        const fixturesNode = groupMatches.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No fixtures for this category yet.</p>
+        const listNode = (rows: any[], empty: string, kind: "upcoming" | "results") => rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">{empty}</p>
         ) : (
           <div className="space-y-5">
             {Array.from(buckets.values()).sort((a, b) => a.order - b.order).map((b) => {
-              const done = b.rows.filter((m: any) => m.status === "completed" || m.is_bye).length;
+              const mine = b.rows.filter((m: any) => rows.includes(m));
+              if (mine.length === 0) return null;
               return (
-                <section key={b.label || "all"} className="space-y-1.5" aria-label={b.label || "Fixtures"}>
+                <section key={b.label || "all"} className="space-y-1.5" aria-label={b.label || (kind === "upcoming" ? "Upcoming fixtures" : "Results")}>
                   {b.label && (
                     <div className="flex items-center justify-between border-b pb-1">
                       <h4 className="text-sm font-semibold">{b.label}</h4>
-                      <span className="text-xs text-muted-foreground tabular-nums">{done} of {b.rows.length} complete</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{kind === "upcoming" ? `${mine.length} to play` : `${mine.length} of ${b.rows.length} complete`}</span>
                     </div>
                   )}
-                  {renderRows(b.rows)}
+                  {renderRows(mine)}
                 </section>
               );
             })}
           </div>
         );
+        const split = splitFixtures(groupMatches);
         categoryViews.push({
           gn,
           label: getGroupLabel(champ, gn),
@@ -3797,7 +3801,10 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               {standingsTable}
             </div>
           ),
-          fixtures: fixturesNode,
+          upcoming: listNode(split.upcoming, groupMatches.length ? "No games left to play in this category." : "No fixtures for this category yet.", "upcoming"),
+          results: listNode(split.results, "No results yet.", "results"),
+          upcomingCount: split.upcoming.length,
+          resultsCount: split.results.length,
         });
         return;
       }
@@ -3910,7 +3917,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
 
     // Standings / Fixtures & Results — solid rectangular tabs, one category at a time.
     const activeCat = categoryViews.find((c) => c.gn === catGroup) ?? categoryViews[0];
-    const tabBtn = (key: "standings" | "fixtures", label: string) => (
+    const tabBtn = (key: TournamentTab, label: string) => (
       <button
         type="button"
         role="tab"
@@ -3932,7 +3939,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       <Card key="category-views" className={cn("rounded-none overflow-hidden", activeCat.leading && "border-primary/40")}>
         <div role="tablist" aria-label="Tournament view" className="flex">
           {tabBtn("standings", "Standings")}
-          {tabBtn("fixtures", `Fixtures & Results`)}
+          {tabBtn("upcoming", "Upcoming Fixtures")}
+          {tabBtn("results", "Results")}
         </div>
         {categoryViews.length > 1 && (
           <div className="border-b bg-muted/40 px-3 py-2">
@@ -3951,7 +3959,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
                   )}
                 >
                   {c.label}
-                  {catTab === "fixtures" && <span className="ml-1 opacity-70 tabular-nums">({c.count})</span>}
+                  {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
                 </button>
               ))}
             </div>
@@ -3960,7 +3968,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         <CardContent id="cat-tabpanel" role="tabpanel" aria-labelledby={`cat-tab-${catTab}`} className="pt-4 space-y-4">
           <h3 className="text-lg font-semibold">
             {activeCat.title}
-            {catTab === "fixtures" && <span className="sr-only"> — Fixtures & Results</span>}
+            {catTab !== "standings" && <span className="sr-only"> — {catTab === "upcoming" ? "Upcoming Fixtures" : "Results"}</span>}
           </h3>
           {catTab === "standings" && (() => {
             const st = swissStatusByGroup.get(activeCat.gn);
@@ -3981,7 +3989,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               </div>
             );
           })()}
-          {catTab === "standings" ? activeCat.standings : activeCat.fixtures}
+          {catTab === "standings" ? activeCat.standings : catTab === "upcoming" ? activeCat.upcoming : activeCat.results}
         </CardContent>
       </Card>
     ) : null;

@@ -41,7 +41,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
     if (sentBefore && !confirm(`This draw was already sent on ${new Date(sentBefore.at).toLocaleString()}. Send it again?`)) return;
     setSending(true);
     try {
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, tournamentName, msg, channels, [...picked], true, scope, { include: notice.value.includeActivation, intro: notice.value.activationIntro });
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, tournamentName, msg, channels, [...picked], true, scope, { include: true, intro: notice.value.activationIntro });
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       await recordDrawNotice(tournamentId, drawNoticeKey(scope), dispatched?.sent ?? 0).catch(() => {});
       toast.success(`Round ${scope.round} draw sent: ${dispatched?.sent ?? 0} deliveries.`);

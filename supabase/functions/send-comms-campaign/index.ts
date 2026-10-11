@@ -143,15 +143,23 @@ async function personalOnboardingAction(action: any, m: any, subdomain: string |
 }
 
 /** Personal, single-use, expiring activation button for an unregistered draw recipient; null = normal login button. */
-async function drawActivationBlock(m: any, clubId: string, subdomain: string | null | undefined, campaignId: string, intro: string): Promise<string | null> {
-  const { data: fresh } = await admin.from("club_members").select("user_id,email,status").eq("id", m.id).maybeSingle();
+async function drawActivationBlock(m: any, _hostClubId: string, _hostSubdomain: string | null | undefined, campaignId: string, intro: string): Promise<string | null> {
+  // Activates the EXISTING person's login on their OWN membership row (claim links only that row; never adds a host-club membership).
+  const { data: fresh } = await admin.from("club_members").select("user_id,email,status,role,person_id,club_id").eq("id", m.id).maybeSingle();
   if (!fresh || fresh.user_id || fresh.status !== "active") return null;
+  if (!fresh.person_id || fresh.role === "visitor") return null; // guests/unaffiliated: no activation via host records
   const email = String(fresh.email || "").trim().toLowerCase();
   if (!email.includes("@")) return null;
+  // Same person already has a login on any membership → normal link.
+  const { count: personLinked } = await admin.from("club_members").select("id", { count: "exact", head: true })
+    .eq("person_id", fresh.person_id).not("user_id", "is", null);
+  if ((personLinked ?? 0) > 0) return null;
+  // Shared family email with a linked login in the member's OWN club → existing delegated access.
   const { count } = await admin.from("club_members").select("id", { count: "exact", head: true })
-    .eq("club_id", clubId).ilike("email", email).not("user_id", "is", null);
-  if ((count ?? 0) > 0) return null; // shared family login already exists
-  const a = await personalOnboardingAction({ key: "register_existing_member" }, { ...m, user_id: null }, subdomain, campaignId);
+    .eq("club_id", fresh.club_id).ilike("email", email).not("user_id", "is", null);
+  if ((count ?? 0) > 0) return null;
+  const { data: own } = await admin.from("clubs").select("subdomain").eq("id", fresh.club_id).maybeSingle();
+  const a = await personalOnboardingAction({ key: "register_existing_member" }, { ...m, user_id: null }, own?.subdomain, campaignId);
   const text = escapeHtml((intro.trim() || "Not registered on SquashHub yet? Activate your account to view your draw and match details.").slice(0, 300));
   return `<p style="margin:20px 0 8px">${text}</p><div style="margin:0 0 20px"><a href="${escapeHtml(a.webUrl)}" style="display:inline-block;background:#1E3A5F;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;font-size:14px">Activate my SquashHub account</a></div>` +
     '<p style="font-size:12px;color:#64748b;margin:0">This link is personal to you, works once and expires in 14 days.</p>';

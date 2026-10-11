@@ -150,25 +150,30 @@ export async function saveDrawNoticeSettings(tournamentId: string, key: string, 
   return { at, betaLifecycle: next };
 }
 
-export type ActivationState = "registered" | "family_login" | "needs_activation" | "no_email";
+export type ActivationState = "registered" | "family_login" | "needs_activation" | "no_email" | "guest";
 const okEmail = (e?: string | null) => !!e && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e.trim());
 /** Mirrors the server: login → normal link; shared email with a linked login → that login; else a personal link if emailable. */
-export function classifyActivation(members: Array<{ id: string; user_id?: string | null; email?: string | null }>, linkedEmails: Set<string>): Record<string, ActivationState> {
+export function classifyActivation(members: Array<{ id: string; user_id?: string | null; email?: string | null; person_id?: string | null; role?: string | null; club_id?: string | null }>, linkedEmails: Set<string>, linkedPersons: Set<string> = new Set()): Record<string, ActivationState> {
   const out: Record<string, ActivationState> = {};
   for (const m of members) {
     const e = (m.email ?? "").trim().toLowerCase();
-    out[m.id] = m.user_id ? "registered" : !okEmail(e) ? "no_email" : linkedEmails.has(e) ? "family_login" : "needs_activation";
+    out[m.id] = m.user_id || (m.person_id && linkedPersons.has(m.person_id)) ? "registered"
+      : !m.person_id || m.role === "visitor" ? "guest"
+      : !okEmail(e) ? "no_email" : linkedEmails.has(`${m.club_id ?? ""}|${e}`) ? "family_login" : "needs_activation";
   }
   return out;
 }
-export async function loadActivationStates(clubId: string, memberIds: string[]) {
+export async function loadActivationStates(_clubId: string, memberIds: string[]) {
   if (!memberIds.length) return {} as Record<string, ActivationState>;
-  const { data: mem } = await supabase.from("club_members").select("id, user_id, email").in("id", memberIds);
-  const emails = [...new Set((mem ?? []).filter((m: any) => !m.user_id && m.email).map((m: any) => String(m.email).trim().toLowerCase()))];
-  let linked = new Set<string>();
-  if (emails.length) {
-    const { data: l } = await supabase.from("club_members").select("email").eq("club_id", clubId).not("user_id", "is", null).in("email", emails);
-    linked = new Set((l ?? []).map((x: any) => String(x.email).trim().toLowerCase()));
-  }
-  return classifyActivation((mem ?? []) as any[], linked);
+  const { data: mem } = await supabase.from("club_members").select("id, user_id, email, person_id, role, club_id").in("id", memberIds);
+  const rows = (mem ?? []) as any[];
+  const persons = [...new Set(rows.filter((m) => !m.user_id && m.person_id).map((m) => m.person_id))];
+  const emails = [...new Set(rows.filter((m) => !m.user_id && m.email).map((m) => String(m.email).trim().toLowerCase()))];
+  const [pl, el] = await Promise.all([
+    persons.length ? supabase.from("club_members").select("person_id").in("person_id", persons).not("user_id", "is", null) : Promise.resolve({ data: [] }),
+    emails.length ? supabase.from("club_members").select("club_id, email").in("email", emails).not("user_id", "is", null) : Promise.resolve({ data: [] }),
+  ]) as any[];
+  const linkedPersons = new Set<string>((pl.data ?? []).map((x: any) => x.person_id));
+  const linkedEmails = new Set<string>((el.data ?? []).map((x: any) => `${x.club_id}|${String(x.email).trim().toLowerCase()}`));
+  return classifyActivation(rows, linkedEmails, linkedPersons);
 }

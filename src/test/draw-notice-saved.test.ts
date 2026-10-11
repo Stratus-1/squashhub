@@ -38,13 +38,20 @@ describe("saved draw wording", () => {
 });
 
 describe("activation recipients", () => {
-  it("separates registered, shared-family, unregistered and no-email players", () => {
+  const P = (id: string, extra: any) => ({ id, person_id: "p-" + id, role: "member", club_id: "A", ...extra });
+  it("covers login, cross-club, other-club login, shared email, no email and guests", () => {
     const r = classifyActivation([
-      { id: "reg", user_id: "u1", email: "dad@x.co" },
-      { id: "kid", user_id: null, email: "DAD@x.co" },
-      { id: "new", user_id: null, email: "new@x.co" },
-      { id: "none", user_id: null, email: "" },
-    ], new Set(["dad@x.co"]));
-    expect(r).toEqual({ reg: "registered", kid: "family_login", new: "needs_activation", none: "no_email" });
+      P("reg", { user_id: "u1", email: "dad@x.co" }),
+      P("kid", { user_id: null, email: "DAD@x.co" }),
+      P("new", { user_id: null, email: "new@x.co" }),
+      P("clubB", { user_id: null, email: "b@x.co", club_id: "B" }),
+      { ...P("multi", { user_id: null, email: "m@x.co" }), person_id: "p-has-login" },
+      P("none", { user_id: null, email: "" }),
+      { id: "guest", user_id: null, email: "g@x.co", person_id: null, role: "member", club_id: "A" },
+      P("visitor", { user_id: null, email: "v@x.co", role: "visitor" }),
+      P("sameEmailOtherClub", { user_id: null, email: "dad@x.co", club_id: "B" }),
+    ], new Set(["A|dad@x.co"]), new Set(["p-has-login"]));
+    expect(r).toEqual({ reg: "registered", kid: "family_login", new: "needs_activation", clubB: "needs_activation", multi: "registered",
+      none: "no_email", guest: "guest", visitor: "guest", sameEmailOtherClub: "needs_activation" });
   });
 });

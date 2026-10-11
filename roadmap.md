@@ -31,3 +31,4 @@
 - [x] Draw notices: when fee outstanding, include amount + payment choices (pay by card / add to account / I have paid) for every club
 - [ ] Draw notices: "Preview full email" rendered by the real send pipeline (server dry-run, no tokens), recipient modes, desktop/mobile, safe "Send test email" with test token
 - [x] Draw notices: Save message (server-side, per tournament/round) + optional personal activation link
+- [x] Draw emails: activation link automatic for unlinked players (no tick box), on own club page

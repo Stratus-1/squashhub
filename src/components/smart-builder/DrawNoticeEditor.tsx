@@ -44,6 +44,7 @@ const STATE_LABEL: Record<ActivationState, string> = {
   family_login: "use a shared family login (normal link)",
   needs_activation: "need activation (personal link)",
   no_email: "have no usable email (no activation link — add an email first)",
+  guest: "are guests without a national player record (no activation link; needs the separate guest identity process)",
 };
 
 export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
@@ -54,7 +55,7 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
   const [preview, setPreview] = useState<"registered" | "activation" | null>(null);
   const idsKey = (recipientIds ?? []).join(",");
   useEffect(() => {
-    if (!value.includeActivation || !clubId || !recipientIds?.length) { setStates(null); return; }
+    if ( !clubId || !recipientIds?.length) { setStates(null); return; }
     loadActivationStates(clubId, recipientIds).then(setStates).catch(() => setStates(null));
   }, [value.includeActivation, clubId, idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const counts = states ? Object.values(states).reduce((c, s) => ({ ...c, [s]: (c[s] ?? 0) + 1 }), {} as Record<string, number>) : null;
@@ -63,17 +64,13 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
     <label className="block space-y-1"><span className="font-medium">Draw notification wording</span>
       <Textarea aria-label="Draw notification wording" value={value.message} onChange={(e) => setValue({ ...value, message: e.target.value })} maxLength={2000} rows={4} disabled={disabled || saving} />
     </label>
-    <label className="flex items-start gap-2 text-xs">
-      <Checkbox aria-label="Include SquashHub activation link for players without an account" checked={value.includeActivation} disabled={disabled || saving}
-        onCheckedChange={(v) => setValue({ ...value, includeActivation: !!v })} />
-      <span>Include SquashHub activation link for players without an account <span className="text-muted-foreground">(email only; each player gets their own single-use link that expires in 14 days)</span></span>
-    </label>
-    {value.includeActivation && (
+    <p className="text-xs text-muted-foreground">Players without a SquashHub login automatically get their own activation button in the email, which opens their own club's page. It works once and expires in 14 days. Players with a login get the normal tournament button.</p>
+    {true && (
       <label className="block space-y-1 text-xs"><span className="text-muted-foreground">Activation introduction</span>
         <Input aria-label="Activation introduction" value={value.activationIntro} maxLength={300} disabled={disabled || saving} onChange={(e) => setValue({ ...value, activationIntro: e.target.value })} />
       </label>
     )}
-    {value.includeActivation && counts && (
+    {true && counts && (
       <ul className="rounded border border-border p-2 text-xs" data-testid="activation-counts">
         {(Object.keys(STATE_LABEL) as ActivationState[]).filter((k) => counts[k]).map((k) => <li key={k}><b>{counts[k]}</b> {STATE_LABEL[k]}</li>)}
       </ul>
@@ -87,7 +84,7 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
         {!loaded ? "Loading…" : dirty ? "Unsaved changes" : savedAt ? `Saved ${new Date(savedAt).toLocaleString()}` : "Default wording (not yet saved)"}
       </span>
       <Button type="button" size="sm" variant="ghost" onClick={() => setPreview(preview === "registered" ? null : "registered")}>Preview: has login</Button>
-      {value.includeActivation && <Button type="button" size="sm" variant="ghost" onClick={() => setPreview(preview === "activation" ? null : "activation")}>Preview: needs activation</Button>}
+      {<Button type="button" size="sm" variant="ghost" onClick={() => setPreview(preview === "activation" ? null : "activation")}>Preview: needs activation</Button>}
     </div>
     {preview && (
       <div className="space-y-2 rounded border border-border bg-muted/40 p-3 text-xs" data-testid="draw-notice-preview">
@@ -96,7 +93,7 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
         <p className="text-muted-foreground">[Fee line and Pay my fee button when a fee is outstanding]</p>
         <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">View tournament & score match</span></p>
         {preview === "activation"
-          ? <><p>{value.activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p><p className="text-muted-foreground">Personal link, works once, expires in 14 days. Created only when the email is sent.</p></>
+          ? <><p>{value.activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p><p className="text-muted-foreground">Personal link to the player's own club account, works once, expires in 14 days. Created only when the email is sent; never joins them to the host club.</p></>
           : <p><span className="rounded border px-2 py-1">Log in to SquashHub</span></p>}
         <p className="text-muted-foreground">Preview only — nothing is sent.</p>
       </div>

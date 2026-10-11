@@ -552,7 +552,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setSending(true);
     try {
       const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : []), ...(sendCh.wa && waEnabled ? ["whatsapp" as const] : [])];
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], true, { round: 1 }, { include: notice.value.includeActivation, intro: notice.value.activationIntro });
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], true, { round: 1 }, { include: true, intro: notice.value.activationIntro });
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
       await recordDrawNotice(tournamentId, "all:r1", dispatched?.sent ?? 0).catch(() => {});

@@ -806,6 +806,13 @@
       "when": 1791712848475,
       "tag": "0114_registration_status_respects_payment_timing",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1791715217002,
+      "tag": "0115_champ_fee_basis_and_payment_claims",
+      "breakpoints": true
     }
   ]
 }

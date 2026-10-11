@@ -2511,6 +2511,104 @@ export type Database = {
           },
         ]
       }
+      champ_payment_claim_allocations: {
+        Row: {
+          amount_cents: number
+          claim_id: string
+          club_member_id: string
+          created_at: string
+          created_by: string | null
+          fee_payment_id: string | null
+          id: string
+          registration_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          claim_id: string
+          club_member_id: string
+          created_at?: string
+          created_by?: string | null
+          fee_payment_id?: string | null
+          id?: string
+          registration_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          claim_id?: string
+          club_member_id?: string
+          created_at?: string
+          created_by?: string | null
+          fee_payment_id?: string | null
+          id?: string
+          registration_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "champ_payment_claim_allocations_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "champ_payment_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      champ_payment_claims: {
+        Row: {
+          amount_cents: number
+          champ_id: string
+          claimant_user_id: string | null
+          club_id: string
+          created_at: string
+          id: string
+          method: string
+          paid_on: string | null
+          proof_path: string | null
+          recorded_by_admin: boolean
+          reference: string | null
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          champ_id: string
+          claimant_user_id?: string | null
+          club_id: string
+          created_at?: string
+          id?: string
+          method: string
+          paid_on?: string | null
+          proof_path?: string | null
+          recorded_by_admin?: boolean
+          reference?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          champ_id?: string
+          claimant_user_id?: string | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          method?: string
+          paid_on?: string | null
+          proof_path?: string | null
+          recorded_by_admin?: boolean
+          reference?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       champ_result_notifications: {
         Row: {
           attempts: number
@@ -5128,6 +5226,8 @@ export type Database = {
         Row: {
           amount: number
           auto_seeded: boolean
+          champ_charge_key: string | null
+          champ_registration_id: string | null
           club_member_id: string
           created_at: string
           family_group_id: string | null
@@ -5152,6 +5252,8 @@ export type Database = {
         Insert: {
           amount?: number
           auto_seeded?: boolean
+          champ_charge_key?: string | null
+          champ_registration_id?: string | null
           club_member_id: string
           created_at?: string
           family_group_id?: string | null
@@ -5176,6 +5278,8 @@ export type Database = {
         Update: {
           amount?: number
           auto_seeded?: boolean
+          champ_charge_key?: string | null
+          champ_registration_id?: string | null
           club_member_id?: string
           created_at?: string
           family_group_id?: string | null
@@ -17178,6 +17282,10 @@ export type Database = {
           end_date: string | null
           end_time: string
           entries_locked: boolean
+          entry_fee_basis: string | null
+          entry_fee_basis_set_at: string | null
+          entry_fee_basis_set_by: string | null
+          entry_fee_mixed_rule: string | null
           event_type: string
           expected_players: Json | null
           gender: string
@@ -17291,6 +17399,10 @@ export type Database = {
           end_date?: string | null
           end_time?: string
           entries_locked?: boolean
+          entry_fee_basis?: string | null
+          entry_fee_basis_set_at?: string | null
+          entry_fee_basis_set_by?: string | null
+          entry_fee_mixed_rule?: string | null
           event_type?: string
           expected_players?: Json | null
           gender: string
@@ -17404,6 +17516,10 @@ export type Database = {
           end_date?: string | null
           end_time?: string
           entries_locked?: boolean
+          entry_fee_basis?: string | null
+          entry_fee_basis_set_at?: string | null
+          entry_fee_basis_set_by?: string | null
+          entry_fee_mixed_rule?: string | null
           event_type?: string
           expected_players?: Json | null
           gender?: string
@@ -19037,6 +19153,28 @@ export type Database = {
         Args: { p_group: number; p_reg_id: string }
         Returns: boolean
       }
+      champ_fee_charge_preview: {
+        Args: { p_champ: string }
+        Returns: {
+          action: string
+          amount_cents: number
+          charge_key: string
+          club_member_id: string
+          division: number
+          existing_fee_id: string
+          existing_paid: boolean
+          legacy_fee_id: string
+          legacy_paid: boolean
+          member_email: string
+          member_name: string
+          registration_id: string
+          shared_email: boolean
+        }[]
+      }
+      champ_fee_post_charges: {
+        Args: { p_champ: string; p_expected_total_cents: number }
+        Returns: number
+      }
       champ_group_label: {
         Args: { p_champ_id: string; p_group: number }
         Returns: string
@@ -19089,12 +19227,43 @@ export type Database = {
       }
       champ_pair_settle: { Args: { p_pair_id: string }; Returns: string }
       champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
+      champ_payment_claim_review: {
+        Args: {
+          p_action: string
+          p_allocations?: Json
+          p_claim: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      champ_payment_claim_submit: {
+        Args: {
+          p_allocations: Json
+          p_amount_cents: number
+          p_champ: string
+          p_method: string
+          p_paid_on: string
+          p_proof_path: string
+          p_reference: string
+        }
+        Returns: string
+      }
       champ_reg_groups: { Args: { p_choices: number[] }; Returns: number[] }
       champ_reg_own_due_cents: { Args: { p_reg_id: string }; Returns: number }
       champ_reg_own_events: { Args: { p_reg_id: string }; Returns: number }
       champ_registration_fee_breakdown: {
         Args: { p_registration_id: string }
         Returns: Json
+      }
+      champ_registration_fee_lines: {
+        Args: { p_champ: string }
+        Returns: {
+          amount_cents: number
+          charge_key: string
+          club_member_id: string
+          division: number
+          registration_id: string
+        }[]
       }
       champ_result_stage_rule: {
         Args: {
@@ -19106,6 +19275,10 @@ export type Database = {
           p_stage_label: string
         }
         Returns: string
+      }
+      champ_set_entry_fee_basis: {
+        Args: { p_basis: string; p_champ: string; p_mixed_rule: string }
+        Returns: undefined
       }
       champ_shared_group: {
         Args: { p_partner_reg_id: string; p_payer: string }
@@ -19119,6 +19292,10 @@ export type Database = {
           p_group_number: number
         }
         Returns: undefined
+      }
+      champ_user_can_act_for_member: {
+        Args: { p_member: string; p_user: string }
+        Returns: boolean
       }
       charge_bar_to_member: {
         Args: {

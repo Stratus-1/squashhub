@@ -813,6 +813,13 @@
       "when": 1791715217002,
       "tag": "0115_champ_fee_basis_and_payment_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1791715252946,
+      "tag": "0116_champ_fee_functions_fix",
+      "breakpoints": true
     }
   ]
 }

@@ -170,7 +170,7 @@ export async function sendDrawNoticeTest(clubId: string, tournamentId: string, n
   const feeCtx = await loadDrawFeeContext(clubId, tournamentId, false);
   const { vars } = composeDrawNoticeVars(previewFor, message, ctx, feeCtx, tournamentId);
   delete vars.pay_url; delete vars.pay_link; delete vars.pay_token;
-  const subject = `[TEST] ${name} — ${scope.label ? `${scope.label} · ` : ""}Round ${scope.round} draw (as ${ctx.names[previewFor] ?? "player"})`;
+  const subject = `[TEST] ${name} — ${scope.label ? `${scope.label} · ` : ""}${drawScopeTitle(scope)} draw (as ${ctx.names[previewFor] ?? "player"})`;
   return sendComms({
     clubId, name: subject, channels: ["email"], content: { email: { subject, body: DRAW_EMAIL_BODY } } as any,
     memberVars: { [me.id]: vars }, audience: { type: "selected", memberIds: [me.id] },

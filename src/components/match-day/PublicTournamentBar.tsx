@@ -56,9 +56,9 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
             </div>
           )}
           <div data-testid="public-view-panel" className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card/95 px-3 py-2 text-[13px] text-card-foreground shadow-md backdrop-blur">
-            <span className="min-w-0 truncate">
+            <span className="min-w-0 leading-tight">
               <span className="font-semibold">{isT ? "Public tournament view" : "Public Match Day view"}</span>
-              <span className="text-muted-foreground"> · {isT ? "My Games is available in SquashHub" : "Your games are in SquashHub"}</span>
+              <span className="block text-xs text-muted-foreground sm:inline sm:text-[13px]"><span className="hidden sm:inline"> · </span>{isT ? "My Games is available in SquashHub" : "Your games are in SquashHub"}</span>
             </span>
             <Button asChild size="sm" className="shrink-0"><a href={href}><ExternalLink className="mr-1 h-3.5 w-3.5" />Open in SquashHub</a></Button>
           </div>

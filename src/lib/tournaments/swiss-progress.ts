@@ -54,7 +54,8 @@ export function setupSwissRounds(setup: SwissSetupPlan | null | undefined, label
   const o = setup?.formatOverrides ?? {};
   const key = Object.keys(o).filter((k) => !!o[k] && norm(label).startsWith(norm(k.split("::")[0])))
     .sort((x, y) => y.length - x.length)[0];
-  const n = Number((key ? o[key]?.swissRounds : undefined) ?? setup?.format?.swissRounds);
+  const pick = (f: any) => f ? (f.swissRoundsConfirmed || f.swissRounds) : undefined;
+  const n = Number((key ? pick(o[key]) : undefined) || pick(setup?.format));
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 

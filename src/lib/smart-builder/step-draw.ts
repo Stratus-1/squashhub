@@ -279,7 +279,8 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
     const m = milestoneFor(plan as any, key);
     ko = { pace: f.koPace === "immediate" ? "immediate" : "paced", pairing: f.koPairing === "traditional" ? "traditional" : "progressive", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
   }
-  return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
+  // Confirmed Swiss count (if set) decides the live stage; the estimate is only a fallback.
+  return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number((f as any).swissRoundsConfirmed || f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
 }
 
 /* ── pools preview (source of truth for Generate) ── */

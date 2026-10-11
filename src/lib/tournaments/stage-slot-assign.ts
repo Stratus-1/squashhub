@@ -33,20 +33,18 @@ export function stageSlotMinutes(o: { stageMinutes?: number | null; planScheduli
 }
 
 export type AssignGame = { id: string; stage_key: string; group_number?: number | null; bracket_position?: number | null; doubles?: boolean };
-export type AssignStage = { id: string; name: string; date: string; from: string; to: string; courtIds: number[]; minutes: number; order?: string[] };
+export type AssignStage = { id: string; name: string; date: string; from: string; to: string; courtIds: number[]; minutes: number };
 export type StageAssignment = {
   stageId: string; name: string; date: string; from: string; to: string; courtIds: number[]; minutes: number;
   slots: Array<{ matchId: string; courtId: number; time: string }>; unplaced: string[]; capacity: number;
 };
 
-/** Pure: place each stage's open games into its own session, skipping busy cells. */
-export function planStageSlots(stages: AssignStage[], games: AssignGame[], busy: Busy[], groupOf: (g: AssignGame) => number = (g) => Number(g.group_number) || 0): StageAssignment[] {
+/** Pure: place each stage's open games (given in slot order) into its own session, skipping busy cells. */
+export function planStageSlots(stages: AssignStage[], games: AssignGame[], busy: Busy[]): StageAssignment[] {
   const taken = [...busy];
   return stages.map((s) => {
     const own = games.filter((g) => g.stage_key === s.id);
-    const ordered = s.order ? sortGamesForSlots(own, s.order, (id: string) => {
-      const g = own.find((x) => (x as any).division_id === id); return g ? groupOf(g) : 99;
-    }) : [...own].sort((a, b) => (Number(a.group_number) || 0) - (Number(b.group_number) || 0) || (Number(a.bracket_position) || 0) - (Number(b.bracket_position) || 0));
+    const ordered = games.filter((g) => g.stage_key === s.id); // already in slot order
     const step = Math.max(15, s.minutes);
     let capacity = 0;
     for (let t = toMin(s.from); t + step <= toMin(s.to); t += step) for (const c of s.courtIds) if (!taken.some((b) => Number(b.courtId) === c && toMin(b.start) < t + step && toMin(b.end) > t)) capacity++;
@@ -107,7 +105,6 @@ export async function planStageSlotAssignments(champId: string, matchIds?: strin
   const divs = spec && usedStages.length ? await loadSlotDivisions(champId, spec) : [];
   const groupOfDiv = (id: string) => { const d = spec?.divisions.find((x) => x.divisionId === id); return d && spec ? divisionGroup(spec, d) : 99; };
   const stages: StageAssignment[] = [];
-  const busyAll: Busy[] = [];
   // Group stages by date: one diary read per day.
   const byDate = new Map<string, any[]>();
   for (const s of usedStages) { const d = String(s.schedule.date).slice(0, 10); byDate.set(d, [...(byDate.get(d) ?? []), s]); }
@@ -126,7 +123,6 @@ export async function planStageSlotAssignments(champId: string, matchIds?: strin
         return { courtId: Number(g.court_id), start: st, end: toHHMM(toMin(st) + stageSlotMinutes({ planScheduling: planSched, doubles: false, tournamentMinutes: (t as any)?.match_duration_minutes })) };
       }),
     ];
-    busyAll.push(...busy);
     const defs: AssignStage[] = list.map((s) => {
       const games = open.filter((m) => m.stage_key === s.id);
       const doubles = games.some((m) => m.partner_a_member_id || m.partner_b_member_id);
@@ -139,12 +135,13 @@ export async function planStageSlotAssignments(champId: string, matchIds?: strin
       };
     });
     const gamesHere = open.filter((m) => list.some((s) => s.id === m.stage_key));
-    const sorted = divs.length ? defs.flatMap((d) => {
+    const byBracket = (a: any, b: any) => (Number(a.group_number) || 0) - (Number(b.group_number) || 0) || (Number(a.bracket_position) || 0) - (Number(b.bracket_position) || 0);
+    const sorted = defs.flatMap((d) => {
       const s = list.find((x) => x.id === d.id);
-      const ord = playoffSlotOrder(divs, s.schedule.slotOrder).order;
-      return sortGamesForSlots(gamesHere.filter((m) => m.stage_key === d.id), ord, (gid: any) => groupOfDiv(gid)) as any[];
-    }) : gamesHere;
-    stages.push(...planStageSlots(defs, sorted.map((m: any, i: number) => ({ ...m, bracket_position: i + 1, group_number: 0 })), busy));
+      const mine = gamesHere.filter((m) => m.stage_key === d.id);
+      return divs.length ? sortGamesForSlots(mine, playoffSlotOrder(divs, s.schedule.slotOrder).order, groupOfDiv) : mine.sort(byBracket);
+    });
+    stages.push(...planStageSlots(defs, sorted, busy));
   }
   for (const s of stages) for (const id of s.unplaced) diagnostics.push({ matchId: id, stage: s.name, reason: `No free court left between ${s.from} and ${s.to} on ${s.date} (${s.capacity} free ${s.minutes}-minute slot${s.capacity === 1 ? "" : "s"} on ${s.courtIds.length} court${s.courtIds.length === 1 ? "" : "s"}).` });
   const fingerprint = JSON.stringify(stages.map((s) => s.slots));

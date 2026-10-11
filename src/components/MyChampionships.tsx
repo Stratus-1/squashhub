@@ -18,6 +18,9 @@ import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
 import { isCentrallyScheduled } from "@/lib/tournaments/fixture-scheduling";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
+import { mySide, myRecord, myScheduleState, myFixturesHref, isUpcomingFixture } from "@/lib/tournaments/my-fixtures";
+import { supabase } from "@/integrations/supabase/client";
 
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
@@ -29,6 +32,8 @@ export function MyChampionships() {
   const { data: clubData } = useMyClub();
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
+  const myIds = useMyPersonMemberIds();
+  const idsKey = [...myIds].sort().join(",");
   const [scheduling, setScheduling] = useState<{ match: any; opponent: string; champ: any } | null>(null);
   const [entering, setEntering] = useState<{ match: any; champ: any; a: string; b: string } | null>(null);
 
@@ -41,6 +46,19 @@ export function MyChampionships() {
         .eq("club_id", clubId!)
         .order("start_date");
       if (error) throw error;
+      let rows = (data || []) as any[];
+      // Tournaments hosted by OTHER clubs the person is entered in.
+      if (idsKey) {
+        const { data: regs } = await (supabase as any).from("club_champs_registrations").select("champ_id")
+          .or(`club_member_id.in.(${idsKey}),partner_member_id.in.(${idsKey})`).neq("status", "cancelled");
+        const own = new Set(rows.map((r) => r.id));
+        const extra = [...new Set(((regs || []) as any[]).map((r) => r.champ_id))].filter((id) => id && !own.has(id));
+        if (extra.length) {
+          const { data: x } = await fromExt("club_champs").select(COLS).in("id", extra as string[]);
+          rows = [...rows, ...((x || []) as any[])];
+        }
+      }
+      data = rows as any;
       // Only genuinely current/upcoming tournaments belong on the dashboard —
       // finished, cancelled and undated rows are filtered out here so this
       // surface matches the Tournaments page exactly.

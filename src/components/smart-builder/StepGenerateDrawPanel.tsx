@@ -77,6 +77,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const notice = useDrawNoticeSettings(tournamentId, "all:r1", DEFAULT_DRAW_NOTICE);
   const drawMessage = notice.value.message;
   const [rebuildOk, setRebuildOk] = useState(false);
+  const [amendOk, setAmendOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
   /** Organiser edits per group: seed order and/or pools. These are what Generate saves — never recalculated away. */

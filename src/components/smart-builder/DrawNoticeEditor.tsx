@@ -94,7 +94,12 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds, tourn
       <div className="space-y-2 rounded border border-border bg-muted/40 p-3 text-xs" data-testid="draw-notice-preview">
         <p>Dear Player name,</p>
         <p className="whitespace-pre-line">{value.message}</p>
-        <p className="text-muted-foreground">[Fee line and Pay my fee button when a fee is outstanding]</p>
+        <div className="rounded border border-dashed border-border p-2" data-testid="draw-notice-tbc">
+          <p className="font-semibold">Your match details</p>
+          <p>Category · Round: as drawn</p><p>Opponent: To be confirmed</p><p>Date: To be confirmed · Time: To be confirmed</p><p>Court: To be confirmed · Venue: To be confirmed</p>
+          <p className="text-muted-foreground">Filled per player from the saved fixtures when sent ("scheduled" for a planned slot, "Court booking confirmed" only for a real booking). Phone numbers are never included.</p>
+        </div>
+        <p className="text-muted-foreground">[Fee line and Pay my fee button only when that player's fee is outstanding]</p>
         <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">View tournament & score match</span></p>
         {preview === "activation"
           ? <><p>{value.activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p><p className="text-muted-foreground">Personal link to the player's own club account, works once, expires in 14 days. Created only when the email is sent; never joins them to the host club.</p></>

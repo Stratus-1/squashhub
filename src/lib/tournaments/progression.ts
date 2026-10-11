@@ -240,7 +240,7 @@ export async function checkDeferredSetup(db: Db, tid: string, divisionKey: strin
   const d = next.spec.divisions.find((x) => x.divisionId === divisionKey)!;
   const src = d.stages.find((s) => s.order === next.stage.order - 1)!;
   const sc = inheritedStageScoring(t, t.builder_spec as TournamentSpec, divisionKey);
-  if (!sc.ok) c.scoring.push(sc.issue);
+  if (sc.ok === false) c.scoring.push((sc as { issue: string }).issue);
   if (setup.kind === "mapped") {
     c.structure.push(...mappingIssues(setup.mapping, next.stage.name));
     if (setup.mapping && setup.mapping.source !== "stage_standings") c.engine.push("A stage set up later must use finishing positions of a finished stage.");

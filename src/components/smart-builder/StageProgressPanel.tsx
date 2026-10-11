@@ -318,7 +318,7 @@ function SetupDialog({ champId, spec, status, exec, nameOf, onClose, onDone }: {
         <div className={`rounded border p-2 text-xs ${scoring && !scoring.ok ? "border-destructive text-destructive" : "bg-muted/40"}`} data-testid="inherited-match-format">
           {!scoring ? <span className="text-muted-foreground">Reading saved match format…</span>
             : scoring.ok ? <><span className="font-medium">Match format: {scoring.text}</span> — inherited from {scoring.categoryName}</>
-            : <span className="font-medium">{scoring.issue}</span>}
+            : <span className="font-medium">{(scoring as { issue: string }).issue}</span>}
           <p className="text-muted-foreground mt-0.5">To change the scoring format, edit this category in Tournament Setup (Edit tournament setup, top of this page).</p>
         </div>
         {plan && <p className="rounded border bg-muted/40 p-2 text-xs">From your setup: {plan.pairing === "crossover" ? "crossover pairing (winner of one group v runner-up of the other)" : plan.pairing === "same_position" ? "same-position pairing" : "pairing not chosen"}{plan.mode === "scheduled" && plan.date ? ` · scheduled ${plan.date}${plan.from ? ` ${plan.from}–${plan.to ?? ""}` : ""}` : plan.deadline ? ` · play by ${plan.deadline}` : ""}{plan.courtIds?.length ? ` · ${plan.courtIds.length} court${plan.courtIds.length > 1 ? "s" : ""} chosen` : ""}. Check it, then generate.</p>}

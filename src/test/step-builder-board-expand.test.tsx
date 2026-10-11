@@ -39,6 +39,33 @@ async function openBoard() {
 describe("Step-by-Step: category board full-screen expand", () => {
   beforeEach(() => localStorage.clear());
 
+  it("zooms only the full-screen board within limits without changing picks, order or locks", async () => {
+    seed();
+    await openBoard();
+    fireEvent.click(screen.getByRole("button", { name: /^Expand$/i }));
+    const dlg = await screen.findByRole("dialog", { name: /full screen/i });
+    const board = within(dlg).getByTestId("pick-board");
+    const initialRows = board.innerHTML;
+    const zoomOut = within(dlg).getByRole("button", { name: "Zoom out player board" });
+    const zoomIn = within(dlg).getByRole("button", { name: "Zoom in player board" });
+    for (let i = 0; i < 5; i++) fireEvent.click(zoomOut);
+    expect(within(dlg).getByLabelText("Player board zoom level")).toHaveTextContent("75%");
+    expect(zoomOut).toBeDisabled();
+    expect(board.style.getPropertyValue("zoom")).toBe("0.75");
+    expect(dlg.style.getPropertyValue("zoom")).toBe("");
+    expect(board.innerHTML).toBe(initialRows);
+    fireEvent.change(within(dlg).getByRole("textbox", { name: "Search players" }), { target: { value: "Anna" } });
+    expect(within(dlg).getByTestId("pick-row-m1")).toBeInTheDocument();
+    for (let i = 0; i < 6; i++) fireEvent.click(zoomIn);
+    expect(within(dlg).getByLabelText("Player board zoom level")).toHaveTextContent("125%");
+    expect(zoomIn).toBeDisabled();
+    fireEvent.click(within(dlg).getByRole("button", { name: "Reset player board zoom to 100%" }));
+    expect(board.style.getPropertyValue("zoom")).toBe("1");
+    expect(within(board).getByText("Anna")).toHaveAttribute("tabindex", "0");
+    fireEvent.click(within(dlg).getByRole("button", { name: /exit full screen/i }));
+    expect(screen.getByTestId("pick-board").style.getPropertyValue("zoom")).toBe("");
+  });
+
   it("opens the board across the whole screen and keeps every category", async () => {
     seed();
     await openBoard();

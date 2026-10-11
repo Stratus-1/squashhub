@@ -11,6 +11,7 @@ import { toFixtureRow } from "@/lib/tournaments/structured-persist";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { swissDivisionProgress, type SwissDivisionProgress } from "@/lib/tournaments/swiss-progress";
 import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
+import { shortenSwissStage } from "@/lib/tournaments/swiss-shorten";
 import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { drawNoticeKey, drawNoticeSent, drawNotifyOn, type DrawScope } from "@/lib/smart-builder/draw-notice";
 import { DrawNoticeDialog } from "./DrawNoticeDialog";
@@ -25,6 +26,7 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [ask, setAsk] = useState<SwissDivisionProgress | null>(null);
+  const [shorten, setShorten] = useState<SwissDivisionProgress | null>(null);
   const [notice, setNotice] = useState<DrawScope | null>(null);
   const { data, refetch } = useQuery({
     queryKey: ["step-swiss-rounds", tournamentId],

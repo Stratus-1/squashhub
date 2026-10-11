@@ -49,6 +49,20 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
   }, plan, { stages: plan, format: bl.answers?.format ?? bl.format_plan?.format ?? null, formatOverrides: bl.answers?.formatOverrides ?? null });
   if (!rows.length) return null;
 
+  const endEarly = async (r: SwissDivisionProgress) => {
+    const t = r.transition;
+    if (t?.kind !== "conflict" || !t.setupRounds) return;
+    setBusy(r.divisionId);
+    try {
+      await shortenSwissStage(tournamentId, r.divisionIndex, r.stageId, t.setupRounds);
+      toast.success(`${r.label}: Swiss stage now ends after Round ${t.setupRounds}. ${t.playoffs[0]} is next — set it up from the stage steps below.`);
+      await refetch();
+      qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(tournamentId) });
+    } catch (e: any) {
+      toast.error(String(e.message ?? e));
+    } finally { setBusy(null); }
+  };
+
   const generate = async (r: SwissDivisionProgress) => {
     if (r.gate.state !== "ready") return;
     setBusy(r.divisionId);

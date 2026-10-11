@@ -2864,3 +2864,7 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 - Symptom: Uitsig picks repeatedly reverted to 71/74 after edits saved elsewhere.
 - Cause: on Edit setup, a device-local plan won over `tournaments.beta_lifecycle.answers` and was pushed back to the server on open.
 - Fix: `StepByStepBuilder.tsx` always reads the saved answers first when editing; server copy wins; local copy only published when the tournament has none; autosave waits until that read completes.
+
+### 2026-10-11 — Unpaid entries counted as "invited" despite pay-before-entry = No
+- Cause: `derive_champ_registration_statuses` only registered organiser/accepted entries once the fee was settled and never read `club_champs.payment_timing`. Uitsig card showed 26 (rows saved before the fee existed).
+- Fix: trigger treats `payment_timing='after_acceptance'` as non-gating (fee stays in `fee_status`); Uitsig rows recomputed (71 registered, all fee due). Card now shows unique players · category entries · paid · outstanding. Riverside club champs (79 affected rows) recomputes on its next row update — not bulk-recomputed.

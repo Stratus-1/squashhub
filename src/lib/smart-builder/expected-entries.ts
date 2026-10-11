@@ -49,7 +49,7 @@ export function setEstimate<T extends EstimateAnswers>(a: T, cat: string, key: s
 
 /**
  * Admin resolves a legacy conflict. Choosing the old Expected-entries value keeps subcategory splits;
- * choosing the Structure guide value updates the category (for subcategories the admin edits each row).
+ * choosing the Structure guide value updates the category; with subcategories the admin edits each row instead.
  * The choice is recorded on `guide.estimateResolutions` for audit.
  */
 export function resolveEstimate<T extends EstimateAnswers>(a: T, c: EstimateConflict, pick: "guide" | "steps", at = new Date().toISOString()): T {
@@ -57,6 +57,7 @@ export function resolveEstimate<T extends EstimateAnswers>(a: T, c: EstimateConf
   const audit = { ...(a.guide?.estimateResolutions ?? {}), [c.cat]: { chosen, guide: c.guide, steps: c.steps, at } };
   const hasSubs = subKeys(a, c.cat).length > 0;
   const unitEntries = hasSubs || pick === "steps" ? a.unitEntries : { ...(a.unitEntries ?? {}), [c.cat]: String(chosen) };
-  const expected = { ...(a.guide?.expected ?? {}), [c.cat]: String(pick === "steps" || !hasSubs ? chosen : c.steps) };
+  if (hasSubs && pick === "guide") throw new Error("Subcategory estimates must be edited per subcategory");
+  const expected = { ...(a.guide?.expected ?? {}), [c.cat]: String(chosen) };
   return { ...a, unitEntries, guide: { ...(a.guide ?? {}), expected, estimateResolutions: audit } };
 }

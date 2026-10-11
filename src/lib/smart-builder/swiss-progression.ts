@@ -56,3 +56,34 @@ export function swissProgression(f: SwissFormatLike, stages: PlanStageLike[] = [
   }
   return { steps, qualifiers, bracket, issues };
 }
+
+/* ---------------- Knockout: planning vs confirmed rounds (per selected stage/format) ---------------- */
+const KO_NAMES: Record<number, string> = { 2: "Final", 4: "Semifinal", 8: "Quarterfinal", 16: "Round of 16", 32: "Round of 32", 64: "Round of 64" };
+
+export interface KnockoutPlan { entrants: number; bracketSize: number; byes: number; rounds: number; stages: string[] }
+/** Rounds a single-elimination bracket needs: 8 → QF/SF/F = 3; 16 → 4; 12 → 16-draw with 4 byes = 4. */
+export function knockoutRoundsFor(entrants: number): KnockoutPlan | null {
+  if (!Number.isFinite(entrants) || entrants < 2) return null;
+  let size = 2; while (size < entrants) size *= 2;
+  const stages: string[] = [];
+  for (let s = size; s >= 2; s /= 2) stages.push(KO_NAMES[s] ?? `Round of ${s}`);
+  return { entrants, bracketSize: size, byes: size - entrants, rounds: Math.log2(size), stages };
+}
+
+/** Validates a confirmed knockout round count against the bracket and any rounds already in a live draw. */
+export function knockoutConfirmIssues(proposed: unknown, opts: { entrants?: number | null; generatedRounds?: number } = {}): string[] {
+  const n = num(proposed);
+  if (n == null) return ["Enter a whole number of knockout rounds (1 or more)."];
+  const out: string[] = [];
+  const plan = opts.entrants ? knockoutRoundsFor(opts.entrants) : null;
+  if (plan && n !== plan.rounds) out.push(`${plan.entrants} entrants need a ${plan.bracketSize}-draw${plan.byes ? ` with ${plan.byes} bye${plan.byes > 1 ? "s" : ""}` : ""}: ${plan.rounds} rounds (${plan.stages.join(" → ")}), not ${n}.`);
+  if (opts.generatedRounds && n < opts.generatedRounds) out.push(`Round ${opts.generatedRounds} already exists in the draw; the confirmed count cannot be lower. No results are deleted.`);
+  return out;
+}
+
+/** Per-stage breakdown and separate total for multi-stage events (e.g. 5 Swiss + 3 knockout = 8). */
+export function roundsBreakdown(parts: { label: string; rounds: number | null }[]): { lines: string[]; total: number | null } {
+  const lines = parts.map((p) => `${p.label}: ${p.rounds ?? "?"} round${p.rounds === 1 ? "" : "s"}`);
+  const total = parts.every((p) => p.rounds != null) ? parts.reduce((s, p) => s + (p.rounds as number), 0) : null;
+  return { lines, total };
+}

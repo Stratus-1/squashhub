@@ -31,3 +31,23 @@ describe("stage progression preview", () => {
     expect(swissProgression({}, [po("Plate")]).qualifiers).toBeNull();
   });
 });
+
+import { knockoutRoundsFor, knockoutConfirmIssues, roundsBreakdown } from "@/lib/smart-builder/swiss-progression";
+describe("knockout planning vs confirmed rounds", () => {
+  it("derives rounds from entrants incl. byes", () => {
+    expect(knockoutRoundsFor(8)).toMatchObject({ rounds: 3, byes: 0, stages: ["Quarterfinal", "Semifinal", "Final"] });
+    expect(knockoutRoundsFor(16)).toMatchObject({ rounds: 4, stages: ["Round of 16", "Quarterfinal", "Semifinal", "Final"] });
+    expect(knockoutRoundsFor(12)).toMatchObject({ bracketSize: 16, byes: 4, rounds: 4 });
+    expect(knockoutRoundsFor(1)).toBeNull();
+  });
+  it("refuses contradictory counts and lowering below generated rounds", () => {
+    expect(knockoutConfirmIssues("3", { entrants: 8 })).toEqual([]);
+    expect(knockoutConfirmIssues("2", { entrants: 8 })[0]).toMatch(/3 rounds/);
+    expect(knockoutConfirmIssues("4", { entrants: 16, generatedRounds: 4 })).toEqual([]);
+    expect(knockoutConfirmIssues("3", { generatedRounds: 4 })[0]).toMatch(/Round 4 already exists/);
+  });
+  it("shows stage breakdown and total separately", () => {
+    expect(roundsBreakdown([{ label: "Swiss", rounds: 5 }, { label: "Knockout", rounds: 3 }])).toEqual({ lines: ["Swiss: 5 rounds", "Knockout: 3 rounds"], total: 8 });
+    expect(roundsBreakdown([{ label: "Swiss", rounds: null }]).total).toBeNull();
+  });
+});

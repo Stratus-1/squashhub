@@ -10,7 +10,7 @@ import { divisionGroup, type SpecDivision, type TournamentSpec } from "@/lib/tou
 import type { PlannedStage } from "@/lib/tournaments/contract";
 import { inheritedStageScoring } from "@/lib/tournaments/stage-scoring";
 import { seededOrder } from "@/lib/tournaments/seeded-bracket";
-import { confirmNextStage, previewNextStage, setupOk, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
+import { checkDeferredSetup, confirmNextStage, previewNextStage, setupDeferredStage, setupOk, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
 import { savedSwissPlayoff } from "./swiss-playoff-setup";
 
 export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, division, source, exec, nameOf, onClose, onDone }: {
@@ -34,8 +34,31 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const issues = [...saved.issues, ...("issue" in scoring ? [scoring.issue] : []), ...(error ? ["Could not read final Swiss standings. Try again before generating."] : [])];
+  const setupMode = saved.mode === "setup";
+  const setup: DeferredSetup | null = setupMode && saved.mapping
+    ? { kind: "mapped", discipline: saved.discipline, mapping: saved.mapping, ...(saved.schedule ? { schedule: saved.schedule } : {}), ...(saved.laterSync ? { syncLater: saved.laterSync } : {}) }
+    : null;
   const run = async (generate: boolean) => {
-    if (issues.length || isLoading || !order?.length || !saved.existing) return;
+    if (issues.length || isLoading || !order?.length) return;
+    if (setupMode) {
+      if (!setup) return;
+      setBusy(true);
+      try {
+        // Planning target → runnable stage: the engine re-checks it is still waiting (needs_setup), refuses a
+        // duplicate, dry-runs the real draw, then creates the stage and its fixtures in one step.
+        const c = await checkDeferredSetup(supabaseDb, champId, status.divisionKey, status.stageKey, setup);
+        if (setup.mapping && setup.mapping.matches.length !== saved.top / 2) c.structure.push(`Expected ${saved.top / 2} matches; the saved setup gives ${setup.mapping.matches.length}.`);
+        setCheck(c);
+        if (generate && setupOk(c)) {
+          await setupDeferredStage(supabaseDb, champId, status.divisionKey, status.stageKey, setup, exec);
+          toast.success(`${status.name} set up and draw generated`);
+          onDone();
+        }
+      } catch (e) { setCheck({ structure: [], schedule: [], scoring: [], engine: [e instanceof Error ? e.message : "Draw check failed."] }); }
+      finally { setBusy(false); setConfirming(false); }
+      return;
+    }
+    if (!saved.existing) return;
     setBusy(true);
     try {
       // Require both the runnable definition and its persisted identity. Otherwise
@@ -62,6 +85,12 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
       <p className="font-medium" data-testid="swiss-transition-summary">{division.label.replace(/\s*·\s*(Singles|Doubles|Mixed).*$/i, "")} · {saved.discipline === "doubles" ? "Doubles" : "Singles"} · Swiss standings → seeded knockout {status.name.toLowerCase()}s</p>
       {isLoading ? <p className="text-muted-foreground">Reading final Swiss standings…</p> : issues.length > 0 ? <div role="alert" className="space-y-1 text-destructive">{issues.map((issue) => <p key={issue}>{issue}</p>)}</div> : <div data-testid="swiss-qualifier-preview" className="space-y-2">
         <p className="font-medium">Confirmed Top {saved.top} · {saved.top / 2} matches</p>
+        {setupMode && <div data-testid="swiss-setup-from-saved" className="rounded-md border border-border bg-muted/40 p-2 text-xs space-y-1">
+          <p className="font-medium">Set up {status.name} from saved setup</p>
+          <p>{status.name} is saved as a planning target{saved.fromTimeline ? " in Stages & Scheduling" : ""}. It becomes a runnable stage only when you confirm below — once, never twice.</p>
+          {saved.laterSync?.length ? <p>Then: {saved.laterSync.map((s) => s.name).join(" → ")} (winners of the previous stage).</p> : null}
+          {saved.notes.map((n) => <p key={n}>{n}</p>)}
+        </div>}
         <ol className="space-y-1">{bracket.filter((_, i) => i % 2 === 0).map((a, i) => {
           const b = bracket[i * 2 + 1];
           return <li key={a}>Game {i + 1}: #{a} {order?.[a - 1] ? unitName(order[a - 1]) : "…"} v #{b} {order?.[b - 1] ? unitName(order[b - 1]) : "…"}</li>;
@@ -71,11 +100,12 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
       <div data-testid="inherited-match-format" className="border-t border-border pt-2"><p>Match format: {scoring.ok ? scoring.text : "Not confirmed"} — inherited from {division.label}</p></div>
       <Link className="text-primary underline" to={`/club-admin?club=riverside&tab=champs&setup=${champId}`}>{saved.existing ? "Edit Tournament Setup" : "Return to Tournament Setup"}</Link>
       <p className="text-xs text-muted-foreground">To change the scoring format or confirm qualification, edit this category in Tournament Setup.</p>
-      <p>Scheduled: {saved.existing?.schedule.date ?? saved.existing?.schedule.deadline ?? plan?.date ?? plan?.deadline ?? "Not set"}</p>
-      <p className="text-muted-foreground">{plan?.from ? `${plan.from}–${plan.to ?? ""} · ` : ""}{(saved.existing?.schedule.courtIds ?? plan?.courtIds)?.length ?? 0} saved courts</p>
+      <p>Scheduled: {saved.existing?.schedule.date ?? saved.existing?.schedule.deadline ?? saved.schedule?.date ?? saved.schedule?.deadline ?? plan?.date ?? plan?.deadline ?? "Not set"}</p>
+      <p className="text-muted-foreground">{(saved.schedule?.timeFrom ?? plan?.from) ? `${saved.schedule?.timeFrom ?? plan?.from}–${saved.schedule?.timeTo ?? plan?.to ?? ""} · ` : ""}{(saved.existing?.schedule.courtIds ?? saved.schedule?.courtIds ?? plan?.courtIds)?.length ?? 0} saved courts</p>
+      {setupMode && <p className="text-xs text-muted-foreground">Start: {saved.trigger === "auto" ? "automatically when the previous stage is complete — for a stage after Swiss rounds this means it becomes ready to set up; fixtures are only created when you confirm here." : "after organiser confirmation."}</p>}
       {check && <div role="status" className="space-y-1">{[...check.structure, ...check.engine, ...check.schedule, ...check.scoring].map((issue) => <p className="text-destructive" key={issue}>{issue}</p>)}{setupOk(check) && <p>Draw checks passed.</p>}</div>}
       <DialogFooter className="gap-2">
-        {confirming ? <><p>Generate these fixtures for the existing {status.name} stage?</p><Button variant="outline" disabled={busy} onClick={() => setConfirming(false)}>Cancel</Button><Button disabled={busy} onClick={() => run(true)}>Confirm generation</Button></> : <>
+        {confirming ? <><p>{setupMode ? `Create the ${status.name} stage from the saved setup and generate its fixtures?` : `Generate these fixtures for the existing ${status.name} stage?`}</p><Button variant="outline" disabled={busy} onClick={() => setConfirming(false)}>Cancel</Button><Button disabled={busy} onClick={() => run(true)}>Confirm generation</Button></> : <>
           <Button variant="outline" disabled={busy || isLoading || issues.length > 0} onClick={() => run(false)}>Check Draw</Button>
           <Button disabled={busy || isLoading || issues.length > 0 || !check || !setupOk(check)} onClick={() => setConfirming(true)}>Generate {status.name} Draw</Button>
         </>}

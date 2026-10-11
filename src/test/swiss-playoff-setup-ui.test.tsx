@@ -58,7 +58,7 @@ describe("Riverside Swiss playoff preflight", () => {
     expect(mocks.generate).not.toHaveBeenCalled();
     expect(screen.getByRole("link", { name: "Return to Tournament Setup" })).toHaveAttribute("href", "/club-admin?club=riverside&tab=champs&setup=t");
     expect(screen.getByRole("heading", { name: "Generate Quarterfinal Draw" })).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("runnable stage definition is absent");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("runnable stage definition is absent");
   });
   it("requires an existing persisted identity, check and explicit confirmation; never invokes deferred creation", async () => {
     mocks.select.mockImplementation(async (table) => table === "tournament_divisions" ? [{ id: "division" }] : [{ id: "stage" }]);

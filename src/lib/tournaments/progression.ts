@@ -198,6 +198,11 @@ export interface DeferredSetup {
   qualify?: PlannedStage["qualify"];
   thirdPlace?: boolean;
   schedule?: PlannedStage["schedule"];
+  /**
+   * Remaining planning targets after this stage, taken from the saved Stages & Scheduling list. Append-only:
+   * existing later stages must be a name-for-name prefix (keys kept); missing ones are added; none removed.
+   */
+  syncLater?: Array<{ stageKey: string; name: string; plannedDate: string | null; plan?: any }>;
 }
 
 export interface SetupCheck { structure: string[]; engine: string[]; schedule: string[]; scoring: string[] }
@@ -209,6 +214,15 @@ export function specWithSetup(spec: TournamentSpec, divisionKey: string, stageKe
   if (!d) throw new IntegrityError("no_division", "Unknown division.");
   const later = (d.deferredStages ?? []).find((x) => x.stageKey === stageKey);
   if (!later) throw new IntegrityError("not_deferred", "That stage is not waiting to be set up.");
+  if (d.stages.some((s) => s.id === stageKey)) throw new IntegrityError("duplicate_stage", `${later.name} already exists; it will not be added again.`);
+  const rest = (d.deferredStages ?? []).filter((y) => y.stageKey !== stageKey);
+  let nextLater = rest;
+  if (setup.syncLater) {
+    const ok = rest.every((y, i) => setup.syncLater![i] && setup.syncLater![i].stageKey === y.stageKey && setup.syncLater![i].name.toLowerCase() === y.name.toLowerCase());
+    const keys = new Set([...d.stages.map((s) => s.id), stageKey]);
+    if (!ok || setup.syncLater.some((y) => keys.has(y.stageKey))) throw new IntegrityError("later_mismatch", "The later stages disagree with the saved setup; nothing was changed.");
+    nextLater = setup.syncLater.map((y) => ({ stageKey: y.stageKey, name: y.name, plannedDate: y.plannedDate, ...(y.plan ? { plan: y.plan } : {}) }));
+  }
   const order = Math.max(0, ...d.stages.map((s) => s.order)) + 1;
   const stage: PlannedStage = {
     id: stageKey, order, name: later.name, kind: setup.kind, discipline: setup.discipline,
@@ -222,7 +236,7 @@ export function specWithSetup(spec: TournamentSpec, divisionKey: string, stageKe
     spec: {
       ...spec,
       divisions: spec.divisions.map((x) => x !== d ? x : {
-        ...x, stages: [...x.stages, stage], deferredStages: (x.deferredStages ?? []).filter((y) => y.stageKey !== stageKey),
+        ...x, stages: [...x.stages, stage], deferredStages: nextLater,
       }),
     },
   };

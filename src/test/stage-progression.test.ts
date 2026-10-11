@@ -36,7 +36,7 @@ function build(stages: any[], entrants = 8) {
   def.divisions[0].sections[0].stages = stages as any;
   const parsed = DefinitionSchema.parse(def);
   const env = fakeDb();
-  env.t.tournaments = [{ id: "t", builder_architecture: "structured", builder_spec: serializeSpec(specFromDefinition(parsed)) }];
+  env.t.tournaments = [{ id: "t", builder_architecture: "structured", league_scoring_modes: { "1": "standard" }, league_points_per_game: { "1": 11 }, league_best_of: { "1": 5 }, builder_spec: serializeSpec(specFromDefinition(parsed)) }];
   env.t.club_champs_entries = Array.from({ length: entrants }, (_, i) => ({ id: `e${i}`, champ_id: "t", club_member_id: `p${i + 1}`, group_number: 1, order_index: i }));
   return { env, div: parsed.divisions[0].id };
 }
@@ -129,11 +129,15 @@ describe("stage progression engine", () => {
       const before = JSON.stringify(env.t.club_champs_matches);
       const stagesBefore = JSON.stringify((env.t.tournaments[0].builder_spec as any).divisions[0].stages);
       const mapping = parseMapping("R1: A1 v B2\nR1: B1 v A2", { source: "stage_standings", sourceStageId: "rr", pools: 2, poolSize: 4, discipline: "singles" }).mapping!;
-      // Missing scoring is caught by the four checks.
-      const bad = await checkDeferredSetup(env.db, "t", div, "sf", { kind: "mapped", matchFormat: "", mapping });
-      expect(bad.scoring.length).toBe(1);
+      // Missing category scoring blocks set-up (no guessed fallback); restoring it unblocks.
+      const saved = { ...env.t.tournaments[0] };
+      env.t.tournaments[0] = { ...saved, league_best_of: null };
+      const bad = await checkDeferredSetup(env.db, "t", div, "sf", { kind: "mapped", mapping });
+      expect(bad.scoring.join()).toMatch(/best-of game count/);
       expect(setupOk(bad)).toBe(false);
-      await setupDeferredStage(env.db, "t", div, "sf", { kind: "mapped", matchFormat: "PAR 11, best of 5", mapping });
+      env.t.tournaments[0] = saved;
+      await setupDeferredStage(env.db, "t", div, "sf", { kind: "mapped", mapping });
+      expect("matchFormat" in (env.t.tournaments[0].builder_spec as any).divisions[0].stages.at(-1)).toBe(false);
       const sf = env.t.club_champs_matches.filter((m: any) => m.stage_key === "sf");
       expect(sf.map((m: any) => `${m.player_a_member_id} v ${m.player_b_member_id}`)).toEqual(["p8 v p6", "p7 v p5"]);
       expect(JSON.stringify(env.t.club_champs_matches.filter((m: any) => m.stage_key === "rr"))).toBe(before);
@@ -142,7 +146,7 @@ describe("stage progression engine", () => {
       expect(spec.divisions[0].deferredStages).toEqual([]);
       expect((await stageLifecycle(env.db, "t")).find((s) => s.stageKey === "sf")!.state).toBe("active");
       // Set-up is one-shot and idempotent: it can't be run again or auto-duplicated.
-      await expect(setupDeferredStage(env.db, "t", div, "sf", { kind: "mapped", matchFormat: "PAR 11", mapping })).rejects.toThrow();
+      await expect(setupDeferredStage(env.db, "t", div, "sf", { kind: "mapped", mapping })).rejects.toThrow();
       await autoProgress(env.db, "t");
       expect(env.t.club_champs_matches.filter((m: any) => m.stage_key === "sf")).toHaveLength(2);
     });
@@ -151,7 +155,7 @@ describe("stage progression engine", () => {
       const { env, div } = build([rrStage, semi]);
       await generateStructuredTournament(env.db, "t");
       play(env, "rr", higher);
-      await setupDeferredStage(env.db, "t", div, "sf", { kind: "knockout", matchFormat: "PAR 11", qualify: { perPool: 2, mapping: "cross_pool", transition: null } });
+      await setupDeferredStage(env.db, "t", div, "sf", { kind: "knockout", qualify: { perPool: 2, mapping: "cross_pool", transition: null } });
       const sf = env.t.club_champs_matches.filter((m: any) => m.stage_key === "sf");
       expect(sf).toHaveLength(2);
       expect(sf.every((m: any) => m.pool_id == null)).toBe(true);
@@ -161,7 +165,7 @@ describe("stage progression engine", () => {
     it("can't be set up before the stage before it has finished", async () => {
       const { env, div } = build([rrStage, semi]);
       await generateStructuredTournament(env.db, "t");
-      const c = await checkDeferredSetup(env.db, "t", div, "sf", { kind: "knockout", matchFormat: "PAR 11", qualify: { perPool: 2, mapping: "cross_pool", transition: null } });
+      const c = await checkDeferredSetup(env.db, "t", div, "sf", { kind: "knockout", qualify: { perPool: 2, mapping: "cross_pool", transition: null } });
       expect(c.structure.join()).toMatch(/can't be set up yet/);
     });
   });

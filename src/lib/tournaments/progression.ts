@@ -17,6 +17,7 @@
  */
 import { IntegrityError, contractIssues, isDecided, progressionOf, sourcePoolCount, type PlannedStage } from "./contract";
 import { mappingIssues } from "./mapping";
+import { inheritedStageScoring } from "./stage-scoring";
 import { transitionIssues } from "./transition";
 import { specDateIssues } from "./date-window";
 import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, rankSourcePools, resolveTieBreaks, startNextStructuredStage, type Db, type SourcePool } from "./structured-persist";
@@ -187,8 +188,11 @@ export async function confirmNextStage(db: Db, tid: string, divisionKey: string,
 
 export interface DeferredSetup {
   kind: "mapped" | "knockout";
-  /** Required: how each game is scored (e.g. "PAR 11, best of 5"). */
-  matchFormat: string;
+  /**
+   * Retired: scoring is inherited from the category's saved structured settings (stage-scoring.ts).
+   * Ignored if passed — never parsed. Older stages that saved a text value keep it untouched.
+   */
+  matchFormat?: string;
   discipline?: "singles" | "doubles";
   mapping?: PlannedStage["mapping"];
   qualify?: PlannedStage["qualify"];
@@ -212,7 +216,6 @@ export function specWithSetup(spec: TournamentSpec, divisionKey: string, stageKe
     generation: "owner_approval",
     ...(setup.kind === "mapped" ? { mapping: setup.mapping ?? null, progression: { mode: "all_continue", standings: "reset" } } : {}),
     ...(setup.kind === "knockout" ? { qualify: setup.qualify ?? null, thirdPlace: !!setup.thirdPlace, progression: { mode: "qualifiers", standings: null } } : {}),
-    ...({ matchFormat: setup.matchFormat } as object),
   };
   return {
     stage,
@@ -236,7 +239,8 @@ export async function checkDeferredSetup(db: Db, tid: string, divisionKey: strin
   try { next = specWithSetup(t.builder_spec as TournamentSpec, divisionKey, stageKey, setup); } catch (e: any) { c.structure.push(e.message); return c; }
   const d = next.spec.divisions.find((x) => x.divisionId === divisionKey)!;
   const src = d.stages.find((s) => s.order === next.stage.order - 1)!;
-  if (!setup.matchFormat?.trim()) c.scoring.push("Choose how each game is scored (match format).");
+  const sc = inheritedStageScoring(t, t.builder_spec as TournamentSpec, divisionKey);
+  if (sc.ok === false) c.scoring.push((sc as { issue: string }).issue);
   if (setup.kind === "mapped") {
     c.structure.push(...mappingIssues(setup.mapping, next.stage.name));
     if (setup.mapping && setup.mapping.source !== "stage_standings") c.engine.push("A stage set up later must use finishing positions of a finished stage.");

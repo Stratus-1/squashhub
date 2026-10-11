@@ -55,6 +55,8 @@ import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { FeeBasisQuestion } from "./FeeBasisQuestion";
 import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
+import { StageCardShell, StageScheduleOverview } from "./StageScheduleOverview";
+import { courtOverlaps, stageStatus, type StageStatus } from "@/lib/smart-builder/schedule-view";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -391,6 +393,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [importReport, setImportReport] = useState<{ added: number; problems: string[] } | null>(null);
   /** First player tapped while forming a pair, per doubles unit (UI-only). */
   const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
+  /** Stages & scheduling: which stage cards the organiser has expanded/collapsed (view-only). */
+  const [stageOpen, setStageOpen] = useState<Record<string, boolean>>({});
   /** Category board shown across the whole screen (device-local view choice, not saved). */
   const [boardFull, setBoardFull] = useState(false);
   // Presentation state only: never included in answers or persisted tournament setup.
@@ -822,10 +826,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   const shift = (d: string, w: number) => { if (!d) return d; const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + w * 7); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
                   const add = () => {
                     const name = `Round ${mainStages.length + 1}`;
-                    if (!canCopy || !prev) { setStages([...stages, newStage(name, "play_by", "", "main")]); return; }
+                    if (!canCopy || !prev) { const ns = newStage(name, "play_by", "", "main"); setStageOpen((o) => ({ ...o, [ns.id]: true })); setStages([...stages, ns]); return; }
                     const w = Math.max(0, Math.min(52, Number(nextRoundGapWeeks) || 1));
                     const copy: ClubStage = { ...prev, id: Math.random().toString(36).slice(2), name, deadline: shift(prev.deadline, w), date: shift(prev.date, w), courtIds: [...prev.courtIds],
                       extraDays: prev.extraDays?.map((d) => ({ ...d, date: shift(d.date, w), courtIds: [...d.courtIds] })) };
+                    setStageOpen((o) => ({ ...o, [copy.id]: true }));
                     setStages([...stages, copy]);
                   };
                   return (

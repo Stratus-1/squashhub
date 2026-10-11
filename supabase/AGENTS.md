@@ -8,3 +8,4 @@
 
 - Recurring-mandate lifecycle notices come only from DB trigger `notify_mandate_lifecycle` on `stitch_mandates` status changes, deduped by `mandate_lifecycle_notifications(mandate_id, event)` and sent in-app to `mandate_notification_recipients` (explicit `finance`/`recurring_payments` grants, not general admins); why: provider-confirmed status is the only trigger, one notice per event, least privilege.
 - Log each user-facing change in `platform_change_log` (AI update writer uses only logged facts); member-wide platform updates are in-app only; why: no invented features, no mass member email/SMS.
+- Comms template channel versions are always loaded filtered by the club's template IDs, and the onboarding template is identified by `action.key = register_existing_member`, never by display name; why: unfiltered reads hit the 1000-row API cap for platform admins and renames must not break lookup.

@@ -20,7 +20,7 @@ export type SwissDivisionProgress = {
 };
 
 /** What setup says should follow the Swiss rounds (read-only view of the saved answers). */
-export type SwissSetupPlan = { stages?: PlanStage[] | null; format?: { swissRounds?: unknown } | null; formatOverrides?: Record<string, { swissRounds?: unknown } | null> | null };
+export type SwissSetupPlan = { stages?: PlanStage[] | null; format?: { swissRounds?: unknown; swissRoundsConfirmed?: unknown } | null; formatOverrides?: Record<string, { swissRounds?: unknown; swissRoundsConfirmed?: unknown } | null> | null };
 export type SwissTransition =
   | { kind: "playoff_next"; name: string }
   | {
@@ -54,7 +54,8 @@ export function setupSwissRounds(setup: SwissSetupPlan | null | undefined, label
   const o = setup?.formatOverrides ?? {};
   const key = Object.keys(o).filter((k) => !!o[k] && norm(label).startsWith(norm(k.split("::")[0])))
     .sort((x, y) => y.length - x.length)[0];
-  const n = Number((key ? o[key]?.swissRounds : undefined) ?? setup?.format?.swissRounds);
+  const pick = (f: any) => f ? (f.swissRoundsConfirmed || f.swissRounds) : undefined;
+  const n = Number((key ? pick(o[key]) : undefined) || pick(setup?.format));
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 

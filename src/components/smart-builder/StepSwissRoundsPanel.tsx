@@ -94,7 +94,11 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stage
       <ul className="space-y-2">
         {rows.map((r) => {
           const next = r.gate.state === "ready" ? r.gate.nextRound : r.current.round + 1;
-          const stage = stageStates.find((s) => s.divisionKey === r.divisionId && s.afterStageKey === r.stageId);
+          const division = spec.divisions[r.divisionIndex];
+          const ordered = [...division.stages].sort((a, b) => a.order - b.order);
+          const nextStage = ordered[ordered.findIndex((s) => s.id === r.stageId) + 1];
+          const nextStageKey = nextStage?.id ?? division.deferredStages?.[0]?.stageKey;
+          const stage = stageStates.find((s) => s.divisionKey === r.divisionId && s.stageKey === nextStageKey);
           const stageName = stage?.name ?? (r.transition?.kind === "playoff_next" ? r.transition.name : "Next stage");
           const stageTitle = /quarterfinals?$/i.test(stageName) ? stageName.replace(/quarterfinals?$/i, "Quarterfinals") : stageName;
           const canOpenStage = !!onOpenStage && !!stage && (stage.state === "needs_setup" || (stage.state === "ready" && !stage.automatic));

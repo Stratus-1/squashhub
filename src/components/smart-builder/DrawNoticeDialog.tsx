@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
-import { DrawNoticeEditor } from "./DrawNoticeEditor";
+import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
 import { drawNoticeKey, loadDrawNoticeRecipients, recordDrawNotice, sendDrawNotice, type DrawScope } from "@/lib/smart-builder/draw-notice";
 
 export const laterRoundNotice = (round: number) =>
@@ -20,14 +20,16 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
   scope: DrawScope | null; sentBefore?: { at: string; sent: number } | null; onSent?: () => void;
 }) {
   const waEnabled = useWhatsAppEnabled(clubId);
-  const [msg, setMsg] = useState("");
+  const fallback = laterRoundNotice(scope?.round ?? 1);
+  const notice = useDrawNoticeSettings(open && scope ? tournamentId : null, scope ? drawNoticeKey(scope) : "none", fallback);
+  const msg = notice.value.message;
   const [ch, setCh] = useState({ app: true, email: false, wa: false });
   const [recips, setRecips] = useState<Array<{ id: string; name: string }> | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   useEffect(() => {
     if (!open || !scope) return;
-    setMsg(laterRoundNotice(scope.round)); setRecips(null);
+    setRecips(null);
     loadDrawNoticeRecipients(tournamentId, scope).then((r) => { setRecips(r); setPicked(new Set(r.map((x) => x.id))); })
       .catch((e) => { setRecips([]); toast.error(String(e.message ?? e)); });
   }, [open, scope?.round, scope?.groupNumber, tournamentId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -39,7 +41,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
     if (sentBefore && !confirm(`This draw was already sent on ${new Date(sentBefore.at).toLocaleString()}. Send it again?`)) return;
     setSending(true);
     try {
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, tournamentName, msg, channels, [...picked], true, scope);
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, tournamentName, msg, channels, [...picked], true, scope, { include: notice.value.includeActivation, intro: notice.value.activationIntro });
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       await recordDrawNotice(tournamentId, drawNoticeKey(scope), dispatched?.sent ?? 0).catch(() => {});
       toast.success(`Round ${scope.round} draw sent: ${dispatched?.sent ?? 0} deliveries.`);
@@ -58,7 +60,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
             {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
           </DialogDescription>
         </DialogHeader>
-        <DrawNoticeEditor value={msg} onChange={setMsg} disabled={sending} />
+        <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} />
         <div className="space-y-2 text-sm">
           <label className="flex items-center gap-2"><Checkbox checked={ch.app} onCheckedChange={(v) => setCh((c) => ({ ...c, app: !!v }))} />In-app</label>
           <label className="flex items-center gap-2"><Checkbox checked={ch.email} onCheckedChange={(v) => setCh((c) => ({ ...c, email: !!v }))} />Email</label>

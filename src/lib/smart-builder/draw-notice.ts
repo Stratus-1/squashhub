@@ -56,7 +56,7 @@ export function drawNoticeSent(betaLifecycle: any, key: string): { at: string; s
   return betaLifecycle?.draw_notices?.[key] ?? null;
 }
 
-export async function sendDrawNotice(clubId: string, tournamentId: string, name: string, message: string, channels: CommsChannel[], onlyIds?: string[], includeFee = true, scope: DrawScope = { round: 1 }) {
+export async function sendDrawNotice(clubId: string, tournamentId: string, name: string, message: string, channels: CommsChannel[], onlyIds?: string[], includeFee = true, scope: DrawScope = { round: 1 }, activation?: { include: boolean; intro: string }) {
   if (!message.trim() || message.length > 2000) throw new Error("Enter notification wording (up to 2,000 characters).");
   if (!channels.length) throw new Error("Choose a delivery channel.");
   const { data: tournament, error: tournamentError } = await supabase.from("tournaments").select("id").eq("id", tournamentId).eq("club_id", clubId).maybeSingle();
@@ -102,7 +102,8 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
     clubId, name: subject, channels, content, memberVars,
     audience: { type: "selected", memberIds },
     action: { key: "tournament_view", label: "View tournament & score match", params: { tournament_id: tournamentId } },
-    meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw", round: String(scope.round), group_number: String(scope.groupNumber ?? "all") },
+    meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw", round: String(scope.round), group_number: String(scope.groupNumber ?? "all"),
+      ...(activation?.include && channels.includes("email") ? { include_activation: "true", activation_intro: activation.intro.trim().slice(0, 300) } : {}) },
   });
 }
 /** Round 1 players (for picking who gets the notice), sorted by name. */
@@ -114,4 +115,60 @@ export async function loadDrawNoticeRecipients(tournamentId: string, scope: Draw
   const { data: mem } = await supabase.from("club_members").select("id, name").in("id", ids);
   const names = new Map((mem ?? []).map((m: any) => [m.id, m.name as string]));
   return ids.map((id) => ({ id, name: names.get(id) ?? "Unknown player" })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/* ---------- Saved wording + optional activation link (per tournament, server-side) ---------- */
+export const DEFAULT_ACTIVATION_INTRO = "Not registered on SquashHub yet? Activate your account to view your draw and match details.";
+export type DrawNoticeSettings = { message: string; includeActivation: boolean; activationIntro: string };
+/** Saved wording for this notice key (falls back to the default), plus the tournament-wide activation choice. */
+export function readDrawNoticeSettings(betaLifecycle: any, key: string, fallback: string): DrawNoticeSettings & { savedAt: string | null } {
+  const t = betaLifecycle?.draw_notice_texts?.[key];
+  const a = betaLifecycle?.draw_notice_activation ?? {};
+  return {
+    message: typeof t?.message === "string" && t.message.trim() ? t.message : fallback,
+    includeActivation: a.include === true,
+    activationIntro: typeof a.intro === "string" && a.intro.trim() ? a.intro : DEFAULT_ACTIVATION_INTRO,
+    savedAt: t?.saved_at ?? a.saved_at ?? null,
+  };
+}
+export function sameDrawNoticeSettings(a: DrawNoticeSettings, b: DrawNoticeSettings) {
+  return a.message === b.message && a.includeActivation === b.includeActivation && a.activationIntro === b.activationIntro;
+}
+/** Saves wording only (never sends). Merges into the latest beta_lifecycle so other keys are never lost. */
+export async function saveDrawNoticeSettings(tournamentId: string, key: string, s: DrawNoticeSettings) {
+  if (!s.message.trim() || s.message.length > 2000) throw new Error("Enter notification wording (up to 2,000 characters).");
+  if (s.activationIntro.length > 300) throw new Error("Keep the activation introduction under 300 characters.");
+  const { data, error } = await (supabase as any).from("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
+  if (error) throw error;
+  const bl = (data as any)?.beta_lifecycle ?? {};
+  const at = new Date().toISOString();
+  const next = { ...bl,
+    draw_notice_texts: { ...(bl.draw_notice_texts ?? {}), [key]: { message: s.message, saved_at: at } },
+    draw_notice_activation: { include: s.includeActivation, intro: s.activationIntro, saved_at: at } };
+  const { error: upErr } = await (supabase as any).from("tournaments").update({ beta_lifecycle: next }).eq("id", tournamentId);
+  if (upErr) throw upErr;
+  return { at, betaLifecycle: next };
+}
+
+export type ActivationState = "registered" | "family_login" | "needs_activation" | "no_email";
+const okEmail = (e?: string | null) => !!e && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e.trim());
+/** Mirrors the server: login → normal link; shared email with a linked login → that login; else a personal link if emailable. */
+export function classifyActivation(members: Array<{ id: string; user_id?: string | null; email?: string | null }>, linkedEmails: Set<string>): Record<string, ActivationState> {
+  const out: Record<string, ActivationState> = {};
+  for (const m of members) {
+    const e = (m.email ?? "").trim().toLowerCase();
+    out[m.id] = m.user_id ? "registered" : !okEmail(e) ? "no_email" : linkedEmails.has(e) ? "family_login" : "needs_activation";
+  }
+  return out;
+}
+export async function loadActivationStates(clubId: string, memberIds: string[]) {
+  if (!memberIds.length) return {} as Record<string, ActivationState>;
+  const { data: mem } = await supabase.from("club_members").select("id, user_id, email").in("id", memberIds);
+  const emails = [...new Set((mem ?? []).filter((m: any) => !m.user_id && m.email).map((m: any) => String(m.email).trim().toLowerCase()))];
+  let linked = new Set<string>();
+  if (emails.length) {
+    const { data: l } = await supabase.from("club_members").select("email").eq("club_id", clubId).not("user_id", "is", null).in("email", emails);
+    linked = new Set((l ?? []).map((x: any) => String(x.email).trim().toLowerCase()));
+  }
+  return classifyActivation((mem ?? []) as any[], linked);
 }

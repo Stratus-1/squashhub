@@ -162,6 +162,20 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
       <p className="text-muted-foreground">Each category moves on by itself. Only one round is ever created at a time; finished rounds and results are never changed. <Link className="text-primary underline" to={`/club-champs/${tournamentId}`}>Open draw & results</Link></p>
       <DrawNoticeDialog open={!!notice} onClose={() => setNotice(null)} clubId={clubId} tournamentId={tournamentId} tournamentName={name}
         scope={notice} sentBefore={notice ? drawNoticeSent(bl, drawNoticeKey(notice)) : null} onSent={() => refetch()} />
+      <AlertDialog open={!!shorten} onOpenChange={(o) => !o && setShorten(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End {shorten?.label} Swiss after Round {shorten?.transition?.kind === "conflict" ? shorten.transition.setupRounds : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The live stage changes from {shorten?.swissRounds} to {shorten?.transition?.kind === "conflict" ? shorten.transition.setupRounds : ""} rounds. All played rounds, results and standings stay exactly as they are — the standings after Round {shorten?.transition?.kind === "conflict" ? shorten.transition.setupRounds : ""} become final and seed the {shorten?.transition?.kind === "conflict" ? shorten.transition.playoffs[0] : "play-off"} by match wins, Buchholz, Sonneborn-Berger, then seed. No games are created yet; you'll confirm the {shorten?.transition?.kind === "conflict" ? shorten.transition.playoffs[0] : "play-off"} draw separately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const r = shorten; setShorten(null); if (r) endEarly(r); }}>End Swiss stage</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!ask} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -187,8 +187,11 @@ export async function confirmNextStage(db: Db, tid: string, divisionKey: string,
 
 export interface DeferredSetup {
   kind: "mapped" | "knockout";
-  /** Required: how each game is scored (e.g. "PAR 11, best of 5"). */
-  matchFormat: string;
+  /**
+   * Retired: scoring is inherited from the category's saved structured settings (stage-scoring.ts).
+   * Ignored if passed — never parsed. Older stages that saved a text value keep it untouched.
+   */
+  matchFormat?: string;
   discipline?: "singles" | "doubles";
   mapping?: PlannedStage["mapping"];
   qualify?: PlannedStage["qualify"];

@@ -2,7 +2,7 @@ import { patchTournamentPlanFormat } from "@/lib/smart-builder/step-storage";
 import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
 import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients, drawNotifyOn, recordDrawNotice } from "@/lib/smart-builder/draw-notice";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
-import { DrawNoticeEditor } from "./DrawNoticeEditor";
+import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -74,7 +74,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [askSend, setAskSend] = useState<{ after: boolean } | null>(null);
   const [sendCh, setSendCh] = useState<{ app: boolean; email: boolean; wa: boolean }>({ app: true, email: false, wa: false });
   const [sending, setSending] = useState(false);
-  const [drawMessage, setDrawMessage] = useState(DEFAULT_DRAW_NOTICE);
+  const notice = useDrawNoticeSettings(tournamentId, "all:r1", DEFAULT_DRAW_NOTICE);
+  const drawMessage = notice.value.message;
   const [rebuildOk, setRebuildOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
@@ -551,7 +552,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setSending(true);
     try {
       const channels = [...(sendCh.app ? ["in_app" as const] : []), ...(sendCh.email ? ["email" as const] : []), ...(sendCh.wa && waEnabled ? ["whatsapp" as const] : [])];
-      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], true);
+      const { dispatched } = await sendDrawNotice(clubId, tournamentId, meta?.name ?? "Tournament", drawMessage, channels, [...picked], true, { round: 1 }, { include: notice.value.includeActivation, intro: notice.value.activationIntro });
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       toast.success(`Draw notification sent: ${dispatched?.sent ?? 0} deliveries.`);
       await recordDrawNotice(tournamentId, "all:r1", dispatched?.sent ?? 0).catch(() => {});
@@ -638,7 +639,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
   return (
     <div className="space-y-3 text-xs">
-      <DrawNoticeEditor value={drawMessage} onChange={setDrawMessage} disabled={sending} />
+      <DrawNoticeEditor notice={notice} disabled={sending} />
       {hasDraw && (
         <div className="rounded border border-primary/50 bg-primary/10 p-2 space-y-1">
           <div className="font-medium">Draw saved · {existing.games} game{existing.games === 1 ? "" : "s"}{existing.played ? ` · ${existing.played} played or started` : " · none played yet"}</div>
@@ -771,7 +772,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <DialogTitle>Send draw to players now?</DialogTitle>
             <DialogDescription>This wording goes to Round 1 players with a button to the tournament draw and match details. Nothing has been sent yet.</DialogDescription>
           </DialogHeader>
-          <DrawNoticeEditor value={drawMessage} onChange={setDrawMessage} disabled={sending} />
+          <DrawNoticeEditor notice={notice} disabled={sending} />
           <div className="space-y-2 text-sm">
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.app} onCheckedChange={(v) => setSendCh((c) => ({ ...c, app: !!v }))} />In-app</label>
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>

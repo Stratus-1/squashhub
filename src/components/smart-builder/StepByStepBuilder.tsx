@@ -26,7 +26,8 @@ import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-
 import { ConflictPanel } from "./ConflictPanel";
 import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
 import { SaveAsTemplateButton, TemplateReviewBanner } from "./StepTemplates";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fieldReviewMode } from "@/lib/smart-builder/field-review-mode";
 import { Button } from "@/components/ui/button";
 import { TournamentSetupNavigator } from "./TournamentSetupNavigator";
@@ -34,7 +35,7 @@ import "./tournament-setup.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Minus, RotateCcw, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
 import { createPortal } from "react-dom";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -392,6 +393,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
   /** Category board shown across the whole screen (device-local view choice, not saved). */
   const [boardFull, setBoardFull] = useState(false);
+  // Presentation state only: never included in answers or persisted tournament setup.
+  const [boardZoom, setBoardZoom] = useState(100);
   useEffect(() => {
     if (!boardFull) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBoardFull(false); };
@@ -1564,15 +1567,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
                     const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...units.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
                     const board = (
-                      <div className={cn("grid gap-2 pb-2 sm:grid-cols-2 lg:grid-cols-3", boardFull && "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5")} data-testid="pick-board">
+                      <div className={cn("grid gap-2 pb-2", boardFull ? "player-board-full" : "sm:grid-cols-2 lg:grid-cols-3")} data-testid="pick-board" style={boardFull ? { zoom: boardZoom / 100, "--player-board-zoom": boardZoom / 100 } as CSSProperties : undefined}>
                         {cols.map((c) => (
                           <div key={c.key || "none"} className={cn("flex min-w-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
 
                             <div className="sticky top-0 flex items-center justify-between border-b border-border bg-muted/60 px-2 py-1.5">
-                              <span className="truncate text-sm font-semibold" title={c.label}>{c.label}</span>
-                              <span className="text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key)!]}` : ""}</span>
+                              <span className="min-w-0 flex-1 truncate text-sm font-semibold" title={c.label}>{c.label}</span>
+                              <span className="ml-2 shrink-0 text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key)!]}` : ""}</span>
                             </div>
-                            <ol className={cn("min-h-[4rem] space-y-1 overflow-auto p-1", boardFull ? "max-h-[calc(100vh-10rem)]" : "max-h-[32rem]")}>
+                            <ol className={cn("min-h-[4rem] space-y-1 p-1", !boardFull && "max-h-[32rem] overflow-auto")}>
                               {c.ids.map((id, i) => {
                                 const mine = placesFor(id); const hit = q && memberName(id).toLowerCase().includes(q);
                                 const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
@@ -1581,7 +1584,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                     className={cn("cursor-grab rounded border px-1 py-1 text-xs", lockedSet.has(id) ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary/40" : hit ? "bg-background border-primary ring-1 ring-primary" : "bg-background border-border")} data-testid={`pick-row-${id}`} data-locked={lockedSet.has(id)}>
                                     <div className="flex items-center gap-1">
                                       {c.key && <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>}
-                                      <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>
+                                      {boardFull ? <Tooltip>
+                                        <TooltipTrigger asChild><span tabIndex={0} className={cn("min-w-0 flex-1 truncate rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={memberName(id)}>{memberName(id)}</span></TooltipTrigger>
+                                        <TooltipContent className="max-w-72 break-words">{memberName(id)}</TooltipContent>
+                                      </Tooltip> : <span className={cn("min-w-0 flex-1 truncate", enteredIds.has(id) ? "font-medium" : "italic text-muted-foreground")} title={enteredIds.has(id) ? memberName(id) : `${memberName(id)} — picked by you, not entered yet`}>{memberName(id)}</span>}
                                       {mine.length > 1 && <span className="shrink-0 rounded bg-muted px-1 text-[10px]" title={mine.map(unitLabel).join(", ")}>+{mine.length - 1}</span>}
                                       {why && <span className="shrink-0 text-[10px] text-destructive" title={`${why} — this player doesn't match this group (check gender/league on their profile). Use → to move them, or the bin to remove.`}>⚠</span>}
                                       {c.key && <>
@@ -1636,16 +1642,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         ))}
                       </div>);
                     return boardFull ? createPortal(
-                      <div className="dark fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-background p-3" role="dialog" aria-modal="true" aria-label="Player categories — full screen">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="dark player-board-dialog fixed inset-0 z-50 flex flex-col gap-2 overflow-hidden bg-background p-3" role="dialog" aria-modal="true" aria-label="Player categories — full screen">
+                        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
                           <span className="text-sm font-semibold">Picked: {counts.uniquePlayers} unique player{counts.uniquePlayers === 1 ? "" : "s"} · {counts.totalEntries} total entr{counts.totalEntries === 1 ? "y" : "ies"}</span>
-                          <span className="flex items-center gap-2">
-                            <Input aria-label="Search players" placeholder="Search players" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} className="h-8 w-48" />
-                            <Button size="sm" variant="outline" onClick={() => setBoardFull(false)}><Minimize2 className="mr-1 h-3.5 w-3.5" />Exit full screen</Button>
+                          <span className="flex max-w-full flex-wrap items-center gap-2">
+                            <Input aria-label="Search players" placeholder="Search players" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} className="h-9 w-44" />
+                            <span role="group" aria-label="Player board zoom" className="flex shrink-0 items-center gap-1">
+                              <Button size="icon" variant="outline" className="h-9 w-9" aria-label="Zoom out player board" title="Zoom out player board" disabled={boardZoom <= 75} onClick={() => setBoardZoom((z) => Math.max(75, z - 10))}><Minus className="h-4 w-4" /></Button>
+                              <output aria-live="polite" aria-label="Player board zoom level" className="w-12 text-center text-xs tabular-nums">{boardZoom}%</output>
+                              <Button size="icon" variant="outline" className="h-9 w-9" aria-label="Zoom in player board" title="Zoom in player board" disabled={boardZoom >= 125} onClick={() => setBoardZoom((z) => Math.min(125, z + 10))}><Plus className="h-4 w-4" /></Button>
+                              <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Reset player board zoom to 100%" title="Reset zoom to 100%" disabled={boardZoom === 100} onClick={() => setBoardZoom(100)}><RotateCcw className="h-4 w-4" /></Button>
+                            </span>
+                            <Button size="sm" variant="outline" className="h-9 whitespace-nowrap" onClick={() => setBoardFull(false)}><Minimize2 className="mr-1 h-3.5 w-3.5" />Exit full screen</Button>
                           </span>
                         </div>
-                        {playerLockControls}
-                        {board}
+                        <div className="shrink-0">{playerLockControls}</div>
+                        <div className="min-h-0 flex-1 overflow-auto" data-testid="player-board-scroll">{board}</div>
                       </div>, document.body) : board;
                   })()}
                 </div>

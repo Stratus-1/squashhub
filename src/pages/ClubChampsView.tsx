@@ -78,6 +78,7 @@ import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog, Star, Utensil
 import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolsFromGames, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
+import { splitFixtures, tabFromParam, type TournamentTab } from "@/lib/tournaments/fixture-split";
 import { computeFinalPlacements, placementSlotLabel } from "@/lib/tournaments/final-standings";
 import { StructuredEnginePanel } from "@/components/smart-builder/StructuredEnginePanel";
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
@@ -1542,9 +1543,10 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const qc = useQueryClient();
   const navigate = useMdNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
-  // Standings / Fixtures & Results view: one category at a time, shared
+  // Standings / Upcoming Fixtures / Results view: one category at a time, shared
   // across both tabs so switching tabs keeps the same category selected.
-  const [catTab, setCatTab] = useState<"standings" | "fixtures">("standings");
+  // Standings | Upcoming Fixtures | Results — shared by the signed-in page and the public QR view.
+  const [catTab, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
   const [catGroup, setCatGroup] = useState<number | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
@@ -3047,9 +3049,9 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         mine ? "bg-primary/10 border border-primary/20" : completed ? "bg-muted/30" : "bg-muted/50"
       )}>
         <span className="text-muted-foreground w-24 shrink-0 text-xs">
-          {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
+          {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : (m.is_bye ? "—" : "Date TBC")}
         </span>
-        <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
+        <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || (m.is_bye ? "—" : "TBC")}</span>
         <span className={cn(
           "font-medium px-2 py-0.5 rounded",
           ((completed && winnerIsA) || liveAAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",
@@ -3658,9 +3660,21 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
     const summaryFirst = multipleGroups && !isCrossLeague && orderedGroups.length <= 3;
     const standingsCards: JSX.Element[] = [];
     const fixtureCards: JSX.Element[] = [];
+    /** Upcoming Fixtures then Results, each game once (non-tabbed layouts: between-subcategory and cross-league). */
+    const splitSections = (list: any[]) => {
+      const { upcoming, results } = splitFixtures(list);
+      return <div className="space-y-3">
+        <CollapsibleSection header={<h4 className="font-medium text-sm">Upcoming Fixtures ({upcoming.length})</h4>}>
+          {upcoming.length ? <div className="space-y-1.5">{upcoming.map((m: any) => renderMatchRow(m))}</div> : <p className="text-xs text-muted-foreground italic">No games left to play.</p>}
+        </CollapsibleSection>
+        <CollapsibleSection header={<h4 className="font-medium text-sm">Results ({results.length})</h4>}>
+          {results.length ? <div className="space-y-1.5">{results.map((m: any) => renderMatchRow(m))}</div> : <p className="text-xs text-muted-foreground italic">No results yet.</p>}
+        </CollapsibleSection>
+      </div>;
+    };
     const categoryViews: {
       gn: number; label: string; title: JSX.Element; leading: boolean; count: number;
-      standings: JSX.Element; fixtures: JSX.Element;
+      standings: JSX.Element; upcoming: JSX.Element; results: JSX.Element; upcomingCount: number; resultsCount: number;
     }[] = [];
 
 
@@ -3687,11 +3701,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             {muMatches.length > 0 && (
               <>
                 <Separator />
-                <CollapsibleSection
-                  header={<h4 className="font-medium text-sm">Fixtures &amp; Results ({muMatches.length})</h4>}
-                >
-                  <div className="space-y-1.5">{muMatches.map((m: any) => renderMatchRow(m))}</div>
-                </CollapsibleSection>
+                {splitSections(muMatches)}
               </>
             )}
           </CollapsibleCard>
@@ -3765,26 +3775,28 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             );
           })
         ) : rows.map((m: any) => renderMatchRow(m));
-        const fixturesNode = groupMatches.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No fixtures for this category yet.</p>
+        const listNode = (rows: any[], empty: string, kind: "upcoming" | "results") => rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">{empty}</p>
         ) : (
           <div className="space-y-5">
             {Array.from(buckets.values()).sort((a, b) => a.order - b.order).map((b) => {
-              const done = b.rows.filter((m: any) => m.status === "completed" || m.is_bye).length;
+              const mine = b.rows.filter((m: any) => rows.includes(m));
+              if (mine.length === 0) return null;
               return (
-                <section key={b.label || "all"} className="space-y-1.5" aria-label={b.label || "Fixtures"}>
+                <section key={b.label || "all"} className="space-y-1.5" aria-label={b.label || (kind === "upcoming" ? "Upcoming fixtures" : "Results")}>
                   {b.label && (
                     <div className="flex items-center justify-between border-b pb-1">
                       <h4 className="text-sm font-semibold">{b.label}</h4>
-                      <span className="text-xs text-muted-foreground tabular-nums">{done} of {b.rows.length} complete</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{kind === "upcoming" ? `${mine.length} to play` : `${mine.length} of ${b.rows.length} complete`}</span>
                     </div>
                   )}
-                  {renderRows(b.rows)}
+                  {renderRows(mine)}
                 </section>
               );
             })}
           </div>
         );
+        const split = splitFixtures(groupMatches);
         categoryViews.push({
           gn,
           label: getGroupLabel(champ, gn),
@@ -3797,7 +3809,10 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               {standingsTable}
             </div>
           ),
-          fixtures: fixturesNode,
+          upcoming: listNode(split.upcoming, groupMatches.length ? "No games left to play in this category." : "No fixtures for this category yet.", "upcoming"),
+          results: listNode(split.results, "No results yet.", "results"),
+          upcomingCount: split.upcoming.length,
+          resultsCount: split.results.length,
         });
         return;
       }
@@ -3843,9 +3858,9 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
           if (groupMatches.length > 0) {
             fixtureCards.push(
               <CollapsibleCard key={`f-${gn}`} defaultOpen={singleCurrentTournament} headerClassName="pb-3"
-                title={`${getGroupLabel(champ, gn)} — Fixtures & Results`}
+                title={`${getGroupLabel(champ, gn)} — Upcoming Fixtures & Results`}
               >
-                {fixtureBody}
+                {splitSections(groupMatches)}
               </CollapsibleCard>
             );
           }
@@ -3859,11 +3874,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               {groupMatches.length > 0 && (
                 <>
                   <Separator />
-                  <CollapsibleSection
-                    header={<h4 className="font-medium text-sm">Fixtures &amp; Results ({groupMatches.length})</h4>}
-                  >
-                    {fixtureBody}
-                  </CollapsibleSection>
+                  {splitSections(groupMatches)}
                 </>
               )}
               {historySection}
@@ -3883,13 +3894,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             {!isCrossLeague && groupMatches.length > 0 && (
               <>
                 <Separator />
-                <CollapsibleSection
-                  header={<h4 className="font-medium text-sm">Fixtures & Results ({groupMatches.length})</h4>}
-                >
-                  <div className="space-y-1.5">
-                    {groupMatches.map((m: any) => renderMatchRow(m))}
-                  </div>
-                </CollapsibleSection>
+                {splitSections(groupMatches)}
               </>
             )}
             {historySection}
@@ -3900,17 +3905,15 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <CollapsibleCard key="cross-fixtures" defaultOpen={singleCurrentTournament} title="Fixtures & Results" titleClassName="text-lg">
-        <div className="space-y-1.5">
-          {sortMatchesChrono(matches).map((m: any) => renderMatchRow(m))}
-        </div>
+      <CollapsibleCard key="cross-fixtures" defaultOpen={singleCurrentTournament} title="Upcoming Fixtures & Results" titleClassName="text-lg">
+        {splitSections(sortMatchesChrono(matches))}
       </CollapsibleCard>
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
 
     // Standings / Fixtures & Results — solid rectangular tabs, one category at a time.
     const activeCat = categoryViews.find((c) => c.gn === catGroup) ?? categoryViews[0];
-    const tabBtn = (key: "standings" | "fixtures", label: string) => (
+    const tabBtn = (key: TournamentTab, label: string) => (
       <button
         type="button"
         role="tab"
@@ -3932,7 +3935,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       <Card key="category-views" className={cn("rounded-none overflow-hidden", activeCat.leading && "border-primary/40")}>
         <div role="tablist" aria-label="Tournament view" className="flex">
           {tabBtn("standings", "Standings")}
-          {tabBtn("fixtures", `Fixtures & Results`)}
+          {tabBtn("upcoming", "Upcoming Fixtures")}
+          {tabBtn("results", "Results")}
         </div>
         {categoryViews.length > 1 && (
           <div className="border-b bg-muted/40 px-3 py-2">
@@ -3951,7 +3955,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
                   )}
                 >
                   {c.label}
-                  {catTab === "fixtures" && <span className="ml-1 opacity-70 tabular-nums">({c.count})</span>}
+                  {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
                 </button>
               ))}
             </div>
@@ -3960,7 +3964,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         <CardContent id="cat-tabpanel" role="tabpanel" aria-labelledby={`cat-tab-${catTab}`} className="pt-4 space-y-4">
           <h3 className="text-lg font-semibold">
             {activeCat.title}
-            {catTab === "fixtures" && <span className="sr-only"> — Fixtures & Results</span>}
+            {catTab !== "standings" && <span className="sr-only"> — {catTab === "upcoming" ? "Upcoming Fixtures" : "Results"}</span>}
           </h3>
           {catTab === "standings" && (() => {
             const st = swissStatusByGroup.get(activeCat.gn);
@@ -3981,7 +3985,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               </div>
             );
           })()}
-          {catTab === "standings" ? activeCat.standings : activeCat.fixtures}
+          {catTab === "standings" ? activeCat.standings : catTab === "upcoming" ? activeCat.upcoming : activeCat.results}
         </CardContent>
       </Card>
     ) : null;

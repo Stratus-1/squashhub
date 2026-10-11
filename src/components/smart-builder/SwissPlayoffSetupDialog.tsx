@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabaseDb } from "@/lib/tournaments/structured-db";
 import { loadEntrants, rankSourcePools } from "@/lib/tournaments/structured-persist";
 import { divisionGroup, type SpecDivision, type TournamentSpec } from "@/lib/tournaments/engine-service";
@@ -34,7 +34,7 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
   const [date, setDate] = useState(saved.existing?.schedule.date ?? plan?.date ?? status.plannedDate ?? "");
   const [check, setCheck] = useState<SetupCheck | null>(null);
   const [busy, setBusy] = useState(false);
-  const issues = [...saved.issues, ...(scoring.ok ? [] : [scoring.issue]), ...(error ? ["Could not read final Swiss standings. Try again before generating."] : [])];
+  const issues = [...saved.issues, ...("issue" in scoring ? [scoring.issue] : []), ...(error ? ["Could not read final Swiss standings. Try again before generating."] : [])];
   const setup = () => ({ kind: "mapped" as const, discipline: saved.discipline, mapping: saved.mapping ?? undefined,
     schedule: plan?.mode === "play_by" ? { rule: "play_by" as const, deadline: plan.deadline, courtIds: plan.courtIds }
       : { rule: "fixed" as const, date, roundDates: [date], timeFrom: plan?.from, timeTo: plan?.to, courtIds: plan?.courtIds } });
@@ -60,7 +60,7 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
   const bracket = saved.top >= 2 && (saved.top & (saved.top - 1)) === 0 && !issues.length ? seededOrder(saved.top) : [];
   return <Dialog open onOpenChange={(open) => !open && onClose()}>
     <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto text-sm">
-      <DialogHeader><DialogTitle>Set up {status.name}</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>Set up {status.name}</DialogTitle><DialogDescription>Review the saved qualification, match format and schedule before generating the draw.</DialogDescription></DialogHeader>
       <p className="font-medium" data-testid="swiss-transition-summary">{division.label.replace(/\s*·\s*(Singles|Doubles|Mixed).*$/i, "")} · {saved.discipline === "doubles" ? "Doubles" : "Singles"} · Swiss standings → seeded knockout {status.name.toLowerCase()}s</p>
       {isLoading ? <p className="text-muted-foreground">Reading final Swiss standings…</p> : issues.length > 0 ? <div role="alert" className="space-y-1 text-destructive">{issues.map((issue) => <p key={issue}>{issue}</p>)}</div> : <div data-testid="swiss-qualifier-preview" className="space-y-2">
         <p className="font-medium">Confirmed Top {saved.top} · {saved.top / 2} matches</p>

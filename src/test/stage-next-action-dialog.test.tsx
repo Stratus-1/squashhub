@@ -15,6 +15,18 @@ vi.mock("@/lib/tournaments/round-notify", () => ({ notifyRoundDraw: mocks.notify
 
 afterEach(cleanup);
 describe("stage panel next-action bridge", () => {
+  it("keeps actual multi-pool round-robin qualification controls separate from Swiss", () => {
+    mocks.states = [{ divisionKey: "RR", divisionLabel: "RR category", stageKey: "qf", afterStageKey: "pools", name: "Quarterfinal", state: "needs_setup", automatic: false, detail: "Pools complete", played: 0, total: 0 }];
+    const spec = { divisions: [{ divisionId: "RR", label: "RR category", unit: "players", stages: [{ id: "pools", name: "Round-robin pools", kind: "pools", pools: 4, poolSize: 4, order: 0 }], deferredStages: [{ stageKey: "qf", name: "Quarterfinal" }] }] } as TournamentSpec;
+    render(<StageProgressPanel champId="t" spec={spec} matches={[]} nameOf={() => "Player"} />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Generate Quarterfinal" })[0]);
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "knockout" } });
+    expect(screen.getByText("Qualify per pool")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Cross-pool (winner v runner-up)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create stage" })).toBeInTheDocument();
+    expect(screen.queryByTestId("swiss-transition-summary")).not.toBeInTheDocument();
+    expect(mocks.commit).not.toHaveBeenCalled();
+  });
   it.each(["ready", "needs_setup"] as const)("opens the existing %s dialog and replaces duplicate generate controls", (state) => {
     const status: StageStatus = { divisionKey: "A", divisionLabel: "Men's A", stageKey: "qf", afterStageKey: "s", name: "Quarterfinal", state, automatic: false, detail: "Next stage", played: 0, total: 0 };
     mocks.states = [status];

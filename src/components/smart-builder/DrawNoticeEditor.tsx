@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  DEFAULT_ACTIVATION_INTRO, loadActivationStates, readDrawNoticeSettings, sameDrawNoticeSettings, saveDrawNoticeSettings,
+  DEFAULT_ACTIVATION_INTRO, loadActivationStates, loadMatchDetailsContext, loadDrawFeeContext, composeDrawNoticeVars, sendDrawNoticeTest, type DrawScope, readDrawNoticeSettings, sameDrawNoticeSettings, saveDrawNoticeSettings,
   type ActivationState, type DrawNoticeSettings,
 } from "@/lib/smart-builder/draw-notice";
 
@@ -47,8 +47,9 @@ const STATE_LABEL: Record<ActivationState, string> = {
   guest: "are guests without a national player record (no activation link; needs the separate guest identity process)",
 };
 
-export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
+export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds, tournamentId, tournamentName, scope }: {
   notice: ReturnType<typeof useDrawNoticeSettings>; disabled?: boolean; clubId?: string; recipientIds?: string[];
+  tournamentId?: string; tournamentName?: string; scope?: DrawScope | null;
 }) {
   const { value, setValue, save, saving, dirty, savedAt, loaded } = notice;
   const [states, setStates] = useState<Record<string, ActivationState> | null>(null);
@@ -86,6 +87,9 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
       <Button type="button" size="sm" variant="ghost" onClick={() => setPreview(preview === "registered" ? null : "registered")}>Preview: has login</Button>
       {<Button type="button" size="sm" variant="ghost" onClick={() => setPreview(preview === "activation" ? null : "activation")}>Preview: needs activation</Button>}
     </div>
+    {clubId && tournamentId && scope && !!recipientIds?.length && (
+      <PlayerEmailPreview clubId={clubId} tournamentId={tournamentId} tournamentName={tournamentName ?? "Tournament"} scope={scope} recipientIds={recipientIds} message={value.message} activationIntro={value.activationIntro} states={states} />
+    )}
     {preview && (
       <div className="space-y-2 rounded border border-border bg-muted/40 p-3 text-xs" data-testid="draw-notice-preview">
         <p>Dear Player name,</p>
@@ -99,4 +103,64 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
       </div>
     )}
   </div>;
+}
+
+/**
+ * Full email preview for ONE chosen player, built by the same composer the send uses
+ * (saved wording, fee line only when owed, "Your match details", buttons). Admin-only screen;
+ * shows no phone numbers. "Send test to me" emails the admin, never the player.
+ */
+function PlayerEmailPreview({ clubId, tournamentId, tournamentName, scope, recipientIds, message, activationIntro, states }: {
+  clubId: string; tournamentId: string; tournamentName: string; scope: DrawScope; recipientIds: string[]; message: string; activationIntro: string;
+  states: Record<string, ActivationState> | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<{ ctx: Awaited<ReturnType<typeof loadMatchDetailsContext>>; fee: Awaited<ReturnType<typeof loadDrawFeeContext>> } | null>(null);
+  const [who, setWho] = useState<string>("");
+  const [testing, setTesting] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    Promise.all([loadMatchDetailsContext(clubId, tournamentId, tournamentName, scope), loadDrawFeeContext(clubId, tournamentId, false)])
+      .then(([ctx, fee]) => { if (live) { setData({ ctx, fee }); setWho((w) => w || [...recipientIds].sort((a, b) => (ctx.names[a] ?? "").localeCompare(ctx.names[b] ?? ""))[0] || ""); } })
+      .catch((e) => toast.error(e?.message ?? "Could not load the preview"));
+    return () => { live = false; };
+  }, [open, clubId, tournamentId, scope.round, scope.groupNumber]); // eslint-disable-line react-hooks/exhaustive-deps
+  const composed = data && who ? composeDrawNoticeVars(who, message, data.ctx, data.fee, tournamentId) : null;
+  const owes = !!(data && who && data.fee.fee > 0 && data.fee.status[who]?.owes);
+  const needsActivation = states?.[who] === "needs_activation";
+  const test = async () => {
+    setTesting(true);
+    try { await sendDrawNoticeTest(clubId, tournamentId, tournamentName, message, scope, who); toast.success("Test email sent to you. No player was emailed."); }
+    catch (e: any) { toast.error(e?.message ?? "Could not send the test"); }
+    finally { setTesting(false); }
+  };
+  if (!open) return <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)} data-testid="draw-preview-player-open">Preview full email for a player</Button>;
+  return (
+    <div className="space-y-2 rounded border border-border p-3 text-xs" data-testid="draw-preview-player">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-1">Preview as
+          <select aria-label="Preview as player" className="h-8 rounded border border-input bg-background px-2" value={who} onChange={(e) => setWho(e.target.value)}>
+            {[...recipientIds].sort((a, b) => (data?.ctx.names[a] ?? "").localeCompare(data?.ctx.names[b] ?? "")).map((id) => <option key={id} value={id}>{data?.ctx.names[id] ?? "Loading…"}</option>)}
+          </select>
+        </label>
+        <Button type="button" size="sm" variant="outline" onClick={test} disabled={!who || testing || !message.trim()}>{testing && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Send test to me</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>Close</Button>
+      </div>
+      {!composed ? <p className="text-muted-foreground"><Loader2 className="mr-1 inline h-3 w-3 animate-spin" />Loading saved games…</p> : (
+        <div className="space-y-2 rounded bg-background p-3 text-sm text-foreground ring-1 ring-border">
+          <p>Dear {data!.ctx.names[who] ?? "Player"},</p>
+          <p className="whitespace-pre-line">{composed.vars.personal_message_html.replace(/<br>/g, "\n").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")}</p>
+          {composed.items.length
+            /* Built by matchDetailsHtml from escaped values only — the exact markup the email carries. */
+            ? <div data-testid="draw-preview-match" dangerouslySetInnerHTML={{ __html: composed.vars.match_details_html }} />
+            : <p className="text-muted-foreground">No game for this player in this round.</p>}
+          {owes && <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Pay my fee</span></p>}
+          <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">View tournament & score match</span></p>
+          {needsActivation && <><p>{activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p></>}
+        </div>
+      )}
+      <p className="text-muted-foreground">Preview only — nothing is sent to players. Built from the saved games and court bookings; phone numbers are never included.</p>
+    </div>
+  );
 }

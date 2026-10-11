@@ -60,7 +60,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
             {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
           </DialogDescription>
         </DialogHeader>
-        <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} />
+        <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} />
         <div className="space-y-2 text-sm">
           <label className="flex items-center gap-2"><Checkbox checked={ch.app} onCheckedChange={(v) => setCh((c) => ({ ...c, app: !!v }))} />In-app</label>
           <label className="flex items-center gap-2"><Checkbox checked={ch.email} onCheckedChange={(v) => setCh((c) => ({ ...c, email: !!v }))} />Email</label>

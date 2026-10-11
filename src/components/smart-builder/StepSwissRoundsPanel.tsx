@@ -13,7 +13,7 @@ import { swissDivisionProgress, type SwissDivisionProgress } from "@/lib/tournam
 import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
 import { shortenSwissStage } from "@/lib/tournaments/swiss-shorten";
 import { applySetupSessions } from "@/lib/smart-builder/session-slots";
-import { drawNoticeKey, drawNoticeSent, drawNotifyOn, type DrawScope } from "@/lib/smart-builder/draw-notice";
+import { drawNoticeKey, drawNoticeSent, drawNotifyOn, markDrawNoticePending, clearDrawNoticePending, type DrawScope } from "@/lib/smart-builder/draw-notice";
 import { DrawNoticeDialog } from "./DrawNoticeDialog";
 import { Send } from "lucide-react";
 import type { StageStatus } from "@/lib/tournaments/progression";
@@ -80,7 +80,11 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stage
       toast.success(`${r.label}: Round ${round} draw generated.`);
       const latest = await refetch();
       // Saved "Draw notifications": Ask me after each draw → prompt now (never auto-send); Off → no prompt.
-      if (drawNotifyOn(latest.data?.bl)) setNotice({ round, groupNumber: r.divisionIndex + 1, label: r.label });
+      if (drawNotifyOn(latest.data?.bl)) {
+        const sc = { round, groupNumber: r.divisionIndex + 1, label: r.label };
+        await markDrawNoticePending(tournamentId, sc, latest.data?.bl).catch(() => {});
+        setNotice(sc);
+      }
       qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(tournamentId) });
     } catch (e: any) {
       toast.error(String(e.message ?? e));

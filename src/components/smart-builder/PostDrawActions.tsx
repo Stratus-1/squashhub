@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { AssignStageSlotsDialog } from "@/components/tournaments/AssignStageSlotsDialog";
 import { DrawNoticeDialog } from "./DrawNoticeDialog";
 import { applyStageSlotAssignments, planStageSlotAssignments } from "@/lib/tournaments/stage-slot-assign";
-import { drawNoticeKey, drawNoticeSent, drawNotifyOn, type DrawScope } from "@/lib/smart-builder/draw-notice";
+import { drawNoticeKey, drawNoticeSent, drawNotifyOn, markDrawNoticePending, clearDrawNoticePending, type DrawScope } from "@/lib/smart-builder/draw-notice";
 import { fromExt } from "@/lib/supabase-ext";
 
 /**
@@ -24,6 +24,7 @@ export function PostDrawActions({ champId, stageKey, stageName, groupNumber, lab
         fromExt("club_champs_matches").select("id, group_number").eq("champ_id", champId).eq("stage_key", stageKey),
       ]);
       setT(tour);
+      markDrawNoticePending(champId, { round: 1, groupNumber, label, stageKey, stageName }, (tour as any)?.beta_lifecycle ?? {}).catch(() => {});
       const mine = ((rows ?? []) as any[]).filter((m) => groupNumber == null || Number(m.group_number) === groupNumber).map((m) => m.id);
       setIds(mine);
       try {
@@ -47,7 +48,7 @@ export function PostDrawActions({ champId, stageKey, stageName, groupNumber, lab
   const scope: DrawScope = { round: 1, groupNumber, label, stageKey, stageName };
   return <>
     <AssignStageSlotsDialog open={phase === "review"} champId={champId} matchIds={ids} onClose={toNotice} onDone={() => {}} />
-    {t && <DrawNoticeDialog open={phase === "notice"} onClose={() => setPhase("done")} clubId={t.club_id} tournamentId={champId} tournamentName={t.name ?? "Tournament"}
+    {t && <DrawNoticeDialog open={phase === "notice"} onClose={() => { clearDrawNoticePending(champId, drawNoticeKey(scope)).catch(() => {}); setPhase("done"); }} clubId={t.club_id} tournamentId={champId} tournamentName={t.name ?? "Tournament"}
       scope={scope} sentBefore={drawNoticeSent(t.beta_lifecycle, drawNoticeKey(scope))} />}
   </>;
 }

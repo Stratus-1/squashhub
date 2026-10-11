@@ -15,6 +15,7 @@ import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { QrCode } from "lucide-react";
 import { StepRunOverview } from "./StepRunOverview";
 import { PlayerNotificationsSection } from "./PlayerNotificationsSection";
+import { PendingDrawNoticePrompt } from "./PendingDrawNoticePrompt";
 import { StepSwissRoundsPanel } from "./StepSwissRoundsPanel";
 import { StepKnockoutRoundsPanel } from "./StepKnockoutRoundsPanel";
 import { StandingsAwardsSection } from "./StandingsAwardsSection";
@@ -75,6 +76,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
     setH((cur) => { if (!cur) return cur; const n = { ...cur, stage: l.stage, completed: l.completed, informedAt: l.inform?.at ?? cur.informedAt }; saveHandover(n); return n; });
   };
   const [needPay, setNeedPay] = useState(false);
+  const [pendingTick, setPendingTick] = useState(0);
   const [qrOpen, setQrOpen] = useState(false); // must stay above the early returns below
   useEffect(() => { if (h?.feeDue) loadConfirmNeedsPay(tournamentId).then(setNeedPay).catch(() => {}); }, [tournamentId, h?.feeDue]);
   if (diamond !== false) return diamond ? <div className="text-sm">Diamond League keeps its existing tournament view. <Link className="underline" to={`/club-champs/${tournamentId}`}>Open tournament</Link></div> : null;
@@ -219,7 +221,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         )}
         {shown === "generate" && (
           <StepGenerateDrawPanel clubId={clubId} tournamentId={tournamentId} revisiting={revisiting} onEditSetup={() => askEdit()}
-            onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
+            onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); setPendingTick((n) => n + 1); }} />
         )}
         {diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}
         {revisiting && diamond === false && <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
@@ -236,6 +238,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
       </CardContent></Card>
       )}
 
+      <PendingDrawNoticePrompt clubId={clubId} tournamentId={tournamentId} tournamentName={h.name} reloadKey={pendingTick} />
       {!qrOpen && cur >= lifecycleIndex("generate") && <PlayerNotificationsSection clubId={clubId} tournamentId={tournamentId} tournamentName={h.name} />}
 
       <div className="grid gap-3 md:grid-cols-2 text-xs">

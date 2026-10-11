@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
+import { deriveEntryFeeState, canReportPayment, canChoosePayment } from "@/lib/tournaments/entry-fee-state";
 import { useClubMembers } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { Card } from "@/components/ui/card";
@@ -173,6 +174,18 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     },
     enabled: !!champ?.id && !!memberId,
   });
+  // The account charge linked to this entry — the truth behind "charged to member account".
+  const feePaymentId = (myReg as any)?.fee_payment_id as string | undefined;
+  const { data: linkedCharge, isFetched: chargeLoaded, refetch: refetchCharge } = useQuery({
+    queryKey: ["my-champ-reg", champ.id, memberId, "charge", feePaymentId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("club_member_fee_payments").select("id, amount, paid").eq("id", feePaymentId!).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as { id: string; amount: number; paid: boolean } | null;
+    },
+    enabled: !!feePaymentId,
+    refetchOnWindowFocus: true,
+  });
   // Per-event prices (tournaments.division_fees) — the server is authoritative for what I owe.
   const { data: divisionFees } = useQuery({
     queryKey: ["champ-division-fees", champ?.id],
@@ -195,6 +208,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     enabled: !!myReg?.id,
   });
   const entryFee = (serverDueCents ?? entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
+  const feeState = deriveEntryFeeState(myReg as any, linkedCharge, Math.round(entryFee * 100), { chargeLoaded: !feePaymentId || chargeLoaded });
   const myEventLabels = (() => {
     const groups = Array.isArray(myReg?.division_choices) ? Array.from(new Set((myReg.division_choices as any[]).map(Number))) : [];
     const labels = (champ?.group_labels || {}) as Record<string, string>;
@@ -504,19 +518,25 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       )}
 
 
-      {myReg && (myReg as any).fee_settled_via === "account" && !(myReg as any).paid_at && (
+      {feeState?.kind === "account_charged" && (
         <p className="text-xs text-muted-foreground">
-          Entry fee {money(entryFee)} charged to your member account — settle it with the club as usual.
+          Entry fee {money(feeState.amountCents / 100)} charged to your member account — settle it with the club as usual.
+          {feeState.mismatch && ` This differs from the ${money(entryFee)} now due; the club will check it.`}
         </p>
       )}
-      {myReg && paymentRequired && entryFee > 0 && !(myReg as any).paid_at && !["paid", "waived"].includes(String((myReg as any).fee_status ?? "")) && (
+      {feeState?.kind === "account_unverified" && (
+        <p className="text-xs text-muted-foreground">
+          Your entry is marked "on account", but no matching charge is on your member account yet. The club will check it — nothing has been charged.
+        </p>
+      )}
+      {myReg && paymentRequired && entryFee > 0 && canReportPayment(feeState) && (
         <ReportPaymentButton champId={champ.id} clubId={clubId} memberId={memberId} suggestedCents={Math.round(entryFee * 100)} />
       )}
       {myReg && myReg.partner_member_id && (
         <PartnerFeeOptions registrationId={myReg.id} cardEnabled={cardReady && paymentGateway === "stitch"}
-          onPay={(scope) => launchPayment(myReg.id, scope)} onCharged={() => refetch()} />
+          onPay={(scope) => launchPayment(myReg.id, scope)} onCharged={() => { refetch(); refetchCharge(); }} />
       )}
-      {myReg && (myReg as any).fee_settled_via !== "account" && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
+      {myReg && canChoosePayment(feeState) && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">
           <div className="flex flex-wrap items-center gap-2">
             {cardReady && (

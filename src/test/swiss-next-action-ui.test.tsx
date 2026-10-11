@@ -9,7 +9,7 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: mocks.data, r
 vi.mock("@/lib/tournaments/swiss-generate", () => ({ generateNextSwissRound: mocks.generate }));
 vi.mock("@/lib/tournaments/swiss-shorten", () => ({ shortenSwissStage: mocks.shorten }));
 vi.mock("@/lib/smart-builder/session-slots", () => ({ applySetupSessions: vi.fn() }));
-vi.mock("@/components/smart-builder/DrawNoticeDialog", () => ({ DrawNoticeDialog: ({ scope }: any) => { mocks.notice(scope); return <div role="dialog">Round {scope.round} notice preview</div>; } }));
+vi.mock("@/components/smart-builder/DrawNoticeDialog", () => ({ DrawNoticeDialog: ({ scope, open }: any) => { if (!open || !scope) return null; mocks.notice(scope); return <div role="dialog">Round {scope.round} notice preview</div>; } }));
 
 const stage: StageStatus = { divisionKey: "A", divisionLabel: "Men's A", stageKey: "qf", afterStageKey: "s", name: "Quarterfinal", state: "needs_setup", automatic: false, detail: "Set up Quarterfinal to continue.", played: 0, total: 0 };
 const matches = (group: number, rounds: number, open = false) => Array.from({ length: rounds }, (_, i) => ({ id: `${group}-${i}`, group_number: group, stage_key: "s", round_number: i + 1, player_a_member_id: "a", player_b_member_id: "b", status: open && i === rounds - 1 ? "scheduled" : "completed", winner_member_id: open && i === rounds - 1 ? null : "a", score: "2-0" }));

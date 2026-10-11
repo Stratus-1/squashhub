@@ -1,3 +1,4 @@
+import { OpponentContactButton } from "@/components/contact/OpponentContactButton";
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,7 @@ export function MyChallenges() {
                 {c.status}
               </Badge>
             </div>
+            <div className="mt-2"><OpponentContactButton kind="challenge" fixtureId={c.id} fallback="Message them through the challenge in SquashHub." /></div>
           </Card>
         );
       })}

@@ -10,6 +10,7 @@ import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hie
 import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec, divisionGroup, divisionEntryGroups } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";
 import { seedPools } from "./mapping";
+import { swissTable } from "./swiss-standings";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { engineVerdicts } from "../smart-builder/engine-support";
 import { definedOnly, deferredStages } from "../smart-builder/deferred";
@@ -407,7 +408,10 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   if (!srcDone.length || !srcDone.every(isDecided)) return notReady(`${src.name} is not finished.`);
   if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return notReady(`${src.name}: not all Swiss rounds are played yet.`);
   const cut = Math.max(0, ...transition.positions);
-  const standings = poolStandings(divisionKey, src.id, matches, cut, resolveTieBreaks(spec, d), spec.positionOrders?.[`${divisionKey}/${src.id}`], stage.name);
+  // A Swiss source seeds play-offs from the shared Swiss standings order, never the pool engine.
+  const standings: PoolStanding[] = src.kind === "swiss"
+    ? rankSourcePools(d, src, matches)[0].result.order.map((id, i) => ({ pool: 1, position: i + 1, id, divisionId: divisionKey }))
+    : poolStandings(divisionKey, src.id, matches, cut, resolveTieBreaks(spec, d), spec.positionOrders?.[`${divisionKey}/${src.id}`], stage.name);
   return previewPlayoffs(d, stageKey, standings, existing);
 }
 
@@ -549,6 +553,22 @@ export interface SourcePool { index: number; label: string; members: string[]; r
  */
 export function rankSourcePools(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, used?: Set<string>, criteria: TieBreakCriterion[] = resolveTieBreaks(null, d)): SourcePool[] {
   const rows = matches.filter((x) => x.stage_key === src.id);
+  // A Swiss source stage ranks by the shared Swiss table (match wins → Buchholz → Sonneborn-Berger →
+  // seed), NEVER by the pool engine's game-based tie-breaks — the same order the standings page shows
+  // and the next Swiss round pairs with. Seed is the final tie-break, so the order is total and no
+  // tie can ever block play-off seeding.
+  if (src.kind === "swiss") {
+    const members = d.entrants.map((e) => e.id);
+    const games = rows.map((x) => {
+      const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+      const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b;
+      return { a: a || null, b: b || null, winner };
+    });
+    const table = swissTable(members, games, (src as any).swissTieBreaks ?? null);
+    const order = table.map((r) => r.id);
+    const stats = new Map(order.map((id) => [id, { played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, gamesFor: 0, gamesAgainst: 0, setsFor: 0, setsAgainst: 0 } as any]));
+    return [{ index: 0, label: "Swiss standings", members, result: { order, stats, ties: [], manual: [] }, material: [] }];
+  }
   let pools: string[][];
   if (src.kind === "mapped") {
     if (src.mapping?.source !== "seed_pools") throw new IntegrityError("mapping_source", `${src.name}: its players have no home pool to be ranked in.`);

@@ -11,6 +11,7 @@ import { toFixtureRow } from "@/lib/tournaments/structured-persist";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { swissDivisionProgress, type SwissDivisionProgress } from "@/lib/tournaments/swiss-progress";
 import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
+import { shortenSwissStage } from "@/lib/tournaments/swiss-shorten";
 import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { drawNoticeKey, drawNoticeSent, drawNotifyOn, type DrawScope } from "@/lib/smart-builder/draw-notice";
 import { DrawNoticeDialog } from "./DrawNoticeDialog";
@@ -25,6 +26,7 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [ask, setAsk] = useState<SwissDivisionProgress | null>(null);
+  const [shorten, setShorten] = useState<SwissDivisionProgress | null>(null);
   const [notice, setNotice] = useState<DrawScope | null>(null);
   const { data, refetch } = useQuery({
     queryKey: ["step-swiss-rounds", tournamentId],
@@ -46,6 +48,20 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
     return matches.filter((m) => m.group_number === di + 1 && m.stage_key === sid).map((m) => toFixtureRow(d.divisionId, m, "swiss"));
   }, plan, { stages: plan, format: bl.answers?.format ?? bl.format_plan?.format ?? null, formatOverrides: bl.answers?.formatOverrides ?? null });
   if (!rows.length) return null;
+
+  const endEarly = async (r: SwissDivisionProgress) => {
+    const t = r.transition;
+    if (t?.kind !== "conflict" || !t.setupRounds) return;
+    setBusy(r.divisionId);
+    try {
+      await shortenSwissStage(tournamentId, r.divisionIndex, r.stageId, t.setupRounds);
+      toast.success(`${r.label}: Swiss stage now ends after Round ${t.setupRounds}. ${t.playoffs[0]} is next — set it up from the stage steps below.`);
+      await refetch();
+      qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(tournamentId) });
+    } catch (e: any) {
+      toast.error(String(e.message ?? e));
+    } finally { setBusy(null); }
+  };
 
   const generate = async (r: SwissDivisionProgress) => {
     if (r.gate.state !== "ready") return;
@@ -110,11 +126,17 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
                     <p className="text-muted-foreground">Setup: {t.setupRounds ?? "?"} Swiss round{t.setupRounds === 1 ? "" : "s"}, then {t.playoffs.join(" → ")} after Round {t.playoffAfterRound}. Live draw: {t.liveRounds} Swiss rounds, {t.liveHasPlayoff ? `then ${t.playoffs[0]} (set up later) after Round ${t.liveRounds}` : "no play-off stage"}.</p>
                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
                       <Button size="sm" onClick={onSetupRound}>Review stage plan in setup</Button>
+                      {t.reason === "live_rounds" && t.setupRounds && r.gate.state === "ready" && (
+                        <Button size="sm" disabled={!!busy} onClick={() => setShorten(r)}>
+                          {busy === r.divisionId ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
+                          End Swiss after Round {t.setupRounds} — {t.playoffs[0]} next
+                        </Button>
+                      )}
                       {keep && r.action === "plan_conflict" && (r.schedule
                         ? <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setAsk(r)}>{busy === r.divisionId ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Shuffle className="mr-1 h-4 w-4" />}Keep {t.liveRounds} rounds — Generate Round {next} Draw</Button>
                         : <Button size="sm" variant="outline" onClick={onSetupRound}><CalendarPlus className="mr-1 h-4 w-4" />Keep {t.liveRounds} rounds — Set up Round {next}</Button>)}
                     </div>
-                    {t.reason !== "setup_rounds" && <p className="text-muted-foreground">Ending the Swiss stage early{t.liveHasPlayoff ? "" : ` and adding ${t.playoffs[0]}`} on a draw that has already started can't be done from this screen yet. Nothing has been generated or changed — results and standings stay as they are.</p>}
+                    {t.reason === "live_rounds" && <p className="text-muted-foreground">Ending the Swiss stage early only changes the round count of the live stage — played rounds, results and standings are never touched, and no games are created until you confirm the {t.playoffs[0]} draw.</p>}
                   </div>
                 );
               })()}
@@ -140,6 +162,20 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
       <p className="text-muted-foreground">Each category moves on by itself. Only one round is ever created at a time; finished rounds and results are never changed. <Link className="text-primary underline" to={`/club-champs/${tournamentId}`}>Open draw & results</Link></p>
       <DrawNoticeDialog open={!!notice} onClose={() => setNotice(null)} clubId={clubId} tournamentId={tournamentId} tournamentName={name}
         scope={notice} sentBefore={notice ? drawNoticeSent(bl, drawNoticeKey(notice)) : null} onSent={() => refetch()} />
+      <AlertDialog open={!!shorten} onOpenChange={(o) => !o && setShorten(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End {shorten?.label} Swiss after Round {shorten?.transition?.kind === "conflict" ? shorten.transition.setupRounds : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The live stage changes from {shorten?.swissRounds} to {shorten?.transition?.kind === "conflict" ? shorten.transition.setupRounds : ""} rounds. All played rounds, results and standings stay exactly as they are — the standings after Round {shorten?.transition?.kind === "conflict" ? shorten.transition.setupRounds : ""} become final and seed the {shorten?.transition?.kind === "conflict" ? shorten.transition.playoffs[0] : "play-off"} by match wins, Buchholz, Sonneborn-Berger, then seed. No games are created yet; you'll confirm the {shorten?.transition?.kind === "conflict" ? shorten.transition.playoffs[0] : "play-off"} draw separately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const r = shorten; setShorten(null); if (r) endEarly(r); }}>End Swiss stage</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!ask} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -15,3 +15,4 @@
 ## Pick players toolbar redesign (in progress, preview only)
 - Presentation-only rebuild of the Pick Players toolbar in `src/components/smart-builder/StepByStepBuilder.tsx`: row 1 = picked counts + lock-status badge, grouped action rows (Placement / Locks / View) with nowrap buttons and separators, guidance text moved to its own full-width muted row below. No selection, placement, locking or seeding logic changed.
 - Playwright check blocked so far: draft with picks not reachable in headless run (visible draft "Jhb club champs" has no picked players; toolbar renders only when picks exist). Still to do: screenshot toolbar at desktop/tablet/mobile in the Riverside draft with 71 picks. Do not publish.
+- [ ] Swiss→QF: end-Swiss-early action + Swiss-standings playoff seeding (in progress)

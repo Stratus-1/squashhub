@@ -38,7 +38,7 @@
 - [x] Draw emails: activation link automatic for unlinked players (no tick box), on own club page
 
 ## Open (2026-10-11)
-- [ ] Opponent contact sharing — APPROVED (amended: activation consent, hide after result, one person-level preference) — implementing in preview
+- [ ] Opponent contact sharing — built in preview; awaiting sender deploy + publish approval; league fixtures not yet covered
 - [x] Builder: merge Expected entries into Structure guide (18 steps, conflict flags) — preview
 - [x] Public QR tournament page: once-per-browser info toast + compact "Open in SquashHub" panel replacing Exit/Log into App — preview
 - [x] Read-only: explain 'Who may enter' auto vs choose options (no changes)

@@ -12,56 +12,58 @@ export const laterRoundNotice = (round: number) =>
   `Your Round ${round} match has been drawn. Open the tournament to view the draw, check your opponent and match details, score your match live, or submit your result afterwards.`;
 
 /**
- * "Send draw to players now?" for ONE category's round. Explicit send only — never automatic.
- * Recipients are only the players in that category's round; each send is logged for Sent / Resend.
+ * Wording editor + channels + recipient picker + explicit Send/Resend for ONE category's round.
+ * Shared by the post-draw prompt and the permanent Player Notifications section. Never sends automatically;
+ * with no fixtures yet the wording can be edited/saved/previewed but sending stays disabled.
  */
-export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tournamentName, scope, sentBefore, onSent }: {
-  open: boolean; onClose: () => void; clubId: string; tournamentId: string; tournamentName: string;
-  scope: DrawScope | null; sentBefore?: { at: string; sent: number } | null; onSent?: () => void;
+export function DrawNoticeComposer({ active = true, clubId, tournamentId, tournamentName, scope, hasFixtures = true, sentBefore, onSent, onCancel, cancelLabel = "Later", confirmSend = false }: {
+  active?: boolean; clubId: string; tournamentId: string; tournamentName: string; scope: DrawScope | null; hasFixtures?: boolean;
+  sentBefore?: { at: string; sent: number } | null; onSent?: () => void; onCancel?: () => void; cancelLabel?: string; confirmSend?: boolean;
 }) {
   const waEnabled = useWhatsAppEnabled(clubId);
   const fallback = laterRoundNotice(scope?.round ?? 1);
-  const notice = useDrawNoticeSettings(open && scope ? tournamentId : null, scope ? drawNoticeKey(scope) : "none", fallback);
+  const notice = useDrawNoticeSettings(active && scope ? tournamentId : null, scope ? drawNoticeKey(scope) : "none", fallback);
   const msg = notice.value.message;
   const [ch, setCh] = useState({ app: true, email: false, wa: false });
   const [recips, setRecips] = useState<Array<{ id: string; name: string }> | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   useEffect(() => {
-    if (!open || !scope) return;
+    if (!active || !scope) return;
+    if (!hasFixtures) { setRecips([]); setPicked(new Set()); return; }
     setRecips(null);
     loadDrawNoticeRecipients(tournamentId, scope).then((r) => { setRecips(r); setPicked(new Set(r.map((x) => x.id))); })
       .catch((e) => { setRecips([]); toast.error(String(e.message ?? e)); });
-  }, [open, scope?.round, scope?.groupNumber, scope?.stageKey, tournamentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, hasFixtures, scope?.round, scope?.groupNumber, scope?.stageKey, tournamentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const channels = [...(ch.app ? ["in_app" as const] : []), ...(ch.email ? ["email" as const] : []), ...(ch.wa && waEnabled ? ["whatsapp" as const] : [])];
   const send = async () => {
-    if (!scope) return;
-    const channels = [...(ch.app ? ["in_app" as const] : []), ...(ch.email ? ["email" as const] : []), ...(ch.wa && waEnabled ? ["whatsapp" as const] : [])];
+    if (!scope || !hasFixtures) return;
     if (!channels.length) { toast.error("Choose at least one channel."); return; }
+    if (notice.dirty && !confirm("Your wording has unsaved changes. Send the wording shown on screen anyway? (It is not saved.)")) return;
     if (sentBefore && !confirm(`This draw was already sent on ${new Date(sentBefore.at).toLocaleString()}. Send it again?`)) return;
+    const chLabel = channels.map((c) => c === "in_app" ? "In-app" : c === "email" ? "Email" : "WhatsApp").join(", ");
+    if (confirmSend && !confirm(`Send ${drawScopeTitle(scope)}${scope.label ? ` (${scope.label})` : ""} notice to ${picked.size} player${picked.size === 1 ? "" : "s"} by ${chLabel}? This sends real messages now.`)) return;
     setSending(true);
     try {
       const { dispatched } = await sendDrawNotice(clubId, tournamentId, tournamentName, msg, channels, [...picked], true, scope, { include: true, intro: notice.value.activationIntro });
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       await recordDrawNotice(tournamentId, drawNoticeKey(scope), dispatched?.sent ?? 0).catch(() => {});
       toast.success(`${drawScopeTitle(scope)} draw sent: ${dispatched?.sent ?? 0} deliveries.`);
-      onSent?.(); onClose();
+      onSent?.();
     } catch (e: any) { toast.error(`Players weren't notified: ${e.message ?? e}`); }
     finally { setSending(false); }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o && !sending) onClose(); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Send draw to players now?</DialogTitle>
-          <DialogDescription>
-            {scope?.label ? `${scope.label} · ` : ""}{scope ? drawScopeTitle(scope) : ""} — only players in this {scope?.stageName ? "stage" : "round"} get it, with a button to the draw and match details. Nothing has been sent yet.
-            {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
-          </DialogDescription>
-        </DialogHeader>
-        <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} />
-        <div className="space-y-2 text-sm">
+    <div className="space-y-3" data-testid="draw-notice-composer">
+      <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} />
+      {!hasFixtures ? (
+        <p className="rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground" data-testid="draw-notice-no-fixtures">
+          No draw for this category yet. You can edit, save and preview the wording now; match details show as "To be confirmed". Sending unlocks once fixtures exist.
+        </p>
+      ) : <>
+        <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2"><Checkbox checked={ch.app} onCheckedChange={(v) => setCh((c) => ({ ...c, app: !!v }))} />In-app</label>
           <label className="flex items-center gap-2"><Checkbox checked={ch.email} onCheckedChange={(v) => setCh((c) => ({ ...c, email: !!v }))} />Email</label>
           {waEnabled && <label className="flex items-center gap-2"><Checkbox checked={ch.wa} onCheckedChange={(v) => setCh((c) => ({ ...c, wa: !!v }))} />WhatsApp</label>}
@@ -74,16 +76,41 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
               <button type="button" className="text-primary underline" onClick={() => setPicked(new Set())}>None</button>
             </span>
           </div>
-          {!recips ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading players…</div> : (
+          {!recips ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading players…</div> : !recips.length ? <p className="text-xs text-muted-foreground">No players still to play in this round.</p> : (
             <div className="grid max-h-48 grid-cols-1 gap-1 overflow-auto rounded border border-border p-2 sm:grid-cols-2">
               {recips.map((r) => <label key={r.id} className="flex items-center gap-2 text-xs"><Checkbox checked={picked.has(r.id)} onCheckedChange={(v) => setPicked((s) => { const n = new Set(s); v ? n.add(r.id) : n.delete(r.id); return n; })} />{r.name}</label>)}
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={sending}>Later</Button>
-          <Button onClick={send} disabled={sending || !msg.trim() || !picked.size || (!ch.app && !ch.email && !(ch.wa && waEnabled))}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
-        </DialogFooter>
+      </>}
+      <div className="flex flex-wrap justify-end gap-2">
+        {onCancel && <Button variant="outline" onClick={onCancel} disabled={sending}>{cancelLabel}</Button>}
+        <Button onClick={send} disabled={!hasFixtures || sending || !msg.trim() || !picked.size || !channels.length} data-testid="draw-notice-send">
+          {sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{sentBefore ? "Resend notifications" : "Send notifications"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** "Send draw to players now?" prompt after a draw. Explicit send only — never automatic. */
+export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tournamentName, scope, sentBefore, onSent }: {
+  open: boolean; onClose: () => void; clubId: string; tournamentId: string; tournamentName: string;
+  scope: DrawScope | null; sentBefore?: { at: string; sent: number } | null; onSent?: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Send draw to players now?</DialogTitle>
+          <DialogDescription>
+            {scope?.label ? `${scope.label} · ` : ""}{scope ? drawScopeTitle(scope) : ""} — only players in this {scope?.stageName ? "stage" : "round"} get it, with a button to the draw and match details. Nothing has been sent yet. You can also send it later from Player Notifications.
+            {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
+          </DialogDescription>
+        </DialogHeader>
+        <DrawNoticeComposer active={open} clubId={clubId} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} sentBefore={sentBefore}
+          onSent={() => { onSent?.(); onClose(); }} onCancel={onClose} />
+        <DialogFooter className="hidden" />
       </DialogContent>
     </Dialog>
   );

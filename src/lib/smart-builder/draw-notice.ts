@@ -55,10 +55,37 @@ export async function recordDrawNotice(tournamentId: string, key: string, sent: 
   const { data } = await (supabase as any).from("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
   const bl = (data as any)?.beta_lifecycle ?? {};
   const log = { ...(bl.draw_notices ?? {}), [key]: { at: new Date().toISOString(), sent } };
-  await (supabase as any).from("tournaments").update({ beta_lifecycle: { ...bl, draw_notices: log } }).eq("id", tournamentId);
+  const pending = { ...(bl.draw_notice_pending ?? {}) }; delete pending[key];
+  await (supabase as any).from("tournaments").update({ beta_lifecycle: { ...bl, draw_notices: log, draw_notice_pending: pending } }).eq("id", tournamentId);
 }
 export function drawNoticeSent(betaLifecycle: any, key: string): { at: string; sent: number } | null {
   return betaLifecycle?.draw_notices?.[key] ?? null;
+}
+
+/** Pending "Send draw to players now?" decisions survive unmounts and reloads (setting = ask after each draw). */
+export type PendingDrawNotice = { scope: DrawScope; at: string };
+export function pendingDrawNotices(betaLifecycle: any): Array<PendingDrawNotice & { key: string }> {
+  const p = betaLifecycle?.draw_notice_pending ?? {};
+  return Object.entries(p).filter(([k]) => !drawNoticeSent(betaLifecycle, k)).map(([key, v]: [string, any]) => ({ key, ...v }))
+    .sort((a, b) => String(a.at).localeCompare(String(b.at)));
+}
+async function editPending(tournamentId: string, fn: (p: Record<string, PendingDrawNotice>) => void) {
+  const { data } = await (supabase as any).from("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
+  const bl = (data as any)?.beta_lifecycle ?? {};
+  const pending = { ...(bl.draw_notice_pending ?? {}) };
+  fn(pending);
+  await (supabase as any).from("tournaments").update({ beta_lifecycle: { ...bl, draw_notice_pending: pending } }).eq("id", tournamentId);
+}
+/** Mark a freshly committed draw as awaiting the organiser's decision. Never sends. No-op when the setting is Off or already sent. */
+export async function markDrawNoticePending(tournamentId: string, scope: DrawScope, betaLifecycle?: any) {
+  if (betaLifecycle && !drawNotifyOn(betaLifecycle)) return;
+  const key = drawNoticeKey(scope);
+  if (betaLifecycle && drawNoticeSent(betaLifecycle, key)) return;
+  await editPending(tournamentId, (p) => { p[key] = { scope, at: new Date().toISOString() }; });
+}
+/** "Later": nothing sent; the round stays available under Player Notifications. */
+export async function clearDrawNoticePending(tournamentId: string, key: string) {
+  await editPending(tournamentId, (p) => { delete p[key]; });
 }
 
 /** Everything the per-player match block needs for this scope, read through the admin's normal access. */

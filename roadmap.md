@@ -1,6 +1,8 @@
 # Roadmap
 
 ## Open
+- [x] Swiss→QF Step 1 (preview): QF screen reads Stages & Scheduling list; 'Set up Quarterfinal from saved setup' restored with once-only guard; 7 Riverside tests. Step 2 live repair awaits approval.
+- [ ] Final Setup Version (design approved in principle, plan pending): one canonical per-category config, confirmed at Review & Complete Setup, versioned revisions, draw/running read only it, impact preview for running edits.
 - [x] Uitsig: confirm ladies who entered both Ladies and Men’s from the final entry sheet (five).
 - [x] Uitsig: restored six previously verified additions after setup closure, preserving current picks; saved selections verified at 77 unique players / 81 entries; no registrations, fixtures, fees or messages changed.
 - [x] Follow-up Swiss stage semantics: verified persisted definitions/guards, removed deferred-stage creation from pilot running dialog, Generate Draw heading and missing-definition setup link; 14 tests and guarded desktop/mobile check passed. Saved winner chain preserved, not enabled: runnable QF/SF/Final definitions and Swiss engine support remain unresolved.

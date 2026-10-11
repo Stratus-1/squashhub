@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DRAW_NOTICE, drawNoticeContent, drawNoticeRecipients, feeStatusFor } from "@/lib/smart-builder/draw-notice";
+import { DEFAULT_DRAW_NOTICE, drawNoticeContent, drawNoticeRecipients, feeStatusFor, composeDrawNoticeVars } from "@/lib/smart-builder/draw-notice";
 
 describe("editable draw notices", () => {
   it("sends the edited wording only through selected channels", () => {
@@ -31,5 +31,12 @@ describe("editable draw notices", () => {
     expect(st.b).toEqual({ owes: true, outstanding: 15000 });
     expect(st.c.owes).toBe(false);
     expect(feeStatusFor(0, [{ club_member_id: "a" }])).toEqual({});
+  });
+  it.each(["paid", "waived", "on_account", "not_required"])("does not claim a verified receipt from %s readiness alone", (fee_status) => {
+    const ctx = { tournamentName: "Champs", names: { a: "Player" }, matches: [], categoryOf: () => "Singles", courts: {}, bookings: {}, clubVenue: "Club" };
+    const status = feeStatusFor(10000, [{ club_member_id: "a", fee_status }]);
+    const { vars } = composeDrawNoticeVars("a", "Saved wording", ctx, { fee: 10000, status, links: {} }, "tournament");
+    expect(vars.personal_message).not.toContain("Your fee has been paid");
+    expect(vars.personal_message_html).not.toContain("Your fee has been paid");
   });
 });

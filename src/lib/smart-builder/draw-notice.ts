@@ -27,7 +27,7 @@ export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: str
   for (const r of regs) {
     // Entered/registered is not paid: only a settled fee status (paid, waived, on account) counts.
     const paid = Number(r.fee_paid_cents ?? 0);
-    const settled = r.fee_status != null ? ["paid", "waived", "on_account"].includes(r.fee_status) : (!!r.paid_at || paid >= feeCents);
+    const settled = r.fee_status != null ? ["paid", "waived", "on_account", "not_required"].includes(r.fee_status) : (!!r.paid_at || paid >= feeCents);
     const owes = !settled;
     out[r.club_member_id] = { owes, outstanding: owes ? Math.max(feeCents - paid, 0) || feeCents : 0 };
   }
@@ -110,7 +110,9 @@ export async function loadDrawFeeContext(clubId: string, tournamentId: string, w
  */
 export function composeDrawNoticeVars(id: string, message: string, ctx: DetailContext, feeCtx: { fee: number; status: Record<string, { owes: boolean; outstanding: number }>; links: Record<string, string> } | null, tournamentId: string) {
   const st = feeCtx && feeCtx.fee > 0 ? feeCtx.status[id] : undefined;
-  const line = st ? (st.owes ? feeOutstandingLine(st.outstanding) : FEE_PAID_LINE) : "";
+  // Draw-readiness settlement is not receipt verification: waived/on-account and legacy paid
+  // flags have no verified receipt evidence in this context. Never claim money was received.
+  const line = st?.owes ? feeOutstandingLine(st.outstanding) : "";
   const text = line ? `${message.trim()}\n\n${line}` : message.trim();
   const items = matchDetailsFor(id, ctx);
   const detailsText = matchDetailsText(items);

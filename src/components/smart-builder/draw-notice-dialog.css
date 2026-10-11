@@ -1,0 +1,65 @@
+.draw-notice-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: calc(100% - 1rem);
+  max-height: min(90vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem));
+  max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem));
+  overflow: hidden;
+  padding: 0;
+}
+
+.draw-notice-modal-header {
+  flex: none;
+  padding: 1rem 3.5rem 1rem 1rem;
+  text-align: left;
+}
+
+.draw-notice-modal-composer {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.draw-notice-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.draw-notice-modal-footer {
+  flex: none;
+  padding: .75rem 1rem;
+  padding-bottom: max(.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.draw-notice-modal-footer button,
+.draw-notice-modal > button {
+  min-height: 44px;
+}
+
+.draw-notice-modal > button {
+  top: .5rem;
+  right: .5rem;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.draw-notice-modal [data-testid="draw-preview-player"] select {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.draw-notice-modal [data-testid="draw-preview-player"] label {
+  min-width: 0;
+  max-width: 100%;
+}

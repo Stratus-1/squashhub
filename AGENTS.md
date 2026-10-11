@@ -17,6 +17,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Draw notification dialogs keep the header and actions outside one viewport-bounded scrolling body; why: expanded personalized previews must not hide send/cancel controls or scroll the underlying page.
 - Scope Club Admin steps/contrast locally (portals too); why: shared member/association UI must stay unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.

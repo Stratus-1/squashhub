@@ -43,7 +43,7 @@ describe("draw delivery without real sends", () => {
     expect(slots.message).not.toContain("/md/permanent");
     expect(slots.link).toBe("https://example.test/md/permanent");
     const paid = renderChannel("whatsapp", campaign.content.whatsapp, { name: "Paid Player", ...campaign.memberVars?.paid }, action);
-    expect(paid.body).toContain("Your fee has been paid");
+    expect(paid.body).not.toContain("Your fee has been paid");
     expect(paid.body).not.toContain("/i/personal");
     const inApp = renderChannel("in_app", campaign.content.in_app, vars, action);
     expect(inApp.url).toBe("/club-champs/test");

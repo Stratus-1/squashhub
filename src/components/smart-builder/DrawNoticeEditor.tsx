@@ -154,7 +154,7 @@ function PlayerEmailPreview({ clubId, tournamentId, tournamentName, scope, recip
       </div>
       {!composed ? <p className="text-muted-foreground"><Loader2 className="mr-1 inline h-3 w-3 animate-spin" />Loading saved games…</p> : (
         <div className="space-y-2 rounded bg-background p-3 text-sm text-foreground ring-1 ring-border">
-          <p>Dear {data!.ctx.names[who] ?? "Player"},</p>
+          <p>Dear {data?.ctx.names[who] ?? "Player"},</p>
           <p className="whitespace-pre-line">{composed.vars.personal_message_html.replace(/<br>/g, "\n").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")}</p>
           {composed.items.length
             /* Built by matchDetailsHtml from escaped values only — the exact markup the email carries. */

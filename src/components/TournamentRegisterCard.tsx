@@ -1,3 +1,4 @@
+import { ReportPaymentButton } from "@/components/tournaments/ReportPaymentDialog";
 import { entryDueCents } from "@/lib/tournaments/entry-fee";
 import { PartnerFeeOptions, type PartnerPayScope } from "@/components/tournaments/PartnerFeeOptions";
 import { useState, useEffect, useRef } from "react";
@@ -507,6 +508,9 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         <p className="text-xs text-muted-foreground">
           Entry fee {money(entryFee)} charged to your member account — settle it with the club as usual.
         </p>
+      )}
+      {myReg && paymentRequired && entryFee > 0 && !(myReg as any).paid_at && !["paid", "waived"].includes(String((myReg as any).fee_status ?? "")) && (
+        <ReportPaymentButton champId={champ.id} clubId={clubId} memberId={memberId} suggestedCents={Math.round(entryFee * 100)} />
       )}
       {myReg && myReg.partner_member_id && (
         <PartnerFeeOptions registrationId={myReg.id} cardEnabled={cardReady && paymentGateway === "stitch"}

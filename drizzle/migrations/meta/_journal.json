@@ -820,6 +820,13 @@
       "when": 1791715252946,
       "tag": "0116_champ_fee_functions_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1791715467972,
+      "tag": "0117_champ_claim_excess_credit",
+      "breakpoints": true
     }
   ]
 }

@@ -53,6 +53,7 @@ import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from 
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
+import { FeeBasisQuestion } from "./FeeBasisQuestion";
 import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 
 /**
@@ -197,7 +198,7 @@ export type StepAnswers = {
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
-type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesCover: boolean | null; methods?: string[]; confirmNeedsPay?: boolean | null };
+type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesCover: boolean | null; methods?: string[]; confirmNeedsPay?: boolean | null; basis?: "per_player" | "per_category" | null; mixedRule?: "highest" | "first" | null };
 const DEFAULT_FEE: FeeCfg = { has: null, amount: "", varies: false, perUnit: {}, doublesBasis: "player", doublesCover: null };
 const ruleAnswer = (value: boolean | null) => value === null ? "Decide later" : value ? "Yes" : "No";
 type Channel = "in_app" | "email" | "whatsapp" | "sms";
@@ -537,6 +538,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
   const feeFor = (k: string) => (fee.varies ? fee.perUnit[k] ?? "" : fee.amount);
+  const feeAmountsVary = fee.varies && new Set(units.map((u) => Number(feeFor(u.key)) || 0)).size > 1;
   // Keep the saved tournament's "A player may pay for both partners" answer in step with the builder, so the
   // partner-payment buttons the players see always match what the messages promise (not only after Complete Setup).
   const partnerPayAnswer: boolean | undefined = fee.has && dblUnits.length > 0 && fee.doublesCover !== null ? fee.doublesCover : undefined;
@@ -982,7 +984,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: true, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   /** Structure guidance (advisory): estimates, actual field and applying a recommendation on request only. */
   const guide: GuideAnswers = a.guide ?? {};
@@ -1175,6 +1177,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
         startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,
         entriesOpen: a.entriesOpen || null, entriesClose: a.entriesClose || null,
+        feeBasis: fee.has ? { basis: fee.basis ?? null, mixedRule: fee.basis === "per_player" && feeAmountsVary ? fee.mixedRule ?? null : null } : undefined,
         feeCents, confirmNeedsPay: fee.has ? fee.confirmNeedsPay !== false : undefined, partnerPay: fee.has && dblUnits.length ? fee.doublesCover : undefined, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         drawChannels: msg.channels.filter(chAvail),
@@ -1898,6 +1901,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   )}
                 </div>
               )}
+              {fee.has && <FeeBasisQuestion fee={fee} setFee={setFee} vary={feeAmountsVary} uniquePlayers={counts.uniquePlayers} categoryEntries={counts.totalEntries} entrants={Object.keys(a.picks).map((id) => ({ memberId: id, divisions: placesOf(a.picks, id).filter((k) => unitKeySet.has(k)).map((k) => units.findIndex((u) => u.key === k) + 1).filter((n) => n > 0) }))} divisionFees={Object.fromEntries(units.map((u, n) => [String(n + 1), Math.round((Number(feeFor(u.key)) || 0) * 100)]))} existing={!!a.createdTournamentId} />}
               {dblUnits.length > 0 && (
                 <div className="mt-4 space-y-4 border-t pt-4">
                   <DoublesOption label="A player may pay for both partners" description="Yes: a player may choose to pay for both; they do not have to. No: each partner pays their own fee." value={fee.doublesCover} onChange={(value) => setFee({ doublesCover: value })} />
@@ -2389,7 +2393,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
-                <ul className="space-y-0.5"><li>Fee due: <span className="text-muted-foreground">{fee.has ? "Yes" : fee.has === false ? "No" : "Not chosen"}</span></li>{fee.has && <li>Payment required to confirm entry: <span className="text-muted-foreground">{fee.confirmNeedsPay === true ? "Yes — unpaid entries stay unconfirmed" : fee.confirmNeedsPay === false ? "No — entries are confirmed; the fee stays outstanding until paid" : "Not chosen"}</span></li>}</ul>
+                <ul className="space-y-0.5"><li>Fee due: <span className="text-muted-foreground">{fee.has ? "Yes" : fee.has === false ? "No" : "Not chosen"}</span></li>{fee.has && <li>Charged: <span className="text-muted-foreground">{fee.basis === "per_player" ? `Once per player${feeAmountsVary ? (fee.mixedRule === "highest" ? " · highest category fee" : fee.mixedRule === "first" ? " · first category fee" : " · rule needed") : ""}` : fee.basis === "per_category" ? "Per category entered" : "Needs confirmation"}</span></li>}{fee.has && <li>Payment required to confirm entry: <span className="text-muted-foreground">{fee.confirmNeedsPay === true ? "Yes — unpaid entries stay unconfirmed" : fee.confirmNeedsPay === false ? "No — entries are confirmed; the fee stays outstanding until paid" : "Not chosen"}</span></li>}</ul>
                 {fee.has && <ul className="space-y-0.5"><li>Accepted methods: <span className="text-muted-foreground">{methodText}</span></li>{showPick && <li>Picked entrants: <span className="text-muted-foreground">Entered · Payment outstanding (admin selection never marks paid)</span></li>}</ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>

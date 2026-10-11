@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
-import { atomically } from "@/lib/tournaments/structured-persist";
+import { atomically, loadEntrants, rankSourcePools } from "@/lib/tournaments/structured-persist";
+import { BRACKET_SIZES, seededBracketText, seededLinesIssues, seededOrder } from "@/lib/tournaments/seeded-bracket";
 import { TIE_BREAK_TEXT } from "@/lib/tournaments/tie-breaks";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
@@ -167,7 +168,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
       })}
       <PlayoffSlotOrderNote champId={champId} spec={spec} />
       {confirm && <ConfirmStageDialog champId={champId} spec={spec} status={confirm} nameOf={nameOf} exec={exec} onClose={() => setConfirm(null)} onDone={() => { setConfirm(null); refresh(); }} />}
-      {setup && <SetupDialog champId={champId} spec={spec} status={setup} exec={exec} onClose={() => setSetup(null)} onDone={() => { setSetup(null); refresh(); }} />}
+      {setup && <SetupDialog champId={champId} spec={spec} status={setup} exec={exec} nameOf={nameOf} onClose={() => setSetup(null)} onDone={() => { setSetup(null); refresh(); }} />}
       {tie && <TieDialog champId={champId} spec={spec} matches={matches} nameOf={nameOf} div={tie.div} stage={tie.stage} exec={exec} onClose={() => setTie(null)} onDone={() => { setTie(null); refresh(); }} />}
     </>
   );
@@ -198,16 +199,32 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
   );
 }
 
-function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId: string; spec: TournamentSpec; status: StageStatus; exec: Exec; onClose: () => void; onDone: () => void }) {
+function SetupDialog({ champId, spec, status, exec, nameOf, onClose, onDone }: { champId: string; spec: TournamentSpec; status: StageStatus; exec: Exec; nameOf: (id: string | null) => string; onClose: () => void; onDone: () => void }) {
   const d = spec.divisions.find((x) => x.divisionId === status.divisionKey)!;
   const src = [...d.stages].sort((a, b) => b.order - a.order)[0];
   const pools = sourcePoolCount(src);
   const poolSize = src.kind === "mapped" ? src.mapping?.poolSize ?? 0 : src.poolSize ?? 0;
+  // A Swiss source is one ranked list. How many qualify is the admin's explicit choice — never a hardcoded default.
+  const swissSrc = src.kind === "swiss" && pools <= 1;
   const [kind, setKind] = useState<"mapped" | "knockout">("mapped");
   const [discipline, setDiscipline] = useState<"singles" | "doubles">("singles");
   const plan = (d.deferredStages ?? []).find((x) => x.stageKey === status.stageKey)?.plan ?? null;
+  const [top, setTop] = useState(0);
   // Pre-fill from the builder's plan: same_position = A1 v B1, crossover (default for two pools) = A1 v B2.
-  const [text, setText] = useState(pools >= 2 ? (plan?.pairing === "same_position" ? "R1: A1 v B1\nR1: A2 v B2" : "R1: A1 v B2\nR1: B1 v A2") : "R1: A1 v A4\nR1: A2 v A3");
+  const [text, setText] = useState(swissSrc ? "" : pools >= 2 ? (plan?.pairing === "same_position" ? "R1: A1 v B1\nR1: A2 v B2" : "R1: A1 v B2\nR1: B1 v A2") : "R1: A1 v A4\nR1: A2 v A3");
+  // Final Swiss standings in the canonical order (match wins → Buchholz → Sonneborn-Berger → seed), read-only.
+  const { data: swissOrder } = useQuery({
+    queryKey: ["setup-swiss-order", champId, status.divisionKey, src.id],
+    enabled: swissSrc,
+    queryFn: async () => {
+      const full = await loadEntrants(supabaseDb, champId, spec);
+      const fd = full.divisions.find((x) => x.divisionId === status.divisionKey)!;
+      const gi = divisionGroup(full, fd);
+      const rows = (await supabaseDb.select("club_champs_matches", { champ_id: champId })).filter((m: any) => m.group_number === gi);
+      return rankSourcePools(fd, fd.stages.find((s) => s.id === src.id) ?? src, rows)[0]?.result.order ?? [];
+    },
+  });
+  const field = swissOrder?.length ?? d.entrants?.length ?? 0;
   const [perPool, setPerPool] = useState(2);
   const [method, setMethod] = useState<"cross_pool" | "reseed">(pools >= 2 ? "cross_pool" : "reseed");
   const [thirdPlace, setThirdPlace] = useState(false);
@@ -215,7 +232,7 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
   const [date, setDate] = useState(status.plannedDate ?? "");
   const [check, setCheck] = useState<SetupCheck | null>(null);
   const [busy, setBusy] = useState(false);
-  const parsed = parseMapping(text, { source: "stage_standings", sourceStageId: src.id, pools, poolSize, discipline });
+  const parsed = parseMapping(text, { source: "stage_standings", sourceStageId: src.id, pools, poolSize: swissSrc ? field : poolSize, discipline });
   const build = (): DeferredSetup => ({
     kind, matchFormat: format, discipline,
     ...(kind === "mapped" ? { mapping: parsed.mapping ?? undefined } : { qualify: { perPool, mapping: method, transition: null }, thirdPlace }),
@@ -224,7 +241,8 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
   const run = async (create: boolean) => {
     setBusy(true);
     try {
-      if (kind === "mapped" && parsed.errors.length) { setCheck({ structure: parsed.errors, engine: [], schedule: [], scoring: [] }); return; }
+      const seededIssues = swissSrc && kind === "mapped" ? seededLinesIssues(text, status.name, field) : [];
+      if (kind === "mapped" && (parsed.errors.length || seededIssues.length)) { setCheck({ structure: [...seededIssues, ...parsed.errors], engine: [], schedule: [], scoring: [] }); return; }
       const c = await checkDeferredSetup(supabaseDb, champId, status.divisionKey, status.stageKey, build());
       setCheck(c);
       if (create && setupOk(c)) {
@@ -256,6 +274,26 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
                 <option value="singles">Singles</option><option value="doubles">Doubles (pairs written as A1+B1)</option>
               </select>
             </label>
+            {swissSrc && (
+              <label className="block">Qualifiers from final Swiss standings
+                <select aria-label="Qualifiers" className="mt-1 w-full h-8 rounded-md border bg-background px-2" value={top}
+                  onChange={(e) => { const n = Number(e.target.value); setTop(n); setText(n ? seededBracketText(n) : ""); setCheck(null); }}>
+                  <option value={0}>Choose how many qualify…</option>
+                  {BRACKET_SIZES.filter((n) => !field || n <= field).map((n) => <option key={n} value={n}>Top {n} — {n / 2} game{n > 2 ? "s" : ""}</option>)}
+                </select>
+              </label>
+            )}
+            {swissSrc && top > 0 && (
+              <div className="rounded border bg-muted/40 p-2 text-xs space-y-1" data-testid="swiss-qualifier-preview">
+                <p className="font-medium">Top {top} from final Swiss standings (match wins → Buchholz → Sonneborn-Berger → seed)</p>
+                <ol className="space-y-0.5">
+                  {seededOrder(top).reduce<number[][]>((acc, s, i) => (i % 2 ? acc[acc.length - 1].push(s) : acc.push([s]), acc), []).map(([a, b], g) => (
+                    <li key={g}>Game {g + 1}: #{a} {swissOrder?.[a - 1] ? nameOf(swissOrder[a - 1]) : "…"} v #{b} {swissOrder?.[b - 1] ? nameOf(swissOrder[b - 1]) : "…"}</li>
+                  ))}
+                </ol>
+                <p className="text-muted-foreground">Next round pairs winners of games 1 v 2 and 3 v 4, so #1 and #2 can only meet in the final. Names are a preview; Create stage reads the standings again.</p>
+              </div>
+            )}
             <label className="block">Who plays whom (one game per line)
               <Textarea className="mt-1 font-mono" rows={5} value={text} onChange={(e) => setText(e.target.value)} />
             </label>

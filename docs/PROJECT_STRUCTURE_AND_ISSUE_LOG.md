@@ -546,6 +546,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-11 · Riverside Swiss Quarterfinal showed generic pool qualification
+- **Symptom:** A completed Swiss category offered knockout-from-pools, two qualifiers per pool and Create stage instead of the configured Quarterfinal draw.
+- **Finding:** SetupDialog exposed both generic mapped/pool branches regardless of Swiss source. The live QF is deferred with pairing later; saved timeline has seeded QF/SF/Final, but the saved playoff qualification/style are later and rounds=2 (four places), not confirmed Top 8. Shared contract still rejects stage_standings from Swiss, despite rankSourcePools having a Swiss ranking path.
+- **Fix:** Riverside + tournament_beta opt-in gets a dedicated source-kind-keyed Swiss dialog, inherited discipline/scoring, saved qualification/bracket checks, actual-name seeded preview only when consistent, Check Draw/Generate Quarterfinal Draw labels, existing stage-key targeting and setup correction link. No engine/DB/function changes; RR and non-pilot dialogs remain unchanged.
+- **Guard:** Missing/inconsistent qualification blocks; Check uses the existing real-engine dry run, so unsupported Swiss mapping still blocks rather than bypassing contract. No live fixtures/results/stages/notices changed. Regression tests cover the pilot boundary, Top 8 versus unset/four-place config, names, pair preservation and existing-stage identity.
+
 ### 2026-09-17 · Tournament invite classed as marketing by Meta
 - **Symptom:** Meta re-classified the reworded `tournament_invite_tap` WhatsApp template as marketing, and repeated test invites to one number were silently not delivered (Twilio 63049).
 - **Finding:** The CSIR Bells tournament's own description carried a recruitment line ("Players you want to invite – let them follow …register-club") that travelled inside every invite's details block — advertising content turns the message into marketing in Meta's eyes.

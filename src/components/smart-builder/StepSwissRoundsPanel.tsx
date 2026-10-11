@@ -116,7 +116,7 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stage
                 const sc: DrawScope = { round: r.current.round, groupNumber: r.divisionIndex + 1, label: r.label };
                 const sent = drawNoticeSent(bl, drawNoticeKey(sc));
                 const controls = <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setNotice(sc)}><Send className="mr-1 h-3.5 w-3.5" />{sent ? `Resend Round ${sc.round} draw` : `Send Round ${sc.round} draw to players`}</Button>
+                  <Button size="sm" variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal text-left" onClick={() => setNotice(sc)}><Send className="mr-1 h-3.5 w-3.5 shrink-0" />{sent ? `Resend Round ${sc.round} draw` : `Send Round ${sc.round} draw to players`}</Button>
                   <span className="text-muted-foreground">{sent ? `Sent ${new Date(sent.at).toLocaleString()} · ${sent.sent} deliveries` : "Not sent yet"}</span>
                 </div>;
                 return r.current.pending.length === 0 ? <details className="order-last border-t border-border pt-2 text-muted-foreground">

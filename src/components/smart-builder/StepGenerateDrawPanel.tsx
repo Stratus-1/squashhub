@@ -3,6 +3,7 @@ import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
 import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients, drawNotifyOn, recordDrawNotice, markDrawNoticePending } from "@/lib/smart-builder/draw-notice";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
+import "./draw-notice-dialog.css";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -785,11 +786,12 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         </div>
       )}
       <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="draw-notice-modal" data-testid="initial-draw-notice-dialog">
+          <DialogHeader className="draw-notice-modal-header border-b border-border bg-background">
             <DialogTitle>Send draw to players now?</DialogTitle>
             <DialogDescription>This wording goes to Round 1 players with a button to the tournament draw and match details. Nothing has been sent yet.</DialogDescription>
           </DialogHeader>
+          <div className="draw-notice-modal-body space-y-3" data-testid="draw-notice-modal-body">
           <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} tournamentId={tournamentId ?? undefined} tournamentName={meta?.name ?? "Tournament"} scope={{ round: 1 }} />
           <div className="space-y-2 text-sm">
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.app} onCheckedChange={(v) => setSendCh((c) => ({ ...c, app: !!v }))} />In-app</label>
@@ -806,12 +808,13 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
               </span>
             </div>
             {!recips ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading players…</div> : (
-              <div className="grid max-h-48 grid-cols-1 gap-1 overflow-auto rounded border border-border p-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-1 rounded border border-border p-2 sm:grid-cols-2">
                 {recips.map((r) => <label key={r.id} className="flex items-center gap-2 text-xs"><Checkbox checked={picked.has(r.id)} onCheckedChange={(v) => setPicked((s) => { const n = new Set(s); v ? n.add(r.id) : n.delete(r.id); return n; })} />{r.name}</label>)}
               </div>
             )}
           </div>
-          <DialogFooter>
+          </div>
+          <DialogFooter className="draw-notice-modal-footer gap-2 border-t border-border bg-background" data-testid="draw-notice-actions">
             <Button variant="outline" onClick={closeAsk} disabled={sending}>Not now</Button>
             <Button onClick={sendDraw} disabled={sending || !drawMessage.trim() || !picked.size || (!sendCh.app && !sendCh.email && !(sendCh.wa && waEnabled))}>{sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send now</Button>
           </DialogFooter>

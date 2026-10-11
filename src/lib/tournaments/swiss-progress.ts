@@ -20,7 +20,7 @@ export type SwissDivisionProgress = {
 };
 
 /** What setup says should follow the Swiss rounds (read-only view of the saved answers). */
-export type SwissSetupPlan = { stages?: PlanStage[] | null; format?: { swissRounds?: unknown } | null; formatOverrides?: Record<string, { swissRounds?: unknown } | null> | null };
+export type SwissSetupPlan = { stages?: PlanStage[] | null; format?: { swissRounds?: unknown; swissRoundsConfirmed?: unknown } | null; formatOverrides?: Record<string, { swissRounds?: unknown; swissRoundsConfirmed?: unknown } | null> | null };
 export type SwissTransition =
   | { kind: "playoff_next"; name: string }
   | {

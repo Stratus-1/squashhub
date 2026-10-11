@@ -126,11 +126,17 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
                     <p className="text-muted-foreground">Setup: {t.setupRounds ?? "?"} Swiss round{t.setupRounds === 1 ? "" : "s"}, then {t.playoffs.join(" → ")} after Round {t.playoffAfterRound}. Live draw: {t.liveRounds} Swiss rounds, {t.liveHasPlayoff ? `then ${t.playoffs[0]} (set up later) after Round ${t.liveRounds}` : "no play-off stage"}.</p>
                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
                       <Button size="sm" onClick={onSetupRound}>Review stage plan in setup</Button>
+                      {t.reason === "live_rounds" && t.setupRounds && r.gate.state === "ready" && (
+                        <Button size="sm" disabled={!!busy} onClick={() => setShorten(r)}>
+                          {busy === r.divisionId ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
+                          End Swiss after Round {t.setupRounds} — {t.playoffs[0]} next
+                        </Button>
+                      )}
                       {keep && r.action === "plan_conflict" && (r.schedule
                         ? <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setAsk(r)}>{busy === r.divisionId ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Shuffle className="mr-1 h-4 w-4" />}Keep {t.liveRounds} rounds — Generate Round {next} Draw</Button>
                         : <Button size="sm" variant="outline" onClick={onSetupRound}><CalendarPlus className="mr-1 h-4 w-4" />Keep {t.liveRounds} rounds — Set up Round {next}</Button>)}
                     </div>
-                    {t.reason !== "setup_rounds" && <p className="text-muted-foreground">Ending the Swiss stage early{t.liveHasPlayoff ? "" : ` and adding ${t.playoffs[0]}`} on a draw that has already started can't be done from this screen yet. Nothing has been generated or changed — results and standings stay as they are.</p>}
+                    {t.reason === "live_rounds" && <p className="text-muted-foreground">Ending the Swiss stage early only changes the round count of the live stage — played rounds, results and standings are never touched, and no games are created until you confirm the {t.playoffs[0]} draw.</p>}
                   </div>
                 );
               })()}

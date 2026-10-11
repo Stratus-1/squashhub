@@ -9,9 +9,11 @@ describe("inline tournament standings", () => {
     const source = readFileSync("src/pages/ClubChampsView.tsx", "utf8");
     expect(source).not.toContain('{!inlineStandings && <div role="tablist"');
     expect(source).toContain('{tabBtn("standings", "Standings")}');
-    expect(source).toContain('{tabBtn("fixtures", `Fixtures & Results`)}');
+    expect(source).toContain('{tabBtn("upcoming", "Upcoming Fixtures")}');
+    expect(source).toContain('{tabBtn("results", "Results")}');
+    expect(source).not.toContain('Fixtures & Results`)}');
     expect(source).toContain('role="tabpanel" aria-labelledby={`cat-tab-${catTab}`}');
-    expect(source).toContain('catTab === "standings" ? activeCat.standings : activeCat.fixtures');
+    expect(source).toContain('catTab === "standings" ? activeCat.standings : catTab === "upcoming" ? activeCat.upcoming : activeCat.results');
   });
   it("opens standings by default with an accessible collapse control", () => {
     render(<InlineTournamentStandings tournamentId="t1" name="Club champs"><p>Category standings</p></InlineTournamentStandings>);

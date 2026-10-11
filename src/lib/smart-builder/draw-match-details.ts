@@ -102,9 +102,17 @@ export function matchDetailsHtml(items: MatchDetail[]): string {
     + `<div style="font-size:12px;color:#475569">Need to contact your opponent? Use the button below to open your fixture in SquashHub. Phone numbers are not shared by email.</div></div>`;
 }
 
+const TEXT_STATE: Record<MatchDetail["state"], string> = {
+  booked: "Court booking confirmed",
+  scheduled: "Scheduled by the organiser",
+  play_by: "Arrange with your opponent before the deadline",
+  tbc: "Details to be confirmed",
+  bye: "Bye",
+};
+
 /** Plain text for WhatsApp / SMS / in-app. */
 export function matchDetailsText(items: MatchDetail[]): string {
   if (!items.length) return "";
   return ["Your match details:", ...items.map((d) => d.state === "bye" ? `• ${d.category} · ${d.round}: bye`
-    : `• ${d.category} · ${d.round} v ${d.opponent}${d.partner ? ` (with ${d.partner})` : ""} — ${d.when}, ${d.time}, ${d.court}${d.venue !== TBC ? `, ${d.venue}` : ""}. ${HEAD[d.state]}.`)].join("\n");
+    : `• ${d.category} · ${d.round} v ${d.opponent}${d.partner ? ` (with ${d.partner})` : ""} — ${d.when}, ${d.time}, ${d.court}${d.venue !== TBC ? `, ${d.venue}` : ""}. ${TEXT_STATE[d.state]}.`)].join("\n");
 }

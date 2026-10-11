@@ -64,6 +64,7 @@ import { AssignCourtsTimesButton } from "@/components/tournaments/AssignCourtsTi
 import { hasAssumptions, scheduleWithAssumptions } from "@/lib/tournaments/assumed-schedule";
 import { AssignStageSlotsDialog } from "@/components/tournaments/AssignStageSlotsDialog";
 import { involvesMe, selectMyFixtures } from "@/lib/tournaments/my-fixtures";
+import { OpponentContactButton } from "@/components/contact/OpponentContactButton";
 import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -2214,7 +2215,21 @@ export default function Tournaments() {
                           : "None of your games match these filters."}
                       </p>
                     ) : (
-                      renderMatchList(filteredMine)
+                      <>
+                        {renderMatchList(filteredMine)}
+                        {!md && filteredMine.some((m: any) => m.status !== "completed" && m.status !== "cancelled" && !m.winner_member_id && !m.is_bye) && (
+                          <div className="mt-3 rounded-lg border border-border p-3 space-y-2" data-testid="my-opponent-contacts">
+                            <p className="text-xs font-semibold">Arrange your games</p>
+                            <p className="text-[11px] text-muted-foreground">Numbers show only for opponents who chose to share them, and disappear once the result is in.</p>
+                            {filteredMine.filter((m: any) => m.status !== "completed" && m.status !== "cancelled" && !m.winner_member_id && !m.is_bye).slice(0, 10).map((m: any) => (
+                              <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2 text-xs">
+                                <span className="text-muted-foreground">{m.scheduled_date ? format(new Date(`${m.scheduled_date}T00:00:00`), "EEE d MMM") : "Date to be confirmed"}{m.round_number ? ` · Round ${m.round_number}` : ""}</span>
+                                <OpponentContactButton kind="champ" fixtureId={m.id} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )
                   ) : filteredUpcoming.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No scheduled games.</p>

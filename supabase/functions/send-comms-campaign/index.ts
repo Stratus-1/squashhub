@@ -193,6 +193,8 @@ async function logDelivery(row: {
   );
 }
 
+const escHtml = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -412,7 +414,23 @@ Deno.serve(async (req) => {
               const act = await drawActivationBlock(m, campaign.club_id, club?.subdomain, campaignId, intro).catch((e) => { console.error("tournament activation link failed", e); return null; });
               if (act) loginBlock = act;
             }
-            const html = `${rendered.body}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}`;
+            // Opponent contact: re-checked per recipient NOW against each opponent's current consent
+            // (open games only; under-18s show a confirmed guardian contact; nothing otherwise).
+            let contactBlock = "";
+            if (af.tournament_id) {
+              const ids = String(((memberVars[m.id] ?? {}) as any).contact_match_ids || "").split(",").filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 10);
+              const lines: string[] = [];
+              for (const fid of ids) {
+                const { data: rows } = await admin.rpc("fixture_opponent_contacts_for_member", { p_kind: "champ", p_fixture_id: fid, p_recipient: m.id });
+                for (const r of (rows ?? []) as any[]) {
+                  const { data: who } = await admin.from("club_members").select("name").eq("id", r.member_id).maybeSingle();
+                  const label = `${(who as any)?.name || "Your opponent"}${r.is_guardian ? ` (parent/guardian${r.guardian_name ? `: ${r.guardian_name}` : ""})` : ""}`;
+                  lines.push(`<li>${escHtml(label)}: <a href="tel:${escHtml(String(r.phone).replace(/[^\d+]/g, ""))}">${escHtml(r.phone)}</a></li>`);
+                }
+              }
+              if (lines.length) contactBlock = `<div style="margin:12px 0;font-size:14px"><strong>Opponent contact</strong> <span style="color:#475569;font-size:12px">(shared with their permission, only for arranging this match)</span><ul style="margin:6px 0 0 18px;padding:0">${lines.join("")}</ul></div>`;
+            }
+            const html = `${rendered.body}${contactBlock}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}`;
             if (useManagedEmail) {
               // Main SquashHub domain (managed sending): suppression and rate
               // limits are enforced server-side; a suppressed recipient is skipped.

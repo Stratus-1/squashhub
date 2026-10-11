@@ -605,6 +605,10 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
+          <p className="text-[11px] text-muted-foreground" data-testid="entry-contact-notice">
+            Match contact: your mobile is shared with your scheduled opponents only if you've opted in. It's off unless you turn it on, and entering doesn't change it.{" "}
+            <a href="/settings#privacy-contact" className="underline">Manage contact preferences</a>
+          </p>
           <Button variant="ghost" size="sm" className="w-full h-8 text-xs"
             onClick={() => { onOpenChange(false); onDone?.(); }}>
             Close

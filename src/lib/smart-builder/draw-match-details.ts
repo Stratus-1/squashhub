@@ -1,8 +1,8 @@
 /**
  * "Your match details" block for draw / round notices. Pure: built only from saved games,
  * court rows and linked court bookings for ONE recipient. Never guesses: anything not
- * saved shows "To be confirmed". Opponent phone numbers are never included — SquashHub has
- * no player consent to share mobile numbers, so players contact each other in the app.
+ * saved shows "To be confirmed". Opponent phone numbers are never built here: the sender adds an
+ * opponent's number server-side, at send time, only if that opponent currently consents.
  * The same function feeds the admin preview and the real send, so they cannot differ.
  */
 export type DetailMatch = {
@@ -99,7 +99,7 @@ export function matchDetailsHtml(items: MatchDetail[]): string {
     + `<div style="font-size:13px;font-weight:700;color:${d.state === "booked" ? "#15803d" : "#1E3A5F"};margin-bottom:6px">${esc(HEAD[d.state])}</div>`
     + `<table style="font-size:14px;border-collapse:collapse">${row("Category", d.category)}${row("Round", d.round)}${row("Opponent", d.opponent)}${d.partner ? row("Your partner", d.partner) : ""}${row("Date", d.when)}${row("Time", d.time)}${row("Court", d.court)}${row("Venue", d.venue)}${row("Status", d.status)}</table></div>`).join("");
   return `<div style="margin:16px 0"><div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:8px">Your match details</div>${cards}`
-    + `<div style="font-size:12px;color:#475569">Need to contact your opponent? Use the button below to open your fixture in SquashHub. Phone numbers are not shared by email.</div></div>`;
+    + `<div style="font-size:12px;color:#475569">Need to contact your opponent? Their mobile is shown below only if they have agreed to share it. Otherwise open your fixture in SquashHub with the button below.</div></div>`;
 }
 
 const TEXT_STATE: Record<MatchDetail["state"], string> = {

@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public._contact_my_member_ids() FROM authenticated;

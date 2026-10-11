@@ -152,6 +152,8 @@ export function composeDrawNoticeVars(id: string, message: string, ctx: DetailCo
       match_details_html: matchDetailsHtml(items),
       email_pay_html: st?.owes && link ? emailPayButton(link, "Pay my fee") : "",
       personal_message_plain: detailsText ? `${text}\n\n${detailsText}` : text,
+      // Server re-checks each opponent's CURRENT consent at send time and adds their number only then.
+      contact_match_ids: items.filter((d) => d.state !== "bye").map((d) => d.matchId).filter(Boolean).join(","),
       ...(st?.owes ? { pay_url: payRoute(tournamentId), pay_label: "Pay my fee" } : {}),
       ...(st?.owes && link ? { pay_link: link, pay_token: link.split("/i/").pop() || "" } : {}),
     } as Record<string, string>,

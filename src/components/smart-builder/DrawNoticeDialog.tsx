@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
 import { drawNoticeKey, drawScopeTitle, loadDrawNoticeRecipients, recordDrawNotice, sendDrawNotice, type DrawScope } from "@/lib/smart-builder/draw-notice";
+import "./draw-notice-dialog.css";
 
 export const laterRoundNotice = (round: number) =>
   `Your Round ${round} match has been drawn. Open the tournament to view the draw, check your opponent and match details, score your match live, or submit your result afterwards.`;
@@ -16,9 +17,10 @@ export const laterRoundNotice = (round: number) =>
  * Shared by the post-draw prompt and the permanent Player Notifications section. Never sends automatically;
  * with no fixtures yet the wording can be edited/saved/previewed but sending stays disabled.
  */
-export function DrawNoticeComposer({ active = true, clubId, tournamentId, tournamentName, scope, hasFixtures = true, sentBefore, onSent, onCancel, cancelLabel = "Later", confirmSend = false }: {
+export function DrawNoticeComposer({ active = true, clubId, tournamentId, tournamentName, scope, hasFixtures = true, sentBefore, onSent, onCancel, cancelLabel = "Later", confirmSend = false, modalLayout = false, introduction }: {
   active?: boolean; clubId: string; tournamentId: string; tournamentName: string; scope: DrawScope | null; hasFixtures?: boolean;
   sentBefore?: { at: string; sent: number } | null; onSent?: () => void; onCancel?: () => void; cancelLabel?: string; confirmSend?: boolean;
+  modalLayout?: boolean; introduction?: ReactNode;
 }) {
   const waEnabled = useWhatsAppEnabled(clubId);
   const fallback = laterRoundNotice(scope?.round ?? 1);
@@ -56,7 +58,9 @@ export function DrawNoticeComposer({ active = true, clubId, tournamentId, tourna
   };
 
   return (
-    <div className="space-y-3" data-testid="draw-notice-composer">
+    <div className={modalLayout ? "draw-notice-modal-composer" : "space-y-3"} data-testid="draw-notice-composer">
+      <div className={modalLayout ? "draw-notice-modal-body space-y-3" : "space-y-3"} data-testid={modalLayout ? "draw-notice-modal-body" : undefined}>
+      {introduction}
       <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} />
       {!hasFixtures ? (
         <p className="rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground" data-testid="draw-notice-no-fixtures">
@@ -77,13 +81,14 @@ export function DrawNoticeComposer({ active = true, clubId, tournamentId, tourna
             </span>
           </div>
           {!recips ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading players…</div> : !recips.length ? <p className="text-xs text-muted-foreground">No players still to play in this round.</p> : (
-            <div className="grid max-h-48 grid-cols-1 gap-1 overflow-auto rounded border border-border p-2 sm:grid-cols-2">
+            <div className={`grid grid-cols-1 gap-1 rounded border border-border p-2 sm:grid-cols-2 ${modalLayout ? "" : "max-h-48 overflow-auto overscroll-contain"}`}>
               {recips.map((r) => <label key={r.id} className="flex items-center gap-2 text-xs"><Checkbox checked={picked.has(r.id)} onCheckedChange={(v) => setPicked((s) => { const n = new Set(s); v ? n.add(r.id) : n.delete(r.id); return n; })} />{r.name}</label>)}
             </div>
           )}
         </div>
       </>}
-      <div className="flex flex-wrap justify-end gap-2">
+      </div>
+      <div className={modalLayout ? "draw-notice-modal-footer flex flex-wrap justify-end gap-2 border-t border-border bg-background" : "flex flex-wrap justify-end gap-2"} data-testid="draw-notice-actions">
         {onCancel && <Button variant="outline" onClick={onCancel} disabled={sending}>{cancelLabel}</Button>}
         <Button onClick={send} disabled={!hasFixtures || sending || !msg.trim() || !picked.size || !channels.length} data-testid="draw-notice-send">
           {sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{sentBefore ? "Resend notifications" : "Send notifications"}
@@ -100,17 +105,16 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="draw-notice-modal" aria-describedby="draw-notice-dialog-description">
+        <DialogHeader className="draw-notice-modal-header border-b border-border bg-background">
           <DialogTitle>Send draw to players now?</DialogTitle>
-          <DialogDescription>
-            {scope?.label ? `${scope.label} · ` : ""}{scope ? drawScopeTitle(scope) : ""} — only players in this {scope?.stageName ? "stage" : "round"} get it, with a button to the draw and match details. Nothing has been sent yet. You can also send it later from Player Notifications.
-            {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
-          </DialogDescription>
+          <DialogDescription className="sr-only" id="draw-notice-dialog-description">Review the message and recipients. Nothing sends until you confirm.</DialogDescription>
         </DialogHeader>
         <DrawNoticeComposer active={open} clubId={clubId} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} sentBefore={sentBefore}
-          onSent={() => { onSent?.(); onClose(); }} onCancel={onClose} />
-        <DialogFooter className="hidden" />
+          modalLayout confirmSend introduction={<p className="text-sm text-muted-foreground">
+            {scope?.label ? `${scope.label} · ` : ""}{scope ? drawScopeTitle(scope) : ""} — only players in this {scope?.stageName ? "stage" : "round"} get it, with a button to the draw and match details. Nothing has been sent yet. You can also send it later from Player Notifications.
+            {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
+          </p>} onSent={() => { onSent?.(); onClose(); }} onCancel={onClose} />
       </DialogContent>
     </Dialog>
   );

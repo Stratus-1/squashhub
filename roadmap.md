@@ -38,6 +38,7 @@
 - [x] Draw emails: activation link automatic for unlinked players (no tick box), on own club page
 
 ## Open (2026-10-11)
+- [ ] Willem: reverse the R34 Riverside tournament account charge and restore unpaid status for payment testing; preserve ledger audit.
 - [ ] Opponent contact sharing — built in preview; awaiting sender deploy + publish approval; league fixtures not yet covered
 - [x] Builder: merge Expected entries into Structure guide (18 steps, conflict flags) — preview
 - [x] Public QR tournament page: once-per-browser info toast + compact "Open in SquashHub" panel replacing Exit/Log into App — preview

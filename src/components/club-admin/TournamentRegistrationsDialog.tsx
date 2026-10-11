@@ -1,3 +1,4 @@
+import { ChampFeesPanel } from "./ChampFeesPanel";
 import { entryDueCents } from "@/lib/tournaments/entry-fee";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -342,6 +343,10 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           <DialogTitle>Registrations — {champ?.name}</DialogTitle>
         </DialogHeader>
 
+        {champId && (
+          <ChampFeesPanel champId={champId} clubId={clubId}
+            entrants={activeRegistrations.map((r: any) => ({ id: r.club_member_id, name: getName(r.member) })).sort((x: any, y: any) => x.name.localeCompare(y.name))} />
+        )}
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-xs flex-wrap">
             <Badge variant="default">{feeRequired ? "Registered" : "Entered"} {participatingCount}</Badge>

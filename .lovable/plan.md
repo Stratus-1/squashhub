@@ -19,6 +19,22 @@ Fee:      Not charged -> Charged to account -> Payment reported -> Verified paid
 ```
 "Outstanding" = charged minus verified. A reported payment never reduces the balance until an admin verifies it.
 
+## Phase 0 — Fee basis setting in Step 17 (addendum)
+
+What is saved for Uitsig today: a flat fee of R100, plus a fee of R100 on each of the 5 categories (`division_fees`), and pay-before-entry = No. The current "due" figure (77 × R100) counts one fee per registration, which happens to equal one per person. These saved values contradict each other, so neither basis can be proven. Uitsig will show **"Needs confirmation"** and no new charges will be made.
+
+- Directly under the fee amount, add a required question, "How is the entry fee charged?", with two cards:
+  - A) **Once per player (for the whole tournament)**: someone in several categories pays once.
+  - B) **Per category entered**: two categories means two fees.
+- Live example using the actual counts, e.g. "77 players / 82 category entries at R100 → A: R7,700 · B: R8,200".
+- "Different fee for different categories" stays available:
+  - With B, each category entry costs that category's own amount.
+  - With A and different amounts, the admin must also pick a rule: highest category fee, or first-entered category. If nothing is picked, saving is blocked rather than guessed.
+- Stored as a tournament setting `entry_fee_basis`: `per_player` | `per_category` | null. Null means "Needs confirmation". Existing tournaments are never back-filled. New tournaments must choose before Complete setup.
+- When the basis is changed on a live tournament, an impact preview runs first: old vs new totals per person, already-charged rows and paid rows. It also requires confirmation. Charges that were already posted are never rewritten automatically; any difference appears as a proposed adjustment that needs a separate approval.
+- One shared calculation (`src/lib/tournaments/entry-fees.ts`) drives fees due, the summary cards, outstanding totals, the registration and payment screens, bulk posting, claim allocation and refunds. The pay-before-entry setting stays separate.
+- While the basis is null: amounts are shown as "Needs confirmation", posting and claim approval are blocked, and entries stay confirmed and draw-eligible.
+
 ## Phase 1 — Admin "Charge entry fee to member accounts" (preview only)
 
 - New preview on the running tournament (admin only), one row per person: member #, name, categories, fee basis, amount, account record found Y/N, existing tournament charge, existing paid record, shared-email flag, and the planned action (Create / Skip-existing / Blocked).

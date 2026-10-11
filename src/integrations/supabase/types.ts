@@ -2518,6 +2518,7 @@ export type Database = {
           club_member_id: string
           created_at: string
           created_by: string | null
+          credit_cents: number
           fee_payment_id: string | null
           id: string
           registration_id: string | null
@@ -2528,6 +2529,7 @@ export type Database = {
           club_member_id: string
           created_at?: string
           created_by?: string | null
+          credit_cents?: number
           fee_payment_id?: string | null
           id?: string
           registration_id?: string | null
@@ -2538,6 +2540,7 @@ export type Database = {
           club_member_id?: string
           created_at?: string
           created_by?: string | null
+          credit_cents?: number
           fee_payment_id?: string | null
           id?: string
           registration_id?: string | null

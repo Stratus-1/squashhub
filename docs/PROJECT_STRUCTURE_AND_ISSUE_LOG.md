@@ -1,3 +1,8 @@
+### 2026-10-11 — GoBook cached register could cancel valid calendar bookings
+- Confirmed monitoring finding 98aedacd-5ce4-5621-867f-8100c082c1e0: sync_core_day used a three-minute module cache keyed only by provider service, not date, before marking missing active GoBook API mirrors cancelled. Booking/cancel paths did not invalidate it.
+- Small fix in supabase/functions/gobook-api/index.ts: remove register cache and restore a fresh Booking/List read for every sync with the requested provider service and booking date. No cached or shared in-flight snapshot can drive destructive reconciliation. Existing tenant/source/date scoping and malformed-response protection remain unchanged; no schema, UI or native changes.
+- src/test/gobook-register-freshness.test.ts executes the real edge handler in an isolated VM with fake provider/database boundaries: newly inserted booking after preceding sync remains active; day B reads independently from A; real absence still cancels; malformed and failed reads preserve mirrors. Five tests pass; preview build OK. No real GoBook calls, booking/data writes or deployment performed. Concurrent provider-read/local-write races and valid-but-incomplete provider lists are pre-existing limitations, not addressed by this bounded cache fix.
+
 ### 2026-10-10 — Inline tournament view hid Fixtures & Results
 - **Cause:** The existing category tab strip was explicitly hidden by `!inlineStandings`, leaving no way to select the already-renderable fixtures panel.
 - **Fix:** Show the existing tab strip in inline mode and restore its associated tabpanel semantics. Shared category selection, round/result rendering, expansion defaults, queries and scoring remain unchanged.

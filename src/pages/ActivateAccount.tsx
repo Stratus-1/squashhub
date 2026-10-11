@@ -1,3 +1,5 @@
+import { Checkbox } from "@/components/ui/checkbox";
+import { CONTACT_CONSENT_HELP, CONTACT_CONSENT_LABEL, clearActivationConsent, readActivationConsent, rememberActivationConsent, setContactPref } from "@/lib/contact-sharing";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,12 +61,21 @@ export default function ActivateAccount() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [shareContact, setShareContact] = useState(false);
+  const [adultOk, setAdultOk] = useState(false);
 
   const claim = useCallback(async () => {
     if (!token) return;
     const { data, error } = await (supabase as any).rpc("claim_member_activation", { _token: token });
     const status = error ? "error" : (data as any)?.status;
     if (status === "claimed") {
+      // Optional, explicit match-contact consent chosen on this page (never pre-ticked or implied by activating).
+      const consent = readActivationConsent(token);
+      clearActivationConsent(token);
+      if (consent?.share && (data as any)?.club_member_id) {
+        try { await setContactPref((data as any).club_member_id, { share: true, source: "activation", adultConfirmed: consent.adult }); }
+        catch (e: any) { toast.message("Account activated. Set your contact preference in Settings: " + (e?.message || "it couldn't be saved")); }
+      }
       clearToken();
       clearPendingVerify();
       toast.success("Your SquashHub account is active and linked to your existing membership.");
@@ -212,6 +223,12 @@ export default function ActivateAccount() {
           Hi {info.first_name || "there"}, your membership at <strong>{info.club_name}</strong> is already loaded.
           Activate access for <strong>{info.email}</strong>.
         </p>
+        <div className="space-y-2 rounded-md border border-border p-3" data-testid="activation-contact-prefs">
+          <p className="text-sm font-semibold">Match Contact Preferences <span className="font-normal text-muted-foreground">(optional)</span></p>
+          <label className="flex items-start gap-2 text-[13px]"><Checkbox checked={shareContact} onCheckedChange={(v) => { const on = v === true; setShareContact(on); rememberActivationConsent(token, { share: on, adult: adultOk }); }} className="mt-0.5" /><span>{CONTACT_CONSENT_LABEL}</span></label>
+          {shareContact && <label className="flex items-start gap-2 pl-6 text-xs"><Checkbox checked={adultOk} onCheckedChange={(v) => { const on = v === true; setAdultOk(on); rememberActivationConsent(token, { share: shareContact, adult: on }); }} className="mt-0.5" /><span>I confirm I am 18 or older. (Under 18? Leave this unticked — a parent or guardian can add their own contact later in Settings.)</span></label>}
+          <p className="text-[11px] text-muted-foreground">{CONTACT_CONSENT_HELP}</p>
+        </div>
         <GoogleSignInButton label="Continue with Google" redirectPath="/activate" showHint={false} />
         <p className="text-[11px] text-muted-foreground text-center">Use the Google account for {info.email}. No separate password needed.</p>
         <GoogleAuthDivider />

@@ -7,6 +7,8 @@ vi.mock("@/integrations/supabase/client", () => ({
     return c;
   } },
 }));
+vi.mock("@/lib/comms/send", () => ({ sendComms: vi.fn() }));
+vi.mock("@/lib/smart-builder/step-handover", () => ({ entryPayLinks: vi.fn(), emailPayButton: vi.fn(), payRoute: vi.fn() }));
 import { readDrawNoticeSettings, saveDrawNoticeSettings, classifyActivation, DEFAULT_ACTIVATION_INTRO, DEFAULT_DRAW_NOTICE } from "@/lib/smart-builder/draw-notice";
 
 beforeEach(() => { store.bl = { draw_notify: true, draw_notices: { "all:r1": { sent: 3 } }, answers: { picks: { a: [1] } } }; store.updates = []; });

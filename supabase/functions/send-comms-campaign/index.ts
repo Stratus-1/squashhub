@@ -142,6 +142,21 @@ async function personalOnboardingAction(action: any, m: any, subdomain: string |
   return { ...action, appPath: "/activate", webUrl: `${base}/activate?t=${encodeURIComponent(String(token))}` };
 }
 
+/** Personal, single-use, expiring activation button for an unregistered draw recipient; null = normal login button. */
+async function drawActivationBlock(m: any, clubId: string, subdomain: string | null | undefined, campaignId: string, intro: string): Promise<string | null> {
+  const { data: fresh } = await admin.from("club_members").select("user_id,email,status").eq("id", m.id).maybeSingle();
+  if (!fresh || fresh.user_id || fresh.status !== "active") return null;
+  const email = String(fresh.email || "").trim().toLowerCase();
+  if (!email.includes("@")) return null;
+  const { count } = await admin.from("club_members").select("id", { count: "exact", head: true })
+    .eq("club_id", clubId).ilike("email", email).not("user_id", "is", null);
+  if ((count ?? 0) > 0) return null; // shared family login already exists
+  const a = await personalOnboardingAction({ key: "register_existing_member" }, { ...m, user_id: null }, subdomain, campaignId);
+  const text = escapeHtml((intro.trim() || "Not registered on SquashHub yet? Activate your account to view your draw and match details.").slice(0, 300));
+  return `<p style="margin:20px 0 8px">${text}</p><div style="margin:0 0 20px"><a href="${escapeHtml(a.webUrl)}" style="display:inline-block;background:#1E3A5F;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;font-size:14px">Activate my SquashHub account</a></div>` +
+    '<p style="font-size:12px;color:#64748b;margin:0">This link is personal to you, works once and expires in 14 days.</p>';
+}
+
 async function logDelivery(row: {
   campaign_id: string; club_id: string; club_member_id: string | null; channel: CommsChannel;
   recipient_name?: string | null; target?: string | null; status: string; error_message?: string | null;
@@ -359,7 +374,13 @@ Deno.serve(async (req) => {
               }).catch(() => null);
               if (links) mdBlock = matchDayEmailBlock(links);
             }
-            const loginBlock = action.key === "tournament_view" ? loginEmailButton(club?.subdomain) : "";
+            let loginBlock = action.key === "tournament_view" ? loginEmailButton(club?.subdomain) : "";
+            // Draw notices may opt in to a PERSONAL activation link for players with no SquashHub login.
+            // Re-checked at send time; family members who share an email with a linked login use that login instead.
+            if (action.key === "tournament_view" && String(af.include_activation) === "true") {
+              const act = await drawActivationBlock(m, campaign.club_id, club?.subdomain, campaignId, String(af.activation_intro || ""));
+              if (act) loginBlock = act;
+            }
             const html = `${rendered.body}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}`;
             if (useManagedEmail) {
               // Main SquashHub domain (managed sending): suppression and rate

@@ -799,6 +799,13 @@
       "when": 1791661608488,
       "tag": "0113_guard_swiss_round_progression_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1791712848475,
+      "tag": "0114_registration_status_respects_payment_timing",
+      "breakpoints": true
     }
   ]
 }

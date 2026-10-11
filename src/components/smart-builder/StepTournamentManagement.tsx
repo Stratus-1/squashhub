@@ -103,13 +103,21 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" />Tournaments</Button>
-          <h2 className="text-lg font-semibold">{h.name}</h2>
-          <p className="text-xs text-muted-foreground">Tournament management · {h.kind === "period" ? "Club Championships" : "Once-off / weekend"}</p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" />Tournaments</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">{h.name}</h1>
+            <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+              h.stage === "running" ? "border-primary bg-primary/10 text-primary" : h.stage === "complete" ? "border-border bg-muted text-muted-foreground" : "border-primary/50 text-primary")}>
+              {LIFECYCLE[cur].label}
+            </span>
+          </div>
+          <h2 className="text-lg font-semibold">Manage running tournament</h2>
+          <p className="max-w-2xl text-sm text-muted-foreground">Manage rounds, draws, fixtures, results and player notifications here. To change the tournament configuration, select <span className="font-medium text-foreground">Edit tournament setup</span>.</p>
+          <p className="text-xs text-muted-foreground">{h.kind === "period" ? "Club Championships" : "Once-off / weekend"}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => askEdit()}><Pencil className="mr-1 h-4 w-4" />Edit tournament setup</Button>
+        <Button variant="outline" className="shrink-0 self-start md:mt-2" onClick={() => askEdit()}><Pencil className="mr-1 h-4 w-4" />Edit tournament setup</Button>
       </div>
 
       <ol aria-label="Tournament lifecycle" className="flex flex-wrap gap-1.5 text-xs">
@@ -123,7 +131,9 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
                 className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1", qrOpen ? "border-primary bg-primary/10 font-semibold text-primary ring-2 ring-primary/60" : "border-primary/50 text-primary hover:bg-primary/10")}>
                 <QrCode className="h-3 w-3" />Tournament link &amp; QR</button></li>
             )}
-            <li aria-current={i === cur ? "step" : undefined}>
+            {/* "Draw ready" is an internal state, not a separate visible step: the chip is hidden
+                unless the tournament is actually sitting at it (then it must remain, as the current stage). */}
+            {!(l.key === "activate" && i !== cur) && <li aria-current={i === cur ? "step" : undefined}>
               <button type="button" disabled={!reachable} onClick={() => { setQrOpen(false); setView(i === cur ? null : l.key); }}
                 title={reachable ? (i === cur ? "Current stage" : "Revisit — nothing later is undone") : l.key === "planning" ? "Use Edit tournament setup" : "Locked until earlier stages are done"}
                 className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1",
@@ -131,7 +141,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
                   shown === l.key && i !== cur && "ring-2 ring-primary/60")}>
                 {done && <Check className="h-3 w-3" />}{!done && i > cur && <Lock className="h-3 w-3" />}{l.label}{done && i !== cur && l.key !== "planning" && <span className="ml-1 text-[10px] opacity-80">· Completed ✓ · View / manage</span>}
               </button>
-            </li>
+            </li>}
           </Fragment>);
         })}
       </ol>

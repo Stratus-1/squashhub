@@ -10,6 +10,7 @@ import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hie
 import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec, divisionGroup, divisionEntryGroups } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";
 import { seedPools } from "./mapping";
+import { swissTable } from "./swiss-standings";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { engineVerdicts } from "../smart-builder/engine-support";
 import { definedOnly, deferredStages } from "../smart-builder/deferred";

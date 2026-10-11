@@ -81,6 +81,8 @@ export async function finalisePayment(admin: any, session: any) {
   }
 
   if (session.purpose === "tournament" && session.champ_registration_id) {
+    // Step 1: make sure the entry fee is charged to the member account (Dr AR / Cr income) before the card payment settles it.
+    { const { error: feeErr } = await admin.rpc("ensure_tournament_entry_fee", { p_registration_id: session.champ_registration_id }); if (feeErr) console.error("ensure_tournament_entry_fee failed", feeErr); }
     const { data: regRow } = await admin.from("club_champs_registrations")
       .select("fee_payment_id").eq("id", session.champ_registration_id).maybeSingle();
     await admin.from("club_champs_registrations").update({

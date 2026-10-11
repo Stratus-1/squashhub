@@ -59,7 +59,7 @@ describe("Tournament admin Paid action", () => {
   });
   it.each(["paid", "waived", "not_required"])("does not offer another payment for %s fees", async (fee_status) => {
     state.regs = [registration({ fee_status })]; mount();
-    await screen.findByText("Test Player");
+    await screen.findAllByText("Test Player");
     expect(screen.queryByRole("button", { name: "Mark Test Player paid" })).not.toBeInTheDocument();
   });
   it("does not offer payment on withdrawn entries or free tournaments", async () => {
@@ -67,7 +67,7 @@ describe("Tournament admin Paid action", () => {
     fireEvent.click(await screen.findByText("Show cancelled 1"));
     expect(screen.queryByRole("button", { name: "Mark Test Player paid" })).not.toBeInTheDocument();
     cleanup(); state.regs = [registration()]; mount({ entry_fee_cents: 0 });
-    await screen.findByText("Test Player");
+    await screen.findAllByText("Test Player");
     expect(screen.queryByRole("button", { name: "Mark Test Player paid" })).not.toBeInTheDocument();
   });
   it("shows a permission failure instead of claiming a successful payment", async () => {

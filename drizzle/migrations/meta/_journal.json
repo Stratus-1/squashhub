@@ -827,6 +827,13 @@
       "when": 1791715467972,
       "tag": "0117_champ_claim_excess_credit",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1791717626446,
+      "tag": "0118_champ_fee_charge_on_entry_then_settle",
+      "breakpoints": true
     }
   ]
 }

@@ -19224,6 +19224,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      champ_member_open_fee_ids: {
+        Args: { p_champ: string; p_member: string }
+        Returns: string[]
+      }
       champ_member_total_due_cents: {
         Args: { p_champ_id: string; p_member_id: string }
         Returns: number

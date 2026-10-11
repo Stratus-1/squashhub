@@ -27,3 +27,5 @@
 ## Uitsig picks overwrite (done in preview)
 - [x] Restore six additions + ladies' dual entries in saved picks (77 players / 82 entries).
 - [x] Edit setup now loads the tournament's saved picks first; a device's older copy can no longer overwrite them (preview only, not published).
+
+- [ ] Draw notices: when fee outstanding, include amount + payment choices (pay by card / add to account / I have paid) for every club

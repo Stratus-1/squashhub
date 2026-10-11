@@ -3049,9 +3049,9 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         mine ? "bg-primary/10 border border-primary/20" : completed ? "bg-muted/30" : "bg-muted/50"
       )}>
         <span className="text-muted-foreground w-24 shrink-0 text-xs">
-          {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
+          {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : (m.is_bye ? "—" : "Date TBC")}
         </span>
-        <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
+        <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || (m.is_bye ? "—" : "TBC")}</span>
         <span className={cn(
           "font-medium px-2 py-0.5 rounded",
           ((completed && winnerIsA) || liveAAhead) && "bg-green-500/20 text-green-700 dark:text-green-300",

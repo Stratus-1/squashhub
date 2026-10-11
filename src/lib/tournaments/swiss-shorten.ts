@@ -49,7 +49,7 @@ export async function shortenSwissStage(tournamentId: string, divisionIndex: num
   const liveRounds = Number(st.swissRounds) || 0;
   const rows = ((matches ?? []) as any[]).filter((m) => m.group_number === divisionIndex + 1 && m.stage_key === stageId);
   const check = swissShortenCheck(rows, liveRounds, newRounds);
-  if (!check.ok) throw new Error(check.reason);
+  if (!check.ok) throw new Error((check as { ok: false; reason: string }).reason);
 
   st.swissRounds = newRounds;
   const { error: e1 } = await fromExt("tournaments").update({ builder_spec: spec }).eq("id", tournamentId);

@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Open
-- [ ] Simplify Riverside Swiss→QF dialog: saved format, seeded player preview, inherited scoring; regression tests and read-only desktop/mobile check.
+- [ ] Urgent Riverside Swiss→QF dialog: remove both generic branches, require saved consistent Top 8, target existing stage key, Check Draw/Generate Quarterfinal Draw; tests and read-only desktop/mobile check.
 - [ ] Full-screen Pick Players board: board-only zoom, name tooltips, responsive columns; verify controls and desktop/mobile without data writes or publishing.
 - [x] GoBook disappearing bookings: removed cached/shared register reads from day sync; five real-handler simulated regressions pass (new booking, separate days, cancellation, invalid/failed reads). No live writes/deployment.
 - [x] Swiss next-stage CTA and previous-round notices: existing setup/confirmation dialogs reused, 49 focused tests pass; Riverside desktop/mobile verified with writes blocked; no publishing. Existing playoff-suite failures and unset QF pairing remain separate limitations.

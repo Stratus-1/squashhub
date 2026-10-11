@@ -67,7 +67,7 @@ export function RecommendationCard({ cat, n, unit, options, applied, current, on
   );
 }
 
-export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, onUse, onOther, entryCounts = {}, subcats = {}, countState = "ready", actualOf, review }: {
+export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, onUse, onOther, entryCounts = {}, subcats = {}, countState = "ready", actualOf, review, estimateOf, onEstimate, conflicts = [], onResolve, categoryEstimateOf }: {
   cats: string[]; guide: GuideAnswers; onChange: (g: GuideAnswers) => void; isChamps: boolean;
   unitOf: (cat: string) => string; currentOf: (cat: string) => string | undefined;
   onUse: (cat: string, o: StructureOption) => void; onOther: () => void;
@@ -76,17 +76,27 @@ export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, c
   actualOf?: (cat: string) => number;
   /** Reopened from management to finalise structure against actual entries. */
   review?: { onDone: () => void };
+  /** Canonical estimate per group key (category or Category::Sub); falls back to guide.expected when absent. */
+  estimateOf?: (key: string) => string;
+  onEstimate?: (cat: string, key: string, value: string) => void;
+  conflicts?: { cat: string; guide: number; steps: number }[];
+  onResolve?: (cat: string, pick: "guide" | "steps") => void;
+  /** Canonical category estimate used for recommendations (same value the rest of the builder uses). */
+  categoryEstimateOf?: (cat: string) => number;
 }) {
+  const estVal = (k: string, cat: string) => estimateOf ? estimateOf(k) : (k === cat ? guide.expected?.[cat] ?? "" : "");
+  const setEst = (cat: string, k: string, v: string) => onEstimate ? onEstimate(cat, k, v) : set({ expected: { ...(guide.expected ?? {}), [cat]: v } });
   const set = (p: Partial<GuideAnswers>) => onChange({ ...guide, ...p });
   const actual = (c: string) => (actualOf?.(c) ?? 0);
-  const fieldOf = (c: string) => actual(c) >= 2 ? actual(c) : Number(guide.expected?.[c]) || 0;
+  const estOf = (c: string) => categoryEstimateOf ? categoryEstimateOf(c) : Number(guide.expected?.[c]) || 0;
+  const fieldOf = (c: string) => actual(c) >= 2 ? actual(c) : estOf(c);
   const { cap, byCat, mm } = guideRecommendations(cats, guide, isChamps, fieldOf);
   const ready = Object.keys(byCat).length > 0;
   const plannedOf = (c: string) => { const r = byCat[c]; if (!r) return undefined; return r.options.find((o) => o.kind === guide.applied?.[c]) ?? r.options[0]; };
   const totalDemand = Object.keys(byCat).reduce((t, c) => t + (plannedOf(c)?.matches ?? 0), 0);
   const totalFit = cap ? capacityFit(totalDemand, cap.slots) : null;
   const changeFor = (c: string) => {
-    const est = Number(guide.expected?.[c]) || 0, act = actual(c);
+    const est = estOf(c), act = actual(c);
     if (act < 2 || !est || est === act) return undefined;
     const fromEst = evaluateStructures({ n: est, outcome: guide.outcome, strength: guide.strength, time: guide.time, isChamps, slots: byCat[c]?.share, matchMinutes: mm })[0];
     const now = byCat[c]?.options[0];
@@ -111,22 +121,35 @@ export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, c
           <Pick active={guide.knowsEntries === true} onClick={() => set({ knowsEntries: true })} title="Yes, roughly" desc="Enter an approximate number per category." />
           <Pick active={guide.knowsEntries === false} onClick={() => set({ knowsEntries: false })} title="Not yet" desc="Skip — we'll recommend once entries come in." />
         </div>
-        <div className="space-y-2">{cats.map((c) => (
-          <div key={c} className="space-y-1" data-testid={`guide-count-${c}`}>
+        <div className="space-y-2">{cats.map((c) => {
+          const subs = (subcats[c] ?? []).map((x) => x.trim()).filter(Boolean);
+          const conflict = conflicts.find((x) => x.cat === c);
+          return <div key={c} className="space-y-1" data-testid={`guide-count-${c}`}>
           <div className="flex flex-wrap items-center gap-2">
             <span className="w-48 break-words text-sm">{c}</span>
-            {guide.knowsEntries === true && <>
-            <Input type="number" min={2} className="max-w-[110px]" aria-label={`Approximate entries for ${c}`} placeholder="e.g. 12" value={guide.expected?.[c] ?? ""}
-              onChange={(e) => set({ expected: { ...(guide.expected ?? {}), [c]: e.target.value } })} />
-            <span className="text-xs text-muted-foreground">~ {unitOf(c)} (estimate)</span>
-            </>}
+            {guide.knowsEntries === true && (subs.length
+              ? <span className="text-xs text-muted-foreground">Estimated entries: {subs.reduce((t, x) => t + (Number(estVal(`${c}::${x}`, c)) || 0), 0) || "?"} (sum of groups below)</span>
+              : <><Input type="number" min={2} className="max-w-[110px]" aria-label={`Estimated entries for ${c}`} placeholder="e.g. 12" value={estVal(c, c)}
+                  onChange={(e) => setEst(c, c, e.target.value)} />
+                <span className="text-xs text-muted-foreground">estimated {unitOf(c)}</span></>)}
             <span className="text-xs text-muted-foreground">{guideCountText(entryCounts[c], countState)}</span>
           </div>
-          {(subcats[c] ?? []).filter((s) => s.trim()).map((s) => <div key={s} className="flex flex-wrap items-center gap-2 pl-4 text-xs">
-            <span className="break-words">{s.trim()}</span>
-            <span className="text-muted-foreground">{guideCountText(entryCounts[`${c}::${s.trim()}`], countState)}</span>
+          {subs.map((x) => <div key={x} className="flex flex-wrap items-center gap-2 pl-4 text-xs">
+            <span className="w-44 break-words">{x}</span>
+            {guide.knowsEntries === true && <Input type="number" min={1} className="h-8 max-w-[100px]" aria-label={`Estimated entries for ${c} ${x}`} placeholder="e.g. 8" value={estVal(`${c}::${x}`, c)}
+              onChange={(e) => setEst(c, `${c}::${x}`, e.target.value)} />}
+            <span className="text-muted-foreground">{guideCountText(entryCounts[`${c}::${x}`], countState)}</span>
           </div>)}
-          </div>))}</div>
+          {conflict && <div role="alert" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs" data-testid={`estimate-conflict-${c}`}>
+            <p className="font-medium">Two different estimates were saved for {c}: Structure guide {conflict.guide}, Expected entries {conflict.steps}.</p>
+            <p className="text-muted-foreground">Until you choose, planning uses {conflict.steps}. Nothing is changed automatically; actual entries still decide the final draw.</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {!subs.length && <Button type="button" size="sm" variant="outline" onClick={() => onResolve?.(c, "guide")}>Use {conflict.guide}</Button>}
+              <Button type="button" size="sm" variant="outline" onClick={() => onResolve?.(c, "steps")}>Use {conflict.steps}{subs.length ? " (group totals)" : ""}</Button>
+            </div>
+          </div>}
+          </div>; })}</div>
+        <p className="text-xs text-muted-foreground">Estimated = your planning guess. Registered = saved entries. Selected = players you picked. Once registrations close, actual entries replace the estimates for the draw.</p>
       </div>
 
       <div className="space-y-2">

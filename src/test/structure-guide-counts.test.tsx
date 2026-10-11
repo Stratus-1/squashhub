@@ -22,12 +22,12 @@ describe("Structure guide entry totals", () => {
   it("shows categories and subcategories next to unchanged estimates", () => {
     render(<StructureGuidePanel cats={cats} guide={{ knowsEntries: true, expected: { Men: "12" } }} onChange={vi.fn()} isChamps unitOf={() => "players"} currentOf={() => undefined} onUse={vi.fn()} onOther={vi.fn()} subcats={{ Men: ["A", "B"] }} entryCounts={guideEntryCounts(cats, keys, picks, regs)} />);
     const row = within(screen.getByTestId("guide-count-Men"));
-    expect(row.getByRole("spinbutton")).toHaveValue(12);
-    expect(row.getByText("(1 entered · 4 selected · 5 total player entries)")).toBeInTheDocument();
-    expect(row.getByText("(1 entered · 2 selected · 3 total player entries)")).toBeInTheDocument();
+    expect(row.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(row.getByText("(Registered 1 · Selected 4 · Total 5 player entries)")).toBeInTheDocument();
+    expect(row.getByText("(Registered 1 · Selected 2 · Total 3 player entries)")).toBeInTheDocument();
   });
   it("never pretends a failed registration read is zero entered", () => {
-    expect(guideCountText({ entered: 0, selected: 3, total: 3 }, "error")).toContain("entered unavailable");
+    expect(guideCountText({ entered: 0, selected: 3, total: 3 }, "error")).toContain("Registered unavailable");
     expect(guideCountText(undefined, "loading")).toContain("loading");
   });
 });

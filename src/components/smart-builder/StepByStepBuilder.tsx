@@ -47,6 +47,7 @@ import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
 import { StructureGuidePanel, RecommendationCard, guideRecommendations } from "./StructureGuidePanel";
 import { guideEntryCounts, guideCountText } from "./guide-entry-counts";
+import { categoryEstimate, estimateConflicts, resolveEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
 import type { RegLite } from "@/lib/smart-builder/step-draw";
 import { evaluateStructures, materiallyDifferent, type GuideAnswers, type StructureOption } from "@/lib/smart-builder/structure-guide";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
@@ -975,12 +976,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Invitations only when players self-enter; admin-entered players still get an entry notification. */
   const commsSteps: StepKey[] = selfEntry ? ["Invites", "Messaging"] : notifyOnly ? ["Messaging"] : [];
   const steps: StepKey[] = isChamps
-    ? ["Type", "Basics", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+    ? ["Type", "Basics", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
       ...(showPickStep ? ["Pick" as const] : []), ...commsSteps, "Fees", "Schedule", "Summary"]
     : ["Type", "Basics", "Entries", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
       ...(showPickStep ? ["Pick" as const] : []), ...commsSteps, "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
-  const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
+  // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
+  const go = (k: StepKey) => { const i = steps.indexOf(k === "ExpEntries" ? "Guide" : k); if (i >= 0) setStep(i); };
 
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;
@@ -1013,7 +1015,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
-  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: true, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: estimateConflicts(a, cats).length === 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   /** Structure guidance (advisory): estimates, actual field and applying a recommendation on request only. */
@@ -1021,17 +1023,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const catUnits = (c: string) => units.filter((u) => u.key === c || u.key.startsWith(`${c}::`));
   const catIsDoubles = (c: string) => { const us = catUnits(c); return us.length > 0 && us.every((u) => u.disc === "doubles"); };
   const catUnitWord = (c: string) => catIsDoubles(c) ? "pairs" : "players";
-  /** The admin's own Expected entries answers win over the earlier Structure guide guess. */
-  const catEstimate = (c: string) => catUnits(c).reduce((t, u) => t + (Number(a.unitEntries?.[u.key]) || 0), 0) || Number(guide.expected?.[c]) || 0;
+  /** Canonical provisional estimate (Structure guide → unitEntries); see expected-entries.ts. */
+  const catEstimate = (c: string) => categoryEstimate(a, c);
   const unitPicked = (k: string) => pickIds.filter((id) => placesFor(id).includes(k)).length;
   const catActual = (c: string) => Math.max(catPicked(c), catIsDoubles(c) ? Math.ceil((guideCounts[c]?.total ?? 0) / 2) : (guideCounts[c]?.total ?? 0));
   const catPicked = (c: string) => { const ids = new Set<string>(); catUnits(c).forEach((u) => pickIds.forEach((id) => { if (placesFor(id).includes(u.key)) ids.add(id); })); return catIsDoubles(c) ? Math.ceil(ids.size / 2) : ids.size; };
   const catCurrent = (c: string) => { const f = formatFor(c); return f.kind ? formatDetail(f) : undefined; };
-  const setGuide = (g: GuideAnswers) => {
-    const ue = { ...(a.unitEntries ?? {}) };
-    for (const c of cats) { const v = g.expected?.[c]; if (v && !(a.subcats[c] ?? []).some((x) => x.trim()) && !ue[c]) ue[c] = v; }
-    const total = cats.reduce((t, c) => t + (Number(g.expected?.[c]) || 0), 0);
-    setA({ ...a, guide: g, unitEntries: ue, entries: a.entries || (total ? String(total) : "") });
+  const setGuide = (g: GuideAnswers) => setA({ ...a, guide: { ...g, expected: a.guide?.expected ?? g.expected } });
+  const setUnitEstimate = (c: string, key: string, v: string) => {
+    const next = setEstimate(a, c, key, v);
+    const total = cats.reduce((t, x) => t + categoryEstimate(next, x), 0);
+    setA({ ...next, entries: a.entries || (total ? String(total) : "") });
   };
   const applyStructure = (c: string, o: StructureOption, extra?: Partial<GuideAnswers>) => {
     const f: FormatPlan = o.kind === "knockout" ? { ...DEFAULT_FORMAT, kind: "knockout", koPace: "paced", koPairing: "progressive" }
@@ -1357,7 +1359,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
 
           {cur === "Guide" && (
-            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats} countState={guideCountState} actualOf={catActual}
+            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats}
+              estimateOf={(k) => a.unitEntries?.[k] ?? (k.includes("::") ? "" : guide.expected?.[k] ?? "")} onEstimate={setUnitEstimate} categoryEstimateOf={catEstimate}
+              conflicts={estimateConflicts(a, cats)} onResolve={(c, pick) => { const cf = estimateConflicts(a, cats).find((x) => x.cat === c); if (cf) setA(resolveEstimate(a, cf, pick)); }} countState={guideCountState} actualOf={catActual}
               review={initialStep === "Guide" && tournamentId ? { onDone: () => go("Summary") } : undefined} />
           )}
 
@@ -2194,21 +2198,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "ExpEntries" && (
-            <>
-              <Q t="How many entries do you expect in each group?" h="Rough guesses are fine — they stay provisional until registrations close." />
-              {cats.some((c) => Number(guide.expected?.[c])) && <p className="text-xs text-muted-foreground">Structure guide estimates: {cats.filter((c) => Number(guide.expected?.[c])).map((c) => `${c} ~${guide.expected![c]}`).join(", ")}.</p>}
-              <p className="text-xs text-muted-foreground">Categories and subcategories are not pools. A group like Men's A may later be split into one or more pools once real entries are known.</p>
-              <div className="space-y-2">{units.map((u) => (
-                <div key={u.key} className="flex items-center gap-2">
-                  <span className="w-64 truncate text-sm">{u.label}</span>
-                  <Input type="number" min={1} className="max-w-[120px]" aria-label={`Expected entries for ${u.base}`} value={a.unitEntries?.[u.key] ?? ""} onChange={(e) => setA({ ...a, unitEntries: { ...(a.unitEntries ?? {}), [u.key]: e.target.value } })} placeholder="e.g. 8" />
-                  <span className="text-xs text-muted-foreground">{u.disc === "doubles" ? "pairs" : "players"} {guideCountText(guideCounts[u.key], guideCountState)}</span>
-                </div>
-              ))}</div>
-            </>
-          )}
-
           {cur === "Seeding" && (
             <>
               <Q t="How do you plan to seed?" h="Seeding decides who is kept apart early. This is only a plan." />
@@ -2365,7 +2354,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
               {handoverPanel("top")}
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Tournament" onEdit={() => go("Basics")}>{a.name || "Unnamed"} · {ownerText}{isChamps && ` · ${periodText}`}</SummaryRow>
-              {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("ExpEntries")}>
+              {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("Guide")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">about {a.unitEntries?.[u.key] || "?"}</span></li>)}</ul>
               </SummaryRow> : <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${a.entries} (estimate)`}</SummaryRow>}
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => go("What")}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
@@ -2491,7 +2480,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {a.kind && (
             <>
               {isChamps && basicsOk && <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={periodText} onClick={() => go("Basics")} />}
-              {isChamps && champsEstimate > 0 && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${champsEstimate} expected entries${champsActual > 0 ? ` · ${champsActual} actual` : ""}`} onClick={() => go("ExpEntries")}>
+              {isChamps && champsEstimate > 0 && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${champsEstimate} expected entries${champsActual > 0 ? ` · ${champsActual} actual` : ""}`} onClick={() => go("Guide")}>
                 {units.map((u) => {
                   const act = guideCounts[u.key]?.total ?? 0;
                   return <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">~{a.unitEntries?.[u.key] || "?"} expected{act > 0 ? ` · ${act} actual` : ""}</span></TreeLeaf>;

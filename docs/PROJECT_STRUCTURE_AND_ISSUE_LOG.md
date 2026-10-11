@@ -2868,3 +2868,5 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 ### 2026-10-11 — Unpaid entries counted as "invited" despite pay-before-entry = No
 - Cause: `derive_champ_registration_statuses` only registered organiser/accepted entries once the fee was settled and never read `club_champs.payment_timing`. Uitsig card showed 26 (rows saved before the fee existed).
 - Fix: trigger treats `payment_timing='after_acceptance'` as non-gating (fee stays in `fee_status`); Uitsig rows recomputed (71 registered, all fee due). Card now shows unique players · category entries · paid · outstanding. Riverside club champs (79 affected rows) recomputes on its next row update — not bulk-recomputed.
+
+- 2026-10-11 — Tournament messages: `send-comms-campaign` now delivers to entrants registered via another club (only members with a `club_champs_registrations` row in the host club's own tournament); tournament invitations and draw notices automatically include a personal activation link for players with no login (own-club page, single-use, 14 days).

@@ -63,6 +63,24 @@ async function expandRecipients(clubId: string, campaign: any) {
   if (audience === "selected") {
     const ids = (campaign.audience_member_ids ?? []) as string[];
     if (!ids.length) return [];
+    // Tournament messages may reach entrants whose membership is at ANOTHER club,
+    // but only those actually entered in THIS club's tournament (never any other member).
+    const tId = campaign.audience_filter?.tournament_id;
+    if (tId) {
+      const { data: champ } = await admin.from("club_champs").select("club_id").eq("id", tId).maybeSingle();
+      if (champ?.club_id === clubId) {
+        const { data: regs } = await admin.from("club_champs_registrations")
+          .select("club_member_id,partner_member_id").eq("champ_id", tId);
+        const entered = new Set<string>();
+        for (const r of regs ?? []) { if (r.club_member_id) entered.add(r.club_member_id); if (r.partner_member_id) entered.add(r.partner_member_id); }
+        const cols = "id,name,email,phone,club_member_number,id_number,user_id,skills,occupation,volunteer_willing";
+        const { data: own } = await admin.from("club_members").select(cols).eq("club_id", clubId).in("id", ids);
+        const ownIds = new Set((own ?? []).map((m: any) => m.id));
+        const extIds = ids.filter((id) => !ownIds.has(id) && entered.has(id));
+        const { data: ext } = extIds.length ? await admin.from("club_members").select(cols).in("id", extIds) : { data: [] as any[] };
+        return [...(own ?? []), ...(ext ?? [])];
+      }
+    }
     q = q.in("id", ids);
   } else if (audience === "league") {
     if (!campaign.audience_league_id) return [];
@@ -383,10 +401,15 @@ Deno.serve(async (req) => {
               if (links) mdBlock = matchDayEmailBlock(links);
             }
             let loginBlock = action.key === "tournament_view" ? loginEmailButton(club?.subdomain) : "";
-            // Draw notices may opt in to a PERSONAL activation link for players with no SquashHub login.
-            // Re-checked at send time; family members who share an email with a linked login use that login instead.
-            if (action.key === "tournament_view" && String(af.include_activation) === "true") {
-              const act = await drawActivationBlock(m, campaign.club_id, club?.subdomain, campaignId, String(af.activation_intro || "")).catch((e) => { console.error("draw activation link failed", e); return null; });
+            // Tournament invitations and draw notices automatically carry a PERSONAL activation link
+            // for players with no SquashHub login (re-checked now). Family members who share an email
+            // with a linked login, and players logged in at any club, get the normal button.
+            if (action.key === "tournament_view" && af.tournament_id) {
+              const isInvite = String(af.purpose || "").includes("invite");
+              const intro = String(af.activation_intro || "") || (isInvite
+                ? "Not registered on SquashHub yet? Activate your account to enter, pay and follow this tournament."
+                : "");
+              const act = await drawActivationBlock(m, campaign.club_id, club?.subdomain, campaignId, intro).catch((e) => { console.error("tournament activation link failed", e); return null; });
               if (act) loginBlock = act;
             }
             const html = `${rendered.body}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}`;

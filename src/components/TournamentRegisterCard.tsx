@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
+import { deriveEntryFeeState, canReportPayment, canChoosePayment } from "@/lib/tournaments/entry-fee-state";
 import { useClubMembers } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { Card } from "@/components/ui/card";
@@ -207,6 +208,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     enabled: !!myReg?.id,
   });
   const entryFee = (serverDueCents ?? entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
+  const feeState = deriveEntryFeeState(myReg as any, linkedCharge, Math.round(entryFee * 100), { chargeLoaded: !feePaymentId || chargeLoaded });
   const myEventLabels = (() => {
     const groups = Array.isArray(myReg?.division_choices) ? Array.from(new Set((myReg.division_choices as any[]).map(Number))) : [];
     const labels = (champ?.group_labels || {}) as Record<string, string>;

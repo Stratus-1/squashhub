@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [x] Stages & Scheduling redesign (preview): collapsible numbered stage cards, timeline, court calendar, separate Playoffs heading; 4 new checks. Desktop/mobile click-through still to do.
 - [x] Swiss→QF Step 1 (preview): QF screen reads Stages & Scheduling list; 'Set up Quarterfinal from saved setup' restored with once-only guard; 7 Riverside tests. Step 2 live repair awaits approval.
 - [ ] Final Setup Version (design approved in principle, plan pending): one canonical per-category config, confirmed at Review & Complete Setup, versioned revisions, draw/running read only it, impact preview for running edits.
 - [x] Uitsig: confirm ladies who entered both Ladies and Men’s from the final entry sheet (five).

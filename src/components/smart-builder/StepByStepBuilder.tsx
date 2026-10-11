@@ -55,6 +55,8 @@ import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { FeeBasisQuestion } from "./FeeBasisQuestion";
 import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
+import { StageCardShell, StageScheduleOverview } from "./StageScheduleOverview";
+import { courtOverlaps, stageStatus, type StageStatus } from "@/lib/smart-builder/schedule-view";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -391,6 +393,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [importReport, setImportReport] = useState<{ added: number; problems: string[] } | null>(null);
   /** First player tapped while forming a pair, per doubles unit (UI-only). */
   const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
+  /** Stages & scheduling: which stage cards the organiser has expanded/collapsed (view-only). */
+  const [stageOpen, setStageOpen] = useState<Record<string, boolean>>({});
   /** Category board shown across the whole screen (device-local view choice, not saved). */
   const [boardFull, setBoardFull] = useState(false);
   // Presentation state only: never included in answers or persisted tournament setup.
@@ -822,10 +826,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   const shift = (d: string, w: number) => { if (!d) return d; const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + w * 7); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
                   const add = () => {
                     const name = `Round ${mainStages.length + 1}`;
-                    if (!canCopy || !prev) { setStages([...stages, newStage(name, "play_by", "", "main")]); return; }
+                    if (!canCopy || !prev) { const ns = newStage(name, "play_by", "", "main"); setStageOpen((o) => ({ ...o, [ns.id]: true })); setStages([...stages, ns]); return; }
                     const w = Math.max(0, Math.min(52, Number(nextRoundGapWeeks) || 1));
                     const copy: ClubStage = { ...prev, id: Math.random().toString(36).slice(2), name, deadline: shift(prev.deadline, w), date: shift(prev.date, w), courtIds: [...prev.courtIds],
                       extraDays: prev.extraDays?.map((d) => ({ ...d, date: shift(d.date, w), courtIds: [...d.courtIds] })) };
+                    setStageOpen((o) => ({ ...o, [copy.id]: true }));
                     setStages([...stages, copy]);
                   };
                   return (
@@ -843,8 +848,51 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 })()}
               </div>
   );
-  const renderStage = (s: ClubStage) => (
-    <div key={s.id} className={cn("space-y-2 rounded-lg border p-3", s.phase === "playoff" ? "border-primary/50" : "border-border")}>
+  /** Advisory capacity of one scheduled main round (same maths as "Will this round fit?"). */
+  const capacityOf = (s: ClubStage) => {
+    if (s.phase === "playoff" || s.mode !== "scheduled") return null;
+    const toMin = (t: string) => { const [h, m] = (t || "").split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
+    const scope = units.filter((u) => !s.unit || u.key === s.unit || u.key.startsWith(`${s.unit}::`));
+    let matches = 0; let courtMin = 0; let guessed = false; let timeGuessed = false;
+    for (const u of scope) {
+      let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length;
+      if (!n) { n = Number(a.unitEntries?.[u.key]) || 0; if (n) guessed = true; }
+      const entrants = u.disc === "doubles" ? Math.floor(n / 2) : n;
+      const m = Math.floor(entrants / 2);
+      const sc = scoringFor(u.key) ?? scoring;
+      const saved = Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]);
+      const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : saved > 0 ? saved : (timeGuessed = true, sc?.bestOf === 5 ? 55 : 35);
+      matches += m; courtMin += m * per;
+    }
+    if (!matches) return null;
+    const perMatch = Math.round(courtMin / matches);
+    const dayList = [{ date: s.date, from: s.from, to: s.to, courtIds: s.courtIds }, ...(s.extraDays ?? [])].filter((d) => d.date);
+    const slotsOf = (d: { from: string; to: string; courtIds: string[] }) => { const w = toMin(d.to) - toMin(d.from); return w > 0 ? Math.floor(w / perMatch) * d.courtIds.length : 0; };
+    const perDay = dayList.map(slotsOf); const slots = perDay.reduce((t, x) => t + x, 0);
+    let need = 0, acc = 0; for (const x of perDay) { if (acc >= matches) break; acc += x; need++; }
+    return { matches, perMatch, courtMin, guessed, timeGuessed, days: dayList.length, perDay, slots, need, fits: slots >= matches };
+  };
+  const visibleStages = () => [...mainStages, ...(playoff.choice === "playoffs" ? playoffStages : [])];
+  const stageStatusOf = (id: string): StageStatus => {
+    const s = stages.find((x) => x.id === id); if (!s) return "later";
+    const { clash } = courtOverlaps(visibleStages());
+    return stageStatus(s, capacityOf(s), clash.has(id));
+  };
+  const stageSummary = (s: ClubStage) => {
+    const st = stageStatusOf(s.id); const c = capacityOf(s); const { clash, shared } = courtOverlaps(visibleStages());
+    const base = s.mode === "scheduled"
+      ? [s.date ? fmtDay(s.date) : "date not set", ...(s.extraDays ?? []).map((d) => d.date ? fmtDay(d.date) : "date not set")].join(" + ") + ` · ${s.from || "?"}–${s.to || "?"} · ${s.courtIds.length ? clubCourts.filter((x) => s.courtIds.includes(x.id)).map((x) => x.name).join(", ") : "no courts"}`
+      : stageWhen(s);
+    const extra = [c ? `~${c.matches} matches / ${c.slots} slots` : "", s.phase === "playoff" && s.pairing ? PAIRING_LABEL[s.pairing] : "",
+      st === "conflict" ? `clashes with ${clash.get(s.id)!.join(", ")}` : "", shared.has(s.id) ? `shares courts with ${shared.get(s.id)!.join(", ")}` : ""].filter(Boolean);
+    return [base, ...extra].join(" · ");
+  };
+  const isStageOpen = (s: ClubStage) => stageOpen[s.id] ?? ["incomplete", "conflict", "short"].includes(stageStatusOf(s.id));
+  const jumpToStage = (id: string) => { setStageOpen((o) => ({ ...o, [id]: true })); requestAnimationFrame(() => document.getElementById(`stage-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })); };
+  const renderStage = (s: ClubStage, index: number) => {
+    const idx = s.phase === "playoff" ? playoffStages.indexOf(s) : index;
+    return <StageCardShell key={s.id} stage={s} index={idx} title={s.name} unitLabel={stageUnit(s.unit)} summary={stageSummary(s)} status={stageStatusOf(s.id)} open={isStageOpen(s)} onToggle={() => setStageOpen((o) => ({ ...o, [s.id]: !isStageOpen(s) }))}>
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", s.phase === "playoff" ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.phase === "playoff" ? "Playoff" : "Main round"}</span>
         <select aria-label="Stage applies to" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.unit} onChange={(e) => updStage(s.id, { unit: e.target.value })}>
@@ -905,34 +953,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           <p className="pb-2 text-xs text-muted-foreground">{s.date ? "New days copy the first day's times and courts — change them per day if needed." : "Choose the first date before adding more days."}</p>
         </div>
         {s.phase !== "playoff" && (() => {
-          // Capacity guide (advisory only): matches in ONE round vs court slots on the listed days.
-          const toMin = (t: string) => { const [h, m] = (t || "").split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
-          const scope = units.filter((u) => !s.unit || u.key === s.unit || u.key.startsWith(`${s.unit}::`));
-          let matches = 0; let courtMin = 0; let guessed = false; let timeGuessed = false;
-          for (const u of scope) {
-            let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length;
-            if (!n) { n = Number(a.unitEntries?.[u.key]) || 0; if (n) guessed = true; }
-            const entrants = u.disc === "doubles" ? Math.floor(n / 2) : n;
-            const m = Math.floor(entrants / 2);
-            const sc = scoringFor(u.key) ?? scoring;
-            const saved = Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]);
-            const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : saved > 0 ? saved : (timeGuessed = true, sc?.bestOf === 5 ? 55 : 35);
-            matches += m; courtMin += m * per;
-          }
-          if (!matches) return null;
-          const perMatch = Math.round(courtMin / matches);
-          const days = [{ date: s.date, from: s.from, to: s.to, courtIds: s.courtIds }, ...(s.extraDays ?? [])].filter((d) => d.date);
-          const slotsOf = (d: { from: string; to: string; courtIds: string[] }) => { const w = toMin(d.to) - toMin(d.from); return w > 0 ? Math.floor(w / perMatch) * d.courtIds.length : 0; };
-          const perDay = days.map(slotsOf); const slots = perDay.reduce((t, x) => t + x, 0);
-          // Fewest days (in order) that still fit the round.
-          let need = 0, acc = 0; for (const x of perDay) { if (acc >= matches) break; acc += x; need++; }
-          const fits = slots >= matches;
+          const c = capacityOf(s);
+          if (!c) return null;
+          const { matches, perMatch, courtMin, guessed, timeGuessed, days, perDay, slots, need, fits } = c;
           return <div className={cn("rounded-md border p-2 text-xs", fits ? "border-border bg-muted/40" : "border-destructive/50 bg-destructive/5")} data-testid="round-capacity">
             <div className="font-medium">Will this round fit?</div>
             <div>About <b>{matches}</b> matches in one round{guessed ? " (some groups use expected entries — no players picked yet)" : ""} · ~{perMatch} min each{timeGuessed ? " (guessed — set your match time under Match time per slot above)" : ""} ≈ {Math.round(courtMin / 60)} court-hours.</div>
-            <div>Available: <b>{slots}</b> match slots across {days.length} day{days.length === 1 ? "" : "s"} ({perDay.join(" + ")}).</div>
+            <div>Available: <b>{slots}</b> match slots across {days} day{days === 1 ? "" : "s"} ({perDay.join(" + ")}).</div>
             <div className={fits ? "text-foreground" : "font-medium text-destructive"}>{fits
-              ? (need < days.length ? `Fits with ${slots - matches} spare slots — ${need} day${need === 1 ? "" : "s"} would be enough. Consider removing a day, fewer courts or a shorter session.` : `Fits, with ${slots - matches} spare slots for delays.`)
+              ? (need < days ? `Fits with ${slots - matches} spare slots — ${need} day${need === 1 ? "" : "s"} would be enough. Consider removing a day, fewer courts or a shorter session.` : `Fits, with ${slots - matches} spare slots for delays.`)
               : `Short by ${matches - slots} slots — add a day, another court or a longer session.`}</div>
             <div className="text-muted-foreground">Estimate only: also allow for minimum rest between a player's matches. Change match time under Match time per slot above.</div>
           </div>;
@@ -940,7 +969,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       </div>}
       {(a.periodStart && ((s.mode === "play_by" && s.deadline && s.deadline < a.periodStart) || (s.mode === "scheduled" && s.date && s.date < a.periodStart))) && <p className="text-xs text-muted-foreground">Note: this date is before the championship start.</p>}
     </div>
-  );
+    </StageCardShell>;
+  };
   const unitEntriesOk = units.length > 0 && units.every((u) => Number(a.unitEntries?.[u.key]) > 0);
   /** Invitations only when players self-enter; admin-entered players still get an entry notification. */
   const commsSteps: StepKey[] = selfEntry ? ["Invites", "Messaging"] : notifyOnly ? ["Messaging"] : [];
@@ -2218,6 +2248,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   ))}
                 </div>
               </div>
+              <StageScheduleOverview main={mainStages} playoffs={playoff.choice === "playoffs" ? playoffStages : []} statusOf={stageStatusOf} unitName={stageUnit} dayLabel={fmtDay}
+                courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} onJump={jumpToStage} />
               {drawSaved && <>
                 <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs" data-testid="schedule-running-note">The draw has been generated. Add or adjust the next round's dates, times and courts here; saving never regenerates or deletes existing games — new rounds' games are drawn from Manage Tournament.</p>
                 {renderMainRounds()}
@@ -2236,7 +2268,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {stages.length === 0 && <Button variant="outline" size="sm" onClick={suggestStages}>Suggest a starting plan from your choices</Button>}
               {!drawSaved && renderMainRounds()}
               <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
-              <div className="rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">▼ Playoffs begin</div>
+              <div className="flex items-center gap-2 rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-sm font-semibold text-primary" data-testid="playoffs-section"><Trophy className="h-4 w-4" />Playoffs{playoff.choice === "playoffs" && playoffStages.length > 0 ? <span className="font-normal">· {playoffStages.map((x) => x.name).join(" → ")}</span> : null}</div>
               <div className="space-y-3">
                 <div className="text-sm font-semibold">Will there be playoffs? <span className="font-normal text-muted-foreground">· {playoff.choice === "none" ? "no playoffs" : playoff.choice === "playoffs" ? "planned below" : "not decided"}{a.playoffSync === true ? " · common dates" : a.playoffSync === false ? " · per category" : a.playoffSync === "later" ? " · synchronisation decided later" : ""}</span></div>
                 <div className="flex flex-wrap gap-2" role="group" aria-label="Playoff decision">
@@ -2250,7 +2282,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                  <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
                  {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
                  {playoffStages.map(renderStage)}
-                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
+                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); const ns = newStage(next, "later", "", "playoff"); setStageOpen((o) => ({ ...o, [ns.id]: true })); setStages([...stages, ns]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
                 {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
                  const q = poolQualification(u.key);
                  // First CONFIGURED play-off stage (own stages win, else shared) — never assume Quarterfinals.

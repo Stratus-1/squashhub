@@ -2575,7 +2575,7 @@ function KnockoutRoundsFields({ value, onChange, entrants }: { value: FormatPlan
   const issues = draft ? knockoutConfirmIssues(draft, { entrants: entrants || null }) : [];
   return <div className="space-y-2 rounded-lg border border-border p-3" aria-label="Knockout rounds">
     <p className="text-xs font-medium text-foreground">Rounds for this knockout stage (not the whole tournament)</p>
-    <p className="text-xs text-muted-foreground">{plan ? `Recommended from ${plan.entrants} expected entrants: ${plan.bracketSize}-draw${plan.byes ? ` with ${plan.byes} bye${plan.byes > 1 ? "s" : ""}` : ""} → ${plan.rounds} rounds (${plan.stages.join(" → ")}).` : "Enter expected entries to get a recommended round count."}</p>
+    <p className="text-xs text-muted-foreground">{plan ? `Recommended from ${plan.entrants} expected entrants: ${plan.bracketSize}-draw${plan.byes ? ` with ${plan.byes} bye${plan.byes > 1 ? "s" : ""}` : ""} → ${plan.rounds} rounds (${plan.stages.join(" → ")}).` : "Each category/subcategory has its own bracket — enter its expected entries (or set its format separately) to get a recommended round count."}</p>
     <div className="max-w-[260px] space-y-1"><Label>Estimated knockout rounds (planning)</Label><Input type="number" min="1" aria-label="Estimated knockout rounds" value={value.koRounds ?? ""} onChange={(e) => onChange({ koRounds: e.target.value })} placeholder={plan ? String(plan.rounds) : "e.g. 3"} /></div>
     <div className="max-w-md space-y-1"><Label>Confirmed knockout rounds</Label>
       <div className="flex flex-wrap items-center gap-2"><Input type="number" min="1" className="w-24" aria-label="Confirmed knockout rounds" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={plan ? String(plan.rounds) : ""} />
@@ -2616,7 +2616,7 @@ function FormatFields({ value, onChange, units, compact = false, entries = {}, s
       <p>The provisional bracket comes from the expected entries you already gave — no need to enter it again. Actual entrants replace the estimate when registration closes.</p>
       {units.filter((u) => !scope || scope.includes(u.key)).map((u) => <p key={u.key} className="text-xs">{u.base}: {Number(entries[u.key]) || "?"} expected → {bracketHint(Number(entries[u.key]) || 0)}</p>)}
     </div>}
-    {value.kind === "knockout" && <KnockoutRoundsFields value={value} onChange={onChange} entrants={Object.entries(entries).filter(([k]) => !scope || scope.includes(k)).reduce((t, [, v]) => t + (Number(v) || 0), 0)} />}
+    {value.kind === "knockout" && <KnockoutRoundsFields value={value} onChange={onChange} entrants={(() => { const xs = Object.entries(entries).filter(([k, v]) => (!scope || scope.includes(k)) && Number(v) > 0); return xs.length === 1 ? Number(xs[0][1]) : 0; })()} />}
     {value.kind === "knockout" && <div className="space-y-3 rounded-lg border border-border p-3">
       <div className="space-y-1">
         <Label>Knockout pace</Label>

@@ -43,7 +43,9 @@
 
 .draw-notice-modal .draw-notice-modal-footer {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   flex: none;
   padding: .75rem 1rem;

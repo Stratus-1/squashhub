@@ -17,6 +17,7 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { autoProgress, confirmNextStage, previewNextStage, checkDeferredSetup, decidePositionOrder, setupDeferredStage, setupOk, stageLifecycle, stageTies, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
 import { parseMapping } from "@/lib/tournaments/mapping";
 import { sourcePoolCount } from "@/lib/tournaments/contract";
+import { inheritedStageScoring } from "@/lib/tournaments/stage-scoring";
 import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { attachPlannedPlayoffs } from "@/lib/smart-builder/step-draw";
 import { fromExt } from "@/lib/supabase-ext";
@@ -228,13 +229,17 @@ function SetupDialog({ champId, spec, status, exec, nameOf, onClose, onDone }: {
   const [perPool, setPerPool] = useState(2);
   const [method, setMethod] = useState<"cross_pool" | "reseed">(pools >= 2 ? "cross_pool" : "reseed");
   const [thirdPlace, setThirdPlace] = useState(false);
-  const [format, setFormat] = useState("");
+  // Scoring is inherited read-only from the category's saved settings — the same values the marker uses.
+  const { data: scoring } = useQuery({
+    queryKey: ["setup-inherited-scoring", champId, status.divisionKey],
+    queryFn: async () => { const [t] = await supabaseDb.select("tournaments", { id: champId }); return inheritedStageScoring(t, spec, status.divisionKey); },
+  });
   const [date, setDate] = useState(status.plannedDate ?? "");
   const [check, setCheck] = useState<SetupCheck | null>(null);
   const [busy, setBusy] = useState(false);
   const parsed = parseMapping(text, { source: "stage_standings", sourceStageId: src.id, pools, poolSize: swissSrc ? field : poolSize, discipline });
   const build = (): DeferredSetup => ({
-    kind, matchFormat: format, discipline,
+    kind, discipline,
     ...(kind === "mapped" ? { mapping: parsed.mapping ?? undefined } : { qualify: { perPool, mapping: method, transition: null }, thirdPlace }),
     schedule: { rule: date ? "fixed" : "window", ...(date ? { date, roundDates: [date] } : {}) },
   });
@@ -310,7 +315,12 @@ function SetupDialog({ champId, spec, status, exec, nameOf, onClose, onDone }: {
             <label className="col-span-2 flex items-center gap-2"><input type="checkbox" checked={thirdPlace} onChange={(e) => setThirdPlace(e.target.checked)} />Also play 3rd/4th place</label>
           </div>
         )}
-        <label className="block">How each game is scored<Input placeholder="e.g. PAR 11, best of 5" value={format} onChange={(e) => setFormat(e.target.value)} /></label>
+        <div className={`rounded border p-2 text-xs ${scoring && !scoring.ok ? "border-destructive text-destructive" : "bg-muted/40"}`} data-testid="inherited-match-format">
+          {!scoring ? <span className="text-muted-foreground">Reading saved match format…</span>
+            : scoring.ok ? <><span className="font-medium">Match format: {scoring.text}</span> — inherited from {scoring.categoryName}</>
+            : <span className="font-medium">{scoring.issue}</span>}
+          <p className="text-muted-foreground mt-0.5">To change the scoring format, edit this category in Tournament Setup (Edit tournament setup, top of this page).</p>
+        </div>
         {plan && <p className="rounded border bg-muted/40 p-2 text-xs">From your setup: {plan.pairing === "crossover" ? "crossover pairing (winner of one group v runner-up of the other)" : plan.pairing === "same_position" ? "same-position pairing" : "pairing not chosen"}{plan.mode === "scheduled" && plan.date ? ` · scheduled ${plan.date}${plan.from ? ` ${plan.from}–${plan.to ?? ""}` : ""}` : plan.deadline ? ` · play by ${plan.deadline}` : ""}{plan.courtIds?.length ? ` · ${plan.courtIds.length} court${plan.courtIds.length > 1 ? "s" : ""} chosen` : ""}. Check it, then generate.</p>}
         <label className="block">Date (optional)<Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         {check && <div className="rounded border p-2 space-y-0.5">{row("Structure", check.structure)}{row("Engine support", check.engine)}{row("Schedule", check.schedule)}{row("Scoring", check.scoring)}</div>}

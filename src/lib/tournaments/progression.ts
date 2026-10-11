@@ -17,6 +17,7 @@
  */
 import { IntegrityError, contractIssues, isDecided, progressionOf, sourcePoolCount, type PlannedStage } from "./contract";
 import { mappingIssues } from "./mapping";
+import { inheritedStageScoring } from "./stage-scoring";
 import { transitionIssues } from "./transition";
 import { specDateIssues } from "./date-window";
 import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, rankSourcePools, resolveTieBreaks, startNextStructuredStage, type Db, type SourcePool } from "./structured-persist";

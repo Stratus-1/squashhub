@@ -37,7 +37,7 @@ export function dayLabel(date: string | null | undefined): string {
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
   return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
-const hm = (t: string | null | undefined) => (/^\d{1,2}:\d{2}/.exec(t ?? "")?.[0] ?? "").padStart(5, "0");
+const hm = (t: string | null | undefined) => { const m = /^(\d{1,2}):(\d{2})/.exec(t ?? ""); return m ? `${m[1].padStart(2, "0")}:${m[2]}` : ""; };
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
 
 const sideOf = (m: DetailMatch, id: string): "a" | "b" | null =>

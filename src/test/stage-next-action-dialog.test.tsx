@@ -20,7 +20,7 @@ describe("stage panel next-action bridge", () => {
     mocks.states = [status];
     const spec = { divisions: [{ divisionId: "A", label: "Men's A", stages: [{ id: "s", name: "Swiss rounds", kind: "swiss", swissRounds: 5, order: 0 }, ...(state === "ready" ? [{ id: "qf", name: "Quarterfinal", kind: "knockout", order: 1, waitForOrganiser: true }] : [])], deferredStages: state === "needs_setup" ? [{ stageKey: "qf", name: "Quarterfinal" }] : [] }] } as TournamentSpec;
     render(<StageProgressPanel champId="t" spec={spec} matches={[]} nameOf={() => "Player"} renderNextActions={(states, open) => <button onClick={() => open(states[0])}>Generate Quarterfinal Draw</button>} />);
-    expect(screen.queryByRole("button", { name: "Generate Quarterfinal", exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Generate Quarterfinal$/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Generate Quarterfinal Draw" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: state === "ready" ? "Generate Quarterfinal — Men's A" : "Set up Quarterfinal" })).toBeInTheDocument();

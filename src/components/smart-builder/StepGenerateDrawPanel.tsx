@@ -1,6 +1,6 @@
 import { patchTournamentPlanFormat } from "@/lib/smart-builder/step-storage";
 import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
-import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients, drawNotifyOn, recordDrawNotice } from "@/lib/smart-builder/draw-notice";
+import { DEFAULT_DRAW_NOTICE, sendDrawNotice, loadDrawNoticeRecipients, drawNotifyOn, recordDrawNotice, markDrawNoticePending } from "@/lib/smart-builder/draw-notice";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
@@ -605,9 +605,12 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         // Never sent automatically: ask the organiser now (unless setup chose Off).
       }
       setConfirmed(false); setRebuildOk(false);
+      // Persist the "Send draw to players now?" decision BEFORE advancing: advancing unmounts this panel,
+      // so the prompt is shown by Tournament Management from saved state (also after reload). Never sends.
+      if (notifyDraw) await markDrawNoticePending(tournamentId, { round: 1 }).catch(() => {});
       await load();
       onGenerated({ games });
-      if (notifyDraw) { setAskSend({ after: true }); return; }
+      if (notifyDraw) return;
       // Success only: take the organiser straight to this tournament's fixtures/games view.
       navigate(fixturesUrl());
     } catch (e: any) {

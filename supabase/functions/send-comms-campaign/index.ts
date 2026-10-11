@@ -378,7 +378,7 @@ Deno.serve(async (req) => {
             // Draw notices may opt in to a PERSONAL activation link for players with no SquashHub login.
             // Re-checked at send time; family members who share an email with a linked login use that login instead.
             if (action.key === "tournament_view" && String(af.include_activation) === "true") {
-              const act = await drawActivationBlock(m, campaign.club_id, club?.subdomain, campaignId, String(af.activation_intro || ""));
+              const act = await drawActivationBlock(m, campaign.club_id, club?.subdomain, campaignId, String(af.activation_intro || "")).catch((e) => { console.error("draw activation link failed", e); return null; });
               if (act) loginBlock = act;
             }
             const html = `${rendered.body}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}`;

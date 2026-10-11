@@ -14,7 +14,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (table: str
     : table === "club_champs" ? { payment_required: true, entry_fee_cents: 10000 }
     : table === "club_champs_matches" ? [{ player_a_member_id: "owing", player_b_member_id: "paid" }]
     : [{ club_member_id: "owing", fee_paid_cents: 0 }, { club_member_id: "paid", paid_at: "2026-10-09" }];
-  const chain = { select: () => chain, eq: () => chain, maybeSingle: async () => ({ data }), then: (resolve: (v: unknown) => void) => resolve({ data }) };
+  const chain: any = { select: () => chain, eq: () => chain, in: () => chain, maybeSingle: async () => ({ data }), then: (resolve: (v: unknown) => void) => resolve({ data }) };
   return chain;
 } } }));
 import { sendDrawNotice } from "@/lib/smart-builder/draw-notice";

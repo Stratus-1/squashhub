@@ -14,6 +14,7 @@ import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { QrCode } from "lucide-react";
 import { StepRunOverview } from "./StepRunOverview";
+import { PlayerNotificationsSection } from "./PlayerNotificationsSection";
 import { StepSwissRoundsPanel } from "./StepSwissRoundsPanel";
 import { StepKnockoutRoundsPanel } from "./StepKnockoutRoundsPanel";
 import { StandingsAwardsSection } from "./StandingsAwardsSection";
@@ -234,6 +235,8 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         )}
       </CardContent></Card>
       )}
+
+      {!qrOpen && cur >= lifecycleIndex("generate") && <PlayerNotificationsSection clubId={clubId} tournamentId={tournamentId} tournamentName={h.name} />}
 
       <div className="grid gap-3 md:grid-cols-2 text-xs">
         <div className="rounded border border-border p-3">

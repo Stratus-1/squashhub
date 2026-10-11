@@ -106,7 +106,7 @@ export function ClubTournamentBeta({ clubId, clubName, renderList }: {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="tournament-admin space-y-4">
     <div className="rounded-xl bg-background p-4 text-foreground">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold flex items-center gap-2">

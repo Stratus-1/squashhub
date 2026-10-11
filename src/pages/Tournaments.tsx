@@ -62,6 +62,8 @@ import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimina
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { AssignCourtsTimesButton } from "@/components/tournaments/AssignCourtsTimesButton";
 import { hasAssumptions, scheduleWithAssumptions } from "@/lib/tournaments/assumed-schedule";
+import { involvesMe, selectMyFixtures } from "@/lib/tournaments/my-fixtures";
+import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -76,6 +78,19 @@ export default function Tournaments() {
   const isClubAdmin = useIsClubAdmin() && !md;
   const clubId = md ? md.clubId : contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
+  // Match Day devices have no member identity → never a "My games" view.
+  const myIds = useMyPersonMemberIds(!!md);
+  // ?mine=1 (dashboard "View my fixtures") opens My games; choice kept for the session.
+  const [showMine, setShowMineState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    if (new URLSearchParams(window.location.search).get("mine") === "1") return true;
+    try { return sessionStorage.getItem("tournaments.showMine") === "1"; } catch { return false; }
+  });
+  const setShowMine = (v: boolean) => {
+    setShowMineState(v);
+    try { sessionStorage.setItem("tournaments.showMine", v ? "1" : "0"); } catch { /* ignore */ }
+  };
+  const [mineScope, setMineScope] = useState<"upcoming" | "all">("upcoming");
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
   // Club/tournament officials and super admins may capture any result;
   // everyone else only their own matches.
@@ -367,15 +382,14 @@ export default function Tournaments() {
   };
 
 
-  const myUpcoming = memberId
-    ? upcomingMatches.filter(
-        (m: any) =>
-          m.player_a_member_id === memberId ||
-          m.player_b_member_id === memberId ||
-          m.partner_a_member_id === memberId ||
-          m.partner_b_member_id === memberId,
-      )
-    : [];
+  // Person-scoped: every club row of the active profile's person (cross-club
+  // entries, doubles partners). Upcoming keeps the page's live-first order.
+  const myUpcoming = upcomingMatches.filter((m: any) => involvesMe(m, myIds));
+  const myAll = selectMyFixtures(
+    (allMatches as any[]).filter((m: any) => activeChampIds.has(m.champ_id)),
+    myIds,
+    { today, includeCompleted: true },
+  );
 
   // --- Pool / league filter + color coding -----------------------------------
   // A "bucket" is a unique (champ, league group, pool) combination. Each bucket
@@ -587,7 +601,8 @@ export default function Tournaments() {
         (dateFilter === "all" || m.scheduled_date === dateFilter),
     );
   const filteredUpcoming = applyFilters(upcomingMatches);
-  const filteredMine = applyFilters(myUpcoming);
+  // "All mine" ignores the date filter's upcoming-only option list but still honours it.
+  const filteredMine = applyFilters(mineScope === "all" ? myAll : myUpcoming);
   const scheduleChamp = scheduleMatch ? champById.get(scheduleMatch.champ_id) ?? null : null;
   const resultChamp = resultMatch ? champById.get(resultMatch.champ_id) ?? null : null;
 
@@ -2140,27 +2155,60 @@ export default function Tournaments() {
                   )}
 
 
-                  {memberId && myUpcoming.length > 0 ? (
-                    <Tabs defaultValue="all" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 h-auto mb-3">
-                        <TabsTrigger value="all" className="text-xs py-1.5">All Games ({filteredUpcoming.length})</TabsTrigger>
-                        <TabsTrigger value="mine" className="text-xs py-1.5 gap-1"><User className="w-3 h-3" /> My Games ({filteredMine.length})</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="all" className="mt-0">
-                        {filteredUpcoming.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No scheduled games match these filters.</p>
-                        ) : (
-                          renderMatchList(filteredUpcoming)
-                        )}
-                      </TabsContent>
-                      <TabsContent value="mine" className="mt-0">
-                        {filteredMine.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">None of your games match these filters.</p>
-                        ) : (
-                          renderMatchList(filteredMine)
-                        )}
-                      </TabsContent>
-                    </Tabs>
+                  {myIds.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Whose games">
+                      <div className="inline-flex rounded-md border overflow-hidden">
+                        {([
+                          { v: false, l: `All games (${filteredUpcoming.length})` },
+                          { v: true, l: `My games (${applyFilters(myUpcoming).length})` },
+                        ] as const).map((o) => (
+                          <button
+                            key={String(o.v)}
+                            type="button"
+                            aria-pressed={showMine === o.v}
+                            onClick={() => setShowMine(o.v)}
+                            className={cn(
+                              "h-8 px-3 text-xs font-medium inline-flex items-center gap-1",
+                              showMine === o.v ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
+                            )}
+                          >
+                            {o.v && <User className="w-3 h-3" />}{o.l}
+                          </button>
+                        ))}
+                      </div>
+                      {showMine && (
+                        <div className="inline-flex rounded-md border overflow-hidden">
+                          {([
+                            { v: "upcoming", l: "Upcoming" },
+                            { v: "all", l: `All mine (${applyFilters(myAll).length})` },
+                          ] as const).map((o) => (
+                            <button
+                              key={o.v}
+                              type="button"
+                              aria-pressed={mineScope === o.v}
+                              onClick={() => setMineScope(o.v)}
+                              className={cn(
+                                "h-8 px-2.5 text-xs font-medium",
+                                mineScope === o.v ? "bg-secondary text-secondary-foreground" : "bg-background hover:bg-muted",
+                              )}
+                            >
+                              {o.l}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {showMine && myIds.length > 0 ? (
+                    filteredMine.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        {(mineScope === "all" ? myAll : myUpcoming).length === 0
+                          ? mineScope === "all" ? "You have no games in these tournaments yet." : "You have no upcoming games."
+                          : "None of your games match these filters."}
+                      </p>
+                    ) : (
+                      renderMatchList(filteredMine)
+                    )
                   ) : filteredUpcoming.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No scheduled games.</p>
                   ) : (

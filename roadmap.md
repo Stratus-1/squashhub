@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] GoBook disappearing bookings: restore fresh day-sync register reads; test new bookings, separate days and failed reads without live writes/deployment.
 - [x] Swiss next-stage CTA and previous-round notices: existing setup/confirmation dialogs reused, 49 focused tests pass; Riverside desktop/mobile verified with writes blocked; no publishing. Existing playoff-suite failures and unset QF pairing remain separate limitations.
 - [x] Restore existing category Standings / Fixtures & Results tabs in the single-event expanded view; Riverside desktop/mobile, category retention, scores and multiple-event cards verified with writes blocked; 14 tests pass, preview build OK.
 - [ ] Member Tournaments: single current event standings inline, category switching, collapse control; verify desktop/mobile and zero/multiple/loading states without data writes.

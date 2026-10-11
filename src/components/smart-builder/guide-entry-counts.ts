@@ -23,7 +23,7 @@ export function guideEntryCounts(cats: string[], keys: string[], picks: Picks, a
 }
 export function guideCountText(count?: GuideEntryCount, state: "ready" | "loading" | "error" = "ready") {
   const selected = count?.selected ?? 0;
-  if (state === "loading") return `(${selected} selected players · entered loading…)`;
-  if (state === "error") return `(${selected} selected players · entered unavailable)`;
-  return `(${count?.entered ?? 0} entered · ${selected} selected · ${count?.total ?? 0} total player entries)`;
+  if (state === "loading") return `(Selected ${selected} · Registered loading…)`;
+  if (state === "error") return `(Selected ${selected} · Registered unavailable)`;
+  return `(Registered ${count?.entered ?? 0} · Selected ${selected} · Total ${count?.total ?? 0} player entries)`;
 }

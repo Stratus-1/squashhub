@@ -67,7 +67,7 @@ export function RecommendationCard({ cat, n, unit, options, applied, current, on
   );
 }
 
-export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, onUse, onOther, entryCounts = {}, subcats = {}, countState = "ready", actualOf, review, estimateOf, onEstimate, conflicts = [], onResolve }: {
+export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, onUse, onOther, entryCounts = {}, subcats = {}, countState = "ready", actualOf, review, estimateOf, onEstimate, conflicts = [], onResolve, categoryEstimateOf }: {
   cats: string[]; guide: GuideAnswers; onChange: (g: GuideAnswers) => void; isChamps: boolean;
   unitOf: (cat: string) => string; currentOf: (cat: string) => string | undefined;
   onUse: (cat: string, o: StructureOption) => void; onOther: () => void;
@@ -81,19 +81,22 @@ export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, c
   onEstimate?: (cat: string, key: string, value: string) => void;
   conflicts?: { cat: string; guide: number; steps: number }[];
   onResolve?: (cat: string, pick: "guide" | "steps") => void;
+  /** Canonical category estimate used for recommendations (same value the rest of the builder uses). */
+  categoryEstimateOf?: (cat: string) => number;
 }) {
   const estVal = (k: string, cat: string) => estimateOf ? estimateOf(k) : (k === cat ? guide.expected?.[cat] ?? "" : "");
   const setEst = (cat: string, k: string, v: string) => onEstimate ? onEstimate(cat, k, v) : set({ expected: { ...(guide.expected ?? {}), [cat]: v } });
   const set = (p: Partial<GuideAnswers>) => onChange({ ...guide, ...p });
   const actual = (c: string) => (actualOf?.(c) ?? 0);
-  const fieldOf = (c: string) => actual(c) >= 2 ? actual(c) : Number(guide.expected?.[c]) || 0;
+  const estOf = (c: string) => categoryEstimateOf ? categoryEstimateOf(c) : Number(guide.expected?.[c]) || 0;
+  const fieldOf = (c: string) => actual(c) >= 2 ? actual(c) : estOf(c);
   const { cap, byCat, mm } = guideRecommendations(cats, guide, isChamps, fieldOf);
   const ready = Object.keys(byCat).length > 0;
   const plannedOf = (c: string) => { const r = byCat[c]; if (!r) return undefined; return r.options.find((o) => o.kind === guide.applied?.[c]) ?? r.options[0]; };
   const totalDemand = Object.keys(byCat).reduce((t, c) => t + (plannedOf(c)?.matches ?? 0), 0);
   const totalFit = cap ? capacityFit(totalDemand, cap.slots) : null;
   const changeFor = (c: string) => {
-    const est = Number(guide.expected?.[c]) || 0, act = actual(c);
+    const est = estOf(c), act = actual(c);
     if (act < 2 || !est || est === act) return undefined;
     const fromEst = evaluateStructures({ n: est, outcome: guide.outcome, strength: guide.strength, time: guide.time, isChamps, slots: byCat[c]?.share, matchMinutes: mm })[0];
     const now = byCat[c]?.options[0];

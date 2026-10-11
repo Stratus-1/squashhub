@@ -510,7 +510,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </p>
       )}
       {myReg && paymentRequired && entryFee > 0 && !(myReg as any).paid_at && !["paid", "waived"].includes(String((myReg as any).fee_status ?? "")) && (
-        <ReportPaymentButton champId={champ.id} clubId={champ.club_id ?? clubId} memberId={memberId} suggestedCents={Math.round(entryFee * 100)} />
+        <ReportPaymentButton champId={champ.id} clubId={clubId} memberId={memberId} suggestedCents={Math.round(entryFee * 100)} />
       )}
       {myReg && myReg.partner_member_id && (
         <PartnerFeeOptions registrationId={myReg.id} cardEnabled={cardReady && paymentGateway === "stitch"}

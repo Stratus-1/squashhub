@@ -185,7 +185,7 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stage
         })}
       </ul>
       <p className="text-muted-foreground">Each category moves on by itself. Only one round is ever created at a time; finished rounds and results are never changed. <Link className="text-primary underline" to={`/club-champs/${tournamentId}`}>Open draw & results</Link></p>
-      <DrawNoticeDialog open={!!notice} onClose={() => setNotice(null)} clubId={clubId} tournamentId={tournamentId} tournamentName={name}
+      <DrawNoticeDialog open={!!notice} onClose={() => { if (notice) clearDrawNoticePending(tournamentId, drawNoticeKey(notice)).catch(() => {}); setNotice(null); }} clubId={clubId} tournamentId={tournamentId} tournamentName={name}
         scope={notice} sentBefore={notice ? drawNoticeSent(bl, drawNoticeKey(notice)) : null} onSent={() => refetch()} />
       <AlertDialog open={!!shorten} onOpenChange={(o) => !o && setShorten(null)}>
         <AlertDialogContent>

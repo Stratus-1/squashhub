@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,9 +18,10 @@ type PlanStage = { id: string; name: string; phase?: string; unit?: string; mode
  * stage to generate, auto-start, in play…), the planned timeline (dates, times, courts — visible before
  * fixtures exist) and the live Stage progress controls. Lifecycle follows the stored games, not dates.
  */
-export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle }: {
+export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle, renderNextActions }: {
   clubId: string; tournamentId: string; plan: Record<string, any> | null | undefined;
   onLifecycle: (stage: LifecycleKey) => void;
+  renderNextActions?: (states: StageStatus[], openStage: (status: StageStatus) => void) => ReactNode;
 }) {
   const { data } = useQuery({
     queryKey: ["step-run", tournamentId],
@@ -58,6 +59,9 @@ export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle }: {
 
   return (
     <div className="space-y-3" data-testid="step-run-overview">
+      {data?.spec && gameCount > 0 && (
+        <div id="stage-progress"><StageProgressPanel champId={tournamentId} spec={data.spec} matches={data.matches} nameOf={nameOf} renderNextActions={renderNextActions} /></div>
+      )}
       {ordered.length > 0 && (
         <div className="rounded-md border border-border p-2 text-xs" data-testid="planned-timeline">
           <div className="mb-1 flex items-center gap-1 font-semibold"><CalendarClock className="h-3.5 w-3.5" />Planned timeline</div>
@@ -84,9 +88,6 @@ export function StepRunOverview({ clubId, tournamentId, plan, onLifecycle }: {
         </div>
       )}
 
-      {data?.spec && gameCount > 0 && (
-        <div id="stage-progress"><StageProgressPanel champId={tournamentId} spec={data.spec} matches={data.matches} nameOf={nameOf} /></div>
-      )}
     </div>
   );
 }

@@ -16,13 +16,14 @@ import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { drawNoticeKey, drawNoticeSent, drawNotifyOn, type DrawScope } from "@/lib/smart-builder/draw-notice";
 import { DrawNoticeDialog } from "./DrawNoticeDialog";
 import { Send } from "lucide-react";
+import type { StageStatus } from "@/lib/tournaments/progression";
 
 /**
  * Admin-guided Swiss progression in Manage Tournament, one card per division:
  * finish Round X → Set up Round X+1 (setup › Stages & scheduling) → Generate Round X+1 Draw (confirm).
  * A saved round schedule is detected so it never has to be set up twice.
  */
-export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { clubId: string; tournamentId: string; onSetupRound: () => void }) {
+export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stageStates = [], onOpenStage }: { clubId: string; tournamentId: string; onSetupRound: () => void; stageStates?: StageStatus[]; onOpenStage?: (status: StageStatus) => void }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [ask, setAsk] = useState<SwissDivisionProgress | null>(null);
@@ -93,6 +94,14 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
       <ul className="space-y-2">
         {rows.map((r) => {
           const next = r.gate.state === "ready" ? r.gate.nextRound : r.current.round + 1;
+          const division = spec.divisions[r.divisionIndex];
+          const ordered = [...division.stages].sort((a, b) => a.order - b.order);
+          const nextStage = ordered[ordered.findIndex((s) => s.id === r.stageId) + 1];
+          const nextStageKey = nextStage?.id ?? division.deferredStages?.[0]?.stageKey;
+          const stage = stageStates.find((s) => s.divisionKey === r.divisionId && s.stageKey === nextStageKey);
+          const stageName = stage?.name ?? (r.transition?.kind === "playoff_next" ? r.transition.name : "Next stage");
+          const stageTitle = /quarterfinals?$/i.test(stageName) ? stageName.replace(/quarterfinals?$/i, "Quarterfinals") : stageName;
+          const canOpenStage = !!onOpenStage && !!stage && (stage.state === "needs_setup" || (stage.state === "ready" && !stage.automatic));
           return (
             <li key={`${r.divisionId}/${r.stageId}`} className="flex flex-col gap-1.5 rounded border border-border bg-background p-2" data-testid={`swiss-row-${r.divisionId}`}>
               <div className="flex flex-wrap items-center gap-2">
@@ -106,15 +115,27 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound }: { c
               {r.current.round >= 1 && r.action !== "none" && (() => {
                 const sc: DrawScope = { round: r.current.round, groupNumber: r.divisionIndex + 1, label: r.label };
                 const sent = drawNoticeSent(bl, drawNoticeKey(sc));
-                return <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setNotice(sc)}><Send className="mr-1 h-3.5 w-3.5" />{sent ? `Resend Round ${sc.round} draw` : `Send Round ${sc.round} draw to players`}</Button>
+                const controls = <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal text-left" onClick={() => setNotice(sc)}><Send className="mr-1 h-3.5 w-3.5 shrink-0" />{sent ? `Resend Round ${sc.round} draw` : `Send Round ${sc.round} draw to players`}</Button>
                   <span className="text-muted-foreground">{sent ? `Sent ${new Date(sent.at).toLocaleString()} · ${sent.sent} deliveries` : "Not sent yet"}</span>
                 </div>;
+                return r.current.pending.length === 0 ? <details className="order-last border-t border-border pt-2 text-muted-foreground">
+                  <summary className="cursor-pointer py-1">Previous round notifications</summary>
+                  <div className="pt-2">{controls}</div>
+                </details> : controls;
               })()}
               {r.action === "final" && <div className="flex items-center gap-1.5 font-medium"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />Final standings — all {r.swissRounds} rounds complete</div>}
               {r.action === "playoffs" && r.transition?.kind === "playoff_next" && (
-                <div className="flex items-start gap-1.5 font-medium" data-testid="swiss-playoffs-next"><ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                  <span>All {r.swissRounds} Swiss rounds are complete — {r.transition.name} is next. Generate it from the stage steps on this page; you'll be asked to confirm before any game is created.</span></div>
+                <div className="space-y-2" data-testid="swiss-playoffs-next">
+                  <div className="flex items-center gap-1.5 font-medium"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />Swiss qualification completed · {r.swissRounds} of {r.swissRounds} rounds</div>
+                  <div className="font-semibold">Next stage: {stageTitle}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {canOpenStage && stage && <Button size="sm" className="h-auto min-h-9 whitespace-normal text-left" onClick={() => onOpenStage?.(stage)}><ArrowRight className="mr-1 h-4 w-4 shrink-0" />Generate {stageName} Draw</Button>}
+                    <Button size="sm" variant="outline" asChild><Link to={`/club-champs/${tournamentId}`}>View Swiss standings</Link></Button>
+                  </div>
+                  {stage && !canOpenStage && <p className="text-muted-foreground">{stage.detail}</p>}
+                  {!onOpenStage && <Link className="text-primary underline" to={`/club-champs/${tournamentId}`}>Open stage steps</Link>}
+                </div>
               )}
               {r.action === "plan_conflict" && r.transition?.kind === "conflict" && (() => {
                 const t = r.transition;

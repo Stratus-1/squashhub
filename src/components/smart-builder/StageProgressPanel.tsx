@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Loader2, Settings2 } from "lucide-react";
@@ -44,7 +44,7 @@ async function notifyStage(champId: string, spec: TournamentSpec, divisionKey: s
 
 /** Live stage lifecycle + automatic progression + "Set up next stage" for Define-later stages.
  *  `collapsible` renders the whole panel as a collapsed "What's next" card (detail pages). */
-export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible = false }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string; collapsible?: boolean }) {
+export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible = false, renderNextActions }: { champId: string; spec: TournamentSpec; matches: any[]; nameOf: (id: string | null) => string; collapsible?: boolean; renderNextActions?: (states: StageStatus[], openStage: (status: StageStatus) => void) => ReactNode }) {
   const qc = useQueryClient();
   const exec: Exec = (fn) => atomically(supabaseDb, champId, commitStructured, fn);
   const sig = matches.map((m) => `${m.id}:${m.winner_member_id ?? ""}:${m.status ?? ""}`).join("|");
@@ -103,8 +103,16 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
   const tieAlerts = states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail));
   const goRows = states.filter((s) => s.state === "ready" && !s.automatic);
   const dueRows = states.filter((s) => s.state === "needs_setup");
+  // Replace promoted Swiss controls; keep the same lifecycle and dialogs as stage steps.
+  const promoted = (s: StageStatus) => !!renderNextActions && !!s.afterStageKey && spec.divisions
+    .find((d) => d.divisionId === s.divisionKey)?.stages.some((st) => st.id === s.afterStageKey && st.kind === "swiss");
+  const openStage = (s: StageStatus) => {
+    if (s.state === "needs_setup") setSetup(s);
+    else if (s.state === "ready" && !s.automatic) setConfirm(s);
+  };
   const body = (
     <>
+      {renderNextActions?.(states, openStage)}
       <div className="font-semibold">Stage progress</div>
       {tieAlerts.map((s) => {
         const src = tieSource(s.divisionKey, s.stageKey);
@@ -115,13 +123,13 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
           </div>
         );
       })}
-      {goRows.map((s) => (
+      {goRows.filter((s) => !promoted(s)).map((s) => (
         <div key={`go-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
           <Button size="sm" onClick={() => setConfirm(s)}>Generate {s.name}</Button>
         </div>
       ))}
-      {dueRows.map((s) => (
+      {dueRows.filter((s) => !promoted(s)).map((s) => (
         <div key={`due-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
           <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Generate {s.name}</Button>
@@ -146,7 +154,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
                 <span>{s.name}</span>
                 {s.total > 0 && <span className="text-muted-foreground">{s.played}/{s.total}</span>}
                 <span className="text-muted-foreground">{s.detail}{s.plannedDate ? ` · planned ${s.plannedDate}` : ""}</span>
-                {s.state === "needs_setup" && <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Generate {s.name}</Button>}
+                {s.state === "needs_setup" && !promoted(s) && <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Generate {s.name}</Button>}
                 {s.state === "blocked" && /tied/i.test(s.detail) && (() => {
                   const st = d.stages.find((x) => x.id === s.stageKey);
                   const srcId = st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;

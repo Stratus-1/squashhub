@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [x] Swiss next-stage CTA and previous-round notices: existing setup/confirmation dialogs reused, 49 focused tests pass; Riverside desktop/mobile verified with writes blocked; no publishing. Existing playoff-suite failures and unset QF pairing remain separate limitations.
 - [x] Restore existing category Standings / Fixtures & Results tabs in the single-event expanded view; Riverside desktop/mobile, category retention, scores and multiple-event cards verified with writes blocked; 14 tests pass, preview build OK.
 - [ ] Member Tournaments: single current event standings inline, category switching, collapse control; verify desktop/mobile and zero/multiple/loading states without data writes.
 - WhatsApp "Pay my fee" button template (`club_notice_pay`) — submitted to Meta 2026-10-09, status `received` (up to ~48h). When approved it switches over automatically: `send-comms-campaign` already selects it for owing players with a `pay_token`. Check with `select key, approval_status from whatsapp_templates where key='club_notice_pay'`.

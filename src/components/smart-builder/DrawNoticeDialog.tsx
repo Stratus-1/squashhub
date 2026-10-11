@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
-import { drawNoticeKey, loadDrawNoticeRecipients, recordDrawNotice, sendDrawNotice, type DrawScope } from "@/lib/smart-builder/draw-notice";
+import { drawNoticeKey, drawScopeTitle, loadDrawNoticeRecipients, recordDrawNotice, sendDrawNotice, type DrawScope } from "@/lib/smart-builder/draw-notice";
 
 export const laterRoundNotice = (round: number) =>
   `Your Round ${round} match has been drawn. Open the tournament to view the draw, check your opponent and match details, score your match live, or submit your result afterwards.`;
@@ -32,7 +32,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
     setRecips(null);
     loadDrawNoticeRecipients(tournamentId, scope).then((r) => { setRecips(r); setPicked(new Set(r.map((x) => x.id))); })
       .catch((e) => { setRecips([]); toast.error(String(e.message ?? e)); });
-  }, [open, scope?.round, scope?.groupNumber, tournamentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, scope?.round, scope?.groupNumber, scope?.stageKey, tournamentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = async () => {
     if (!scope) return;
@@ -44,7 +44,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
       const { dispatched } = await sendDrawNotice(clubId, tournamentId, tournamentName, msg, channels, [...picked], true, scope, { include: true, intro: notice.value.activationIntro });
       if (dispatched?.failed) throw new Error(`${dispatched.failed} delivery attempts failed. Check Communications delivery history before sending again.`);
       await recordDrawNotice(tournamentId, drawNoticeKey(scope), dispatched?.sent ?? 0).catch(() => {});
-      toast.success(`Round ${scope.round} draw sent: ${dispatched?.sent ?? 0} deliveries.`);
+      toast.success(`${drawScopeTitle(scope)} draw sent: ${dispatched?.sent ?? 0} deliveries.`);
       onSent?.(); onClose();
     } catch (e: any) { toast.error(`Players weren't notified: ${e.message ?? e}`); }
     finally { setSending(false); }
@@ -56,7 +56,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
         <DialogHeader>
           <DialogTitle>Send draw to players now?</DialogTitle>
           <DialogDescription>
-            {scope?.label ? `${scope.label} · ` : ""}Round {scope?.round} — only players in this round get it, with a button to the draw and match details. Nothing has been sent yet.
+            {scope?.label ? `${scope.label} · ` : ""}{scope ? drawScopeTitle(scope) : ""} — only players in this {scope?.stageName ? "stage" : "round"} get it, with a button to the draw and match details. Nothing has been sent yet.
             {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
           </DialogDescription>
         </DialogHeader>

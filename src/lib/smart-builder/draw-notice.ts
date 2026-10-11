@@ -37,15 +37,19 @@ export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: str
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
 
 /** Explicit send only; reuses the club-scoped Communications engine and its delivery log. */
-export type DrawScope = { round: number; groupNumber?: number; label?: string };
+/** `stageKey` narrows to ONE structured stage (e.g. a Quarterfinal), so a later stage's Round 1 never
+ *  picks up the Swiss/pool Round 1 players of the same category. `stageName` replaces "Round N" in copy. */
+export type DrawScope = { round: number; groupNumber?: number; label?: string; stageKey?: string; stageName?: string };
+export const drawScopeTitle = (scope: Pick<DrawScope, "round" | "stageName">) => scope.stageName || `Round ${scope.round}`;
 const scopeQuery = (tournamentId: string, scope: DrawScope) => {
   let q: any = supabase.from("club_champs_matches").select("status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, bye_member_id").eq("champ_id", tournamentId).eq("round_number", scope.round);
   if (scope.groupNumber != null) q = q.eq("group_number", scope.groupNumber);
+  if (scope.stageKey) q = q.eq("stage_key", scope.stageKey);
   return q;
 };
 /** "Ask me after each draw" is the default; only an explicit Off (draw_notify === false) skips the prompt. */
 export function drawNotifyOn(betaLifecycle: any): boolean { return betaLifecycle?.draw_notify !== false; }
-export const drawNoticeKey = (scope: DrawScope) => `${scope.groupNumber ?? "all"}:r${scope.round}`;
+export const drawNoticeKey = (scope: DrawScope) => `${scope.groupNumber ?? "all"}:r${scope.round}${scope.stageKey ? `:s${scope.stageKey}` : ""}`;
 /** Log a sent draw notice on the tournament so revisits show "Sent" and offer Resend instead of re-prompting. */
 export async function recordDrawNotice(tournamentId: string, key: string, sent: number) {
   const { data } = await (supabase as any).from("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
@@ -61,6 +65,7 @@ export function drawNoticeSent(betaLifecycle: any, key: string): { at: string; s
 export async function loadMatchDetailsContext(clubId: string, tournamentId: string, name: string, scope: DrawScope): Promise<DetailContext> {
   let q: any = supabase.from("club_champs_matches").select("id, group_number, round_number, stage_label, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, bye_member_id, is_bye, scheduled_date, scheduled_time, court_id, play_by, booking_id").eq("champ_id", tournamentId).eq("round_number", scope.round);
   if (scope.groupNumber != null) q = q.eq("group_number", scope.groupNumber);
+  if (scope.stageKey) q = q.eq("stage_key", scope.stageKey);
   const [{ data: matches, error }, { data: t }, { data: club }] = await Promise.all([
     q, (supabase as any).from("tournaments").select("builder_spec").eq("id", tournamentId).maybeSingle(),
     (supabase as any).from("clubs").select("name").eq("id", clubId).maybeSingle(),
@@ -136,8 +141,8 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
   if (error) throw error;
   const all = drawNoticeRecipients(data ?? []);
   const memberIds = onlyIds ? all.filter((id) => onlyIds.includes(id)) : all;
-  if (!memberIds.length) throw new Error(`No Round ${scope.round} players to notify.`);
-  const subject = `${name} — ${scope.label ? `${scope.label} · ` : ""}Round ${scope.round} draw`;
+  if (!memberIds.length) throw new Error(`No ${drawScopeTitle(scope)} players to notify.`);
+  const subject = `${name} — ${scope.label ? `${scope.label} · ` : ""}${drawScopeTitle(scope)} draw`;
   const ctx = await loadMatchDetailsContext(clubId, tournamentId, name, scope);
   const feeCtx = includeFee ? await loadDrawFeeContext(clubId, tournamentId, channels.some((c) => c === "email" || c === "whatsapp" || c === "sms")) : null;
   const memberVars: Record<string, Record<string, string>> = {};
@@ -147,7 +152,7 @@ export async function sendDrawNotice(clubId: string, tournamentId: string, name:
     clubId, name: subject, channels, content, memberVars,
     audience: { type: "selected", memberIds },
     action: { key: "tournament_view", label: "View tournament & score match", params: { tournament_id: tournamentId } },
-    meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw", round: String(scope.round), group_number: String(scope.groupNumber ?? "all"),
+    meta: { tournament_id: tournamentId, purpose: "step_beta_round_draw", round: String(scope.round), group_number: String(scope.groupNumber ?? "all"), ...(scope.stageKey ? { stage_key: scope.stageKey } : {}),
       ...(activation?.include && channels.includes("email") ? { include_activation: "true", activation_intro: activation.intro.trim().slice(0, 300) } : {}) },
   });
 }

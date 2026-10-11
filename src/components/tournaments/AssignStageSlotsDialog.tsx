@@ -24,12 +24,20 @@ export function AssignStageSlotsDialog({ open, champId, matchIds, nameOf, onClos
     planStageSlotAssignments(champId, matchIds).then(setPlan).catch((e) => setErr(String(e?.message ?? e)));
   }, [open, champId, key]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!plan || !nameOf) return;
+    if (!plan) return;
     import("@/lib/supabase-ext").then(async ({ fromExt }) => {
-      const ids = plan.stages.flatMap((s) => [...s.slots.map((x) => x.matchId), ...s.unplaced]);
+      const ids = [...new Set([...plan.stages.flatMap((s) => [...s.slots.map((x) => x.matchId), ...s.unplaced]), ...plan.diagnostics.map((d) => d.matchId).filter(Boolean) as string[]])];
       if (!ids.length) return;
       const { data } = await fromExt("club_champs_matches").select("id, player_a_member_id, player_b_member_id").in("id", ids);
-      setLabels(Object.fromEntries(((data ?? []) as any[]).map((m) => [m.id, `${nameOf(m.player_a_member_id)} v ${nameOf(m.player_b_member_id)}`])));
+      const ms = (data ?? []) as any[];
+      let nm = nameOf;
+      if (!nm) {
+        const pids = [...new Set(ms.flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))];
+        const { data: people } = pids.length ? await fromExt("club_members").select("id, name").in("id", pids) : { data: [] };
+        const map = new Map(((people ?? []) as any[]).map((p) => [p.id, p.name as string]));
+        nm = (id: string) => map.get(id) ?? "TBD";
+      }
+      setLabels(Object.fromEntries(ms.map((m) => [m.id, `${nm!(m.player_a_member_id)} v ${nm!(m.player_b_member_id)}`])));
     });
   }, [plan, nameOf]);
   const placed = plan?.stages.reduce((n, s) => n + s.slots.length, 0) ?? 0;

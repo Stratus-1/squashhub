@@ -2206,6 +2206,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             <>
               {!drawSaved && renderFieldReview()}
               <Q t="How will each stage be scheduled?" h="This is the whole timeline, from Round 1 to the final. Playoffs follow once a category's rounds are done — no separate question needed." />
+              <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Scheduling assumptions">
+                <div><div className="font-semibold">Match time per slot</div>
+                  <p className="text-xs text-muted-foreground">Court-time estimates used by the "Will this round fit?" guide and court planning. Planning only — they don't change scoring or time-capped rules.</p></div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
+                    <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
+                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] ?? ""}
+                        onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />
+                        <span className="text-xs text-muted-foreground">min</span></span></label>
+                  ))}
+                </div>
+              </div>
               {drawSaved && <>
                 <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs" data-testid="schedule-running-note">The draw has been generated. Add or adjust the next round's dates, times and courts here; saving never regenerates or deletes existing games — new rounds' games are drawn from Manage Tournament.</p>
                 {renderMainRounds()}
@@ -2222,18 +2234,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {a.playoffSync === true && <p className="text-xs text-muted-foreground">Common dates don't mean identical structures: a category starting at quarterfinals plays them before the common Semifinals Night. Categories progress at their own pace and those that finish early wait for the common date.</p>}
               </div>
               {stages.length === 0 && <Button variant="outline" size="sm" onClick={suggestStages}>Suggest a starting plan from your choices</Button>}
-              <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Scheduling assumptions">
-                <div><div className="font-semibold">Match time per slot</div>
-                  <p className="text-xs text-muted-foreground">Court-time estimates used by the "Will this round fit?" guide and court planning. Planning only — they don't change scoring or time-capped rules.</p></div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
-                    <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
-                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] ?? ""}
-                        onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />
-                        <span className="text-xs text-muted-foreground">min</span></span></label>
-                  ))}
-                </div>
-              </div>
               {!drawSaved && renderMainRounds()}
               <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
               <div className="rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">▼ Playoffs begin</div>

@@ -176,7 +176,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   // The account charge linked to this entry — the truth behind "charged to member account".
   const feePaymentId = (myReg as any)?.fee_payment_id as string | undefined;
   const { data: linkedCharge, isFetched: chargeLoaded, refetch: refetchCharge } = useQuery({
-    queryKey: ["my-champ-reg-charge", feePaymentId],
+    queryKey: ["my-champ-reg", champ.id, memberId, "charge", feePaymentId],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("club_member_fee_payments").select("id, amount, paid").eq("id", feePaymentId!).maybeSingle();
       if (error) throw error;

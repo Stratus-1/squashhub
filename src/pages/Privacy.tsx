@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 
-const LAST_UPDATED = "17 March 2026";
+const LAST_UPDATED = "11 October 2026";
 
 function getPrivacyContactEmail() {
   return (import.meta.env.VITE_PRIVACY_CONTACT_EMAIL as string | undefined)?.trim() || "support@squashhub.co.za";
@@ -146,6 +146,21 @@ export default function Privacy() {
                 the Service, a parent or legal guardian must provide consent and manage the account.
                 If we become aware that we have collected personal information from a child without
                 appropriate consent, we will take steps to delete that information.
+              </p>
+
+              <h3>11A. Match contact sharing (opt-in)</h3>
+              <p>
+                Only if you choose to (the box is never pre-ticked, and activating an account or entering a
+                competition does not count as agreement), your mobile number can be shown to the players actually
+                drawn against you in a tournament, league or ladder game that has not yet been played, so you can
+                arrange the match. It appears only inside SquashHub for those signed-in opponents and in their
+                personal fixture messages, and disappears once the result is final or the game is cancelled. It is
+                never shown on public tournament pages, QR or results pages, member lists or exports. Your choice
+                is one setting for you across every club, and you can withdraw it at any time under
+                Settings › Privacy &amp; Contact Preferences; withdrawal applies straight away to future views and
+                messages, but messages already sent cannot be recalled. For players under 18, only a parent or
+                guardian&apos;s contact can be shared, with their authorisation. Lawful basis: your consent
+                (POPIA section 11(1)(a)). Every change and every time a number is shown is logged.
               </p>
 
               <h2>12. Cookies / local storage</h2>

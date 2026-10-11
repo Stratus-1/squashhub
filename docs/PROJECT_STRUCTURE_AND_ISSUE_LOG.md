@@ -546,6 +546,11 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-11 · Swiss playoff definition versus fixture generation
+- **Finding:** Legacy Create stage invokes setupDeferredStage, which appends a runnable definition via set_spec then persists the stage and its fixtures. Riverside currently has only four Swiss stage rows; QF/SF planning targets and the timeline Final are not equivalent to runnable stage definitions.
+- **Fix:** Riverside opt-in Swiss dialog is titled Generate Quarterfinal Draw; removed its deferred-stage creation path. Missing runnable definitions explicitly require Return to Tournament Setup. Existing definitions require a unique persisted stage identity, real dry-run match count, and explicit confirmation before the existing confirmNextStage path.
+- **Guard:** Existing division/spec-key and division/stage-order unique constraints and stage-round duplicate trigger remain unchanged. No schema/engine changes or live writes. Saved QF/SF/Final plans and winner mappings remain untouched; this change does not enable the blocked Swiss winner chain.
+
 ### 2026-10-11 · Riverside Swiss Quarterfinal showed generic pool qualification
 - **Symptom:** A completed Swiss category offered knockout-from-pools, two qualifiers per pool and Create stage instead of the configured Quarterfinal draw.
 - **Finding:** SetupDialog exposed both generic mapped/pool branches regardless of Swiss source. The live QF is deferred with pairing later; saved timeline has seeded QF/SF/Final, but the saved playoff qualification/style are later and rounds=2 (four places), not confirmed Top 8. Shared contract still rejects stage_standings from Swiss, despite rankSourcePools having a Swiss ranking path.

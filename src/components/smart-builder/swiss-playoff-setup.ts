@@ -12,6 +12,7 @@ export function savedSwissPlayoff(d: SpecDivision, source: PlannedStage, stageKe
   const issues: string[] = [];
   const discipline = disciplineOf(d, source);
   const existing = d.stages.find((s) => s.id === stageKey);
+  if (!existing) issues.push(`${stageName} is saved as a planning target, but its runnable stage definition is absent. Return to Tournament Setup; this screen will not add another stage.`);
   const expected = expectedGamesForStageName(stageName);
   const key = d.label.replace(/\s*·\s*(Singles|Doubles|Mixed).*$/i, "").trim();
   const playoff = saved?.playoffOverrides?.[key] ?? saved?.playoffOverrides?.[key.split("::")[0]] ?? saved?.playoff;

@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [x] Follow-up Swiss stage semantics: verified persisted definitions/guards, removed deferred-stage creation from pilot running dialog, Generate Draw heading and missing-definition setup link; 14 tests and guarded desktop/mobile check passed. Saved winner chain preserved, not enabled: runnable QF/SF/Final definitions and Swiss engine support remain unresolved.
 - [x] Urgent Riverside Swiss→QF dialog: removed generic branches in opt-in pilot, requires saved consistent Top 8, retains stage key and Check Draw/Generate Quarterfinal Draw; tests and actual read-only desktop/mobile checked. Generation remains blocked by saved qualification/style=Later, rounds=2, and existing shared Swiss-mapping contract; no engine/data changes authorized here.
 - [ ] Full-screen Pick Players board: board-only zoom, name tooltips, responsive columns; verify controls and desktop/mobile without data writes or publishing.
 - [x] GoBook disappearing bookings: removed cached/shared register reads from day sync; five real-handler simulated regressions pass (new booking, separate days, cancellation, invalid/failed reads). No live writes/deployment.

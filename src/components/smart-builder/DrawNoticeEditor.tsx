@@ -61,7 +61,9 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds, tourn
   }, [value.includeActivation, clubId, idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const counts = states ? Object.values(states).reduce((c, s) => ({ ...c, [s]: (c[s] ?? 0) + 1 }), {} as Record<string, number>) : null;
 
-  return <div className="space-y-2">
+  return <div className="tournament-notice-layout space-y-2">
+    <section className="tournament-message-settings space-y-2" aria-label="Draw Notification Message Settings">
+    <h3 className="text-sm font-semibold">Draw Notification Message Settings</h3>
     <label className="block space-y-1"><span className="font-medium">Draw notification wording</span>
       <Textarea aria-label="Draw notification wording" value={value.message} onChange={(e) => setValue({ ...value, message: e.target.value })} maxLength={2000} rows={4} disabled={disabled || saving} />
     </label>
@@ -84,8 +86,13 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds, tourn
       <span data-testid="draw-notice-save-state" className={dirty ? "font-medium text-destructive" : "text-muted-foreground"}>
         {!loaded ? "Loading…" : dirty ? "Unsaved changes" : savedAt ? `Saved ${new Date(savedAt).toLocaleString()}` : "Default wording (not yet saved)"}
       </span>
-      <Button type="button" size="sm" variant="ghost" onClick={() => setPreview(preview === "registered" ? null : "registered")}>Preview: has login</Button>
-      {<Button type="button" size="sm" variant="ghost" onClick={() => setPreview(preview === "activation" ? null : "activation")}>Preview: needs activation</Button>}
+    </div>
+    </section>
+    <section className="tournament-email-preview space-y-2" aria-label="Email Preview">
+    <h3 className="text-sm font-semibold">Email Preview</h3>
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" size="sm" variant="ghost" aria-pressed={preview === "registered"} onClick={() => setPreview(preview === "registered" ? null : "registered")}>Preview: has login</Button>
+      <Button type="button" size="sm" variant="ghost" aria-pressed={preview === "activation"} onClick={() => setPreview(preview === "activation" ? null : "activation")}>Preview: needs activation</Button>
     </div>
     {clubId && tournamentId && scope && !!recipientIds?.length && (
       <PlayerEmailPreview clubId={clubId} tournamentId={tournamentId} tournamentName={tournamentName ?? "Tournament"} scope={scope} recipientIds={recipientIds} message={value.message} activationIntro={value.activationIntro} states={states} />
@@ -107,6 +114,7 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds, tourn
         <p className="text-muted-foreground">Preview only — nothing is sent.</p>
       </div>
     )}
+    </section>
   </div>;
 }
 

@@ -28,6 +28,16 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        tournament: {
+          canvas: "hsl(var(--tournament-canvas))",
+          panel: "hsl(var(--tournament-panel))",
+          inset: "hsl(var(--tournament-inset))",
+          border: "hsl(var(--tournament-border))",
+          current: "hsl(var(--tournament-current))",
+          "current-foreground": "hsl(var(--tournament-current-foreground))",
+          complete: "hsl(var(--tournament-complete))",
+          "complete-foreground": "hsl(var(--tournament-complete-foreground))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

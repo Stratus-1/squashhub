@@ -17,6 +17,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Tournament administration hierarchy uses explicit local roots and light-only semantic surfaces, including notification portals; why: public/member pages and existing dark mode must remain unchanged.
 - Draw notification dialogs keep the header and actions outside one viewport-bounded scrolling body; why: expanded personalized previews must not hide send/cancel controls or scroll the underlying page.
 - Scope Club Admin steps/contrast locally (portals too); why: shared member/association UI must stay unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.

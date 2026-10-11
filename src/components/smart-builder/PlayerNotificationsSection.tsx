@@ -23,8 +23,8 @@ export function PlayerNotificationsSection({ clubId, tournamentId, tournamentNam
   const sel = inCat.find((s) => s.key === key) ?? null;
 
   return (
-    <section className="rounded border border-border" data-testid="player-notifications">
-      <button type="button" className="flex w-full items-center gap-2 p-3 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+    <section className="tournament-primary-panel rounded border border-border" data-testid="player-notifications">
+      <button type="button" className="tournament-notification-heading flex w-full items-center gap-2 p-3 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <Bell className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold">Player Notifications</span>

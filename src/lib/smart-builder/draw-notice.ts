@@ -17,7 +17,7 @@ export function drawNoticeRecipients(matches: Array<{ status?: string | null; pl
 }
 
 export const FEE_PAID_LINE = "Your fee has been paid.";
-export const feeOutstandingLine = (cents: number) => `Your fee of R${(cents / 100).toFixed(2)} is outstanding. Please use the "Pay my fee" button to pay.`;
+export const feeOutstandingLine = (cents: number) => `Your fee of R${(cents / 100).toFixed(2)} is outstanding. Use the "Pay my fee" button to pay by card, add it to your member account, or tell us you have already paid.`;
 
 /** Per-player fee status from their own entry; partners without their own entry get no fee line. */
 export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: string; paid_at?: string | null; fee_paid_cents?: number | null; fee_status?: string | null; status?: string | null }>) {

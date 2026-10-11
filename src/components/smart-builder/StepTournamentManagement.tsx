@@ -211,10 +211,11 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
         )}
         {diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}
-        {diamond === false && <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
+        {revisiting && diamond === false && <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
         {!revisiting && diamond === false && <StepKnockoutRoundsPanel tournamentId={tournamentId} plan={life?.format_plan as any} />}
         {!revisiting && (
           <StepRunOverview clubId={clubId} tournamentId={tournamentId} plan={life?.format_plan as any}
+            renderNextActions={(states, openStage) => <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} stageStates={states} onOpenStage={openStage} />}
             onLifecycle={(to) => {
               if (!life || lifecycleIndex(to) <= cur) return;
               const done = LIFECYCLE.slice(0, lifecycleIndex(to)).map((l) => l.key) as LifecycleKey[];

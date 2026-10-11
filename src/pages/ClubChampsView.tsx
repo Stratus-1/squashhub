@@ -1543,7 +1543,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const qc = useQueryClient();
   const navigate = useMdNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
-  // Standings / Fixtures & Results view: one category at a time, shared
+  // Standings / Upcoming Fixtures / Results view: one category at a time, shared
   // across both tabs so switching tabs keeps the same category selected.
   // Standings | Upcoming Fixtures | Results — shared by the signed-in page and the public QR view.
   const [catTab, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
@@ -3660,6 +3660,18 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
     const summaryFirst = multipleGroups && !isCrossLeague && orderedGroups.length <= 3;
     const standingsCards: JSX.Element[] = [];
     const fixtureCards: JSX.Element[] = [];
+    /** Upcoming Fixtures then Results, each game once (non-tabbed layouts: between-subcategory and cross-league). */
+    const splitSections = (list: any[]) => {
+      const { upcoming, results } = splitFixtures(list);
+      return <div className="space-y-3">
+        <CollapsibleSection header={<h4 className="font-medium text-sm">Upcoming Fixtures ({upcoming.length})</h4>}>
+          {upcoming.length ? <div className="space-y-1.5">{upcoming.map((m: any) => renderMatchRow(m))}</div> : <p className="text-xs text-muted-foreground italic">No games left to play.</p>}
+        </CollapsibleSection>
+        <CollapsibleSection header={<h4 className="font-medium text-sm">Results ({results.length})</h4>}>
+          {results.length ? <div className="space-y-1.5">{results.map((m: any) => renderMatchRow(m))}</div> : <p className="text-xs text-muted-foreground italic">No results yet.</p>}
+        </CollapsibleSection>
+      </div>;
+    };
     const categoryViews: {
       gn: number; label: string; title: JSX.Element; leading: boolean; count: number;
       standings: JSX.Element; upcoming: JSX.Element; results: JSX.Element; upcomingCount: number; resultsCount: number;
@@ -3689,11 +3701,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             {muMatches.length > 0 && (
               <>
                 <Separator />
-                <CollapsibleSection
-                  header={<h4 className="font-medium text-sm">Fixtures &amp; Results ({muMatches.length})</h4>}
-                >
-                  <div className="space-y-1.5">{muMatches.map((m: any) => renderMatchRow(m))}</div>
-                </CollapsibleSection>
+                {splitSections(muMatches)}
               </>
             )}
           </CollapsibleCard>
@@ -3850,9 +3858,9 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
           if (groupMatches.length > 0) {
             fixtureCards.push(
               <CollapsibleCard key={`f-${gn}`} defaultOpen={singleCurrentTournament} headerClassName="pb-3"
-                title={`${getGroupLabel(champ, gn)} — Fixtures & Results`}
+                title={`${getGroupLabel(champ, gn)} — Upcoming Fixtures & Results`}
               >
-                {fixtureBody}
+                {splitSections(groupMatches)}
               </CollapsibleCard>
             );
           }
@@ -3866,11 +3874,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               {groupMatches.length > 0 && (
                 <>
                   <Separator />
-                  <CollapsibleSection
-                    header={<h4 className="font-medium text-sm">Fixtures &amp; Results ({groupMatches.length})</h4>}
-                  >
-                    {fixtureBody}
-                  </CollapsibleSection>
+                  {splitSections(groupMatches)}
                 </>
               )}
               {historySection}
@@ -3890,13 +3894,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             {!isCrossLeague && groupMatches.length > 0 && (
               <>
                 <Separator />
-                <CollapsibleSection
-                  header={<h4 className="font-medium text-sm">Fixtures & Results ({groupMatches.length})</h4>}
-                >
-                  <div className="space-y-1.5">
-                    {groupMatches.map((m: any) => renderMatchRow(m))}
-                  </div>
-                </CollapsibleSection>
+                {splitSections(groupMatches)}
               </>
             )}
             {historySection}
@@ -3907,10 +3905,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <CollapsibleCard key="cross-fixtures" defaultOpen={singleCurrentTournament} title="Fixtures & Results" titleClassName="text-lg">
-        <div className="space-y-1.5">
-          {sortMatchesChrono(matches).map((m: any) => renderMatchRow(m))}
-        </div>
+      <CollapsibleCard key="cross-fixtures" defaultOpen={singleCurrentTournament} title="Upcoming Fixtures & Results" titleClassName="text-lg">
+        {splitSections(sortMatchesChrono(matches))}
       </CollapsibleCard>
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";

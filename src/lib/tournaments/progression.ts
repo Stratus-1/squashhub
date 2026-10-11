@@ -215,7 +215,6 @@ export function specWithSetup(spec: TournamentSpec, divisionKey: string, stageKe
     generation: "owner_approval",
     ...(setup.kind === "mapped" ? { mapping: setup.mapping ?? null, progression: { mode: "all_continue", standings: "reset" } } : {}),
     ...(setup.kind === "knockout" ? { qualify: setup.qualify ?? null, thirdPlace: !!setup.thirdPlace, progression: { mode: "qualifiers", standings: null } } : {}),
-    ...({ matchFormat: setup.matchFormat } as object),
   };
   return {
     stage,
@@ -239,7 +238,8 @@ export async function checkDeferredSetup(db: Db, tid: string, divisionKey: strin
   try { next = specWithSetup(t.builder_spec as TournamentSpec, divisionKey, stageKey, setup); } catch (e: any) { c.structure.push(e.message); return c; }
   const d = next.spec.divisions.find((x) => x.divisionId === divisionKey)!;
   const src = d.stages.find((s) => s.order === next.stage.order - 1)!;
-  if (!setup.matchFormat?.trim()) c.scoring.push("Choose how each game is scored (match format).");
+  const sc = inheritedStageScoring(t, t.builder_spec as TournamentSpec, divisionKey);
+  if (!sc.ok) c.scoring.push(sc.issue);
   if (setup.kind === "mapped") {
     c.structure.push(...mappingIssues(setup.mapping, next.stage.name));
     if (setup.mapping && setup.mapping.source !== "stage_standings") c.engine.push("A stage set up later must use finishing positions of a finished stage.");

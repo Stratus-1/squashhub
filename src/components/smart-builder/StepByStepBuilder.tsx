@@ -307,11 +307,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     } catch { return EMPTY; }
   });
   // Editing on a device without the plan: load the setup saved on the tournament (any device), never start blank.
-  const [serverReady, setServerReady] = useState(hasLocalPlan);
+  // When editing a created tournament the copy saved on the tournament is authoritative, so nothing is
+  // pushed back to it until that copy has been read (a stale device-local copy must never overwrite it).
+  const [serverReady, setServerReady] = useState(!tournamentId);
   /** Weeks between the previous main round and the next one added (copy-forward). */
   const [nextRoundGapWeeks, setNextRoundGapWeeks] = useState("1");
   useEffect(() => {
-    if (hasLocalPlan || !tournamentId) return;
+    if (!tournamentId) return;
     let live = true;
     (async () => {
       const [life, row] = await Promise.all([
@@ -322,23 +324,19 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const saved = (life?.answers ?? null) as Partial<StepAnswers> | null;
       const fromServer = saved && hasRealAnswers(saved) ? saved : null;
       const fallback = { ...(life?.format_plan ?? {}), ...(row?.name ? { name: row.name } : {}), ...(row?.start_date ? { periodStart: row.start_date } : {}) } as Partial<StepAnswers>;
-      setA((cur) => normalise({ ...cur, ...(fromServer ?? fallback), createdTournamentId: tournamentId } as any));
+      if (fromServer) {
+        // The tournament's saved setup wins over this device's copy (it may hold newer picks made elsewhere).
+        setA((cur) => normalise({ ...fromServer, planId: (fromServer as any).planId ?? cur.planId, createdTournamentId: tournamentId } as any));
+      } else if (!hasLocalPlan) {
+        setA((cur) => normalise({ ...cur, ...fallback, createdTournamentId: tournamentId } as any));
+      } else if (life) {
+        // Nothing saved on the tournament yet: publish this device's plan once so other devices can edit it.
+        setA((cur) => { saveLifecycle(tournamentId, { ...life, answers: JSON.parse(JSON.stringify(cur)) }).catch(() => undefined); return cur; });
+      }
       setServerReady(true);
     })();
     return () => { live = false; };
   }, [hasLocalPlan, tournamentId, clubId]);
-  // Editing on the device that holds the plan: push the answers to the tournament once,
-  // so Edit works on every other device without needing a full re-save.
-  useEffect(() => {
-    if (!hasLocalPlan || !tournamentId || !hasRealAnswers(a)) return;
-    (async () => {
-      const cur = await loadLifecycle(tournamentId).catch(() => null);
-      // Merge into the existing lifecycle — never drop stage/completed/inform etc.
-      if (!cur) return;
-      await saveLifecycle(tournamentId, { ...cur, answers: JSON.parse(JSON.stringify(a)) }).catch(() => undefined);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasLocalPlan, tournamentId]);
   const [step, setStep] = useState(0);
   /** Stable id for this device-local plan, used to make court reservations idempotent. */
   useEffect(() => { if (!a.planId) setA((x) => ({ ...x, planId: x.planId ?? (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) })); }, [a.planId]);

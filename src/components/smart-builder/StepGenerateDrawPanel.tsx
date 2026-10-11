@@ -786,7 +786,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         </div>
       )}
       <Dialog open={!!askSend} onOpenChange={(o) => { if (!o) closeAsk(); }}>
-        <DialogContent className="draw-notice-modal" data-testid="initial-draw-notice-dialog">
+        <DialogContent className="tournament-admin draw-notice-modal" data-testid="initial-draw-notice-dialog">
           <DialogHeader className="draw-notice-modal-header border-b border-border bg-background">
             <DialogTitle>Send draw to players now?</DialogTitle>
             <DialogDescription>This wording goes to Round 1 players with a button to the tournament draw and match details. Nothing has been sent yet.</DialogDescription>

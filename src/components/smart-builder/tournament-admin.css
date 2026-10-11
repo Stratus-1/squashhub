@@ -1,0 +1,81 @@
+/* Presentation only. Explicit roots also cover portalled notification dialogs.
+   Dark mode deliberately retains the existing surfaces and workflow styling. */
+html:not(.dark) .tournament-admin {
+  --muted-foreground: var(--tournament-secondary-text);
+  --border: var(--tournament-border);
+  --input: var(--tournament-input);
+  --primary: var(--tournament-current);
+  --primary-foreground: var(--tournament-current-foreground);
+  --ring: var(--tournament-current);
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--tournament-canvas));
+  border-radius: 8px;
+  padding: 12px;
+}
+html:not(.dark) .tournament-admin :is(.tournament-setup-panel, .tournament-primary-panel),
+html:not(.dark) .tournament-admin > .bg-card,
+html:not(.dark) .tournament-admin > div > .bg-card {
+  background: hsl(var(--tournament-panel));
+  border: 1px solid hsl(var(--tournament-border));
+  box-shadow: var(--tournament-panel-shadow);
+  border-radius: 8px;
+}
+html:not(.dark) .tournament-admin :is(.tournament-setup-nav, .tournament-setup-summary, .tournament-message-settings, .tournament-email-preview, .tournament-inset-panel) {
+  background: hsl(var(--tournament-inset));
+  border: 1px solid hsl(var(--tournament-border));
+  border-radius: 6px;
+  padding: 12px;
+}
+html:not(.dark) .tournament-admin .tournament-setup-content > .border {
+  background-color: hsl(var(--tournament-inset));
+}
+html:not(.dark) .tournament-admin :is(input:not([type=checkbox]):not([type=radio]), textarea, select) {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--tournament-panel));
+  border-color: hsl(var(--tournament-input));
+}
+html:not(.dark) .tournament-admin :is(input, textarea)::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+html:not(.dark) .tournament-admin [class*="text-muted-foreground/"] { color: hsl(var(--muted-foreground)); }
+html:not(.dark) .tournament-admin .tournament-setup-step[data-state="validated"],
+html:not(.dark) .tournament-admin [data-workflow-state="complete"] {
+  background: hsl(var(--tournament-complete));
+  color: hsl(var(--tournament-complete-foreground));
+  border-color: hsl(var(--tournament-complete-foreground) / .35);
+}
+html:not(.dark) .tournament-admin .tournament-setup-step[data-state="current"],
+html:not(.dark) .tournament-admin [data-workflow-state="current"] {
+  background: hsl(var(--tournament-current));
+  color: hsl(var(--tournament-current-foreground));
+  border-color: hsl(var(--tournament-current));
+}
+html:not(.dark) .tournament-admin .tournament-setup-step[data-state="incomplete"],
+html:not(.dark) .tournament-admin [data-workflow-state="upcoming"] {
+  background: hsl(var(--tournament-inset));
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--tournament-border));
+}
+html:not(.dark) .tournament-admin .tournament-next-action {
+  background: hsl(var(--tournament-action));
+  border: 1px solid hsl(var(--tournament-border));
+  border-left: 4px solid hsl(var(--tournament-current));
+  border-radius: 6px;
+  padding: 12px;
+}
+html:not(.dark) .tournament-admin :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+html:not(.dark) .tournament-admin.draw-notice-modal { padding: 0; background: hsl(var(--tournament-panel)); }
+html:not(.dark) .tournament-admin .draw-notice-modal-header,
+html:not(.dark) .tournament-admin .draw-notice-modal-footer { background: hsl(var(--tournament-panel)); }
+html:not(.dark) .tournament-admin .tournament-notice-layout { display: grid; gap: 16px; }
+html:not(.dark) .tournament-admin .tournament-message-settings,
+html:not(.dark) .tournament-admin .tournament-email-preview { min-width: 0; }
+html:not(.dark) .tournament-admin .tournament-notice-actions { position: sticky; bottom: 0; background: hsl(var(--tournament-panel)); padding-block: 10px; border-top: 1px solid hsl(var(--border)); z-index: 1; }
+html:not(.dark) .tournament-admin.draw-notice-modal .tournament-notice-actions { position: static; }
+@media (min-width: 1100px) {
+  html:not(.dark) .tournament-admin .tournament-notice-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  html:not(.dark) .tournament-admin.draw-notice-modal { max-width: min(68rem, calc(100vw - 2rem)); }
+}
+@media (max-width: 639px) {
+  html:not(.dark) .tournament-admin { padding: 8px; }
+  .tournament-notification-heading { flex-wrap: wrap; }
+  .tournament-notification-heading > span:last-child { flex-basis: 100%; }
+}

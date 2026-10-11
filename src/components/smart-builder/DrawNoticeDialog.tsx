@@ -8,6 +8,7 @@ import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
 import { drawNoticeKey, drawScopeTitle, loadDrawNoticeRecipients, recordDrawNotice, sendDrawNotice, type DrawScope } from "@/lib/smart-builder/draw-notice";
 import "./draw-notice-dialog.css";
+import "./tournament-admin.css";
 
 export const laterRoundNotice = (round: number) =>
   `Your Round ${round} match has been drawn. Open the tournament to view the draw, check your opponent and match details, score your match live, or submit your result afterwards.`;
@@ -58,7 +59,7 @@ export function DrawNoticeComposer({ active = true, clubId, tournamentId, tourna
   };
 
   return (
-    <div className={modalLayout ? "draw-notice-modal-composer" : "space-y-3"} data-testid="draw-notice-composer">
+    <div className={modalLayout ? "draw-notice-modal-composer" : "tournament-admin space-y-3"} data-testid="draw-notice-composer">
       <div className={modalLayout ? "draw-notice-modal-body space-y-3" : "space-y-3"} data-testid={modalLayout ? "draw-notice-modal-body" : undefined}>
       {introduction}
       <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} />
@@ -88,7 +89,7 @@ export function DrawNoticeComposer({ active = true, clubId, tournamentId, tourna
         </div>
       </>}
       </div>
-      <div className={modalLayout ? "draw-notice-modal-footer flex flex-wrap justify-end gap-2 border-t border-border bg-background" : "flex flex-wrap justify-end gap-2"} data-testid="draw-notice-actions">
+      <div className={modalLayout ? "draw-notice-modal-footer flex flex-wrap justify-end gap-2 border-t border-border bg-background" : "tournament-notice-actions flex flex-wrap justify-end gap-2"} data-testid="draw-notice-actions">
         {onCancel && <Button variant="outline" onClick={onCancel} disabled={sending}>{cancelLabel}</Button>}
         <Button onClick={send} disabled={!hasFixtures || sending || !msg.trim() || !picked.size || !channels.length} data-testid="draw-notice-send">
           {sending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{sentBefore ? "Resend notifications" : "Send notifications"}
@@ -105,7 +106,7 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="draw-notice-modal">
+      <DialogContent className="tournament-admin draw-notice-modal">
         <DialogHeader className="draw-notice-modal-header border-b border-border bg-background">
           <DialogTitle>Send draw to players now?</DialogTitle>
           <DialogDescription className="sr-only">Review the message and recipients. Nothing sends until you confirm.</DialogDescription>

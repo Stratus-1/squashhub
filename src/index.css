@@ -49,6 +49,20 @@
     --input: 220 12% 88%;
     --ring: 220 65% 28%;
 
+    /* Tournament administration light-only hierarchy; scoped by tournament-admin. */
+    --tournament-canvas: 216 22% 94%;
+    --tournament-panel: 0 0% 100%;
+    --tournament-inset: 216 28% 96%;
+    --tournament-border: 216 18% 76%;
+    --tournament-input: 216 15% 52%;
+    --tournament-secondary-text: 218 18% 34%;
+    --tournament-current: 214 76% 38%;
+    --tournament-current-foreground: 0 0% 100%;
+    --tournament-complete: 149 42% 94%;
+    --tournament-complete-foreground: 151 65% 25%;
+    --tournament-action: 214 70% 96%;
+    --tournament-panel-shadow: 0 2px 6px hsl(218 30% 18% / .07);
+
     --radius: 0.75rem;
 
 

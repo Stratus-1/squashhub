@@ -38,6 +38,7 @@
 - [x] Draw emails: activation link automatic for unlinked players (no tick box), on own club page
 
 ## Open (2026-10-11)
+- [x] Tournament admin light-mode hierarchy: scoped semantic surfaces, workflow states and next action; separate message settings/preview. Authenticated Riverside setup/running/real-player preview inspected in light/dark desktop/mobile with writes blocked; 15 focused tests pass. Preview only.
 - [ ] Willem: reverse the R34 Riverside tournament account charge and restore unpaid status for payment testing; preserve ledger audit.
 - [ ] Opponent contact sharing — built in preview; awaiting sender deploy + publish approval; league fixtures not yet covered
 - [x] Builder: merge Expected entries into Structure guide (18 steps, conflict flags) — preview

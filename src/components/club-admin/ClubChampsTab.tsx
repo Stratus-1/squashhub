@@ -1,4 +1,5 @@
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
+import "../smart-builder/tournament-admin.css";
 import { RankingScope } from "@/lib/rankings/provisional";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8785,7 +8786,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // ── LIST VIEW ──
   if (!showWizard) {
     return (
-      <div className="space-y-4">
+      <div className="tournament-admin space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <h2 className="text-lg font-semibold">Club Tournaments</h2>
           <div className="flex flex-col gap-1 sm:items-end">
@@ -9012,7 +9013,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   // ── WIZARD VIEW ──
   return (
-    <div className="space-y-4">
+    <div className="tournament-admin space-y-4">
       {/* Step tabs — every step is directly clickable; the wizard autosaves on jump. */}
       <div className="flex items-center gap-1 text-sm overflow-x-auto border-b border-border pb-px">
         {activeSteps.map((s, i) => (

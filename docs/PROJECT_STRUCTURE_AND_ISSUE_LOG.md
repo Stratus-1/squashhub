@@ -1,3 +1,8 @@
+### 2026-10-11 — Tournament administration light-mode hierarchy
+- **Finding:** Shared light surfaces and borders did not distinguish workflow navigation, primary content and notification wording from preview.
+- **Presentation fix:** Explicit tournament-admin roots, light-only semantic canvas/panel/inset/contrast tokens, blue current and green validated steps, highlighted existing next action, and separate notification editor/preview regions (desktop columns, mobile stack). Both notification portal entry points retain the bounded single-scroll layout. Dark surfaces, lifecycle/action derivation and all data operations remain unchanged.
+- **Verification:** 15 focused tests pass; authenticated Riverside running view, saved Stages & Scheduling and actual selected-player preview inspected at desktop/mobile in light/dark. Keyboard focus reaches the player selector; no horizontal overflow. Backend writes and sending were intercepted, including pre-existing reconciliation/autosave attempts. No live data changes or publishing. Native devices and actual OS zoom not independently checked.
+
 ### 2026-10-11 — Expanded draw notification preview hid actions / overstated paid fees
 - **Symptom:** Personalized preview overflowed short viewports and displayed "Your fee has been paid" for account-charged entries.
 - **Finding:** The entire dialog scrolled, including actions; its hidden footer did not anchor them. The composer equated draw-readiness settlement (paid/waived/on_account) with verified receipt. Read-only Riverside check: Willem has on_account, zero fee_paid_cents and no paid timestamp. The earlier tournament ID is not present in this backend; current Riverside saved tournament was used without mutation.

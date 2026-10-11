@@ -33,6 +33,7 @@ import { fieldReviewMode } from "@/lib/smart-builder/field-review-mode";
 import { Button } from "@/components/ui/button";
 import { TournamentSetupNavigator } from "./TournamentSetupNavigator";
 import "./tournament-setup.css";
+import "./tournament-admin.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1279,7 +1280,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const playerLockControls = <div className="flex flex-wrap items-center gap-2">{playerLockStatus}{playerLockButtons}</div>;
 
   return (
-    <div className="tournament-setup grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="tournament-admin tournament-setup grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="min-w-0 space-y-5">
         {!tournamentId && <TemplateReviewBanner clubId={clubId} />}
         {/* progress */}

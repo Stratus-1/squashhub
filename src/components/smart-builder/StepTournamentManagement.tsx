@@ -23,6 +23,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { isDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { Link } from "react-router-dom";
 import { TournamentRegistrationsDialog } from "@/components/club-admin/TournamentRegistrationsDialog";
+import "./tournament-admin.css";
 
 const money = (c: number) => `R${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
 
@@ -105,7 +106,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const askEdit = (at?: "Summary" | "Messaging") => downstream ? setEditWarn(at ?? "default") : onEditSetup(at);
 
   return (
-    <div className="space-y-4">
+    <div className="tournament-admin space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0 flex-1 space-y-1.5">
           <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" />Tournaments</Button>
@@ -137,7 +138,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             {/* "Draw ready" is an internal state, not a separate visible step: the chip is hidden
                 unless the tournament is actually sitting at it (then it must remain, as the current stage). */}
             {!(l.key === "activate" && i !== cur) && <li aria-current={i === cur ? "step" : undefined}>
-              <button type="button" disabled={!reachable} onClick={() => { setQrOpen(false); setView(i === cur ? null : l.key); }}
+              <button type="button" disabled={!reachable} data-workflow-state={i === cur ? "current" : done ? "complete" : "upcoming"} onClick={() => { setQrOpen(false); setView(i === cur ? null : l.key); }}
                 title={reachable ? (i === cur ? "Current stage" : "Revisit — nothing later is undone") : l.key === "planning" ? "Use Edit tournament setup" : "Locked until earlier stages are done"}
                 className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1",
                   i === cur ? "border-primary bg-primary font-semibold text-primary-foreground" : done ? "border-primary/50 text-primary hover:bg-primary/10" : "border-border text-muted-foreground",
@@ -158,17 +159,17 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
 
       {/* The link & QR tab shows only the link card; the stage panel (incl. Generate draw & fixtures) is hidden so nothing is duplicated. */}
       {!qrOpen && (
-      <Card className="border-primary/50"><CardContent className="space-y-3 p-4">
+      <Card className="tournament-primary-panel border-primary/50"><CardContent className="space-y-3 p-4">
         {revisiting ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-muted/40 p-2 text-xs">
             <span>Revisiting <b>{LIFECYCLE[lifecycleIndex(shown)].label}</b> (completed). The tournament stays at <b>{LIFECYCLE[cur].label}</b> — nothing later is undone.</span>
             <Button size="sm" variant="outline" onClick={() => setView(null)}><RotateCcw className="mr-1 h-3 w-3" />Back to current stage</Button>
           </div>
-        ) : <>
+        ) : <div className="tournament-next-action">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">Next action</div>
           <div className="text-base font-semibold">{next.title}</div>
           <p className="text-sm text-muted-foreground">{next.detail}</p>
-        </>}
+        </div>}
         {shown === "invite" && h.mode === "inform" && life && blockersFor(h, "invite").length === 0 && (
           <StepInformPanel h={h} lifecycle={life} onLifecycle={setLifecycle} onAddGroup={() => askEdit("Messaging")} />
         )}

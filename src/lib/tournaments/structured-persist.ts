@@ -549,6 +549,22 @@ export interface SourcePool { index: number; label: string; members: string[]; r
  */
 export function rankSourcePools(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, used?: Set<string>, criteria: TieBreakCriterion[] = resolveTieBreaks(null, d)): SourcePool[] {
   const rows = matches.filter((x) => x.stage_key === src.id);
+  // A Swiss source stage ranks by the shared Swiss table (match wins → Buchholz → Sonneborn-Berger →
+  // seed), NEVER by the pool engine's game-based tie-breaks — the same order the standings page shows
+  // and the next Swiss round pairs with. Seed is the final tie-break, so the order is total and no
+  // tie can ever block play-off seeding.
+  if (src.kind === "swiss") {
+    const members = d.entrants.map((e) => e.id);
+    const games = rows.map((x) => {
+      const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+      const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b;
+      return { a: a || null, b: b || null, winner };
+    });
+    const table = swissTable(members, games, (src as any).swissTieBreaks ?? null);
+    const order = table.map((r) => r.id);
+    const stats = new Map(order.map((id) => [id, { played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, gamesFor: 0, gamesAgainst: 0, setsFor: 0, setsAgainst: 0 } as any]));
+    return [{ index: 0, label: "Swiss standings", members, result: { order, stats, ties: [], manual: [] }, material: [] }];
+  }
   let pools: string[][];
   if (src.kind === "mapped") {
     if (src.mapping?.source !== "seed_pools") throw new IntegrityError("mapping_source", `${src.name}: its players have no home pool to be ranked in.`);

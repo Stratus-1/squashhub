@@ -34,8 +34,14 @@ export function TournamentEntryCounts({ champId, className }: Props) {
       <span>
         <strong className="text-foreground">{data.uniquePlayers}</strong> unique player
         {data.uniquePlayers === 1 ? "" : "s"} ·{" "}
-        <strong className="text-foreground">{data.totalEntries}</strong>{" "}
-        {data.totalEntries === 1 ? "entry" : "entries"} in total
+        <strong className="text-foreground">{data.totalEntries}</strong> category{" "}
+        {data.totalEntries === 1 ? "entry" : "entries"}
+        {(data.paidEntries ?? 0) + (data.outstandingEntries ?? 0) > 0 && (
+          <>
+            {" "}· <strong className="text-foreground">{data.paidEntries ?? 0}</strong> paid ·{" "}
+            <strong className="text-foreground">{data.outstandingEntries ?? 0}</strong> outstanding
+          </>
+        )}
       </span>
     </p>
   );

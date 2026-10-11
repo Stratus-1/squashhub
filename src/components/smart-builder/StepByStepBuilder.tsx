@@ -2248,6 +2248,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   ))}
                 </div>
               </div>
+              <StageScheduleOverview main={mainStages} playoffs={playoff.choice === "playoffs" ? playoffStages : []} statusOf={stageStatusOf} unitName={stageUnit} dayLabel={fmtDay}
+                courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} onJump={jumpToStage} />
               {drawSaved && <>
                 <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs" data-testid="schedule-running-note">The draw has been generated. Add or adjust the next round's dates, times and courts here; saving never regenerates or deletes existing games — new rounds' games are drawn from Manage Tournament.</p>
                 {renderMainRounds()}
@@ -2266,7 +2268,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {stages.length === 0 && <Button variant="outline" size="sm" onClick={suggestStages}>Suggest a starting plan from your choices</Button>}
               {!drawSaved && renderMainRounds()}
               <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
-              <div className="rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary">▼ Playoffs begin</div>
+              <div className="flex items-center gap-2 rounded-md border-2 border-primary bg-primary/10 px-3 py-2 text-sm font-semibold text-primary" data-testid="playoffs-section"><Trophy className="h-4 w-4" />Playoffs{playoff.choice === "playoffs" && playoffStages.length > 0 ? <span className="font-normal">· {playoffStages.map((x) => x.name).join(" → ")}</span> : null}</div>
               <div className="space-y-3">
                 <div className="text-sm font-semibold">Will there be playoffs? <span className="font-normal text-muted-foreground">· {playoff.choice === "none" ? "no playoffs" : playoff.choice === "playoffs" ? "planned below" : "not decided"}{a.playoffSync === true ? " · common dates" : a.playoffSync === false ? " · per category" : a.playoffSync === "later" ? " · synchronisation decided later" : ""}</span></div>
                 <div className="flex flex-wrap gap-2" role="group" aria-label="Playoff decision">
@@ -2280,7 +2282,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                  <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
                  {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
                  {playoffStages.map(renderStage)}
-                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
+                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); const ns = newStage(next, "later", "", "playoff"); setStageOpen((o) => ({ ...o, [ns.id]: true })); setStages([...stages, ns]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
                 {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
                  const q = poolQualification(u.key);
                  // First CONFIGURED play-off stage (own stages win, else shared) — never assume Quarterfinals.

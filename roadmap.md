@@ -36,3 +36,8 @@
 - [ ] Draw notices: "Preview full email" rendered by the real send pipeline (server dry-run, no tokens), recipient modes, desktop/mobile, safe "Send test email" with test token
 - [x] Draw notices: Save message (server-side, per tournament/round) + optional personal activation link
 - [x] Draw emails: activation link automatic for unlinked players (no tick box), on own club page
+
+## Open (2026-10-11)
+- [ ] Opponent contact sharing (opt-in, guardian for juniors) — plan written, awaiting approval
+- [x] Builder: merge Expected entries into Structure guide (18 steps, conflict flags) — preview
+- [x] Public QR tournament page: once-per-browser info toast + compact "Open in SquashHub" panel replacing Exit/Log into App — preview

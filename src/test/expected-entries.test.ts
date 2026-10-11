@@ -21,7 +21,7 @@ describe("canonical expected entries", () => {
     const c = estimateConflicts(a, cats)[0];
     const r = resolveEstimate(a, c, "guide", "2026-10-11T00:00:00Z");
     expect(categoryEstimate(r, "Men's A")).toBe(13);
-    expect(r.guide.estimateResolutions["Men's A"]).toEqual({ chosen: 13, guide: 13, steps: 14, at: "2026-10-11T00:00:00Z" });
+    expect((r.guide as any).estimateResolutions["Men's A"]).toEqual({ chosen: 13, guide: 13, steps: 14, at: "2026-10-11T00:00:00Z" });
     expect(estimateConflicts(r, cats).map((x) => x.cat)).not.toContain("Men's A");
   });
   it("editing keeps one value: category mirror equals subcategory total", () => {

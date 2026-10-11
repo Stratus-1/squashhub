@@ -2249,7 +2249,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 </div>
               </div>
               <StageScheduleOverview main={mainStages} playoffs={playoff.choice === "playoffs" ? playoffStages : []} statusOf={stageStatusOf} unitName={stageUnit} dayLabel={fmtDay}
-                courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} onJump={jumpToStage} />
+                courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} onJump={jumpToStage}
+                capacityText={(id) => { const s = stages.find((x) => x.id === id); const c = s ? capacityOf(s) : null; return c ? `~${c.matches} matches / ${c.slots} slots` : null; }} />
               {drawSaved && <>
                 <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs" data-testid="schedule-running-note">The draw has been generated. Add or adjust the next round's dates, times and courts here; saving never regenerates or deletes existing games — new rounds' games are drawn from Manage Tournament.</p>
                 {renderMainRounds()}

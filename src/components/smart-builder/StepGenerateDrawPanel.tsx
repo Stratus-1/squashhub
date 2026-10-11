@@ -77,6 +77,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const notice = useDrawNoticeSettings(tournamentId, "all:r1", DEFAULT_DRAW_NOTICE);
   const drawMessage = notice.value.message;
   const [rebuildOk, setRebuildOk] = useState(false);
+  const [amendOk, setAmendOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
   /** Organiser edits per group: seed order and/or pools. These are what Generate saves — never recalculated away. */
@@ -637,9 +638,23 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   // A saved but unplayed draw is only re-proposed when the organiser explicitly chooses to replace it.
   const showProposal = !hasDraw || rebuildOk;
 
+  // Revisiting a completed draw step is read-only; amendments need an explicit, controlled choice.
+  if (revisiting && hasDraw && !amendOk) {
+    return (
+      <div className="space-y-2 rounded border border-border bg-muted/40 p-3 text-xs" data-testid="draw-readonly-revisit">
+        <div className="font-medium">Draw completed · {existing.games} game{existing.games === 1 ? "" : "s"} saved{existing.played ? ` · ${existing.played} played or started` : " · none played yet"} (read-only)</div>
+        <p>This step was used to create the draw. It's shown read-only so nothing is regenerated or overwritten by accident. Player draw and round messages are managed under <b>Player Notifications</b> below.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" asChild><Link to={`/club-champs/${tournamentId}`}>Open draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Link></Button>
+          <Button size="sm" variant="outline" onClick={() => { if (confirm(`Amend the saved draw? You'll see the impact first; replacing it deletes all ${existing.games} unplayed games and needs a second confirmation. Nothing changes until you confirm there.`)) setAmendOk(true); }}>Amend draw (controlled)…</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 text-xs">
-      <DrawNoticeEditor notice={notice} disabled={sending} />
+      {!hasDraw && <DrawNoticeEditor notice={notice} disabled={sending} />}
       {hasDraw && (
         <div className="rounded border border-primary/50 bg-primary/10 p-2 space-y-1">
           <div className="font-medium">Draw saved · {existing.games} game{existing.games === 1 ? "" : "s"}{existing.played ? ` · ${existing.played} played or started` : " · none played yet"}</div>

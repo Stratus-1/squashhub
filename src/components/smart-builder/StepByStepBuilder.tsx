@@ -1,5 +1,5 @@
 import { reconcileFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
-import { swissConfirmIssues, swissProgression } from "@/lib/smart-builder/swiss-progression";
+import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfirmIssues, roundsBreakdown } from "@/lib/smart-builder/swiss-progression";
 import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
@@ -78,7 +78,7 @@ type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 /** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
 type CompKind = "pools" | "knockout" | "swiss" | "cross" | "later";
-type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; /** Confirmed Swiss count; decides when Swiss ends. Estimate (swissRounds) is planning only. */ swissRoundsConfirmed?: string; crossA: string; crossB: string; crossUnits?: string[]; crossMode?: "all" | "chosen" | "parent"; crossPairs?: [string, string][]; /** Knockout only: pace eliminations across the scheduling rounds, or play the field down normally. */ koPace?: "paced" | "immediate"; /** Knockout only: closer-ranked (progressive) or traditional seeded pairings. Admin can still edit every pairing. */ koPairing?: "progressive" | "traditional" };
+type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; /** Confirmed Swiss count; decides when Swiss ends. Estimate (swissRounds) is planning only. */ swissRoundsConfirmed?: string; /** Knockout stage only: planning estimate and confirmed round count (checked against the bracket). */ koRounds?: string; koRoundsConfirmed?: string; crossA: string; crossB: string; crossUnits?: string[]; crossMode?: "all" | "chosen" | "parent"; crossPairs?: [string, string][]; /** Knockout only: pace eliminations across the scheduling rounds, or play the field down normally. */ koPace?: "paced" | "immediate"; /** Knockout only: closer-ranked (progressive) or traditional seeded pairings. Admin can still edit every pairing. */ koPairing?: "progressive" | "traditional" };
 const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "", crossUnits: [] };
 /** Cross-league participants: the multi-select list, falling back to legacy two-group picks. */
 const crossList = (f: FormatPlan): string[] => f.crossUnits?.length ? f.crossUnits : [f.crossA, f.crossB].filter(Boolean);
@@ -2568,6 +2568,23 @@ function PlayoffFields({ value, onChange, format }: { value: PlayoffPlan; onChan
     </div>}
   </div>;
 }
+const confirmedOrEst = (v: FormatPlan) => { const n = Number(v.swissRoundsConfirmed || v.swissRounds); return n >= 1 ? n : null; };
+function KnockoutRoundsFields({ value, onChange, entrants }: { value: FormatPlan; onChange: (patch: Partial<FormatPlan>) => void; entrants: number }) {
+  const [draft, setDraft] = useState(value.koRoundsConfirmed ?? "");
+  const plan = knockoutRoundsFor(entrants);
+  const issues = draft ? knockoutConfirmIssues(draft, { entrants: entrants || null }) : [];
+  return <div className="space-y-2 rounded-lg border border-border p-3" aria-label="Knockout rounds">
+    <p className="text-xs font-medium text-foreground">Rounds for this knockout stage (not the whole tournament)</p>
+    <p className="text-xs text-muted-foreground">{plan ? `Recommended from ${plan.entrants} expected entrants: ${plan.bracketSize}-draw${plan.byes ? ` with ${plan.byes} bye${plan.byes > 1 ? "s" : ""}` : ""} → ${plan.rounds} rounds (${plan.stages.join(" → ")}).` : "Each category/subcategory has its own bracket — enter its expected entries (or set its format separately) to get a recommended round count."}</p>
+    <div className="max-w-[260px] space-y-1"><Label>Estimated knockout rounds (planning)</Label><Input type="number" min="1" aria-label="Estimated knockout rounds" value={value.koRounds ?? ""} onChange={(e) => onChange({ koRounds: e.target.value })} placeholder={plan ? String(plan.rounds) : "e.g. 3"} /></div>
+    <div className="max-w-md space-y-1"><Label>Confirmed knockout rounds</Label>
+      <div className="flex flex-wrap items-center gap-2"><Input type="number" min="1" className="w-24" aria-label="Confirmed knockout rounds" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={plan ? String(plan.rounds) : ""} />
+        <Button type="button" size="sm" disabled={!draft || issues.length > 0 || draft === (value.koRoundsConfirmed ?? "")} onClick={() => onChange({ koRoundsConfirmed: String(Math.floor(Number(draft))) })}>Confirm knockout rounds</Button>
+        {value.koRoundsConfirmed ? <span className="text-xs font-medium text-foreground">Confirmed: {value.koRoundsConfirmed}</span> : <span className="text-xs text-muted-foreground">Not confirmed</span>}</div>
+      {issues.map((m) => <p key={m} className="text-xs text-destructive">{m}</p>)}
+      <p className="text-xs text-muted-foreground">Must match the bracket (byes included). The actual bracket is built from real entries at Generate draw; this never edits a draw already created.</p></div>
+  </div>;
+}
 function SwissRoundsFields({ value, onChange, stages = [], unit = "" }: { value: FormatPlan; onChange: (patch: Partial<FormatPlan>) => void; stages?: { name: string; phase?: string; unit?: string }[]; unit?: string }) {
   const [draft, setDraft] = useState(value.swissRoundsConfirmed ?? "");
   const issues = draft ? swissConfirmIssues(draft) : [];
@@ -2582,7 +2599,8 @@ function SwissRoundsFields({ value, onChange, stages = [], unit = "" }: { value:
       <p className="text-xs text-muted-foreground">The confirmed count controls when Swiss finishes and the next configured stage starts. It is separate from knockout rounds. Changing it here never edits a draw already generated; ending a live Swiss stage early is done (with checks) in Manage Tournament.</p></div>
     <div className="rounded-md border border-border p-2 text-xs" aria-label="Stage progression preview"><p className="font-medium text-foreground">{prog.steps.join(" → ")}</p>
       {prog.bracket && <p className="mt-1 text-muted-foreground">Standard seeding from final Swiss standings: {prog.bracket.join(" · ")}. Later stages pair the winners in order (1/2, 3/4).</p>}
-      {prog.issues.map((m) => <p key={m} className="mt-1 text-destructive">{m}</p>)}</div>
+      {prog.issues.map((m) => <p key={m} className="mt-1 text-destructive">{m}</p>)}
+      {prog.qualifiers && (() => { const ko = knockoutRoundsFor(prog.qualifiers!); const b = roundsBreakdown([{ label: "Swiss stage", rounds: confirmedOrEst(value) }, { label: "Knockout stage", rounds: ko?.rounds ?? null }]); return <p className="mt-1 text-muted-foreground">{b.lines.join(" · ")}{b.total != null ? ` · Total: ${b.total} rounds` : ""}</p>; })()}</div>
   </div>;
 }
 function FormatFields({ value, onChange, units, compact = false, entries = {}, scope, stages }: { value: FormatPlan; onChange: (patch: Partial<FormatPlan>) => void; units: { key: string; base: string }[]; compact?: boolean; entries?: Record<string, string | number>; scope?: string[]; stages?: { name: string; phase?: string; unit?: string }[] }) {
@@ -2598,6 +2616,7 @@ function FormatFields({ value, onChange, units, compact = false, entries = {}, s
       <p>The provisional bracket comes from the expected entries you already gave — no need to enter it again. Actual entrants replace the estimate when registration closes.</p>
       {units.filter((u) => !scope || scope.includes(u.key)).map((u) => <p key={u.key} className="text-xs">{u.base}: {Number(entries[u.key]) || "?"} expected → {bracketHint(Number(entries[u.key]) || 0)}</p>)}
     </div>}
+    {value.kind === "knockout" && <KnockoutRoundsFields value={value} onChange={onChange} entrants={(() => { const xs = Object.entries(entries).filter(([k, v]) => (!scope || scope.includes(k)) && Number(v) > 0); return xs.length === 1 ? Number(xs[0][1]) : 0; })()} />}
     {value.kind === "knockout" && <div className="space-y-3 rounded-lg border border-border p-3">
       <div className="space-y-1">
         <Label>Knockout pace</Label>

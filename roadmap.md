@@ -39,5 +39,5 @@
 
 ## Open (2026-10-11)
 - [ ] Opponent contact sharing (opt-in, guardian for juniors) — plan written, awaiting approval
-- [ ] Builder: merge Expected entries into Structure guide (18 steps, conflict flags) — preview
-- [ ] Public QR tournament page: once-per-browser info toast + compact "Open in SquashHub" panel replacing Exit/Log into App — preview
+- [x] Builder: merge Expected entries into Structure guide (18 steps, conflict flags) — preview
+- [x] Public QR tournament page: once-per-browser info toast + compact "Open in SquashHub" panel replacing Exit/Log into App — preview

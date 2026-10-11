@@ -1,12 +1,19 @@
-.draw-notice-modal {
+/* Doubled class beats the dialog's Tailwind `grid`/`max-w-lg`/`p-6` utilities regardless of stylesheet order. */
+.draw-notice-modal.draw-notice-modal {
   display: flex;
   flex-direction: column;
   gap: 0;
   width: calc(100% - 1rem);
   max-height: min(90vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem));
   max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem));
+  max-width: min(42rem, calc(100vw - 1rem));
+  min-height: 0;
   overflow: hidden;
   padding: 0;
+}
+@media (max-width: 480px) {
+  /* Very narrow screens: full-height sheet. */
+  .draw-notice-modal.draw-notice-modal { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
 }
 
 .draw-notice-modal-header {
@@ -24,7 +31,7 @@
   overflow: hidden;
 }
 
-.draw-notice-modal-body {
+.draw-notice-modal .draw-notice-modal-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -34,7 +41,12 @@
   overflow-wrap: anywhere;
 }
 
-.draw-notice-modal-footer {
+.draw-notice-modal .draw-notice-modal-footer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   flex: none;
   padding: .75rem 1rem;
   padding-bottom: max(.75rem, env(safe-area-inset-bottom, 0px));

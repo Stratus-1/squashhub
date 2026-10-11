@@ -2883,3 +2883,7 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 
 ### 2026-10-11 — Opponent contact sharing (preview)
 - Added opt-in person-level match contact preference (activation, Settings › Privacy & Contact Preferences, entry-form notice), per-fixture opponent contact in My games and ladder challenges, and send-time consent check in draw emails. No consents backfilled; `send-comms-campaign` change not yet deployed. League fixtures not covered (no per-player opponent before lineups).
+
+### 2026-10-11 — Draw notice modal still overflowed (second dialog)
+- Cause: the "Send draw to players" button on Generate draw & fixtures opened a SEPARATE legacy dialog in `StepGenerateDrawPanel.tsx` (plain DialogContent, "Not now"/"Send now", its own fee text) that never got the bounded layout; earlier fix only covered `DrawNoticeDialog`, and none of it was published. Also the shared CSS relied on stylesheet order against Tailwind's `grid`/`max-w-lg`/`p-6`.
+- Fix: legacy dialog uses the same header/scroll body/pinned footer classes; CSS uses doubled-class specificity, min-height:0, row footer, full-height sheet ≤480px. Browser regression: `scripts/e2e/check_draw_notice_modal.py` + harness `src/test/e2e/draw-modal-harness.tsx`.

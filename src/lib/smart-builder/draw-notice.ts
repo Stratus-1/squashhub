@@ -110,7 +110,9 @@ export async function loadDrawFeeContext(clubId: string, tournamentId: string, w
  */
 export function composeDrawNoticeVars(id: string, message: string, ctx: DetailContext, feeCtx: { fee: number; status: Record<string, { owes: boolean; outstanding: number }>; links: Record<string, string> } | null, tournamentId: string) {
   const st = feeCtx && feeCtx.fee > 0 ? feeCtx.status[id] : undefined;
-  const line = st ? (st.owes ? feeOutstandingLine(st.outstanding) : FEE_PAID_LINE) : "";
+  // Draw-readiness settlement is not receipt verification: waived/on-account and legacy paid
+  // flags have no verified receipt evidence in this context. Never claim money was received.
+  const line = st?.owes ? feeOutstandingLine(st.outstanding) : "";
   const text = line ? `${message.trim()}\n\n${line}` : message.trim();
   const items = matchDetailsFor(id, ctx);
   const detailsText = matchDetailsText(items);

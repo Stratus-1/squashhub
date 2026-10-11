@@ -2873,3 +2873,4 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 
 ### 2026-10-11 — Riverside club champs Men's A Swiss→QF config repair (Step 2, approved)
 - Live data only (audit_events f1e0308f-…): g1 deferred QF pairing later→seeded, SF later→winners, Final (vmv0p0b27-po3, 26 Nov, courts 20/21/26) added. Guarded on 40/40 completed Swiss games; Men's B/C/Ladies, games, results, fees untouched. QF stage NOT created, no draw generated.
+- 2026-10-11 follow-up: Check Draw blocked "finishing positions can only come from a pools / round robin stage… (Swiss rounds is swiss)". `contract.ts mappedIssues` now accepts a Swiss source (one standings table; engine already ranks Swiss via `rankSourcePools`), and `startMappedStage` refuses a Swiss source until all configured rounds are played. Dry run on live Men's A (writes blocked): check clean, 4 seeded QF games. Nothing committed.

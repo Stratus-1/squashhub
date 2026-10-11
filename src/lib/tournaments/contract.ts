@@ -482,9 +482,11 @@ function mappedIssues(s: PlannedStage, earlier: PlannedStage[]): string[] {
   } else {
     const src = earlier.find((x) => x.id === m.sourceStageId);
     if (!src) out.push(`${s.name}: its source stage must be an earlier stage of this division.`);
-    else if (src.kind !== "pools" && src.kind !== "round_robin" && !(src.kind === "mapped" && src.mapping?.source === "seed_pools"))
-      out.push(`${s.name}: finishing positions can only come from a pools / round robin stage or entry-seeded pool matchups (${src.name} is ${src.kind}).`);
-    else if (sourcePoolCount(src) !== m.pools) out.push(`${s.name}: ${src.name} has ${sourcePoolCount(src)} pools, the mapping uses ${m.pools}.`);
+    // Swiss is a valid source: the engine ranks it as ONE table by the shared Swiss order
+    // (wins → Buchholz → Sonneborn-Berger → seed) in rankSourcePools; pool rules stay unchanged.
+    else if (src.kind !== "pools" && src.kind !== "round_robin" && src.kind !== "swiss" && !(src.kind === "mapped" && src.mapping?.source === "seed_pools"))
+      out.push(`${s.name}: finishing positions can only come from a pools / round robin / Swiss stage or entry-seeded pool matchups (${src.name} is ${src.kind}).`);
+    else if (sourcePoolCount(src) !== m.pools) out.push(`${s.name}: ${src.name} has ${sourcePoolCount(src)} ${src.kind === "swiss" ? "standings table" : "pools"}, the mapping uses ${m.pools}.`);
   }
   return out;
 }

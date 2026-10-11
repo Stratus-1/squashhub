@@ -633,6 +633,7 @@ async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: Sp
   if (!src) throw new IntegrityError("mapping_source", `${st.name}: source stage not found.`);
   const done = existing.filter((f) => f.stageId === src.id);
   if (!done.length || !done.every(isDecided)) throw new IntegrityError("prereq", `${src.name} is not finished.`);
+  if (src.kind === "swiss" && Math.max(...done.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) throw new IntegrityError("prereq", `${src.name}: not all Swiss rounds are played yet.`);
   const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
   const positions = m.source === "stage_winners"
     ? [stageWinners(src, matches)]

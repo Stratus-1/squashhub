@@ -44,6 +44,7 @@ const STATE_LABEL: Record<ActivationState, string> = {
   family_login: "use a shared family login (normal link)",
   needs_activation: "need activation (personal link)",
   no_email: "have no usable email (no activation link — add an email first)",
+  guest: "are guests without a national player record (no activation link; needs the separate guest identity process)",
 };
 
 export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
@@ -96,7 +97,7 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds }: {
         <p className="text-muted-foreground">[Fee line and Pay my fee button when a fee is outstanding]</p>
         <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">View tournament & score match</span></p>
         {preview === "activation"
-          ? <><p>{value.activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p><p className="text-muted-foreground">Personal link, works once, expires in 14 days. Created only when the email is sent.</p></>
+          ? <><p>{value.activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p><p className="text-muted-foreground">Personal link to the player's own club account, works once, expires in 14 days. Created only when the email is sent; never joins them to the host club.</p></>
           : <p><span className="rounded border px-2 py-1">Log in to SquashHub</span></p>}
         <p className="text-muted-foreground">Preview only — nothing is sent.</p>
       </div>

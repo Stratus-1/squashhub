@@ -13,6 +13,7 @@ import {
 } from "./entrant-status";
 
 export interface EntryCountRowLike extends EntrantRowLike {
+  fee_status?: string | null;
   club_member_id?: string | null;
   partner_member_id?: string | null;
   status?: string | null;
@@ -22,7 +23,13 @@ export interface EntryCountRowLike extends EntrantRowLike {
 export interface EntryCounts {
   uniquePlayers: number;
   totalEntries: number;
+  /** Category entries whose fee is settled (paid, waived or charged to the member account). */
+  paidEntries?: number;
+  /** Category entries with a fee still owing (due / payment pending). */
+  outstandingEntries?: number;
 }
+
+const SETTLED_FEE = new Set(["paid", "waived", "on_account"]);
 
 
 
@@ -40,6 +47,8 @@ export function countEntries(
 ): EntryCounts {
   const players = new Set<string>();
   let totalEntries = 0;
+  let paidEntries = 0;
+  let outstandingEntries = 0;
   for (const row of rows || []) {
     // Only entrants who are actually in the tournament count. Invitations that
     // were never accepted, and cancellations, are not entries.
@@ -48,9 +57,15 @@ export function countEntries(
     const ids = [row.club_member_id, row.partner_member_id].filter(Boolean) as string[];
     if (ids.length === 0) continue;
     for (const id of ids) players.add(id);
-    totalEntries += divisions * ids.length;
+    const n = divisions * ids.length;
+    totalEntries += n;
+    // Payment is tracked per registration (one fee covers that row's categories);
+    // it never decides whether the entry counts.
+    const fee = String((row as any).fee_status || "").toLowerCase();
+    if (SETTLED_FEE.has(fee)) paidEntries += n;
+    else if (fee && fee !== "not_required") outstandingEntries += n;
   }
-  return { uniquePlayers: players.size, totalEntries };
+  return { uniquePlayers: players.size, totalEntries, paidEntries, outstandingEntries };
 }
 
 /**

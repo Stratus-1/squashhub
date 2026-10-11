@@ -408,7 +408,10 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   if (!srcDone.length || !srcDone.every(isDecided)) return notReady(`${src.name} is not finished.`);
   if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return notReady(`${src.name}: not all Swiss rounds are played yet.`);
   const cut = Math.max(0, ...transition.positions);
-  const standings = poolStandings(divisionKey, src.id, matches, cut, resolveTieBreaks(spec, d), spec.positionOrders?.[`${divisionKey}/${src.id}`], stage.name);
+  // A Swiss source seeds play-offs from the shared Swiss standings order, never the pool engine.
+  const standings: PoolStanding[] = src.kind === "swiss"
+    ? rankSourcePools(d, src, matches)[0].result.order.map((id, i) => ({ pool: 1, position: i + 1, id, divisionId: divisionKey }))
+    : poolStandings(divisionKey, src.id, matches, cut, resolveTieBreaks(spec, d), spec.positionOrders?.[`${divisionKey}/${src.id}`], stage.name);
   return previewPlayoffs(d, stageKey, standings, existing);
 }
 

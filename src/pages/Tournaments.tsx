@@ -556,16 +556,12 @@ export default function Tournaments() {
   // it here. Browser Back returns to this tab and shows the compact card
   // without re-navigating (no loop).
   const singleChampId = champs.length === 1 ? ((champs[0] as any).id as string) : null;
-  const [autoOpenedChamp, setAutoOpenedChamp] = useState<string | null>(null);
-  useEffect(() => {
-    if (!singleChampId || champTab !== "standings") return;
-    const key = `sh.autoOpenChamp.${singleChampId}`;
-    try {
-      if (sessionStorage.getItem(key) === "1") { setAutoOpenedChamp(singleChampId); return; }
-      sessionStorage.setItem(key, "1");
-    } catch { /* storage unavailable: still navigate once */ }
-    navigate(`/club-champs/${singleChampId}`);
-  }, [singleChampId, champTab, navigate]);
+  // Choosing Standings with exactly ONE current tournament opens that tournament's standings directly
+  // (a user action, so Back returns here on Current — no redirect loop). Several → cards; none → empty state.
+  const selectChampTab = (v: string) => {
+    if (v === "standings" && singleChampId) { navigate(`/club-champs/${singleChampId}?view=standings`); return; }
+    setChampTab(v);
+  };
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
@@ -1879,7 +1875,7 @@ export default function Tournaments() {
             No tournaments yet
           </Card>
         ) : (
-          <Tabs value={champTab} onValueChange={setChampTab} className="w-full">
+          <Tabs value={champTab} onValueChange={selectChampTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto gap-1 bg-muted p-1">
               <TabsTrigger
                 value="upcoming"
@@ -2254,13 +2250,6 @@ export default function Tournaments() {
                 </Card>
               )}
               {champs.map((champ: any) => {
-                if (champs.length === 1 && autoOpenedChamp !== champ.id) {
-                  return (
-                    <Card key={champ.id} className="p-6 text-center text-sm text-muted-foreground" role="status">
-                      <Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />Opening standings…
-                    </Card>
-                  );
-                }
                 return (
 
                   <Card key={champ.id}>

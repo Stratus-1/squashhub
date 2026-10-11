@@ -12631,6 +12631,39 @@ export type Database = {
         }
         Relationships: []
       }
+      opponent_contact_access_log: {
+        Row: {
+          at: string
+          channel: string
+          fixture_id: string
+          fixture_kind: string
+          id: string
+          opponent_member_id: string | null
+          revealed: boolean
+          viewer: string | null
+        }
+        Insert: {
+          at?: string
+          channel?: string
+          fixture_id: string
+          fixture_kind: string
+          id?: string
+          opponent_member_id?: string | null
+          revealed: boolean
+          viewer?: string | null
+        }
+        Update: {
+          at?: string
+          channel?: string
+          fixture_id?: string
+          fixture_kind?: string
+          id?: string
+          opponent_member_id?: string | null
+          revealed?: boolean
+          viewer?: string | null
+        }
+        Relationships: []
+      }
       organisation_admins: {
         Row: {
           active: boolean
@@ -13755,6 +13788,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      person_contact_sharing: {
+        Row: {
+          adult_confirmed: boolean
+          consented_at: string | null
+          guardian_confirmed_at: string | null
+          guardian_name: string | null
+          guardian_phone: string | null
+          person_id: string
+          share_with_opponents: boolean
+          source: string | null
+          updated_at: string
+          updated_by: string | null
+          withdrawn_at: string | null
+        }
+        Insert: {
+          adult_confirmed?: boolean
+          consented_at?: string | null
+          guardian_confirmed_at?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          person_id: string
+          share_with_opponents?: boolean
+          source?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          withdrawn_at?: string | null
+        }
+        Update: {
+          adult_confirmed?: boolean
+          consented_at?: string | null
+          guardian_confirmed_at?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          person_id?: string
+          share_with_opponents?: boolean
+          source?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_contact_sharing_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contact_sharing_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_contact_sharing_audit: {
+        Row: {
+          actor: string | null
+          at: string
+          guardian: boolean
+          id: string
+          person_id: string
+          share: boolean
+          source: string | null
+        }
+        Insert: {
+          actor?: string | null
+          at?: string
+          guardian?: boolean
+          id?: string
+          person_id: string
+          share: boolean
+          source?: string | null
+        }
+        Update: {
+          actor?: string | null
+          at?: string
+          guardian?: boolean
+          id?: string
+          person_id?: string
+          share?: boolean
+          source?: string | null
+        }
+        Relationships: []
       }
       platform_change_log: {
         Row: {
@@ -18489,6 +18609,22 @@ export type Database = {
         Args: { m: Database["public"]["Tables"]["club_champs_matches"]["Row"] }
         Returns: boolean
       }
+      _contact_fixture_opponents: {
+        Args: { p_fixture: string; p_kind: string; p_members: string[] }
+        Returns: {
+          member_id: string
+        }[]
+      }
+      _contact_my_member_ids: { Args: never; Returns: string[] }
+      _contact_person_age: { Args: { p_person: string }; Returns: number }
+      _contact_shareable: {
+        Args: { p_member: string }
+        Returns: {
+          guardian_name: string
+          is_guardian: boolean
+          phone: string
+        }[]
+      }
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
       _match_rollups_for_member: {
@@ -19635,6 +19771,15 @@ export type Database = {
           member_name: string
         }[]
       }
+      fixture_opponent_contacts_for_member: {
+        Args: { p_fixture_id: string; p_kind: string; p_recipient: string }
+        Returns: {
+          guardian_name: string
+          is_guardian: boolean
+          member_id: string
+          phone: string
+        }[]
+      }
       generate_all_clubs_renewal_invoices: { Args: never; Returns: Json }
       generate_club_association_invoice: {
         Args: { _club_id: string; _season_year: number }
@@ -19803,9 +19948,20 @@ export type Database = {
           club_id: string
         }[]
       }
+      get_contact_sharing: { Args: { p_member_id: string }; Returns: Json }
       get_doubles_pairing_state: {
         Args: { p_champ_id: string; p_token?: string; p_verify?: string }
         Returns: Json
+      }
+      get_fixture_opponent_contacts: {
+        Args: { p_fixture_id: string; p_kind: string }
+        Returns: {
+          guardian_name: string
+          is_guardian: boolean
+          member_id: string
+          name: string
+          phone: string
+        }[]
       }
       get_head_to_head: {
         Args: { limit_count?: number; target_user_id: string }
@@ -21318,6 +21474,18 @@ export type Database = {
       set_club_subscription_baseline_cycle: {
         Args: { _club_id: string; _cycle: string }
         Returns: undefined
+      }
+      set_contact_sharing: {
+        Args: {
+          p_adult_confirmed?: boolean
+          p_guardian_confirm?: boolean
+          p_guardian_name?: string
+          p_guardian_phone?: string
+          p_member_id: string
+          p_share: boolean
+          p_source?: string
+        }
+        Returns: Json
       }
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }

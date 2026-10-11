@@ -62,6 +62,7 @@ import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimina
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { AssignCourtsTimesButton } from "@/components/tournaments/AssignCourtsTimesButton";
 import { hasAssumptions, scheduleWithAssumptions } from "@/lib/tournaments/assumed-schedule";
+import { AssignStageSlotsDialog } from "@/components/tournaments/AssignStageSlotsDialog";
 import { involvesMe, selectMyFixtures } from "@/lib/tournaments/my-fixtures";
 import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
 
@@ -613,6 +614,7 @@ export default function Tournaments() {
   };
 
   const qc = useQueryClient();
+  const [assignFor, setAssignFor] = useState<{ champId: string; ids: string[] } | null>(null);
   useEffect(() => {
     if (!champIdsKey) return;
     const watchedChampIds = new Set(champIdsKey.split("|").filter(Boolean));
@@ -1042,6 +1044,9 @@ export default function Tournaments() {
                           onClick={async (e) => {
                             e.preventDefault(); e.stopPropagation();
                             try {
+                              // Structured stage games (Swiss→KO, RR→KO, play-offs…): preview the stage's own saved session first.
+                              const staged = unallocated.filter((m: any) => m.stage_key && !String(m.stage_key).startsWith("dl:"));
+                              if (staged.length && champIdsHere.length === 1) { setAssignFor({ champId: champIdsHere[0], ids: staged.map((m: any) => m.id) }); return; }
                               let booked = 0; const notes: string[] = [];
                               for (const id of champIdsHere) {
                                 // Weekend setups with Courts & Dates scheduling assumptions use that planner.
@@ -1860,6 +1865,8 @@ export default function Tournaments() {
     <div className="bottom-nav-safe">
       <SEO title="Tournaments" description="Club championships and internal leagues" path="/tournaments" noIndex />
       <PageHeader title="Tournaments" subtitle="Championships & internal leagues" />
+      <AssignStageSlotsDialog open={!!assignFor} champId={assignFor?.champId ?? null} matchIds={assignFor?.ids} onClose={() => setAssignFor(null)}
+        onDone={() => { qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] }); qc.invalidateQueries({ queryKey: ["timed-round-capacity"] }); }} />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 mb-20">
         {champsLoading ? (

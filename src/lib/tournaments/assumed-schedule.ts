@@ -194,10 +194,15 @@ export type AssumeLoad = {
   singles: number; doubles: number; rest: number; rules: CourtRule[]; clubId: string | null; name: string;
 };
 
-/** Is this a Step-by-Step tournament whose Courts & Dates carries scheduling assumptions? */
+/**
+ * Is this a whole-weekend Step-by-Step tournament planned from Courts & Dates? Needs saved days —
+ * `format_plan.scheduling` alone is also written by Stages & Scheduling ("Match time per slot"), and
+ * those tournaments must use their own stage sessions, never the weekend planner.
+ */
 export async function hasAssumptions(champId: string): Promise<boolean> {
   const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champId).maybeSingle();
-  return !!(data as any)?.beta_lifecycle?.format_plan?.scheduling;
+  const plan = (data as any)?.beta_lifecycle?.format_plan;
+  return !!plan?.scheduling && Array.isArray(plan?.days) && plan.days.length > 0;
 }
 
 export async function loadAssumed(champId: string): Promise<AssumeLoad> {

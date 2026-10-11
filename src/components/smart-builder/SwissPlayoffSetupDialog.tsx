@@ -12,6 +12,7 @@ import { inheritedStageScoring } from "@/lib/tournaments/stage-scoring";
 import { seededOrder } from "@/lib/tournaments/seeded-bracket";
 import { checkDeferredSetup, confirmNextStage, previewNextStage, setupDeferredStage, setupOk, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
 import { savedSwissPlayoff } from "./swiss-playoff-setup";
+import { PostDrawActions } from "./PostDrawActions";
 
 export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, division, source, exec, nameOf, onClose, onDone }: {
   champId: string; spec: TournamentSpec; status: StageStatus; tournament: any; division: SpecDivision; source: PlannedStage;
@@ -33,6 +34,7 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
   const [check, setCheck] = useState<SetupCheck | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [generated, setGenerated] = useState(false);
   const issues = [...saved.issues, ...("issue" in scoring ? [scoring.issue] : []), ...(error ? ["Could not read final Swiss standings. Try again before generating."] : [])];
   const setupMode = saved.mode === "setup";
   const setup: DeferredSetup | null = setupMode && saved.mapping
@@ -52,7 +54,7 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
         if (generate && setupOk(c)) {
           await setupDeferredStage(supabaseDb, champId, status.divisionKey, status.stageKey, setup, exec);
           toast.success(`${status.name} set up and draw generated`);
-          onDone();
+          setGenerated(true);
         }
       } catch (e) { setCheck({ structure: [], schedule: [], scoring: [], engine: [e instanceof Error ? e.message : "Draw check failed."] }); }
       finally { setBusy(false); setConfirming(false); }
@@ -72,12 +74,13 @@ export function SwissPlayoffSetupDialog({ champId, spec, status, tournament, div
       if (generate && setupOk(c)) {
         await confirmNextStage(supabaseDb, champId, status.divisionKey, status.stageKey, exec);
         toast.success(`${status.name} draw generated`);
-        onDone();
+        setGenerated(true);
       }
     } catch (e) { setCheck({ structure: [], schedule: [], scoring: [], engine: [e instanceof Error ? e.message : "Draw check failed."] }); }
     finally { setBusy(false); setConfirming(false); }
   };
   const unitName = (id: string) => id.split("+").map(nameOf).join(" & ");
+  if (generated) return <PostDrawActions champId={champId} stageKey={status.stageKey} stageName={status.name} groupNumber={divisionGroup(spec, division)} label={division.label} onFinished={onDone} />;
   const bracket = saved.top >= 2 && (saved.top & (saved.top - 1)) === 0 && !issues.length ? seededOrder(saved.top) : [];
   return <Dialog open onOpenChange={(open) => !open && onClose()}>
     <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto text-sm">

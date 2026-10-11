@@ -772,7 +772,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <DialogTitle>Send draw to players now?</DialogTitle>
             <DialogDescription>This wording goes to Round 1 players with a button to the tournament draw and match details. Nothing has been sent yet.</DialogDescription>
           </DialogHeader>
-          <DrawNoticeEditor notice={notice} disabled={sending} />
+          <DrawNoticeEditor notice={notice} disabled={sending} clubId={clubId} recipientIds={[...picked]} />
           <div className="space-y-2 text-sm">
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.app} onCheckedChange={(v) => setSendCh((c) => ({ ...c, app: !!v }))} />In-app</label>
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>

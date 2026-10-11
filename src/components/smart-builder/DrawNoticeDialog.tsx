@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { DrawNoticeEditor, useDrawNoticeSettings } from "./DrawNoticeEditor";
 import { drawNoticeKey, drawScopeTitle, loadDrawNoticeRecipients, recordDrawNotice, sendDrawNotice, type DrawScope } from "@/lib/smart-builder/draw-notice";
@@ -105,10 +105,10 @@ export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tourname
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="draw-notice-modal" aria-describedby="draw-notice-dialog-description">
+      <DialogContent className="draw-notice-modal">
         <DialogHeader className="draw-notice-modal-header border-b border-border bg-background">
           <DialogTitle>Send draw to players now?</DialogTitle>
-          <DialogDescription className="sr-only" id="draw-notice-dialog-description">Review the message and recipients. Nothing sends until you confirm.</DialogDescription>
+          <DialogDescription className="sr-only">Review the message and recipients. Nothing sends until you confirm.</DialogDescription>
         </DialogHeader>
         <DrawNoticeComposer active={open} clubId={clubId} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} sentBefore={sentBefore}
           modalLayout confirmSend introduction={<p className="text-sm text-muted-foreground">

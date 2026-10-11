@@ -27,7 +27,7 @@ export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: str
   for (const r of regs) {
     // Entered/registered is not paid: only a settled fee status (paid, waived, on account) counts.
     const paid = Number(r.fee_paid_cents ?? 0);
-    const settled = r.fee_status != null ? ["paid", "waived", "on_account"].includes(r.fee_status) : (!!r.paid_at || paid >= feeCents);
+    const settled = r.fee_status != null ? ["paid", "waived", "on_account", "not_required"].includes(r.fee_status) : (!!r.paid_at || paid >= feeCents);
     const owes = !settled;
     out[r.club_member_id] = { owes, outstanding: owes ? Math.max(feeCents - paid, 0) || feeCents : 0 };
   }

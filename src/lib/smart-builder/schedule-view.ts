@@ -82,3 +82,33 @@ export function calendarRows(stages: ViewStage[], statusOf: (id: string) => Stag
   }
   return [...by.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, entries]) => ({ date, entries: entries.sort((x, y) => (x.from || "").localeCompare(y.from || "")) }));
 }
+
+export type MatrixCell = { from: string; to: string; clash: string[]; shared: string[] } | null;
+export type RoundMatrix = { stageId: string; days: string[]; courts: string[]; cells: Record<string, Record<string, MatrixCell>>; first: string; last: string };
+
+/**
+ * One stage's planned reservations as a court × day grid (rows = courts, columns = dates).
+ * A cell lists the other stages reserving that court at an overlapping time on that date
+ * (clash = involves a main round, shared = playoff↔playoff). Planning only, never bookings.
+ */
+export function roundMatrix(s: ViewStage, all: ViewStage[]): RoundMatrix {
+  const days = stageDays(s).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const dates = [...new Set(days.map((d) => d.date))];
+  const courts = [...new Set(days.flatMap((d) => d.courtIds.map(String)))].sort((a, b) => (Number(a) - Number(b)) || a.localeCompare(b));
+  const cells: RoundMatrix["cells"] = {};
+  for (const c of courts) {
+    cells[c] = {};
+    for (const date of dates) {
+      const d = days.find((x) => x.date === date && x.courtIds.map(String).includes(c));
+      if (!d) { cells[c][date] = null; continue; }
+      const clash: string[] = []; const shared: string[] = [];
+      for (const o of all) {
+        if (o.id === s.id) continue;
+        if (!stageDays(o).some((e) => e.date === date && e.courtIds.map(String).includes(c) && d.from < e.to && e.from < d.to)) continue;
+        (s.phase === "playoff" && o.phase === "playoff" ? shared : clash).push(o.name);
+      }
+      cells[c][date] = { from: d.from, to: d.to, clash, shared };
+    }
+  }
+  return { stageId: s.id, days: dates, courts, cells, first: dates[0] ?? "", last: dates[dates.length - 1] ?? "" };
+}

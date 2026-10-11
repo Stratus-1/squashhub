@@ -38,3 +38,26 @@ describe("schedule view (presentation only)", () => {
     expect(rows[3].entries[0]).toMatchObject({ unit: "Men A", courtIds: ["c20", "c21", "c24"] });
   });
 });
+
+import { roundMatrix as rm } from "@/lib/smart-builder/schedule-view";
+describe("roundMatrix (court × day grid)", () => {
+  const day = (date: string) => ({ date, from: "18:00", to: "21:00", courtIds: ["1", "2", "3"] });
+  const r = (id: string, name: string, d: string[], phase: "main" | "playoff" = "main") => ({ id, name, unit: "", mode: "scheduled" as const, deadline: "", date: d[0], from: "18:00", to: "21:00", courtIds: ["1", "2", "3"], extraDays: d.slice(1).map(day), phase });
+  it("Round 1 Tue/Wed/Thu courts 1-3 18-21: 3x3 filled, no clash", () => {
+    const r1 = r("a", "Round 1", ["2026-10-13", "2026-10-14", "2026-10-15"]);
+    const r2 = r("b", "Round 2", ["2026-10-20", "2026-10-21", "2026-10-22"]);
+    const m = rm(r1, [r1, r2]);
+    expect(m.days).toEqual(["2026-10-13", "2026-10-14", "2026-10-15"]);
+    expect(m.courts).toEqual(["1", "2", "3"]);
+    expect(Object.values(m.cells).flatMap((x) => Object.values(x)).every((c) => c && c.from === "18:00" && c.to === "21:00" && !c.clash.length)).toBe(true);
+    expect(rm(r2, [r1, r2]).first).toBe("2026-10-20");
+  });
+  it("unallocated court is empty, clash only in the overlapping cell", () => {
+    const a = { ...r("a", "Round 1", ["2026-10-13", "2026-10-14"]), extraDays: [{ date: "2026-10-14", from: "18:00", to: "21:00", courtIds: ["1"] }] };
+    const b = { ...r("b", "Round 2", ["2026-10-14"]), courtIds: ["1"] };
+    const m = rm(a, [a, b]);
+    expect(m.cells["2"]["2026-10-14"]).toBeNull();
+    expect(m.cells["1"]["2026-10-14"]!.clash).toEqual(["Round 2"]);
+    expect(m.cells["1"]["2026-10-13"]!.clash).toEqual([]);
+  });
+});

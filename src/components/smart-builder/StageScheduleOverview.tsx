@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, CalendarDays, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { calendarRows, stageBadge, STATUS_LABEL, type StageStatus, type ViewStage } from "@/lib/smart-builder/schedule-view";
+import { calendarRows, roundMatrix, stageBadge, stageDays, STATUS_LABEL, type StageStatus, type ViewStage } from "@/lib/smart-builder/schedule-view";
 
 /** Token-based styling per status (blue reserved, green fits, amber warning, red clash). */
 export const STATUS_TONE: Record<StageStatus, string> = {
@@ -49,15 +49,19 @@ export function StageCardShell({ stage, index, title, unitLabel, summary, status
 type Props = {
   main: ViewStage[]; playoffs: ViewStage[]; statusOf: (id: string) => StageStatus;
   unitName: (k: string) => string; dayLabel: (d: string) => string; courtName: (id: string) => string; onJump: (id: string) => void;
+  /** Optional one-line capacity summary per stage (e.g. "18 matches / 27 slots"). */
+  capacityText?: (id: string) => string | null;
 };
 
 /** Timeline (R1 → … → Final) with an optional court-calendar view. Read-only. */
-export function StageScheduleOverview({ main, playoffs, statusOf, unitName, dayLabel, courtName, onJump }: Props) {
+export function StageScheduleOverview({ main, playoffs, statusOf, unitName, dayLabel, courtName, onJump, capacityText }: Props) {
   const [view, setView] = useState<"timeline" | "calendar">("timeline");
+  const [calMode, setCalMode] = useState<"round" | "date">("round");
   const all = [...main, ...playoffs];
   if (!all.length) return null;
   const when = (s: ViewStage) => s.mode === "scheduled" ? (s.date ? dayLabel(s.date) : "date not set") : s.mode === "play_by" ? (s.deadline ? `by ${dayLabel(s.deadline)}` : "deadline not set") : "decide later";
   const rows = calendarRows(all, statusOf);
+  const scheduled = all.filter((s) => stageDays(s).length > 0);
   const playBy = all.filter((s) => s.mode === "play_by");
   const chip = (s: ViewStage, i: number) => (
     <li key={s.id} className="flex min-w-0 items-center gap-1">
@@ -82,9 +86,64 @@ export function StageScheduleOverview({ main, playoffs, statusOf, unitName, dayL
       {view === "timeline" ? (
         <ol className="flex flex-wrap items-center gap-1.5">{all.map(chip)}</ol>
       ) : (
-        <div className="space-y-2" data-testid="court-calendar">
+        <div className="space-y-3" data-testid="court-calendar">
+          <div className="flex gap-1" role="group" aria-label="Calendar layout">
+            <Button type="button" size="sm" variant={calMode === "round" ? "secondary" : "ghost"} aria-pressed={calMode === "round"} onClick={() => setCalMode("round")} className="h-7 text-xs">By round</Button>
+            <Button type="button" size="sm" variant={calMode === "date" ? "secondary" : "ghost"} aria-pressed={calMode === "date"} onClick={() => setCalMode("date")} className="h-7 text-xs">By date</Button>
+          </div>
           {rows.length === 0 && <p className="text-xs text-muted-foreground">No scheduled dates with courts yet.</p>}
-          {rows.map((r) => (
+          {calMode === "round" ? scheduled.map((s) => {
+            const m = roundMatrix(s, all);
+            const st = statusOf(s.id);
+            const badge = s.phase === "playoff" ? stageBadge(s, 0) : stageBadge(s, main.indexOf(s));
+            const cap = capacityText?.(s.id);
+            return (
+              <div key={s.id} className={cn("rounded-xl border bg-card", st === "conflict" ? "border-destructive/60" : s.phase === "playoff" ? "border-primary/40" : "border-border")} data-testid="round-matrix">
+                <div className="flex items-start gap-3 border-b border-border p-3">
+                  <span aria-hidden className={cn("font-display text-3xl font-black leading-none tabular-nums", s.phase === "playoff" ? "text-warning" : "text-primary")}>{badge}</span>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button type="button" onClick={() => onJump(s.id)} className="text-left text-sm font-semibold underline-offset-2 hover:underline">{s.name}{s.unit ? <span className="font-normal text-muted-foreground"> · {unitName(s.unit)}</span> : null}</button>
+                      <StatusBadge status={st} />
+                    </div>
+                    <p className="text-xs text-muted-foreground" data-testid="round-matrix-summary">
+                      {m.first ? (m.first === m.last ? dayLabel(m.first) : `${dayLabel(m.first)} – ${dayLabel(m.last)}`) : "date not set"} · {m.days.length} {m.days.length === 1 ? "day" : "days"} · {m.courts.length} {m.courts.length === 1 ? "court" : "courts"}{cap ? ` · ${cap}` : ""}
+                    </p>
+                  </div>
+                </div>
+                {m.courts.length === 0 ? <p className="p-3 text-xs text-muted-foreground">No courts chosen yet.</p> : (
+                  <div className="overflow-x-auto p-2">
+                    <table className="w-full min-w-max border-separate border-spacing-1 text-xs">
+                      <thead><tr>
+                        <th scope="col" className="sticky left-0 bg-card px-2 py-1 text-left font-medium text-muted-foreground">Court</th>
+                        {m.days.map((d) => <th key={d} scope="col" className="whitespace-nowrap px-2 py-1 text-left font-semibold">{dayLabel(d)}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {m.courts.map((c) => (
+                          <tr key={c}>
+                            <th scope="row" className="sticky left-0 whitespace-nowrap bg-card px-2 py-1 text-left font-medium">{courtName(c)}</th>
+                            {m.days.map((d) => {
+                              const cell = m.cells[c][d];
+                              if (!cell) return <td key={d} className="rounded-md border border-dashed border-border px-2 py-1.5 text-center text-muted-foreground" aria-label={`${courtName(c)}, ${dayLabel(d)}: not planned`}>—</td>;
+                              const bad = cell.clash.length > 0;
+                              return (
+                                <td key={d} data-testid="matrix-cell" className={cn("whitespace-nowrap rounded-md border px-2 py-1.5 font-medium tabular-nums", bad ? STATUS_TONE.conflict : cell.shared.length ? STATUS_TONE.short : "border-primary bg-primary text-primary-foreground")}
+                                  aria-label={`${courtName(c)}, ${dayLabel(d)}: planned ${cell.from}–${cell.to}${bad ? `, clashes with ${cell.clash.join(", ")}` : cell.shared.length ? `, shares courts with ${cell.shared.join(", ")}` : ""}`}>
+                                  {cell.from || "?"}–{cell.to || "?"}
+                                  {bad && <span className="block text-[10px] font-normal">✕ clash: {cell.clash.join(", ")}</span>}
+                                  {!bad && cell.shared.length > 0 && <span className="block text-[10px] font-normal">shares: {cell.shared.join(", ")}</span>}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          }) : rows.map((r) => (
             <div key={r.date} className="rounded-lg border border-border">
               <div className="border-b border-border bg-muted/50 px-2 py-1 text-xs font-semibold">{dayLabel(r.date)}</div>
               <ul className="divide-y divide-border">
@@ -94,7 +153,6 @@ export function StageScheduleOverview({ main, playoffs, statusOf, unitName, dayL
                     <span className="tabular-nums text-muted-foreground">{e.from || "?"}–{e.to || "?"}</span>
                     <span className="flex flex-wrap items-center gap-1">
                       {e.courtIds.length === 0 ? <span className="text-muted-foreground">no courts</span> : e.courtIds.map((c) => <span key={c} className={cn("rounded border px-1.5 py-0.5", STATUS_TONE[e.status])}>{courtName(c)}</span>)}
-                      <StatusBadge status={e.status} />
                     </span>
                   </li>
                 ))}

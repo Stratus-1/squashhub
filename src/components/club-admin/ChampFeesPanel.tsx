@@ -88,47 +88,10 @@ export function ChampFeesPanel({ champId, clubId, entrants }: { champId: string;
         <p className="text-xs text-muted-foreground">Entries stay confirmed and draw-eligible when pay-before-entry is No. Nothing here sends messages.</p>
         {needsConfirm && <p className="rounded-md border border-dashed p-2 text-xs">Choose how the entry fee is charged in <b>Edit tournament setup → Fees & Payment</b>. Charges and approvals are blocked until then.</p>}
 
-        <section className="space-y-2">
-          <div className="font-semibold">1. Charge entry fees to member accounts</div>
-          <Button size="sm" variant="outline" onClick={loadPreview} disabled={busy || needsConfirm}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Preview charges"}</Button>
-          {preview && (
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline">{new Set(preview.map((r) => r.club_member_id)).size} people</Badge>
-                <Badge variant="outline">{preview.length} charge lines</Badge>
-                <Badge>Will charge {toCreate.length} · {rand(createTotal)}</Badge>
-                <Badge variant="secondary">Already charged {preview.filter((r) => r.action === "skip_existing").length}</Badge>
-                {blocked.length > 0 && <Badge variant="destructive">Blocked {blocked.length}</Badge>}
-                <Badge variant="outline">Shared email {preview.filter((r) => r.shared_email).length}</Badge>
-              </div>
-              <div className="max-h-64 overflow-y-auto rounded border">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted"><tr><th className="p-1 text-left">Member</th><th className="p-1">Cat.</th><th className="p-1 text-right">Amount</th><th className="p-1 text-left">Action</th></tr></thead>
-                  <tbody>{preview.map((r) => (
-                    <tr key={r.registration_id + (r.division ?? "")} className="border-t">
-                      <td className="p-1">{r.member_name}{r.shared_email && <span className="ml-1 text-muted-foreground">(shared email — separate account)</span>}</td>
-                      <td className="p-1 text-center">{r.division ?? "—"}</td>
-                      <td className="p-1 text-right">{rand(r.amount_cents)}</td>
-                      <td className="p-1">{ACTION_LABEL[r.action] ?? r.action}{r.existing_paid ? " · paid" : ""}</td>
-                    </tr>))}</tbody>
-                </table>
-              </div>
-              {toCreate.length > 0 && (
-                <div className="space-y-2 rounded-md border p-2">
-                  <label className="flex items-start gap-2 text-xs">
-                    <input type="checkbox" checked={confirmPost} onChange={(e) => setConfirmPost(e.target.checked)} />
-                    I approve posting {toCreate.length} charge{toCreate.length === 1 ? "" : "s"} totalling {rand(createTotal)} to individual member accounts. Nothing is marked paid.
-                  </label>
-                  <Button size="sm" onClick={post} disabled={!confirmPost || busy || blocked.length > 0}>Post charges</Button>
-                  {blocked.length > 0 && <p className="text-xs text-destructive">Resolve blocked rows first.</p>}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
+        <p className="text-xs text-muted-foreground">Each entry fee is charged to the member's own account when they enter, report a payment or pay by card; a verified payment then settles that charge once.</p>
 
         <section className="space-y-2">
-          <div className="font-semibold">2. Payments already made (offline reconciliation)</div>
+          <div className="font-semibold">1. Payments already made (offline reconciliation)</div>
           <div className="grid gap-2 sm:grid-cols-2">
             <select multiple className="h-28 rounded border bg-background p-1 text-xs" aria-label="Members covered" value={offline.memberIds}
               onChange={(e) => setOffline({ ...offline, memberIds: Array.from(e.target.selectedOptions).map((o) => o.value) })}>

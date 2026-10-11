@@ -174,6 +174,8 @@ export type CreateInput = {
   partnerPay?: boolean | null;
   /** Messaging step "Draw notifications": tell players their opponents + play-by date when each round/stage is drawn. undefined = leave as is. */
   drawNotify?: boolean;
+  /** Fees & Payment "How is the entry fee charged?". undefined = leave as is; basis null = needs confirmation. */
+  feeBasis?: { basis: "per_player" | "per_category" | null; mixedRule: "highest" | "first" | null };
 };
 
 /**
@@ -212,6 +214,14 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     const { data, error } = await fromExt("club_champs").insert({ ...row, status: "planning" }).select("id").single();
     if (error) throw error;
     tid = data.id as string;
+  }
+  if (i.feeBasis && i.feeBasis.basis) {
+    // Audited server setter; never touches posted charges.
+    const { data: cur } = await fromExt("tournaments").select("entry_fee_basis, entry_fee_mixed_rule").eq("id", tid).maybeSingle();
+    if ((cur as any)?.entry_fee_basis !== i.feeBasis.basis || ((cur as any)?.entry_fee_mixed_rule ?? null) !== i.feeBasis.mixedRule) {
+      const { error } = await (supabase as any).rpc("champ_set_entry_fee_basis", { p_champ: tid, p_basis: i.feeBasis.basis, p_mixed_rule: i.feeBasis.mixedRule });
+      if (error) throw error;
+    }
   }
   if (i.divisions?.length) {
     // league_match_types lives only on the base table (not the club_champs view).

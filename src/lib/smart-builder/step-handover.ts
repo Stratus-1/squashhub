@@ -176,7 +176,25 @@ export type CreateInput = {
   drawNotify?: boolean;
   /** Fees & Payment "How is the entry fee charged?". undefined = leave as is; basis null = needs confirmation. */
   feeBasis?: { basis: "per_player" | "per_category" | null; mixedRule: "highest" | "first" | null };
+  /** Per-tournament "Affect club ladder" opt-in. undefined = leave as is (existing tournaments). */
+  ladderAffects?: boolean;
 };
+
+/** Club-wide permission for tournament results to move the ladder (column default = allowed). */
+export function clubAllowsTournamentLadder(cfg: { ladder_from_tournaments?: boolean | null; is_active?: boolean | null } | null | undefined): boolean {
+  if (!cfg) return true;
+  return cfg.ladder_from_tournaments !== false;
+}
+
+/**
+ * tournaments.ladder_affects patch. New tournaments are explicitly OFF unless the organiser opted in;
+ * edits only write when the organiser touched the switch, so stored/legacy values are never rewritten.
+ */
+export function ladderAffectsPatch(value: boolean | undefined, isNew: boolean): { ladder_affects?: boolean } {
+  if (value !== undefined) return { ladder_affects: value === true };
+  return isNew ? { ladder_affects: false } : {};
+}
+
 
 /**
  * Create (or, when re-completing, update) the tournament record, then enter admin-picked
@@ -205,6 +223,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
       group_labels: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.label])),
     } : { num_groups: 1 }),
     description: "Set up with the Step-by-Step Beta builder.",
+    ...ladderAffectsPatch(i.ladderAffects, !i.existingId),
   });
   let tid = i.existingId ?? null;
   if (tid) {

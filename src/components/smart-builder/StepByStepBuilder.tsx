@@ -58,7 +58,7 @@ import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { FeeBasisQuestion } from "./FeeBasisQuestion";
-import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
+import { LIFECYCLE, clubAllowsTournamentLadder, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 import { StageCardShell, StageScheduleOverview } from "./StageScheduleOverview";
 import { courtOverlaps, stageStatus, type StageStatus } from "@/lib/smart-builder/schedule-view";
 
@@ -128,6 +128,9 @@ export type StepAnswers = {
   afterMatch?: { on: boolean | null; scope: "all" | "playoffs"; channels: string[] };
   /** Draw notifications (opponents, partner, phone numbers, play-by date) — default on. */
   drawNotify?: boolean;
+  /** Per-tournament "Affect club ladder" opt-in → tournaments.ladder_affects. Undefined = not touched
+   *  (new tournaments save false; existing ones keep their stored value). Club ladder settings still win. */
+  ladderAffects?: boolean;
   /** Structure guidance answers (advisory, planning only). */
   guide?: GuideAnswers;
   kind: Kind;
@@ -346,6 +349,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     })();
     return () => { live = false; };
   }, [hasLocalPlan, tournamentId, clubId]);
+  // Club-wide permission (ladder_configs.ladder_from_tournaments) and, when editing, the stored per-tournament value.
+  const [clubLadder, setClubLadder] = useState<{ allowed: boolean; stored: boolean | null | undefined }>({ allowed: true, stored: undefined });
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const [cfg, t] = await Promise.all([
+        fromExt("ladder_configs").select("ladder_from_tournaments, is_active").eq("club_id", clubId).maybeSingle().then((r: any) => r.data).catch(() => null),
+        tournamentId ? fromExt("tournaments").select("ladder_affects").eq("id", tournamentId).eq("club_id", clubId).maybeSingle().then((r: any) => r.data).catch(() => null) : Promise.resolve(null),
+      ]);
+      if (!live) return;
+      setClubLadder({ allowed: clubAllowsTournamentLadder(cfg), stored: t ? (t as any).ladder_affects ?? null : undefined });
+    })();
+    return () => { live = false; };
+  }, [clubId, tournamentId]);
   const [step, setStep] = useState(0);
   /** Stable id for this device-local plan, used to make court reservations idempotent. */
   useEffect(() => { if (!a.planId) setA((x) => ({ ...x, planId: x.planId ?? (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) })); }, [a.planId]);
@@ -1259,6 +1276,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         drawChannels: msg.channels.filter(chAvail),
         drawNotify: a.drawNotify !== false,
+        ladderAffects: a.ladderAffects,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         categoryTypes: units.map((u) => u.categoryType ?? "open"),
         divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
@@ -2485,6 +2503,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
               {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `group link configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div><div className="text-xs">Draw notifications: {a.drawNotify === false ? "Off" : "On (Round 1 and each later stage; all round booking dates listed when the draw is made upfront)"}</div><div className="text-xs">After-match notifications: {am.on === null ? "not set (existing default: email after every match)" : am.on ? `On · ${am.channels.filter((c) => chAvail(c as Channel)).map((c) => ({ in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" } as Record<string, string>)[c]).join(" + ") || "no channel"}${am.scope === "playoffs" ? " · playoffs only" : ""}` : "Off"}</div></SummaryRow>}
+              {(() => {
+                // Shown value: organiser's choice → stored value when editing → OFF for new tournaments.
+                const isNew = !a.createdTournamentId && !tournamentId;
+                const shown: boolean | null = a.ladderAffects ?? (isNew ? false : clubLadder.stored ?? null);
+                return (
+                  <div className="rounded-md border p-3 space-y-2" data-testid="ladder-affects-setting">
+                    <div className="flex items-center gap-2 text-sm font-medium"><Trophy className="h-4 w-4" /> Affect club ladder</div>
+                    {!clubLadder.allowed && <p className="text-xs text-muted-foreground">Your club's ladder settings don't let tournament results move the ladder, so this tournament can't move it either. Change that in the club ladder settings first.</p>}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Choice active={shown === false} onClick={() => setA({ ...a, ladderAffects: false })} title="No — leave the ladder alone" desc="Results count for this tournament only. The club ladder doesn't change." />
+                      <Choice active={shown === true} onClick={() => { if (clubLadder.allowed) setA({ ...a, ladderAffects: true }); }} title="Yes — results move the ladder" desc={clubLadder.allowed ? "Each confirmed singles result between two ranked club members moves the ladder, using the club's normal ladder rules and approval setting." : "Not available: the club ladder settings don't allow this."} />
+                    </div>
+                    {shown === null && <p className="text-xs text-muted-foreground">Currently: uses the club ladder setting ({clubLadder.allowed ? "results move the ladder" : "ladder not affected"}). Pick an option to set it for this tournament.</p>}
+                  </div>
+                );
+              })()}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}

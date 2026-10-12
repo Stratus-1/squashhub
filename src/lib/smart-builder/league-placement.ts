@@ -23,11 +23,21 @@ export function placeByLeague(args: {
   const mine = new Set(leaguesByMember.get(memberId) ?? []);
   if (mine.size === 0) return "";
   const gender = genderByMember.get(memberId) ?? null;
-  const hits = units.filter((u) => {
+  const leagueHits = units.filter((u) => {
     const e = eligOf(u.key);
-    if (e.mode !== "leagues" || !e.leagueIds.some((id) => mine.has(id))) return false;
-    const cat = u.categoryType ?? inferCategory(u.base);
+    return e.mode === "leagues" && e.leagueIds.some((id) => mine.has(id));
+  });
+  const catOf = (u: PlacementUnit) => u.categoryType ?? inferCategory(u.base);
+  // Preferred: the category's gender matches the player (or the category is open).
+  const preferred = leagueHits.filter((u) => {
+    const cat = catOf(u);
     return cat === "mens" || cat === "ladies" ? isPlayerEligibleForCategory(gender, cat) : true;
   });
-  return hits.length === 1 ? hits[0].key : "";
+  if (preferred.length === 1) return preferred[0].key;
+  if (preferred.length > 1) return "";
+  // Fallback: a woman whose only league match is a men's category plays in it
+  // (ladies enter men's leagues at several clubs). Men never fall back into ladies.
+  const female = gender?.toLowerCase().startsWith("f") ?? false;
+  const fallback = female ? leagueHits.filter((u) => catOf(u) === "mens") : [];
+  return fallback.length === 1 ? fallback[0].key : "";
 }

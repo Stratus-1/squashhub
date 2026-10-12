@@ -113,7 +113,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const champId = inlineStandings?.champ.id ?? (md?.kind === "tournament" ? md.competitionId : routeChampId);
   // Diamond League (team) tournaments show team standings only — the
   // per-player league tables don't apply. Shares DiamondStandings' cache key.
-  const { data: diamondEvent } = useQuery({
+  const { data: diamondEvent, isLoading: diamondLoading } = useQuery({
     queryKey: ["team-league-event-for-tournament", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("team_league_events").select("*").eq("tournament_id", champId!).maybeSingle();
@@ -2540,7 +2540,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
           );
         })()}
 
-        {groupNumbers.length === 0 && (
+        {groupNumbers.length === 0 && !diamondEvent && !(diamondLoading && !inlineStandings) && (
 
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>

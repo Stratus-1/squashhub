@@ -19,6 +19,8 @@ import { atomically } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
+import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { matchEntries, parseEntryCsv } from "@/lib/smart-builder/pick-import";
@@ -184,6 +186,8 @@ export type StepAnswers = {
   seedingOverrides: Record<string, SeedMethod>;
   /** Admin seed order per event on the Pick players board (device-local plan). */
   seedOrder?: Record<string, string[]>;
+  /** Players the organiser removed from Pick players; never auto-added back from an active entry. */
+  removedPicks?: string[];
   /** Players locked in place on the board — Refresh by ladder skips them. */
   lockedIds?: string[];
   /** Club Champs (over a period) only. */
@@ -709,7 +713,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       let picks = prev.picks; let changed = false;
       enteredPlaces.forEach((ks, id) => {
         // Only add people not yet picked; an organiser's own placement is never overridden by older saved entries.
-        if (id in picks) return;
+        if (!shouldAutoAdd(picks, prev.removedPicks, id)) return;
         picks = { ...picks, [id]: [] }; changed = true;
         ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
       });

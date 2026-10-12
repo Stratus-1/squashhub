@@ -142,8 +142,8 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         try {
           const j = await res.json();
-          const c = j?.error?.code ?? j?.code ?? j?.error ?? j?.reason;
-          if (typeof c === "string" && /^[A-Za-z0-9._:-]{1,64}$/.test(c)) reason = c;
+          const c = j?.error?.code ?? j?.error ?? j?.reason ?? j?.message ?? j?.error?.message;
+          if (typeof c === "string") reason = c.replace(/[^A-Za-z0-9 ._:-]/g, "").slice(0, 80);
         } catch { /* ignore */ }
       } else {
         await res.body?.cancel();

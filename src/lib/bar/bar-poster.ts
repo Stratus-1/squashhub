@@ -35,20 +35,33 @@ function payPhrase(o: BarPosterOptions, member: boolean): string {
   return `${opts.slice(0, -1).join(", ")} or ${opts[opts.length - 1]}`;
 }
 
-export async function loadImageAsDataUrl(src: string): Promise<string | null> {
+export async function loadImageAsDataUrlWithSize(src: string): Promise<LoadedImage | null> {
   try {
     const res = await fetch(src, { mode: "cors" });
     if (!res.ok) return null;
     const blob = await res.blob();
-    return await new Promise((resolve) => {
+    const dataUrl = await new Promise<string | null>((resolve) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
       r.onerror = () => resolve(null);
       r.readAsDataURL(blob);
     });
+    if (!dataUrl) return null;
+    const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      img.onerror = () => resolve({ w: 1, h: 1 });
+      img.src = dataUrl;
+    });
+    return { dataUrl, width: dims.w, height: dims.h };
   } catch {
     return null;
   }
+}
+
+export async function loadImageAsDataUrl(src: string): Promise<string | null> {
+  const l = await loadImageAsDataUrlWithSize(src);
+  return l?.dataUrl ?? null;
 }
 
 export function buildBarPoster(o: BarPosterOptions): jsPDF {

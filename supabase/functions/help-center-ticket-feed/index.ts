@@ -66,10 +66,10 @@ Deno.serve(async (req) => {
 
   // Fail closed until exact configuration exists.
   const ingressUrl = Deno.env.get("HELP_CENTER_INGRESS_URL") ?? "";
-  const hmacKey = Deno.env.get("HELP_CENTER_HMAC_KEY") ?? "";
+  const hmacKey = (Deno.env.get("HELP_CENTER_HMAC_KEY") ?? "").trim();
   const tenantScope = Deno.env.get("HELP_CENTER_TENANT_SCOPE") ?? "";
   const redactionPolicy = Deno.env.get("HELP_CENTER_REDACTION_POLICY") ?? "";
-  const keyId = Deno.env.get("HELP_CENTER_KEY_ID") ?? "";
+  const keyId = (Deno.env.get("HELP_CENTER_KEY_ID") ?? "").trim();
   const missing: string[] = [];
   const urlOk = ingressUrl === APPROVED_INGRESS_URL;
   if (!urlOk) missing.push("HELP_CENTER_INGRESS_URL");
@@ -138,10 +138,19 @@ Deno.serve(async (req) => {
         },
         body,
       }).finally(() => clearTimeout(t));
-      await res.body?.cancel();
+      let reason: string | undefined;
+      if (!res.ok) {
+        try {
+          const j = await res.json();
+          const c = j?.error?.code ?? j?.error ?? j?.reason ?? j?.message ?? j?.error?.message;
+          if (typeof c === "string") reason = c.replace(/[^A-Za-z0-9 ._:-]/g, "").slice(0, 80);
+        } catch { /* ignore */ }
+      } else {
+        await res.body?.cancel();
+      }
       const delivery = classifyDeliveryResponse(res.status);
       ok = delivery.ok;
-      errCode = delivery.errorCode;
+      errCode = delivery.errorCode && reason ? `${delivery.errorCode}:${reason}` : delivery.errorCode;
       maxAttempts = delivery.maxAttempts;
     } catch (e) {
       errCode = (e as Error)?.name === "AbortError" ? "timeout" : "network";

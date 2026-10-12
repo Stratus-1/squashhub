@@ -2909,3 +2909,7 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 ### 2026-10-12 — "This is not your game" alert scared players off
 - Cause: scoring a game you are not playing in was gated by a browser `window.confirm` reading "This is not your game. Are you sure you want to enter the result?" with generic OK/Cancel buttons, so players backed out instead of carrying on.
 - Fix (preview): new `src/components/tournaments/EnterResultConfirmDialog.tsx` asks "Do you want to enter the result for this game?", names the two sides, and offers "Yes, proceed" / "No, cancel". Wired into `Tournaments.tsx` and `ClubChampsView.tsx` (replacing both `window.confirm` calls); permission checks, trigger condition and the save path are unchanged. Tests: `src/test/enter-result-confirm.test.tsx`.
+
+### 2026-10-12 — Diamond League standings flashed "Registration pending"
+- Cause: ClubChampsView rendered the Registration pending card (no groups) before/while the Diamond event lookup loaded; Diamond events never have groups. 72 Diamond League 2026 registrations had registration_status=registered but legacy status=invited.
+- Fix: card hidden while the Diamond lookup loads and for Diamond events; other tournaments unchanged. Live data (user-requested): legacy status synced to `paid` (free-tournament convention) for the 72 registered rows; Andre Smith and Jacques Smith left Invited. No fees/fixtures/results changed; not published.

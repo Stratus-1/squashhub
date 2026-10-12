@@ -96,9 +96,15 @@ export async function generateClubQrPoster({
 }: PosterInput): Promise<void> {
   const qrDataUrl = await svgToPngDataUrl(svg);
   let logoDataUrl: string | undefined;
+  let logoW = 0;
+  let logoH = 0;
   if (logoUrl) {
     try {
-      logoDataUrl = await loadImageAsDataUrl(logoUrl);
+      const loaded = await loadImageAsDataUrlWithSize(logoUrl);
+      logoDataUrl = loaded.dataUrl;
+      const fit = fitBox(loaded.width, loaded.height, 17, 17);
+      logoW = fit.w;
+      logoH = fit.h;
     } catch {
       /* ignore logo load failures; poster still works without it */
     }

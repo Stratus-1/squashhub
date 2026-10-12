@@ -43,6 +43,8 @@ export type TeamLeagueConfig = {
    * with play days gets its own round-robin dates; missing = shared weekly dates.
    */
   divisionSchedules?: Record<string, DiamondDivisionSchedule>;
+  /** Optional week-1 pairings per division (team positions); later weeks follow automatically. */
+  firstWeekPairs?: Record<string, [number, number][]>;
 };
 export type DiamondDivisionSchedule = {
   /** Weekdays 0..6 (Sun..Sat) this division plays on. Empty = shared weekly dates. */
@@ -190,6 +192,35 @@ export function poolRounds(size: number): [number, number][][] {
   return rounds;
 }
 
+/** Is `pairs` a valid week-1 plan for a division of `size` (each team at most once, all paired except one bye when odd)? */
+export function validFirstWeek(size: number, pairs?: [number, number][]): boolean {
+  if (!pairs?.length) return false;
+  const seen = new Set<number>();
+  for (const [a, b] of pairs) {
+    if (a === b || a < 1 || b < 1 || a > size || b > size || seen.has(a) || seen.has(b)) return false;
+    seen.add(a); seen.add(b);
+  }
+  return pairs.length === Math.floor(size / 2);
+}
+
+/**
+ * Round robin whose first round is exactly `first`: the standard schedule is relabelled
+ * so its round 1 maps onto the chosen pairs, keeping every later round a valid round robin.
+ */
+export function poolRoundsWith(size: number, first?: [number, number][]): [number, number][][] {
+  const base = poolRounds(size);
+  if (!validFirstWeek(size, first) || !base.length) return base;
+  const map = new Map<number, number>();
+  base[0].forEach(([a, b], i) => { map.set(a, first![i][0]); map.set(b, first![i][1]); });
+  const used = new Set(map.values());
+  const freeTo = Array.from({ length: size }, (_, i) => i + 1).filter((x) => !used.has(x));
+  Array.from({ length: size }, (_, i) => i + 1).filter((x) => !map.has(x)).forEach((x, i) => map.set(x, freeTo[i]));
+  return base.map((round, r) => round.map(([a, b]) => {
+    const x = map.get(a)!, y = map.get(b)!;
+    return r === 0 ? [x, y] : (x < y ? [x, y] : [y, x]);
+  }));
+}
+
 /** Crossover semis for two pools of 4: A1vB2, A2vB1, A3vB4, A4vB3. */
 export const CROSSOVER: { match: number; a: number; b: number }[] = [
   { match: 1, a: 1, b: 2 },
@@ -283,10 +314,10 @@ export function divisionPlayDates(from: string, days: number[], count: number): 
  */
 export function buildPoolWeeks(
   teams: DiamondTeam[], dates: string[], courts: number,
-  opts: { schedules?: Record<string, DiamondDivisionSchedule>; startDate?: string } = {},
+  opts: { schedules?: Record<string, DiamondDivisionSchedule>; startDate?: string; firstWeek?: Record<string, [number, number][]> } = {},
 ): DiamondWeek[] {
   const pools = { A: teams.filter((team) => team.pool === "A"), B: teams.filter((team) => team.pool === "B") };
-  const rounds = { A: poolRounds(pools.A.length), B: poolRounds(pools.B.length) };
+  const rounds = { A: poolRoundsWith(pools.A.length, opts.firstWeek?.A), B: poolRoundsWith(pools.B.length, opts.firstWeek?.B) };
   const count = Math.max(rounds.A.length, rounds.B.length);
   const courtCount = Math.max(1, courts);
   const own = (["A", "B"] as const).reduce((acc, pool) => {

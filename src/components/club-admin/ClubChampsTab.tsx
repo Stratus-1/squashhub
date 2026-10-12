@@ -1764,7 +1764,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
    */
   /** Per-division week list (date + start time) exactly as set on the structure step. */
   const diamondDivisionNights = useMemo(() => {
-    const weeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], diamondDraft.config.courts, { schedules: diamondDraft.config.divisionSchedules });
+    const weeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], diamondDraft.config.courts, { schedules: diamondDraft.config.divisionSchedules, firstWeek: diamondDraft.config.firstWeekPairs });
     return (["A", "B"] as const).map((pool) => ({
       pool,
       nights: weeks.map((w) => {
@@ -3559,7 +3559,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const timingIssues = diamondConfigIssues(diamondDraft.config);
     if (timingIssues.length) throw new Error(timingIssues.join(" "));
     const configuredCourts = selectedCourtIds.size || diamondDraft.config.courts;
-    const poolWeeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts, { schedules: diamondDraft.config.divisionSchedules, startDate: startDate || undefined });
+    const poolWeeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts, { schedules: diamondDraft.config.divisionSchedules, startDate: startDate || undefined, firstWeek: diamondDraft.config.firstWeekPairs });
     // Preserve any knockout (semi/final) weeks already stored on the event —
     // the wizard only regenerates pool weeks and must never wipe them.
     let knockoutWeeks: any[] = [];
@@ -13979,6 +13979,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 <Separator />
                 <DiamondFixturesPreview
                   startDate={startDate}
+                  onFirstWeekChange={diamondDraft.started ? undefined : (fw) => setDiamondDraft((d) => ({ ...d, config: { ...d.config, firstWeekPairs: fw } }))}
                   draft={{ ...diamondDraft, config: { ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts } }}
                   nameOf={getMemberName}
                   courtName={(courtNumber) => {

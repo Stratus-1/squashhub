@@ -233,8 +233,8 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <StepGenerateDrawPanel clubId={clubId} tournamentId={tournamentId} revisiting={revisiting} onEditSetup={() => askEdit()}
             onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); setPendingTick((n) => n + 1); }} />
         )}
-        {diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}
-        {revisiting && diamond === false && <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
+        {shown === "generate" && diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}
+        {revisiting && shown === "generate" && diamond === false && <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
         {!revisiting && diamond === false && <StepKnockoutRoundsPanel tournamentId={tournamentId} plan={life?.format_plan as any} />}
         {!revisiting && (
           <StepRunOverview clubId={clubId} tournamentId={tournamentId} plan={life?.format_plan as any}

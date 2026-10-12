@@ -1540,14 +1540,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         <Button size="sm" variant="outline" className="whitespace-nowrap" onClick={() => { const n = { ...a.picks }; pickIds.forEach((id) => { if (placesFor(id).length === 0) { const k = autoPlace(id); n[id] = k ? [k] : []; } }); setA({ ...a, picks: n }); }}>Place by league</Button>)}
                       {units.some((u) => eligOf(u.key).mode === "leagues") && pickIds.length > 0 && (
                       <Button size="sm" variant="outline" className="whitespace-nowrap" title="Use after changing which leagues feed each category" onClick={() => {
-                        if (!window.confirm("Re-place every picked player by their current league? Events linked to leagues are replaced; other events (e.g. Ladies or open events) stay ticked.")) return;
+                        if (!window.confirm("Re-place every picked player by their current league? Only placements explained by the player's own league are updated; manually added categories (e.g. a lady also entering a men's category) stay ticked.")) return;
                         const leagueKeys = new Set(units.filter((u) => eligOf(u.key).mode === "leagues").map((u) => u.key));
                         const n = { ...a.picks }; let moved = 0;
                         pickIds.forEach((id) => {
                           const cur = placesFor(id); const k = autoPlace(id);
-                          const next = [...cur.filter((x) => !leagueKeys.has(x)), ...(k ? [k] : cur.filter((x) => leagueKeys.has(x)))];
-                          if (next.join("|") !== cur.join("|")) moved++;
-                          n[id] = [...new Set(next)];
+                          const mine = new Set(leaguesByMember.get(id) ?? []);
+                          // A tick is only re-placed when the player's own league actually feeds that
+                          // category; manually added cross-category entries (e.g. a lady in a men's
+                          // category while registered in a ladies league) are never league-explained
+                          // and always stay.
+                          const explained = (x: string) => (eligOf(x).leagueIds ?? []).some((lid) => mine.has(lid));
+                          const kept = cur.filter((x) => !leagueKeys.has(x) || !explained(x));
+                          const next = k ? [...kept, k] : [...kept, ...cur.filter((x) => leagueKeys.has(x) && explained(x))];
+                          const dedup = [...new Set(next)];
+                          if (dedup.join("|") !== cur.join("|")) moved++;
+                          n[id] = dedup;
                         });
                         setA({ ...a, picks: n }); toast.success(`${moved} player${moved === 1 ? "" : "s"} re-placed by league.`);
                       }}>Re-place all by league</Button>)}

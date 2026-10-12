@@ -111,7 +111,7 @@ export function gameCourtRules(groups: number[], prefs: SchedulingPrefs, keyOf: 
   return { only, preferred, onlyDays, preferredDays };
 }
 
-function pack(o: { games: PrefGame[]; days: PrefDay[]; step: number; busy: PrefBusy[]; prefs: SchedulingPrefs; keyOf: (g: number) => string | undefined; rest: number; softDays: boolean }) {
+function pack(o: { games: PrefGame[]; days: PrefDay[]; step: number; busy: PrefBusy[]; prefs: SchedulingPrefs; keyOf: (g: number) => string | undefined; rest: number; softDays: boolean; softCourts?: boolean }) {
   const queue = o.games.map((g, i) => ({ g, i, ...gameCourtRules(g.groups, o.prefs, o.keyOf) }));
   const reserved = new Set(o.prefs.courts === "category" ? o.prefs.categoryCourts.flatMap((r) => r.courtIds) : []);
   const last = new Map<string, { date: string; idx: number }>();
@@ -126,25 +126,36 @@ function pack(o: { games: PrefGame[]; days: PrefDay[]; step: number; busy: PrefB
       let free = d.courtIds.filter((c) => !o.busy.some((b) => b.date === d.date && b.courtId === c && toMin(b.start) < t + o.step && toMin(b.end) > t));
       available += free.length;
       const inWave = new Set<string>();
-      for (let i = 0; i < queue.length && free.length; ) {
-        const q = queue[i];
-        const ps = q.g.people;
-        if (ps.some((p) => inWave.has(p))) { i++; continue; }
-        if (q.onlyDays && !q.onlyDays.includes(wd)) { i++; continue; }
-        if (!o.softDays && q.preferredDays && !q.preferredDays.includes(wd)) { i++; continue; }
-        if (o.rest > 0 && ps.some((p) => { const l = last.get(p); return !!l && l.date === d.date && idx - l.idx <= o.rest; })) { i++; continue; }
-        const cands = q.only ? free.filter((c) => q.only!.includes(c)) : free;
-        if (!cands.length) { i++; continue; }
-        const score = (c: number) =>
-          (q.preferred.includes(c) ? 8 : 0) +
-          (o.prefs.courts === "rotate" ? ps.filter((p) => lastCourt.get(p) !== c).length : 0) +
-          (o.prefs.courts === "category" && !q.preferred.includes(c) && !reserved.has(c) ? 1 : 0);
-        const court = cands.reduce((best, c) => (score(c) > score(best) ? c : best), cands[0]);
+      // Who may use court c for queue item q in this wave. Pass 1: only games that chose c
+      // (required/preferred). Pass 2: anyone allowed — but a court another category chose is only
+      // lent out when no waiting game of that category could use it (guard), unless spilling.
+      const owns = (q: any, c: number) => (q.only ?? q.preferred).includes(c);
+      const blocked = (q: any) => q.g.people.some((p: string) => inWave.has(p))
+        || (q.onlyDays && !q.onlyDays.includes(wd))
+        || (!o.softDays && q.preferredDays && !q.preferredDays.includes(wd))
+        || (o.rest > 0 && q.g.people.some((p: string) => { const l = last.get(p); return !!l && l.date === d.date && idx - l.idx <= o.rest; }));
+      const place = (i: number, court: number) => {
+        const q = queue[i]; const ps = q.g.people;
         if (ps.some((p) => { const l = last.get(p); return !!l && l.date === d.date && l.idx === idx - 1; })) backToBack++;
         ps.forEach((p) => { inWave.add(p); last.set(p, { date: d.date, idx }); lastCourt.set(p, court); });
         free = free.filter((c) => c !== court);
         slots.push({ id: q.g.id, date: d.date, time: toHHMM(t), courtId: court, round: q.g.round });
         queue.splice(i, 1);
+      };
+      for (const pass of [1, 2]) {
+        for (let i = 0; i < queue.length && free.length; ) {
+          const q = queue[i];
+          if (blocked(q)) { i++; continue; }
+          let cands = q.only ? free.filter((c) => q.only!.includes(c)) : free;
+          if (pass === 1) cands = cands.filter((c) => owns(q, c));
+          else if (!o.softCourts) cands = cands.filter((c) => owns(q, c) || !reserved.has(c) || !queue.some((x) => x !== q && owns(x, c) && !blocked(x)));
+          if (!cands.length) { i++; continue; }
+          const score = (c: number) =>
+            (q.preferred.includes(c) ? 8 : 0) +
+            (o.prefs.courts === "rotate" ? q.g.people.filter((p) => lastCourt.get(p) !== c).length : 0) +
+            (o.prefs.courts === "category" && !q.preferred.includes(c) && !reserved.has(c) ? 1 : 0);
+          place(i, cands.reduce((best, c) => (score(c) > score(best) ? c : best), cands[0]));
+        }
       }
     }
   }
@@ -168,9 +179,14 @@ export function planPrefWaves(o: { games: PrefGame[]; days: PrefDay[]; minutes: 
   const hasPrefDays = o.prefs.courts === "category" && o.prefs.categoryCourts.some((r) => r.rule === "preferred" && (r.weekdays?.length ?? 0) > 0);
   // Preferred evenings: honour them as if required first; spill to other evenings only when needed.
   const run = (rest: number) => {
-    const strict = pack({ ...base, rest, softDays: false });
-    if (!strict.left.length || !hasPrefDays) return { ...strict, spilled: false };
-    return { ...pack({ ...base, rest, softDays: true }), spilled: true };
+    // Courts: keep chosen courts for their category first; lend them out only if needed to fit.
+    for (const softCourts of [false, true]) {
+      const strict = pack({ ...base, rest, softDays: false, softCourts });
+      if (!strict.left.length) return { ...strict, spilled: false };
+      if (hasPrefDays) { const soft = pack({ ...base, rest, softDays: true, softCourts }); if (!soft.left.length || softCourts) return { ...soft, spilled: true }; }
+      else if (softCourts) return { ...strict, spilled: false };
+    }
+    return { ...pack({ ...base, rest, softDays: true, softCourts: true }), spilled: true };
   };
   let res = run(o.prefs.rest === "avoid" ? 1 : hardRest);
   if (o.prefs.rest === "avoid") {

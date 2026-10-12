@@ -2440,6 +2440,15 @@ export default function Tournaments() {
         }}
       />
 
+      <EnterResultConfirmDialog
+        open={!!confirmResultMatch}
+        onOpenChange={(o) => { if (!o) setConfirmResultMatch(null); }}
+        playerAName={confirmResultMatch ? sideLabel(confirmResultMatch.player_a, confirmResultMatch.partner_a, confirmResultMatch.placeholder_a, (champById.get(confirmResultMatch.champ_id) as any)?.match_type === "doubles", confirmResultMatch) : ""}
+        playerBName={confirmResultMatch ? sideLabel(confirmResultMatch.player_b, confirmResultMatch.partner_b, confirmResultMatch.placeholder_b, (champById.get(confirmResultMatch.champ_id) as any)?.match_type === "doubles", confirmResultMatch) : ""}
+        onConfirm={() => { setResultMatch(confirmResultMatch); setConfirmResultMatch(null); }}
+      />
+
+
 
 
     </div>

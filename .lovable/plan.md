@@ -1,42 +1,49 @@
-# Opponent contact sharing (all clubs, preview only)
+# Rankings & Ratings step — ladder timing, approval mode and SquashHub rating
 
-## What I found
-- No screen shows opponent numbers today. That includes league games (Nelspruit too), ladder challenges, tournament My Games and draw emails. So there is no existing Nelspruit opponent-contact screen to copy. The closest pattern is the "Open your fixture in SquashHub" contact route in draw emails.
-- Consent today is one general "I accept the Terms and Privacy Policy" date, recorded at signup. Nothing records agreement to share a number with opponents.
-- Juniors: age is worked out from date of birth or SA ID, but there is no field for a parent or guardian's contact.
-- The Privacy page has a general children clause, but nothing about sharing numbers for matches.
+## What exists today (audit)
+- **Ladder participation (A):** `tournaments.ladder_affects` (old builder: inherit/yes/no; new builder: Yes/No switch added in preview, new = No). Club `ladder_configs.ladder_from_tournaments` is now the upper limit.
+- **Timing (B):** only "after each finalized match". A database rule fires the moment a singles game is marked finished. No round or end-of-tournament option exists.
+- **Mode (C):** club-wide only (`ladder_auto_apply`, ON at every club). OFF sends moves to an admin approval queue (`ladder_moves_pending`); approve/reject exists but does not record who approved or in what order the games were played.
+- **Order:** moves apply in result-entry order, not game date/time.
+- **Corrections:** changing a finished game's winner applies a new move and does **not** undo the original. Ranking points behave the same (duplicates prevented only for the identical winner/loser).
+- **Rating engine:** there is **no internal SquashHub rating**. The only "points" are club ranking points (`club_members.ranking_points`): tournament results create rows awaiting admin approval (158 waiting, never applied automatically). SportyHQ ratings are separate imported data and stay untouched.
 
-**Privacy conclusion:** the general signup acceptance does not cover showing members' numbers to opponents. Numbers will be shown only for players who have **actively said yes** to sharing. Everyone else stays hidden, along with existing members who haven't been asked yet. Nothing is backdated.
+## Recommended safe defaults
+- A: Off for new tournaments (already in preview); club permission always wins.
+- B: "When the tournament is completed" for multi-week events; "After each finalized match" stays available.
+- C: "Admin preview & approve" as default; "Automatic" optional.
+- Existing tournaments keep today's behaviour (per match, club mode) unless an admin explicitly changes them.
 
-## What players will see
-1. **Contact sharing choice** in Settings and in the tournament / league entry forms:
-   "Share my mobile number with my scheduled opponents so we can arrange matches." The default is OFF. A short notice explains that it's only for arranging matches and you can change it at any time.
-   - For juniors under 18, a parent or guardian enters their own name and mobile, ticks consent, and that number is shared instead. The child's number is never shown.
-2. **Opponent contact on my fixtures** (tournament My Games, league game details, ladder challenge card):
-   - If the opponent has said yes: their name, a mobile number you can tap to call, and a WhatsApp button. For juniors this shows "Parent/guardian: Name".
-   - If they haven't: "Contact via SquashHub" (current route) with no number.
-3. **Personal fixture emails and in-app notices**: the opponent's number is added only when that opponent has said yes and the email goes to the actual opponent in that game. The Player Notifications preview shows exactly the same thing.
-4. **Never shown:** public tournament/QR pages, public results, the TV display, member directories, the invite directory, or bulk exports.
-5. **Privacy page:** a new "Match contact sharing" section covering purpose, who can see your number, opt-in, how to withdraw, and how juniors are handled. Updated date.
+## Build plan (Riverside-only opt-in first, per pilot policy)
 
-## Safety checks
-- Numbers come only from a secure backend check that returns contact details for one game at a time, and only if you are a player (or linked family account) in that game, the game isn't finished or cancelled, and the opponent agreed.
-- The check is rate-limited per user and every lookup is logged (who, which game, when), not the number itself.
-- No change to who can see the existing member and profile records.
-- Withdrawing consent hides the number everywhere immediately.
+### 1. Settings (new builder "Rankings & Ratings" step)
+- Three clearly separate questions: A participate? B when? C automatic or approve?
+- B and C hidden/disabled when A = No or the club disallows; club limits shown.
+- Stored on the tournament: `ladder_timing` (match | round | completion, NULL = legacy per match) and `ladder_apply_mode` (auto | approve, NULL = club setting).
+- Also shown read-only on the old builder card so both builders agree.
 
-## Technical details
-- Migration: `member_contact_sharing` table (one row per person: `person_id`, `share_with_opponents`, `consented_at`, `withdrawn_at`, `guardian_name`, `guardian_phone`, `guardian_consented_at`, `source`), with RLS so you can manage only your own row or a linked family member's row; `opponent_contact_access_log`.
-- Security-definer RPC `get_fixture_opponent_contacts(p_kind 'champ'|'league'|'ladder', p_fixture_id)`: resolves caller's member ids via person link and family delegations, verifies participation, returns opponents' `{name, phone, is_guardian}` only where consent exists; minors (via DOB/SA ID age) return the guardian phone or nothing. Rate limit 60/hour.
-- Server-side email composer reads the same consent rule; `draw-match-details.ts` gains an optional `contact` per opponent, plus a test that it never appears without consent or for non-opponents.
-- Shared `OpponentContact` component used by Tournaments, MyChampionships, LeagueGameDetail and MyChallenges.
-- Consent UI: `ContactSharingCard` in Settings; a checkbox in `TournamentInviteRegisterDialog` and `LeagueSignup`.
-- Tests: consent off/on, withdrawn, junior with and without guardian, non-participant denied, finished game denied, public pages never call the RPC.
-- Record the rule in `src/lib/AGENTS.md`; add an issue-log entry.
+### 2. Ladder engine (one queue, applied in game order)
+- Every eligible finished singles result writes one **ledger row** per game (unique per game + version) instead of moving the ladder directly when timing ≠ match.
+- Milestone reached (round fully played / tournament completed) → batch is built and sorted by game date, then time, then game id.
+- Automatic: batch applied in that order. Approve: admin sees a preview (before/after ladder) and approves or rejects the whole batch or single moves; approver, time and order are recorded.
+- A game never applies twice (unique ledger key); a batch can only be applied once.
 
-## Not doing
-No live registration changes, no consent backfill, no notifications sent, no publish.
+### 3. Corrections and reversals
+- Correcting a game whose move is **not yet applied**: the ledger row is replaced, nothing to undo.
+- Correcting a game whose move **was applied**: a reversal row is recorded and the admin is asked to confirm a re-apply; ladder positions already changed are never silently rewritten. Historical positions before rollout are not touched.
+- The same reversal rule fixes today's per-match double-application for opted-in tournaments.
 
-## Please confirm
-- Junior age cut-off: under 18.
-- Should numbers stay visible after a game is completed (for reschedules or disputes), or be hidden? The plan hides them once the game is completed.
+### 4. SquashHub internal rating (separate engine)
+- New per-person rating (not SportyHQ, not official rankings), updated once per eligible verified match, regardless of the ladder switch.
+- Needs your decision on the formula (e.g. Elo-style with starting value and K-factor) and which matches count (tournament / league / challenge, singles only?).
+- One rating row per match (unique), corrections reverse and re-apply; never back-filled into historical data without approval.
+
+### 5. Safety and rollout
+- Kill switch: `NULL` settings = today's behaviour; a club-level flag enables the new engine for Riverside only.
+- Synthetic-player end-to-end tests in Riverside (multi-week, out-of-order entry, correction after apply, approve/reject), plus tests proving other clubs unchanged.
+- No publication, no live ladder changes, no messages until you sign off.
+
+## Decisions needed before building
+1. Approve this design for a Riverside-only pilot.
+2. Rating formula and which match types count.
+3. What to do now with the five running tournaments that inherit "move the ladder" (keep, or set to No).

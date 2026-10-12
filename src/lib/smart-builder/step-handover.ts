@@ -223,6 +223,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
       group_labels: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.label])),
     } : { num_groups: 1 }),
     description: "Set up with the Step-by-Step Beta builder.",
+    ...ladderAffectsPatch(i.ladderAffects, !i.existingId),
   });
   let tid = i.existingId ?? null;
   if (tid) {

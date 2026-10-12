@@ -128,6 +128,9 @@ export type StepAnswers = {
   afterMatch?: { on: boolean | null; scope: "all" | "playoffs"; channels: string[] };
   /** Draw notifications (opponents, partner, phone numbers, play-by date) — default on. */
   drawNotify?: boolean;
+  /** Per-tournament "Affect club ladder" opt-in → tournaments.ladder_affects. Undefined = not touched
+   *  (new tournaments save false; existing ones keep their stored value). Club ladder settings still win. */
+  ladderAffects?: boolean;
   /** Structure guidance answers (advisory, planning only). */
   guide?: GuideAnswers;
   kind: Kind;
@@ -346,6 +349,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     })();
     return () => { live = false; };
   }, [hasLocalPlan, tournamentId, clubId]);
+  // Club-wide permission (ladder_configs.ladder_from_tournaments) and, when editing, the stored per-tournament value.
+  const [clubLadder, setClubLadder] = useState<{ allowed: boolean; stored: boolean | null | undefined }>({ allowed: true, stored: undefined });
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const [cfg, t] = await Promise.all([
+        fromExt("ladder_configs").select("ladder_from_tournaments, is_active").eq("club_id", clubId).maybeSingle().then((r: any) => r.data).catch(() => null),
+        tournamentId ? fromExt("tournaments").select("ladder_affects").eq("id", tournamentId).eq("club_id", clubId).maybeSingle().then((r: any) => r.data).catch(() => null) : Promise.resolve(null),
+      ]);
+      if (!live) return;
+      setClubLadder({ allowed: clubAllowsTournamentLadder(cfg), stored: t ? (t as any).ladder_affects ?? null : undefined });
+    })();
+    return () => { live = false; };
+  }, [clubId, tournamentId]);
   const [step, setStep] = useState(0);
   /** Stable id for this device-local plan, used to make court reservations idempotent. */
   useEffect(() => { if (!a.planId) setA((x) => ({ ...x, planId: x.planId ?? (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) })); }, [a.planId]);

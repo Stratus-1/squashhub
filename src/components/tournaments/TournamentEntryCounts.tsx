@@ -42,6 +42,11 @@ export function TournamentEntryCounts({ champId, className }: Props) {
             <strong className="text-foreground">{data.outstandingEntries ?? 0}</strong> outstanding
           </>
         )}
+        {(data.invitedPlayers ?? 0) > 0 && (
+          <>
+            {" "}· <strong className="text-foreground">{data.invitedPlayers}</strong> invited
+          </>
+        )}
       </span>
     </p>
   );

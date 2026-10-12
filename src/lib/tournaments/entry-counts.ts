@@ -75,7 +75,7 @@ export function countEntries(
     if (SETTLED_FEE.has(fee)) paidEntries += n;
     else if (fee && fee !== "not_required") outstandingEntries += n;
   }
-  return { uniquePlayers: players.size, totalEntries, paidEntries, outstandingEntries };
+  return { uniquePlayers: players.size, totalEntries, paidEntries, outstandingEntries, invitedPlayers: invited.size };
 }
 
 /**

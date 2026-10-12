@@ -7,7 +7,11 @@ const reg = (id: string, divs: number[], fee: string, status = "registered") =>
 describe("entry counts are independent of payment", () => {
   it("pay-before-entry = No: unpaid organiser entries count, fee tracked separately", () => {
     const c = countEntries([reg("a", [1], "due"), reg("b", [3, 5], "due"), reg("c", [2], "paid")]);
-    expect(c).toEqual({ uniquePlayers: 3, totalEntries: 4, paidEntries: 1, outstandingEntries: 3 });
+    expect(c).toMatchObject({ uniquePlayers: 3, totalEntries: 4, paidEntries: 1, outstandingEntries: 3, invitedPlayers: 0 });
+  });
+  it("invited players are tracked separately so a card never reads 0 while invites are out", () => {
+    const c = countEntries([reg("a", [1], "not_required", "invited"), reg("b", [1], "not_required", "invited"), reg("c", [1], "not_required", "declined")]);
+    expect(c).toMatchObject({ uniquePlayers: 0, totalEntries: 0, invitedPlayers: 2 });
   });
   it("dual-category player = one person, two category entries", () => {
     const c = countEntries([reg("lady", [4, 5], "on_account")]);

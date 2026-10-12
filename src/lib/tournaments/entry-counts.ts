@@ -7,6 +7,7 @@
  *   • total entries  — one per player per division they entered
  */
 import {
+  classifyEntrant,
   isParticipatingEntrant,
   type EntrantContext,
   type EntrantRowLike,
@@ -27,6 +28,8 @@ export interface EntryCounts {
   paidEntries?: number;
   /** Category entries with a fee still owing (due / payment pending). */
   outstandingEntries?: number;
+  /** Players invited but not yet entered (no acceptance yet) — shown so a card never reads "0 players" while invites are out. */
+  invitedPlayers?: number;
 }
 
 const SETTLED_FEE = new Set(["paid", "waived", "on_account"]);
@@ -46,13 +49,20 @@ export function countEntries(
   ctx: EntrantContext = {},
 ): EntryCounts {
   const players = new Set<string>();
+  const invited = new Set<string>();
   let totalEntries = 0;
   let paidEntries = 0;
   let outstandingEntries = 0;
   for (const row of rows || []) {
     // Only entrants who are actually in the tournament count. Invitations that
-    // were never accepted, and cancellations, are not entries.
-    if (!isParticipatingEntrant(row, ctx)) continue;
+    // were never accepted, and cancellations, are not entries — but they are
+    // tracked separately so a card never reads "0 players" while invites are out.
+    if (!isParticipatingEntrant(row, ctx)) {
+      if (classifyEntrant(row, ctx) !== "declined") {
+        for (const id of [row.club_member_id, row.partner_member_id].filter(Boolean) as string[]) invited.add(id);
+      }
+      continue;
+    }
     const divisions = divisionCount(row);
     const ids = [row.club_member_id, row.partner_member_id].filter(Boolean) as string[];
     if (ids.length === 0) continue;
@@ -65,7 +75,7 @@ export function countEntries(
     if (SETTLED_FEE.has(fee)) paidEntries += n;
     else if (fee && fee !== "not_required") outstandingEntries += n;
   }
-  return { uniquePlayers: players.size, totalEntries, paidEntries, outstandingEntries };
+  return { uniquePlayers: players.size, totalEntries, paidEntries, outstandingEntries, invitedPlayers: invited.size };
 }
 
 /**

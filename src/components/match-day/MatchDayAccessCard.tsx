@@ -14,7 +14,7 @@ import { Copy, Loader2, Printer, QrCode, RefreshCw, Share2, ShieldOff, Smartphon
 import { toast } from "sonner";
 import { matchDayUrl, courtsUsed, type MatchDayKind } from "@/lib/match-day/access";
 import { useClubContext } from "@/contexts/ClubContext";
-import { loadImageAsDataUrl } from "@/lib/club-qr-poster";
+import { loadImageAsDataUrlWithSize, fitBox, type LoadedImage } from "@/lib/club-qr-poster";
 
 interface Props {
   kind: MatchDayKind;

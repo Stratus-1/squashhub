@@ -19,6 +19,8 @@ import { atomically } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
+import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { matchEntries, parseEntryCsv } from "@/lib/smart-builder/pick-import";
@@ -184,6 +186,8 @@ export type StepAnswers = {
   seedingOverrides: Record<string, SeedMethod>;
   /** Admin seed order per event on the Pick players board (device-local plan). */
   seedOrder?: Record<string, string[]>;
+  /** Players the organiser removed from Pick players; never auto-added back from an active entry. */
+  removedPicks?: string[];
   /** Players locked in place on the board — Refresh by ladder skips them. */
   lockedIds?: string[];
   /** Club Champs (over a period) only. */
@@ -709,7 +713,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       let picks = prev.picks; let changed = false;
       enteredPlaces.forEach((ks, id) => {
         // Only add people not yet picked; an organiser's own placement is never overridden by older saved entries.
-        if (id in picks) return;
+        if (!shouldAutoAdd(picks, prev.removedPicks, id)) return;
         picks = { ...picks, [id]: [] }; changed = true;
         ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
       });
@@ -1197,7 +1201,47 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [completeErr, setCompleteErr] = useState<string | null>(null);
   const conflicts = setupConflicts(a);
   const setupComplete = steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
-  const completeSetup = async () => {
+  // ---- Pick players: explicit save state + safe removal ----
+  const curPickSig = picksSignature(a.picks, a.removedPicks);
+  const [savedPickSig, setSavedPickSig] = useState<string | null>(null);
+  useEffect(() => { if (serverReady && savedPickSig === null) setSavedPickSig(curPickSig); }, [serverReady, savedPickSig, curPickSig]);
+  const playersUnsaved = !!a.createdTournamentId && savedPickSig !== null && savedPickSig !== curPickSig;
+  useEffect(() => {
+    if (!playersUnsaved) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [playersUnsaved]);
+  const [savingPlayers, setSavingPlayers] = useState(false);
+  const [removeAsk, setRemoveAsk] = useState<{ id: string; unplayed: number } | null>(null);
+  const doRemove = (id: string) => setA((prev) => ({ ...prev, ...removePick(prev.picks, prev.removedPicks, id) }));
+  const requestRemove = async (id: string) => {
+    const tid = a.createdTournamentId;
+    if (!tid) { doRemove(id); return; }
+    const or = ["player_a_member_id", "player_b_member_id", "partner_a_member_id", "partner_b_member_id"].map((c) => `${c}.eq.${id}`).join(",");
+    const { data, error } = await (supabase as any).from("club_champs_matches").select("status, winner_member_id, score, is_bye").eq("champ_id", tid).or(or);
+    if (error) { toast.error("Couldn't check this player's games — nothing was removed."); return; }
+    const imp = removalImpact(data ?? []);
+    if (imp.kind === "played") { toast.error(`${memberName(id)} already has ${imp.played} game${imp.played === 1 ? "" : "s"} with results, so they can't be removed. Use Pull out in Registrations instead.`); return; }
+    if (imp.kind === "unplayed") { setRemoveAsk({ id, unplayed: imp.unplayed }); return; }
+    doRemove(id);
+  };
+  const savePlayers = async () => {
+    const tid = a.createdTournamentId; if (!tid) return;
+    setSavingPlayers(true);
+    try {
+      if (setupComplete) { await completeSetup(true); }
+      else {
+        const life = await loadLifecycle(tid).catch(() => null);
+        await saveLifecycle(tid, { ...(life ?? {}), answers: JSON.parse(JSON.stringify(a)) });
+        toast.message("Player list saved. Entries update when you finish the remaining setup steps.");
+      }
+      setSavedPickSig(curPickSig);
+      if (setupComplete) toast.success("Players saved.");
+    } catch (e: any) { toast.error(e?.message || "Save failed — nothing was changed."); }
+    finally { setSavingPlayers(false); }
+  };
+  const completeSetup = async (stay = false) => {
     setCompleting(true); setCompleteErr(null);
     try {
       const dates = a.days.map((d) => d.date).filter(Boolean).sort();
@@ -1233,7 +1277,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       localStorage.setItem(tournamentKey(tid), JSON.stringify(nextA));
       if (!tournamentId) { clearDraft(clubId); setKey(tournamentKey(tid)); }
       setA(nextA);
-      onCompleted?.(tid);
+      if (!stay) onCompleted?.(tid);
     } catch (e: any) {
       setCompleteErr(e?.message || "Something went wrong — nothing was changed.");
     } finally { setCompleting(false); }
@@ -1251,7 +1295,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             : `Finish: ${steps.slice(0, -1).filter((k) => !okFor[k]).map((k) => STEP_LABEL[k]).join(", ")}`}</div>
         </div>
         {conflicts.length > 0 && <div className="w-full"><ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} /></div>}
-        <div className="flex gap-2">{where === "top" && <SaveAsTemplateButton clubId={clubId} answers={a} />}<Button size="sm" disabled={!setupComplete || completing} onClick={completeSetup}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button></div>
+        <div className="flex gap-2">{where === "top" && <SaveAsTemplateButton clubId={clubId} answers={a} />}<Button size="sm" disabled={!setupComplete || completing} onClick={() => completeSetup()}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button></div>
       </div>
       {where === "top" && deferred.length > 0 && (
         <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
@@ -1496,6 +1540,26 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
 
           {cur === "Pick" && (
             <>
+              <AlertDialog open={!!removeAsk} onOpenChange={(o) => { if (!o) setRemoveAsk(null); }}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove {removeAsk ? memberName(removeAsk.id) : ""}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This player already has {removeAsk?.unplayed} unplayed game{removeAsk?.unplayed === 1 ? "" : "s"} in the current draw. Removing them from the list does not change those games — you will need to cancel the draw and redraw before the draw matches the player list.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep player</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { if (removeAsk) doRemove(removeAsk.id); setRemoveAsk(null); }}>Remove (redraw needed)</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              {a.createdTournamentId && (
+                <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2 text-xs", playersUnsaved ? "border-destructive/50 bg-destructive/10" : "border-border")} data-testid="players-save-bar">
+                  <span className="font-medium">{playersUnsaved ? "Unsaved changes to the player list" : "Player list saved"}</span>
+                  <Button size="sm" disabled={!playersUnsaved || savingPlayers} onClick={() => void savePlayers()}>{savingPlayers ? "Saving…" : "Save players"}</Button>
+                </div>
+              )}
               <Q t={pairMode ? "Select & pair your players" : !showPick ? "Allocate your players" : "Pick / allocate your players"} h={pairMode ? "Tap a member to add them and choose where they play. In doubles groups where you assign partners, pair them up right here." : "Tap a member to add them, then choose where each one plays."} />
               {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}{pairMode ? ` (${entryCount} entr${entryCount === 1 ? "y" : "ies"} — each pair counts as one)` : ""}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
               {!showPick && <div className="text-xs text-muted-foreground">Players enter themselves. Everyone who has entered appears here, so you can allocate them to categories and set the seeding.</div>}
@@ -1524,7 +1588,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
                     {rows.map(({ m, ok }) => (
                       <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
-                        onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] } }); }}>
+                        onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] }, removedPicks: unmarkRemoved(a.removedPicks, m.id) }); }}>
                         <span>{m.name}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
                       </button>
                     ))}
@@ -1659,7 +1723,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
                                       <Button type="button" size="sm" variant="ghost" aria-pressed={lockedSet.has(id)} aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Locked — click to unlock this player only" : "Unlocked — click to lock this player's ladder-refresh position"} className={cn("h-auto min-h-0 shrink-0 gap-1 rounded px-1 py-0.5 text-[10px]", lockedSet.has(id) ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <><Lock className="h-3.5 w-3.5" /><span>Locked</span></> : <LockOpen className="h-3.5 w-3.5" />}</Button>
-                                      <button type="button" aria-label={c.key ? `Remove ${memberName(id)} from ${c.label}` : `Remove ${memberName(id)}`} title={c.key ? `Remove from ${c.label}${mine.length <= 1 ? " (goes to Not placed)" : ""}` : "Remove this player from the tournament list"} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { if (c.key) { move(id, c.key, ""); return; } const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>
+                                      <button type="button" aria-label={c.key ? `Remove ${memberName(id)} from ${c.label}` : `Remove ${memberName(id)}`} title={c.key ? `Remove from ${c.label}${mine.length <= 1 ? " (goes to Not placed)" : ""}` : "Remove this player from the tournament list"} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { if (c.key) { move(id, c.key, ""); return; } void requestRemove(id); }}><Trash2 className="h-3.5 w-3.5" /></button>
                                     </div>
                                   </li>);
                               })}

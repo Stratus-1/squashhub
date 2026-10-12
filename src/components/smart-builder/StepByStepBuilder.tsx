@@ -1277,7 +1277,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       localStorage.setItem(tournamentKey(tid), JSON.stringify(nextA));
       if (!tournamentId) { clearDraft(clubId); setKey(tournamentKey(tid)); }
       setA(nextA);
-      onCompleted?.(tid);
+      if (!stay) onCompleted?.(tid);
     } catch (e: any) {
       setCompleteErr(e?.message || "Something went wrong — nothing was changed.");
     } finally { setCompleting(false); }
@@ -1295,7 +1295,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             : `Finish: ${steps.slice(0, -1).filter((k) => !okFor[k]).map((k) => STEP_LABEL[k]).join(", ")}`}</div>
         </div>
         {conflicts.length > 0 && <div className="w-full"><ConflictPanel conflicts={conflicts} onResolve={(c, pick) => setA(resolveConflict(a, c, pick) as StepAnswers)} /></div>}
-        <div className="flex gap-2">{where === "top" && <SaveAsTemplateButton clubId={clubId} answers={a} />}<Button size="sm" disabled={!setupComplete || completing} onClick={completeSetup}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button></div>
+        <div className="flex gap-2">{where === "top" && <SaveAsTemplateButton clubId={clubId} answers={a} />}<Button size="sm" disabled={!setupComplete || completing} onClick={() => completeSetup()}>{completing ? "Saving…" : a.createdTournamentId ? "Save setup & return to management" : "Complete setup & continue"}<ChevronRight className="ml-1 h-4 w-4" /></Button></div>
       </div>
       {where === "top" && deferred.length > 0 && (
         <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
@@ -1568,7 +1568,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   <div className="max-h-72 space-y-1 overflow-auto rounded-lg border border-border p-2">
                     {rows.map(({ m, ok }) => (
                       <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
-                        onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] } }); }}>
+                        onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] }, removedPicks: unmarkRemoved(a.removedPicks, m.id) }); }}>
                         <span>{m.name}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
                       </button>
                     ))}
@@ -1703,7 +1703,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
                                       <Button type="button" size="sm" variant="ghost" aria-pressed={lockedSet.has(id)} aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Locked — click to unlock this player only" : "Unlocked — click to lock this player's ladder-refresh position"} className={cn("h-auto min-h-0 shrink-0 gap-1 rounded px-1 py-0.5 text-[10px]", lockedSet.has(id) ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <><Lock className="h-3.5 w-3.5" /><span>Locked</span></> : <LockOpen className="h-3.5 w-3.5" />}</Button>
-                                      <button type="button" aria-label={c.key ? `Remove ${memberName(id)} from ${c.label}` : `Remove ${memberName(id)}`} title={c.key ? `Remove from ${c.label}${mine.length <= 1 ? " (goes to Not placed)" : ""}` : "Remove this player from the tournament list"} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { if (c.key) { move(id, c.key, ""); return; } const n = { ...a.picks }; delete n[id]; setA({ ...a, picks: n }); }}><Trash2 className="h-3.5 w-3.5" /></button>
+                                      <button type="button" aria-label={c.key ? `Remove ${memberName(id)} from ${c.label}` : `Remove ${memberName(id)}`} title={c.key ? `Remove from ${c.label}${mine.length <= 1 ? " (goes to Not placed)" : ""}` : "Remove this player from the tournament list"} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => { if (c.key) { move(id, c.key, ""); return; } void requestRemove(id); }}><Trash2 className="h-3.5 w-3.5" /></button>
                                     </div>
                                   </li>);
                               })}

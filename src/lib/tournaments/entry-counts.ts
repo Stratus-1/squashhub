@@ -7,6 +7,7 @@
  *   • total entries  — one per player per division they entered
  */
 import {
+  classifyEntrant,
   isParticipatingEntrant,
   type EntrantContext,
   type EntrantRowLike,
@@ -27,6 +28,8 @@ export interface EntryCounts {
   paidEntries?: number;
   /** Category entries with a fee still owing (due / payment pending). */
   outstandingEntries?: number;
+  /** Players invited but not yet entered (no acceptance yet) — shown so a card never reads "0 players" while invites are out. */
+  invitedPlayers?: number;
 }
 
 const SETTLED_FEE = new Set(["paid", "waived", "on_account"]);

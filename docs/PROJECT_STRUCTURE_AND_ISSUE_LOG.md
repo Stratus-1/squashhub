@@ -1,3 +1,9 @@
+### 2026-10-12 — Blocked Invite / Inform actions lacked a visible explanation
+- **Symptom:** Invite players was disabled with only a tooltip; blocked Inform mode showed no controls or explanation.
+- **Finding:** Removing the global deferred-decisions callout also removed the only actionable explanation on the Invite stage. Later-stage decisions are not invitation blockers.
+- **Fix:** Restore a visible alert listing each invitation blocker and its reason, with "Decide now in setup" using the existing guarded edit action, only when the displayed stage is Invite / Inform. Keep the callout absent on Generate and running views, as requested on 10 October; finalise validation is unchanged.
+- **Guard:** Component regressions cover blocked and unblocked Invite/Inform modes, later-stage-only decisions, Generate without the callout, and revisiting Invite with the existing downstream edit confirmation. Presentation only; no messages, data changes, or publication.
+
 ### 2026-10-11 — Tournament administration light-mode hierarchy
 - **Finding:** Shared light surfaces and borders did not distinguish workflow navigation, primary content and notification wording from preview.
 - **Presentation fix:** Explicit tournament-admin roots, light-only semantic canvas/panel/inset/contrast tokens, blue current and green validated steps, highlighted existing next action, and separate notification editor/preview regions (desktop columns, mobile stack). Both notification portal entry points retain the bounded single-scroll layout. Dark surfaces, lifecycle/action derivation and all data operations remain unchanged.

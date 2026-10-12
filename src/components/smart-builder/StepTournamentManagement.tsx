@@ -170,13 +170,22 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <div className="text-base font-semibold">{next.title}</div>
           <p className="text-sm text-muted-foreground">{next.detail}</p>
         </div>}
-        {shown === "invite" && h.mode === "inform" && life && blockersFor(h, "invite").length === 0 && (
+        {shown === "invite" && blockers.length > 0 && (
+          <div role="alert" className="space-y-2 rounded border border-destructive/50 bg-destructive/10 p-3 text-sm">
+            <div className="font-semibold">Decide these first (you chose "Decide later")</div>
+            <ul className="list-disc space-y-1 pl-5">
+              {blockers.map((d) => <li key={d.id}><span className="font-medium">{d.label}</span>: {d.why}</li>)}
+            </ul>
+            <Button size="sm" variant="outline" onClick={() => askEdit()}>Decide now in setup</Button>
+          </div>
+        )}
+        {shown === "invite" && h.mode === "inform" && life && blockers.length === 0 && (
           <StepInformPanel h={h} lifecycle={life} onLifecycle={setLifecycle} onAddGroup={() => askEdit("Messaging")} />
         )}
       {shown === "invite" && h.mode !== "inform" && (
         <>
           {!open
-            ? <Button disabled={blockersFor(h, "invite").length > 0} title={blockersFor(h, "invite").map((d) => `${d.label}: ${d.why}`).join("\n")} onClick={() => setOpen(true)}>Invite players<ChevronRight className="ml-1 h-4 w-4" /></Button>
+            ? <Button disabled={blockers.length > 0} title={blockers.map((d) => `${d.label}: ${d.why}`).join("\n")} onClick={() => setOpen(true)}>Invite players<ChevronRight className="ml-1 h-4 w-4" /></Button>
             : <StepInvitePanel h={h} lifecycle={life} onLifecycle={setLifecycle} onSent={reloadRegs} />}
         </>
       )}

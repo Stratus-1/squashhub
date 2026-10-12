@@ -2905,3 +2905,7 @@ send-platform-update filtered club_members by ~800 club IDs, overflowing the req
 
 ### 2026-10-11 — Tournament entry card trusted the "on account" flag alone
 Riverside Willem R34 entry showed "charged to member account" from `fee_settled_via` only; linked charge (fee_payment_id) is R100, listed unpaid, though the ledger holds a matching R100 bank receipt. Fix (preview): `src/lib/tournaments/entry-fee-state.ts` derives state from entry + linked charge; card shows charge amount/mismatch, "no matching charge" when unbacked, hides "I've already paid" unless genuinely unpaid, refreshes the charge with the entry. No data changed.
+
+### 2026-10-12 — "This is not your game" alert scared players off
+- Cause: scoring a game you are not playing in was gated by a browser `window.confirm` reading "This is not your game. Are you sure you want to enter the result?" with generic OK/Cancel buttons, so players backed out instead of carrying on.
+- Fix (preview): new `src/components/tournaments/EnterResultConfirmDialog.tsx` asks "Do you want to enter the result for this game?", names the two sides, and offers "Yes, proceed" / "No, cancel". Wired into `Tournaments.tsx` and `ClubChampsView.tsx` (replacing both `window.confirm` calls); permission checks, trigger condition and the save path are unchanged. Tests: `src/test/enter-result-confirm.test.tsx`.

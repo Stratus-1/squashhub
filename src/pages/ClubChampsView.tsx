@@ -53,6 +53,7 @@ import { assignFixedSlots, isPlayoffGame, playoffDeadline, playoffKeyForLabel, p
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { EnterResultConfirmDialog } from "@/components/tournaments/EnterResultConfirmDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { isParticipant } from "@/lib/tournaments/self-schedule";
 import { looksLikePhone } from "@/lib/member-display";
@@ -1552,6 +1553,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const [resultMatch, setResultMatch] = useState<any | null>(null);
+  // Game the player is being asked to confirm before scoring (not a participant).
+  const [confirmResultMatch, setConfirmResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
 
 
@@ -2829,6 +2832,15 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
       />
 
+      <EnterResultConfirmDialog
+        open={!!confirmResultMatch}
+        onOpenChange={(o) => { if (!o) setConfirmResultMatch(null); }}
+        playerAName={confirmResultMatch ? getMatchTeamA(confirmResultMatch) : ""}
+        playerBName={confirmResultMatch ? getMatchTeamB(confirmResultMatch) : ""}
+        onConfirm={() => { setResultMatch(confirmResultMatch); setConfirmResultMatch(null); }}
+      />
+
+
       <ScheduleMatchDialog
         open={!!scheduleMatch}
         onOpenChange={(o) => { if (!o) setScheduleMatch(null); }}
@@ -3227,7 +3239,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               size="sm"
               className="h-6 px-2 text-[10px]"
               onClick={() => {
-                if (!isParticipant(m, myMemberId) && !window.confirm("This is not your game. Are you sure you want to enter the result?")) return;
+                if (!isParticipant(m, myMemberId)) { setConfirmResultMatch(m); return; }
                 setResultMatch(m);
               }}
               title="Capture the score of a match that has already been played"

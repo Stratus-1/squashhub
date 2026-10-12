@@ -44,6 +44,7 @@ import { fetchChampMarkerLock, isLockFresh, useChampMarkerLocks } from "@/hooks/
 import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
 import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { EnterResultConfirmDialog } from "@/components/tournaments/EnterResultConfirmDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerButton";
@@ -98,6 +99,8 @@ export default function Tournaments() {
   // everyone else only their own matches.
   const canManageChamps = useHasPermission("champs") && !md;
   const [resultMatch, setResultMatch] = useState<any | null>(null);
+  // Game the player is being asked to confirm before scoring (not a participant).
+  const [confirmResultMatch, setConfirmResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const { user: sessionUser } = useAuth();
@@ -1599,7 +1602,7 @@ export default function Tournaments() {
               onClick={(e) => {
                 e.stopPropagation();
                 const mine = !!memberId && [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].includes(memberId);
-                if (!mine && !window.confirm("This is not your game. Are you sure you want to enter the result?")) return;
+                if (!mine) { setConfirmResultMatch(m); return; }
                 setResultMatch(m);
               }}
             >
@@ -2439,6 +2442,15 @@ export default function Tournaments() {
           qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
         }}
       />
+
+      <EnterResultConfirmDialog
+        open={!!confirmResultMatch}
+        onOpenChange={(o) => { if (!o) setConfirmResultMatch(null); }}
+        playerAName={confirmResultMatch ? sideLabel(confirmResultMatch.player_a, confirmResultMatch.partner_a, confirmResultMatch.placeholder_a, (champById.get(confirmResultMatch.champ_id) as any)?.match_type === "doubles", confirmResultMatch) : ""}
+        playerBName={confirmResultMatch ? sideLabel(confirmResultMatch.player_b, confirmResultMatch.partner_b, confirmResultMatch.placeholder_b, (champById.get(confirmResultMatch.champ_id) as any)?.match_type === "doubles", confirmResultMatch) : ""}
+        onConfirm={() => { setResultMatch(confirmResultMatch); setConfirmResultMatch(null); }}
+      />
+
 
 
 

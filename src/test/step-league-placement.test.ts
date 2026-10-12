@@ -28,6 +28,13 @@ describe("placeByLeague", () => {
     expect(run("f", ["L2", "L4"], "Male")).toBe("");
     expect(run("g", ["L9"], "Male")).toBe("");
   });
+  it("places a woman registered in a men's league into the men's category it feeds", () => {
+    // L2 feeds only Men::A — a lady playing in that league belongs there.
+    expect(run("h", ["L2"], "Female")).toBe("Men::A");
+    // A man never falls back into a ladies category.
+    const ladiesOnly = [{ key: "Ladies", base: "Ladies" }];
+    expect(placeByLeague({ memberId: "i", units: ladiesOnly, eligOf: () => ({ mode: "leagues", leagueIds: ["L7"] }), leaguesByMember: new Map([["i", ["L7"]]]), genderByMember: new Map([["i", "Male"]]) })).toBe("");
+  });
 });
 
   it("uses explicit type instead of a misleading label, including a single unit", () => {

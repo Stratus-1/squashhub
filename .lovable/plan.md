@@ -1,6 +1,8 @@
-# Rankings & Ratings — impact review and Riverside-only pilot plan
+# Rankings & Ratings — impact review and Riverside-only ladder pilot plan
 
-No code, database, data or publish actions happen under this plan until the owner approves each phase.
+**STATUS: PROPOSAL ONLY — NO IMPLEMENTATION IS APPROVED.** No code, database, data, deployment or publish actions happen under this plan until the owner approves each phase. Uitsig stays unchanged throughout.
+
+Pilot scope: ladder settings, milestone triggers and running-tournament approval prompts, Riverside only. The club internal rating is a separate, deferred phase (section 7) and not part of the pilot.
 
 ## 1. Impact review of changes already made today
 

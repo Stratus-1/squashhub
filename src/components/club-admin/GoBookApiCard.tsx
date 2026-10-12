@@ -38,6 +38,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [editing, setEditing] = useState(false);
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
 
@@ -45,6 +46,12 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
     setUsername((secrets as any)?.gobook_api_username ?? "");
     setPassword((secrets as any)?.gobook_api_password ?? "");
   }, [(secrets as any)?.gobook_api_username, (secrets as any)?.gobook_api_password]);
+
+  const cancelEdit = () => {
+    setUsername((secrets as any)?.gobook_api_username ?? "");
+    setPassword((secrets as any)?.gobook_api_password ?? "");
+    setEditing(false);
+  };
 
   const call = async (action: "test_connection" | "sync_settings") => {
     setTesting(true);

@@ -8,7 +8,7 @@ import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL, FINALS_POINTS_LABEL, type FinalsPoints,
   tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, autoSlotDiamond, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
-  diamondPlayoffsOn, divisionWeekDates, type DiamondDivisionSchedule,
+  diamondPlayoffsOn, divisionWeekDates, validFirstWeek, type DiamondDivisionSchedule,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
@@ -327,17 +327,53 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf, alloc
   );
 }
 
-export function DiamondFixturesPreview({ draft, nameOf, courtName, startDate }: {
+function FirstWeekEditor({ draft, onChange }: { draft: DiamondDraft; onChange: (fw: Record<string, [number, number][]> | undefined) => void }) {
+  const fw = draft.config.firstWeekPairs || {};
+  const setPool = (pool: "A" | "B", pairs: [number, number][] | undefined) => {
+    const next = { ...fw };
+    if (pairs) next[pool] = pairs; else delete next[pool];
+    onChange(Object.keys(next).length ? next : undefined);
+  };
+  return <div className="rounded border border-border p-2 space-y-2 text-xs" data-testid="diamond-first-week">
+    <p className="text-[11px] text-muted-foreground">Choose who plays whom in week 1. Later weeks are worked out automatically so every team still meets every other team once.</p>
+    {(["A", "B"] as const).map((pool) => {
+      const size = draft.teams.filter((t) => t.pool === pool).length;
+      if (size < 2) return null;
+      const def = poolRounds(size)[0] || [];
+      const cur: [number, number][] = fw[pool] && fw[pool].length === def.length ? fw[pool] : def;
+      const ok = validFirstWeek(size, cur);
+      const update = (i: number, side: 0 | 1, v: number) => setPool(pool, cur.map((p, j) => (j === i ? (side ? [p[0], v] : [v, p[1]]) : p)) as [number, number][]);
+      return <div key={pool} className="space-y-1">
+        <div className="flex items-center justify-between"><span className="font-semibold">Division {pool}</span>
+          {fw[pool] && <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setPool(pool, undefined)}>Use default</Button>}</div>
+        <div className="flex flex-wrap gap-2">{cur.map((pair, i) => <div key={i} className="flex items-center gap-1">
+          {[0, 1].map((side) => <select key={side} aria-label={`Division ${pool} week 1 game ${i + 1} team ${side + 1}`} className="h-7 rounded border border-input bg-background px-1" value={pair[side]} onChange={(e) => update(i, side as 0 | 1, Number(e.target.value))}>
+            {Array.from({ length: size }, (_, n) => <option key={n} value={n + 1}>{pool}{n + 1}</option>)}
+          </select>).reduce((a, el, k) => (k ? [...a, <span key="v" className="text-muted-foreground">v</span>, el] : [el]), [] as JSX.Element[])}
+        </div>)}</div>
+        {!ok && <p className="text-[11px] text-destructive">Each team may appear only once in week 1 — the default draw is used until this is fixed.</p>}
+      </div>;
+    })}
+  </div>;
+}
+
+export function DiamondFixturesPreview({ draft, nameOf, courtName, startDate, onFirstWeekChange }: {
   draft: DiamondDraft; startDate?: string; nameOf: (id: string) => string; courtName: (courtNumber: number) => string;
+  onFirstWeekChange?: (fw: Record<string, [number, number][]> | undefined) => void;
 }) {
-  const weeks = buildPoolWeeks(draft.teams, draft.config.dates || [], draft.config.courts, { schedules: draft.config.divisionSchedules, startDate });
+  const [showFirst, setShowFirst] = useState(false);
+  const weeks = buildPoolWeeks(draft.teams, draft.config.dates || [], draft.config.courts, { schedules: draft.config.divisionSchedules, startDate, firstWeek: draft.config.firstWeekPairs });
   const games = tieGames(draft.config);
    const teamName = (id: string) => {
      const index = draft.teams.findIndex((team) => team.id === id);
      return index < 0 ? "Team" : diamondTeamName(draft.teams[index], index, draft.teams);
    };
   return <div className="space-y-3">
-    <div><p className="text-sm font-semibold">Fixture preview</p><p className="text-[11px] text-muted-foreground">These games are created when you save the Diamond League. Scores are entered from Tournament Games.</p></div>
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div><p className="text-sm font-semibold">Fixture preview</p><p className="text-[11px] text-muted-foreground">These games are created when you save the Diamond League. Scores are entered from Tournament Games.</p></div>
+      {onFirstWeekChange && <Button size="sm" variant="outline" onClick={() => setShowFirst((v) => !v)}>First draw preferences{draft.config.firstWeekPairs ? " ✓" : ""}</Button>}
+    </div>
+    {onFirstWeekChange && showFirst && <FirstWeekEditor draft={draft} onChange={onFirstWeekChange} />}
     {weeks.map((week) => <div key={week.week} className="rounded border border-border p-2 space-y-2">
       <div className="flex items-center gap-2 text-xs font-semibold"><span>Week {week.week}</span><Badge variant="outline" className="text-[10px]">{week.date || "Date not set"}</Badge></div>
       <div className="grid md:grid-cols-2 gap-2">{week.ties.map((tie) => {

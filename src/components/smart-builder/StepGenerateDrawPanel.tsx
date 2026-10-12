@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
+import { DEFAULT_SCHEDULING_PREFS } from "@/lib/tournaments/scheduling-prefs";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { proposedKnockoutRound1, previewTimedGames } from "@/lib/smart-builder/step-draw";
 import { SchedulingPreferencesSection } from "./SchedulingPreferencesSection";
@@ -586,6 +587,13 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const entries = seeded.flatMap((d) => d.units.map((u, k) => ({ member: u.member, partner: u.partner, group: d.group, order: k })));
       const { error } = await (supabase as any).rpc("step_prepare_draw", { p_champ_id: tournamentId, p_spec: spec, p_entries: entries, p_rebuild: hasDraw });
       if (error) throw new Error(error.message);
+      if (hasDraw) {
+        // Replacing a draw: clear the saved scheduling preferences so the previous draw's
+        // court allocation / category court & evening ticks don't cling to the new draw.
+        const { data: t } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
+        const bl: any = (t as any)?.beta_lifecycle ?? {};
+        await fromExt("tournaments").update({ beta_lifecycle: { ...bl, scheduling_prefs: DEFAULT_SCHEDULING_PREFS } } as any).eq("id", tournamentId);
+      }
       // Cross-league: standings attribute games to each pair's own league (existing Club Champs cross-league view).
       if (seeded.some((d) => d.format.kind === "cross")) await fromExt("tournaments").update({ round_format: "cross_league" }).eq("id", tournamentId);
       const rows = await atomically(supabaseDb, tournamentId, commitStructured, (db) => generateStructuredTournament(db, tournamentId));

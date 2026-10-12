@@ -86,6 +86,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
         gobook_api_password: password,
       } as any);
       toast.success("GoBook API credentials saved");
+      setEditing(false);
     } catch (e: any) {
       toast.error(e?.message || "Failed to save credentials");
     }

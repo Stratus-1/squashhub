@@ -1198,6 +1198,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return { memberId: id, name: memberName(id), text, status: fee.has ? "Entered · Payment outstanding" : "Entered" };
   });
   const [completing, setCompleting] = useState(false);
+  const [completeErr, setCompleteErr] = useState<string | null>(null);
+  const conflicts = setupConflicts(a);
+  const setupComplete = steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
   // ---- Pick players: explicit save state + safe removal ----
   const curPickSig = picksSignature(a.picks, a.removedPicks);
   const [savedPickSig, setSavedPickSig] = useState<string | null>(null);

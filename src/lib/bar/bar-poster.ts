@@ -10,6 +10,8 @@ export interface BarPosterOptions {
   url: string;
   qrDataUrl: string; // PNG data URL of the QR code
   logoDataUrl?: string | null;
+  logoWidth?: number;
+  logoHeight?: number;
   accountEnabled: boolean;
   cardOnlineEnabled: boolean;
   swipeEnabled: boolean;

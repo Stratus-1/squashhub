@@ -4,7 +4,7 @@
  * Wording follows the club's bar payment options (account / card online / swipe / cash).
  */
 import { jsPDF } from "jspdf";
-import { fitBox } from "@/lib/club-qr-poster";
+import { fitBox, type LoadedImage } from "@/lib/club-qr-poster";
 
 export interface BarPosterOptions {
   clubName: string;

@@ -3236,7 +3236,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               size="sm"
               className="h-6 px-2 text-[10px]"
               onClick={() => {
-                if (!isParticipant(m, myMemberId) && !window.confirm("This is not your game. Are you sure you want to enter the result?")) return;
+                if (!isParticipant(m, myMemberId)) { setConfirmResultMatch(m); return; }
                 setResultMatch(m);
               }}
               title="Capture the score of a match that has already been played"

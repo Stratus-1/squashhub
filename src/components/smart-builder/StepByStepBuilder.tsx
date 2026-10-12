@@ -1540,6 +1540,26 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
 
           {cur === "Pick" && (
             <>
+              <AlertDialog open={!!removeAsk} onOpenChange={(o) => { if (!o) setRemoveAsk(null); }}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove {removeAsk ? memberName(removeAsk.id) : ""}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This player already has {removeAsk?.unplayed} unplayed game{removeAsk?.unplayed === 1 ? "" : "s"} in the current draw. Removing them from the list does not change those games — you will need to cancel the draw and redraw before the draw matches the player list.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep player</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { if (removeAsk) doRemove(removeAsk.id); setRemoveAsk(null); }}>Remove (redraw needed)</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              {a.createdTournamentId && (
+                <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2 text-xs", playersUnsaved ? "border-destructive/50 bg-destructive/10" : "border-border")} data-testid="players-save-bar">
+                  <span className="font-medium">{playersUnsaved ? "Unsaved changes to the player list" : "Player list saved"}</span>
+                  <Button size="sm" disabled={!playersUnsaved || savingPlayers} onClick={() => void savePlayers()}>{savingPlayers ? "Saving…" : "Save players"}</Button>
+                </div>
+              )}
               <Q t={pairMode ? "Select & pair your players" : !showPick ? "Allocate your players" : "Pick / allocate your players"} h={pairMode ? "Tap a member to add them and choose where they play. In doubles groups where you assign partners, pair them up right here." : "Tap a member to add them, then choose where each one plays."} />
               {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}{pairMode ? ` (${entryCount} entr${entryCount === 1 ? "y" : "ies"} — each pair counts as one)` : ""}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
               {!showPick && <div className="text-xs text-muted-foreground">Players enter themselves. Everyone who has entered appears here, so you can allocate them to categories and set the seeding.</div>}

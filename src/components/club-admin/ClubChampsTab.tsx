@@ -3599,6 +3599,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         return index < 0 ? "?" : diamondTeamName(diamondDraft.teams[index], index, diamondDraft.teams);
       },
     });
+    // Diamond players are placed into teams by the organiser and fixtures now
+    // exist with them in it — they are entered, not merely invited. Mark their
+    // registration rows as entered (flipping any outstanding invite) so entry
+    // counts, the Players list and the draw all agree. invited_by_admin stays
+    // false so no invitation notification fires from this save.
+    const diamondPlayerIds = Array.from(new Set(diamondDraft.teams.flatMap((t) => t.players).filter(Boolean))) as string[];
+    if (diamondPlayerIds.length) {
+      await fromExt("club_champs_registrations").upsert(
+        diamondPlayerIds.map((memberId) => ({
+          champ_id: tournamentId,
+          club_member_id: memberId,
+          status: "paid",
+          fee_status: "not_required",
+          registration_source: "organiser",
+          invited_by_admin: false,
+          fee_paid_cents: 0,
+        })),
+        { onConflict: "champ_id,club_member_id" } as any,
+      );
+      await fromExt("club_champs_registrations")
+        .update({ status: "paid", registration_source: "organiser" })
+        .eq("champ_id", tournamentId)
+        .in("club_member_id", diamondPlayerIds)
+        .in("status", ["invited", "pending_payment", "pending_eft"]);
+      qc.invalidateQueries({ queryKey: ["champ-entry-counts", tournamentId] });
+      qc.invalidateQueries({ queryKey: ["champ-registrations", tournamentId] });
+    }
     qc.invalidateQueries({ queryKey: ["club-champ-matches", tournamentId] });
     qc.invalidateQueries({ queryKey: ["diamond-marked-games", tournamentId] });
     return data?.id as string;

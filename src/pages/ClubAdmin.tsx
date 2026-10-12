@@ -235,7 +235,11 @@ export default function ClubAdmin() {
     return myPermissions.has(tab.permission);
   };
   // Capability filter — core tabs (no capability) are always visible.
-  const capFilter = (tab: AdminTab) => isTabVisible(tab, enabledCaps, hasCapRows);
+  // Ladder is the exception: "Show club ladder to members" only hides it from
+  // members — admins keep the workspace so they can arrange it first (mirrors
+  // the sidebar rule and the /ladder route's adminBypass).
+  const capFilter = (tab: AdminTab) =>
+    isTabVisible(tab, enabledCaps, hasCapRows) || tab.capability === "ladder";
   const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
   // The Step-by-Step builder now lives on the single Tournaments page; no separate Beta tile.
   const opsTabs = OPERATIONS_TABS;

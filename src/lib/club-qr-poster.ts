@@ -9,7 +9,26 @@ interface PosterInput {
   logoUrl?: string | null;
 }
 
-export function loadImageAsDataUrl(src: string): Promise<string> {
+export interface LoadedImage {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+/** Fit source pixel dimensions into a max box, preserving aspect ratio. */
+export function fitBox(srcW: number, srcH: number, maxW: number, maxH: number): { w: number; h: number } {
+  const ratio = srcW && srcH ? srcW / srcH : 1;
+  let w = maxH * ratio;
+  let h = maxH;
+  if (w > maxW) {
+    w = maxW;
+    h = maxW / ratio;
+  }
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return { w: maxW, h: maxH };
+  return { w, h };
+}
+
+export function loadImageAsDataUrlWithSize(src: string): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -23,11 +42,15 @@ export function loadImageAsDataUrl(src: string): Promise<string> {
         return;
       }
       ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
+      resolve({ dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height });
     };
     img.onerror = () => reject(new Error("Could not load logo"));
     img.src = src;
   });
+}
+
+export function loadImageAsDataUrl(src: string): Promise<string> {
+  return loadImageAsDataUrlWithSize(src).then((l) => l.dataUrl);
 }
 
 function svgToPngDataUrl(svg: SVGSVGElement): Promise<string> {

@@ -4,12 +4,15 @@
  * Wording follows the club's bar payment options (account / card online / swipe / cash).
  */
 import { jsPDF } from "jspdf";
+import { fitBox, type LoadedImage } from "@/lib/club-qr-poster";
 
 export interface BarPosterOptions {
   clubName: string;
   url: string;
   qrDataUrl: string; // PNG data URL of the QR code
   logoDataUrl?: string | null;
+  logoWidth?: number;
+  logoHeight?: number;
   accountEnabled: boolean;
   cardOnlineEnabled: boolean;
   swipeEnabled: boolean;
@@ -32,20 +35,33 @@ function payPhrase(o: BarPosterOptions, member: boolean): string {
   return `${opts.slice(0, -1).join(", ")} or ${opts[opts.length - 1]}`;
 }
 
-export async function loadImageAsDataUrl(src: string): Promise<string | null> {
+export async function loadImageAsDataUrlWithSize(src: string): Promise<LoadedImage | null> {
   try {
     const res = await fetch(src, { mode: "cors" });
     if (!res.ok) return null;
     const blob = await res.blob();
-    return await new Promise((resolve) => {
+    const dataUrl = await new Promise<string | null>((resolve) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
       r.onerror = () => resolve(null);
       r.readAsDataURL(blob);
     });
+    if (!dataUrl) return null;
+    const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      img.onerror = () => resolve({ w: 1, h: 1 });
+      img.src = dataUrl;
+    });
+    return { dataUrl, width: dims.w, height: dims.h };
   } catch {
     return null;
   }
+}
+
+export async function loadImageAsDataUrl(src: string): Promise<string | null> {
+  const l = await loadImageAsDataUrlWithSize(src);
+  return l?.dataUrl ?? null;
 }
 
 export function buildBarPoster(o: BarPosterOptions): jsPDF {
@@ -62,9 +78,11 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
   if (o.logoDataUrl) {
     doc.setFillColor(255, 255, 255);
     doc.roundedRect(M, 13, 36, 36, 3, 3, "F");
+    // Keep the logo's aspect ratio — fit inside the badge without distortion.
+    const fit = fitBox(o.logoWidth ?? 1, o.logoHeight ?? 1, 30, 30);
     try {
       const fmt = o.logoDataUrl.includes("image/png") ? "PNG" : "JPEG";
-      doc.addImage(o.logoDataUrl, fmt, M + 3, 16, 30, 30, undefined, "FAST");
+      doc.addImage(o.logoDataUrl, fmt, M + 18 - fit.w / 2, 31 - fit.h / 2, fit.w, fit.h, undefined, "FAST");
     } catch { /* ignore bad logo */ }
     textX = M + 44;
   }

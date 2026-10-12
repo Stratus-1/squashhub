@@ -9,7 +9,26 @@ interface PosterInput {
   logoUrl?: string | null;
 }
 
-export function loadImageAsDataUrl(src: string): Promise<string> {
+export interface LoadedImage {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+/** Fit source pixel dimensions into a max box, preserving aspect ratio. */
+export function fitBox(srcW: number, srcH: number, maxW: number, maxH: number): { w: number; h: number } {
+  const ratio = srcW && srcH ? srcW / srcH : 1;
+  let w = maxH * ratio;
+  let h = maxH;
+  if (w > maxW) {
+    w = maxW;
+    h = maxW / ratio;
+  }
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return { w: maxW, h: maxH };
+  return { w, h };
+}
+
+export function loadImageAsDataUrlWithSize(src: string): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -23,11 +42,15 @@ export function loadImageAsDataUrl(src: string): Promise<string> {
         return;
       }
       ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
+      resolve({ dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height });
     };
     img.onerror = () => reject(new Error("Could not load logo"));
     img.src = src;
   });
+}
+
+export function loadImageAsDataUrl(src: string): Promise<string> {
+  return loadImageAsDataUrlWithSize(src).then((l) => l.dataUrl);
 }
 
 function svgToPngDataUrl(svg: SVGSVGElement): Promise<string> {
@@ -73,9 +96,15 @@ export async function generateClubQrPoster({
 }: PosterInput): Promise<void> {
   const qrDataUrl = await svgToPngDataUrl(svg);
   let logoDataUrl: string | undefined;
+  let logoW = 0;
+  let logoH = 0;
   if (logoUrl) {
     try {
-      logoDataUrl = await loadImageAsDataUrl(logoUrl);
+      const loaded = await loadImageAsDataUrlWithSize(logoUrl);
+      logoDataUrl = loaded.dataUrl;
+      const fit = fitBox(loaded.width, loaded.height, 17, 17);
+      logoW = fit.w;
+      logoH = fit.h;
     } catch {
       /* ignore logo load failures; poster still works without it */
     }
@@ -124,14 +153,13 @@ export async function generateClubQrPoster({
   const qrY = 62;
   doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
-  // Logo overlay (center of QR code)
-  if (logoDataUrl) {
-    const logoSize = 20;
-    const logoX = qrX + (qrSize - logoSize) / 2;
-    const logoY = qrY + (qrSize - logoSize) / 2;
+  // Logo overlay (center of QR code) — aspect ratio preserved
+  if (logoDataUrl && logoW && logoH) {
+    const logoX = qrX + (qrSize - logoW) / 2;
+    const logoY = qrY + (qrSize - logoH) / 2;
     doc.setFillColor("#ffffff");
-    doc.circle(qrX + qrSize / 2, qrY + qrSize / 2, logoSize / 2 + 1.5, "F");
-    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
+    doc.circle(qrX + qrSize / 2, qrY + qrSize / 2, 10.5 + 1.5, "F");
+    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoW, logoH);
   }
 
   // CTA

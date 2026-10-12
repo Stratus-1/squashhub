@@ -14,7 +14,7 @@ import { Copy, Loader2, Printer, QrCode, RefreshCw, Share2, ShieldOff, Smartphon
 import { toast } from "sonner";
 import { matchDayUrl, courtsUsed, type MatchDayKind } from "@/lib/match-day/access";
 import { useClubContext } from "@/contexts/ClubContext";
-import { loadImageAsDataUrl } from "@/lib/club-qr-poster";
+import { loadImageAsDataUrlWithSize, fitBox, type LoadedImage } from "@/lib/club-qr-poster";
 
 interface Props {
   kind: MatchDayKind;
@@ -76,14 +76,16 @@ export function MatchDayAccessCard({ kind, competitionId, competitionName, subdo
     if (!token) return;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const qr = (id: string) => (document.getElementById(id) as HTMLCanvasElement).toDataURL("image/png");
-    let logoDataUrl: string | null = null;
+    let logo: LoadedImage | null = null;
     if (club?.logo_url) {
-      try { logoDataUrl = await loadImageAsDataUrl(club.logo_url); } catch { /* poster still works without it */ }
+      try { logo = await loadImageAsDataUrlWithSize(club.logo_url); } catch { /* poster still works without it */ }
     }
     let y = 12;
-    if (logoDataUrl) {
-      try { doc.addImage(logoDataUrl, "PNG", 90, y, 30, 30, undefined, "FAST"); } catch { /* ignore bad logo */ }
-      y += 34;
+    if (logo) {
+      // Keep the club logo's aspect ratio — never force a square.
+      const fit = fitBox(logo.width, logo.height, 44, 26);
+      try { doc.addImage(logo.dataUrl, "PNG", 105 - fit.w / 2, y, fit.w, fit.h, undefined, "FAST"); } catch { /* ignore bad logo */ }
+      y += fit.h + 6;
     }
     doc.setFont("helvetica", "bold"); doc.setFontSize(15);
     if (club?.name) { doc.text(club.name, 105, y, { align: "center" }); y += 8; }

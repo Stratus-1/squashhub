@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, PlugZap, ShieldCheck, Info } from "lucide-react";
+import { Loader2, PlugZap, ShieldCheck, Info, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
 import { GoBookMemberLinkPanel } from "./GoBookMemberLinkPanel";
@@ -38,6 +38,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [editing, setEditing] = useState(false);
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
 
@@ -45,6 +46,12 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
     setUsername((secrets as any)?.gobook_api_username ?? "");
     setPassword((secrets as any)?.gobook_api_password ?? "");
   }, [(secrets as any)?.gobook_api_username, (secrets as any)?.gobook_api_password]);
+
+  const cancelEdit = () => {
+    setUsername((secrets as any)?.gobook_api_username ?? "");
+    setPassword((secrets as any)?.gobook_api_password ?? "");
+    setEditing(false);
+  };
 
   const call = async (action: "test_connection" | "sync_settings") => {
     setTesting(true);
@@ -79,6 +86,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
         gobook_api_password: password,
       } as any);
       toast.success("GoBook API credentials saved");
+      setEditing(false);
     } catch (e: any) {
       toast.error(e?.message || "Failed to save credentials");
     }
@@ -113,6 +121,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
             className="h-8 text-xs"
             value={username}
             autoComplete="off"
+            readOnly={!editing}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="API_073003"
           />
@@ -124,6 +133,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
             type="password"
             autoComplete="new-password"
             value={password}
+            readOnly={!editing}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Issued by GoBook"
           />
@@ -131,14 +141,26 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={save} disabled={updateSecrets.isPending}>
-          {updateSecrets.isPending ? "Saving..." : "Save credentials"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => call("test_connection")} disabled={testing}>
+        {editing ? (
+          <>
+            <Button size="sm" onClick={save} disabled={updateSecrets.isPending}>
+              {updateSecrets.isPending ? "Saving..." : "Save credentials"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancelEdit} disabled={updateSecrets.isPending}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil className="w-3.5 h-3.5 mr-1" />
+            Edit credentials
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={() => call("test_connection")} disabled={testing || editing}>
           {testing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
           Test connection
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => call("sync_settings")} disabled={testing}>
+        <Button size="sm" variant="secondary" onClick={() => call("sync_settings")} disabled={testing || editing}>
           <ShieldCheck className="w-3.5 h-3.5 mr-1" />
           Enable API booking
         </Button>

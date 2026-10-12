@@ -7,3 +7,4 @@
 - [ ] Riverside-only tournament ladder pilot (builder opt-in, match/round/end timing, auto vs approve, running-tournament "Ladder Changes" panel with badge, audit/idempotency/reversal) — BLOCKED: needs owner OK for one additive shared-backend change (see report)
 - [ ] Containment decision C1–C4 (sign-up email matching revert, etc.) — awaiting owner
 - [ ] Club-only internal rating — DEFERRED, separate approval
+- GoBook API card: fields read-only until Edit credentials; Save/Cancel while editing

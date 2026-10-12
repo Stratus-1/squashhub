@@ -34,7 +34,7 @@ Uitsig today: tournament `Uitsig Club Champs 2026` (planning), ladder setting = 
 - A. Does this tournament move the club ladder? Yes / No (new = No). Disabled with an explanation when the club does not allow it.
 - B. When? After each finalized match / after each completed round / when the tournament is completed (recommended default for multi-week).
 - C. How? Automatically at that point / admin previews and approves at that point (recommended default).
-- Ratings note: internal SquashHub rating is separate and always updates once per verified match; it is not SportyHQ or official rankings.
+- No rating questions in the pilot step. Imported SportyHQ, regional league and national ratings/rankings shown in My Stats are untouched by anything in this plan.
 - Old builder shows the same settings read-only so both builders agree.
 
 ## 4. Ladder engine behaviour (pilot tournaments only)
@@ -54,14 +54,17 @@ Uitsig today: tournament `Uitsig Club Champs 2026` (planning), ladder setting = 
 - Correction after it was applied: a reversal entry is recorded and the admin confirms the re-apply; positions are never silently rewritten.
 - Ladder positions from before the pilot are never changed.
 
-## 7. Internal SquashHub rating (separate engine, new)
-- No internal rating exists today (only club ranking points, which wait for admin approval, and imported SportyHQ ratings).
-- New per-person rating, one update per verified eligible match, independent of the ladder switch; corrections reverse and re-apply; no back-fill.
-- Owner decisions needed: formula (e.g. Elo-style, start value, sensitivity) and which matches count (tournament / league / challenge; singles only?).
-- Not shown publicly or used for seeding until separately approved.
+## 7. DEFERRED — optional club-only internal rating (separate phase, not in the pilot)
+- Not being built now; recorded so the pilot does not block it later.
+- Today: no internal rating exists. My Stats shows imported SportyHQ, regional league and national figures; these stay entirely separate and unchanged.
+- Future shape: each club explicitly enables it, then chooses "Seed ratings" once, starting from the current club ladder order (using imported SportyHQ ratings as the baseline is a later option, not now).
+- After seeding, eligible verified club matches adjust that club's rating incrementally, once per match; corrections reverse and re-apply.
+- Club-specific only: no national or regional effect, no cross-club rating. Showing it in My Stats comes later.
+- Independent of the ladder switch. Formula and eligible match types to be decided when this phase is opened.
 
 ## 8. Test strategy
-- Unit tests: setting rules (club upper limit, defaults), ordering, idempotency, reversal maths, rating maths.
+- Unit tests: setting rules (club upper limit, defaults), ordering, idempotency, reversal logic.
+- Check that My Stats external figures and Uitsig ladder outcomes are identical before and after.
 - Database tests on a synthetic Riverside tournament with synthetic players: multi-week, results entered out of order, round and end milestones, approve/reject, correction after apply, repeated triggers.
 - Isolation tests: Uitsig and another club produce identical ladder outcomes before and after (comparison of decisions for the same inputs).
 - Browser check of the builder step and running-tournament prompts as a Riverside admin, preview only.
@@ -71,10 +74,10 @@ Uitsig today: tournament `Uitsig Club Champs 2026` (planning), ladder setting = 
 1. Containment choice (C1–C4) and "do not publish" confirmation.
 2. Builder settings stored, Riverside gate, no engine change.
 3. Ladder engine for pilot tournaments + prompts + tests.
-4. Internal rating engine after formula decision.
+4. (Deferred, separate approval) Club-only internal rating — see section 7.
 5. Sign-off, then staged rollout to other clubs.
 
 ## Technical notes
 - Live functions changed today: `club_members_block_duplicate`, `ensure_person_for_club_member`, `award_points_for_champ_match` (migrations 0121–0123). Previous definitions are recorded in earlier migrations and can be restored exactly.
 - Preview-only files: `StepByStepBuilder.tsx`, `step-handover.ts`, `MemberOnboardingWizard.tsx`, `src/test/step-ladder-affects.test.ts`, plus issue log and builder AGENTS notes.
-- Planned storage: nullable tournament columns for timing and apply mode, a ladder-entry ledger with a unique key per game and version, a batch/approval audit table, and a rating ledger, all club-scoped with RLS.
+- Planned pilot storage: nullable tournament columns for timing and apply mode, a ladder-entry ledger with a unique key per game and version, and a batch/approval audit table, all club-scoped with RLS. No rating storage in the pilot.

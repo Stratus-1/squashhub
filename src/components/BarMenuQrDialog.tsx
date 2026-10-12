@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
-import { buildBarPoster, loadImageAsDataUrl } from "@/lib/bar/bar-poster";
+import { buildBarPoster, loadImageAsDataUrlWithSize } from "@/lib/bar/bar-poster";
 import { Loader2, Copy, Share2, MessageCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

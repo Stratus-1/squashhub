@@ -4,6 +4,7 @@
  * Wording follows the club's bar payment options (account / card online / swipe / cash).
  */
 import { jsPDF } from "jspdf";
+import { fitBox } from "@/lib/club-qr-poster";
 
 export interface BarPosterOptions {
   clubName: string;
@@ -64,9 +65,11 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
   if (o.logoDataUrl) {
     doc.setFillColor(255, 255, 255);
     doc.roundedRect(M, 13, 36, 36, 3, 3, "F");
+    // Keep the logo's aspect ratio — fit inside the badge without distortion.
+    const fit = fitBox(o.logoWidth ?? 1, o.logoHeight ?? 1, 30, 30);
     try {
       const fmt = o.logoDataUrl.includes("image/png") ? "PNG" : "JPEG";
-      doc.addImage(o.logoDataUrl, fmt, M + 3, 16, 30, 30, undefined, "FAST");
+      doc.addImage(o.logoDataUrl, fmt, M + 18 - fit.w / 2, 31 - fit.h / 2, fit.w, fit.h, undefined, "FAST");
     } catch { /* ignore bad logo */ }
     textX = M + 44;
   }

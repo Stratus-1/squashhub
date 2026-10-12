@@ -19,7 +19,13 @@ export function placeByLeague(args: {
   genderByMember: Map<string, string | null>;
 }): string {
   const { memberId, units, eligOf, leaguesByMember, genderByMember } = args;
-  if (units.length === 1) return isPlayerEligibleForCategory(genderByMember.get(memberId), units[0].categoryType ?? inferCategory(units[0].base)) ? units[0].key : "";
+  const singleGender = genderByMember.get(memberId) ?? null;
+  if (units.length === 1) {
+    const cat = units[0].categoryType ?? inferCategory(units[0].base);
+    if (isPlayerEligibleForCategory(singleGender, cat)) return units[0].key;
+    // Single men's category: a woman is placed too (ladies play in men's leagues).
+    return cat === "mens" && (singleGender?.toLowerCase().startsWith("f") ?? false) ? units[0].key : "";
+  }
   const mine = new Set(leaguesByMember.get(memberId) ?? []);
   if (mine.size === 0) return "";
   const gender = genderByMember.get(memberId) ?? null;

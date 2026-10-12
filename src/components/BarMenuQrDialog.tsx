@@ -72,12 +72,14 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
     try {
       const canvas = document.getElementById("bar-poster-qr") as HTMLCanvasElement | null;
       if (!canvas) throw new Error("QR not ready");
-      const logo = posterClub.logo_url ? await loadImageAsDataUrl(posterClub.logo_url) : null;
+      const logo = posterClub.logo_url ? await loadImageAsDataUrlWithSize(posterClub.logo_url) : null;
       const doc = buildBarPoster({
         clubName: clubName || posterClub.name || "Club",
         url,
         qrDataUrl: canvas.toDataURL("image/png"),
-        logoDataUrl: logo,
+        logoDataUrl: logo?.dataUrl ?? null,
+        logoWidth: logo?.width,
+        logoHeight: logo?.height,
         accountEnabled: posterClub.bar_account_tab_enabled !== false,
         cardOnlineEnabled: posterClub.bar_pay_online_enabled !== false,
         swipeEnabled: posterClub.bar_card_swipe_enabled !== false,

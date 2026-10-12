@@ -1599,7 +1599,7 @@ export default function Tournaments() {
               onClick={(e) => {
                 e.stopPropagation();
                 const mine = !!memberId && [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].includes(memberId);
-                if (!mine && !window.confirm("This is not your game. Are you sure you want to enter the result?")) return;
+                if (!mine) { setConfirmResultMatch(m); return; }
                 setResultMatch(m);
               }}
             >

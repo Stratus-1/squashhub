@@ -44,6 +44,7 @@ import { fetchChampMarkerLock, isLockFresh, useChampMarkerLocks } from "@/hooks/
 import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
 import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { EnterResultConfirmDialog } from "@/components/tournaments/EnterResultConfirmDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerButton";

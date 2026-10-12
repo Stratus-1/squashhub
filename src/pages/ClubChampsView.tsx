@@ -53,6 +53,7 @@ import { assignFixedSlots, isPlayoffGame, playoffDeadline, playoffKeyForLabel, p
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { EnterResultConfirmDialog } from "@/components/tournaments/EnterResultConfirmDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { isParticipant } from "@/lib/tournaments/self-schedule";
 import { looksLikePhone } from "@/lib/member-display";

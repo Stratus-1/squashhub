@@ -2829,6 +2829,15 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
       />
 
+      <EnterResultConfirmDialog
+        open={!!confirmResultMatch}
+        onOpenChange={(o) => { if (!o) setConfirmResultMatch(null); }}
+        playerAName={confirmResultMatch ? getMatchTeamA(confirmResultMatch) : ""}
+        playerBName={confirmResultMatch ? getMatchTeamB(confirmResultMatch) : ""}
+        onConfirm={() => { setResultMatch(confirmResultMatch); setConfirmResultMatch(null); }}
+      />
+
+
       <ScheduleMatchDialog
         open={!!scheduleMatch}
         onOpenChange={(o) => { if (!o) setScheduleMatch(null); }}

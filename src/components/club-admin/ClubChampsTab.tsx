@@ -233,6 +233,7 @@ import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
+import { DrawNoticeDialog } from "@/components/smart-builder/DrawNoticeDialog";
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { tournamentLink } from "@/lib/tournaments/tournament-link";
 import { DiamondRulesPanel, DiamondAllocationBoard, DiamondFixturesPreview, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
@@ -9020,6 +9021,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // ── WIZARD VIEW ──
   return (
     <div className="tournament-admin space-y-4">
+      {diamondNotice && (
+        <DrawNoticeDialog open clubId={clubId} tournamentId={diamondNotice.champId} tournamentName={diamondNotice.name}
+          title="Tell players now?"
+          scope={{ round: diamondNotice.week, label: `Diamond League · Week ${diamondNotice.week}` }}
+          defaultMessage={`${diamondNotice.name} is now on SquashHub. From now on you can view your team, fixtures, live scores, results and standings in the app, and score your match on the night. Use the button below to open the tournament.`}
+          headerExtra={<label className="flex items-center gap-2 text-xs text-muted-foreground">Week to announce
+            <select className="h-7 rounded border border-input bg-background px-1" value={diamondNotice.week}
+              onChange={(e) => setDiamondNotice((d) => d && ({ ...d, week: Number(e.target.value) }))}>
+              {Array.from({ length: Math.max(diamondNotice.week, (diamondDraft.config.dates || []).length, 1) + 2 }, (_, i) => <option key={i} value={i + 1}>Week {i + 1}</option>)}
+            </select></label>}
+          onClose={() => { setDiamondNotice(null); setShowWizard(false); }} />
+      )}
       {/* Step tabs — every step is directly clickable; the wizard autosaves on jump. */}
       <div className="flex items-center gap-1 text-sm overflow-x-auto border-b border-border pb-px">
         {activeSteps.map((s, i) => (

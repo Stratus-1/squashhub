@@ -233,6 +233,8 @@ import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
+import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
+import { tournamentLink } from "@/lib/tournaments/tournament-link";
 import { DiamondRulesPanel, DiamondAllocationBoard, DiamondFixturesPreview, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
 import { syncDiamondFixtures as syncSavedDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 import { buildPoolWeeks, configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames, diamondTeamName } from "@/lib/tournaments/team-league";
@@ -11794,6 +11796,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               complete={inviteMethods.size > 0}
               defaultOpen={true}
             >
+            {editingChampId ? (
+              <div className="space-y-2" data-testid="invite-match-day">
+                <MatchDayAccessCard kind="tournament" competitionId={editingChampId} competitionName={champName || "Tournament"} />
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/60 p-2 text-xs">
+                  <span className="text-muted-foreground">Put the tournament link (the same one the QR opens) into the invite message.</span>
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    const url = await tournamentLink(clubId, editingChampId);
+                    if (!url.includes("/md/")) toast.message("Match Day Access is off — switch it on above for a no-login QR link. Adding the tournament page link for now.");
+                    setDescription((d) => (d || "").includes(url) ? d : `${(d || "").trimEnd()}\n\nTournament link (fixtures, live scores & standings): ${url}`);
+                  }}>Add tournament link to invite</Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">Save the tournament once to create its Match Day QR and tournament link here.</p>
+            )}
             <div className="space-y-2">
             <section className="rounded-lg border bg-card p-4 space-y-3">
               <div className="space-y-0.5">

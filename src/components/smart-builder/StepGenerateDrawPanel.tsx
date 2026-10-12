@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
+import { DEFAULT_SCHEDULING_PREFS } from "@/lib/tournaments/scheduling-prefs";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import { proposedKnockoutRound1, previewTimedGames } from "@/lib/smart-builder/step-draw";
 import { SchedulingPreferencesSection } from "./SchedulingPreferencesSection";

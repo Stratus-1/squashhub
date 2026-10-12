@@ -18,13 +18,13 @@ export const laterRoundNotice = (round: number) =>
  * Shared by the post-draw prompt and the permanent Player Notifications section. Never sends automatically;
  * with no fixtures yet the wording can be edited/saved/previewed but sending stays disabled.
  */
-export function DrawNoticeComposer({ active = true, clubId, tournamentId, tournamentName, scope, hasFixtures = true, sentBefore, onSent, onCancel, cancelLabel = "Later", confirmSend = false, modalLayout = false, introduction }: {
+export function DrawNoticeComposer({ active = true, clubId, tournamentId, tournamentName, scope, hasFixtures = true, sentBefore, onSent, onCancel, cancelLabel = "Later", confirmSend = false, modalLayout = false, introduction, defaultMessage }: {
   active?: boolean; clubId: string; tournamentId: string; tournamentName: string; scope: DrawScope | null; hasFixtures?: boolean;
   sentBefore?: { at: string; sent: number } | null; onSent?: () => void; onCancel?: () => void; cancelLabel?: string; confirmSend?: boolean;
-  modalLayout?: boolean; introduction?: ReactNode;
+  modalLayout?: boolean; introduction?: ReactNode; defaultMessage?: string;
 }) {
   const waEnabled = useWhatsAppEnabled(clubId);
-  const fallback = laterRoundNotice(scope?.round ?? 1);
+  const fallback = defaultMessage || laterRoundNotice(scope?.round ?? 1);
   const notice = useDrawNoticeSettings(active && scope ? tournamentId : null, scope ? drawNoticeKey(scope) : "none", fallback);
   const msg = notice.value.message;
   const [ch, setCh] = useState({ app: true, email: false, wa: false });
@@ -100,19 +100,21 @@ export function DrawNoticeComposer({ active = true, clubId, tournamentId, tourna
 }
 
 /** "Send draw to players now?" prompt after a draw. Explicit send only — never automatic. */
-export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tournamentName, scope, sentBefore, onSent }: {
+export function DrawNoticeDialog({ open, onClose, clubId, tournamentId, tournamentName, scope, sentBefore, onSent, title, headerExtra, defaultMessage }: {
   open: boolean; onClose: () => void; clubId: string; tournamentId: string; tournamentName: string;
   scope: DrawScope | null; sentBefore?: { at: string; sent: number } | null; onSent?: () => void;
+  title?: string; headerExtra?: ReactNode; defaultMessage?: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="tournament-admin draw-notice-modal">
         <DialogHeader className="draw-notice-modal-header border-b border-border bg-background">
-          <DialogTitle>Send draw to players now?</DialogTitle>
+          <DialogTitle>{title || "Send draw to players now?"}</DialogTitle>
+          {headerExtra}
           <DialogDescription className="sr-only">Review the message and recipients. Nothing sends until you confirm.</DialogDescription>
         </DialogHeader>
         <DrawNoticeComposer active={open} clubId={clubId} tournamentId={tournamentId} tournamentName={tournamentName} scope={scope} sentBefore={sentBefore}
-          modalLayout confirmSend introduction={<p className="text-sm text-muted-foreground">
+          modalLayout confirmSend defaultMessage={defaultMessage} introduction={<p className="text-sm text-muted-foreground">
             {scope?.label ? `${scope.label} · ` : ""}{scope ? drawScopeTitle(scope) : ""} — only players in this {scope?.stageName ? "stage" : "round"} get it, with a button to the draw and match details. Nothing has been sent yet. You can also send it later from Player Notifications.
             {sentBefore ? ` Already sent ${new Date(sentBefore.at).toLocaleString()} (${sentBefore.sent} deliveries).` : ""}
           </p>} onSent={() => { onSent?.(); onClose(); }} onCancel={onClose} />

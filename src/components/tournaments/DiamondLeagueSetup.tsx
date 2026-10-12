@@ -370,7 +370,7 @@ export function DiamondFixturesPreview({ draft, nameOf, courtName, startDate, on
    };
   return <div className="space-y-3">
     <div className="flex flex-wrap items-start justify-between gap-2">
-      <div><p className="text-sm font-semibold">Fixture preview</p><p className="text-[11px] text-muted-foreground">These games are created when you save the Diamond League. Scores are entered from Tournament Games.</p></div>
+      <div><p className="text-sm font-semibold">Fixture preview</p><p className="text-[11px] text-muted-foreground">These games are created when you click Create fixtures. Nothing is sent to players until you choose to. Scores are entered from Tournament Games.</p></div>
       {onFirstWeekChange && <Button size="sm" variant="outline" onClick={() => setShowFirst((v) => !v)}>First draw preferences{draft.config.firstWeekPairs ? " ✓" : ""}</Button>}
     </div>
     {onFirstWeekChange && showFirst && <FirstWeekEditor draft={draft} onChange={onFirstWeekChange} />}

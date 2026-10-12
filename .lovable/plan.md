@@ -1,49 +1,78 @@
-# Rankings & Ratings step — ladder timing, approval mode and SquashHub rating
+# Rankings & Ratings — impact review and Riverside-only pilot plan
 
-## What exists today (audit)
-- **Ladder participation (A):** `tournaments.ladder_affects` (old builder: inherit/yes/no; new builder: Yes/No switch added in preview, new = No). Club `ladder_configs.ladder_from_tournaments` is now the upper limit.
-- **Timing (B):** only "after each finalized match". A database rule fires the moment a singles game is marked finished. No round or end-of-tournament option exists.
-- **Mode (C):** club-wide only (`ladder_auto_apply`, ON at every club). OFF sends moves to an admin approval queue (`ladder_moves_pending`); approve/reject exists but does not record who approved or in what order the games were played.
-- **Order:** moves apply in result-entry order, not game date/time.
-- **Corrections:** changing a finished game's winner applies a new move and does **not** undo the original. Ranking points behave the same (duplicates prevented only for the identical winner/loser).
-- **Rating engine:** there is **no internal SquashHub rating**. The only "points" are club ranking points (`club_members.ranking_points`): tournament results create rows awaiting admin approval (158 waiting, never applied automatically). SportyHQ ratings are separate imported data and stay untouched.
+No code, database, data or publish actions happen under this plan until the owner approves each phase.
 
-## Recommended safe defaults
-- A: Off for new tournaments (already in preview); club permission always wins.
-- B: "When the tournament is completed" for multi-week events; "After each finalized match" stays available.
-- C: "Admin preview & approve" as default; "Automatic" optional.
-- Existing tournaments keep today's behaviour (per match, club mode) unless an admin explicitly changes them.
+## 1. Impact review of changes already made today
 
-## Build plan (Riverside-only opt-in first, per pilot policy)
+| Change | Where | Live now? | Effect on Uitsig Club Champs 2026 |
+|---|---|---|---|
+| Duplicate-application check (same login/email at a club blocks a second self-application) | Shared backend | Yes | No effect on tournament setup, draws, results, ladder or notices. Only affects new self sign-ups to a club. |
+| Player-record matching on sign-up now uses the login email | Shared backend | Yes | No tournament effect. **Risk:** a family member who signs up with their own login but a shared email and no SA ID could be linked to the existing person record instead of getting their own. |
+| Friendly "already a member" message on sign-up | Preview only | No | None. |
+| Ladder rule: club "tournaments may not move the ladder" now always wins over a tournament "yes" | Shared backend | Yes | **No change for Uitsig.** Uitsig allows tournament ladder moves and its tournament is on "use club setting", so per-match ladder moves happen exactly as before. 0 tournaments anywhere were affected. |
+| "Affect club ladder" Yes/No in the new builder (new tournaments default No) | Preview only | No | None. The live app does not have it, and it only writes when a tournament is saved from the preview builder. |
+| Diamond League "Registration pending" card, result-entry dialog wording | Preview only | No | None. |
 
-### 1. Settings (new builder "Rankings & Ratings" step)
-- Three clearly separate questions: A participate? B when? C automatic or approve?
-- B and C hidden/disabled when A = No or the club disallows; club limits shown.
-- Stored on the tournament: `ladder_timing` (match | round | completion, NULL = legacy per match) and `ladder_apply_mode` (auto | approve, NULL = club setting).
-- Also shown read-only on the old builder card so both builders agree.
+Uitsig today: tournament `Uitsig Club Champs 2026` (planning), ladder setting = inherit, club allows tournament moves, automatic apply ON. So **once Uitsig's singles results are finished, the ladder will move game by game automatically**, which is the existing behaviour and not caused by today's work. The owner may want that confirmed with Uitsig before play starts.
 
-### 2. Ladder engine (one queue, applied in game order)
-- Every eligible finished singles result writes one **ledger row** per game (unique per game + version) instead of moving the ladder directly when timing ≠ match.
-- Milestone reached (round fully played / tournament completed) → batch is built and sorted by game date, then time, then game id.
-- Automatic: batch applied in that order. Approve: admin sees a preview (before/after ladder) and approves or rejects the whole batch or single moves; approver, time and order are recorded.
-- A game never applies twice (unique ledger key); a batch can only be applied once.
+### Containment options (only with approval)
+- C1 (recommended, low risk): revert the player-record email matching on sign-up to its previous form, keeping only the duplicate-application block. This removes the family-shared-email linking risk.
+- C2: also revert the duplicate-application block (fully back to this morning).
+- C3: revert the ladder rule change. Not needed for Uitsig (identical behaviour); listed for completeness.
+- C4 (Uitsig decision, data write): set Uitsig Club Champs to "No — leave the ladder alone" if Uitsig does not want tournament results to move its ladder.
+- Ask the owner not to publish the preview until the pilot is signed off; the preview-only builder switch would otherwise ship with it.
 
-### 3. Corrections and reversals
-- Correcting a game whose move is **not yet applied**: the ledger row is replaced, nothing to undo.
-- Correcting a game whose move **was applied**: a reversal row is recorded and the admin is asked to confirm a re-apply; ladder positions already changed are never silently rewritten. Historical positions before rollout are not touched.
-- The same reversal rule fixes today's per-match double-application for opted-in tournaments.
+## 2. Pilot gating (Riverside only)
+- Club gate: one per-club pilot flag (existing club beta-features mechanism), ON only for Riverside. Every new behaviour checks it on the server, never in the browser alone.
+- Tournament gate: new settings stored per tournament; empty = today's behaviour. A tournament outside Riverside can never get non-empty settings (server refuses).
+- Kill switch: turning the Riverside flag off returns all Riverside tournaments to today's per-match behaviour; nothing is deleted.
+- Riverside's live Club Champs keeps today's behaviour; pilot runs only on a new synthetic Riverside test tournament.
 
-### 4. SquashHub internal rating (separate engine)
-- New per-person rating (not SportyHQ, not official rankings), updated once per eligible verified match, regardless of the ladder switch.
-- Needs your decision on the formula (e.g. Elo-style with starting value and K-factor) and which matches count (tournament / league / challenge, singles only?).
-- One rating row per match (unique), corrections reverse and re-apply; never back-filled into historical data without approval.
+## 3. Builder "Rankings & Ratings" step (pilot clubs only)
+- A. Does this tournament move the club ladder? Yes / No (new = No). Disabled with an explanation when the club does not allow it.
+- B. When? After each finalized match / after each completed round / when the tournament is completed (recommended default for multi-week).
+- C. How? Automatically at that point / admin previews and approves at that point (recommended default).
+- Ratings note: internal SquashHub rating is separate and always updates once per verified match; it is not SportyHQ or official rankings.
+- Old builder shows the same settings read-only so both builders agree.
 
-### 5. Safety and rollout
-- Kill switch: `NULL` settings = today's behaviour; a club-level flag enables the new engine for Riverside only.
-- Synthetic-player end-to-end tests in Riverside (multi-week, out-of-order entry, correction after apply, approve/reject), plus tests proving other clubs unchanged.
-- No publication, no live ladder changes, no messages until you sign off.
+## 4. Ladder engine behaviour (pilot tournaments only)
+- Each eligible finished singles game creates one recorded ladder entry (unique per game), instead of moving the ladder directly, unless timing = per match + automatic.
+- At the milestone (round fully played / tournament completed) entries are processed in game order: date, then time, then game reference.
+- Automatic: applied in that order. Approve: admin sees a before/after ladder preview and approves or rejects the batch or single moves; who, when and order are recorded.
+- No double application: unique entry per game; a batch applies once; repeated triggers do nothing.
+- Finalized results stay protected: the ladder engine never edits match results.
 
-## Decisions needed before building
-1. Approve this design for a Riverside-only pilot.
-2. Rating formula and which match types count.
-3. What to do now with the five running tournaments that inherit "move the ladder" (keep, or set to No).
+## 5. Running-tournament prompts (pilot only)
+- Tournament page banner when a milestone is reached: "Round 2 complete — 6 ladder moves ready to review" with Review / Approve / Reject.
+- Automatic mode shows "Ladder updated after Round 2" with a link to the moves.
+- No messages to players are sent by this feature.
+
+## 6. Corrections and reversals
+- Correction before the entry is applied: entry replaced, nothing to undo.
+- Correction after it was applied: a reversal entry is recorded and the admin confirms the re-apply; positions are never silently rewritten.
+- Ladder positions from before the pilot are never changed.
+
+## 7. Internal SquashHub rating (separate engine, new)
+- No internal rating exists today (only club ranking points, which wait for admin approval, and imported SportyHQ ratings).
+- New per-person rating, one update per verified eligible match, independent of the ladder switch; corrections reverse and re-apply; no back-fill.
+- Owner decisions needed: formula (e.g. Elo-style, start value, sensitivity) and which matches count (tournament / league / challenge; singles only?).
+- Not shown publicly or used for seeding until separately approved.
+
+## 8. Test strategy
+- Unit tests: setting rules (club upper limit, defaults), ordering, idempotency, reversal maths, rating maths.
+- Database tests on a synthetic Riverside tournament with synthetic players: multi-week, results entered out of order, round and end milestones, approve/reject, correction after apply, repeated triggers.
+- Isolation tests: Uitsig and another club produce identical ladder outcomes before and after (comparison of decisions for the same inputs).
+- Browser check of the builder step and running-tournament prompts as a Riverside admin, preview only.
+- Rollback rehearsal: flag off returns to today's behaviour.
+
+## 9. Phases (each needs owner approval)
+1. Containment choice (C1–C4) and "do not publish" confirmation.
+2. Builder settings stored, Riverside gate, no engine change.
+3. Ladder engine for pilot tournaments + prompts + tests.
+4. Internal rating engine after formula decision.
+5. Sign-off, then staged rollout to other clubs.
+
+## Technical notes
+- Live functions changed today: `club_members_block_duplicate`, `ensure_person_for_club_member`, `award_points_for_champ_match` (migrations 0121–0123). Previous definitions are recorded in earlier migrations and can be restored exactly.
+- Preview-only files: `StepByStepBuilder.tsx`, `step-handover.ts`, `MemberOnboardingWizard.tsx`, `src/test/step-ladder-affects.test.ts`, plus issue log and builder AGENTS notes.
+- Planned storage: nullable tournament columns for timing and apply mode, a ladder-entry ledger with a unique key per game and version, a batch/approval audit table, and a rating ledger, all club-scoped with RLS.

@@ -1,8 +1,10 @@
 /**
  * Step-by-Step Beta: place an admin-picked player into the category /
  * subcategory whose "Specific league(s)" eligibility matches the player's own
- * league registration. Only an unambiguous single match is used; a gendered
- * category (by its name) never takes a player of the other gender.
+ * league registration. Only an unambiguous single match is used. A gendered
+ * category (by its name) prefers the matching gender, but a woman registered
+ * in a men's league is placed in the men's category her league feeds (clubs
+ * run ladies in men's leagues); a man is never placed in a ladies category.
  */
 import { inferCategory, isPlayerEligibleForCategory, type CompetitionCategory } from "@/lib/leagues/category";
 

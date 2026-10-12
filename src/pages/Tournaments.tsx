@@ -98,6 +98,8 @@ export default function Tournaments() {
   // everyone else only their own matches.
   const canManageChamps = useHasPermission("champs") && !md;
   const [resultMatch, setResultMatch] = useState<any | null>(null);
+  // Game the player is being asked to confirm before scoring (not a participant).
+  const [confirmResultMatch, setConfirmResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const { user: sessionUser } = useAuth();

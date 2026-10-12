@@ -1552,6 +1552,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
   const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const [resultMatch, setResultMatch] = useState<any | null>(null);
+  // Game the player is being asked to confirm before scoring (not a participant).
+  const [confirmResultMatch, setConfirmResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
 
 

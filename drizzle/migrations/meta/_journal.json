@@ -855,6 +855,13 @@
       "when": 1791825064198,
       "tag": "0121_block_duplicate_self_applications_by_email",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1791825789611,
+      "tag": "0122_tournament_ladder_switch_subordinate_to_club",
+      "breakpoints": true
     }
   ]
 }

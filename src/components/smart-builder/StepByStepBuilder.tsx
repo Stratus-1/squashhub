@@ -1198,10 +1198,47 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return { memberId: id, name: memberName(id), text, status: fee.has ? "Entered · Payment outstanding" : "Entered" };
   });
   const [completing, setCompleting] = useState(false);
-  const [completeErr, setCompleteErr] = useState<string | null>(null);
-  const conflicts = setupConflicts(a);
-  const setupComplete = steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
-  const completeSetup = async () => {
+  // ---- Pick players: explicit save state + safe removal ----
+  const curPickSig = picksSignature(a.picks, a.removedPicks);
+  const [savedPickSig, setSavedPickSig] = useState<string | null>(null);
+  useEffect(() => { if (serverReady && savedPickSig === null) setSavedPickSig(curPickSig); }, [serverReady, savedPickSig, curPickSig]);
+  const playersUnsaved = !!a.createdTournamentId && savedPickSig !== null && savedPickSig !== curPickSig;
+  useEffect(() => {
+    if (!playersUnsaved) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [playersUnsaved]);
+  const [savingPlayers, setSavingPlayers] = useState(false);
+  const [removeAsk, setRemoveAsk] = useState<{ id: string; unplayed: number } | null>(null);
+  const doRemove = (id: string) => setA((prev) => ({ ...prev, ...removePick(prev.picks, prev.removedPicks, id) }));
+  const requestRemove = async (id: string) => {
+    const tid = a.createdTournamentId;
+    if (!tid) { doRemove(id); return; }
+    const or = ["player_a_member_id", "player_b_member_id", "partner_a_member_id", "partner_b_member_id"].map((c) => `${c}.eq.${id}`).join(",");
+    const { data, error } = await (supabase as any).from("club_champs_matches").select("status, winner_member_id, score, is_bye").eq("champ_id", tid).or(or);
+    if (error) { toast.error("Couldn't check this player's games — nothing was removed."); return; }
+    const imp = removalImpact(data ?? []);
+    if (imp.kind === "played") { toast.error(`${memberName(id)} already has ${imp.played} game${imp.played === 1 ? "" : "s"} with results, so they can't be removed. Use Pull out in Registrations instead.`); return; }
+    if (imp.kind === "unplayed") { setRemoveAsk({ id, unplayed: imp.unplayed }); return; }
+    doRemove(id);
+  };
+  const savePlayers = async () => {
+    const tid = a.createdTournamentId; if (!tid) return;
+    setSavingPlayers(true);
+    try {
+      if (setupComplete) { await completeSetup(true); }
+      else {
+        const life = await loadLifecycle(tid).catch(() => null);
+        await saveLifecycle(tid, { ...(life ?? {}), answers: JSON.parse(JSON.stringify(a)) });
+        toast.message("Player list saved. Entries update when you finish the remaining setup steps.");
+      }
+      setSavedPickSig(curPickSig);
+      if (setupComplete) toast.success("Players saved.");
+    } catch (e: any) { toast.error(e?.message || "Save failed — nothing was changed."); }
+    finally { setSavingPlayers(false); }
+  };
+  const completeSetup = async (stay = false) => {
     setCompleting(true); setCompleteErr(null);
     try {
       const dates = a.days.map((d) => d.date).filter(Boolean).sort();

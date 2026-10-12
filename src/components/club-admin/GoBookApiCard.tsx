@@ -121,6 +121,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
             className="h-8 text-xs"
             value={username}
             autoComplete="off"
+            readOnly={!editing}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="API_073003"
           />
@@ -132,6 +133,7 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
             type="password"
             autoComplete="new-password"
             value={password}
+            readOnly={!editing}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Issued by GoBook"
           />
@@ -139,14 +141,26 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={save} disabled={updateSecrets.isPending}>
-          {updateSecrets.isPending ? "Saving..." : "Save credentials"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => call("test_connection")} disabled={testing}>
+        {editing ? (
+          <>
+            <Button size="sm" onClick={save} disabled={updateSecrets.isPending}>
+              {updateSecrets.isPending ? "Saving..." : "Save credentials"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancelEdit} disabled={updateSecrets.isPending}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil className="w-3.5 h-3.5 mr-1" />
+            Edit credentials
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={() => call("test_connection")} disabled={testing || editing}>
           {testing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
           Test connection
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => call("sync_settings")} disabled={testing}>
+        <Button size="sm" variant="secondary" onClick={() => call("sync_settings")} disabled={testing || editing}>
           <ShieldCheck className="w-3.5 h-3.5 mr-1" />
           Enable API booking
         </Button>

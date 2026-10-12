@@ -1078,7 +1078,11 @@ export function MemberOnboardingWizard({
       onComplete();
     } catch (err: any) {
       console.error("[MemberOnboardingWizard] Save error:", err);
-      toast.error(err.message || "Failed to save registration");
+      if (/DUPLICATE_MEMBER/.test(err?.message || "")) {
+        toast.error("You're already a member of this club with this email address. Please sign in with your existing account or member number instead of applying again — the club admin can help if you're unsure.");
+      } else {
+        toast.error(err.message || "Failed to save registration");
+      }
     } finally {
       setSaving(false);
     }

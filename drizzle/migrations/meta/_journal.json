@@ -862,6 +862,13 @@
       "when": 1791825789611,
       "tag": "0122_tournament_ladder_switch_subordinate_to_club",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1791825805901,
+      "tag": "0123_tournament_ladder_switch_preserve_no_config",
+      "breakpoints": true
     }
   ]
 }

@@ -161,6 +161,7 @@ export function isSlotFree(
   return !bookings.some((b) => {
     if (b.court_id !== courtId) return false;
     if ((b.status || "active") !== "active") return false;
+    if (isChampsReservation(b)) return false;
     if (ignoreBookingId && b.id === ignoreBookingId) return false;
     const bs = timeToMinutes(String(b.start_time || "00:00"));
     const be = timeToMinutes(String(b.end_time || "00:00"));

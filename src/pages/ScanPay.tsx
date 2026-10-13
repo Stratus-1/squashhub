@@ -320,7 +320,7 @@ export default function ScanPay() {
     setSubmitting(true);
     try {
       const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
-        _code: code, _guest_name: name,
+        _code: code, _guest_name: name, _guest_phone: visitorPhone.trim() || null,
       });
       if (error) throw error;
       localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
@@ -346,7 +346,7 @@ export default function ScanPay() {
       let current = tab;
       if (!current) {
         const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
-          _code: code, _guest_name: name,
+          _code: code, _guest_name: name, _guest_phone: visitorPhone.trim() || null,
         });
         if (error) throw error;
         localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));

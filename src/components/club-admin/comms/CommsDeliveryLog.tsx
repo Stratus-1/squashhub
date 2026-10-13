@@ -169,7 +169,7 @@ export function CommsDeliveryLog({ clubId }: { clubId: string }) {
         {groups.map((g) => {
           const isOpen = !!open[g.id];
           const pc = perChannel(g.rows);
-          const players = new Set(g.rows.map((r: any) => r.member_id ?? r.recipient_name ?? r.target)).size;
+          const players = new Set(g.rows.map((r: any) => r.club_member_id ?? r.recipient_name ?? r.target)).size;
           const failed = g.rows.filter((r: any) => r.status === "failed").length;
           return (
             <div key={g.id} className="rounded border border-border">

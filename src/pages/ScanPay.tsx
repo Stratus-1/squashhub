@@ -171,6 +171,19 @@ export default function ScanPay() {
     return divisionMenu.filter((m) => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
   }, [divisionMenu, activeCategory]);
 
+  // Mixer ("buddy") used for one-tap spirit + mixer orders: cheapest in-stock
+  // bar item whose name reads like a soft-drink buddy (Coke, cola, etc.).
+  const buddyItem = useMemo(() => {
+    const candidates = menu.filter(
+      (m) =>
+        m.item_kind !== "special" &&
+        /buddy|cola|coke/i.test(m.name) &&
+        (m.item_kind === "made_to_order" || typeof m.stock_qty !== "number" || m.stock_qty > 0),
+    );
+    candidates.sort((a, b) => Number(a.price) - Number(b.price));
+    return candidates[0] || null;
+  }, [menu]);
+
   const cartLines = useMemo(
     () =>
       Object.entries(cart)

@@ -172,10 +172,12 @@ export default function ScanPay() {
     return divisionMenu.filter((m) => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
   }, [divisionMenu, activeCategory]);
 
-  // Mixer ("buddy") choices for spirit + mixer orders: in-stock soft-drink
-  // items (Coke, soda, tonic, etc.). Word-boundary match so "Chocolates"
-  // never counts as "cola". One entry per base product name.
-  const buddyItems = useMemo(() => {
+  // Mixer ("buddy") choices for spirit + mixer orders. The backend returns a
+  // dedicated buddies list (includes non-sellable bulk mixers like Coke Bulk);
+  // fall back to scanning the menu for older backends.
+  const buddyItems = useMemo<ScanItem[]>(() => {
+    const fromBackend = ((data as any)?.buddies || []) as ScanItem[];
+    if (fromBackend.length > 0) return fromBackend;
     const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
     const candidates = menu.filter(
       (m) =>
@@ -185,7 +187,7 @@ export default function ScanPay() {
     );
     candidates.sort((a, b) => Number(a.price) - Number(b.price));
     return candidates;
-  }, [menu]);
+  }, [data, menu]);
   // Option id whose buddy picker is open (null = closed).
   const [buddyFor, setBuddyFor] = useState<string | null>(null);
   const addWithBuddy = (optionId: string, buddyId: string) => {

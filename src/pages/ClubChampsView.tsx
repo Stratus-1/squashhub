@@ -34,7 +34,7 @@ import { activeField, fieldSizeForStage, playoffSteps } from "@/lib/tournaments/
 import { tournamentSummary, type SummaryFixture } from "@/lib/tournaments/tournament-summary";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { divisionPools } from "@/lib/tournaments/active-draw";
-import { formatLabelForGroup } from "@/lib/tournaments/format-label";
+import { formatLabelForGroup, scoringLabelForGroup } from "@/lib/tournaments/format-label";
 
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
@@ -3749,7 +3749,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       const titleNode = (
         <span className="flex items-center gap-2 flex-wrap">
           <span>{getGroupLabel(champ, gn)}</span>
-          <Badge variant="outline" className="text-[10px] font-normal">{formatLabelFor(gn)}</Badge>
+          <Badge variant="outline" className="text-[10px] font-normal">{formatLabelFor(gn)}{scoringLabelForGroup(champ, gn) ? ` (${scoringLabelForGroup(champ, gn)})` : ""}</Badge>
           {leagueTotal && leagueTotal.gp > 0 && (
             <>
               <Badge variant={isLeading ? "default" : "secondary"} className="text-xs tabular-nums">
@@ -3973,7 +3973,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
                   )}
                 >
                   {c.label}
-                  <span className="ml-1 font-normal opacity-70">· {formatLabelFor(c.gn)}</span>
+                  <span className="ml-1 font-normal opacity-70">· {formatLabelFor(c.gn)}{scoringLabelForGroup(champ, c.gn) ? ` (${scoringLabelForGroup(champ, c.gn)})` : ""}</span>
                    {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
                 </button>
               ))}

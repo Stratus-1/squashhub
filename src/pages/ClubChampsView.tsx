@@ -566,21 +566,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   };
   /** Human label for a group's playing format, shown next to the group name so
    * players know whether their category is a round robin, Swiss, etc. */
-  const formatLabelFor = (gn: number): string | null => {
-    if (swissStageFor(gn)) return "Swiss";
-    const perLeague = leagueFormatsCfg?.[String(gn)];
-    const fmt = perLeague || (isSwissMode ? "swiss" : (champ as any)?.round_format);
-    switch (fmt) {
-      case "swiss": return "Swiss";
-      case "double_round_robin": return "Double round robin";
-      case "round_robin":
-      case "single_round_robin": return "Round robin";
-      case "knockout": return "Knockout";
-      default:
-        if ((champ as any)?.scoring_mode === "time_capped_points") return "Timed points";
-        return "Round robin";
-    }
-  };
+  const formatLabelFor = (gn: number): string | null =>
+    formatLabelForGroup(champ as any, arch, gn);
   /** Round robin divisions can also be split into pools (post-pool playoffs). */
   const isRoundRobinForLeague = (gn: number) => {
     const perLeague = leagueFormatsCfg?.[String(gn)];

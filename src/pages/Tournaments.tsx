@@ -852,6 +852,7 @@ export default function Tournaments() {
   const matchStageLabel = (m: any): string => {
     const own = demoteSectionFinal(String(m?.stage_label || "").trim());
     if (!isGenericRoundLabel(own)) return own;
+    if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}`;
     const row = String(matchRoundRow(m)?.label || "").trim();
     if (!isGenericRoundLabel(row)) return row;
     const planned = roundMeta(m.champ_id, m.round_number).label;
@@ -910,7 +911,6 @@ export default function Tournaments() {
     // not real rounds — every game shares the same booking deadline. Group by
     // the deadline instead so players see one "Round 1 · Play by …" list.
     const sched = matchSchedule(m);
-    if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}`;
     return roundMeta(m.champ_id, m.round_number).label || `Round ${Number(m.round_number) || 1}`;
   };
 

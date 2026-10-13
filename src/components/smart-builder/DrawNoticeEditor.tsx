@@ -22,7 +22,7 @@ export function useDrawNoticeSettings(tournamentId: string | null | undefined, k
     let live = true;
     (supabase as any).from("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle().then(({ data }: any) => {
       if (!live) return;
-      const s = readDrawNoticeSettings(data?.beta_lifecycle, key, fallback);
+      const s = resolveDrawNoticeSettings(data?.beta_lifecycle, key, fallback);
       const v = { message: s.message, includeActivation: s.includeActivation, activationIntro: s.activationIntro };
       setValue(v); setSaved(v); setSavedAt(s.savedAt);
     });

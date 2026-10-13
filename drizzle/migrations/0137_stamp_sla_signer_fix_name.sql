@@ -1,0 +1,19 @@
+CREATE OR REPLACE FUNCTION public.stamp_sla_signer()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_name text;
+BEGIN
+  IF NEW.sla_accepted_at IS NOT NULL AND OLD.sla_accepted_at IS DISTINCT FROM NEW.sla_accepted_at THEN
+    IF NEW.sla_accepted_by IS NULL AND auth.uid() IS NOT NULL THEN
+      NEW.sla_accepted_by := auth.uid();
+    END IF;
+    IF coalesce(trim(NEW.sla_accepted_name),'') = '' AND NEW.sla_accepted_by IS NOT NULL THEN
+      SELECT trim(cm.name) INTO v_name FROM club_members cm
+      WHERE cm.user_id = NEW.sla_accepted_by AND cm.club_id = NEW.id LIMIT 1;
+      IF coalesce(v_name,'') = '' THEN
+        SELECT email INTO v_name FROM auth.users WHERE id = NEW.sla_accepted_by;
+      END IF;
+      NEW.sla_accepted_name := v_name;
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;

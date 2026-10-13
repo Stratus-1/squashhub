@@ -1442,6 +1442,7 @@ function ImageField({
           )}
         </div>
       </div>
+      <LibrarySuggestions name={itemName} category={category} value={value} onPick={onChange} />
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -175,7 +175,10 @@ export function ScheduleMatchDialog({
     },
     enabled: !!bookingClubId && open,
   });
-  const champsOnly = !canManage && reservedDates.length > 0;
+  // Organisers also start in Champs-only mode and must opt in to the full list,
+  // so nobody books a Champs match outside the reserved slots by accident.
+  const [showAllTimes, setShowAllTimes] = useState(false);
+  const champsOnly = reservedDates.length > 0 && !(canManage && showAllTimes);
   useEffect(() => {
     if (champsOnly && !reservedDates.includes(date)) setDate(reservedDates[0]);
   }, [champsOnly, reservedDates, date]);
@@ -368,6 +371,11 @@ export function ScheduleMatchDialog({
             <p className="text-[11px] text-muted-foreground">
               Club Champs matches can only be booked in the slots the club reserved. Contact the organiser if none suit you.
             </p>
+          )}
+          {canManage && reservedDates.length > 0 && (
+            <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[11px]" onClick={() => setShowAllTimes((v) => !v)}>
+              {showAllTimes ? "Show only Club Champs slots" : "Organiser: show all courts and times"}
+            </Button>
           )}
 
           {!champsOnly && (<>

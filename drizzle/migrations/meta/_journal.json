@@ -883,6 +883,13 @@
       "when": 1791894186123,
       "tag": "0125_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1791896444289,
+      "tag": "0126_invite_already_paid_claims",
+      "breakpoints": true
     }
   ]
 }

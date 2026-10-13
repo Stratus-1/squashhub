@@ -1158,7 +1158,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   const [collapsedLeagues, setCollapsedLeagues] = useState<Record<string, boolean>>({});
   const [swissRounds, setSwissRounds] = useState<Record<string, number>>({});
-  // Swiss round 1 pairing: "seeded" (top half v bottom half) or "random".
+  // Swiss round 1 pairing: "seeded" (strongest v weakest) or "random".
   const [swissPairingModes, setSwissPairingModes] = useState<Record<string, "seeded" | "random">>({});
   // Optional knockout after the Swiss rounds: how many qualify. 0 / absent = off.
   const [swissKnockoutQualifiers, setSwissKnockoutQualifiers] = useState<Record<string, number>>({});
@@ -4683,7 +4683,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         const poolIds = poolGroups[p] || [];
         if (poolIds.length < 2) continue;
         const { rounds: rrRounds, byesPerRound } = generateRoundRobinRounds(poolIds, "single");
-        // Round 1 follows the organiser's Swiss draw (seeded top half v bottom
+        // Round 1 follows the organiser's Swiss draw (seeded strongest v weakest
         // half, or random). Later rounds are re-paired on results in the live
         // tournament; these rows only reserve the right number of slots.
         const firstRound = firstRoundSwissPairs(

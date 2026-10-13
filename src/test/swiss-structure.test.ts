@@ -5,15 +5,15 @@ import { knockoutSizeFor } from "@/lib/tournament-playoffs";
 const seeds = (n: number) => Array.from({ length: n }, (_, i) => `s${i + 1}`);
 
 describe("Swiss first-round pairing", () => {
-  it("pairs top half against bottom half", () => {
+  it("pairs strongest against weakest", () => {
     const { pairs, bye } = firstRoundSwissPairs(seeds(10), "seeded");
     expect(bye).toBeNull();
     expect(pairs).toEqual([
-      ["s1", "s6"],
-      ["s2", "s7"],
+      ["s1", "s10"],
+      ["s2", "s9"],
       ["s3", "s8"],
-      ["s4", "s9"],
-      ["s5", "s10"],
+      ["s4", "s7"],
+      ["s5", "s6"],
     ]);
   });
 

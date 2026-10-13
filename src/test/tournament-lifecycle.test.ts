@@ -17,13 +17,17 @@ const rows = [
   { id: "no-dates", status: "planning", start_date: null, end_date: null },
   { id: "running", status: "in_progress", start_date: "2026-08-18", end_date: "2026-08-22" },
   { id: "upcoming", status: "planning", start_date: "2026-08-27", end_date: "2026-08-28" },
-  { id: "single-day-past", status: "planning", start_date: "2026-07-16", end_date: null },
+  { id: "started-no-end", status: "planning", start_date: "2026-07-16", end_date: null },
 ];
 
 describe("tournament lifecycle", () => {
   it("treats July events as past even when the status was never closed off", () => {
     expect(isPastTournament(rows[1], TODAY)).toBe(true);
-    expect(isPastTournament(rows[7], TODAY)).toBe(true);
+  });
+
+  it("never treats a started tournament with no end date as past", () => {
+    expect(isPastTournament(rows[7], TODAY)).toBe(false);
+    expect(isCurrentTournament(rows[7], TODAY)).toBe(true);
   });
 
   it("treats cancelled/abandoned tournaments as past regardless of dates", () => {
@@ -44,10 +48,10 @@ describe("tournament lifecycle", () => {
 
   it("splits a mixed list correctly and sorts running first", () => {
     const { current, past, needsDates } = splitTournamentsByLifecycle(rows, TODAY);
-    expect(current.map((r) => r.id)).toEqual(["running", "upcoming"]);
+    expect(current.map((r) => r.id)).toEqual(["started-no-end", "running", "upcoming"]);
     expect(needsDates.map((r) => r.id)).toEqual(["no-dates"]);
     expect(past.map((r) => r.id).sort()).toEqual(
-      ["abandoned", "cancelled-future", "july-completed", "july-planning", "single-day-past"].sort(),
+      ["abandoned", "cancelled-future", "july-completed", "july-planning"].sort(),
     );
   });
 });

@@ -3761,6 +3761,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       const titleNode = (
         <span className="flex items-center gap-2 flex-wrap">
           <span>{getGroupLabel(champ, gn)}</span>
+          <Badge variant="outline" className="text-[10px] font-normal">{formatLabelFor(gn)}</Badge>
           {leagueTotal && leagueTotal.gp > 0 && (
             <>
               <Badge variant={isLeading ? "default" : "secondary"} className="text-xs tabular-nums">
@@ -3984,7 +3985,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
                   )}
                 >
                   {c.label}
-                  {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
+                  <span className="ml-1 font-normal opacity-70">· {formatLabelFor(c.gn)}</span>
+                   {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
                 </button>
               ))}
             </div>
@@ -4027,10 +4029,10 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Category">
           {orderedGroups.map((group) => <Button key={group} size="sm" variant={group === gn ? "default" : "outline"}
             className="shrink-0 rounded-none" aria-pressed={group === gn} onClick={() => setCatGroup(group)}>
-            {getGroupLabel(champ, group)}
+            {getGroupLabel(champ, group)} · {formatLabelFor(group)}
           </Button>)}
         </div>
-        <h3 className="text-lg font-semibold">{getGroupLabel(champ, gn)}</h3>
+        <h3 className="text-lg font-semibold">{getGroupLabel(champ, gn)} <Badge variant="outline" className="text-[10px] font-normal align-middle">{formatLabelFor(gn)}</Badge></h3>
         {renderGroupStandings(gn)}
       </div>;
     }

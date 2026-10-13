@@ -2937,3 +2937,7 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Cause: `handle_new_user` inserts the profile first; the profile trigger already linked the existing club_members rows, so the later email fallback updated 0 rows and the "create membership" branch inserted a duplicate.
 - Fix: the create branch now skips when this login is already linked to a member of the club or the club already has a member with that email. Duplicate UIT0024 removed (no attached records).
 - Follow-up: the "New member" sign-up form never checked email — its duplicate guard only matched name + cell. It now calls `existing_member_signup_status` first and shows "There's already a member with this email — is it you?" (sign in / claim existing membership, or continue as a family member sharing the email).
+
+### 2026-10-13 — Uitsig Champs: fees raised for all entrants; invite "already paid" → claims queue
+- Raised R100 entry fee (via `ensure_tournament_entry_fee`) for 67 organiser-entered regs with no fee row; paid/on-account/cancelled untouched.
+- `invite_settle_entry`: confirmed organiser-entered (`invited` + `confirmed_at`) may pay; new `already_paid` method creates a `champ_payment_claims` row (reported) approved in Tournament registrations → fees panel. `invite-upload-proof` attaches proof to the open claim.

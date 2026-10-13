@@ -41,9 +41,10 @@ export const needsDates = (t: TournamentLike): boolean => !t.start_date && !t.en
 /** Finished, cancelled, or the last playing day is behind us. */
 export const isPastTournament = (t: TournamentLike, today: string = todayISO()): boolean => {
   if (PAST_TOURNAMENT_STATUSES.has(statusOf(t))) return true;
-  // Prefer the end date; fall back to the start date for single-day events.
-  const last = t.end_date || t.start_date;
-  return !!last && last < today;
+  // Only an explicit end date can make a tournament past. Tournaments often
+  // have no end date (play-by events run until finished); never fall back to
+  // the start date, or a started tournament would instantly look "past".
+  return !!t.end_date && t.end_date < today;
 };
 
 export const isCancelledTournament = (t: TournamentLike): boolean =>

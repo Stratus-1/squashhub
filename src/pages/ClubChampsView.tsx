@@ -156,9 +156,11 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
 
   // Architecture discriminator: structured (Beta) tournaments never use the legacy generators below.
   const { data: fetchedArch } = useQuery({
-    queryKey: ["club-champ-arch", champId],
+    queryKey: ["club-champ-arch", champId, "category-scoring-v2"],
     queryFn: async () => {
-      const { data } = await fromExt("tournaments").select("builder_architecture,builder_spec,beta_lifecycle,league_scoring_modes,league_points_per_game,league_best_of,scoring_mode,points_per_game,best_of").eq("id", champId!).maybeSingle();
+      if (!champId) return null;
+      const { data, error } = await fromExt("tournaments").select("builder_architecture,builder_spec,beta_lifecycle,league_scoring_modes,league_points_per_game,league_best_of").eq("id", champId).maybeSingle();
+      if (error) throw error;
       return data as { builder_architecture?: string; builder_spec?: any; beta_lifecycle?: any } | null;
     },
     enabled: !!champId && !inlineStandings,

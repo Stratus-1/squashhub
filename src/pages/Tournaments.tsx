@@ -243,11 +243,11 @@ export default function Tournaments() {
   // Category format labels ("Swiss", "Round robin") come from the saved builder
   // spec for structured tournaments — the list view row doesn't carry it.
   const { data: champArchRows = [] } = useQuery({
-    queryKey: ["tournaments-builder-arch", champIdsKey],
+    queryKey: ["tournaments-builder-arch", champIdsKey, "category-scoring-v2"],
     queryFn: async () => {
       if (!champIds.length) return [];
       const { data, error } = await fromExt("tournaments")
-        .select("id, builder_architecture, builder_spec, league_scoring_modes, league_points_per_game, league_best_of, scoring_mode, points_per_game, best_of")
+        .select("id, builder_architecture, builder_spec, league_scoring_modes, league_points_per_game, league_best_of")
         .in("id", champIds);
       if (error) throw error;
       return (data || []) as any[];

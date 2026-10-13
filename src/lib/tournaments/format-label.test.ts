@@ -65,6 +65,17 @@ describe("formatLabelForGroup", () => {
 
 import { scoringLabelForGroup } from "./format-label";
 describe("scoringLabelForGroup", () => {
+  it("retains saved scoring for every category when merged with legacy defaults", () => {
+    const champ = { scoring_mode: "standard", points_per_game: 11, best_of: 5 };
+    const setup = {
+      league_points_per_game: { "1": 11, "2": 11, "3": 15, "4": 15, "5": 15, "6": 11, "7": 15, "8": 15 },
+      league_best_of: { "1": 5, "2": 5, "3": 5, "4": 5, "5": 5, "6": 5, "7": 5, "8": 5 },
+    };
+    expect(Array.from({ length: 8 }, (_, i) => scoringLabelForGroup({ ...champ, ...setup }, i + 1))).toEqual([
+      "PAR 11, best of 5", "PAR 11, best of 5", "PAR 15, best of 5", "PAR 15, best of 5",
+      "PAR 15, best of 5", "PAR 11, best of 5", "PAR 15, best of 5", "PAR 15, best of 5",
+    ]);
+  });
   it("prefers category values", () => {
     expect(scoringLabelForGroup({ points_per_game: 11, best_of: 5, league_points_per_game: { "2": 15 }, league_best_of: { "2": 3 } }, 2)).toBe("PAR 15, best of 3");
     expect(scoringLabelForGroup({ points_per_game: 11, best_of: 5 }, 1)).toBe("PAR 11, best of 5");

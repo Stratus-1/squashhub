@@ -2941,3 +2941,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 ### 2026-10-13 — Uitsig Champs: fees raised for all entrants; invite "already paid" → claims queue
 - Raised R100 entry fee (via `ensure_tournament_entry_fee`) for 67 organiser-entered regs with no fee row; paid/on-account/cancelled untouched.
 - `invite_settle_entry`: confirmed organiser-entered (`invited` + `confirmed_at`) may pay; new `already_paid` method creates a `champ_payment_claims` row (reported) approved in Tournament registrations → fees panel. `invite-upload-proof` attaches proof to the open claim.
+
+### 2026-10-13 — Champs match booking still showed all times
+- Symptom: players opening "Make your court booking" from tournament fixtures saw every court/time instead of only the reserved Club Championships slots.
+- Cause: Champs-only mode was skipped for anyone with organiser/champs rights (`canManage`), and the full picker rendered while the reserved-slot query was still loading.
+- Fix: `ScheduleMatchDialog` now starts in Champs-only mode for everyone while reserved holds exist; organisers get an explicit "show all courts and times" toggle; the full picker waits for the reserved-slot check.

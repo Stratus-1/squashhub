@@ -162,7 +162,7 @@ export function ScheduleMatchDialog({
   // may only book their match into those reserved slots (organisers keep the
   // full picker). Clubs without holds are unaffected.
   const today = format(new Date(), "yyyy-MM-dd");
-  const { data: reservedDates = [] } = useQuery({
+  const { data: reservedDates = [], isFetched: reservedChecked } = useQuery({
     queryKey: ["champs-reserved-dates", bookingClubId, today],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
@@ -175,7 +175,10 @@ export function ScheduleMatchDialog({
     },
     enabled: !!bookingClubId && open,
   });
-  const champsOnly = !canManage && reservedDates.length > 0;
+  // Organisers also start in Champs-only mode and must opt in to the full list,
+  // so nobody books a Champs match outside the reserved slots by accident.
+  const [showAllTimes, setShowAllTimes] = useState(false);
+  const champsOnly = reservedDates.length > 0 && !(canManage && showAllTimes);
   useEffect(() => {
     if (champsOnly && !reservedDates.includes(date)) setDate(reservedDates[0]);
   }, [champsOnly, reservedDates, date]);
@@ -369,8 +372,16 @@ export function ScheduleMatchDialog({
               Club Champs matches can only be booked in the slots the club reserved. Contact the organiser if none suit you.
             </p>
           )}
+          {canManage && reservedDates.length > 0 && (
+            <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[11px]" onClick={() => setShowAllTimes((v) => !v)}>
+              {showAllTimes ? "Show only Club Champs slots" : "Organiser: show all courts and times"}
+            </Button>
+          )}
 
-          {!champsOnly && (<>
+          {!champsOnly && !reservedChecked && !!bookingClubId && (
+            <p className="text-xs text-muted-foreground">Checking Club Champs slots…</p>
+          )}
+          {!champsOnly && (reservedChecked || !bookingClubId) && (<>
           <div className="space-y-1">
             <Label className="text-xs">Court</Label>
             <div className="flex flex-wrap gap-1.5">

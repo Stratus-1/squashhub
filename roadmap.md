@@ -16,4 +16,5 @@
 - GoBook API card: fields read-only until Edit credentials; Save/Cancel while editing
 - [ ] Wendy (Nelspruit doubles): can't edit players on LG fixture card — doubles teams (league_team_pairs) have no captain concept, so captain edit rights never apply; investigate + propose fix
 - [x] Replace per-spirit Buddy buttons with standalone mixer tiles, including Coke Bulk, on phone and laptop; preview only.
+- [ ] Normal (non-special) orders: use the real Buddy item at its saved price and bottle image; show only the Coke Bulk serving, not its stock container. Coke Bulk price awaiting confirmation.
 - [x] Buddy images: bottle on Coke Bulk, glass of coke on Glass 250ml (live)

@@ -1,4 +1,4 @@
-import { withSpiritMixers } from "@/lib/bar-spirit-menu";
+import { spiritMixers, withSpiritMixers } from "@/lib/bar-spirit-menu";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 /**
  * Public Scan-to-Pay page — `/s/:code`
@@ -43,6 +43,7 @@ interface ScanItem {
   stock_qty?: number;
   barcode?: string | null;
   item_kind?: string | null;
+  stock_parent_id?: string | null;
   valid_from?: string | null;
   valid_to?: string | null;
   valid_days?: number[] | null;
@@ -174,12 +175,10 @@ export default function ScanPay() {
   // fall back to scanning the menu for older backends.
   const buddyItems = useMemo<ScanItem[]>(() => {
     const fromBackend = ((data as any)?.buddies || []) as ScanItem[];
-    if (fromBackend.length > 0) return fromBackend;
-    const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
-    const candidates = menu.filter(
+    const source = [...menu, ...fromBackend.filter(b => !menu.some(m => m.id === b.id))];
+    const candidates = spiritMixers(source).filter(
       (m) =>
-        m.item_kind !== "special" &&
-        rx.test(m.name) &&
+        !(m.name === "Coke Bulk" && source.some(s => s.name.startsWith("Coke Bulk · "))) &&
         (m.item_kind === "made_to_order" || typeof m.stock_qty !== "number" || m.stock_qty > 0),
     );
     candidates.sort((a, b) => Number(a.price) - Number(b.price));

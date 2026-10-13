@@ -80,6 +80,7 @@ export default function ScanPay() {
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [visitorName, setVisitorName] = useState("");
+  const [visitorPhone, setVisitorPhone] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);

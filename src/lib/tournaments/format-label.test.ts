@@ -62,3 +62,13 @@ describe("formatLabelForGroup", () => {
     expect(formatLabelForGroup(champ, arch, 1)).toBe("Swiss");
   });
 });
+
+import { scoringLabelForGroup } from "./format-label";
+describe("scoringLabelForGroup", () => {
+  it("prefers category values", () => {
+    expect(scoringLabelForGroup({ points_per_game: 11, best_of: 5, league_points_per_game: { "2": 15 }, league_best_of: { "2": 3 } }, 2)).toBe("PAR 15, best of 3");
+    expect(scoringLabelForGroup({ points_per_game: 11, best_of: 5 }, 1)).toBe("PAR 11, best of 5");
+    expect(scoringLabelForGroup({ scoring_mode: "time_capped_points" }, 1)).toBe("Bells, timed points");
+    expect(scoringLabelForGroup({}, 1)).toBeNull();
+  });
+});

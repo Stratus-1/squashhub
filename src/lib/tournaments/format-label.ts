@@ -68,3 +68,20 @@ export function formatLabelForGroup(
   if (champ?.scoring_mode === "time_capped_points") return "Timed points";
   return "Round robin";
 }
+
+/**
+ * Short scoring label for a category, e.g. "PAR 11, best of 5" or "Bells".
+ * Category value wins over the tournament-wide value; null when not saved.
+ */
+export function scoringLabelForGroup(champ: any, groupNumber: number): string | null {
+  const at = (map: unknown) =>
+    map && typeof map === "object" ? (map as Record<string, unknown>)[String(groupNumber)] : undefined;
+  const mode = at(champ?.league_scoring_modes) ?? champ?.scoring_mode;
+  if (mode === "time_capped_points") return "Bells, timed points";
+  const p = Number(at(champ?.league_points_per_game) ?? champ?.points_per_game);
+  const b = Number(at(champ?.league_best_of) ?? champ?.best_of);
+  const parts: string[] = [];
+  if (p === 11 || p === 15) parts.push(`PAR ${p}`);
+  if (b === 3 || b === 5) parts.push(`best of ${b}`);
+  return parts.length ? parts.join(", ") : null;
+}

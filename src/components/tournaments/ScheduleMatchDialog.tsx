@@ -158,6 +158,28 @@ export function ScheduleMatchDialog({
     enabled: !!bookingClubId && !!date && open,
   });
 
+  // Upcoming "Club Championships" holds at the venue. While any exist, players
+  // may only book their match into those reserved slots (organisers keep the
+  // full picker). Clubs without holds are unaffected.
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: reservedDates = [] } = useQuery({
+    queryKey: ["champs-reserved-dates", bookingClubId, today],
+    queryFn: async () => {
+      const { data } = await fromExt("bookings")
+        .select("date, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id")
+        .eq("club_id", bookingClubId!)
+        .eq("status", "active")
+        .gte("date", today)
+        .ilike("external_booker_name", "club championship%");
+      return [...new Set(((data || []) as any[]).filter((b) => isChampsReservation(b)).map((b) => String(b.date)))].sort();
+    },
+    enabled: !!bookingClubId && open,
+  });
+  const champsOnly = !canManage && reservedDates.length > 0;
+  useEffect(() => {
+    if (champsOnly && !reservedDates.includes(date)) setDate(reservedDates[0]);
+  }, [champsOnly, reservedDates, date]);
+
   const slotMinutes = Number(club?.booking_slot_minutes) || 60;
   const duration = Math.max(15, durationMinutes || slotMinutes);
   const slots = useMemo(
@@ -288,6 +310,15 @@ export function ScheduleMatchDialog({
         <div className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs">Date</Label>
+            {champsOnly ? (
+              <div className="flex flex-wrap gap-1.5">
+                {reservedDates.map((d) => (
+                  <Button key={d} type="button" size="sm" variant={date === d ? "default" : "outline"} className="h-7 text-xs" onClick={() => setDate(d)}>
+                    {format(new Date(`${d}T00:00:00`), "EEE d MMM")}
+                  </Button>
+                ))}
+              </div>
+            ) : (
             <Input
               type="date"
               value={date}
@@ -295,6 +326,7 @@ export function ScheduleMatchDialog({
               onChange={(e) => setDate(e.target.value)}
               className="h-8 text-sm"
             />
+            )}
             {pastPlayBy && (
               <p className="text-[11px] text-amber-600 dark:text-amber-400">
                 This is after the round's play-by date ({match?.play_by}). You can still book, but let the organiser
@@ -327,6 +359,18 @@ export function ScheduleMatchDialog({
             </div>
           )}
 
+          {champsOnly && champsSlots.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              {isFetching ? "Checking availability…" : "All Club Champs slots on this day are taken — try the other day."}
+            </p>
+          )}
+          {champsOnly && (
+            <p className="text-[11px] text-muted-foreground">
+              Club Champs matches can only be booked in the slots the club reserved. Contact the organiser if none suit you.
+            </p>
+          )}
+
+          {!champsOnly && (<>
           <div className="space-y-1">
             <Label className="text-xs">Court</Label>
             <div className="flex flex-wrap gap-1.5">
@@ -376,6 +420,7 @@ export function ScheduleMatchDialog({
               </div>
             )}
           </div>
+          </>)}
 
           <div className="flex items-center justify-between gap-2">
             <Badge variant="outline" className="text-[10px]">{duration} min match</Badge>

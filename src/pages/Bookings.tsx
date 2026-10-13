@@ -86,6 +86,9 @@ import { Geolocation } from "@capacitor/geolocation";
 import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
+import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { isChampsReservation } from "@/lib/tournaments/self-schedule";
+import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
 import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 
 
@@ -389,6 +392,22 @@ export default function Bookings() {
   const [opsDialogOpen, setOpsDialogOpen] = useState(false);
   const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
+  // Reserved "Club Championships" slots: a Champs player taps one to book
+  // their own unscheduled match into it (names replace the hold).
+  const [champSlotMatch, setChampSlotMatch] = useState<any | null>(null);
+  const { data: myOpenChampMatches = [] } = useQuery({
+    queryKey: ["bookings-my-open-champ-matches", myClub?.id, activeMember?.id],
+    enabled: !!myClub?.id && !!activeMember?.id,
+    queryFn: async () => {
+      const id = activeMember!.id;
+      const { data } = await (supabase as any)
+        .from("club_champs_matches")
+        .select("*, champ:champ_id(club_id, match_duration_minutes, court_ids), player_a:player_a_member_id(name), player_b:player_b_member_id(name)")
+        .or(`player_a_member_id.eq.${id},player_b_member_id.eq.${id},partner_a_member_id.eq.${id},partner_b_member_id.eq.${id}`)
+        .not("status", "in", "(completed,forfeited,walkover,cancelled)");
+      return ((data || []) as any[]).filter((m) => m.champ?.club_id === myClub!.id && fixtureScheduleState(m) === "unscheduled");
+    },
+  });
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
   // Booking-provider settings are read straight from the club row. The club
@@ -2202,7 +2221,14 @@ export default function Bookings() {
                           )}
                           onClick={() => {
                             if (isPastSlot && !booking) return;
-                            if (booking) { setBookingDetails(booking); return; }
+                            if (booking) {
+                              if (isChampsReservation(booking as any) && myOpenChampMatches.length > 0) {
+                                setChampSlotMatch(myOpenChampMatches[0]);
+                                return;
+                              }
+                              setBookingDetails(booking);
+                              return;
+                            }
                             // For non-GoBook external providers, redirect.
                             // GoBook clubs book in-app and silently push to GoBook.
                             if (usesExternalBooking && externalProvider !== "gobook" && externalUrl) {
@@ -3243,6 +3269,15 @@ export default function Bookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ScheduleMatchDialog
+        open={!!champSlotMatch}
+        onOpenChange={(v) => !v && setChampSlotMatch(null)}
+        clubId={myClub?.id}
+        match={champSlotMatch}
+        opponentName={champSlotMatch ? (champSlotMatch.player_a_member_id === activeMember?.id ? champSlotMatch.player_b?.name : champSlotMatch.player_a?.name) : undefined}
+        durationMinutes={champSlotMatch?.champ?.match_duration_minutes ?? undefined}
+        allowedCourtIds={champSlotMatch?.champ?.court_ids ?? []}
+      />
       <BackToDashboard />
     </div>
   );

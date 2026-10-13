@@ -564,6 +564,23 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
     const r = Number(((champ as any)?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
     return { rounds: Number.isFinite(r) && r > 0 ? r : null };
   };
+  /** Human label for a group's playing format, shown next to the group name so
+   * players know whether their category is a round robin, Swiss, etc. */
+  const formatLabelFor = (gn: number): string | null => {
+    if (swissStageFor(gn)) return "Swiss";
+    const perLeague = leagueFormatsCfg?.[String(gn)];
+    const fmt = perLeague || (isSwissMode ? "swiss" : (champ as any)?.round_format);
+    switch (fmt) {
+      case "swiss": return "Swiss";
+      case "double_round_robin": return "Double round robin";
+      case "round_robin":
+      case "single_round_robin": return "Round robin";
+      case "knockout": return "Knockout";
+      default:
+        if ((champ as any)?.scoring_mode === "time_capped_points") return "Timed points";
+        return "Round robin";
+    }
+  };
   /** Round robin divisions can also be split into pools (post-pool playoffs). */
   const isRoundRobinForLeague = (gn: number) => {
     const perLeague = leagueFormatsCfg?.[String(gn)];
@@ -3744,6 +3761,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       const titleNode = (
         <span className="flex items-center gap-2 flex-wrap">
           <span>{getGroupLabel(champ, gn)}</span>
+          <Badge variant="outline" className="text-[10px] font-normal">{formatLabelFor(gn)}</Badge>
           {leagueTotal && leagueTotal.gp > 0 && (
             <>
               <Badge variant={isLeading ? "default" : "secondary"} className="text-xs tabular-nums">
@@ -3967,7 +3985,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
                   )}
                 >
                   {c.label}
-                  {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
+                  <span className="ml-1 font-normal opacity-70">· {formatLabelFor(c.gn)}</span>
+                   {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
                 </button>
               ))}
             </div>
@@ -4010,10 +4029,10 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Category">
           {orderedGroups.map((group) => <Button key={group} size="sm" variant={group === gn ? "default" : "outline"}
             className="shrink-0 rounded-none" aria-pressed={group === gn} onClick={() => setCatGroup(group)}>
-            {getGroupLabel(champ, group)}
+            {getGroupLabel(champ, group)} · {formatLabelFor(group)}
           </Button>)}
         </div>
-        <h3 className="text-lg font-semibold">{getGroupLabel(champ, gn)}</h3>
+        <h3 className="text-lg font-semibold">{getGroupLabel(champ, gn)} <Badge variant="outline" className="text-[10px] font-normal align-middle">{formatLabelFor(gn)}</Badge></h3>
         {renderGroupStandings(gn)}
       </div>;
     }

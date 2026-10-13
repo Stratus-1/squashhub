@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Correct fixtures/standings scoring reads and verify all eight category labels against saved setup (preview only; 17 tests and signed-in browser checks passed).
+
 - [ ] Redraw clears saved scheduling preferences (edit in progress)
 - [ ] Open: publish pending re-place fix; Lienke Mens C re-add; Angelique ladies entry question (now moot if removed)
 - [x] Merged duplicate Dino De Sousa (kept NSF4304)

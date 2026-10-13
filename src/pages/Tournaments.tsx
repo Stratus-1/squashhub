@@ -57,6 +57,7 @@ import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromCh
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
+import { formatLabelForGroup } from "@/lib/tournaments/format-label";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
@@ -238,6 +239,33 @@ export default function Tournaments() {
 
   const champIds = allChamps.map((c: any) => c.id);
   const champIdsKey = champIds.slice().sort().join("|");
+
+  // Category format labels ("Swiss", "Round robin") come from the saved builder
+  // spec for structured tournaments — the list view row doesn't carry it.
+  const { data: champArchRows = [] } = useQuery({
+    queryKey: ["tournaments-builder-arch", champIdsKey],
+    queryFn: async () => {
+      if (!champIds.length) return [];
+      const { data, error } = await fromExt("tournaments")
+        .select("id, builder_architecture, builder_spec")
+        .in("id", champIds);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: champIds.length > 0,
+  });
+  const archByChamp = useMemo(
+    () => new Map((champArchRows as any[]).map((r: any) => [r.id, r] as const)),
+    [champArchRows],
+  );
+  /** Format label shown next to a category name, or null when unknown. */
+  const categoryFormatLabel = (m: any): string | null =>
+    formatLabelForGroup(
+      champById.get(m.champ_id) as any,
+      archByChamp.get(m.champ_id),
+      Number(m.group_number ?? 1) || 1,
+    );
+
 
   const { data: diamondTournamentIds = [] } = useQuery({
     queryKey: ["diamond-tournament-ids", champIdsKey],
@@ -1097,9 +1125,12 @@ export default function Tournaments() {
                 <p className="px-3 pt-2 text-[11px] text-muted-foreground">{notes.join(" · ")}</p>
               )}
                <div className="p-2 space-y-1.5">{koRound == null ? (pbDate ? Array.from((() => { const g = new Map<string, any[]>(); items.forEach((m: any) => { const k = `${m.champ_id}:${m.group_number ?? "-"}`; if (!g.has(k)) g.set(k, []); g.get(k)!.push(m); }); return g; })()).sort((a, b) => (a[1][0].champ_id === b[1][0].champ_id ? (a[1][0].group_number ?? 0) - (b[1][0].group_number ?? 0) : 0)).map(([categoryKey, categoryItems]) => (
-                  <div key={categoryKey} className="space-y-1.5">
+                   <div key={categoryKey} className="space-y-1.5">
                     <div className="border-b border-border px-1 py-1 text-xs font-semibold text-foreground">
                       {getGroupLabel(champById.get(categoryItems[0].champ_id), categoryItems[0].group_number)}
+                      {categoryFormatLabel(categoryItems[0]) ? (
+                        <span className="ml-1 font-normal opacity-70">· {categoryFormatLabel(categoryItems[0])}</span>
+                      ) : null}
                     </div>
                     {categoryItems.map((m, i) => renderMatchRow(m, i, categoryItems))}
                   </div>

@@ -424,9 +424,9 @@ export default function HonestyBar() {
                      variant={visibleCategory?.value === g.value ? "default" : "outline"}
                      aria-pressed={visibleCategory?.value === g.value}
                      onClick={() => setSelectedCategory(g.value)}
-                     className="h-auto min-h-14 min-w-0 gap-2 px-2 py-2 text-[13px] leading-tight whitespace-normal text-center"
+                     className="h-auto min-h-14 xl:min-h-11 min-w-0 gap-2 px-2 py-2 text-[13px] xl:text-xs leading-tight whitespace-normal text-center"
                   >
-                     <span className="text-2xl shrink-0" aria-hidden="true">{g.value === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[g.value] || "📦"}</span>
+                     <span className="text-2xl xl:text-xl shrink-0" aria-hidden="true">{g.value === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[g.value] || "📦"}</span>
                      <span className="min-w-0 break-words">{g.label}</span>
                    </Button>
                 ))}
@@ -453,17 +453,17 @@ export default function HonestyBar() {
                       return (
                         <Card
                           key={entry.key}
-                          className={`relative p-1.5 flex flex-col items-center gap-1 transition-colors ${multi ? "" : "cursor-pointer hover:bg-accent/50"} ${qty > 0 ? "ring-2 ring-primary" : ""}`}
+                          className={`relative p-1.5 xl:p-1 flex flex-col items-center gap-1 xl:gap-0.5 transition-colors ${multi ? "" : "cursor-pointer hover:bg-accent/50"} ${qty > 0 ? "ring-2 ring-primary" : ""}`}
                           onClick={multi ? undefined : () => updateCart(first.id, 1)}
                         >
                           <div className="w-full aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
                             {first.image_url ? (
                               <img src={first.image_url} alt={entry.title} className="w-full h-full object-cover" loading="lazy" />
                             ) : (
-                               <span className="text-2xl">{barProductEmoji({ ...first, item_kind: entry.isSpecial ? "special" : first.item_kind })}</span>
+                               <span className="text-2xl xl:text-lg">{barProductEmoji({ ...first, item_kind: entry.isSpecial ? "special" : first.item_kind })}</span>
                             )}
                           </div>
-                           <p className="text-[11px] font-medium leading-tight text-center line-clamp-2 min-h-7 w-full">{entry.title}</p>
+                           <p className="text-[11px] xl:text-[10px] font-medium leading-tight text-center line-clamp-2 min-h-7 xl:min-h-5 w-full">{entry.title}</p>
                           {multi ? (
                              <div className="flex flex-col gap-1 w-full">
                               {entry.options.map(o => (
@@ -471,7 +471,7 @@ export default function HonestyBar() {
                                   key={o.item.id}
                                   size="sm"
                                   variant={cart[o.item.id] ? "default" : "outline"}
-                                   className="h-8 w-full min-w-0 px-2 text-[11px] leading-tight justify-between gap-1"
+                                   className="h-8 xl:h-7 w-full min-w-0 px-2 text-[11px] xl:text-[10px] leading-tight justify-between gap-1"
                                   onClick={() => updateCart(o.item.id, 1)}
                                 >
                                    <span className="truncate">{o.label}</span>
@@ -480,7 +480,7 @@ export default function HonestyBar() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-[11px] text-muted-foreground leading-none">{money(first.price)}</p>
+                            <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{money(first.price)}</p>
                           )}
                           {qty > 0 && (
                             <>

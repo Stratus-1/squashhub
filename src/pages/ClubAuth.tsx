@@ -1600,7 +1600,7 @@ export default function ClubAuth() {
                   : <>New to {clubName}? Create an account and complete your profile.</>}
               </p>
 
-              <form onSubmit={handleNewMemberSignup} className="space-y-3">
+              <form id="club-new-member-form" onSubmit={handleNewMemberSignup} className="space-y-3">
                 <div>
                   <Label htmlFor="new-name">Full Name <span className="text-destructive">*</span></Label>
                   <Input
@@ -1938,6 +1938,56 @@ export default function ClubAuth() {
       </motion.div>
 
       {dup.dialog}
+      <AlertDialog open={!!emailMatch} onOpenChange={(o) => { if (!o) setEmailMatch(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>There's already a member with this email — is it you?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  {clubName} already has a member with <strong className="break-all">{emailMatch?.email}</strong>.
+                  {emailMatch?.status === "already_linked"
+                    ? " This email already has a login — please sign in (or reset your password) instead of registering again."
+                    : " Please claim your existing membership so your history stays on one record."}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Family members who share one email can continue — the club admin can link you as a family member.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+            <AlertDialogAction
+              onClick={() => {
+                const m = emailMatch;
+                setEmailMatch(null);
+                if (!m) return;
+                if (m.status === "already_linked") {
+                  setLoginEmail(m.email);
+                  setActiveTab("login");
+                } else {
+                  setExistingEmail(m.email);
+                  if (m.phone) setExistingPhone(m.phone);
+                  setActiveTab("existing");
+                }
+              }}
+            >
+              {emailMatch?.status === "already_linked" ? "Yes, that's me — sign in" : "Yes, that's me — claim my membership"}
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                const m = emailMatch;
+                setEmailMatch(null);
+                if (!m) return;
+                setEmailConfirmedDifferent(m.email.toLowerCase());
+                setTimeout(() => (document.getElementById("club-new-member-form") as HTMLFormElement | null)?.requestSubmit(), 0);
+              }}
+            >
+              No, I'm a different person sharing this email — continue
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

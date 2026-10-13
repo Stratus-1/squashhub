@@ -59,9 +59,12 @@ export function formatLabelForGroup(
     return "Round robin";
   }
   const perGroup = champ?.league_formats?.[String(groupNumber)];
-  const fmt = perGroup || champ?.round_format || null;
+  const fmt = perGroup
+    || (champ?.scoring_mode === "swiss" || champ?.round_format === "swiss" ? "swiss" : null)
+    || champ?.round_format
+    || null;
   const label = fmt ? LEGACY_LABELS[fmt] : null;
   if (label) return label;
   if (champ?.scoring_mode === "time_capped_points") return "Timed points";
-  return fmt ? null : "Round robin";
+  return "Round robin";
 }

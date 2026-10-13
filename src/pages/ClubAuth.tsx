@@ -97,6 +97,9 @@ export default function ClubAuth() {
   const [newPassword, setNewPassword] = useState("");
   const [newConfirm, setNewConfirm] = useState("");
   const [newAcceptTerms, setNewAcceptTerms] = useState(false);
+  // "Is this you?" prompt when the club already has a member with this email.
+  const [emailMatch, setEmailMatch] = useState<null | { status: "already_linked" | "verification_mismatch"; email: string; phone: string }>(null);
+  const [emailConfirmedDifferent, setEmailConfirmedDifferent] = useState<string>("");
 
   // Platform-wide duplicate-registration safeguard (national people search +
   // phone-verified recovery). Runs before every self-registration path.
@@ -721,6 +724,23 @@ export default function ClubAuth() {
     // (federation/SportyHQ data) and people forget which email they signed up
     // with, so match on email, phone and first+last name, then ask the person
     // to confirm they are not already on the roster.
+    // Same-email guard: if this club already has a member with this email,
+    // ask "Is this you?" before creating anything, so people sign in / claim
+    // their existing record instead of becoming a duplicate member.
+    if (club?.id && email && emailConfirmedDifferent !== email.toLowerCase()) {
+      try {
+        const { data: s } = await (supabase as any).rpc("existing_member_signup_status", {
+          _club_id: club.id,
+          _email: email,
+        });
+        if (s === "already_linked" || s === "verification_mismatch") {
+          setEmailMatch({ status: s, email, phone });
+          return;
+        }
+      } catch {
+        // fail open — the backend also refuses to create a duplicate row
+      }
+    }
     if (!(await dup.guard({ name, phone }))) return;
 
     setLoading(true);

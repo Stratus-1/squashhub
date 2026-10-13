@@ -15,5 +15,5 @@
 - [ ] Club-only internal rating — DEFERRED, separate approval
 - GoBook API card: fields read-only until Edit credentials; Save/Cancel while editing
 - [ ] Wendy (Nelspruit doubles): can't edit players on LG fixture card — doubles teams (league_team_pairs) have no captain concept, so captain edit rights never apply; investigate + propose fix
-- [x] Buddy picker on +🥤 done: mixer choices (Coke Bulk incl.), no chocolates/premix; images set; needs publish
+- [x] Replace per-spirit Buddy buttons with standalone mixer tiles, including Coke Bulk, on phone and laptop; preview only.
 - [x] Buddy images: bottle on Coke Bulk, glass of coke on Glass 250ml (live)

@@ -904,6 +904,11 @@ export default function Tournaments() {
     if (koRound != null) return `\u0001ko:${koRound}`;
     const st = String(m?.stage || "");
     if (isPlayoffGame(m) || (st && st !== "group" && st !== "pool")) return matchStageLabel(m);
+    // Play-by round-robin: the generated round numbers are just wheel order,
+    // not real rounds — every game shares the same booking deadline. Group by
+    // the deadline instead so players see one "Round 1 · Play by …" list.
+    const sched = matchSchedule(m);
+    if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}`;
     const row = String(matchRoundRow(m)?.label || "").trim();
     if (row && !/^[A-Z]\d+\s+v(s)?\.?\s+[A-Z]\d+$/i.test(row)) return row;
     return roundMeta(m.champ_id, m.round_number).label || `Round ${Number(m.round_number) || 1}`;
@@ -981,7 +986,11 @@ export default function Tournaments() {
           const koRound = key.startsWith("\u0001ko:") ? Number(key.slice(4)) : null;
           const koItems = koRound == null ? [] : items;
           const koCategories = knockoutCategoryNames(koItems, (m: any) => getGroupLabel(champById.get(m.champ_id), m.group_number));
-          const heading = isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : key;
+          // Play-by groups are numbered by deadline order: the earliest
+          // deadline is Round 1, the next Round 2, and so on.
+          const pbDate = key.startsWith("\u0002pb:") ? key.slice(4) : null;
+          const pbKeys = keys.filter((k) => k.startsWith("\u0002pb:")).sort((a, b) => a.slice(4).localeCompare(b.slice(4)));
+          const heading = isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbKeys.indexOf(key) + 1}` : key;
           const koCategoryGroups = new Map<string, any[]>();
           koItems.forEach((m: any) => {
             const categoryKey = `${m.champ_id}:${m.group_number ?? "-"}`;

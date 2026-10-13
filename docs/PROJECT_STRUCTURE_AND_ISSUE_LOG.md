@@ -2957,3 +2957,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 ## 2026-10-13 — Champs singles result counted twice in member stats
 - Cause: `save_marker_match_result` writes a flat `matches` copy plus the `club_champs_matches` result; `get_member_match_history` only skipped that copy for doubles.
 - Fix: skip the flat copy for singles too (same players + score, within ±60 days of the champ date); removed Gerhard Fourie's extra copy; refreshed stats cache for all players with completed champ results.
+
+## 2026-10-13 — No search on the bar Items & prices screen
+- Cause: `ItemManager` (Club Admin → Bar POS → Items & prices) rendered every division/category group with no text filter; only Stock Levels had one. With 288 live items a club could not find an item without scrolling.
+- Fix: added a search box that narrows the list by name, category label, product group, variant label, division or barcode (display only — saving, counts and stock are untouched); the header count follows the filter and a "no items match" hint appears when nothing does. Verified in preview as Willem at Uitsig: brandy 1, coke 5, "zzzznothing" 0, cleared 288.
+- Follow-up: the staff/customer menu screens (laptop POS, phone QR page) still have no search — offered, awaiting owner.

@@ -939,6 +939,13 @@
       "when": 1791924964575,
       "tag": "0133_bar_image_library",
       "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1791925729154,
+      "tag": "0134_qr_menu_buddies",
+      "breakpoints": true
     }
   ]
 }

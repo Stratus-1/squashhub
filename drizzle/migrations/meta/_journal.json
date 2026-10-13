@@ -953,6 +953,13 @@
       "when": 1791925842109,
       "tag": "0135_qr_buddies_exclude_premix",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1791928162068,
+      "tag": "0136_stamp_sla_signer",
+      "breakpoints": true
     }
   ]
 }

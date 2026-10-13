@@ -1,4 +1,5 @@
 import { MemberDebitSwitches } from "@/components/club-admin/bar/MemberDebitSwitches";
+import { useBarImageLibrary, suggestLibraryImages } from "@/lib/bar-image-library";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
 import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
@@ -1456,6 +1457,34 @@ function ImageField({
         className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
       />
+    </div>
+  );
+}
+
+/** Offer matching photos from the shared SquashHub product library as the name is typed. */
+function LibrarySuggestions({ name, category, value, onPick }: {
+  name: string; category: string; value: string; onPick: (url: string) => void;
+}) {
+  const { data: lib = [] } = useBarImageLibrary(name.trim().length > 1);
+  const matches = useMemo(() => suggestLibraryImages(lib, name, category), [lib, name, category]);
+  if (!matches.length) return null;
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] text-muted-foreground">Matching photos from the SquashHub library — tap to use:</p>
+      <div className="flex flex-wrap gap-1.5">
+        {matches.map(m => (
+          <button
+            key={m.id}
+            type="button"
+            title={m.label}
+            aria-label={`Use library photo: ${m.label}`}
+            onClick={() => onPick(m.image_url)}
+            className={`w-12 h-12 rounded border overflow-hidden ${value === m.image_url ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary/50"}`}
+          >
+            <img src={m.image_url} alt={m.label} className="w-full h-full object-cover" loading="lazy" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

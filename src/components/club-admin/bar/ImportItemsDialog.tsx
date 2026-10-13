@@ -9,6 +9,7 @@ import { Download, Loader2, Upload } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useBarCategories, useBarDivisions } from "@/lib/bar-categories";
+import { useBarImageLibrary, suggestLibraryImages } from "@/lib/bar-image-library";
 import {
   IMPORT_FIELDS, TEMPLATE_CSV, autoMap, parseCsv, planImport,
   type ExistingItem, type ImportField, type Mapping, type PlannedRow, type RowAction,
@@ -23,6 +24,7 @@ export function ImportItemsDialog({ clubId, open, onOpenChange, existing }: {
   clubId: string; open: boolean; onOpenChange: (v: boolean) => void; existing: ExistingItem[];
 }) {
   const qc = useQueryClient();
+  const { data: imageLib = [] } = useBarImageLibrary(open);
   const { data: customCategories = [] } = useBarCategories(clubId);
   const { divisions } = useBarDivisions(clubId);
   const { data: settings } = useQuery({
@@ -124,6 +126,7 @@ export function ImportItemsDialog({ clubId, open, onOpenChange, existing }: {
               stock_measure: p.type === "litre" ? "volume" : p.type === "bottle" ? "bottle" : "count",
               stock_units: p.stockUnits ?? 0, cost_price: p.cost ?? 0, low_stock_threshold: p.lowStock ?? 5,
               barcode: p.barcode, product_group: p.productGroup, variant_label: p.variant, sort_order: sort++,
+              image_url: suggestLibraryImages(imageLib, `${p.productGroup ?? ""} ${p.name}`, p.category, 1)[0]?.image_url ?? null,
             };
             const { data, error } = await fromExt("bar_items").insert(payload).select("id").single();
             if (error) throw error;

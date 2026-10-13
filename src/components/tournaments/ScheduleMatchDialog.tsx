@@ -378,10 +378,10 @@ export function ScheduleMatchDialog({
             </Button>
           )}
 
-          {!champsOnly && !reservedChecked && (
+          {!champsOnly && !reservedChecked && !!bookingClubId && (
             <p className="text-xs text-muted-foreground">Checking Club Champs slots…</p>
           )}
-          {!champsOnly && reservedChecked && (<>
+          {!champsOnly && (reservedChecked || !bookingClubId) && (<>
           <div className="space-y-1">
             <Label className="text-xs">Court</Label>
             <div className="flex flex-wrap gap-1.5">

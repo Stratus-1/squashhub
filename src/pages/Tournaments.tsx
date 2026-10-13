@@ -265,6 +265,16 @@ export default function Tournaments() {
       archByChamp.get(m.champ_id),
       Number(m.group_number ?? 1) || 1,
     );
+  /**
+   * Scoring label ("PAR 11, best of 5") for a category. The saved per-category
+   * scoring lives on the tournaments row (archByChamp), not the club_champs
+   * list row, so merge them — tournament values win.
+   */
+  const categoryScoringLabel = (m: any): string | null => {
+    const champ = champById.get(m.champ_id) as any;
+    const arch = archByChamp.get(m.champ_id) as any;
+    return scoringLabelForGroup({ ...champ, ...arch }, Number(m.group_number ?? 1) || 1);
+  };
 
 
   const { data: diamondTournamentIds = [] } = useQuery({
@@ -1131,8 +1141,8 @@ export default function Tournaments() {
                       {categoryFormatLabel(categoryItems[0]) ? (
                         <span className="ml-1 font-normal opacity-70">· {categoryFormatLabel(categoryItems[0])}</span>
                       ) : null}
-                      {scoringLabelForGroup(champById.get(categoryItems[0].champ_id), Number(categoryItems[0].group_number ?? 1) || 1) ? (
-                        <span className="ml-1 font-normal opacity-70">({scoringLabelForGroup(champById.get(categoryItems[0].champ_id), Number(categoryItems[0].group_number ?? 1) || 1)})</span>
+                      {categoryScoringLabel(categoryItems[0]) ? (
+                        <span className="ml-1 font-normal opacity-70">({categoryScoringLabel(categoryItems[0])})</span>
                       ) : null}
                     </div>
                     {categoryItems.map((m, i) => renderMatchRow(m, i, categoryItems))}

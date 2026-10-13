@@ -1172,6 +1172,7 @@ export default function ScanPay() {
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{count} item{count > 1 ? "s" : ""} selected</p>
+                <p className="text-[11px] text-muted-foreground truncate">{cartLines.map(l => `${l.qty}× ${l.item.name}`).join(" · ")}</p>
                 <p className="text-base font-semibold">{formatMoney(total, currency)}</p>
               </div>
               {tab ? (

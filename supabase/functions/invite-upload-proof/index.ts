@@ -118,5 +118,18 @@ Deno.serve(async (req) => {
     .is('paid_at', null)
   if (updErr) return json({ error: 'Could not record the proof of payment' }, 500)
 
+  // Attach the proof to any open "I have already paid" claim so the admin sees it when approving.
+  const { data: allocs } = await admin
+    .from('champ_payment_claim_allocations')
+    .select('claim_id')
+    .eq('registration_id', reg.id)
+  const claimIds = (allocs ?? []).map((a: { claim_id: string }) => a.claim_id)
+  if (claimIds.length > 0) {
+    await admin.from('champ_payment_claims')
+      .update({ proof_path: path, updated_at: new Date().toISOString() })
+      .in('id', claimIds)
+      .in('status', ['reported', 'needs_proof'])
+  }
+
   return json({ ok: true, path })
 })

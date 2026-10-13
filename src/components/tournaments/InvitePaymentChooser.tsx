@@ -62,7 +62,7 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
   });
 
   const settle = useMutation({
-    mutationFn: async (method: "account" | "eft" | "cash") => {
+    mutationFn: async (method: "account" | "eft" | "cash" | "already_paid") => {
       const { data, error } = await (supabase as any).rpc("invite_settle_entry", {
         p_token: token,
         p_verify: verify,
@@ -72,7 +72,10 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
       return data as any;
     },
     onSuccess: (res) => {
-      if (res?.method === "eft" && !alreadyPaid) setEft(res);
+      if (res?.method === "already_paid") {
+        setAlreadyPaid(true);
+        toast.success("Thanks — the club will check and approve your payment.");
+      } else if (res?.method === "eft" && !alreadyPaid) setEft(res);
       else if (res?.method === "account") {
         setNote(`${money(res.amount_cents)} was added to your member account — settle it with the club as usual.`);
         toast.success("Entry fee added to your member account.");
@@ -204,7 +207,7 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
     );
   }
   if (amount <= 0) return null;
-  if (data.status === "pending_eft" && alreadyPaid) {
+  if (alreadyPaid && settle.data?.method === "already_paid") {
     return (
       <div ref={ref} className="rounded-md border p-3 text-xs space-y-1">
         <p className="text-sm font-semibold">Thanks — you said you have already paid {money(amount)}.</p>
@@ -248,14 +251,14 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
           </Button>
         );
       })}
-      {data.methods?.includes("eft") && (
+      {(
         <Button
           className="w-full"
           variant="outline"
           disabled={!ready || cardBusy || settle.isPending}
-          onClick={() => { setAlreadyPaid(true); settle.mutate("eft"); }}
+          onClick={() => settle.mutate("already_paid")}
         >
-          {alreadyPaid && settle.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+          {settle.isPending && settle.variables === "already_paid" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
           I have already paid
         </Button>
       )}

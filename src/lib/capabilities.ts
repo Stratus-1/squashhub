@@ -138,7 +138,7 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
   },
   finance: {
     slug: "finance",
-    label: "Club Books",
+    label: "Club Finance",
     question: "Do you keep the club's books in the app?",
     description: "Ledger, journals, income statement and reconciliation.",
     group: "money",

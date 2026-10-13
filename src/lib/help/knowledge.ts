@@ -353,9 +353,9 @@ export const HELP_TOPICS: HelpTopic[] = [
   },
   {
     id: "admin-finance",
-    title: "Where do I see the club's books?",
+    title: "Where do I see the club's finances?",
     summary:
-      "Club Admin → Club Books. Cash-basis ledger, income and expenses, outstanding member balances and the pass-through owed to national bodies.",
+      "Club Admin → Club Finance. Cash-basis ledger, income and expenses, outstanding member balances and the pass-through owed to national bodies.",
     keywords: ["finance", "books", "ledger", "accounting", "report", "income", "expense", "statement", "reconcile"],
     route: "/club-admin?tab=finance",
     routeLabel: "Open Club Books",

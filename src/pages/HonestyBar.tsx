@@ -1,4 +1,4 @@
-import { withSpiritMixers } from "@/lib/bar-spirit-menu";
+import { spiritMixers, withSpiritMixers } from "@/lib/bar-spirit-menu";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
 import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
@@ -46,6 +46,8 @@ interface BarItem {
   active: boolean;
   image_url?: string | null;
   stock_qty: number;
+  item_kind?: string | null;
+  stock_parent_id?: string | null;
 }
 
 interface BarTabEntry {
@@ -187,12 +189,8 @@ export default function HonestyBar() {
   // items (Coke, soda, tonic, etc.). Word-boundary match so "Chocolates"
   // never counts as "cola".
   const buddyItems = useMemo(() => {
-    const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
-    const candidates = (items as BarItem[]).filter(i =>
-      (i as any).item_kind !== "special" &&
+    const candidates = spiritMixers(items).filter(i =>
       !(i as unknown as InventoryItem).archived_at &&
-      rx.test(i.name) &&
-      !/\b(and|plus)\b/i.test(i.name) &&
       (typeof i.stock_qty !== "number" || i.stock_qty > 0)
     );
     return candidates.sort((a, b) => Number(a.price) - Number(b.price));

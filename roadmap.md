@@ -15,3 +15,4 @@
 - [ ] Club-only internal rating — DEFERRED, separate approval
 - GoBook API card: fields read-only until Edit credentials; Save/Cancel while editing
 - [ ] Wendy (Nelspruit doubles): can't edit players on LG fixture card — doubles teams (league_team_pairs) have no captain concept, so captain edit rights never apply; investigate + propose fix
+- [ ] Buddy picker on +🥤 (phone ScanPay + laptop HonestyBar): show mixer choices incl. Coke Bulk; never match chocolates

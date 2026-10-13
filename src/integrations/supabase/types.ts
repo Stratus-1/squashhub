@@ -1058,6 +1058,36 @@ export type Database = {
           },
         ]
       }
+      bar_image_library: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          image_url: string
+          keywords: string
+          label: string
+          source: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          keywords?: string
+          label: string
+          source?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          keywords?: string
+          label?: string
+          source?: string
+        }
+        Relationships: []
+      }
       bar_items: {
         Row: {
           active: boolean

@@ -932,6 +932,13 @@
       "when": 1791924626608,
       "tag": "0132_bar_qr_payment_options_follow_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1791924964575,
+      "tag": "0133_bar_image_library",
+      "breakpoints": true
     }
   ]
 }

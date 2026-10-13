@@ -2931,3 +2931,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - 2026-10-13: Tournament invite "Manage fee" lacked a clear "I have already paid" choice (only hidden in the EFT label). Added a separate button on InvitePaymentChooser that records a pending EFT for admin approval with proof upload — never marks paid.
 
 - 2026-10-13: The invite "I have already paid" flow required proof-of-payment upload. Made upload optional (button label "(optional)", wording invites but does not require it) on InvitePaymentChooser; in-app ReportPaymentDialog was already optional. Never marks paid either way.
+
+### 2026-10-13 — Duplicate pending member on sign-up with shared/existing email
+- Symptom: Uitsig sign-up (cipcworkforce@gmail.com) created a new pending "Hendrik Earle" (UIT0024) although existing rows UITS2588/UIT0002 already had that email.
+- Cause: `handle_new_user` inserts the profile first; the profile trigger already linked the existing club_members rows, so the later email fallback updated 0 rows and the "create membership" branch inserted a duplicate.
+- Fix: the create branch now skips when this login is already linked to a member of the club or the club already has a member with that email. Duplicate UIT0024 removed (no attached records).

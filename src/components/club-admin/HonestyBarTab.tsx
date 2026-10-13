@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2, QrCode, ScanBarcode } from "lucide-react";
+import { Plus, Trash2, Pencil, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2, QrCode, ScanBarcode, Search } from "lucide-react";
 import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
@@ -465,6 +465,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [search, setSearch] = useState("");
   const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
   const [catManagerOpen, setCatManagerOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -472,7 +473,24 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
   const { divisions } = useBarDivisions(clubId);
   const [form, setForm] = useState(emptyForm());
   const [components, setComponents] = useState<ComponentLine[]>([]);
-  const items = allItems.filter(i => showArchived || !i.archived_at);
+  // Search narrows the list below (display only — saving, counts and stock are untouched).
+  const items = useMemo(() => {
+    const base = allItems.filter(i => showArchived || !i.archived_at);
+    const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return base;
+    return base.filter(i => {
+      const hay = [
+        i.name,
+        categoryLabel(customCategories, i.category),
+        i.category,
+        i.product_group ?? "",
+        i.variant_label ?? "",
+        i.division ?? "",
+        i.barcode ?? "",
+      ].join(" ").toLowerCase();
+      return terms.every(t => hay.includes(t));
+    });
+  }, [allItems, showArchived, search, customCategories]);
   const liveItems = allItems.filter(i => !i.archived_at);
   const stockItems = liveItems.filter(i => (i.item_kind || "stock") === "stock" && (i.division || "bar") === (form.division || "bar"));
   const formCategories = categoriesForDivision(customCategories, form.division);
@@ -896,7 +914,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
   return (
     <Card className="p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">Bar &amp; Shop Items ({liveItems.length})</h3>
+        <h3 className="font-semibold">Bar &amp; Shop Items ({search.trim() ? items.length : liveItems.length})</h3>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setCatManagerOpen(true)}>
             <Package className="w-3.5 h-3.5 mr-1" />Divisions &amp; categories
@@ -928,8 +946,14 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Switch checked={showArchived} onCheckedChange={setShowArchived} className="scale-75" /> Show archived items
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full max-w-sm">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items — name, brand, category…" className="h-9 pl-8" aria-label="Search items" />
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Switch checked={showArchived} onCheckedChange={setShowArchived} className="scale-75" /> Show archived items
+        </div>
       </div>
 
       <ImportItemsDialog clubId={clubId} open={importOpen} onOpenChange={setImportOpen} existing={allItems as any} />
@@ -1059,6 +1083,11 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
         </p>
       )}
       {liveItems.length === 0 && !loading && <p className="text-sm text-muted-foreground">No items yet — add your first item above.</p>}
+      {search.trim() && items.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No items match "{search.trim()}" — try a shorter word, or switch on "Show archived items".
+        </p>
+      )}
     </Card>
   );
 }

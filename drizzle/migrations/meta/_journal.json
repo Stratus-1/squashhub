@@ -918,6 +918,13 @@
       "when": 1791923783892,
       "tag": "0130_add_guest_phone_to_bar_guest_tabs",
       "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1791923831839,
+      "tag": "0131_bar_open_tabs_include_guest_phone",
+      "breakpoints": true
     }
   ]
 }

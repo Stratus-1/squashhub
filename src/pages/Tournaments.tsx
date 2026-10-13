@@ -986,7 +986,11 @@ export default function Tournaments() {
           const koRound = key.startsWith("\u0001ko:") ? Number(key.slice(4)) : null;
           const koItems = koRound == null ? [] : items;
           const koCategories = knockoutCategoryNames(koItems, (m: any) => getGroupLabel(champById.get(m.champ_id), m.group_number));
-          const heading = isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : key;
+          // Play-by groups are numbered by deadline order: the earliest
+          // deadline is Round 1, the next Round 2, and so on.
+          const pbDate = key.startsWith("\u0002pb:") ? key.slice(4) : null;
+          const pbKeys = keys.filter((k) => k.startsWith("\u0002pb:")).sort((a, b) => a.slice(4).localeCompare(b.slice(4)));
+          const heading = isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbKeys.indexOf(key) + 1}` : key;
           const koCategoryGroups = new Map<string, any[]>();
           koItems.forEach((m: any) => {
             const categoryKey = `${m.champ_id}:${m.group_number ?? "-"}`;

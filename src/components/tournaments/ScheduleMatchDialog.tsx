@@ -162,7 +162,7 @@ export function ScheduleMatchDialog({
   // may only book their match into those reserved slots (organisers keep the
   // full picker). Clubs without holds are unaffected.
   const today = format(new Date(), "yyyy-MM-dd");
-  const { data: reservedDates = [] } = useQuery({
+  const { data: reservedDates = [], isFetched: reservedChecked } = useQuery({
     queryKey: ["champs-reserved-dates", bookingClubId, today],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
@@ -378,7 +378,10 @@ export function ScheduleMatchDialog({
             </Button>
           )}
 
-          {!champsOnly && (<>
+          {!champsOnly && !reservedChecked && (
+            <p className="text-xs text-muted-foreground">Checking Club Champs slots…</p>
+          )}
+          {!champsOnly && reservedChecked && (<>
           <div className="space-y-1">
             <Label className="text-xs">Court</Label>
             <div className="flex flex-wrap gap-1.5">

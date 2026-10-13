@@ -193,6 +193,7 @@ export function ScheduleMatchDialog({
       .sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
   }, [bookings, courtOptions, duration, match]);
 
+  const selectedCourtId = courtId;
   const confirm = async (time: string, courtOverride?: number) => {
     const courtId = courtOverride ?? selectedCourtId;
     if (!match || !courtId) return;

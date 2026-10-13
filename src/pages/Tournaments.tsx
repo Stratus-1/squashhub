@@ -852,7 +852,6 @@ export default function Tournaments() {
   const matchStageLabel = (m: any): string => {
     const own = demoteSectionFinal(String(m?.stage_label || "").trim());
     if (!isGenericRoundLabel(own)) return own;
-    if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}`;
     const row = String(matchRoundRow(m)?.label || "").trim();
     if (!isGenericRoundLabel(row)) return row;
     const planned = roundMeta(m.champ_id, m.round_number).label;

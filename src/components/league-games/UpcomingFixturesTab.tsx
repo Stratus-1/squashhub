@@ -232,6 +232,16 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
         const c = (r?.leagues?.code || "").toString().toUpperCase();
         if (c) codes.add(c);
       }
+      // Doubles teams (and other teams without registrations) record their
+      // captain on leagues.captain_member_id — recognise that too.
+      const { data: led } = await (supabase as any)
+        .from("leagues")
+        .select("code")
+        .eq("captain_member_id", activeMember.id);
+      for (const l of (led || []) as any[]) {
+        const c = (l?.code || "").toString().toUpperCase();
+        if (c) codes.add(c);
+      }
       return codes;
     },
     enabled: !!activeMember?.id,

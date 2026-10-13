@@ -1181,8 +1181,11 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       const statuses = specDivision ? historicalPoolStatuses(specDivision, (matches as any[]).filter((m: any) => m.group_number === gn), rows.map((r: any) => ({ memberId: r.club_member_id, partnerId: r.partner_member_id }))) : undefined;
       // Swiss groups keep the live rank heat colours (and the Current leader /
       // Winner badge logic) even in structured tournaments — they are ongoing,
-      // not historical pools.
-      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn), statuses });
+      // not historical pools. Round robin divisions get the same treatment
+      // while any of their matches are still unplayed; only once every match
+      // is decided does the table become a historical (untinted) final.
+      const divisionDone = fixturesComplete((matches as any[]).filter((m: any) => m.group_number === gn));
+      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn) && divisionDone, statuses });
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

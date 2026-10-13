@@ -567,6 +567,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-13 · Standalone mixers on the spirits menu
+- **Symptom:** Buddy controls beside every spirit option were unwanted; Buddy and Coke Bulk should be separate items on the spirits page.
+- **Finding:** Both QR and member menus used a per-option picker, while bulk mixers are omitted from the normal sellable QR menu.
+- **Fix:** Removed the per-option controls and included existing mixer rows as independent tiles in Spirits, reusing the QR buddies payload and club-scoped inventory. Mixer tiles bypass spirit variant grouping.
+- **Guard:** Three focused tests cover inclusion, ID deduplication and category isolation; browser checks selected both Coke Bulk rows independently. No stock, price, payment, schema or live-data changes; preview only.
+
 ### 2026-10-11 · Swiss playoff definition versus fixture generation
 - **Finding:** Legacy Create stage invokes setupDeferredStage, which appends a runnable definition via set_spec then persists the stage and its fixtures. Riverside currently has only four Swiss stage rows; QF/SF planning targets and the timeline Final are not equivalent to runnable stage definitions.
 - **Fix:** Riverside opt-in Swiss dialog is titled Generate Quarterfinal Draw; removed its deferred-stage creation path. Missing runnable definitions explicitly require Return to Tournament Setup. Existing definitions require a unique persisted stage identity, real dry-run match count, and explicit confirmation before the existing confirmNextStage path.

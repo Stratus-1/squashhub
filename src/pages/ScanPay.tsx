@@ -172,25 +172,37 @@ export default function ScanPay() {
     return divisionMenu.filter((m) => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
   }, [divisionMenu, activeCategory]);
 
-  // Mixer ("buddy") used for one-tap spirit + mixer orders: cheapest in-stock
-  // bar item whose name reads like a soft-drink buddy (Coke, cola, etc.).
-  const buddyItem = useMemo(() => {
+  // Mixer ("buddy") choices for spirit + mixer orders. The backend returns a
+  // dedicated buddies list (includes non-sellable bulk mixers like Coke Bulk);
+  // fall back to scanning the menu for older backends.
+  const buddyItems = useMemo<ScanItem[]>(() => {
+    const fromBackend = ((data as any)?.buddies || []) as ScanItem[];
+    if (fromBackend.length > 0) return fromBackend;
+    const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
     const candidates = menu.filter(
       (m) =>
         m.item_kind !== "special" &&
-        /buddy|cola|coke/i.test(m.name) &&
+        rx.test(m.name) &&
         (m.item_kind === "made_to_order" || typeof m.stock_qty !== "number" || m.stock_qty > 0),
     );
     candidates.sort((a, b) => Number(a.price) - Number(b.price));
-    return candidates[0] || null;
-  }, [menu]);
+    return candidates;
+  }, [data, menu]);
+  // Option id whose buddy picker is open (null = closed).
+  const [buddyFor, setBuddyFor] = useState<string | null>(null);
+  const addWithBuddy = (optionId: string, buddyId: string) => {
+    navigator.vibrate?.(15);
+    bump(optionId, 1);
+    bump(buddyId, 1);
+    setBuddyFor(null);
+  };
 
   const cartLines = useMemo(
     () =>
       Object.entries(cart)
         .filter(([, q]) => q > 0)
         .map(([id, qty]) => {
-          const it = menu.find((m) => m.id === id);
+          const it = menu.find((m) => m.id === id) ?? buddyItems.find((b) => b.id === id);
           return it ? { item: it, qty, line: Number(it.price) * qty } : null;
         })
         .filter(Boolean) as { item: ScanItem; qty: number; line: number }[],
@@ -927,13 +939,13 @@ export default function ScanPay() {
                                     <span className="truncate">{o.name.split(" · ")[1]}</span>
                                     <span className="shrink-0">{formatMoney(Number(o.price), currency)}{cart[o.id] ? ` ×${cart[o.id]}` : ""}</span>
                                   </Button>
-                                  {buddyItem && !out && (
+                                  {buddyItems.length > 0 && !out && (
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       className="h-8 shrink-0 px-1.5 text-[10px]"
-                                      aria-label={`${o.name} plus ${buddyItem.name}`}
-                                      onClick={() => { navigator.vibrate?.(15); bump(o.id, 1); bump(buddyItem.id, 1); }}
+                                      aria-label={`${o.name} plus a mixer`}
+                                      onClick={() => buddyItems.length === 1 ? addWithBuddy(o.id, buddyItems[0].id) : setBuddyFor(buddyFor === o.id ? null : o.id)}
                                     >
                                       +🥤
                                     </Button>
@@ -942,6 +954,17 @@ export default function ScanPay() {
                               );
                             })}
                           </div>
+                          {buddyFor && opts.some(o => o.id === buddyFor) && (
+                            <div className="w-full rounded-md border bg-popover p-1 flex flex-col gap-1">
+                              <p className="text-[10px] text-muted-foreground px-1">Add which mixer?</p>
+                              {buddyItems.map(b => (
+                                <Button key={b.id} size="sm" variant="outline" className="h-7 w-full px-1.5 text-[10px] justify-between gap-1" onClick={() => addWithBuddy(buddyFor, b.id)}>
+                                  <span className="truncate">{b.name}</span>
+                                  <span className="shrink-0">{formatMoney(Number(b.price), currency)}</span>
+                                </Button>
+                              ))}
+                            </div>
+                          )}
                           {qty > 0 && (
                             <>
                               <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{qty}</span>

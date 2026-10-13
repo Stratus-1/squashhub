@@ -182,16 +182,25 @@ export default function HonestyBar() {
     cartLines.map(({ item, qty }) => ({ division: (item as any).division, total: item.price * qty })));
   const updateCart = (itemId: string, delta: number) => setCart(prev => addToTab(prev, itemId, delta));
 
-  // Mixer ("buddy") for one-tap spirit + mixer orders: cheapest in-stock
-  // bar item whose name reads like a soft-drink buddy (Coke, cola, etc.).
-  const buddyItem = useMemo(() => {
+  // Mixer ("buddy") choices for spirit + mixer orders: in-stock soft-drink
+  // items (Coke, soda, tonic, etc.). Word-boundary match so "Chocolates"
+  // never counts as "cola".
+  const buddyItems = useMemo(() => {
+    const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
     const candidates = (items as BarItem[]).filter(i =>
       (i as any).item_kind !== "special" &&
-      /buddy|cola|coke/i.test(i.name) &&
+      rx.test(i.name) &&
       (typeof i.stock_qty !== "number" || i.stock_qty > 0)
     );
-    return candidates.sort((a, b) => Number(a.price) - Number(b.price))[0] ?? null;
+    return candidates.sort((a, b) => Number(a.price) - Number(b.price));
   }, [items]);
+  // Option id whose buddy picker is open (null = closed).
+  const [buddyFor, setBuddyFor] = useState<string | null>(null);
+  const addWithBuddy = (optionId: string, buddyId: string) => {
+    updateCart(optionId, 1);
+    updateCart(buddyId, 1);
+    setBuddyFor(null);
+  };
 
   /** Settlement: post the final open tab to the member account (the only path that journals). */
   const submitCart = async () => {
@@ -488,20 +497,31 @@ export default function HonestyBar() {
                                      <span className="truncate">{o.label}</span>
                                      <span className="shrink-0">{money(o.item.price)}{cart[o.item.id] ? ` ×${cart[o.item.id]}` : ""}</span>
                                   </Button>
-                                  {buddyItem && (
+                                  {buddyItems.length > 0 && (
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       className="h-8 xl:h-7 shrink-0 px-1.5 text-[11px] xl:text-[10px]"
-                                      aria-label={`${o.item.name} plus ${buddyItem.name}`}
-                                      title={`${o.label} plus ${buddyItem.name}`}
-                                      onClick={() => { updateCart(o.item.id, 1); updateCart(buddyItem.id, 1); }}
+                                      aria-label={`${o.item.name} plus a mixer`}
+                                      title={`${o.label} plus a mixer`}
+                                      onClick={() => buddyItems.length === 1 ? addWithBuddy(o.item.id, buddyItems[0].id) : setBuddyFor(buddyFor === o.item.id ? null : o.item.id)}
                                     >
                                       +🥤
                                     </Button>
                                   )}
                                 </div>
                               ))}
+                              {buddyFor && entry.options.some(o => o.item.id === buddyFor) && (
+                                <div className="w-full rounded-md border bg-popover p-1 flex flex-col gap-1">
+                                  <p className="text-[10px] text-muted-foreground px-1">Add which mixer?</p>
+                                  {buddyItems.map(b => (
+                                    <Button key={b.id} size="sm" variant="outline" className="h-7 w-full px-1.5 text-[10px] justify-between gap-1" onClick={() => addWithBuddy(buddyFor, b.id)}>
+                                      <span className="truncate">{b.name}</span>
+                                      <span className="shrink-0">{money(b.price)}</span>
+                                    </Button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{money(first.price)}</p>

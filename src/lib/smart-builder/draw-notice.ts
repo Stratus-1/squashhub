@@ -240,15 +240,17 @@ export function drawNoticeAllKey(key: string): string | null {
   const idx = key.indexOf(":");
   return idx > 0 ? `all:${key.slice(idx + 1)}` : null;
 }
-/** Resolves wording for one notice key: saved per-category text wins, otherwise the saved
- *  tournament-wide wording for the same round is inherited, otherwise the built-in default. */
+/** Exact stage/category wording wins; otherwise inherit same-round saved wording.
+ * Stage-scoped keys also inherit the unscoped round template (never another round/stage). */
 export function resolveDrawNoticeSettings(betaLifecycle: any, key: string, fallback: string): DrawNoticeSettings & { savedAt: string | null } {
-  const s = readDrawNoticeSettings(betaLifecycle, key, fallback);
-  if (betaLifecycle?.draw_notice_texts?.[key]) return s;
+  const roundKey = key.split(":s")[0];
   const allKey = drawNoticeAllKey(key);
-  if (!allKey) return s;
-  const inherited = readDrawNoticeSettings(betaLifecycle, allKey, fallback);
-  return inherited.savedAt ? inherited : s;
+  const candidates = [...new Set([key, allKey, roundKey, drawNoticeAllKey(roundKey)].filter((k): k is string => !!k))];
+  for (const candidate of candidates) {
+    const message = betaLifecycle?.draw_notice_texts?.[candidate]?.message;
+    if (typeof message === "string" && message.trim()) return readDrawNoticeSettings(betaLifecycle, candidate, fallback);
+  }
+  return readDrawNoticeSettings(betaLifecycle, key, fallback);
 }
 export function sameDrawNoticeSettings(a: DrawNoticeSettings, b: DrawNoticeSettings) {
   return a.message === b.message && a.includeActivation === b.includeActivation && a.activationIntro === b.activationIntro;

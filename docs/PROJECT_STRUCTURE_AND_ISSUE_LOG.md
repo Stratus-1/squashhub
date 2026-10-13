@@ -1,3 +1,7 @@
+### 2026-10-13 — Free Club Champs court paragraph missing from player preview
+- Saved `all:r1` wording already contains free reserved slots via SquashHub and other slots via GoBook. Structured category notices add a stage suffix; the resolver searched only `all:r1:s…` and missed the saved round template.
+- Fix: inherit same-round unscoped wording when no exact stage wording exists; preserve explicit wording and never borrow another round/stage. Added regression tests. Preview only; no saved messages, bookings, fixtures, backend changes or sends.
+
 ### 2026-10-12 — Blocked Invite / Inform actions lacked a visible explanation
 - **Symptom:** Invite players was disabled with only a tooltip; blocked Inform mode showed no controls or explanation.
 - **Finding:** Removing the global deferred-decisions callout also removed the only actionable explanation on the Invite stage. Later-stage decisions are not invitation blockers.

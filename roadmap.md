@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Restore same-round saved wording for category-stage notification previews; 7 regression tests pass, build OK. Full selected-player browser verification could not complete.
+- [x] Update only Uitsig Round 1 saved notification wording to specify free reserved evenings on 14 and 15 October; verified saved text, no messages or booking changes.
+
 - [x] Correct fixtures/standings scoring reads and verify all eight category labels against saved setup (preview only; 17 tests and signed-in browser checks passed).
 
 - [ ] Redraw clears saved scheduling preferences (edit in progress)

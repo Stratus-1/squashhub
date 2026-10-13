@@ -48,6 +48,15 @@ describe("saved draw wording", () => {
     await expect(saveDrawNoticeSettings("t1", "all:r1", { message: "  ", includeActivation: false, activationIntro: "" })).rejects.toThrow();
     expect(store.updates).toHaveLength(0);
   });
+  it("includes saved free court / GoBook paragraphs in stage-scoped round previews", () => {
+    const message = `${DEFAULT_DRAW_NOTICE}\n\nReserved Club Champs court slots are free. Choose a slot through SquashHub. For other slots, book through GoBook.`;
+    const bl = { draw_notice_texts: { "all:r1": { message, saved_at: "2026-10-12T20:59:39Z" } } };
+    expect(resolveDrawNoticeSettings(bl, "6:r1:sladies-a", "Your Round 1 match has been drawn.")).toMatchObject({ message, savedAt: "2026-10-12T20:59:39Z" });
+    expect(resolveDrawNoticeSettings(bl, "all:r1:sladies-a", "Fallback").message).toBe(message);
+    expect(resolveDrawNoticeSettings(bl, "6:r2:sladies-a", "Round 2").message).toBe("Round 2");
+    const custom = { draw_notice_texts: { ...bl.draw_notice_texts, "6:r1:sladies-a": { message: "Specific stage wording" } } };
+    expect(resolveDrawNoticeSettings(custom, "6:r1:sladies-a", "Fallback").message).toBe("Specific stage wording");
+  });
 });
 
 describe("activation recipients", () => {

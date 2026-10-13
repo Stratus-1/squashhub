@@ -172,18 +172,34 @@ export default function ScanPay() {
     return divisionMenu.filter((m) => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
   }, [divisionMenu, activeCategory]);
 
-  // Mixer ("buddy") used for one-tap spirit + mixer orders: cheapest in-stock
-  // bar item whose name reads like a soft-drink buddy (Coke, cola, etc.).
-  const buddyItem = useMemo(() => {
+  // Mixer ("buddy") choices for spirit + mixer orders: in-stock soft-drink
+  // items (Coke, soda, tonic, etc.). Word-boundary match so "Chocolates"
+  // never counts as "cola". One entry per base product name.
+  const buddyItems = useMemo(() => {
+    const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
     const candidates = menu.filter(
       (m) =>
         m.item_kind !== "special" &&
-        /buddy|cola|coke/i.test(m.name) &&
+        rx.test(m.name) &&
         (m.item_kind === "made_to_order" || typeof m.stock_qty !== "number" || m.stock_qty > 0),
     );
     candidates.sort((a, b) => Number(a.price) - Number(b.price));
-    return candidates[0] || null;
+    const byBase = new Map<string, ScanItem>();
+    for (const c of candidates) {
+      const base = c.name.split(" · ")[0];
+      const existing = byBase.get(base);
+      if (!existing || (c.name.includes(" · ") && !existing.name.includes(" · "))) byBase.set(base, c);
+    }
+    return [...byBase.values()];
   }, [menu]);
+  // Option id whose buddy picker is open (null = closed).
+  const [buddyFor, setBuddyFor] = useState<string | null>(null);
+  const addWithBuddy = (optionId: string, buddyId: string) => {
+    navigator.vibrate?.(15);
+    bump(optionId, 1);
+    bump(buddyId, 1);
+    setBuddyFor(null);
+  };
 
   const cartLines = useMemo(
     () =>

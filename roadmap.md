@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Restore the saved free Club Champs slots / GoBook paragraph in category-stage notification previews; no sends or live data changes.
-- [ ] Update only Uitsig Round 1 notification wording to specify reserved evenings on 14 and 15 October; no messages sent.
+- [x] Restore same-round saved wording for category-stage notification previews; 7 regression tests pass, build OK. Full selected-player browser verification could not complete.
+- [x] Update only Uitsig Round 1 saved notification wording to specify free reserved evenings on 14 and 15 October; verified saved text, no messages or booking changes.
 
 - [x] Correct fixtures/standings scoring reads and verify all eight category labels against saved setup (preview only; 17 tests and signed-in browser checks passed).
 

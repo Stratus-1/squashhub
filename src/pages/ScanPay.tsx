@@ -184,13 +184,7 @@ export default function ScanPay() {
         (m.item_kind === "made_to_order" || typeof m.stock_qty !== "number" || m.stock_qty > 0),
     );
     candidates.sort((a, b) => Number(a.price) - Number(b.price));
-    const byBase = new Map<string, ScanItem>();
-    for (const c of candidates) {
-      const base = c.name.split(" · ")[0];
-      const existing = byBase.get(base);
-      if (!existing || (c.name.includes(" · ") && !existing.name.includes(" · "))) byBase.set(base, c);
-    }
-    return [...byBase.values()];
+    return candidates;
   }, [menu]);
   // Option id whose buddy picker is open (null = closed).
   const [buddyFor, setBuddyFor] = useState<string | null>(null);

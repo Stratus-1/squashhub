@@ -568,6 +568,7 @@ using validated callback parameters. Never create or require one whitelist entry
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
 ### 2026-10-13 · Standalone mixers on the spirits menu
+- **Follow-up:** The first bulk tile was an inventory container, not the bottled Buddy. Mixer selection now includes the real Buddy/Buddies product and excludes parent containers when a serving option exists. Uitsig's existing Buddies renamed Buddy with the requested bottle image, preserving its R22 price and stock. Both bulk records have R0 saved; no selling price inferred from specials. Four focused tests plus 13 inventory tests pass; browser shows separate Buddy and bulk-serving basket lines. Menu code remains preview-only; Buddy name/image saved live as requested.
 - **Symptom:** Buddy controls beside every spirit option were unwanted; Buddy and Coke Bulk should be separate items on the spirits page.
 - **Finding:** Both QR and member menus used a per-option picker, while bulk mixers are omitted from the normal sellable QR menu.
 - **Fix:** Removed the per-option controls and included existing mixer rows as independent tiles in Spirits, reusing the QR buddies payload and club-scoped inventory. Mixer tiles bypass spirit variant grouping.

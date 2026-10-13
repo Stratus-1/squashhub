@@ -17,13 +17,17 @@ const rows = [
   { id: "no-dates", status: "planning", start_date: null, end_date: null },
   { id: "running", status: "in_progress", start_date: "2026-08-18", end_date: "2026-08-22" },
   { id: "upcoming", status: "planning", start_date: "2026-08-27", end_date: "2026-08-28" },
-  { id: "single-day-past", status: "planning", start_date: "2026-07-16", end_date: null },
+  { id: "started-no-end", status: "planning", start_date: "2026-07-16", end_date: null },
 ];
 
 describe("tournament lifecycle", () => {
   it("treats July events as past even when the status was never closed off", () => {
     expect(isPastTournament(rows[1], TODAY)).toBe(true);
-    expect(isPastTournament(rows[7], TODAY)).toBe(true);
+  });
+
+  it("never treats a started tournament with no end date as past", () => {
+    expect(isPastTournament(rows[7], TODAY)).toBe(false);
+    expect(isCurrentTournament(rows[7], TODAY)).toBe(true);
   });
 
   it("treats cancelled/abandoned tournaments as past regardless of dates", () => {

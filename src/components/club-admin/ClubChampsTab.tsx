@@ -10465,7 +10465,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                      />
                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
                                        {pairing === "seeded"
-                                         ? "Round 1 pairs the top half against the bottom half — with 10 players: 1v6, 2v7, 3v8, 4v9, 5v10."
+                                         ? "Round 1 pairs first against last — with 10 players: 1v10, 2v9, 3v8, 4v7, 5v6."
                                          : "Round 1 is drawn at random."}{" "}
                                        From round 2 players meet the nearest score they have not played yet.
                                      </p>

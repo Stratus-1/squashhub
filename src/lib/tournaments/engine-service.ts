@@ -153,14 +153,14 @@ export function mappedFixtures(tid: string, d: SpecDivision, st: PlannedStage, p
 }
 
 /**
- * Swiss round 1 is seeded top half v bottom half (1vN/2+1, 2vN/2+2 …) so the strongest only meet later.
+ * Swiss round 1 is seeded first v last (1vN, 2vN-1 …), as the clubs run it.
  * With an odd field the lowest seed takes the bye. Later rounds pair by score via swissRound.
  */
 export function swissFirstRound(tid: string, d: SpecDivision, st: PlannedStage): EngineFixture[] {
   const ids = d.entrants.map((e) => e.id);
   const bye = ids.length % 2 ? ids.pop()! : null;
   const half = ids.length / 2;
-  const pairs: Array<[string, string | null]> = ids.slice(0, half).map((a, i) => [a, ids[half + i]]);
+  const pairs: Array<[string, string | null]> = ids.slice(0, half).map((a, i) => [a, ids[ids.length - 1 - i]]);
   if (bye) pairs.push([bye, null]);
   return pairs.map(([a, b], i) => ({
     tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss", roundId: `${st.id}:r1`, round: 1, poolId: null, slot: i + 1, a, b,

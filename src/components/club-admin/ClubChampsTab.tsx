@@ -2969,9 +2969,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       num_groups: numGroups,
       enable_playoffs: enablePlayoffs,
       champion_scope: championScope,
-      // Drafts may have no dates yet — persist null rather than "".
-      start_date: startDate || null,
-      end_date: endDate || null,
+      // Drafts may have no dates yet — persist null rather than "". Never
+      // erase a date that already exists just because this session's field is
+      // empty (stale editor sessions wiped the end date once already).
+      start_date: startDate || loadedStartDateRef.current || null,
+      end_date: endDate || loadedEndDateRef.current || null,
       play_days: Array.from(playDays),
       start_time: startTime,
       end_time: endTime,
@@ -5774,8 +5776,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             num_groups: numGroups,
             enable_playoffs: enablePlayoffs,
             champion_scope: championScope,
-            start_date: startDate,
-            end_date: endDate,
+            start_date: startDate || loadedStartDateRef.current || null,
+            end_date: endDate || loadedEndDateRef.current || null,
             play_days: Array.from(playDays),
             start_time: startTime,
             end_time: endTime,

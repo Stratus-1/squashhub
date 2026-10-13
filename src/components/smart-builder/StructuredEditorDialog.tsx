@@ -138,7 +138,10 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
     setSaving(true);
     try {
       if (dateProblems.length) throw new Error(dateProblems[0]);
-      const { error } = await fromExt("tournaments").update({ builder_spec: draft, builder_spec_version: (spec.version ?? 1), start_date: win.start, end_date: win.end }).eq("id", champId);
+      // Only write the date window when it actually changed — an untouched or
+      // stale dialog must never blank out dates already on the tournament.
+      const datePatch = windowChanged ? { start_date: win.start, end_date: win.end } : {};
+      const { error } = await fromExt("tournaments").update({ builder_spec: draft, builder_spec_version: (spec.version ?? 1), ...datePatch }).eq("id", champId);
       if (error) throw error;
       const divs = await supabaseDb.select("tournament_divisions", { tournament_id: champId });
       for (const d of draft.divisions) {

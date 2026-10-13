@@ -911,6 +911,13 @@
       "when": 1791916999948,
       "tag": "0129_champ_booking_fills_reserved_slot",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1791923783892,
+      "tag": "0130_add_guest_phone_to_bar_guest_tabs",
+      "breakpoints": true
     }
   ]
 }

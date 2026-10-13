@@ -999,6 +999,7 @@ export type Database = {
           counter_device_id: string | null
           created_at: string
           guest_name: string
+          guest_phone: string | null
           id: string
           opened_at: string
           settled_method: string | null
@@ -1012,6 +1013,7 @@ export type Database = {
           counter_device_id?: string | null
           created_at?: string
           guest_name: string
+          guest_phone?: string | null
           id?: string
           opened_at?: string
           settled_method?: string | null
@@ -1025,6 +1027,7 @@ export type Database = {
           counter_device_id?: string | null
           created_at?: string
           guest_name?: string
+          guest_phone?: string | null
           id?: string
           opened_at?: string
           settled_method?: string | null
@@ -20932,10 +20935,12 @@ export type Database = {
         Returns: Json
       }
       notify_doubles_pair: { Args: { p_pair_id: string }; Returns: Json }
-      open_bar_guest_tab: {
-        Args: { _code: string; _guest_name: string }
-        Returns: Json
-      }
+      open_bar_guest_tab:
+        | { Args: { _code: string; _guest_name: string }; Returns: Json }
+        | {
+            Args: { _code: string; _guest_name: string; _guest_phone?: string }
+            Returns: Json
+          }
       org_descendants: {
         Args: { _org_id: string }
         Returns: {

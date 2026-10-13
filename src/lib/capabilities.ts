@@ -138,7 +138,7 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
   },
   finance: {
     slug: "finance",
-    label: "Club Books",
+    label: "Club Finance",
     question: "Do you keep the club's books in the app?",
     description: "Ledger, journals, income statement and reconciliation.",
     group: "money",
@@ -280,7 +280,7 @@ export const TAB_CAPABILITY: Record<string, Capability> = (() => {
 
 /**
  * Expand a capability to itself + everything it requires (transitively).
- * Used when enabling: turning on Bar also turns on Club Books.
+ * Used when enabling: turning on Bar also turns on Club Finance.
  */
 export function withDependencies(slug: Capability, acc = new Set<Capability>()): Set<Capability> {
   if (acc.has(slug)) return acc;

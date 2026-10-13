@@ -210,6 +210,9 @@ export function inviteState(payload: InvitePayload | null | undefined): InviteSt
   if (payload.fee_settled_via === "account" || fee === "on_account" || fee === "paid" || fee === "waived") return "registered";
   // Accepted but not yet paid — always route to payment, even after close.
   if (payload.confirmed_at && PENDING_PAYMENT_STATUSES.has(status)) return "payment_pending";
+  // Organiser-entered (already confirmed) with the fee still due — the entry
+  // stands, so closing entries must never hide the payment options.
+  if (payload.confirmed_at && fee === "due") return "payment_pending";
   if (payload.registration_closed) return "closed";
   // A recipient-specific token is proof of invitation. Anyone holding it may
   // respond without a SquashHub login; a forwarded link is stopped by the

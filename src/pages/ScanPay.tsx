@@ -943,13 +943,13 @@ export default function ScanPay() {
                                     <span className="truncate">{o.name.split(" · ")[1]}</span>
                                     <span className="shrink-0">{formatMoney(Number(o.price), currency)}{cart[o.id] ? ` ×${cart[o.id]}` : ""}</span>
                                   </Button>
-                                  {buddyItem && !out && (
+                                  {buddyItems.length > 0 && !out && (
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       className="h-8 shrink-0 px-1.5 text-[10px]"
-                                      aria-label={`${o.name} plus ${buddyItem.name}`}
-                                      onClick={() => { navigator.vibrate?.(15); bump(o.id, 1); bump(buddyItem.id, 1); }}
+                                      aria-label={`${o.name} plus a mixer`}
+                                      onClick={() => buddyItems.length === 1 ? addWithBuddy(o.id, buddyItems[0].id) : setBuddyFor(buddyFor === o.id ? null : o.id)}
                                     >
                                       +🥤
                                     </Button>

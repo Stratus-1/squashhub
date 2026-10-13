@@ -18,8 +18,10 @@ export function useBarImageLibrary(enabled = true) {
 }
 
 const STOP = new Set(["the", "and", "plus", "with", "ml", "single", "double", "glass", "bottle", "x", "of", "a"]);
+const ALIAS: Record<string, string> = { coca: "coke", cola: "coke", coke: "coke", whisky: "whiskey", choc: "chocolate" };
+const norm = (w: string) => ALIAS[w] ?? (w.length > 4 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w);
 const words = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(w => w.length > 1 && !STOP.has(w) && !/^\d+$/.test(w));
+  s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(w => w.length > 1 && !STOP.has(w) && !/^\d+$/.test(w)).map(norm);
 
 /** Rank library photos by word overlap with an item name (label words weigh most). */
 export function suggestLibraryImages(lib: LibraryImage[], name: string, category?: string | null, limit = 6) {

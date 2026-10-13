@@ -182,16 +182,25 @@ export default function HonestyBar() {
     cartLines.map(({ item, qty }) => ({ division: (item as any).division, total: item.price * qty })));
   const updateCart = (itemId: string, delta: number) => setCart(prev => addToTab(prev, itemId, delta));
 
-  // Mixer ("buddy") for one-tap spirit + mixer orders: cheapest in-stock
-  // bar item whose name reads like a soft-drink buddy (Coke, cola, etc.).
-  const buddyItem = useMemo(() => {
+  // Mixer ("buddy") choices for spirit + mixer orders: in-stock soft-drink
+  // items (Coke, soda, tonic, etc.). Word-boundary match so "Chocolates"
+  // never counts as "cola".
+  const buddyItems = useMemo(() => {
+    const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
     const candidates = (items as BarItem[]).filter(i =>
       (i as any).item_kind !== "special" &&
-      /buddy|cola|coke/i.test(i.name) &&
+      rx.test(i.name) &&
       (typeof i.stock_qty !== "number" || i.stock_qty > 0)
     );
-    return candidates.sort((a, b) => Number(a.price) - Number(b.price))[0] ?? null;
+    return candidates.sort((a, b) => Number(a.price) - Number(b.price));
   }, [items]);
+  // Option id whose buddy picker is open (null = closed).
+  const [buddyFor, setBuddyFor] = useState<string | null>(null);
+  const addWithBuddy = (optionId: string, buddyId: string) => {
+    updateCart(optionId, 1);
+    updateCart(buddyId, 1);
+    setBuddyFor(null);
+  };
 
   /** Settlement: post the final open tab to the member account (the only path that journals). */
   const submitCart = async () => {

@@ -186,7 +186,7 @@ export default function HonestyBar() {
   // bar item whose name reads like a soft-drink buddy (Coke, cola, etc.).
   const buddyItem = useMemo(() => {
     const candidates = (items as BarItem[]).filter(i =>
-      i.item_kind !== "special" &&
+      (i as any).item_kind !== "special" &&
       /buddy|cola|coke/i.test(i.name) &&
       (typeof i.stock_qty !== "number" || i.stock_qty > 0)
     );

@@ -1,3 +1,4 @@
+import { withSpiritMixers } from "@/lib/bar-spirit-menu";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 /**
  * Public Scan-to-Pay page — `/s/:code`
@@ -166,11 +167,7 @@ export default function ScanPay() {
     return [...(hasSpecials ? [SPECIALS_KEY] : []), ...rest];
   }, [divisionMenu]);
   const activeCategory = category !== "all" && !categoryKeys.includes(category) ? "all" : category;
-  const visibleMenu = useMemo(() => {
-    if (activeCategory === "all") return divisionMenu;
-    if (activeCategory === SPECIALS_KEY) return divisionMenu.filter((m) => m.item_kind === "special");
-    return divisionMenu.filter((m) => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
-  }, [divisionMenu, activeCategory]);
+
 
   // Mixer ("buddy") choices for spirit + mixer orders. The backend returns a
   // dedicated buddies list (includes non-sellable bulk mixers like Coke Bulk);
@@ -188,14 +185,14 @@ export default function ScanPay() {
     candidates.sort((a, b) => Number(a.price) - Number(b.price));
     return candidates;
   }, [data, menu]);
-  // Option id whose buddy picker is open (null = closed).
-  const [buddyFor, setBuddyFor] = useState<string | null>(null);
-  const addWithBuddy = (optionId: string, buddyId: string) => {
-    navigator.vibrate?.(15);
-    bump(optionId, 1);
-    bump(buddyId, 1);
-    setBuddyFor(null);
-  };
+
+
+  const visibleMenu = useMemo(() => {
+    if (activeCategory === "all") return divisionMenu;
+    if (activeCategory === SPECIALS_KEY) return divisionMenu.filter(m => m.item_kind === "special");
+    const categoryItems = divisionMenu.filter(m => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
+    return withSpiritMixers(categoryItems, buddyItems, activeCategory);
+  }, [divisionMenu, activeCategory, buddyItems]);
 
   const cartLines = useMemo(
     () =>
@@ -206,7 +203,7 @@ export default function ScanPay() {
           return it ? { item: it, qty, line: Number(it.price) * qty } : null;
         })
         .filter(Boolean) as { item: ScanItem; qty: number; line: number }[],
-    [cart, menu],
+    [cart, menu, buddyItems],
   );
   const total = cartLines.reduce((s, l) => s + l.line, 0);
   const count = cartLines.reduce((s, l) => s + l.qty, 0);
@@ -914,7 +911,7 @@ export default function ScanPay() {
                     const groups = new Map<string, ScanItem[]>();
                     const order: string[] = [];
                     for (const m of visibleMenu) {
-                      const parts = m.item_kind !== "special" ? m.name.split(" · ") : [m.name];
+                      const parts = m.item_kind !== "special" && !buddyItems.some(b => b.id === m.id) ? m.name.split(" · ") : [m.name];
                       const key = parts.length === 2 ? `g:${parts[0]}` : `i:${m.id}`;
                       if (!groups.has(key)) { groups.set(key, []); order.push(key); }
                       groups.get(key)!.push(m);
@@ -939,32 +936,11 @@ export default function ScanPay() {
                                     <span className="truncate">{o.name.split(" · ")[1]}</span>
                                     <span className="shrink-0">{formatMoney(Number(o.price), currency)}{cart[o.id] ? ` ×${cart[o.id]}` : ""}</span>
                                   </Button>
-                                  {buddyItems.length > 0 && !out && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-8 shrink-0 px-1.5 text-[10px]"
-                                      aria-label={`${o.name} plus a mixer`}
-                                      onClick={() => buddyItems.length === 1 ? addWithBuddy(o.id, buddyItems[0].id) : setBuddyFor(buddyFor === o.id ? null : o.id)}
-                                    >
-                                      +🥤
-                                    </Button>
-                                  )}
+
                                 </div>
                               );
                             })}
                           </div>
-                          {buddyFor && opts.some(o => o.id === buddyFor) && (
-                            <div className="w-full rounded-md border bg-popover p-1 flex flex-col gap-1">
-                              <p className="text-[10px] text-muted-foreground px-1">Add which mixer?</p>
-                              {buddyItems.map(b => (
-                                <Button key={b.id} size="sm" variant="outline" className="h-7 w-full px-1.5 text-[10px] justify-between gap-1" onClick={() => addWithBuddy(buddyFor, b.id)}>
-                                  <span className="truncate">{b.name}</span>
-                                  <span className="shrink-0">{formatMoney(Number(b.price), currency)}</span>
-                                </Button>
-                              ))}
-                            </div>
-                          )}
                           {qty > 0 && (
                             <>
                               <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{qty}</span>
@@ -978,7 +954,7 @@ export default function ScanPay() {
                     });
                   })()}
                   {visibleMenu.filter(m => {
-                    const parts = m.item_kind !== "special" ? m.name.split(" · ") : [m.name];
+                    const parts = m.item_kind !== "special" && !buddyItems.some(b => b.id === m.id) ? m.name.split(" · ") : [m.name];
                     return !(parts.length === 2 && visibleMenu.filter(x => x.item_kind !== "special" && x.name.startsWith(parts[0] + " · ")).length > 1);
                   }).map((m) => {
                     const qty = cart[m.id] || 0;

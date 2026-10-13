@@ -1,3 +1,4 @@
+import { withSpiritMixers } from "@/lib/bar-spirit-menu";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
 import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
@@ -189,18 +190,14 @@ export default function HonestyBar() {
     const rx = /\b(buddy|coke|cola|soda|tonic|mixer)\b/i;
     const candidates = (items as BarItem[]).filter(i =>
       (i as any).item_kind !== "special" &&
+      !(i as unknown as InventoryItem).archived_at &&
       rx.test(i.name) &&
+      !/\b(and|plus)\b/i.test(i.name) &&
       (typeof i.stock_qty !== "number" || i.stock_qty > 0)
     );
     return candidates.sort((a, b) => Number(a.price) - Number(b.price));
   }, [items]);
-  // Option id whose buddy picker is open (null = closed).
-  const [buddyFor, setBuddyFor] = useState<string | null>(null);
-  const addWithBuddy = (optionId: string, buddyId: string) => {
-    updateCart(optionId, 1);
-    updateCart(buddyId, 1);
-    setBuddyFor(null);
-  };
+
 
   /** Settlement: post the final open tab to the member account (the only path that journals). */
   const submitCart = async () => {
@@ -309,7 +306,7 @@ export default function HonestyBar() {
   const divisionCategories = categoriesForDivision(customCategories, activeDivision);
   const groupedByCategory = divisionCategories.map(cat => ({
     ...cat,
-    items: regular.filter(i => i.category === cat.value),
+    items: withSpiritMixers(regular.filter(i => i.category === cat.value), buddyItems, cat.value),
   })).filter(g => g.items.length > 0);
   // Items whose category isn't in the current list (legacy values) still show, under their own heading.
   const knownValues = new Set(divisionCategories.map(c => c.value));
@@ -466,7 +463,8 @@ export default function HonestyBar() {
                     <h3 className="text-sm font-semibold">{group.label}</h3>
                   </div>
                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-9 gap-2 xl:gap-1.5">
-                    {groupForPos(group.items as unknown as InventoryItem[], items as unknown as InventoryItem[]).map(entry => {
+                    {[...groupForPos(group.items.filter(i => !buddyItems.some(b => b.id === i.id)) as unknown as InventoryItem[], items as unknown as InventoryItem[]),
+                      ...group.items.filter(i => buddyItems.some(b => b.id === i.id)).map(item => ({ key: `m:${item.id}`, title: item.name, options: [{ item: item as unknown as InventoryItem, label: item.name }], isSpecial: false }))].map(entry => {
                       const first = entry.options[0].item;
                       const qty = entry.options.reduce((n, o) => n + (cart[o.item.id] || 0), 0);
                       const multi = entry.options.length > 1;
@@ -497,31 +495,9 @@ export default function HonestyBar() {
                                      <span className="truncate">{o.label}</span>
                                      <span className="shrink-0">{money(o.item.price)}{cart[o.item.id] ? ` ×${cart[o.item.id]}` : ""}</span>
                                   </Button>
-                                  {buddyItems.length > 0 && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-8 xl:h-7 shrink-0 px-1.5 text-[11px] xl:text-[10px]"
-                                      aria-label={`${o.item.name} plus a mixer`}
-                                      title={`${o.label} plus a mixer`}
-                                      onClick={() => buddyItems.length === 1 ? addWithBuddy(o.item.id, buddyItems[0].id) : setBuddyFor(buddyFor === o.item.id ? null : o.item.id)}
-                                    >
-                                      +🥤
-                                    </Button>
-                                  )}
+
                                 </div>
                               ))}
-                              {buddyFor && entry.options.some(o => o.item.id === buddyFor) && (
-                                <div className="w-full rounded-md border bg-popover p-1 flex flex-col gap-1">
-                                  <p className="text-[10px] text-muted-foreground px-1">Add which mixer?</p>
-                                  {buddyItems.map(b => (
-                                    <Button key={b.id} size="sm" variant="outline" className="h-7 w-full px-1.5 text-[10px] justify-between gap-1" onClick={() => addWithBuddy(buddyFor, b.id)}>
-                                      <span className="truncate">{b.name}</span>
-                                      <span className="shrink-0">{money(b.price)}</span>
-                                    </Button>
-                                  ))}
-                                </div>
-                              )}
                             </div>
                           ) : (
                             <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{money(first.price)}</p>

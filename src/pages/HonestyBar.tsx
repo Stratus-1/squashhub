@@ -182,6 +182,17 @@ export default function HonestyBar() {
     cartLines.map(({ item, qty }) => ({ division: (item as any).division, total: item.price * qty })));
   const updateCart = (itemId: string, delta: number) => setCart(prev => addToTab(prev, itemId, delta));
 
+  // Mixer ("buddy") for one-tap spirit + mixer orders: cheapest in-stock
+  // bar item whose name reads like a soft-drink buddy (Coke, cola, etc.).
+  const buddyItem = useMemo(() => {
+    const candidates = (items as BarItem[]).filter(i =>
+      i.item_kind !== "special" &&
+      /buddy|cola|coke/i.test(i.name) &&
+      (typeof i.stock_qty !== "number" || i.stock_qty > 0)
+    );
+    return candidates.sort((a, b) => Number(a.price) - Number(b.price))[0] ?? null;
+  }, [items]);
+
   /** Settlement: post the final open tab to the member account (the only path that journals). */
   const submitCart = async () => {
     if (cartCount === 0 || submitting) return;

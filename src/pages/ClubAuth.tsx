@@ -97,6 +97,9 @@ export default function ClubAuth() {
   const [newPassword, setNewPassword] = useState("");
   const [newConfirm, setNewConfirm] = useState("");
   const [newAcceptTerms, setNewAcceptTerms] = useState(false);
+  // "Is this you?" prompt when the club already has a member with this email.
+  const [emailMatch, setEmailMatch] = useState<null | { status: "already_linked" | "verification_mismatch"; email: string; phone: string }>(null);
+  const [emailConfirmedDifferent, setEmailConfirmedDifferent] = useState<string>("");
 
   // Platform-wide duplicate-registration safeguard (national people search +
   // phone-verified recovery). Runs before every self-registration path.
@@ -704,6 +707,23 @@ export default function ClubAuth() {
     if (!newAcceptTerms) {
       toast.error("Please accept the Terms of Use and Privacy Policy");
       return;
+    }
+    // Same-email guard: if this club already has a member with this email,
+    // ask "Is this you?" before creating anything, so people sign in / claim
+    // their existing record instead of becoming a duplicate member.
+    if (club?.id && email && emailConfirmedDifferent !== email.toLowerCase()) {
+      try {
+        const { data: s } = await (supabase as any).rpc("existing_member_signup_status", {
+          _club_id: club.id,
+          _email: email,
+        });
+        if (s === "already_linked" || s === "verification_mismatch") {
+          setEmailMatch({ status: s, email, phone });
+          return;
+        }
+      } catch {
+        // fail open — the backend also refuses to create a duplicate row
+      }
     }
 
     try {
@@ -1580,7 +1600,7 @@ export default function ClubAuth() {
                   : <>New to {clubName}? Create an account and complete your profile.</>}
               </p>
 
-              <form onSubmit={handleNewMemberSignup} className="space-y-3">
+              <form id="club-new-member-form" onSubmit={handleNewMemberSignup} className="space-y-3">
                 <div>
                   <Label htmlFor="new-name">Full Name <span className="text-destructive">*</span></Label>
                   <Input
@@ -1918,6 +1938,56 @@ export default function ClubAuth() {
       </motion.div>
 
       {dup.dialog}
+      <AlertDialog open={!!emailMatch} onOpenChange={(o) => { if (!o) setEmailMatch(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>There's already a member with this email — is it you?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  {clubName} already has a member with <strong className="break-all">{emailMatch?.email}</strong>.
+                  {emailMatch?.status === "already_linked"
+                    ? " This email already has a login — please sign in (or reset your password) instead of registering again."
+                    : " Please claim your existing membership so your history stays on one record."}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Family members who share one email can continue — the club admin can link you as a family member.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+            <AlertDialogAction
+              onClick={() => {
+                const m = emailMatch;
+                setEmailMatch(null);
+                if (!m) return;
+                if (m.status === "already_linked") {
+                  setLoginEmail(m.email);
+                  setActiveTab("login");
+                } else {
+                  setExistingEmail(m.email);
+                  if (m.phone) setExistingPhone(m.phone);
+                  setActiveTab("existing");
+                }
+              }}
+            >
+              {emailMatch?.status === "already_linked" ? "Yes, that's me — sign in" : "Yes, that's me — claim my membership"}
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                const m = emailMatch;
+                setEmailMatch(null);
+                if (!m) return;
+                setEmailConfirmedDifferent(m.email.toLowerCase());
+                setTimeout(() => (document.getElementById("club-new-member-form") as HTMLFormElement | null)?.requestSubmit(), 0);
+              }}
+            >
+              No, I'm a different person sharing this email — continue
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

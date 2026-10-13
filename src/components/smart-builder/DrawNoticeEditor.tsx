@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  DEFAULT_ACTIVATION_INTRO, loadActivationStates, loadMatchDetailsContext, loadDrawFeeContext, composeDrawNoticeVars, sendDrawNoticeTest, type DrawScope, readDrawNoticeSettings, resolveDrawNoticeSettings, sameDrawNoticeSettings, saveDrawNoticeSettings,
+  DEFAULT_ACTIVATION_INTRO, loadActivationStates, loadMatchDetailsContext, loadDrawFeeContext, composeDrawNoticeVars, sendDrawNoticeTest, type DrawScope, resolveDrawNoticeSettings, sameDrawNoticeSettings, saveDrawNoticeSettings,
   type ActivationState, type DrawNoticeSettings,
 } from "@/lib/smart-builder/draw-notice";
 

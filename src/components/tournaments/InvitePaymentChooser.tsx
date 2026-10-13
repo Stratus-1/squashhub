@@ -37,8 +37,8 @@ type Props = {
 /**
  * "How do you want to pay?" on the invitation. Offers the tournament's chosen
  * methods that the host club can accept (server decides), and settles member
- * account / EFT / cash straight from the invitation. EFT requires uploading
- * proof of payment; the choice can be changed until money has moved.
+ * account / EFT / cash straight from the invitation. Proof of payment upload is
+ * optional; the choice can be changed until money has moved.
  */
 export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function InvitePaymentChooser(
   { token, verify, ready, verifyField, cardBusy, onCard, onSettled },
@@ -169,10 +169,10 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
             onClick={() => fileRef.current?.click()}
           >
             {uploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
-            Upload proof of payment (required)
+            Upload proof of payment (optional)
           </Button>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Photo or PDF of your EFT confirmation (max 10MB). The organiser marks your entry paid once received.
+            Photo or PDF of your EFT confirmation (max 10MB), if you have it. The organiser marks your entry paid once received.
           </p>
         </>
       )}
@@ -208,7 +208,7 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
     return (
       <div ref={ref} className="rounded-md border p-3 text-xs space-y-1">
         <p className="text-sm font-semibold">Thanks — you said you have already paid {money(amount)}.</p>
-        <p>The club admin will check and approve your payment. Please upload your proof of payment so they can match it.</p>
+        <p>The club admin will check and approve your payment. If you'd like, upload your proof of payment below so they can match it — this is optional.</p>
         {proofUpload}
         <div>{changeLink}</div>
       </div>

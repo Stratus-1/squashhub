@@ -1130,6 +1130,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // The dates as last loaded from the saved tournament. An empty wizard field
+  // (e.g. a stale editor session) must never erase a date that already exists.
+  const loadedStartDateRef = useRef<string | null>(null);
+  const loadedEndDateRef = useRef<string | null>(null);
   const [playDays, setPlayDays] = useState<Set<number>>(new Set());
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
@@ -2965,9 +2969,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       num_groups: numGroups,
       enable_playoffs: enablePlayoffs,
       champion_scope: championScope,
-      // Drafts may have no dates yet — persist null rather than "".
-      start_date: startDate || null,
-      end_date: endDate || null,
+      // Drafts may have no dates yet — persist null rather than "". Never
+      // erase a date that already exists just because this session's field is
+      // empty (stale editor sessions wiped the end date once already).
+      start_date: startDate || loadedStartDateRef.current || null,
+      end_date: endDate || loadedEndDateRef.current || null,
       play_days: Array.from(playDays),
       start_time: startTime,
       end_time: endTime,
@@ -5770,8 +5776,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             num_groups: numGroups,
             enable_playoffs: enablePlayoffs,
             champion_scope: championScope,
-            start_date: startDate,
-            end_date: endDate,
+            start_date: startDate || loadedStartDateRef.current || null,
+            end_date: endDate || loadedEndDateRef.current || null,
             play_days: Array.from(playDays),
             start_time: startTime,
             end_time: endTime,
@@ -8105,6 +8111,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setNumGroups(champ.num_groups);
     setStartDate(champ.start_date);
     setEndDate(champ.end_date);
+    loadedStartDateRef.current = champ.start_date ?? null;
+    loadedEndDateRef.current = champ.end_date ?? null;
     setPlayDays(new Set(champ.play_days || []));
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");

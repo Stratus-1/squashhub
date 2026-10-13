@@ -952,6 +952,17 @@ export default function ScanPay() {
                               );
                             })}
                           </div>
+                          {buddyFor && opts.some(o => o.id === buddyFor) && (
+                            <div className="w-full rounded-md border bg-popover p-1 flex flex-col gap-1">
+                              <p className="text-[10px] text-muted-foreground px-1">Add which mixer?</p>
+                              {buddyItems.map(b => (
+                                <Button key={b.id} size="sm" variant="outline" className="h-7 w-full px-1.5 text-[10px] justify-between gap-1" onClick={() => addWithBuddy(buddyFor, b.id)}>
+                                  <span className="truncate">{b.name}</span>
+                                  <span className="shrink-0">{formatMoney(Number(b.price), currency)}</span>
+                                </Button>
+                              ))}
+                            </div>
+                          )}
                           {qty > 0 && (
                             <>
                               <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{qty}</span>

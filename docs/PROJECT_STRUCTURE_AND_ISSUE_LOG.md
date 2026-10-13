@@ -2962,3 +2962,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Cause: `ItemManager` (Club Admin → Bar POS → Items & prices) rendered every division/category group with no text filter; only Stock Levels had one. With 288 live items a club could not find an item without scrolling.
 - Fix: added a search box that narrows the list by name, category label, product group, variant label, division or barcode (display only — saving, counts and stock are untouched); the header count follows the filter and a "no items match" hint appears when nothing does. Verified in preview as Willem at Uitsig: brandy 1, coke 5, "zzzznothing" 0, cleared 288.
 - Follow-up: the staff/customer menu screens (laptop POS, phone QR page) still have no search — offered, awaiting owner.
+
+## 2026-10-13 — Test bar tabs cleared at Uitsig (data cleanup, no code change)
+- "Test Guest" (opened while checking the new cell-number field) had no lines — closed and removed.
+- "Willem test guest" (+27833759003) held 8 unpaid QR lines totalling R216. Owner chose "cancel items, return stock": the 8 `bar_visitor_sales` rows were deleted (all `on_tab`, so no journal entry existed to unpost), the tab row removed, and stock returned with an `adjustment` movement each — Whiskey +4 tots, Chocolates +1, Vodka +4 tots, KWV 5 Years +2 tots, Klipdrift Premium +3 tots, Coke Bulk +250 ml.
+- Verified afterwards: 0 sales left against the tab, no open tabs at Uitsig, stock counts back to pre-test values (Chocolates 107, Coke Bulk 523 250 ml, Klipdrift Premium 377 tots, KWV 5 Years 84 tots, Vodka 13 tots, Whiskey 19 tots).

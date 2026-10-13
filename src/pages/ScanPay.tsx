@@ -874,7 +874,66 @@ export default function ScanPay() {
                   </div>
                 )}
                 <div className="grid grid-cols-3 gap-2">
-                  {visibleMenu.map((m) => {
+                  {(() => {
+                    // Group "Brand · Single" / "Brand · Double" into one tile with option buttons.
+                    const groups = new Map<string, ScanItem[]>();
+                    const order: string[] = [];
+                    for (const m of visibleMenu) {
+                      const parts = m.item_kind !== "special" ? m.name.split(" · ") : [m.name];
+                      const key = parts.length === 2 ? `g:${parts[0]}` : `i:${m.id}`;
+                      if (!groups.has(key)) { groups.set(key, []); order.push(key); }
+                      groups.get(key)!.push(m);
+                    }
+                    return order.filter(k => k.startsWith("g:") && groups.get(k)!.length > 1).map(k => {
+                      const opts = groups.get(k)!;
+                      const title = k.slice(2);
+                      const first = opts.find(o => o.image_url) || opts[0];
+                      const qty = opts.reduce((n, o) => n + (cart[o.id] || 0), 0);
+                      return (
+                        <Card key={k} className={`relative p-2 flex flex-col items-center gap-1 ${qty > 0 ? "ring-2 ring-primary bg-primary/10" : ""}`}>
+                          <div className="w-full aspect-square rounded bg-muted overflow-hidden flex items-center justify-center">
+                            {first.image_url ? <img src={first.image_url} alt={title} className="w-full h-full object-cover" loading="lazy" /> : <span className="text-2xl">{barProductEmoji(first)}</span>}
+                          </div>
+                          <p className="text-[11px] font-medium text-center leading-tight break-words">{title}</p>
+                          <div className="flex flex-col gap-1 w-full">
+                            {opts.map(o => {
+                              const out = o.item_kind !== "made_to_order" && typeof o.stock_qty === "number" && o.stock_qty <= 0;
+                              return (
+                                <Button key={o.id} size="sm" disabled={out} variant={cart[o.id] ? "default" : "outline"} className="h-8 w-full min-w-0 px-1.5 text-[10px] justify-between gap-1" onClick={() => { navigator.vibrate?.(15); bump(o.id, 1); }}>
+                                  <span className="truncate">{o.name.split(" · ")[1]}</span>
+                                  <span className="shrink-0">{formatMoney(Number(o.price), currency)}{cart[o.id] ? ` ×${cart[o.id]}` : ""}</span>
+                                </Button>
+                              );
+                            })}
+                          </div>
+                          {qty > 0 && (
+                            <>
+                              <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{qty}</span>
+                              <Button size="icon" variant="outline" className="absolute top-1 left-1 h-6 w-6" aria-label="Remove one" onClick={() => { const last = [...opts].reverse().find(o => cart[o.id]); if (last) bump(last.id, -1); }}>
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                            </>
+                          )}
+                        </Card>
+                      );
+                    }).concat(
+                      visibleMenu.filter(m => {
+                        const parts = m.item_kind !== "special" ? m.name.split(" · ") : [m.name];
+                        return !(parts.length === 2 && groups.get(`g:${parts[0]}`)!.length > 1);
+                      }).map((m) => renderSingle(m))
+                    );
+                  })()}
+                  {false && visibleMenu.map((m) => renderSingle(m))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
                     const qty = cart[m.id] || 0;
                     // Prepared food holds no inventory; specials derive availability from their components.
                     const out = m.item_kind !== "made_to_order" && m.item_kind !== "special"

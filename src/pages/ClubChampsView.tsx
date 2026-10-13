@@ -3980,8 +3980,9 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
                       : "bg-background text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
+                  {/* Tabs carry the category name only — the format and scoring
+                      live on the heading badge below, so the tab stays short. */}
                   {c.label}
-                  <span className="ml-1 font-normal opacity-70">· {formatLabelFor(c.gn)}{scoringLabelForGroup(champForScoring, c.gn) ? ` (${scoringLabelForGroup(champForScoring, c.gn)})` : ""}</span>
                    {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
                 </button>
               ))}

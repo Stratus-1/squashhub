@@ -159,7 +159,16 @@ export default function LeagueSignup() {
           captain: wantsCaptain ? { nsa_username: nsaUser.trim(), nsa_password: nsaPass } : undefined,
         },
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        // Show the real reason (wrong password, weak password, etc.) instead of
+        // the generic "Edge Function returned a non-2xx status code".
+        let msg = error.message;
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch { /* keep generic */ }
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
       setDone({ captain_status: data.captain_status, club_subdomain: data.club_subdomain, existing_account: !!data.existing_account });
       toast.success(data.existing_account ? "NSA details saved" : "Account created! Check your email to verify.");

@@ -426,7 +426,10 @@ function AppRoutes() {
       p === "/sla" ||
       p === "/lights" ||
       p.startsWith("/c/") ||
-      p.startsWith("/tv");
+      p.startsWith("/tv") ||
+      // Match Day screens reached via QR codes: a fresh scanner has no saved
+      // theme preference, so force dark to match the venue screens.
+      p.startsWith("/md");
 
     const root = document.documentElement;
     const userPref = localStorage.getItem("theme"); // "dark" | "light" | null

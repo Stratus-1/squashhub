@@ -202,7 +202,7 @@ export default function ScanPay() {
       Object.entries(cart)
         .filter(([, q]) => q > 0)
         .map(([id, qty]) => {
-          const it = menu.find((m) => m.id === id);
+          const it = menu.find((m) => m.id === id) ?? buddyItems.find((b) => b.id === id);
           return it ? { item: it, qty, line: Number(it.price) * qty } : null;
         })
         .filter(Boolean) as { item: ScanItem; qty: number; line: number }[],

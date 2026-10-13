@@ -925,6 +925,13 @@
       "when": 1791923831839,
       "tag": "0131_bar_open_tabs_include_guest_phone",
       "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1791924626608,
+      "tag": "0132_bar_qr_payment_options_follow_setup",
+      "breakpoints": true
     }
   ]
 }

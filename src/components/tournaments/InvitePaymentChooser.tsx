@@ -15,7 +15,7 @@ const ACCEPT = "image/png,image/jpeg,image/webp,application/pdf";
 export function invitePayButtons(methods: string[] | null | undefined) {
   const label: Record<InvitePayMethod, string> = {
     card: "Pay online now (card / instant EFT)",
-    eft: "Pay by EFT, or I have already paid (upload proof)",
+    eft: "Pay by EFT (bank transfer)",
     cash: "Pay cash at the club",
     account: "Add to my member account",
   };
@@ -47,6 +47,8 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
   const [eft, setEft] = useState<any>(null);
   const [note, setNote] = useState<string | null>(null);
   const [proofDone, setProofDone] = useState(false);
+  // "I have already paid": recorded as an EFT awaiting admin approval — never marked paid here.
+  const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { data, refetch } = useQuery({
@@ -70,7 +72,7 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
       return data as any;
     },
     onSuccess: (res) => {
-      if (res?.method === "eft") setEft(res);
+      if (res?.method === "eft" && !alreadyPaid) setEft(res);
       else if (res?.method === "account") {
         setNote(`${money(res.amount_cents)} was added to your member account — settle it with the club as usual.`);
         toast.success("Entry fee added to your member account.");
@@ -93,6 +95,7 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
     onSuccess: () => {
       setEft(null);
       setNote(null);
+      setAlreadyPaid(false);
       setProofDone(false);
       refetch();
       onSettled?.();
@@ -201,6 +204,16 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
     );
   }
   if (amount <= 0) return null;
+  if (data.status === "pending_eft" && alreadyPaid) {
+    return (
+      <div ref={ref} className="rounded-md border p-3 text-xs space-y-1">
+        <p className="text-sm font-semibold">Thanks — you said you have already paid {money(amount)}.</p>
+        <p>The club admin will check and approve your payment. Please upload your proof of payment so they can match it.</p>
+        {proofUpload}
+        <div>{changeLink}</div>
+      </div>
+    );
+  }
   if (data.status === "pending_eft") {
     return (
       <div ref={ref} className="rounded-md border p-3 text-xs space-y-1">
@@ -235,6 +248,17 @@ export const InvitePaymentChooser = forwardRef<HTMLDivElement, Props>(function I
           </Button>
         );
       })}
+      {data.methods?.includes("eft") && (
+        <Button
+          className="w-full"
+          variant="outline"
+          disabled={!ready || cardBusy || settle.isPending}
+          onClick={() => { setAlreadyPaid(true); settle.mutate("eft"); }}
+        >
+          {alreadyPaid && settle.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+          I have already paid
+        </Button>
+      )}
     </div>
   );
 });

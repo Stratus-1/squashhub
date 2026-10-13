@@ -12,6 +12,7 @@ import { CalendarClock, Loader2 } from "lucide-react";
 import {
   buildSlots,
   isSlotFreeForMatch,
+  isChampsReservation,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
 import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
@@ -178,7 +179,22 @@ export function ScheduleMatchDialog({
   }, [slots, duration, courtId, bookings, match]);
 
 
-  const confirm = async (time: string) => {
+  // Club Championships holds on any tournament court this day: free for Champs players.
+  const champsSlots = useMemo(() => {
+    if (!match) return [] as { courtId: number; courtName: string; time: string }[];
+    const ids = new Set(courtOptions.map((c) => c.id));
+    const seen = new Set<string>();
+    return (bookings as any[])
+      .filter((b) => isChampsReservation(b) && ids.has(b.court_id))
+      .map((b) => ({ courtId: b.court_id as number, time: String(b.start_time).slice(0, 5) }))
+      .filter((x) => isSlotFreeForMatch(x.time, duration, x.courtId, match, bookings, match?.booking_id ?? null))
+      .filter((x) => { const k = `${x.courtId}|${x.time}`; if (seen.has(k)) return false; seen.add(k); return true; })
+      .map((x) => ({ ...x, courtName: courtOptions.find((c) => c.id === x.courtId)?.name || `Court ${x.courtId}` }))
+      .sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
+  }, [bookings, courtOptions, duration, match]);
+
+  const confirm = async (time: string, courtOverride?: number) => {
+    const courtId = courtOverride ?? selectedCourtId;
     if (!match || !courtId) return;
     if (courtOptions.length > 0 && !courtOptions.some((c) => c.id === courtId)) {
       toast.error("That court is not available for this tournament.");
@@ -286,6 +302,29 @@ export function ScheduleMatchDialog({
             )}
           </div>
 
+
+          {champsSlots.length > 0 && (
+            <div className="space-y-1 rounded-md border border-primary/40 bg-primary/5 p-2">
+              <Label className="text-xs font-semibold">Club Champs slots — free</Label>
+              <p className="text-[11px] text-muted-foreground">
+                The club reserved these for the Champs. Tap one to book it for free — it will show your names instead of "Club Championships".
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+                {champsSlots.map((s) => (
+                  <Button
+                    key={`${s.courtId}-${s.time}`}
+                    type="button"
+                    size="sm"
+                    disabled={saving}
+                    className="h-7 text-xs"
+                    onClick={() => confirm(s.time, s.courtId)}
+                  >
+                    {s.time} · {s.courtName}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1">
             <Label className="text-xs">Court</Label>

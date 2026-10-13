@@ -445,7 +445,7 @@ export default function HonestyBar() {
                     <span className="text-base">{BAR_CATEGORY_EMOJI[group.value] || "📦"}</span>
                     <h3 className="text-sm font-semibold">{group.label}</h3>
                   </div>
-                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-9 gap-2 xl:gap-1.5">
                     {groupForPos(group.items as unknown as InventoryItem[], items as unknown as InventoryItem[]).map(entry => {
                       const first = entry.options[0].item;
                       const qty = entry.options.reduce((n, o) => n + (cart[o.item.id] || 0), 0);

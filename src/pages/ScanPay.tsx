@@ -916,24 +916,12 @@ export default function ScanPay() {
                           )}
                         </Card>
                       );
-                    }).concat(
-                      visibleMenu.filter(m => {
-                        const parts = m.item_kind !== "special" ? m.name.split(" · ") : [m.name];
-                        return !(parts.length === 2 && groups.get(`g:${parts[0]}`)!.length > 1);
-                      }).map((m) => renderSingle(m))
-                    );
+                    });
                   })()}
-                  {false && visibleMenu.map((m) => renderSingle(m))}
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
-}
-
+                  {visibleMenu.filter(m => {
+                    const parts = m.item_kind !== "special" ? m.name.split(" · ") : [m.name];
+                    return !(parts.length === 2 && visibleMenu.filter(x => x.item_kind !== "special" && x.name.startsWith(parts[0] + " · ")).length > 1);
+                  }).map((m) => {
                     const qty = cart[m.id] || 0;
                     // Prepared food holds no inventory; specials derive availability from their components.
                     const out = m.item_kind !== "made_to_order" && m.item_kind !== "special"

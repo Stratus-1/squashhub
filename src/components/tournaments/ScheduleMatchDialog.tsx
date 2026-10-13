@@ -158,6 +158,28 @@ export function ScheduleMatchDialog({
     enabled: !!bookingClubId && !!date && open,
   });
 
+  // Upcoming "Club Championships" holds at the venue. While any exist, players
+  // may only book their match into those reserved slots (organisers keep the
+  // full picker). Clubs without holds are unaffected.
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: reservedDates = [] } = useQuery({
+    queryKey: ["champs-reserved-dates", bookingClubId, today],
+    queryFn: async () => {
+      const { data } = await fromExt("bookings")
+        .select("date, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id")
+        .eq("club_id", bookingClubId!)
+        .eq("status", "active")
+        .gte("date", today)
+        .ilike("external_booker_name", "club championship%");
+      return [...new Set(((data || []) as any[]).filter((b) => isChampsReservation(b)).map((b) => String(b.date)))].sort();
+    },
+    enabled: !!bookingClubId && open,
+  });
+  const champsOnly = !canManage && reservedDates.length > 0;
+  useEffect(() => {
+    if (champsOnly && !reservedDates.includes(date)) setDate(reservedDates[0]);
+  }, [champsOnly, reservedDates, date]);
+
   const slotMinutes = Number(club?.booking_slot_minutes) || 60;
   const duration = Math.max(15, durationMinutes || slotMinutes);
   const slots = useMemo(

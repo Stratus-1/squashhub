@@ -2946,3 +2946,7 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Symptom: players opening "Make your court booking" from tournament fixtures saw every court/time instead of only the reserved Club Championships slots.
 - Cause: Champs-only mode was skipped for anyone with organiser/champs rights (`canManage`), and the full picker rendered while the reserved-slot query was still loading.
 - Fix: `ScheduleMatchDialog` now starts in Champs-only mode for everyone while reserved holds exist; organisers get an explicit "show all courts and times" toggle; the full picker waits for the reserved-slot check.
+
+## 2026-10-13 — Champs singles result counted twice in member stats
+- Cause: `save_marker_match_result` writes a flat `matches` copy plus the `club_champs_matches` result; `get_member_match_history` only skipped that copy for doubles.
+- Fix: skip the flat copy for singles too (same players + score, within ±60 days of the champ date); removed Gerhard Fourie's extra copy; refreshed stats cache for all players with completed champ results.

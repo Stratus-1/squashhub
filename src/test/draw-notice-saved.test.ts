@@ -26,6 +26,19 @@ describe("saved draw wording", () => {
     expect(r).toMatchObject({ message: "Custom text", includeActivation: true, activationIntro: "Join us" });
     expect(readDrawNoticeSettings(store.bl, "2:r2", "Round 2 default").message).toBe("Round 2 default");
   });
+  it("inherits saved tournament-wide wording for category-scoped notices", () => {
+    const bl = { draw_notice_texts: { "all:r1": { message: "Wide round-1 wording", saved_at: "2026-10-12T20:59:39Z" } } };
+    const s = resolveDrawNoticeSettings(bl, "6:r1", DEFAULT_DRAW_NOTICE);
+    expect(s.message).toBe("Wide round-1 wording");
+    expect(s.savedAt).toBe("2026-10-12T20:59:39Z");
+    // Saved per-category wording still wins over the tournament-wide text.
+    const scoped = { draw_notice_texts: { ...bl.draw_notice_texts, "6:r1": { message: "Ladies A wording", saved_at: "2026-10-13T09:00:00Z" } } };
+    expect(resolveDrawNoticeSettings(scoped, "6:r1", DEFAULT_DRAW_NOTICE).message).toBe("Ladies A wording");
+    // No saved text anywhere -> built-in default.
+    expect(resolveDrawNoticeSettings({}, "6:r1", "Default only").message).toBe("Default only");
+    // "all:"-scoped keys never inherit from themselves.
+    expect(resolveDrawNoticeSettings(bl, "all:r2", "Round 2 default").message).toBe("Round 2 default");
+  });
   it("never stores links or tokens in the saved wording", async () => {
     await saveDrawNoticeSettings("t1", "all:r1", { message: "Hi", includeActivation: true, activationIntro: DEFAULT_ACTIVATION_INTRO });
     expect(JSON.stringify(store.bl.draw_notice_texts)).not.toMatch(/activate\?t=|token/i);

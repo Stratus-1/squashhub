@@ -416,7 +416,7 @@ export default function HonestyBar() {
             </div>
              {/* Pick one category at a time; keep the cart when switching. */}
              {groupedByCategory.length > 0 && (
-               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2" role="group" aria-label="Product categories">
+               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2" role="group" aria-label="Product categories">
                 {groupedByCategory.map(g => (
                    <Button
                     key={g.value}

@@ -9,6 +9,7 @@ type TabLine = { name: string | null; quantity: number; total: number };
 type OpenTab = {
   tab_id: string;
   guest_name: string;
+  guest_phone: string | null;
   status: string;
   opened_at: string;
   operator: string | null;
@@ -96,6 +97,7 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Opened {fmtWhen(t.opened_at)}
+                        {t.guest_phone ? ` · ${t.guest_phone}` : ""}
                         {t.operator ? ` · served by ${t.operator}` : " · operator unknown"}
                       </p>
                     </div>

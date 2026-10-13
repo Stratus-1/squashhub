@@ -80,6 +80,7 @@ export default function ScanPay() {
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [visitorName, setVisitorName] = useState("");
+  const [visitorPhone, setVisitorPhone] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
@@ -319,7 +320,7 @@ export default function ScanPay() {
     setSubmitting(true);
     try {
       const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
-        _code: code, _guest_name: name,
+        _code: code, _guest_name: name, _guest_phone: visitorPhone.trim() || null,
       });
       if (error) throw error;
       localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
@@ -345,7 +346,7 @@ export default function ScanPay() {
       let current = tab;
       if (!current) {
         const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
-          _code: code, _guest_name: name,
+          _code: code, _guest_name: name, _guest_phone: visitorPhone.trim() || null,
         });
         if (error) throw error;
         localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
@@ -700,15 +701,24 @@ export default function ScanPay() {
                     placeholder="Your name"
                     className="h-10"
                   />
-                  <Button
-                    className="shrink-0 gap-1.5 h-10"
-                    disabled={submitting || !visitorName.trim()}
-                    onClick={openTabNow}
-                  >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-                    Open my tab
-                  </Button>
+                  <Input
+                    value={visitorPhone}
+                    onChange={(e) => setVisitorPhone(e.target.value)}
+                    placeholder="Cell number"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    className="h-10"
+                  />
                 </div>
+                <Button
+                  className="w-full gap-1.5 h-10"
+                  disabled={submitting || !visitorName.trim()}
+                  onClick={openTabNow}
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  Open my tab
+                </Button>
               </Card>
             )}
 

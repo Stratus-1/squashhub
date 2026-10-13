@@ -34,6 +34,7 @@ import { activeField, fieldSizeForStage, playoffSteps } from "@/lib/tournaments/
 import { tournamentSummary, type SummaryFixture } from "@/lib/tournaments/tournament-summary";
 import { unitKeyOf } from "@/lib/smart-builder/step-draw";
 import { divisionPools } from "@/lib/tournaments/active-draw";
+import { formatLabelForGroup } from "@/lib/tournaments/format-label";
 
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";

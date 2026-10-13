@@ -148,7 +148,7 @@ export function ScheduleMatchDialog({
     queryKey: ["court-bookings-self-schedule", bookingClubId, date],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
-        .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id")
+        .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
         .eq("club_id", bookingClubId!)
         .eq("date", date)
         .eq("status", "active");

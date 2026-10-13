@@ -234,6 +234,22 @@ export function readDrawNoticeSettings(betaLifecycle: any, key: string, fallback
     savedAt: t?.saved_at ?? a.saved_at ?? null,
   };
 }
+/** The tournament-wide key for the same round, e.g. "6:r1" -> "all:r1"; null when the key is already "all:"-scoped. */
+export function drawNoticeAllKey(key: string): string | null {
+  if (key.startsWith("all:")) return null;
+  const idx = key.indexOf(":");
+  return idx > 0 ? `all:${key.slice(idx + 1)}` : null;
+}
+/** Resolves wording for one notice key: saved per-category text wins, otherwise the saved
+ *  tournament-wide wording for the same round is inherited, otherwise the built-in default. */
+export function resolveDrawNoticeSettings(betaLifecycle: any, key: string, fallback: string): DrawNoticeSettings & { savedAt: string | null } {
+  const s = readDrawNoticeSettings(betaLifecycle, key, fallback);
+  if (betaLifecycle?.draw_notice_texts?.[key]) return s;
+  const allKey = drawNoticeAllKey(key);
+  if (!allKey) return s;
+  const inherited = readDrawNoticeSettings(betaLifecycle, allKey, fallback);
+  return inherited.savedAt ? inherited : s;
+}
 export function sameDrawNoticeSettings(a: DrawNoticeSettings, b: DrawNoticeSettings) {
   return a.message === b.message && a.includeActivation === b.includeActivation && a.activationIntro === b.activationIntro;
 }

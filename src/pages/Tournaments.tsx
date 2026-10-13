@@ -905,12 +905,13 @@ export default function Tournaments() {
     if (koRound != null) return `\u0001ko:${koRound}`;
     const st = String(m?.stage || "");
     if (isPlayoffGame(m) || (st && st !== "group" && st !== "pool")) return matchStageLabel(m);
-    const row = String(matchRoundRow(m)?.label || "").trim();
-    if (row && !/^[A-Z]\d+\s+v(s)?\.?\s+[A-Z]\d+$/i.test(row)) return row;
     // Play-by round-robin: the generated round numbers are just wheel order,
     // not real rounds — every game shares the same booking deadline. Group by
     // the deadline instead so players see one "Round 1 · Play by …" list.
     const sched = matchSchedule(m);
+    if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}`;
+    const row = String(matchRoundRow(m)?.label || "").trim();
+    if (row && !/^[A-Z]\d+\s+v(s)?\.?\s+[A-Z]\d+$/i.test(row)) return row;
     return roundMeta(m.champ_id, m.round_number).label || `Round ${Number(m.round_number) || 1}`;
   };
 

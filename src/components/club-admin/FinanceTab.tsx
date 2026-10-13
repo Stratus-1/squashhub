@@ -387,7 +387,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
   /* ─── Confirm / reject EFT payment ───
    * One server call (finance_decide_member_transaction) checks the club-scoped
-   * Club Books permission, locks the row and only acts while it is still
+   * Club Finance permission, locks the row and only acts while it is still
    * pending — a second tap or second device can never post it twice. */
   const decidePayment = async (txId: string, approve: boolean) => {
     try {

@@ -18,7 +18,7 @@ export function drawNoticeRecipients(matches: Array<{ status?: string | null; pl
 }
 
 export const FEE_PAID_LINE = "Your fee has been paid.";
-export const feeOutstandingLine = (cents: number) => `Your fee of R${(cents / 100).toFixed(2)} is outstanding. Use the "Pay my fee" button to pay by card, add it to your member account, or tell us you have already paid.`;
+export const feeOutstandingLine = (cents: number) => `If you have not paid your entry fee of R${(cents / 100).toFixed(2)} yet, please pay it using the "Manage fee" button. If you have already paid, open "Manage fee" and indicate there that you have paid.`;
 
 /** Per-player fee status from their own entry; partners without their own entry get no fee line. */
 export function feeStatusFor(feeCents: number, regs: Array<{ club_member_id: string; paid_at?: string | null; fee_paid_cents?: number | null; fee_status?: string | null; status?: string | null }>) {
@@ -150,11 +150,11 @@ export function composeDrawNoticeVars(id: string, message: string, ctx: DetailCo
       personal_message: detailsText ? `${text}\n\n${detailsText}` : text,
       personal_message_html: esc(text).replace(/\n/g, "<br>"),
       match_details_html: matchDetailsHtml(items),
-      email_pay_html: st?.owes && link ? emailPayButton(link, "Pay my fee") : "",
+      email_pay_html: st?.owes && link ? emailPayButton(link, "Manage fee") : "",
       personal_message_plain: detailsText ? `${text}\n\n${detailsText}` : text,
       // Server re-checks each opponent's CURRENT consent at send time and adds their number only then.
       contact_match_ids: items.filter((d) => d.state !== "bye").map((d) => d.matchId).filter(Boolean).join(","),
-      ...(st?.owes ? { pay_url: payRoute(tournamentId), pay_label: "Pay my fee" } : {}),
+      ...(st?.owes ? { pay_url: payRoute(tournamentId), pay_label: "Manage fee" } : {}),
       ...(st?.owes && link ? { pay_link: link, pay_token: link.split("/i/").pop() || "" } : {}),
     } as Record<string, string>,
   };

@@ -806,7 +806,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <label className="flex items-center gap-2"><Checkbox checked={sendCh.email} onCheckedChange={(v) => setSendCh((c) => ({ ...c, email: !!v }))} />Email</label>
             {waEnabled && <label className="flex items-center gap-2"><Checkbox checked={sendCh.wa} onCheckedChange={(v) => setSendCh((c) => ({ ...c, wa: !!v }))} />WhatsApp</label>}
           </div>
-          <p className="text-sm text-muted-foreground">Each player's fee status is always added: "Your fee has been paid", or "Your fee is outstanding" with a <b>Pay my fee</b> button. Entered is not the same as paid. Skipped when there is no entry fee.</p>
+          <p className="text-sm text-muted-foreground">Each player's fee status is always added: "Your fee has been paid", or a note to pay or confirm payment with a <b>Manage fee</b> button. Entered is not the same as paid. Skipped when there is no entry fee.</p>
           <div className="space-y-1 text-sm" data-testid="draw-recipient-picker">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium">Send to {picked.size} of {recips?.length ?? 0} players</span>

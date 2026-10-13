@@ -106,7 +106,7 @@ export function DrawNoticeEditor({ notice, disabled, clubId, recipientIds, tourn
           <p>Category · Round: as drawn</p><p>Opponent: To be confirmed</p><p>Date: To be confirmed · Time: To be confirmed</p><p>Court: To be confirmed · Venue: To be confirmed</p>
           <p className="text-muted-foreground">Filled per player from the saved fixtures when sent ("scheduled" for a planned slot, "Court booking confirmed" only for a real booking). Phone numbers are never included.</p>
         </div>
-        <p className="text-muted-foreground">[Fee line and Pay my fee button only when that player's fee is outstanding]</p>
+        <p className="text-muted-foreground">[Fee line and Manage fee button only when that player's fee is outstanding]</p>
         <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">View tournament & score match</span></p>
         {preview === "activation"
           ? <><p>{value.activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p><p className="text-muted-foreground">Personal link to the player's own club account, works once, expires in 14 days. Created only when the email is sent; never joins them to the host club.</p></>
@@ -168,7 +168,7 @@ function PlayerEmailPreview({ clubId, tournamentId, tournamentName, scope, recip
             /* Built by matchDetailsHtml from escaped values only — the exact markup the email carries. */
             ? <div data-testid="draw-preview-match" dangerouslySetInnerHTML={{ __html: composed.vars.match_details_html }} />
             : <p className="text-muted-foreground">No game for this player in this round.</p>}
-          {owes && <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Pay my fee</span></p>}
+          {owes && <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Manage fee</span></p>}
           <p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">View tournament & score match</span></p>
           {needsActivation && <><p>{activationIntro || DEFAULT_ACTIVATION_INTRO}</p><p><span className="rounded bg-primary px-2 py-1 text-primary-foreground">Activate my SquashHub account</span></p></>}
         </div>

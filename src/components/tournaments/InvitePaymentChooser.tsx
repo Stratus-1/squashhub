@@ -15,7 +15,7 @@ const ACCEPT = "image/png,image/jpeg,image/webp,application/pdf";
 export function invitePayButtons(methods: string[] | null | undefined) {
   const label: Record<InvitePayMethod, string> = {
     card: "Pay online now (card / instant EFT)",
-    eft: "Pay by EFT (bank transfer)",
+    eft: "Pay by EFT, or I have already paid (upload proof)",
     cash: "Pay cash at the club",
     account: "Add to my member account",
   };

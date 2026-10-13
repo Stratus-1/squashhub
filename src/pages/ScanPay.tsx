@@ -912,10 +912,23 @@ export default function ScanPay() {
                             {opts.map(o => {
                               const out = o.item_kind !== "made_to_order" && typeof o.stock_qty === "number" && o.stock_qty <= 0;
                               return (
-                                <Button key={o.id} size="sm" disabled={out} variant={cart[o.id] ? "default" : "outline"} className="h-8 w-full min-w-0 px-1.5 text-[10px] justify-between gap-1" onClick={() => { navigator.vibrate?.(15); bump(o.id, 1); }}>
-                                  <span className="truncate">{o.name.split(" · ")[1]}</span>
-                                  <span className="shrink-0">{formatMoney(Number(o.price), currency)}{cart[o.id] ? ` ×${cart[o.id]}` : ""}</span>
-                                </Button>
+                                <div key={o.id} className="flex gap-1 w-full">
+                                  <Button size="sm" disabled={out} variant={cart[o.id] ? "default" : "outline"} className="h-8 flex-1 min-w-0 px-1.5 text-[10px] justify-between gap-1" onClick={() => { navigator.vibrate?.(15); bump(o.id, 1); }}>
+                                    <span className="truncate">{o.name.split(" · ")[1]}</span>
+                                    <span className="shrink-0">{formatMoney(Number(o.price), currency)}{cart[o.id] ? ` ×${cart[o.id]}` : ""}</span>
+                                  </Button>
+                                  {buddyItem && !out && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 shrink-0 px-1.5 text-[10px]"
+                                      aria-label={`${o.name} plus ${buddyItem.name}`}
+                                      onClick={() => { navigator.vibrate?.(15); bump(o.id, 1); bump(buddyItem.id, 1); }}
+                                    >
+                                      +🥤
+                                    </Button>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>

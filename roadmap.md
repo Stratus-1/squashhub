@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Restore the saved free Club Champs slots / GoBook paragraph in category-stage notification previews; no sends or live data changes.
+
 - [x] Correct fixtures/standings scoring reads and verify all eight category labels against saved setup (preview only; 17 tests and signed-in browser checks passed).
 
 - [ ] Redraw clears saved scheduling preferences (edit in progress)

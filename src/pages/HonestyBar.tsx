@@ -478,16 +478,29 @@ export default function HonestyBar() {
                           {multi ? (
                              <div className="flex flex-col gap-1 w-full">
                               {entry.options.map(o => (
-                                <Button
-                                  key={o.item.id}
-                                  size="sm"
-                                  variant={cart[o.item.id] ? "default" : "outline"}
-                                   className="h-8 xl:h-7 w-full min-w-0 px-2 text-[11px] xl:text-[10px] leading-tight justify-between gap-1"
-                                  onClick={() => updateCart(o.item.id, 1)}
-                                >
-                                   <span className="truncate">{o.label}</span>
-                                   <span className="shrink-0">{money(o.item.price)}{cart[o.item.id] ? ` ×${cart[o.item.id]}` : ""}</span>
-                                </Button>
+                                <div key={o.item.id} className="flex gap-1 w-full">
+                                  <Button
+                                    size="sm"
+                                    variant={cart[o.item.id] ? "default" : "outline"}
+                                     className="h-8 xl:h-7 flex-1 min-w-0 px-2 text-[11px] xl:text-[10px] leading-tight justify-between gap-1"
+                                    onClick={() => updateCart(o.item.id, 1)}
+                                  >
+                                     <span className="truncate">{o.label}</span>
+                                     <span className="shrink-0">{money(o.item.price)}{cart[o.item.id] ? ` ×${cart[o.item.id]}` : ""}</span>
+                                  </Button>
+                                  {buddyItem && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 xl:h-7 shrink-0 px-1.5 text-[11px] xl:text-[10px]"
+                                      aria-label={`${o.item.name} plus ${buddyItem.name}`}
+                                      title={`${o.label} plus ${buddyItem.name}`}
+                                      onClick={() => { updateCart(o.item.id, 1); updateCart(buddyItem.id, 1); }}
+                                    >
+                                      +🥤
+                                    </Button>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           ) : (

@@ -536,7 +536,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         <PartnerFeeOptions registrationId={myReg.id} cardEnabled={cardReady && paymentGateway === "stitch"}
           onPay={(scope) => launchPayment(myReg.id, scope)} onCharged={() => { refetch(); refetchCharge(); }} />
       )}
-      {myReg && canChoosePayment(feeState) && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
+      {myReg && canChoosePayment(feeState) && ["pending_payment", "pending_eft", "invited"].includes(String(myReg.status)) && (
         <div className="space-y-2 mt-1">
           <div className="flex flex-wrap items-center gap-2">
             {cardReady && (

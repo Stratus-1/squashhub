@@ -1096,7 +1096,28 @@ export default function Tournaments() {
               {notes.length > 0 && (
                 <p className="px-3 pt-2 text-[11px] text-muted-foreground">{notes.join(" · ")}</p>
               )}
-               <div className="p-2 space-y-1.5">{koRound == null ? items.map((m, i) => renderMatchRow(m, i, items)) : Array.from(koCategoryGroups.entries()).map(([categoryKey, categoryItems]) => (
+               {(() => {
+                  // Play-by rounds have no fixed slots, so the round heading alone
+                  // says little — subdivide the games by category (Mens A › 1,
+                  // Ladies A, …) like knockout rounds already do.
+                  const pbCategoryGroups = new Map<string, any[]>();
+                  if (pbDate) {
+                    items.forEach((m: any) => {
+                      const categoryKey = `${m.champ_id}:${m.group_number ?? "-"}`;
+                      if (!pbCategoryGroups.has(categoryKey)) pbCategoryGroups.set(categoryKey, []);
+                      pbCategoryGroups.get(categoryKey)?.push(m);
+                    });
+                  }
+                  return null;
+                })()}
+               <div className="p-2 space-y-1.5">{koRound == null ? (pbDate ? Array.from((() => { const g = new Map<string, any[]>(); items.forEach((m: any) => { const k = `${m.champ_id}:${m.group_number ?? "-"}`; if (!g.has(k)) g.set(k, []); g.get(k)!.push(m); }); return g; })()).map(([categoryKey, categoryItems]) => (
+                  <div key={categoryKey} className="space-y-1.5">
+                    <div className="border-b border-border px-1 py-1 text-xs font-semibold text-foreground">
+                      {getGroupLabel(champById.get(categoryItems[0].champ_id), categoryItems[0].group_number)}
+                    </div>
+                    {categoryItems.map((m, i) => renderMatchRow(m, i, categoryItems))}
+                  </div>
+                )) : items.map((m, i) => renderMatchRow(m, i, items))) : Array.from(koCategoryGroups.entries()).map(([categoryKey, categoryItems]) => (
                  <div key={categoryKey} className="space-y-1.5">
                    <div className="border-b border-border px-1 py-1 text-xs font-semibold text-foreground">
                      {getGroupLabel(champById.get(categoryItems[0].champ_id), categoryItems[0].group_number)} · Knockout Round {koRound}

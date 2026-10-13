@@ -708,22 +708,6 @@ export default function ClubAuth() {
       toast.error("Please accept the Terms of Use and Privacy Policy");
       return;
     }
-
-    try {
-      if (captchaRef.current) {
-        const token = await captchaRef.current.execute();
-        const valid = await verifyCaptchaToken(token);
-        if (!valid) { toast.error("Captcha verification failed"); return; }
-      }
-    } catch { toast.error("Captcha verification failed"); return; }
-    if (isAssociation && !homeClubId) {
-      toast.error("Please select your home club");
-      return;
-    }
-    // Duplicate-player guard. The club roster already holds imported players
-    // (federation/SportyHQ data) and people forget which email they signed up
-    // with, so match on email, phone and first+last name, then ask the person
-    // to confirm they are not already on the roster.
     // Same-email guard: if this club already has a member with this email,
     // ask "Is this you?" before creating anything, so people sign in / claim
     // their existing record instead of becoming a duplicate member.
@@ -741,6 +725,22 @@ export default function ClubAuth() {
         // fail open — the backend also refuses to create a duplicate row
       }
     }
+
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); return; }
+      }
+    } catch { toast.error("Captcha verification failed"); return; }
+    if (isAssociation && !homeClubId) {
+      toast.error("Please select your home club");
+      return;
+    }
+    // Duplicate-player guard. The club roster already holds imported players
+    // (federation/SportyHQ data) and people forget which email they signed up
+    // with, so match on email, phone and first+last name, then ask the person
+    // to confirm they are not already on the roster.
     if (!(await dup.guard({ name, phone }))) return;
 
     setLoading(true);

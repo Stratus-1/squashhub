@@ -105,6 +105,16 @@ export interface BookingLike {
   opponent_id?: string | null;
   club_member_id?: string | null;
   opponent_member_id?: string | null;
+  external_booker_name?: string | null;
+}
+
+/**
+ * A club's own "Club Championships" court hold (no member attached). Champs
+ * players may book their game into it for free; the server releases the hold.
+ */
+export function isChampsReservation(b: BookingLike): boolean {
+  return /^club championship/i.test(String(b.external_booker_name || "").trim())
+    && bookingParticipantIds(b).length === 0;
 }
 
 export function matchParticipantIds(m: SelfScheduleMatchLike): string[] {
@@ -151,6 +161,7 @@ export function isSlotFree(
   return !bookings.some((b) => {
     if (b.court_id !== courtId) return false;
     if ((b.status || "active") !== "active") return false;
+    if (isChampsReservation(b)) return false;
     if (ignoreBookingId && b.id === ignoreBookingId) return false;
     const bs = timeToMinutes(String(b.start_time || "00:00"));
     const be = timeToMinutes(String(b.end_time || "00:00"));

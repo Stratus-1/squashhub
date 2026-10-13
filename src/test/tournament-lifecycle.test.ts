@@ -48,7 +48,7 @@ describe("tournament lifecycle", () => {
 
   it("splits a mixed list correctly and sorts running first", () => {
     const { current, past, needsDates } = splitTournamentsByLifecycle(rows, TODAY);
-    expect(current.map((r) => r.id)).toEqual(["running", "started-no-end", "upcoming"]);
+    expect(current.map((r) => r.id)).toEqual(["started-no-end", "running", "upcoming"]);
     expect(needsDates.map((r) => r.id)).toEqual(["no-dates"]);
     expect(past.map((r) => r.id).sort()).toEqual(
       ["abandoned", "cancelled-future", "july-completed", "july-planning"].sort(),

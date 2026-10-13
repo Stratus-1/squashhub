@@ -897,6 +897,13 @@
       "when": 1791914357397,
       "tag": "0127_dedupe_champ_singles_in_match_history",
       "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1791916471654,
+      "tag": "0128_champ_reschedule_restores_released_holds",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,7 @@
  *                         `finance_decide_member_transaction` (permission check,
  *                         row lock, pending-only, audit row, same bookkeeping).
  *  - Keep for later     → hides the card for that payment on this device; it stays pending.
- *  - View pending approvals → Club Books → Pending with that payment highlighted.
+ *  - View pending approvals → Club Finance → Pending with that payment highlighted.
  * Members without finance rights never see it; the server re-checks every approval.
  */
 
@@ -64,7 +64,7 @@ function ApprovalCard({ tx, total, onApprove, onLater, onView }: {
       {confirming ? (
         <div className="space-y-2 rounded-md border border-border bg-muted/40 p-2">
           <p className="text-xs">
-            Approve {rand(tx.amount)} from {tx.memberName}? This records the money as received in Club Books.
+            Approve {rand(tx.amount)} from {tx.memberName}? This records the money as received in Club Finance.
             SquashHub has <strong>not</strong> checked your bank account — only approve if you have seen this deposit.
           </p>
           <div className="flex gap-2">
@@ -128,7 +128,7 @@ export function usePendingEftApprovalToast(clubId?: string | null) {
       if (error) { toast.error(error.message || "Could not approve the payment"); return; }
       toast.dismiss(TOAST_ID);
       if (data?.ok === false) toast.info(`This payment was already ${data.already === "confirmed" ? "approved" : data.already}.`);
-      else toast.success(`${rand(next.amount)} from ${next.memberName} approved and recorded in Club Books`);
+      else toast.success(`${rand(next.amount)} from ${next.memberName} approved and recorded in Club Finance`);
       qc.invalidateQueries({ queryKey: ["pending-eft-approval-count"] });
       qc.invalidateQueries({ queryKey: ["pending-member-transactions"] });
       qc.invalidateQueries({ queryKey: ["club-journal-entries"] });

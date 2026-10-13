@@ -358,7 +358,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       "Club Admin → Club Finance. Cash-basis ledger, income and expenses, outstanding member balances and the pass-through owed to national bodies.",
     keywords: ["finance", "books", "ledger", "accounting", "report", "income", "expense", "statement", "reconcile"],
     route: "/club-admin?tab=finance",
-    routeLabel: "Open Club Books",
+    routeLabel: "Open Club Finance",
     capability: "finance",
     audience: "admin",
     category: "Money",

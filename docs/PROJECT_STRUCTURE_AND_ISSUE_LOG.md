@@ -2927,3 +2927,5 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 ### 2026-10-13 — Fixtures and standings still showed PAR 11 for every category
 - Cause: both architecture reads requested `scoring_mode`, `points_per_game`, and `best_of` from `tournaments`, where those columns do not exist (they belong to `club_champs`). The rejected reads lost all saved per-category settings, leaving the legacy PAR 11 fallback.
 - Fix: request only existing setup columns, retain tournament-wide fallback from `club_champs`, surface standings query errors, and version both query keys to replace cached pre-fix results. Regression covers all eight saved category/subcategory scoring labels. Presentation-only; no live setup, fixtures, results, backend changes or publishing.
+
+- 2026-10-13: Tournament invite "Manage fee" lacked a clear "I have already paid" choice (only hidden in the EFT label). Added a separate button on InvitePaymentChooser that records a pending EFT for admin approval with proof upload — never marks paid.

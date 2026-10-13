@@ -57,7 +57,7 @@ import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromCh
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
-import { formatLabelForGroup } from "@/lib/tournaments/format-label";
+import { formatLabelForGroup, scoringLabelForGroup } from "@/lib/tournaments/format-label";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
@@ -1130,6 +1130,9 @@ export default function Tournaments() {
                       {getGroupLabel(champById.get(categoryItems[0].champ_id), categoryItems[0].group_number)}
                       {categoryFormatLabel(categoryItems[0]) ? (
                         <span className="ml-1 font-normal opacity-70">· {categoryFormatLabel(categoryItems[0])}</span>
+                      ) : null}
+                      {scoringLabelForGroup(champById.get(categoryItems[0].champ_id), Number(categoryItems[0].group_number ?? 1) || 1) ? (
+                        <span className="ml-1 font-normal opacity-70">({scoringLabelForGroup(champById.get(categoryItems[0].champ_id), Number(categoryItems[0].group_number ?? 1) || 1)})</span>
                       ) : null}
                     </div>
                     {categoryItems.map((m, i) => renderMatchRow(m, i, categoryItems))}

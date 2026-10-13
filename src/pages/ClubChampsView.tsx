@@ -158,13 +158,16 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const { data: fetchedArch } = useQuery({
     queryKey: ["club-champ-arch", champId],
     queryFn: async () => {
-      const { data } = await fromExt("tournaments").select("builder_architecture,builder_spec,beta_lifecycle").eq("id", champId!).maybeSingle();
+      const { data } = await fromExt("tournaments").select("builder_architecture,builder_spec,beta_lifecycle,league_scoring_modes,league_points_per_game,league_best_of,scoring_mode,points_per_game,best_of").eq("id", champId!).maybeSingle();
       return data as { builder_architecture?: string; builder_spec?: any; beta_lifecycle?: any } | null;
     },
     enabled: !!champId && !inlineStandings,
   });
   const arch = inlineStandings?.arch ?? fetchedArch;
   const isStructured = arch?.builder_architecture === "structured";
+  // Saved per-category scoring lives on the tournaments row; the club_champs
+  // row doesn't carry it, so merge (tournament values win) for scoring labels.
+  const champForScoring = useMemo(() => ({ ...(champ as any), ...(arch as any) }), [champ, arch]);
   const stageSched = useMemo(() => stageScheduleIndex(arch?.builder_spec), [arch?.builder_spec]);
   const centrallyScheduled = (m: any) =>
     resolveFixtureSchedule(m, {
@@ -3749,7 +3752,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       const titleNode = (
         <span className="flex items-center gap-2 flex-wrap">
           <span>{getGroupLabel(champ, gn)}</span>
-          <Badge variant="outline" className="text-[10px] font-normal">{formatLabelFor(gn)}{scoringLabelForGroup(champ, gn) ? ` (${scoringLabelForGroup(champ, gn)})` : ""}</Badge>
+          <Badge variant="outline" className="text-[10px] font-normal">{formatLabelFor(gn)}{scoringLabelForGroup(champForScoring, gn) ? ` (${scoringLabelForGroup(champForScoring, gn)})` : ""}</Badge>
           {leagueTotal && leagueTotal.gp > 0 && (
             <>
               <Badge variant={isLeading ? "default" : "secondary"} className="text-xs tabular-nums">
@@ -3973,7 +3976,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
                   )}
                 >
                   {c.label}
-                  <span className="ml-1 font-normal opacity-70">· {formatLabelFor(c.gn)}{scoringLabelForGroup(champ, c.gn) ? ` (${scoringLabelForGroup(champ, c.gn)})` : ""}</span>
+                  <span className="ml-1 font-normal opacity-70">· {formatLabelFor(c.gn)}{scoringLabelForGroup(champForScoring, c.gn) ? ` (${scoringLabelForGroup(champForScoring, c.gn)})` : ""}</span>
                    {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
                 </button>
               ))}

@@ -19,3 +19,5 @@
 - [x] Normal (non-special) orders: real Buddy at saved R22 with bottle image; bulk serving shown without its inventory container. Verified separate basket lines.
 - [ ] Coke Bulk normal selling price — BLOCKED: both saved bulk records are R0; owner confirmation required, no price guessed from specials.
 - [x] Buddy images: bottle on Coke Bulk, glass of coke on Glass 250ml (live)
+- [x] Search box on Club Admin → Bar POS → Items & prices: filters by name, brand/group, category, variant, barcode; verified in preview (brandy 1, coke 5, no match 0, cleared 288). Preview only — publish pending.
+- [ ] Offer: search box on the staff/customer bar menu screens (laptop POS + phone) — awaiting owner

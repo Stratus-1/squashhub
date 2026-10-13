@@ -701,15 +701,24 @@ export default function ScanPay() {
                     placeholder="Your name"
                     className="h-10"
                   />
-                  <Button
-                    className="shrink-0 gap-1.5 h-10"
-                    disabled={submitting || !visitorName.trim()}
-                    onClick={openTabNow}
-                  >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-                    Open my tab
-                  </Button>
+                  <Input
+                    value={visitorPhone}
+                    onChange={(e) => setVisitorPhone(e.target.value)}
+                    placeholder="Cell number"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    className="h-10"
+                  />
                 </div>
+                <Button
+                  className="w-full gap-1.5 h-10"
+                  disabled={submitting || !visitorName.trim()}
+                  onClick={openTabNow}
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  Open my tab
+                </Button>
               </Card>
             )}
 

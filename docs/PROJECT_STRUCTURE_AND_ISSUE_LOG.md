@@ -2972,3 +2972,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Symptom: the bottom of "Make your court booking" showed a `30 min match` pill. Reserved Champs slots are 45 minutes and the booking takes the whole slot, so the label was wrong and confusing (owner asked for it removed).
 - Fix: `ScheduleMatchDialog` no longer renders the duration badge; the row now only appears when a court/time is already booked, holding the "Clear court & time" action (right-aligned). Booking length logic is untouched — `duration` still drives availability checks and the booked slot length.
 - Frontend only: preview until published.
+
+## 2026-10-14 — Swiss progression standings (Riverside pilot, View B)
+- New display-only `progressionTable` (`src/lib/tournaments/swiss-progression.ts`, tests in `src/test/swiss-progression.test.ts`) replays the shared `swissTable` round by round: per-round cells (opponent/W-L/score/BYE/pending), movement vs previous complete round, withdrawn entrants greyed at bottom.
+- `SwissProgressionPilot` (`src/components/tournaments/SwissProgressionView.tsx`) wraps Swiss standings; shown only when `club_beta_features.feature='tournament_swiss_progression_view'` (Riverside only) and viewer can manage. Classic view toggle kept.
+- Check constraint widened for pool-matrix/bracket pilot keys (not yet built).

@@ -1,3 +1,9 @@
+### 2026-10-14 — Riverside read-only allocation preview Phase 1
+- Added server-permission-gated Riverside drag handles, accessible selection, free-capacity targets, swap review and cancellation; no commit or mutation path exists. Exact server-saved plan/stage/range/provenance verifies newer blocks; display labels alone never qualify. Block rows remain untouched and personal linked bookings excluded.
+- Read-only paginated inventory spans club tournament categories and active bookings, checks duration, player overlap/rest, saved stage windows/deadlines, scoring state and marker locks. Ambiguous/legacy reservations fail closed. This verifier does not claim ownership of other reservation formats.
+- 51 focused tests passed; signed-in desktop/mobile observed no verified blocks in selected Club Champs, hence zero enabled real targets, no page errors or mobile overflow. Successful live-inventory drag/swap remains unverified; no data was fabricated or written.
+- Priority marker audit found the 20-second recovery depends on club context/query parameter; sibling marker entry paths omit it. Exact Android hang remains unproven, no scoring changes made here; Phase 2 remains blocked.
+
 ### 2026-10-14 — Riverside RR matrix missing rally-point totals
 - Root cause: pilot totals parsed only a single numeric score and skipped comma-separated games and saved JSON sets, leaving 0/0 despite completed results. The official Standard format already sums saved set points separately from games-won ranking credit.
 - Pilot now uses the shared saved-set parser, sums confirmed completed pool rally points for both sides, skips live/void/bye/synthetic walkover points, and displays missing point detail as unknown rather than games counts. Label clarified to Pts F/A; official standings/ranking and stored results unchanged.

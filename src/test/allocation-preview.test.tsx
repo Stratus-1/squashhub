@@ -10,6 +10,7 @@ const ctx: AllocationContext = { clubId: "club", tournamentId: "t", authorized: 
 describe("read-only tournament allocations", () => {
   it("verifies exact server plan evidence, not championship text", () => {
     expect(ctx.blocks).toHaveLength(1);
+    expect(verifyPlanBlocks([{ ...booking, guest_name: "Club Championship — Stage" }], tournament)).toHaveLength(1);
     expect(verifyPlanBlocks([{ ...booking, external_id: null, guest_name: "Club Championship" }], tournament)).toEqual([]);
     expect(verifyPlanBlocks([{ ...booking, club_member_id: "member" }], tournament)).toEqual([]);
     expect(verifyPlanBlocks([booking], { ...tournament, beta_lifecycle: {} })).toEqual([]);

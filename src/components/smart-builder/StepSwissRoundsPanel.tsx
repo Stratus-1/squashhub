@@ -16,6 +16,7 @@ import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { drawNoticeKey, drawNoticeSent, drawNotifyOn, markDrawNoticePending, clearDrawNoticePending, type DrawScope } from "@/lib/smart-builder/draw-notice";
 import { DrawNoticeDialog } from "./DrawNoticeDialog";
 import { Send } from "lucide-react";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import type { StageStatus } from "@/lib/tournaments/progression";
 
 /**
@@ -29,6 +30,7 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stage
   const [ask, setAsk] = useState<SwissDivisionProgress | null>(null);
   const [shorten, setShorten] = useState<SwissDivisionProgress | null>(null);
   const [notice, setNotice] = useState<DrawScope | null>(null);
+  const { data: byKey = false } = useClubBetaFeature(clubId, "tournament_swiss_category_rounds");
   const { data, refetch } = useQuery({
     queryKey: ["step-swiss-rounds", tournamentId],
     refetchInterval: 30000,
@@ -47,7 +49,7 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stage
   const rows = swissDivisionProgress(spec.divisions as any, (di, sid) => {
     const d = spec.divisions[di];
     return matches.filter((m) => m.group_number === di + 1 && m.stage_key === sid).map((m) => toFixtureRow(d.divisionId, m, "swiss"));
-  }, plan, { stages: plan, format: bl.answers?.format ?? bl.format_plan?.format ?? null, formatOverrides: bl.answers?.formatOverrides ?? null });
+  }, plan, { stages: plan, format: bl.answers?.format ?? bl.format_plan?.format ?? null, formatOverrides: bl.answers?.formatOverrides ?? null }, { byKey });
   if (!rows.length) return null;
 
   const endEarly = async (r: SwissDivisionProgress) => {

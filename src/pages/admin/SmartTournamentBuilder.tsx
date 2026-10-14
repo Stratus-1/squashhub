@@ -24,6 +24,7 @@ import { DraftAutosaver, type SaveState } from "@/lib/smart-builder/draft-autosa
 import { emptyDefinition, isBellsDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { newProblems, validateDefinition, type Issue } from "@/lib/smart-builder/validate";
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { assessReadiness, type ReadinessItem, type ReadinessTab } from "@/lib/smart-builder/readiness";
 import { cn } from "@/lib/utils";
 import { syncDerivedRoundDates } from "@/lib/smart-builder/schedule-maths";
@@ -301,7 +302,9 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validation = useMemo(() => validateDefinition(def), [def]);
-  const mapping = useMemo(() => mapToExistingTournament(def), [def]);
+  // Riverside pilot switch (fails closed): each Swiss category keeps its own round count.
+  const { data: perCategorySwissRounds = false } = useClubBetaFeature(scope.kind === "club" ? scope.clubId : undefined, "tournament_swiss_category_rounds");
+  const mapping = useMemo(() => mapToExistingTournament(def, { perCategorySwissRounds }), [def, perCategorySwissRounds]);
   const readiness = useMemo(() => assessReadiness(def, validation, mapping), [def, validation, mapping]);
   const [tab, setTab] = useState<ReadinessTab>("design");
   const tabsRef = useRef<HTMLDivElement>(null);

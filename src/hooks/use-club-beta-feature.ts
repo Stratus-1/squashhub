@@ -8,6 +8,7 @@ export const TOURNAMENT_VIEW_FEATURES = {
   tournament_swiss_progression_view: "Swiss progression standings",
   tournament_bracket_view: "Knockout / Monrad bracket",
   tournament_schedule_board: "Court schedule board",
+  tournament_swiss_category_rounds: "Swiss rounds per category (setup)",
 } as const;
 export type TournamentViewFeature = keyof typeof TOURNAMENT_VIEW_FEATURES;
 

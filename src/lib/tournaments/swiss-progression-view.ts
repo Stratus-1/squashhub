@@ -6,6 +6,7 @@
  * The new positional format (Phase 1 templates) is only labelled here; it is not active anywhere.
  */
 import { swissTable, type SwissGame } from "@/lib/tournaments/swiss-standings";
+import { categoryTemplate, planCategory, validateTemplate } from "@/lib/tournaments/swiss-positional";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -144,4 +145,27 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
     }).sort((x, y) => (x.rows[0].pos ?? 999) - (y.rows[0].pos ?? 999));
     return { round: rd.round, created: rd.created, blocks };
   });
+}
+
+/** Proposed base slots only. Legacy results never resolve future proposed occupants.
+ * Saved Round 1 is copied factually, not forced into a template.
+ * Occupant-aware bye/rematch adjustments require separately approved engine integration.
+ */
+export function buildProposedSwissGrid(model: SwissProgressionModel): { rounds: GridRound[]; issues: string[] } {
+  const n = model.rows.length;
+  const plan = planCategory(n, model.totalRounds);
+  if (plan.issues.length) return { rounds: [], issues: plan.issues };
+  const template = categoryTemplate(n, model.totalRounds);
+  const issues = validateTemplate(n, template);
+  if (issues.length) return { rounds: [], issues };
+  const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
+  const pending = (pos: number | null, bye = false): GridRow => ({ pos, id: null, name: bye ? "Bye" : "TBD", when: null, result: "" });
+  return { issues: [], rounds: template.map((rd): GridRound => {
+    if (rd.round === 1 && savedFirst?.created) return savedFirst;
+    const blocks: GridBlock[] = rd.pairs.map((p) => ({
+      matchId: `proposed-${rd.round}-${p.a}-${p.b}`, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null,
+    }));
+    if (rd.bye != null) blocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    return { round: rd.round, created: false, blocks };
+  }) };
 }

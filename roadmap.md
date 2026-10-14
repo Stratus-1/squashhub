@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] Hide Riverside pilot Swiss colored standings by default; optional classic standings and error/empty fallback preserved, factual current positions/results included; 103 tests pass and signed-in desktop/mobile/fullscreen checks completed; not published.
+
+- [x] Riverside read-only positional grid preview: template slots in every round, factual saved Round 1 separated from proposed future rounds; tests and browser checks; no engine/data/publish changes.
+
 - [x] Restore same-round saved wording for category-stage notification previews; 7 regression tests pass, build OK. Full selected-player browser verification could not complete.
 - [x] Update only Uitsig Round 1 saved notification wording to specify free reserved evenings on 14 and 15 October; verified saved text, no messages or booking changes.
 

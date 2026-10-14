@@ -94,6 +94,7 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
+import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
@@ -1211,7 +1212,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
           placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
         })),
       });
-      return <>{classic}<div className="mt-4"><SwissProgressionPilotView title={getGroupLabel(champ, gn)} model={model} /></div></>;
+      const riversidePreview = champ.club_id === "11111111-1111-1111-1111-111111111111";
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

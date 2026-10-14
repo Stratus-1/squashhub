@@ -1,3 +1,9 @@
+### 2026-10-14 — Riverside proposed Swiss slots and primary grid
+- Symptom: undrawn rounds had blank positions; the colored table dominated the pilot.
+- Finding: live Riverside Swiss remains score-based; assigning template slots to its live future fixtures would misrepresent the draw.
+- Fix: Riverside-only proposed base-template columns use actual entry counts and saved category round limits; factual first-round fixtures and current live standings/results are explicitly labelled. Classic standings are optional, with empty/unsupported/render-error fallback.
+- Guard: pure slot tests, no input mutation, legacy results excluded from future proposed names, optional/fallback presentation tests; no engine, database, registration, result or publication changes.
+
 ### 2026-10-13 — Free Club Champs court paragraph missing from player preview
 - Saved `all:r1` wording already contains free reserved slots via SquashHub and other slots via GoBook. Structured category notices add a stage suffix; the resolver searched only `all:r1:s…` and missed the saved round template.
 - Fix: inherit same-round unscoped wording when no exact stage wording exists; preserve explicit wording and never borrow another round/stage. Added regression tests. Preview only; no saved messages, bookings, fixtures, backend changes or sends.

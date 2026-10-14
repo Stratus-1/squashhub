@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import * as React from "react";
 import { KnockoutNextActions } from "@/components/smart-builder/KnockoutNextActions";
 import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";

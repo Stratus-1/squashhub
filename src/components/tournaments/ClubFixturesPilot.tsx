@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
+import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { filterFixtures, fmtFixtureDay, groupByDay, type ClubFixture, type FixtureFilters } from "@/lib/tournaments/club-fixtures";
 
 const STATE: Record<ClubFixture["state"], { label: string; v: string }> = {
@@ -76,29 +76,10 @@ export function ClubFixturesPilot({ fixtures, canMine }: { fixtures: ClubFixture
           {!shown.length && <li className="px-2.5 py-3 text-muted-foreground">No fixtures match these filters.</li>}
         </ul>
       ) : (
-        <TournamentInteractiveViewer title="Club fixtures — calendar" inlineHeight={460} defaultFit="none">
-          <div className="space-y-3 bg-background p-3 text-xs text-foreground" data-testid="club-fixtures-calendar">
-            {days.map(({ day, items }) => (
-              <section key={day} className="rounded-md border border-border">
-                <h4 className="bg-muted px-2.5 py-1.5 font-semibold">{day === "Not scheduled" ? day : fmtFixtureDay(day)}</h4>
-                <table className="w-full border-collapse">
-                  <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="px-2 py-1">Time</th><th className="px-2">Court</th><th className="px-2">Match</th><th className="px-2">Competition</th><th className="px-2">Status</th><th className="px-2">Type</th></tr></thead>
-                  <tbody>{items.map((x) => (
-                    <tr key={x.id} data-timing={x.timing} className="border-t border-border">
-                      <td className="px-2 py-1 tabular-nums font-medium">{x.time?.slice(0, 5) ?? "—"}</td>
-                      <td className="px-2">{x.court ?? "—"}</td>
-                      <td className="px-2 whitespace-nowrap">{x.a} v {x.b} <Score f={x} /></td>
-                      <td className="px-2 whitespace-nowrap text-muted-foreground">{x.competition} · {x.category}{x.round ? ` · R${x.round}` : ""}</td>
-                      <td className="px-2"><StateChip s={x.state} /></td>
-                      <td className="px-2">{x.timing === "saved" ? <span className="rounded bg-success/15 px-1.5 py-0.5">Saved fixture</span> : x.timing === "play_by" ? <span className="rounded border border-warning/60 bg-warning/10 px-1.5 py-0.5">Play-by deadline</span> : <span className="text-muted-foreground">Not scheduled</span>}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </section>
-            ))}
-            {!days.length && <p className="text-muted-foreground">No fixtures match these filters.</p>}
-          </div>
-        </TournamentInteractiveViewer>
+        <div data-testid="club-fixtures-calendar">
+          <FixtureCalendar events={shown.filter((x) => x.timing !== "unscheduled").map((x) => ({ id: x.id, date: (x.date ?? x.playBy)!, time: x.timing === "saved" ? x.time : null, court: x.court, title: `${x.a} v ${x.b}`, subtitle: `${x.competition} · ${x.category}${x.round ? ` · R${x.round}` : ""}`, kind: x.timing === "saved" ? "confirmed" : "play_by", state: x.state, score: x.score }))} />
+          {shown.some((x) => x.timing === "unscheduled") && <p className="mt-2 text-[11px] text-muted-foreground">{shown.filter((x) => x.timing === "unscheduled").length} fixture(s) have no saved date — see List View.</p>}
+        </div>
       )}
     </section>
   );

@@ -5,6 +5,7 @@ import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/Tou
 import { SwissPositionGrid } from "@/components/tournaments/SwissPositionGrid";
 import type { FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { cn } from "@/lib/utils";
+import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type StageScheduleConfig, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
 
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
@@ -123,29 +124,9 @@ export function SwissCalendarView({ entries, title }: { entries: SwissCalendarEn
   for (const e of entries) { const k = e.kind === "unscheduled" ? "Not scheduled" : e.date ?? "Not scheduled"; if (!days.has(k)) days.set(k, []); days.get(k)!.push(e); }
   return (
     <div className="space-y-2 text-xs" data-testid="swiss-calendar">
-      <p className="text-muted-foreground">Read-only. Solid rows are saved live fixtures; dashed rows are proposed positional slots (not bookings, players TBD). Nothing can be moved here yet.</p>
-      <TournamentInteractiveViewer title={`${title} — calendar`} inlineHeight={420} defaultFit="none">
-        <div className="space-y-3 bg-background p-3 text-foreground">
-          {[...days].map(([day, es]) => (
-            <section key={day} className="rounded-md border border-border">
-              <h4 className="bg-muted px-2.5 py-1.5 font-semibold" data-testid="swiss-calendar-day">{day === "Not scheduled" ? day : fmtCalDay(day)}</h4>
-              <table className="w-full border-collapse">
-                <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="px-2 py-1">Time</th><th className="px-2">Court</th><th className="px-2">Round</th><th className="px-2">Match</th><th className="px-2">Type</th></tr></thead>
-                <tbody>{es.map((e, i) => (
-                  <tr key={i} data-kind={e.kind} className={cn("border-t border-border", e.kind === "proposed" && "border-dashed text-muted-foreground")}>
-                    <td className="px-2 py-1 tabular-nums font-medium text-foreground">{e.time?.slice(0, 5) ?? "—"}</td>
-                    <td className="px-2">{e.court ?? "—"}</td>
-                    <td className="px-2">R{e.round}</td>
-                    <td className="px-2 whitespace-nowrap">{e.label}</td>
-                    <td className="px-2"><span className={cn("rounded px-1.5 py-0.5 text-[11px]", e.kind === "confirmed" && "bg-success/15 text-foreground", e.kind === "proposed" && "border border-dashed border-border", e.kind === "play_by" && "border border-warning/60 bg-warning/10 text-foreground")}>{KIND_LABEL[e.kind]}</span></td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </section>
-          ))}
-          {!entries.length && <p className="text-muted-foreground">No matches to show yet.</p>}
-        </div>
-      </TournamentInteractiveViewer>
+      <p className="text-muted-foreground">Read-only calendar for this category. Solid blocks are saved fixtures; dashed blocks are proposed positional slots (not bookings, players TBD).</p>
+      <FixtureCalendar events={entries.filter((e) => e.date && e.kind !== "unscheduled").map((e, i) => ({ id: `${e.round}-${i}`, date: e.date!, time: e.kind === "play_by" ? null : e.time, court: e.court, title: e.label, subtitle: `R${e.round}`, kind: e.kind === "proposed" ? "proposed" : e.kind === "play_by" ? "play_by" : "confirmed", state: e.status === "completed" ? "completed" : "upcoming" }))} />
+      {entries.some((e) => e.kind === "unscheduled") && <p className="text-[11px] text-muted-foreground">{entries.filter((e) => e.kind === "unscheduled").length} match(es) not scheduled yet.</p>}
     </div>
   );
 }

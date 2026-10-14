@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Riverside RR rally-point totals: audit confirmed saved sets, fix mirrored pool totals, test unfinished/bye/walkover/isolation and reactive refresh; no writes/publish.
 - [x] Riverside RR matrix: compact mirrored set summary and completed light-green cells; 11 tests passed, real finals in all three pools and desktop/mobile screenshots verified; no writes/publish.
 - [x] Riverside visual polish: independent Classic pool green-to-red shading with provisional cue, restrained RR/Swiss round accents; 20 focused tests and signed-in desktop/mobile screenshots, no writes/publish.
 - [x] Riverside calendar retains scheduled finals; canonical live/final score adapter, refreshed details, real upcoming/final desktop/mobile checks and regression tests; no writes/publishing.

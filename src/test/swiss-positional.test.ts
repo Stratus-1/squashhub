@@ -99,7 +99,7 @@ describe("simulations: no duplicates, no missing players, valid byes, rematch au
       const total = resolved.reduce((s, r) => s + r.rematches, 0);
       // Guaranteed zero only for power-of-two fields within log2(N) rounds (floated slots can force a rare rematch).
       if ((n & (n - 1)) === 0 && rounds <= planCategory(n).cleanRounds) expect(total).toBe(0);
-      else expect(total).toBeLessThanOrEqual(Math.floor(n / 2) * (rounds - planCategory(n).cleanRounds));
+      else expect(total).toBeLessThanOrEqual(Math.floor(n / 2) * Math.max(0, rounds - planCategory(n).cleanRounds));
     });
   }
   it("audit: 10 entrants × 4 rounds over 50 result patterns keeps rematches rare (measured 4 in 200 rounds)", () => {

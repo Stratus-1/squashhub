@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from "lucide-re
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { FixtureScoreDetails } from "@/components/tournaments/FixtureScoreDetails";
 
 /**
  * Read-only visual fixture calendar (Riverside pilot). Real time-grid layout:
@@ -14,6 +15,7 @@ export type CalState = "upcoming" | "live" | "paused" | "completed" | "bye";
 export interface CalEvent {
   id: string; date: string; time: string | null; durationMin?: number; court: string | null;
   title: string; subtitle?: string; kind: CalKind; state?: CalState; score?: string | null;
+  gameScores?: Array<{ a: number; b: number }>; currentGame?: { number: number; a: number; b: number } | null; winner?: string | null;
 }
 type View = "day" | "week" | "month";
 
@@ -30,8 +32,11 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 export const calDayLabel = (s: string) => { const d = parse(s); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
 const todayIso = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; };
 
-const STATE_VAR: Record<CalState, string> = { upcoming: "--round-1", live: "--destructive", paused: "--warning", completed: "--success", bye: "--muted-foreground" };
-const STATE_TEXT: Record<CalState, string> = { upcoming: "Upcoming", live: "LIVE", paused: "Paused", completed: "Completed", bye: "Bye" };
+const STATE_TEXT: Record<CalState, string> = { upcoming: "Upcoming", live: "LIVE", paused: "Paused", completed: "FINAL", bye: "Bye" };
+const STATE_STYLE: Record<CalState, string> = {
+  upcoming: "border-primary/40 bg-primary/5", live: "border-2 border-destructive bg-destructive/15",
+  paused: "border-warning/60 bg-warning/10", completed: "border-muted-foreground/50 bg-muted", bye: "border-border bg-muted",
+};
 
 /** First date to show: the first event on/after today, else the first event, else today. */
 export function initialCalendarDate(events: CalEvent[], today = todayIso()): string {
@@ -52,28 +57,35 @@ export const shortTitle = (t: string) => t.split(/\s+v\s+/).map((side) => side.s
 
 function EventBlock({ e, top, height, left, width, compact, onOpen }: { e: CalEvent; top: number; height: number; left: string; width: string; compact?: boolean; onOpen: (e: CalEvent) => void }) {
   const st = e.state ?? "upcoming";
-  const badge = e.kind === "proposed" ? "Proposed" : (st === "live" || st === "completed" || st === "paused") ? `${STATE_TEXT[st]}${e.score ? ` ${e.score}` : ""}` : null;
+  const badge = e.kind === "proposed" ? "Proposed" : STATE_TEXT[st];
   return (
-    <button type="button" onClick={() => onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st}
-      aria-label={`${e.time?.slice(0, 5) ?? ""} ${e.court ?? ""} ${e.title}${badge ? ` ${badge}` : ""}`}
-      className={cn("absolute overflow-hidden rounded-md px-1.5 py-1 text-left text-[11px] leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:brightness-125",
-        e.kind === "confirmed" ? "border border-border bg-card shadow-sm" : "border border-dashed border-muted-foreground/60 bg-muted/40")}
-      style={{ top, height, left, width, borderLeft: `3px solid hsl(var(${e.kind === "proposed" ? "--muted-foreground" : STATE_VAR[st]}))` }}>
+    <Button variant="outline" onClick={() => onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st}
+      aria-label={`${e.time?.slice(0, 5) ?? ""} ${e.court ?? ""} ${e.title} ${badge}${e.score ? ` ${e.score}` : ""}${e.currentGame ? ` Game ${e.currentGame.number} ${e.currentGame.a}–${e.currentGame.b}` : ""}`}
+      className={cn("absolute block h-auto overflow-y-auto whitespace-normal rounded-md px-1.5 py-1 text-left text-[11px] leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        e.kind === "proposed" ? "border border-dashed border-muted-foreground/60 bg-muted/40" : cn("border shadow-sm", STATE_STYLE[st]))}
+      style={{ top, height, left, width }}>
       <div className="flex items-center gap-1">
         {e.court && <span className="rounded bg-muted px-1 text-[10px] font-semibold text-muted-foreground">{compact ? e.court.replace(/court\s*/i, "C") : e.court}</span>}
-        {badge && <span className="ml-auto truncate rounded px-1 text-[10px] font-semibold" style={{ backgroundColor: `hsl(var(${e.kind === "proposed" ? "--muted-foreground" : STATE_VAR[st]}) / .25)` }}>{badge}</span>}
+        <span className={cn("ml-auto inline-flex items-center gap-1 rounded px-1 text-[10px] font-bold", st === "live" ? "bg-destructive text-destructive-foreground" : "bg-muted text-foreground")}>
+          {st === "live" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current motion-safe:animate-pulse" />}{badge}
+        </span>
       </div>
+      <FixtureScoreDetails event={e} />
       <div className={cn("mt-0.5 font-semibold", compact ? "line-clamp-3" : "line-clamp-2")}>{compact ? shortTitle(e.title) : e.title}</div>
       {!compact && e.subtitle && <div className="truncate text-muted-foreground">{e.subtitle}</div>}
-    </button>
+    </Button>
   );
 }
 
-export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalEvent[]; defaultDuration?: number }) {
+export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [], defaultDuration = 40 }: { events: CalEvent[]; historicalEvents?: CalEvent[]; defaultDuration?: number }) {
+  const events = [...upcomingEvents, ...historicalEvents];
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(() => initialCalendarDate(events));
   const [ppm, setPpm] = useState(ZOOM_DEFAULT);
-  const [open, setOpen] = useState<CalEvent | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  // Keep an open dialog attached to the latest saved row, including LIVE → FINAL.
+  const open = [...upcomingEvents, ...historicalEvents].find((e) => e.id === openId) ?? null;
+  const setOpen = (e: CalEvent | null) => setOpenId(e?.id ?? null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const ppmRef = useRef(ppm); ppmRef.current = ppm;
   // Zoom keeping the time under the pointer (or grid centre) stationary on screen.
@@ -215,7 +227,7 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
         </div>
       )}
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
-        <DialogContent className="max-w-sm" data-testid="cal-detail">
+        <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto" data-testid="cal-detail">
           <DialogHeader><DialogTitle className="text-base">{open?.title}</DialogTitle></DialogHeader>
           {open && (
             <dl className="grid grid-cols-[6rem_1fr] gap-y-1 text-sm">
@@ -223,9 +235,10 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
               <dt className="text-muted-foreground">Court</dt><dd>{open.court ?? "—"}</dd>
               {open.subtitle && <><dt className="text-muted-foreground">Details</dt><dd>{open.subtitle}</dd></>}
               <dt className="text-muted-foreground">Type</dt><dd>{open.kind === "proposed" ? "Proposed slot (not booked)" : open.kind === "play_by" ? "Play-by deadline" : "Saved fixture"}</dd>
-              <dt className="text-muted-foreground">Status</dt><dd>{STATE_TEXT[open.state ?? "upcoming"]}{open.score ? ` · ${open.score}` : ""}</dd>
+              <dt className="text-muted-foreground">Status</dt><dd className={cn("font-bold", open.state === "live" && "text-destructive")}>{STATE_TEXT[open.state ?? "upcoming"]}</dd>
             </dl>
           )}
+          {open && <FixtureScoreDetails event={open} detailed />}
           <p className="text-[11px] text-muted-foreground">View only — nothing can be changed here.</p>
         </DialogContent>
       </Dialog>

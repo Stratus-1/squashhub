@@ -24,6 +24,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
+import { startMarkerLoadDeadline } from "@/lib/marker/load-deadline";
+import { useClubContext } from "@/contexts/ClubContext";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];
@@ -69,6 +71,8 @@ function serializeLiveScores(games: GameScore[], current?: { a: number; b: numbe
 
 export default function MatchMarker() {
   const [searchParams] = useSearchParams();
+  const { club: markerClub } = useClubContext();
+  const riversideLoad = markerClub?.id === "11111111-1111-1111-1111-111111111111" || searchParams.get("club") === "riverside";
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
     if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
@@ -112,6 +116,8 @@ export default function MatchMarker() {
   } = useChampMarkerLock(tournamentMatchId, user?.id, markerName);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [tournamentLoadState, setTournamentLoadState] = useState<"idle" | "loading" | "error">("idle");
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const takeoverRequester = champLock?.takeover_requested_by && champLock.user_id === user?.id
     ? champLock.takeover_requested_name || "Another marker"
     : null;
@@ -208,8 +214,19 @@ export default function MatchMarker() {
     const src = searchParams.get("source");
     const matchId = searchParams.get("matchId");
     if (src !== "tournament" || !matchId || config?.sourceId === matchId) return;
+    if (riversideLoad && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(matchId)) {
+      setLoadError("This is not a saved fixture. Proposed positional slots cannot be marked.");
+      setTournamentLoadState("error");
+      return;
+    }
 
     let cancelled = false;
+    setLoadError(null);
+    const deadline = startMarkerLoadDeadline(() => {
+      cancelled = true;
+      setLoadError("Loading took too long. Check your connection and tap Retry. No score has been changed.");
+      setTournamentLoadState("error");
+    }, riversideLoad ? 20000 : null);
     const loadLinkedTournamentMatch = async () => {
       setTournamentLoadState("loading");
       const { data, error } = await fromExt("club_champs_matches")
@@ -223,6 +240,7 @@ export default function MatchMarker() {
           partner_b:partner_b_member_id(id, name, club_member_number)
         `)
         .eq("id", matchId)
+        .abortSignal(deadline.signal)
         .maybeSingle();
 
       if (cancelled) return;
@@ -252,10 +270,12 @@ export default function MatchMarker() {
         fromExt("tournaments")
           .select("id, club_id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, doubles_serving_method, league_doubles_serving_methods")
           .eq("id", row.champ_id)
+          .abortSignal(deadline.signal)
           .maybeSingle(),
         fromExt("tournament_rules")
           .select("tournament_id, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
           .eq("tournament_id", row.champ_id)
+          .abortSignal(deadline.signal)
           .maybeSingle(),
       ]);
       if (cancelled) return;
@@ -391,9 +411,13 @@ export default function MatchMarker() {
       // exact match from the database instead of relying on local state alone.
     };
 
-    loadLinkedTournamentMatch();
-    return () => { cancelled = true; };
-  }, [config?.sourceId, markTournamentLive, navigate, searchParams, user?.id]);
+    void loadLinkedTournamentMatch().catch(() => {
+      if (cancelled) return;
+      setLoadError("The saved score could not be read. Check your connection or sign in again, then tap Retry. No score has been changed.");
+      setTournamentLoadState("error");
+    }).finally(() => deadline.cancel());
+    return () => { cancelled = true; deadline.cancel(); };
+  }, [config?.sourceId, markTournamentLive, navigate, searchParams, user?.id, loadAttempt, riversideLoad]);
 
   useEffect(() => {
     if (config?.source !== "tournament" || !config.sourceId) return;
@@ -589,7 +613,7 @@ export default function MatchMarker() {
   useEffect(() => { if (saving) savingRef.current = true; }, [saving]);
 
   const handleMatchComplete = async (result: MatchResult) => {
-    if (!config) return;
+    if (!config || savingRef.current) return;
 
     const playerAMemberId = config.playerA.clubMemberId;
     const playerBMemberId = config.playerB.clubMemberId;
@@ -604,6 +628,7 @@ export default function MatchMarker() {
       pendingMatchIdRef.current = crypto.randomUUID();
     }
     setSaving(true);
+    savingRef.current = true;
     setSaveError(null);
 
     try {
@@ -794,6 +819,7 @@ export default function MatchMarker() {
       toast.error("Could not save match result — the score is safe, tap Retry.");
     } finally {
       setSaving(false);
+      savingRef.current = false;
     }
   };
 
@@ -828,7 +854,8 @@ export default function MatchMarker() {
           <div className="py-10 text-center space-y-3">
             <p className="text-sm font-medium">The saved tournament score could not be loaded.</p>
             <p className="text-xs text-muted-foreground">A new 0–0 game has not been started.</p>
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+            {loadError && <p className="text-xs text-muted-foreground">{loadError}</p>}
+            <Button variant="outline" size="sm" onClick={() => setLoadAttempt((n) => n + 1)}>Retry</Button>
           </div>
         ) : !config ? (
           <MarkerSetup onStart={startConfig} />

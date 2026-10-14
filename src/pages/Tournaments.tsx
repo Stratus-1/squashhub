@@ -72,7 +72,8 @@ import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { ClubFixturesPilot } from "@/components/tournaments/ClubFixturesPilot";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import ClubChampsView from "@/pages/ClubChampsView";
-import { fixtureState, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
+import { fixtureState, fixtureScoreDetails, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
+import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -121,6 +122,7 @@ export default function Tournaments() {
    * (or, worse, letting two devices clobber each other's score).
    */
   const openMarker = async (m: any, markRoute: string, label: string) => {
+    if (clubId === "11111111-1111-1111-1111-111111111111") markRoute += `${markRoute.includes("?") ? "&" : "?"}club=riverside`;
     try {
       const lock = await fetchChampMarkerLock(m.id);
       if (lock && isLockFresh(lock) && lock.user_id !== user?.id) {
@@ -452,10 +454,12 @@ export default function Tournaments() {
         category: getGroupLabel(champ, Number(m.group_number ?? 1) || 1), round: m.round_number ?? null,
         a: sideLabel(m.player_a, m.partner_a, m.placeholder_a, dbl, m), b: sideLabel(m.player_b, m.partner_b, m.placeholder_b, dbl, m),
         date: m.scheduled_date ?? null, time: m.scheduled_time ?? null, court: m.court?.name ?? null, playBy: m.play_by ?? null,
-        timing: timingOf(m), state: fixtureState(m, isLive(m), isPaused(m)), score: m.score ?? null,
+        timing: timingOf(m), state: fixtureState(m, isLive(m), isPaused(m)),
+        ...fixtureScoreDetails(m, effectiveTournamentSettings({ ...champ, ...archByChamp.get(m.champ_id) }, m.group_number).scoringMode === "time_capped_points"),
+        winner: m.winner_member_id ? [m.player_a, m.partner_a].some((p) => p?.id === m.winner_member_id) ? sideLabel(m.player_a, m.partner_a, m.placeholder_a, dbl, m) : [m.player_b, m.partner_b].some((p) => p?.id === m.winner_member_id) ? sideLabel(m.player_b, m.partner_b, m.placeholder_b, dbl, m) : null : null,
         liveGames: m.status === "in_progress" ? gameScoreLine(m.game_scores) : null, mine: involvesMe(m, myIds),
       };
-    }), [fixturesPilot, allMatches, champs, myIds, freshMatchIds]);
+    }), [fixturesPilot, allMatches, champs, myIds, freshMatchIds, archByChamp]);
 
   const myUpcoming = upcomingMatches.filter((m: any) => involvesMe(m, myIds));
   const myAll = selectMyFixtures(
@@ -660,11 +664,12 @@ export default function Tournaments() {
   const pilotPast = useMemo(() => !pilotChampId ? [] : (allMatches as any[])
     .filter((m: any) => m.champ_id === pilotChampId && m.status === "completed")
     .sort((a: any, b: any) => `${b.scheduled_date ?? ""} ${b.scheduled_time ?? ""}`.localeCompare(`${a.scheduled_date ?? ""} ${a.scheduled_time ?? ""}`)), [allMatches, pilotChampId]);
-  // Calendar = exactly the same upcoming/live set as the List (all categories), minus undated rows it cannot place.
-  const pilotUpcomingIds = useMemo(() => new Set(upcomingMatches.filter((m: any) => m.champ_id === pilotChampId).map((m: any) => m.id)), [upcomingMatches, pilotChampId]);
-  const pilotCalendar = useMemo(() => pilotFixtures
-    .filter((f) => pilotUpcomingIds.has(f.id) && f.timing !== "unscheduled")
-    .map((f) => ({ id: f.id, date: (f.date ?? f.playBy)!, time: f.timing === "saved" ? f.time : null, durationMin: champById.get(f.competitionId)?.match_duration_minutes ?? 40, court: f.court, title: `${f.a} v ${f.b}`, subtitle: `${f.category}${f.round ? ` · R${f.round}` : ""}`, kind: (f.timing === "saved" ? "confirmed" : "play_by") as "confirmed" | "play_by", state: f.state, score: f.liveGames ?? f.score })), [pilotFixtures, pilotChampId]);
+  // Calendar retains every saved scheduled match, including finals at their original slot.
+  const pilotCalendarAll = useMemo(() => pilotFixtures
+    .filter((f) => f.competitionId === pilotChampId)
+    .flatMap((f) => { const date = f.date ?? f.playBy; return date && f.timing !== "unscheduled" ? [{ id: f.id, date, time: f.timing === "saved" ? f.time : null, durationMin: champById.get(f.competitionId)?.match_duration_minutes ?? 40, court: f.court, title: `${f.a} v ${f.b}`, subtitle: `${f.category}${f.round ? ` · R${f.round}` : ""}`, kind: (f.timing === "saved" ? "confirmed" : "play_by") as "confirmed" | "play_by", state: f.state, score: f.score, gameScores: f.gameScores, currentGame: f.currentGame, winner: f.winner }] : []; }), [pilotFixtures, pilotChampId]);
+  const pilotCalendar = pilotCalendarAll.filter((f) => f.state !== "completed");
+  const pilotCalendarHistory = pilotCalendarAll.filter((f) => f.state === "completed");
   useEffect(() => {
     if (!fixturesPilot || !pilotChampId) return;
     if (champFilter !== pilotChampId) setChampFilter(pilotChampId);
@@ -2040,7 +2045,7 @@ export default function Tournaments() {
               )}
               {fixturesPilot && upView === "calendar" && (
                 <Card className="p-3" data-testid="pilot-tournament-calendar">
-                  <FixtureCalendar events={pilotCalendar} />
+                  <FixtureCalendar key={pilotChampId} events={pilotCalendar} historicalEvents={pilotCalendarHistory} />
                   <details className="mt-3 text-xs">
                     <summary className="cursor-pointer text-muted-foreground">All club fixtures (every tournament) — optional shortcut</summary>
                     <div className="mt-2"><ClubFixturesPilot fixtures={pilotFixtures} canMine={myIds.length > 0} /></div>

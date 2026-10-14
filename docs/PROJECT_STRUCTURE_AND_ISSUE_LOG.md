@@ -1,3 +1,14 @@
+### 2026-10-14 — Riverside fixture calendar missing live/final scores
+- Symptom: LIVE cards/details had no scores and completed matches looked like active games.
+- Finding: the adapter accepted only arrays although the marker saves JSON strings with sets/current plus dedicated side-point columns; the calendar retained a stale event object in its dialog.
+- Fix: read-only adapter reuses the saved result reader, separates games won from current rally points, shares card/detail score presentation, and resolves open details by ID on each update. Existing realtime invalidation and 10-second refetch remain; every scheduled selected-tournament match stays in the calendar, including finals. Upcoming list and Past remain separate.
+- Guard: score mapping and open-dialog transition regression tests; no scoring, scheduling, permission, backend or publication changes.
+
+### 2026-10-14 — Riverside Mark Game initial saved-score loading can remain indefinitely
+- Proven failure category: sequential initial reads had no overall deadline or outer rejection handler, so an unresolved request/rejected name/rules read could leave `tournamentLoadState=loading`. Normal real-match initial loads worked in the test browser; the owner's specific failing network request is not captured in telemetry.
+- Fix: Riverside initial load has a 20-second deadline, aborts core reads, ignores late data, and offers a route-preserving Retry without starting 0–0. Load rejections reach an error state. Riverside Upcoming marker navigation retains club context. Uitsig has no deadline enabled; no permissions or scoring rules changed.
+- Safety: synchronous duplicate-submit guard complements existing idempotent result ID; no real results submitted during testing. Real desktop/mobile hydration plus deliberately stalled-read timeout/Retry verified; exact grid entry button unavailable in the current read-only positional grid, which has no marking action.
+
 ### 2026-10-14 — Riverside proposed Swiss slots and primary grid
 - Symptom: undrawn rounds had blank positions; the colored table dominated the pilot.
 - Finding: live Riverside Swiss remains score-based; assigning template slots to its live future fixtures would misrepresent the draw.

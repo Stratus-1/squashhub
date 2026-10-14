@@ -116,7 +116,37 @@ export function movement(row: ProgressionRow): number | null {
 /* ---------- Positional grid (read-only display of saved matches) ---------- */
 export interface GridRow { pos: number | null; id: string | null; name: string; when: string | null; result: string }
 export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null }
-export interface GridRound { round: number; created: boolean; blocks: GridBlock[] }
+export interface GridRound { round: number; created: boolean; blocks: GridBlock[]; schedule?: ProposedRoundSchedule }
+
+/** Round-level schedule for a PROPOSED round. Never a per-match booking. */
+export type ProposedRoundSchedule =
+  | { kind: "play_by"; label: string }
+  | { kind: "window"; label: string }
+  | { kind: "none"; label: string };
+
+export interface StageScheduleConfig {
+  rule?: string | null; date?: string | null; deadline?: string | null;
+  roundDates?: (string | null)[] | null; timeFrom?: string | null; timeTo?: string | null; courtIds?: (number | string)[] | null;
+}
+
+const fmtDay = (d: string) => {
+  const dt = new Date(`${d.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+};
+
+/** What the configured stage schedule says about ONE round. Read-only; reports only what is saved. */
+export function proposedRoundSchedule(cfg: StageScheduleConfig | null | undefined, round: number, courtName?: (id: number | string) => string): ProposedRoundSchedule {
+  if (!cfg) return { kind: "none", label: "Not scheduled" };
+  const day = cfg.roundDates?.[round - 1] ?? null;
+  if (cfg.rule === "play_by") {
+    const by = day ?? cfg.deadline ?? null;
+    return by ? { kind: "play_by", label: `Play by ${fmtDay(by)}` } : { kind: "none", label: "Not scheduled" };
+  }
+  if (!day) return { kind: "none", label: "Not scheduled" };
+  const time = cfg.timeFrom || cfg.timeTo ? ` ${String(cfg.timeFrom ?? "").slice(0, 5)}–${String(cfg.timeTo ?? "").slice(0, 5)}` : "";
+  const courts = cfg.courtIds?.length ? ` · ${cfg.courtIds.map((c) => courtName?.(c) ?? `Court ${c}`).join(", ")}` : "";
+  return { kind: "window", label: `Round window: ${fmtDay(day)}${time}${courts}` };
+}
 
 /**
  * Lays saved matches out as side-by-side round columns of 2-row blocks.
@@ -151,7 +181,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * Occupant-aware bye/rematch adjustments require separately approved engine integration.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel): { rounds: GridRound[]; issues: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string } = {}): { rounds: GridRound[]; issues: string[] } {
   const n = model.rows.length;
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
@@ -159,13 +189,14 @@ export function buildProposedSwissGrid(model: SwissProgressionModel): { rounds: 
   const issues = validateTemplate(n, template);
   if (issues.length) return { rounds: [], issues };
   const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
-  const pending = (pos: number | null, bye = false): GridRow => ({ pos, id: null, name: bye ? "Bye" : "TBD", when: null, result: "" });
   return { issues: [], rounds: template.map((rd): GridRound => {
     if (rd.round === 1 && savedFirst?.created) return savedFirst;
+    const schedule = proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
+    const pending = (pos: number | null, bye = false): GridRow => ({ pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" });
     const blocks: GridBlock[] = rd.pairs.map((p) => ({
       matchId: `proposed-${rd.round}-${p.a}-${p.b}`, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null,
     }));
     if (rd.bye != null) blocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
-    return { round: rd.round, created: false, blocks };
+    return { round: rd.round, created: false, blocks, schedule };
   }) };
 }

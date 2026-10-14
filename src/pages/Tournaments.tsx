@@ -70,6 +70,7 @@ import { OpponentContactButton } from "@/components/contact/OpponentContactButto
 import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { ClubFixturesPilot } from "@/components/tournaments/ClubFixturesPilot";
+import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { fixtureState, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -447,6 +448,19 @@ export default function Tournaments() {
         liveGames: m.status === "in_progress" ? gameScoreLine(m.game_scores) : null, mine: involvesMe(m, myIds),
       };
     }), [fixturesPilot, allMatches, champs, myIds, freshMatchIds]);
+
+  // Riverside pilot IA: pick ONE tournament first; tabs then show only that tournament's matches.
+  const [upView, setUpView] = useState<"list" | "calendar">("list");
+  const pilotSelectable = useMemo(() => [...champs, ...pastChamps] as any[], [champs, pastChamps]);
+  const pilotChampId = fixturesPilot ? (pilotSelectable.find((c: any) => c.id === champFilter)?.id ?? champs[0]?.id ?? pastChamps[0]?.id ?? null) : null;
+  const pilotChamp = pilotChampId ? champById.get(pilotChampId) : null;
+  const pilotPast = useMemo(() => !pilotChampId ? [] : (allMatches as any[])
+    .filter((m: any) => m.champ_id === pilotChampId && m.status === "completed")
+    .sort((a: any, b: any) => `${b.scheduled_date ?? ""} ${b.scheduled_time ?? ""}`.localeCompare(`${a.scheduled_date ?? ""} ${a.scheduled_time ?? ""}`)), [allMatches, pilotChampId]);
+  const pilotCalendar = useMemo(() => pilotFixtures
+    .filter((f) => f.competitionId === pilotChampId && f.state !== "completed" && f.timing !== "unscheduled")
+    .map((f) => ({ id: f.id, date: (f.date ?? f.playBy)!, time: f.timing === "saved" ? f.time : null, durationMin: champById.get(f.competitionId)?.match_duration_minutes ?? 40, court: f.court, title: `${f.a} v ${f.b}`, subtitle: `${f.category}${f.round ? ` · R${f.round}` : ""}`, kind: (f.timing === "saved" ? "confirmed" : "play_by") as "confirmed" | "play_by", state: f.state, score: f.liveGames ?? f.score })), [pilotFixtures, pilotChampId]);
+  useEffect(() => { if (fixturesPilot && pilotChampId && champFilter !== pilotChampId) setChampFilter(pilotChampId); }, [fixturesPilot, pilotChampId]);
 
   const myUpcoming = upcomingMatches.filter((m: any) => involvesMe(m, myIds));
   const myAll = selectMyFixtures(
@@ -1959,31 +1973,70 @@ export default function Tournaments() {
             No tournaments yet
           </Card>
         ) : (
+          <>
+          {fixturesPilot && (
+            <div className="mb-3 space-y-2" data-testid="pilot-tournament-selector">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Choose tournament">
+                {champs.map((c: any) => (
+                  <button key={c.id} type="button" role="tab" aria-selected={pilotChampId === c.id} onClick={() => setChampFilter(c.id)}
+                    className={`shrink-0 rounded-md border px-3 py-2 text-left text-sm font-semibold transition-colors ${pilotChampId === c.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-muted text-foreground hover:bg-accent"}`}>
+                    <Trophy className="mr-1 inline h-3.5 w-3.5" />{c.name}
+                    <span className="ml-2 text-[10px] font-normal opacity-80">{c.status}</span>
+                  </button>
+                ))}
+                {pastChamps.length > 0 && (
+                  <Select value={pastChamps.some((c: any) => c.id === pilotChampId) ? pilotChampId! : ""} onValueChange={(v) => setChampFilter(v)}>
+                    <SelectTrigger className="h-9 w-48 shrink-0 text-xs" aria-label="Past tournaments"><SelectValue placeholder={`Past tournaments (${pastChamps.length})`} /></SelectTrigger>
+                    <SelectContent>{pastChamps.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+                {pilotChampId && <Button variant="ghost" size="sm" className="shrink-0 gap-1" onClick={() => navigate(`/club-champs/${pilotChampId}`)}>Details <ChevronRight className="h-3 w-3" /></Button>}
+              </div>
+            </div>
+          )}
           <Tabs value={champTab} onValueChange={selectChampTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto gap-1 bg-muted p-1">
               <TabsTrigger
                 value="upcoming"
                 className="text-sm py-2.5 font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
               >
-                🗓️ {fixturesPilot ? "Fixtures" : "Current"}{champs.length > 0 ? ` (${champs.length})` : ""}
+                🗓️ {fixturesPilot ? "Upcoming Fixtures" : `Current${champs.length > 0 ? ` (${champs.length})` : ""}`}
               </TabsTrigger>
               <TabsTrigger
                 value="standings"
                 className="text-sm py-2.5 font-semibold border-2 border-amber-500/60 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500 data-[state=active]:shadow-md transition-all"
               >
-                🏆 {fixturesPilot ? "Progression" : "Standings"}
+                🏆 {fixturesPilot ? "Progression & Log" : "Standings"}
               </TabsTrigger>
               <TabsTrigger
                 value="past"
                 className="text-sm py-2.5 font-semibold border-2 border-slate-500/60 data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:border-slate-700 data-[state=active]:shadow-md transition-all"
               >
-                ✓ Past{pastChamps.length > 0 ? ` (${pastChamps.length})` : ""}
+                ✓ {fixturesPilot ? "Past Fixtures" : `Past${pastChamps.length > 0 ? ` (${pastChamps.length})` : ""}`}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-4 space-y-4">
-              {fixturesPilot && <ClubFixturesPilot fixtures={pilotFixtures} canMine={myIds.length > 0} />}
-              <Card>
+              {fixturesPilot && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div role="tablist" aria-label="Upcoming fixtures view" className="grid grid-cols-2 border border-border">
+                    {(["list", "calendar"] as const).map((v) => (
+                      <button key={v} type="button" role="tab" aria-selected={upView === v} onClick={() => setUpView(v)} className={`px-4 py-1.5 text-xs font-semibold ${upView === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>{v === "list" ? "List" : "Calendar"}</button>
+                    ))}
+                  </div>
+                  {pilotChamp && <span className="text-xs text-muted-foreground">Showing only <span className="font-medium text-foreground">{pilotChamp.name}</span></span>}
+                </div>
+              )}
+              {fixturesPilot && upView === "calendar" && (
+                <Card className="p-3" data-testid="pilot-tournament-calendar">
+                  <FixtureCalendar events={pilotCalendar} />
+                  <details className="mt-3 text-xs">
+                    <summary className="cursor-pointer text-muted-foreground">All club fixtures (every tournament) — optional shortcut</summary>
+                    <div className="mt-2"><ClubFixturesPilot fixtures={pilotFixtures} canMine={myIds.length > 0} /></div>
+                  </details>
+                </Card>
+              )}
+              {!fixturesPilot && <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Trophy className="w-4 h-4" /> Current &amp; upcoming tournaments
@@ -2064,10 +2117,10 @@ export default function Tournaments() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </Card>}
 
 
-              <Card ref={gamesCardRef} className="scroll-mt-4">
+              {!(fixturesPilot && (upView === "calendar" || !champs.some((c: any) => c.id === pilotChampId))) && <Card ref={gamesCardRef} className="scroll-mt-4">
                 <CardHeader className="pb-2">
                   {(isClubAdmin || canManageChamps) && (timedIssues ?? []).map((t) => (
                     <div key={t.champId} role="alert" className="mb-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -2321,7 +2374,10 @@ export default function Tournaments() {
 
                 </CardContent>
 
-              </Card>
+              </Card>}
+              {fixturesPilot && pilotChampId && !champs.some((c: any) => c.id === pilotChampId) && (
+                <Card className="p-6 text-center text-sm text-muted-foreground">This tournament has finished — see Past Fixtures.</Card>
+              )}
             </TabsContent>
 
 
@@ -2334,7 +2390,7 @@ export default function Tournaments() {
                   No tournament is running. Standings for finished events are under <span className="font-medium">Past</span>.
                 </Card>
               )}
-              {champs.map((champ: any) => {
+              {(fixturesPilot ? pilotSelectable.filter((c: any) => c.id === pilotChampId) : champs).map((champ: any) => {
                 return (
 
                   <Card key={champ.id}>
@@ -2354,7 +2410,7 @@ export default function Tournaments() {
                         className="gap-1"
                         onClick={() => navigate(`/club-champs/${champ.id}`)}
                       >
-                        <BarChart3 className="w-3.5 h-3.5" /> View Standings
+                        <BarChart3 className="w-3.5 h-3.5" /> {fixturesPilot ? "Open progression & log" : "View Standings"}
                       </Button>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -2370,7 +2426,24 @@ export default function Tournaments() {
             </TabsContent>
 
             <TabsContent value="past" className="mt-4 space-y-3">
-              {pastChamps.length === 0 ? (
+              {fixturesPilot ? (
+                <Card data-testid="pilot-past-fixtures">
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">Completed matches · {pilotChamp?.name ?? "—"} ({pilotPast.length})</CardTitle></CardHeader>
+                  <CardContent className="space-y-1">
+                    {pilotPast.length === 0 ? <p className="text-sm text-muted-foreground">No completed matches yet.</p> : pilotPast.map((m: any) => {
+                      const dbl = pilotChamp?.match_type === "doubles";
+                      const games = gameScoreLine(m.game_scores);
+                      return (
+                        <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-muted/50 px-2 py-1.5 text-xs">
+                          <span className="min-w-0"><span className={m.winner_member_id && m.winner_member_id === m.player_a_member_id ? "font-semibold" : ""}>{sideLabel(m.player_a, m.partner_a, m.placeholder_a, dbl, m)}</span> <span className="text-muted-foreground">v</span> <span className={m.winner_member_id && m.winner_member_id === m.player_b_member_id ? "font-semibold" : ""}>{sideLabel(m.player_b, m.partner_b, m.placeholder_b, dbl, m)}</span>
+                            <span className="ml-2 text-muted-foreground">{getGroupLabel(pilotChamp, Number(m.group_number ?? 1) || 1)}{m.round_number ? ` · R${m.round_number}` : ""}</span></span>
+                          <span className="flex items-center gap-2 tabular-nums"><Badge variant="secondary" className="text-[10px]">{m.score ?? games ?? "Completed"}</Badge><span className="text-muted-foreground">{m.scheduled_date ?? ""} {m.scheduled_time?.slice(0, 5) ?? ""} {m.court?.name ?? ""}</span></span>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              ) : pastChamps.length === 0 ? (
                 <Card className="p-6 text-center text-sm text-muted-foreground">
                   No past tournaments yet. Completed events will be archived here.
                 </Card>
@@ -2425,6 +2498,7 @@ export default function Tournaments() {
               )}
             </TabsContent>
           </Tabs>
+          </>
         )}
       </div>
       <BackToDashboard />

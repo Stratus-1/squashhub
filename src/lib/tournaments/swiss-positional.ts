@@ -80,18 +80,44 @@ export function blocksForRound(n: number, round: number): Array<[number, number]
   return blocks;
 }
 
-/** Fixed slot template for a round (no occupant information). */
+const fold = (slots: number[], round: number): Pair[] => {
+  const out: Pair[] = [];
+  for (let i = 0, j = slots.length - 1; i < j; i++, j--) out.push({ round, a: slots[i], b: slots[j] });
+  return out;
+};
+const range = (s: number, e: number) => Array.from({ length: Math.max(0, e - s + 1) }, (_, i) => s + i);
+
+/**
+ * Fixed slot template for a round (no occupant information) — SportyHQ-style methodology,
+ * checked against the owner-supplied 12/14/18-player maps (see SPORTYHQ_REFERENCE_MAPS).
+ *  - Odd N: slot N takes the bye (fairness adjustment may move it); slots 1..N-1 are paired.
+ *  - Round 1: fold (1 v last).
+ *  - Round 2: winners half / losers half, each folded. If the halves are odd, the MIDDLE winner
+ *    crosses to play the TOP loser (14 → 4v8, 18 → 5v10).
+ *  - Round r ≥ 3: "slide" in groups of g = 2^(r-1): slot a plays a + g/2 (r3: 1v3, 2v4, 5v7, 6v8 …);
+ *    a short tail group slides by half its own length (13v14).
+ */
 export function slotTemplate(n: number, round: number): RoundPlan {
-  const pairs: Pair[] = [];
-  let carry: number | null = null;
-  for (const [s, e] of blocksForRound(n, round)) {
-    const slots: number[] = [];
-    if (carry != null) slots.push(carry);
-    for (let x = s; x <= e; x++) slots.push(x);
-    carry = slots.length % 2 ? slots.pop()! : null;
-    for (let i = 0, j = slots.length - 1; i < j; i++, j--) pairs.push({ round, a: slots[i], b: slots[j] });
+  const m = n % 2 ? n - 1 : n;
+  const bye = n % 2 ? n : null;
+  let pairs: Pair[] = [];
+  if (round <= 1) pairs = fold(range(1, m), round);
+  else if (round === 2) {
+    const w = m / 2;
+    if (w % 2 === 0) pairs = [...fold(range(1, w), round), ...fold(range(w + 1, m), round)];
+    else {
+      const mid = Math.ceil(w / 2);
+      pairs = [{ round, a: mid, b: w + 1 }, ...fold(range(1, w).filter((s) => s !== mid), round), ...fold(range(w + 2, m), round)];
+    }
+  } else {
+    const g = Math.min(2 ** (round - 1), m);
+    for (let s = 1; s <= m; s += g) {
+      const len = Math.min(g, m - s + 1);
+      const h = len / 2;
+      for (let i = 0; i < h; i++) pairs.push({ round, a: s + i, b: s + i + h });
+    }
   }
-  return { round, pairs: pairs.sort((x, y) => x.a - y.a), bye: carry };
+  return { round, pairs: pairs.sort((x, y) => x.a - y.a), bye };
 }
 
 /** Full slot template for a category (round 1..rounds). Validated by `validateTemplate`. */

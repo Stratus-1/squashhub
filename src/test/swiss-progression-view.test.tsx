@@ -51,7 +51,7 @@ describe("Swiss progression (read-only)", () => {
     expect(screen.getByText(/Existing Swiss/)).toBeTruthy();
     expect(screen.getByTestId("swiss-position-grid")).toBeTruthy();
     expect(screen.getByText(/not moved into fixed slots/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Classic" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Classic View" }));
     expect(screen.getAllByText("Opponent to be decided").length).toBeGreaterThan(0);
     expect(screen.getByText(/Not drawn yet/)).toBeTruthy();
   });

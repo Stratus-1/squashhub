@@ -12,9 +12,9 @@ describe("Riverside optional classic standings", () => {
     render(<SwissProgressionPilotView title="Test" model={makeModel()} positionalPreview classicStandings={classic} />);
     expect(screen.queryByTestId("classic-standings")).toBeNull();
     expect(screen.queryByTestId("swiss-current-positions")).toBeNull(); // moved to Results tab
-    fireEvent.click(screen.getByRole("button",{name:"Show classic standings"}));
+    fireEvent.click(screen.getByRole("tab",{name:"Classic View"}));
     expect(screen.getByTestId("classic-standings")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button",{name:"Hide classic standings"}));
+    fireEvent.click(screen.getByRole("tab",{name:"Positional Preview"}));
     expect(screen.queryByTestId("classic-standings")).toBeNull();
   });
   it.each([[5,true],[8,false],[0,false]])("classic fallback for unsupported or empty grid %i/%s", (n,saved) => {
@@ -37,5 +37,15 @@ describe("Riverside optional classic standings", () => {
     render(<SwissCurrentPositionsTable model={makeModel()} />);
     const t = screen.getByTestId("swiss-current-positions").textContent ?? "";
     expect(t).toContain("W v Ann"); expect(t).toContain("live score-based standings");
+  });
+  it("one three-tab bar, no duplicate classic button; calendar separates saved vs proposed", () => {
+    render(<SwissProgressionPilotView title="Test" model={makeModel(8)} positionalPreview classicStandings={classic} />);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Positional Preview", "Classic View", "Calendar View"]);
+    expect(screen.getByRole("tab", { name: "Positional Preview" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("button", { name: /classic standings/i })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));
+    const cal = screen.getByTestId("swiss-calendar");
+    expect(cal.querySelector('[data-kind="unscheduled"], [data-kind="confirmed"]')).toBeTruthy();
+    expect(cal.textContent).toContain("Position 1 v Position");
   });
 });

@@ -16,6 +16,7 @@ export const SWISS_TIE_BREAK_LABEL: Record<SwissTieBreak, string> = {
   buchholz: "Buchholz (opponents' points)",
   sonneborn_berger: "Sonneborn-Berger (beaten opponents' points)",
   seed: "Original seed",
+  position_swap: "Position swap (winner takes the higher spot)",
 };
 
 export interface SwissGame { a: string | null; b: string | null; winner: string | null; round?: number | null }

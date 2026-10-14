@@ -99,6 +99,7 @@ import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwar
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
+import { SwissProgressionPilot, type SwissProgressionInput } from "@/components/tournaments/SwissProgressionView";
 
 export interface InlineStandingsData {
   champ: any;
@@ -4039,7 +4040,9 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               </div>
             );
           })()}
-          {catTab === "standings" ? activeCat.standings : catTab === "upcoming" ? activeCat.upcoming : activeCat.results}
+          {catTab === "standings"
+            ? <SwissProgressionPilot clubId={(champ as any)?.club_id} canManage={canManage} input={swissProgressionByGroup.get(activeCat.gn)} classic={activeCat.standings} />
+            : catTab === "upcoming" ? activeCat.upcoming : activeCat.results}
         </CardContent>
       </Card>
     ) : null;

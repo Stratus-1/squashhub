@@ -69,3 +69,19 @@ describe("visual fixture calendar", () => {
     expect(screen.getByTestId("cal-event").getAttribute("data-kind")).toBe("proposed");
   });
 });
+
+describe("calendar zoom + details", () => {
+  const evs = [{ id: "a", date: "2026-10-14", time: "17:40", court: "Court 1", title: "A v B", kind: "confirmed" as const }];
+  it("zoom buttons change visual scale only; tap opens read-only details", () => {
+    render(<FixtureCalendar events={evs} />);
+    const h0 = screen.getByTestId("cal-grid").style.height;
+    fireEvent.click(screen.getByLabelText("Zoom in calendar"));
+    expect(screen.getByTestId("cal-zoom").textContent).toBe("125%");
+    expect(screen.getByTestId("cal-grid").style.height).not.toBe(h0);
+    fireEvent.click(screen.getByLabelText("Reset calendar zoom"));
+    expect(screen.getByTestId("cal-zoom").textContent).toBe("100%");
+    fireEvent.click(screen.getByTestId("cal-event"));
+    expect(screen.getByTestId("cal-detail").textContent).toContain("17:40");
+    expect(screen.getByTestId("cal-detail").textContent).toContain("Court 1");
+  });
+});

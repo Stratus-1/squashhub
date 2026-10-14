@@ -45,3 +45,26 @@ describe("club fixtures pilot", () => {
     expect(screen.queryByRole("button", { name: /save|reschedule|score/i })).toBeNull();
   });
 });
+
+import { FixtureCalendar, hourRange, initialCalendarDate } from "@/components/tournaments/FixtureCalendar";
+describe("visual fixture calendar", () => {
+  const evs = [
+    { id: "a", date: "2026-10-14", time: "17:40", court: "Court 1", title: "A v B", kind: "confirmed" as const },
+    { id: "b", date: "2026-10-14", time: "18:20", court: "Court 3", title: "C v D", kind: "confirmed" as const },
+    { id: "c", date: "2026-11-11", time: "18:00", court: "Court 2", title: "Position 1 v Position 12 (TBD)", kind: "proposed" as const },
+  ];
+  it("places timed blocks in a week grid with day columns; day view uses court lanes", () => {
+    expect(initialCalendarDate(evs, "2026-10-01")).toBe("2026-10-14");
+    expect(hourRange(evs)).toEqual([16, 20]);
+    render(<FixtureCalendar events={evs} />);
+    expect(screen.getAllByTestId("cal-day")).toHaveLength(7);
+    expect(screen.getAllByTestId("cal-event")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("tab", { name: "day" }));
+    expect(screen.getAllByTestId("cal-lane").map((l) => l.textContent)).toEqual(["Court 1", "Court 2", "Court 3"]);
+  });
+  it("next navigates; proposed blocks are visually distinct", () => {
+    render(<FixtureCalendar events={evs} />);
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByTestId("cal-event").getAttribute("data-kind")).toBe("proposed");
+  });
+});

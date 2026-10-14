@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Riverside RR matrix: compact mirrored set summary and completed light-green cells; 11 tests passed, real finals in all three pools and desktop/mobile screenshots verified; no writes/publish.
 - [x] Riverside visual polish: independent Classic pool green-to-red shading with provisional cue, restrained RR/Swiss round accents; 20 focused tests and signed-in desktop/mobile screenshots, no writes/publish.
 - [x] Riverside calendar retains scheduled finals; canonical live/final score adapter, refreshed details, real upcoming/final desktop/mobile checks and regression tests; no writes/publishing.
 - [x] Riverside initial marker loading: 20-second abort/error/Retry, late-response guard, invalid proposed IDs rejected, duplicate-submit guard; real Upcoming route desktop/mobile and injected stalled read recovery verified without score writes.

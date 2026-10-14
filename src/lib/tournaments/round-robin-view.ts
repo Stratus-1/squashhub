@@ -6,20 +6,38 @@
  * Ranking order comes from the caller's existing standings (official rules);
  * this module does not recalculate standings.
  */
+import { gameSetsOf } from "@/lib/tournaments/tie-breaks";
+
 export interface RRPlayer { id: string; name: string }
 export interface RRMatchInput {
   id: string; round: number | null; a: string | null; b: string | null;
   winner?: string | null; score?: string | null; status?: string | null; isBye?: boolean;
+  gameScores?: unknown;
   date?: string | null; time?: string | null; court?: string | null; playBy?: string | null;
 }
 export type RRStatus = "played" | "to_play" | "bye";
-export interface RRCell { matchId: string; round: number | null; result: "W" | "L" | null; score: string | null; status: RRStatus }
+export interface RRCell { matchId: string; round: number | null; result: "W" | "L" | null; score: string | null; status: RRStatus; setSummary?: string | null; live?: boolean }
 export interface RRRoundMatch { id: string; a: string | null; b: string | null; aName: string; bName: string; posA: number | null; posB: number | null; winner: string | null; score: string | null; status: RRStatus; when: string }
 export interface RRRound { round: number | null; label: string; matches: RRRoundMatch[]; sittingOut: string[]; status: "complete" | "in_progress" | "not_started" }
 export interface RRTotals { played: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number }
 export interface RRPoolView { players: RRPlayer[]; matrix: Record<string, Record<string, RRCell | null>>; totals: Record<string, RRTotals>; rank: Record<string, number>; rounds: RRRound[]; issues: string[] }
 
 const isPlayed = (m: RRMatchInput) => m.status === "completed" || !!m.winner;
+
+/** Display only: use recorded completed sets, never infer scores from the winner. */
+export function rrSetSummary(m: RRMatchInput, flip = false): string | null {
+  let payload = m.gameScores;
+  if (typeof payload === "string") {
+    try { payload = JSON.parse(payload); } catch { payload = null; }
+  }
+  const game_scores = Array.isArray(payload) ? { sets: payload } : payload;
+  const { sets } = gameSetsOf({ game_scores, score: m.score });
+  if (!sets?.length) return null;
+  const a = sets.filter(s => s.a > s.b).length;
+  const b = sets.filter(s => s.b > s.a).length;
+  if (a + b === 0) return null;
+  return flip ? `${b}–${a}` : `${a}–${b}`;
+}
 
 /** Score "15-18" from player A's side, as saved. Returns null when unparsable. */
 export function parseScore(score?: string | null): [number, number] | null {
@@ -64,6 +82,8 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
     const cell = (me: string, opp: string, flip: boolean): RRCell => ({
       matchId: m.id, round: m.round, status: played ? "played" : "to_play",
       result: played && m.winner ? (m.winner === me ? "W" : "L") : null,
+      setSummary: played ? rrSetSummary(m, flip) : null,
+      live: !played && m.status === "in_progress",
       score: sc ? (flip ? `${sc[1]}-${sc[0]}` : `${sc[0]}-${sc[1]}`) : m.score ?? null,
     });
     matrix[m.a][m.b] = cell(m.a, m.b, false);

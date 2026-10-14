@@ -21222,6 +21222,7 @@ export type Database = {
         Returns: boolean
       }
       release_email_outbox_lease: { Args: never; Returns: undefined }
+      release_expired_champ_holds: { Args: never; Returns: number }
       rename_internal_league_association: {
         Args: { _association_id: string; _discipline?: string; _name: string }
         Returns: undefined

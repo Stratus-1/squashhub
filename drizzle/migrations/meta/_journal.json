@@ -974,6 +974,13 @@
       "when": 1791956691321,
       "tag": "0138_unschedule_champ_match_restores_hold",
       "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1791958326510,
+      "tag": "0139_auto_release_uitsig_champ_holds",
+      "breakpoints": true
     }
   ]
 }

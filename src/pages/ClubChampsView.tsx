@@ -1201,7 +1201,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   // Riverside round-robin pilot: read-only pool matrix + order of play per pool, from the same saved matches.
   const renderRoundRobinPilot = (gn: number) => {
     if (champ?.club_id !== "11111111-1111-1111-1111-111111111111" || !pilotViewerOn || !pilotPoolMatrixOn || !canManage) return null;
-    if (isSwissForLeague(gn) || !isRoundRobinForLeague(gn) || isDoublesLeague(gn) || matchupForGroup(matchups, gn)) return null;
+    if (swissStageFor(gn) || isSwissForLeague(gn) || !isRoundRobinForLeague(gn) || isDoublesLeague(gn) || matchupForGroup(matchups, gn)) return null;
     const pc = poolCountFor(gn);
     const gm = (matches as any[]).filter((m: any) => m.group_number === gn && (m.stage || "group") === "group");
     if (!gm.length) return null;

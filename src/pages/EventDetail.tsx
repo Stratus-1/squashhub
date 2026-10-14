@@ -146,13 +146,40 @@ export default function EventDetail() {
   }
 
   if (error || !event) {
+    // The event exists but is only visible to members of its club. An
+    // anonymous visitor (e.g. someone tapping a WhatsApp invite link in a
+    // browser where they are not logged in) gets no row back from the
+    // database, so guide them to log in instead of showing a dead end.
     return (
       <div className="bottom-nav-safe">
         <SEO title="Event" path={id ? `/events/${id}` : "/events"} noIndex />
         <PageHeader title="Event" />
         <div className="px-4 mt-3 space-y-3">
-          <Card className="p-4 text-sm text-muted-foreground">
-            {String((error as any)?.message || "Event not found or not accessible.")}
+          <Card className="p-4 text-sm text-muted-foreground space-y-2">
+            {!user ? (
+              <>
+                <p className="font-medium text-foreground">Log in to view this event</p>
+                <p>
+                  This event is only visible to members of the club. Log in with the account
+                  linked to your club membership to see the details and reply Yes or No.
+                </p>
+                <Button
+                  className="mt-1"
+                  onClick={() => navigate(`/auth?redirect=${encodeURIComponent(`/events/${id}`)}`)}
+                >
+                  Log in to continue
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-foreground">Event not found or not accessible</p>
+                <p>
+                  This event belongs to a club your account isn't linked to. If you have
+                  memberships at more than one club, switch to the club that sent you the
+                  invite and open the link again.
+                </p>
+              </>
+            )}
           </Card>
           <Button variant="outline" onClick={() => navigate("/events")}>
             Back to events

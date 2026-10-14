@@ -26,6 +26,10 @@ describe("canonical calendar scores", () => {
     expect(fixtureScoreDetails({ status: "completed", score: "21-16" }, true).score).toBe("21-16");
     expect(fixtureState({ status: "completed" }, true, false)).toBe("completed");
   });
+  it("shows zero completed games only when a current game is actually recorded", () => {
+    expect(fixtureScoreDetails({ status: "in_progress", side_a_points: 3, side_b_points: 5 })).toEqual({ score: "0–0", gameScores: [], currentGame: { number: 1, a: 3, b: 5 } });
+    expect(fixtureScoreDetails({ status: "in_progress" }).score).toBeNull();
+  });
 });
 
 const base: CalEvent = { id: "live", date: "2026-10-14", time: "17:40", court: "Court 1", title: "Willem Pretorius v Ethan Tshabalala", kind: "confirmed", state: "live", ...fixtureScoreDetails({ status: "in_progress", game_scores: { sets }, side_a_points: 8, side_b_points: 6 }) };

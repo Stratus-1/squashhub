@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { TransformWrapper, TransformComponent, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
+import { TransformWrapper, TransformComponent, type ReactZoomPanPinchContentRef } from "react-zoom-pan-pinch";
 import { Maximize2, Minimize2, ZoomIn, ZoomOut, MoveHorizontal, Expand, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,8 @@ export function TournamentInteractiveViewer({
 }: TournamentInteractiveViewerProps) {
   const [expanded, setExpanded] = useState(false);
   const [scale, setScale] = useState(1);
-  const api = useRef<ReactZoomPanPinchRef | null>(null);
+  const pos = useRef({ positionX: 0, positionY: 0, scale: 1 });
+  const api = useRef<ReactZoomPanPinchContentRef | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const expandBtn = useRef<HTMLButtonElement | null>(null);
@@ -108,7 +109,7 @@ export function TournamentInteractiveViewer({
     else if (e.key.toLowerCase() === "f") { e.preventDefault(); applyFit("screen"); }
     else if (e.key.startsWith("Arrow")) {
       e.preventDefault();
-      const { positionX: x, positionY: y, scale: s } = a.instance.transformState;
+      const { positionX: x, positionY: y, scale: s } = pos.current;
       const d = 40;
       a.setTransform(x + (e.key === "ArrowLeft" ? d : e.key === "ArrowRight" ? -d : 0), y + (e.key === "ArrowUp" ? d : e.key === "ArrowDown" ? -d : 0), s, 100);
     }
@@ -151,7 +152,7 @@ export function TournamentInteractiveViewer({
         pinch={{ step: 5 }}
         doubleClick={{ disabled: true }}
         panning={{ velocityDisabled: false, excluded: ["input", "select", "textarea", "button"] }}
-        onTransformed={(_, s) => setScale(s.scale)}
+        onTransform={(_, s) => { pos.current = s; setScale(s.scale); }}
       >
         <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ transformOrigin: "0 0" }}>
           <div ref={contentRef} style={contentSize ? { width: contentSize.width, height: contentSize.height } : { width: "max-content" }}>

@@ -47,7 +47,7 @@ describe("Swiss progression (read-only)", () => {
   });
   it("renders labelled existing format, rounds and unresolved text", () => {
     const displayModel = buildSwissProgression({ seedOrder: [...seed, "p6", "p7", "p8"], names, matches, totalRounds: 3 });
-    render(<SwissProgressionPilotView title="Men's A" model={displayModel} />);
+    render(<SwissProgressionPilotView title="Men's A" model={displayModel} positionalPreview />);
     expect(screen.getByText(/Existing Swiss/)).toBeTruthy();
     expect(screen.getByTestId("swiss-position-grid")).toBeTruthy();
     expect(screen.getByText(/not moved into fixed slots/)).toBeTruthy();

@@ -8,7 +8,7 @@ import { buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type SwissProgres
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model }: { title: string; model: SwissProgressionModel }) {
+export function SwissProgressionPilotView({ title, model, positionalPreview = false }: { title: string; model: SwissProgressionModel; positionalPreview?: boolean }) {
   const [mode, setMode] = useState<"grid" | "classic">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
@@ -19,12 +19,13 @@ export function SwissProgressionPilotView({ title, model }: { title: string; mod
         <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">{SWISS_FORMAT_LABEL[model.format]}</span>
         <div className="ml-auto flex gap-1" role="group" aria-label="Swiss view">
-          <Button size="sm" className="h-7" variant={mode === "grid" ? "default" : "outline"} aria-pressed={mode === "grid"} onClick={() => setMode("grid")}>Positional preview</Button>
+          <Button size="sm" className="h-7" variant={mode === "grid" ? "default" : "outline"} aria-pressed={mode === "grid"} onClick={() => setMode("grid")}>{positionalPreview ? "Positional preview" : "Grid"}</Button>
           <Button size="sm" className="h-7" variant={mode === "classic" ? "default" : "outline"} aria-pressed={mode === "classic"} onClick={() => setMode("classic")}>Classic</Button>
         </div>
       </div>
       {mode === "grid" ? (
         <>
+          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420}><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
             <p className="text-muted-foreground">Round 1 shows saved matches only. Later columns are proposed template slots, not the existing live score-based draw. Players were not moved into fixed slots; future names, dates and results remain TBD.</p>
@@ -35,6 +36,7 @@ export function SwissProgressionPilotView({ title, model }: { title: string; mod
               <SwissPositionGrid model={model} proposedRounds={proposed.rounds} />
             </TournamentInteractiveViewer>
           )}
+          </>}
         </>
       ) : (
         <>

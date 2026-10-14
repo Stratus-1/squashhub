@@ -1,82 +1,95 @@
-# Progression Standings Table: Swiss pilot at Riverside
+# Tournament views pilot at Riverside: Pool grid and Swiss progression
 
-Planning only. No code is written until you confirm the layout and rules.
+Planning only. No code is written until you confirm the layouts and rules. There are two separate views so that neither design is forced onto the other format.
 
-## 1. What exists today
-- **Tournament page:** `src/pages/ClubChampsView.tsx` has the Standings tab, Swiss pairing and rank colours. Inline standings are in `src/components/tournaments/InlineTournamentStandings.tsx`.
-- **Swiss logic** (shared, tested):
+## Shared foundation (what exists today)
+- **Tournament page:** `src/pages/ClubChampsView.tsx` (Standings tab, Swiss pairing, rank colours) and `src/components/tournaments/InlineTournamentStandings.tsx`.
+- **Shared logic:**
   - `src/lib/tournaments/swiss-standings.ts` (`swissTable`, `positionSwapOrder`)
-  - `src/lib/swiss-pairing.ts`
-  - `src/lib/tournaments/swiss-round-gate.ts`
-  - `engine-service.ts` and `structured-persist.ts`
+  - `src/lib/swiss-pairing.ts` (pools and pairing)
+  - `swiss-round-gate.ts`, `structured-matchups.ts`, `standings-outcome.ts`
 - **Data tables:**
   - `club_champs_registrations`: entries, seeds, withdrawals
-  - `club_champs_matches`: `round_number`, players, scores, status
+  - `club_champs_matches`: `round_number`, players, scores, status, court, date and time
   - `club_champs_rounds`
-  - Tournament settings: `builder_spec` divisions and `tieBreaks`
-- **Pilot switch:** `club_beta_features` with the Tournament Beta feature, read by `useClubHasTournamentBeta`. It defaults to off and is managed by Super Admin.
+  - Tournament settings: `builder_spec` divisions and pools
+- **Pilot switch:** `club_beta_features`, where each club can have features switched on one by one. These are off by default and managed by Super Admin.
+- **Schema:** no database change is expected for either view. Everything shown can be worked out from data already stored.
 
-## 2. Is a schema change needed?
-Probably not. Everything the table shows can be worked out from data the app already stores:
-- seed order
-- each round's opponent, result and score
-- byes and walkovers
-- withdrawals
+## View A: Pool grid and order of play (round-robin pools)
+Based on the NJSA "Pool Matches" layout.
 
-No database change is planned. If SportyHQ shows something we don't store, such as a frozen snapshot of the table after each round, that would be raised before any change.
+**Top: pool grid**
+- Columns: Nr, Name, one column per player number (1..N), Total Games, Rank.
+- Each cell holds the score from the row player's point of view, for example "3-1". Unplayed games are blank.
+- Cells where a player meets themselves are blacked out.
+- Rank uses the division's existing round-robin ranking rules, so no new ranking rules are needed.
 
-## 3. Proposed basic table (one per division)
+**Bottom: order of play**
+- Columns: Rd, Order of Play (e.g. "1v5"), Result, Score, Day/Time, Venue, Court.
+- Rows are grouped by `round_number`.
+- Day/time, venue and court come from the match or its booking.
+- "1v5" means player number 1 against player number 5 within that pool.
 
-| Column | Meaning |
-|---|---|
-| Pos | Current position |
-| Movement | Places gained or lost since last round (up/down/same) |
-| Player | Name and club |
-| Seed | Starting seed |
-| R1 … Rn | One cell per round: opponent's seed/name, W/L, game score, or BYE / WO / — |
-| P / W / L | Played, won, lost |
-| Games +/- | Games won minus games lost (optional) |
-| Pts | Points, only when the division is not position-swap |
+**Data support:** fully supported. The only open question is where the player numbers 1..N come from: seed order, entry order, or numbers fixed when the draw was made.
 
-**Sorting**
-- If the division uses position swap (Uitsig-style), the order comes from `positionSwapOrder`, replayed round by round. A lower-placed player who wins takes the winner's spot, and the loser drops to the winner's old spot.
-- Otherwise, the order comes from `swissTable` using the division's configured tie-breaks.
-- The "after round N" positions come from replaying results in order up to round N, so the Movement column is always consistent.
+## View B: Swiss progression table (Swiss events)
+- **Columns:**
+  - Pos
+  - Movement
+  - Player
+  - Seed
+  - R1..Rn, each showing the opponent, W/L and score, or BYE / WO / —
+  - P / W / L
+  - Games +/- (optional)
+  - Pts, only when the division isn't position-swap
+- **Order:**
+  - Position-swap divisions follow `positionSwapOrder`, replayed round by round.
+  - Other divisions follow `swissTable` with the division's tie-breaks.
+- **Movement:** the change in position compared with the replay up to the previous round.
 
-## 4. Switching it on for Riverside only
-- Add one new pilot feature key, `tournament_progression_standings`, to `club_beta_features`.
-- Turn it on for Riverside only. It stays off for all other clubs.
-- Clubs without the switch see the current standings unchanged.
-- Riverside admins get an option to switch between the classic and progression views.
-- It's a display change only: no results, pairings or other clubs' data are touched.
-- Testing uses made-up players in a Riverside test tournament before anyone else sees it.
+**Data support:** fully supported. Matches without a round number can't be placed in a round column.
 
-## 5. What I still need from you
-1. SportyHQ screenshots of the standings page, on both phone and desktop.
-2. What a round cell should show: opponent seed, opponent name, score, or a mix.
+## Riverside-only pilot
+- Add two separate pilot feature keys: `tournament_pool_matrix_view` and `tournament_swiss_progression_view`.
+- Both are switched on for Riverside only. Every other club, including Uitsig, keeps today's view unchanged.
+- The view shown depends on each division's format:
+  - round-robin or pool divisions get View A
+  - Swiss divisions get View B
+  - other formats keep the current standings
+- A "Classic view" option stays available during the pilot.
+- Both are display changes only: no results, pairings, bookings or messages are touched.
+- Testing uses made-up players in a Riverside test tournament, then your sign-off, before any staged rollout.
+
+## Still needed before building
+**View A (pool grid)**
+1. How player numbers 1..N are assigned.
+2. The score shown in a grid cell: game score, points, or W/L.
+3. What "Total Games" counts: games won, or games won minus games lost.
+4. Rank tie-breaks: confirm the current division rules apply.
+5. Should the order-of-play table follow the standard rotation (1v5, 2v3, 4v6...), or the actual schedule order?
+6. Should the "Venue" column only appear when there is more than one venue?
+
+**View B (Swiss)**
+1. SportyHQ screenshots, on phone and desktop.
+2. What a round cell shows.
 3. Byes and walkovers: count as wins? Do they move position?
-4. Withdrawals: does the player stay on the table, greyed out at the bottom, or keep their spot?
-5. Unplayed games: when the round is still in progress, does the table show the last finished round or update live?
-6. Tie rules for points-based Swiss: should this follow the division's settings or a fixed order?
-7. Whether players see the table too, or only admins at first.
+4. Withdrawals: does the player stay on the table, greyed out, or keep their spot?
+5. During a round: show live movement, or only after the round is complete?
 
-## 6. Risks
-- **Older tournaments:** matches with no `round_number` can't be placed in a round. These will show "—" or fall back to the classic view.
-- **Incomplete matches:** nobody moves until a result is confirmed, and an unconfirmed result is shown as "pending" in its round cell.
-- **Withdrawals and byes:** these need the explicit rules above. If we guess wrong, positions will be wrong.
-- **Ties:** in position-swap mode ties can't happen. In points mode, the tie-break order must match the division's settings.
-- **Several divisions in one tournament:** each division has its own table and replay, and players are never mixed across divisions or pools.
-- **Uitsig:** stays on its current live view and won't be switched on without your approval.
+**Both**
+- Do players see the new views as well, or only admins at first?
+
+## Risks
+- **Older tournaments:** matches with no round number, or pools with no saved player numbers, fall back to the classic view.
+- **Incomplete matches:** shown as pending. Nobody moves, and no grid cell fills, until the result is confirmed.
+- **Withdrawals and byes:** a withdrawn player's remaining pool games show as WO. The Swiss rules need your explicit answers above.
+- **Ties:** pool ranks use the division's existing tie-breaks. Ties can't happen in position-swap divisions.
+- **Several divisions or pools:** each division and pool gets its own grid or table, and players are never mixed between them.
+- **Uitsig:** stays on its current live views unless you approve otherwise.
 
 ## Technical steps (after approval)
-1. Add a pure function `progressionTable(division, entries, matches)`. It returns rows, per-round cells and movement, and reuses `swissTable` and `positionSwapOrder`.
-2. Write tests for it covering:
-   - byes
-   - walkovers
-   - withdrawals
-   - pending results
-   - missing round numbers
-   - several divisions
-3. Build a `ProgressionStandings.tsx` component, shown inside the Standings tab only when the pilot switch is on.
-4. Add a `useClubBetaFeature(clubId, key)` helper and turn the switch on for Riverside.
-5. Test end to end on Riverside with made-up players, then get your sign-off before rolling out further.
+1. Add two pure functions with tests: `poolMatrix(pool, entries, matches)` and `progressionTable(division, entries, matches)`. Tests cover byes, walkovers, withdrawals, pending results, missing round numbers and several divisions.
+2. Build two components: `PoolMatrixView.tsx` and `SwissProgressionView.tsx`. Each is chosen per division inside the Standings tab, behind its pilot switch.
+3. Add a `useClubBetaFeature(clubId, key)` helper and switch both features on for Riverside.
+4. Test end to end at Riverside with made-up players, then get your sign-off before a staged rollout.

@@ -1,6 +1,7 @@
 # Roadmap
+- [x] Phase 1 read-only Move/Swap preview built; 51 focused tests passed; signed-in Riverside desktop/mobile confirmed fail-closed no verified blocks. Interactive successful real-data drag remains unverified pending proven inventory. No writes/Phase 2.
 - [x] Riverside calendar move/swap — read-only model/permissions/availability audit and staged plan prepared; 45 existing focused tests passed; no app/data changes or publishing.
-- [ ] Riverside calendar move/swap implementation — BLOCKED: owner plan/phase approval, verified Android initialization recovery, proven reservation ownership and isolated write-testing without hardware/messages.
+- [ ] Riverside calendar actual move/swap Phase 2 — BLOCKED: separate owner approval, verified Android initialization recovery, proven reservation ownership and isolated write-testing without hardware/messages.
 - [x] Riverside calendar tap scores: scoped immediate score-event updates + 5s polling, explicit live score pending, A/B score order; real Ndlovu FINAL and paused current points verified desktop/mobile, no writes/publishing.
 - [ ] Active LIVE browser verification — BLOCKED: no active Riverside marker during checks; pending → live → final display covered by automated tests, no real score submitted.
 - [x] Riverside RR rally-point totals: saved JSON/text agree; 33/11 and 33/22 mirrored per pool, 16 tests and signed-in desktop/mobile checks passed; existing realtime/10s refetch retained, no writes/publish.

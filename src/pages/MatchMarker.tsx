@@ -213,8 +213,13 @@ export default function MatchMarker() {
   useEffect(() => {
     const src = searchParams.get("source");
     const matchId = searchParams.get("matchId");
-    if (src !== "tournament" || !matchId || config?.sourceId === matchId) return;
-    if (riversideLoad && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(matchId)) {
+    if (src !== "tournament" || !matchId || config?.sourceId === matchId) {
+      // A previous load may have been cancelled because the address changed
+      // mid-load. Never leave the spinner up with nothing loading behind it.
+      if (!config) setTournamentLoadState((s) => (s === "loading" ? "idle" : s));
+      return;
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(matchId)) {
       setLoadError("This is not a saved fixture. Proposed positional slots cannot be marked.");
       setTournamentLoadState("error");
       return;
@@ -222,11 +227,14 @@ export default function MatchMarker() {
 
     let cancelled = false;
     setLoadError(null);
+    setTournamentLoadState("loading");
+    // Bounded for every club: a stalled read (e.g. a phone waking from sleep
+    // mid sign-in refresh) must end in a Retry, never an endless spinner.
     const deadline = startMarkerLoadDeadline(() => {
       cancelled = true;
       setLoadError("Loading took too long. Check your connection and tap Retry. No score has been changed.");
       setTournamentLoadState("error");
-    }, riversideLoad ? 20000 : null);
+    }, 20000);
     const loadLinkedTournamentMatch = async () => {
       setTournamentLoadState("loading");
       const { data, error } = await fromExt("club_champs_matches")
@@ -848,15 +856,19 @@ export default function MatchMarker() {
             </Button>
           </div>
         )}
-        {!config && tournamentLoadState === "loading" ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">Loading saved tournament score…</div>
-        ) : !config && tournamentLoadState === "error" ? (
+        {!config && tournamentLoadState === "error" ? (
           <div className="py-10 text-center space-y-3">
             <p className="text-sm font-medium">The saved tournament score could not be loaded.</p>
             <p className="text-xs text-muted-foreground">A new 0–0 game has not been started.</p>
             {loadError && <p className="text-xs text-muted-foreground">{loadError}</p>}
             <Button variant="outline" size="sm" onClick={() => setLoadAttempt((n) => n + 1)}>Retry</Button>
           </div>
+        ) : !config && (tournamentLoadState === "loading" || pendingTournamentLink) ? (
+          // While a tournament link is being opened, the manual setup screen
+          // must NOT mount: its own deep-link prefill strips `matchId` from the
+          // address, which cancelled this loader and left the spinner forever
+          // (and a refresh then showed an empty "select players" screen).
+          <div className="py-12 text-center text-sm text-muted-foreground">Loading saved tournament score…</div>
         ) : !config ? (
           <MarkerSetup onStart={startConfig} />
         ) : (

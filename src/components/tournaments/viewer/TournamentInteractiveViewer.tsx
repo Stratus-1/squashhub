@@ -21,6 +21,8 @@ export interface TournamentInteractiveViewerProps {
   /** Inline frame height in px. */
   inlineHeight?: number;
   className?: string;
+  /** "direct": plain mouse wheel zooms over the viewer (Ctrl/trackpad pinch also). "modifier" (default): only Ctrl/Cmd+wheel or pinch. */
+  wheelZoom?: "direct" | "modifier";
 }
 
 export const fitScale = (
@@ -36,8 +38,15 @@ export const fitScale = (
   return Math.min(max, Math.max(min, s));
 };
 
+/** Delta-magnitude wheel zoom (normalises line/page deltaMode), clamped. */
+export function nextWheelScale(z: number, e: { deltaY: number; deltaMode: number }, min: number, max: number, pinch = false) {
+  const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+  const next = z * Math.exp(-dy * (pinch ? 0.01 : 0.0015));
+  return Math.min(max, Math.max(min, next));
+}
+
 export function TournamentInteractiveViewer({
-  title, children, contentSize, toolbarExtras, minZoom = 0.25, maxZoom = 3, defaultFit = "width", inlineHeight = 480, className,
+  title, children, contentSize, toolbarExtras, minZoom = 0.25, maxZoom = 3, defaultFit = "width", inlineHeight = 480, className, wheelZoom = "modifier",
 }: TournamentInteractiveViewerProps) {
   const [expanded, setExpanded] = useState(false);
   const [scale, setScale] = useState(1);
@@ -101,6 +110,29 @@ export function TournamentInteractiveViewer({
     };
   }, [expanded]);
 
+  // Native non-passive wheel handler: pointer-anchored, delta-scaled zoom.
+  // At a zoom bound the event is NOT cancelled, so page scrolling continues.
+  useEffect(() => {
+    const el = frameRef.current; if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      const a = api.current; if (!a) return;
+      const pinchOrMod = e.ctrlKey || e.metaKey;
+      if (!pinchOrMod && wheelZoom !== "direct") return;
+      const next = nextWheelScale(pos.current.scale, e, minZoom, maxZoom, pinchOrMod);
+      if (next === pos.current.scale) return; // at bound: let page scroll
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const px = e.clientX - r.left, py = e.clientY - r.top;
+      const { positionX: x, positionY: y, scale: z } = pos.current;
+      const k = next / z;
+      const t = { positionX: px - (px - x) * k, positionY: py - (py - y) * k, scale: next };
+      pos.current = t;
+      a.setTransform(t.positionX, t.positionY, next, 0);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [expanded, wheelZoom, minZoom, maxZoom]);
+
   const onFrameKey = (e: React.KeyboardEvent) => {
     const a = api.current; if (!a) return;
     if (e.key === "+" || e.key === "=") { e.preventDefault(); a.zoomIn(0.2, 150); }
@@ -148,7 +180,7 @@ export function TournamentInteractiveViewer({
         maxScale={maxZoom}
         limitToBounds={false}
         centerOnInit={false}
-        wheel={{ activationKeys: ["Control", "Meta"], step: 0.08 }}
+        wheel={{ disabled: true }}
         pinch={{ step: 5 }}
         doubleClick={{ disabled: true }}
         panning={{ velocityDisabled: false, excluded: ["input", "select", "textarea", "button"] }}

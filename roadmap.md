@@ -36,3 +36,6 @@
 - [x] Positional Swiss full-draw pilot (synthetic, Riverside only): engine, persistence, scheduling, pilot page, tests.
 - [ ] Activate positional Swiss on a real tournament — waits on owner sign-off.
 - [x] Riverside round-robin pilot Phase 1: read-only pool matrix + order of play (switch tournament_pool_matrix_view). Phase 2 (result entry) awaits approval.
+
+- [x] Fixture calendar: date/time-slot layout, court labels per game, click a date to open day detail (read-only)
+- [ ] Admin drag-to-reschedule (awaiting separate approval)

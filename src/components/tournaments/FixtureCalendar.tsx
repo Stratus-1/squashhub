@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,7 @@ function EventBlock({ e, top, height, left, width, compact }: { e: CalEvent; top
         e.kind === "confirmed" ? "border border-border bg-card shadow-sm" : "border border-dashed border-muted-foreground/60 bg-muted/40")}
       style={{ top, height, left, width, borderLeft: `3px solid hsl(var(${e.kind === "proposed" ? "--muted-foreground" : STATE_VAR[st]}))` }}>
       <div className="flex items-center gap-1 font-semibold tabular-nums">
-        <span>{e.time?.slice(0, 5)}</span>{!compact && e.court && <span className="font-normal text-muted-foreground">{e.court}</span>}
+        <span>{e.time?.slice(0, 5)}</span>{e.court && <span className="font-normal text-muted-foreground">{e.court}</span>}
         {e.kind === "proposed" ? <span className="ml-auto rounded bg-muted px-1 text-[9px] font-normal">Proposed</span> : (st === "live" || st === "completed") && <span className="ml-auto rounded px-1 text-[9px]" style={{ backgroundColor: `hsl(var(${STATE_VAR[st]}) / .2)` }}>{STATE_TEXT[st]}{e.score ? ` ${e.score}` : ""}</span>}
       </div>
       <div className="truncate">{e.title}</div>
@@ -70,7 +70,6 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
   const gridH = (h1 - h0) * 60 * PX_PER_MIN;
   const ev = (e: CalEvent) => ({ top: (mins(e.time!) - h0 * 60) * PX_PER_MIN, height: Math.max(22, (e.durationMin ?? defaultDuration) * PX_PER_MIN - 2) });
   const days = view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(weekStart(anchor), i));
-  const courts = useMemo(() => [...new Set(timed.map((e) => e.court ?? "No court"))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [events]);
   const step = view === "day" ? 1 : view === "week" ? 7 : 0;
   const move = (dir: 1 | -1) => {
     if (view === "month") { const d = parse(anchor); d.setUTCMonth(d.getUTCMonth() + dir, 1); setAnchor(iso(d)); } else setAnchor(addDays(anchor, dir * step));
@@ -123,13 +122,11 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
         );
       })() : (
         <div className="overflow-x-auto rounded-md border border-border">
-          <div style={{ minWidth: view === "day" ? Math.max(360, 60 + courts.length * 140) : 860 }}>
+          <div style={{ minWidth: view === "day" ? 320 : 860 }}>
             {/* header */}
             <div className="sticky top-0 z-10 flex border-b border-border bg-muted">
               <div className="w-14 shrink-0" />
-              {view === "day"
-                ? courts.map((c) => <div key={c} className="flex-1 border-l border-border px-2 py-1.5 text-center font-semibold" data-testid="cal-lane">{c}</div>)
-                : days.map((d) => <div key={d} className={cn("flex-1 border-l border-border px-2 py-1.5 text-center font-semibold", d === todayIso() && "text-primary")} data-testid="cal-day">{calDayLabel(d)}</div>)}
+              {days.map((d) => <button type="button" key={d} onClick={() => { setAnchor(d); setView("day"); }} aria-label={`Open ${calDayLabel(d)}`} className={cn("flex-1 border-l border-border px-2 py-1.5 text-center font-semibold hover:bg-accent/40", d === todayIso() && "text-primary")} data-testid="cal-day">{calDayLabel(d)}{view === "week" && <span className="ml-1 font-normal text-muted-foreground">({timed.filter((e) => e.date === d).length})</span>}</button>)}
             </div>
             {deadlines.length > 0 && (
               <div className="flex border-b border-border">
@@ -146,18 +143,18 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
               <div className="w-14 shrink-0">
                 {hours.map((h) => <div key={h} className="relative border-t border-border text-[10px] text-muted-foreground" style={{ height: 60 * PX_PER_MIN }}><span className="absolute -top-2 right-1 bg-background px-0.5 tabular-nums">{String(h).padStart(2, "0")}:00</span></div>)}
               </div>
-              {(view === "day" ? courts : days).map((col) => {
-                const colEvents = view === "day" ? timed.filter((e) => e.date === anchor && (e.court ?? "No court") === col) : timed.filter((e) => e.date === col);
-                // week: lanes per court present that day so simultaneous matches sit side by side
-                const lanes = view === "week" ? [...new Set(colEvents.map((e) => e.court ?? "No court"))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) : ["x"];
+              {days.map((col) => {
+                // Time slots first: games starting together sit side by side, each labelled with its court.
+                const colEvents = timed.filter((e) => e.date === col);
+                const slots = new Map<string, CalEvent[]>();
+                colEvents.forEach((e) => slots.set(e.time!.slice(0, 5), [...(slots.get(e.time!.slice(0, 5)) ?? []), e]));
                 return (
                   <div key={col} className="relative flex-1 border-l border-border">
                     {hours.map((h) => <div key={h} className="border-t border-border/60" style={{ height: 60 * PX_PER_MIN }} />)}
-                    {colEvents.map((e) => {
-                      const li = view === "week" ? lanes.indexOf(e.court ?? "No court") : 0;
-                      const w = 100 / lanes.length;
-                      const { top, height } = ev(e);
-                      return <EventBlock key={e.id} e={e} top={top} height={height} left={`calc(${li * w}% + 1px)`} width={`calc(${w}% - 2px)`} compact={view === "week" && lanes.length > 2} />;
+                    {[...slots.values()].flatMap((group) => {
+                      group.sort((x, y) => (x.court ?? "").localeCompare(y.court ?? "", undefined, { numeric: true }));
+                      const w = 100 / group.length;
+                      return group.map((e, i) => { const { top, height } = ev(e); return <EventBlock key={e.id} e={e} top={top} height={height} left={`calc(${i * w}% + 1px)`} width={`calc(${w}% - 2px)`} compact={view === "week" && group.length > 2} />; });
                     })}
                   </div>
                 );

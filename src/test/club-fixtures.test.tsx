@@ -38,7 +38,7 @@ describe("club fixtures pilot", () => {
     expect(screen.getByTestId("club-fixtures-list").textContent).toContain("11-7, 5-3");
     fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));
     const cal = screen.getByTestId("club-fixtures-calendar");
-    expect(cal.querySelector('[data-timing="play_by"]')).toBeTruthy();
+    expect(cal.querySelector('[data-testid="fixture-calendar"]')).toBeTruthy();
     expect(cal.textContent).toContain("Saved fixture");
     fireEvent.click(screen.getByLabelText("My matches"));
     expect(screen.getByTestId("club-fixtures-count").textContent).toBe("1 of 4 fixtures");
@@ -53,14 +53,15 @@ describe("visual fixture calendar", () => {
     { id: "b", date: "2026-10-14", time: "18:20", court: "Court 3", title: "C v D", kind: "confirmed" as const },
     { id: "c", date: "2026-11-11", time: "18:00", court: "Court 2", title: "Position 1 v Position 12 (TBD)", kind: "proposed" as const },
   ];
-  it("places timed blocks in a week grid with day columns; day view uses court lanes", () => {
+  it("week grid by date/time; day view keeps time slots with court labels", () => {
     expect(initialCalendarDate(evs, "2026-10-01")).toBe("2026-10-14");
     expect(hourRange(evs)).toEqual([16, 20]);
     render(<FixtureCalendar events={evs} />);
     expect(screen.getAllByTestId("cal-day")).toHaveLength(7);
     expect(screen.getAllByTestId("cal-event")).toHaveLength(2);
     fireEvent.click(screen.getByRole("tab", { name: "day" }));
-    expect(screen.getAllByTestId("cal-lane").map((l) => l.textContent)).toEqual(["Court 1", "Court 2", "Court 3"]);
+    expect(screen.getAllByTestId("cal-day")).toHaveLength(1);
+    expect(screen.getAllByTestId("cal-event").map((e) => e.textContent)).toEqual([expect.stringContaining("Court 1"), expect.stringContaining("Court 3")]);
   });
   it("next navigates; proposed blocks are visually distinct", () => {
     render(<FixtureCalendar events={evs} />);

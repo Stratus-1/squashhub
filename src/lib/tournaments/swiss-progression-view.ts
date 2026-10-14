@@ -115,7 +115,17 @@ export function movement(row: ProgressionRow): number | null {
 }
 
 /* ---------- Positional grid (read-only display of saved matches) ---------- */
-export interface GridRow { pos: number | null; id: string | null; name: string; when: string | null; result: string }
+export interface GridRow { pos: number | null; id: string | null; name: string; when: string | null; result: string; projected?: boolean }
+
+/** Match summary in games won, winner first ("3–1"). Accepts "3-11, 11-5, 11-4, 11-5"; passes through an existing "3-1". */
+export function gamesWonSummary(score: string | null | undefined): string | null {
+  if (!score) return null;
+  const sets = [...score.matchAll(/(\d+)\s*[-–]\s*(\d+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  if (!sets.length) return null;
+  if (sets.length === 1 && Math.max(...sets[0]) <= 5) return `${Math.max(...sets[0])}–${Math.min(...sets[0])}`;
+  let a = 0, b = 0; for (const [x, y] of sets) { if (x > y) a++; else if (y > x) b++; }
+  return `${Math.max(a, b)}–${Math.min(a, b)}`;
+}
 export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null }
 export interface GridRound { round: number; created: boolean; blocks: GridBlock[]; schedule?: ProposedRoundSchedule }
 
@@ -174,13 +184,13 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
       const a: GridRow = { pos: posEntering(f.a, rd.round), id: f.a, name: f.aLabel, when, result: res(f.a) };
       const b: GridRow = { pos: f.state === "bye" ? null : posEntering(f.b, rd.round), id: f.b, name: f.state === "bye" ? "Bye" : f.bLabel, when, result: res(f.b) };
       const pair: [GridRow, GridRow] = b.pos != null && (a.pos == null || b.pos < a.pos) ? [b, a] : [a, b];
-      return { matchId: f.id, rows: pair, score: f.score, court: f.court, playBy: f.playBy };
+      return { matchId: f.id, rows: pair, score: gamesWonSummary(f.score), court: f.court, playBy: f.playBy };
     }).sort((x, y) => (x.rows[0].pos ?? 999) - (y.rows[0].pos ?? 999));
     return { round: rd.round, created: rd.created, blocks };
   });
 }
 
-/** Proposed base slots only. Legacy results never resolve future proposed occupants.
+/** Proposed slots. Saved completed results whose players match a template pair project names forward (read-only).
  * Saved Round 1 is copied factually, not forced into a template.
  * Occupant-aware bye/rematch adjustments require separately approved engine integration.
  */
@@ -192,10 +202,32 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
   const issues = validateTemplate(n, template);
   if (issues.length) return { rounds: [], issues };
   const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
+  // Read-only projection: occupants entering each round, derived from seeds + saved COMPLETED results whose two
+  // players match the template pair for that round (winner -> better/lower slot, loser -> worse). Unplayed = null (TBD).
+  const nameOf = new Map(model.rows.map((r) => [r.id, r.name]));
+  const seeds = [...model.rows].sort((x, y) => x.seed - y.seed).map((r) => r.id);
+  const findDone = (round: number, x: string, y: string) => model.rounds.find((r) => r.round === round)?.fixtures
+    .find((f) => f.state === "completed" && f.winner && ((f.a === x && f.b === y) || (f.a === y && f.b === x)));
+  const occ: Array<Array<string | null>> = [seeds];
+  for (const rd of template) {
+    const cur = occ[rd.round - 1], next: Array<string | null> = Array(n).fill(null);
+    for (const p of rd.pairs) {
+      const x = cur[p.a - 1], y = cur[p.b - 1];
+      const f = x && y ? findDone(rd.round, x, y) : undefined;
+      if (f) { next[p.a - 1] = f.winner; next[p.b - 1] = f.winner === x ? y : x; }
+    }
+    if (rd.bye != null) next[rd.bye - 1] = cur[rd.bye - 1];
+    occ.push(next);
+  }
   return { issues: [], rounds: template.map((rd): GridRound => {
     if (rd.round === 1 && savedFirst?.created) return savedFirst;
+    const into = occ[rd.round - 1];
     const schedule = proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
-    const pending = (pos: number | null, bye = false): GridRow => ({ pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" });
+    const pending = (pos: number | null, bye = false): GridRow => {
+      const id = !bye && pos != null ? into[pos - 1] ?? null : null;
+      return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
+        : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
+    };
     const blocks: GridBlock[] = rd.pairs.map((p) => {
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
       const slot = opts.slots?.[fixtureKey(rd.round, p.a, p.b)];

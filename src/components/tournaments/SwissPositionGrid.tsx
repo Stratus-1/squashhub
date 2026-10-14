@@ -76,7 +76,7 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
                 <tr key={i} data-path={on ? "on" : undefined} className={cn(r.result === "W" && "bg-success/10 font-semibold", r.result === "L" && "text-muted-foreground", on && "bg-primary/20 outline outline-2 -outline-offset-2 outline-primary")}>
                   <td className="px-2 py-1 tabular-nums">{r.pos ?? "—"}</td>
                   <td className="px-2 whitespace-nowrap">
-                    {r.id ? <button type="button" aria-pressed={on} className="text-left underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setSelected(on ? null : r.id)}>{r.name}</button> : <span className={cn(r.name === "TBD" && "text-muted-foreground")}>{r.name}</span>}
+                    {r.id ? <button type="button" aria-pressed={on} className="text-left underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setSelected(on ? null : r.id)}>{r.name}</button>{r.projected ? <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground" title="Projected from a confirmed result — proposed slot, not a saved fixture">projected</span> : null} : <span className={cn(r.name === "TBD" && "text-muted-foreground")}>{r.name}</span>}
                   </td>
                   {i === 0 ? (
                     <td rowSpan={2} className="px-2 py-1 align-middle">

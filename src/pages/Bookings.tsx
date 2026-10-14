@@ -408,9 +408,9 @@ export default function Bookings() {
       return ((data || []) as any[]).filter((m) => m.champ?.club_id === myClub!.id && fixtureScheduleState(m) === "unscheduled");
     },
   });
-  // While the club has reserved "Club Championships" court holds, ordinary
-  // members may only book into those slots — the rest of the grid is closed
-  // to them. Admins keep the full grid.
+  // While the club has reserved "Club Championships" court holds, everyone —
+  // members and club admins alike — may only book into those slots; the rest
+  // of the grid is closed. Only platform super admins keep the full grid.
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: champsHoldDates = [] } = useQuery({
     queryKey: ["bookings-champs-hold-dates", myClub?.id, todayStr],

@@ -9,8 +9,8 @@ import { swissTable, type SwissGame } from "@/lib/tournaments/swiss-standings";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
-  results_based: "Existing Swiss — each round paired from results so far",
-  positional: "Positional Swiss — winner takes the better slot (new format, not active)",
+  results_based: "Existing Swiss (score-based, live engine) — each round paired by current score. Not fixed-position Swiss.",
+  positional: "Fixed-position Swiss — winner takes the better slot (new format, not active yet)",
 };
 
 export interface ProgressionMatchInput {

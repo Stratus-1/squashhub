@@ -2220,7 +2220,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
           })}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Pairs by current score, avoids rematches. Slots created as TBD — use “Reschedule TBD” above to place courts and times.
+          Current live Swiss engine (score-based): pairs each round by current score and avoids rematches. This is not the new fixed-position Swiss. Slots created as TBD — use “Reschedule TBD” above to place courts and times.
         </p>
       </div>
     );

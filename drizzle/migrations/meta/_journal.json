@@ -995,6 +995,13 @@
       "when": 1791989610550,
       "tag": "0141_beta_feature_swiss_category_rounds",
       "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1792006937071,
+      "tag": "0142_swiss_positional_pilot_draws",
+      "breakpoints": true
     }
   ]
 }

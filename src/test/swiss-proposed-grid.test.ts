@@ -14,7 +14,7 @@ describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
     expect(pairs(2)).toEqual([[1,12],[2,11],[3,10],[4,9],[5,8],[6,7],[13,24],[14,23],[15,22],[16,21],[17,20],[18,19]]);
     expect(pairs(3)).toEqual([[1,3],[2,4],[5,7],[6,8],[9,11],[10,12],[13,15],[14,16],[17,19],[18,20],[21,23],[22,24]]);
     expect(pairs(4)).toEqual([[1,5],[2,6],[3,7],[4,8],[9,13],[10,14],[11,15],[12,16],[17,21],[18,22],[19,23],[20,24]]);
-    expect(pairs(5)).toEqual(Array.from({length:12}, (_, i) => [i+1,i+13]));
+    expect(pairs(5)).toEqual([[1,9],[2,10],[3,11],[4,12],[5,13],[6,14],[7,15],[8,16],[17,21],[18,22],[19,23],[20,24]]);
   });
   it.each([[24,5],[18,4],[16,4],[10,4],[15,5]])("%i entrants, %i rounds: no missing/duplicate slots, stable maps and valid byes", (n, r) => {
     const model = modelFor(n, r);

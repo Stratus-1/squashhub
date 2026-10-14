@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Approved Phase 1: Riverside admin-only read-only block Move/Swap preview; drag/mobile/keyboard, verified ownership, conflict reasons, cancellation and tests. Stop before writes/Phase 2.
 - [x] Riverside calendar move/swap — read-only model/permissions/availability audit and staged plan prepared; 45 existing focused tests passed; no app/data changes or publishing.
 - [ ] Riverside calendar move/swap implementation — BLOCKED: owner plan/phase approval, verified Android initialization recovery, proven reservation ownership and isolated write-testing without hardware/messages.
 - [x] Riverside calendar tap scores: scoped immediate score-event updates + 5s polling, explicit live score pending, A/B score order; real Ndlovu FINAL and paused current points verified desktop/mobile, no writes/publishing.

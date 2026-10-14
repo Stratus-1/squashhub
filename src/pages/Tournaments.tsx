@@ -68,6 +68,9 @@ import { AssignStageSlotsDialog } from "@/components/tournaments/AssignStageSlot
 import { involvesMe, selectMyFixtures } from "@/lib/tournaments/my-fixtures";
 import { OpponentContactButton } from "@/components/contact/OpponentContactButton";
 import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
+import { ClubFixturesPilot } from "@/components/tournaments/ClubFixturesPilot";
+import { fixtureState, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -427,6 +430,24 @@ export default function Tournaments() {
 
   // Person-scoped: every club row of the active profile's person (cross-club
   // entries, doubles partners). Upcoming keeps the page's live-first order.
+  // Riverside pilot: club-wide fixtures (Fixtures / Progression / Past labels), read-only.
+  const { data: fixturesBoardOn = false } = useClubBetaFeature(md ? undefined : clubId, "tournament_schedule_board");
+  const fixturesPilot = fixturesBoardOn && clubId === "11111111-1111-1111-1111-111111111111";
+  const pilotFixtures = useMemo<ClubFixture[]>(() => !fixturesPilot ? [] : (allMatches as any[])
+    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.stage ?? "group") !== "placeholder")
+    .map((m: any) => {
+      const champ = champById.get(m.champ_id);
+      const dbl = champ?.match_type === "doubles";
+      return {
+        id: m.id, source: "tournament", competitionId: m.champ_id, competition: champ?.name ?? "Tournament",
+        category: getGroupLabel(champ, Number(m.group_number ?? 1) || 1), round: m.round_number ?? null,
+        a: sideLabel(m.player_a, m.partner_a, m.placeholder_a, dbl, m), b: sideLabel(m.player_b, m.partner_b, m.placeholder_b, dbl, m),
+        date: m.scheduled_date ?? null, time: m.scheduled_time ?? null, court: m.court?.name ?? null, playBy: m.play_by ?? null,
+        timing: timingOf(m), state: fixtureState(m, isLive(m), isPaused(m)), score: m.score ?? null,
+        liveGames: m.status === "in_progress" ? gameScoreLine(m.game_scores) : null, mine: involvesMe(m, myIds),
+      };
+    }), [fixturesPilot, allMatches, champs, myIds, freshMatchIds]);
+
   const myUpcoming = upcomingMatches.filter((m: any) => involvesMe(m, myIds));
   const myAll = selectMyFixtures(
     (allMatches as any[]).filter((m: any) => activeChampIds.has(m.champ_id)),
@@ -1944,13 +1965,13 @@ export default function Tournaments() {
                 value="upcoming"
                 className="text-sm py-2.5 font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
               >
-                🗓️ Current{champs.length > 0 ? ` (${champs.length})` : ""}
+                🗓️ {fixturesPilot ? "Fixtures" : "Current"}{champs.length > 0 ? ` (${champs.length})` : ""}
               </TabsTrigger>
               <TabsTrigger
                 value="standings"
                 className="text-sm py-2.5 font-semibold border-2 border-amber-500/60 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500 data-[state=active]:shadow-md transition-all"
               >
-                🏆 Standings
+                🏆 {fixturesPilot ? "Progression" : "Standings"}
               </TabsTrigger>
               <TabsTrigger
                 value="past"
@@ -1961,6 +1982,7 @@ export default function Tournaments() {
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-4 space-y-4">
+              {fixturesPilot && <ClubFixturesPilot fixtures={pilotFixtures} canMine={myIds.length > 0} />}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">

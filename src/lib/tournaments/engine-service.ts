@@ -1,5 +1,5 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
-import { swissTable } from "./swiss-standings";
+import { swissTable, isPositionSwap } from "./swiss-standings";
 import { swissRoundGate } from "./swiss-round-gate";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
@@ -183,7 +183,7 @@ const swissWinner = (f: FixtureRow) => (f.a && !f.b ? f.a : f.winner ?? null);
  */
 export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureRow[]) {
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === st.id);
-  return swissTable(d.entrants.map((e) => e.id), mine.map((f) => ({ a: f.a, b: f.b, winner: swissWinner(f) })), st.tieBreaks as SwissTieBreak[] | undefined);
+  return swissTable(d.entrants.map((e) => e.id), mine.map((f) => ({ a: f.a, b: f.b, winner: swissWinner(f), round: f.round ?? null })), st.tieBreaks as SwissTieBreak[] | undefined);
 }
 
 /**
@@ -200,7 +200,7 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
   if (gate.state === "finished") throw new IntegrityError("swiss_done", gate.message);
   const table = swissStandings(d, st, rows);
   const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a!, f.b!)));
-  return swissFixtures(tid, d, st, gate.nextRound, table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
+  return swissFixtures(tid, d, st, gate.nextRound, table.map((t, i) => ({ id: t.id, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played);
 }
 
 /** Organiser-confirmed pairings must be real, distinct entrants of the right field/pool — never guessed or repaired. */

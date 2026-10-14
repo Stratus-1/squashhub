@@ -16,9 +16,10 @@ export const SWISS_TIE_BREAK_LABEL: Record<SwissTieBreak, string> = {
   buchholz: "Buchholz (opponents' points)",
   sonneborn_berger: "Sonneborn-Berger (beaten opponents' points)",
   seed: "Original seed",
+  position_swap: "Position swap (winner takes the higher spot)",
 };
 
-export interface SwissGame { a: string | null; b: string | null; winner: string | null }
+export interface SwissGame { a: string | null; b: string | null; winner: string | null; round?: number | null }
 export interface SwissRow {
   id: string;
   seed: number;
@@ -57,9 +58,36 @@ export function swissTable(seedOrder: string[], games: SwissGame[], tieBreaks?: 
     r.buchholz = (opps.get(r.id) ?? []).reduce((s, o) => s + pts(o), 0);
     r.sonnebornBerger = (beat.get(r.id) ?? []).reduce((s, o) => s + pts(o), 0);
   });
+  if (isPositionSwap(tieBreaks)) {
+    const out = positionSwapOrder(seedOrder, games).map((id) => rows.get(id)!).filter(Boolean);
+    out.forEach((r, i) => { r.position = i + 1; });
+    return out;
+  }
   const order = resolveSwissTieBreaks(tieBreaks);
   const val = (r: SwissRow, k: SwissTieBreak) => (k === "buchholz" ? r.buchholz : k === "sonneborn_berger" ? r.sonnebornBerger : -(seed.get(r.id) ?? 0));
   const out = [...rows.values()].sort((x, y) => y.points - x.points || order.reduce((acc, k) => acc || val(y, k) - val(x, k), 0));
   out.forEach((r, i) => { r.position = i + 1; });
   return out;
+}
+
+/** Stage opted into positional Swiss (winner takes the better position, loser the worse). */
+export const isPositionSwap = (tieBreaks?: readonly string[] | null) => !!tieBreaks?.includes("position_swap");
+
+/**
+ * Positional Swiss: start from seed order; for every decided game, round by round, the winner takes
+ * the better of the two positions and the loser the worse (only moves when the lower-placed player
+ * wins). Byes and undecided games move nobody.
+ */
+export function positionSwapOrder(seedOrder: string[], games: SwissGame[]): string[] {
+  const order = [...seedOrder];
+  const sorted = games.map((g, i) => ({ g, i })).sort((x, y) => (x.g.round ?? 1) - (y.g.round ?? 1) || x.i - y.i);
+  for (const { g } of sorted) {
+    if (!g.a || !g.b || !g.winner) continue;
+    const loser = g.winner === g.a ? g.b : g.winner === g.b ? g.a : null;
+    if (!loser) continue;
+    const wi = order.indexOf(g.winner), li = order.indexOf(loser);
+    if (wi < 0 || li < 0 || wi < li) continue;
+    order[li] = g.winner; order[wi] = loser;
+  }
+  return order;
 }

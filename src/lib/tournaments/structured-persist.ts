@@ -562,9 +562,9 @@ export function rankSourcePools(d: SpecDivision, src: PlannedStage, matches: Arr
     const games = rows.map((x) => {
       const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
       const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b;
-      return { a: a || null, b: b || null, winner };
+      return { a: a || null, b: b || null, winner, round: Number(x.round_number) || null };
     });
-    const table = swissTable(members, games, (src as any).swissTieBreaks ?? null);
+    const table = swissTable(members, games, (src as any).swissTieBreaks ?? (src as any).tieBreaks ?? null);
     const order = table.map((r) => r.id);
     const stats = new Map(order.map((id) => [id, { played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, gamesFor: 0, gamesAgainst: 0, setsFor: 0, setsAgainst: 0 } as any]));
     return [{ index: 0, label: "Swiss standings", members, result: { order, stats, ties: [], manual: [] }, material: [] }];

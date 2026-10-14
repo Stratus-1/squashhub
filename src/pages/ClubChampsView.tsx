@@ -816,6 +816,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
           a: byMember.get(m.player_a_member_id) ?? null,
           b: byMember.get(m.player_b_member_id) ?? null,
           winner: m.winner_member_id ? byMember.get(m.winner_member_id) ?? null : null,
+          round: Number(m.round_number) || null,
         })).filter((g) => g.a && g.b),
         ...groupByes.filter((m: any) => isPoolStage(m)).map((m: any) => ({ a: byMember.get(m.bye_member_id || m.player_a_member_id) ?? null, b: null, winner: null })).filter((g) => g.a),
       ];

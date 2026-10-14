@@ -4,31 +4,36 @@ import { Button } from "@/components/ui/button";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { SwissPositionGrid } from "@/components/tournaments/SwissPositionGrid";
 import type { FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
-import { buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type StageScheduleConfig, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
+import { cn } from "@/lib/utils";
+import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type StageScheduleConfig, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
 
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
 export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots }: { slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
-  const [mode, setMode] = useState<"grid" | "classic">("grid");
-  const [showStandings, setShowStandings] = useState(false);
+  const [mode, setMode] = useState<"grid" | "classic" | "calendar">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
   const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots });
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
+      <div role="tablist" aria-label="Swiss view" className="grid grid-cols-3 border border-border">
+        {([["grid", positionalPreview ? "Positional Preview" : "Grid"], ["classic", "Classic View"], ["calendar", "Calendar View"]] as const).map(([k, label]) => (
+          <button key={k} type="button" role="tab" id={`swiss-tab-${k}`} aria-selected={mode === k} aria-controls="swiss-tabpanel" onClick={() => setMode(k)}
+            className={cn("px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm",
+              mode === k ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground")}>{label}</button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">{SWISS_FORMAT_LABEL[model.format]}</span>
-        {classicStandings && <Button size="sm" variant="outline" aria-pressed={showStandings} onClick={() => setShowStandings((v) => !v)}>{showStandings ? "Hide classic standings" : "Show classic standings"}</Button>}
-        <div className="ml-auto flex gap-1" role="group" aria-label="Swiss view">
-          <Button size="sm" className="h-7" variant={mode === "grid" ? "default" : "outline"} aria-pressed={mode === "grid"} onClick={() => setMode("grid")}>{positionalPreview ? "Positional preview" : "Grid"}</Button>
-          <Button size="sm" className="h-7" variant={mode === "classic" ? "default" : "outline"} aria-pressed={mode === "classic"} onClick={() => setMode("classic")}>Classic</Button>
-        </div>
       </div>
-      {classicStandings && (showStandings || unavailable) ? classicStandings : null}
-      {mode === "grid" ? (
+      <div id="swiss-tabpanel" role="tabpanel" aria-labelledby={`swiss-tab-${mode}`} className="space-y-3">
+      {mode === "grid" && unavailable && classicStandings ? classicStandings : null}
+      {mode === "classic" && classicStandings ? classicStandings : null}
+      {mode === "calendar" ? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, slots)} title={title} /> : null}
+      {mode === "calendar" ? null : mode === "grid" ? (
         <>
           {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420}><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
@@ -106,6 +111,47 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
           </TournamentInteractiveViewer>
         </>
       )}
+      </div>
     </div>
   );
+}
+
+const KIND_LABEL: Record<SwissCalendarEntry["kind"], string> = { confirmed: "Saved fixture", proposed: "Proposed slot · not booked", play_by: "Play by", unscheduled: "Not scheduled" };
+/** Read-only calendar: saved fixtures vs proposed positional slots, grouped by day. Rescheduling (drag) is a later, separately approved phase. */
+export function SwissCalendarView({ entries, title }: { entries: SwissCalendarEntry[]; title: string }) {
+  const days = new Map<string, SwissCalendarEntry[]>();
+  for (const e of entries) { const k = e.kind === "unscheduled" ? "Not scheduled" : e.date ?? "Not scheduled"; if (!days.has(k)) days.set(k, []); days.get(k)!.push(e); }
+  return (
+    <div className="space-y-2 text-xs" data-testid="swiss-calendar">
+      <p className="text-muted-foreground">Read-only. Solid rows are saved live fixtures; dashed rows are proposed positional slots (not bookings, players TBD). Nothing can be moved here yet.</p>
+      <TournamentInteractiveViewer title={`${title} — calendar`} inlineHeight={420} defaultFit="none">
+        <div className="space-y-3 bg-background p-3 text-foreground">
+          {[...days].map(([day, es]) => (
+            <section key={day} className="rounded-md border border-border">
+              <h4 className="bg-muted px-2.5 py-1.5 font-semibold" data-testid="swiss-calendar-day">{day === "Not scheduled" ? day : fmtCalDay(day)}</h4>
+              <table className="w-full border-collapse">
+                <thead><tr className="text-left text-[11px] text-muted-foreground"><th className="px-2 py-1">Time</th><th className="px-2">Court</th><th className="px-2">Round</th><th className="px-2">Match</th><th className="px-2">Type</th></tr></thead>
+                <tbody>{es.map((e, i) => (
+                  <tr key={i} data-kind={e.kind} className={cn("border-t border-border", e.kind === "proposed" && "border-dashed text-muted-foreground")}>
+                    <td className="px-2 py-1 tabular-nums font-medium text-foreground">{e.time?.slice(0, 5) ?? "—"}</td>
+                    <td className="px-2">{e.court ?? "—"}</td>
+                    <td className="px-2">R{e.round}</td>
+                    <td className="px-2 whitespace-nowrap">{e.label}</td>
+                    <td className="px-2"><span className={cn("rounded px-1.5 py-0.5 text-[11px]", e.kind === "confirmed" && "bg-success/15 text-foreground", e.kind === "proposed" && "border border-dashed border-border", e.kind === "play_by" && "border border-warning/60 bg-warning/10 text-foreground")}>{KIND_LABEL[e.kind]}</span></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </section>
+          ))}
+          {!entries.length && <p className="text-muted-foreground">No matches to show yet.</p>}
+        </div>
+      </TournamentInteractiveViewer>
+    </div>
+  );
+}
+function fmtCalDay(d: string) {
+  const [y, m, da] = d.split("-").map(Number);
+  if (!y) return d;
+  const dt = new Date(Date.UTC(y, m - 1, da));
+  return `${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dt.getUTCDay()]} ${da} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1]} ${y}`;
 }

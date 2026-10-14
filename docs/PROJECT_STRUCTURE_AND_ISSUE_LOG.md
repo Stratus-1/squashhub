@@ -2988,3 +2988,5 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Symptom: Round 2+ showed only "Round window" per match.
 - Finding: Riverside stage schedules save only roundDates; daily window (18:00–20:00), 30-min match length and courts live on `tournaments`; the score-based engine creates no Round 2+ rows, so nothing carried a time/court.
 - Fix: `timeSlots`/`slotOnlyDraw` + `scheduleDraws` lay out PROPOSED per-match slots tournament-wide in the Riverside preview; pilot page gains per-match edit, clash checks and confirmed-only court reservations (`sbs:pswiss-<drawId>:` external ids).
+
+- 2026-10-14 Swiss positional preview (Riverside pilot): proposed rounds stayed TBD because preview never projected saved results by design. Added read-only projection (winner→lower slot, loser→higher, only from completed saved matches whose players match the template pair) and games-won summary (3–1) in grid Result column. No engine/data changes.

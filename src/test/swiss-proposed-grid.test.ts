@@ -70,3 +70,34 @@ describe("proposed round schedule labels", () => {
     expect(rounds[1].blocks.every((b) => b.rows.every((r) => r.name === "TBD"))).toBe(true);
   });
 });
+
+describe("Read-only projection from confirmed results (Mens A first result)", () => {
+  const build = (winner: "p1" | "p24" | null) => {
+    const m = buildSwissProgression({
+      seedOrder: Array.from({ length: 24 }, (_, i) => `p${i + 1}`), names: { p1: "Willem Pretorius", p24: "Ethan Tshabalala" }, totalRounds: 5,
+      matches: Array.from({ length: 12 }, (_, i) => ({ id: `m${i}`, round: 1, a: `p${i + 1}`, b: `p${24 - i}`,
+        status: i === 0 && winner ? "completed" : "scheduled", winner: i === 0 ? winner : null, score: i === 0 && winner ? "3-11, 11-5, 11-4, 11-5" : null })),
+    });
+    return { m, snap: JSON.stringify(m), g: buildProposedSwissGrid(m) };
+  };
+  const row = (g: any, round: number, pos: number) => g.rounds[round - 1].blocks.flatMap((b: any) => b.rows).find((r: any) => r.pos === pos);
+  it("1 v 24 decided: winner fills R2 slot 1, loser slot 24, opponents TBD, nothing written", () => {
+    const { m, snap, g } = build("p1");
+    expect(row(g, 2, 1)).toMatchObject({ id: "p1", name: "Willem Pretorius", projected: true });
+    expect(row(g, 2, 24)).toMatchObject({ id: "p24", name: "Ethan Tshabalala", projected: true });
+    expect(row(g, 2, 12)).toMatchObject({ id: null, name: "TBD" });
+    expect(row(g, 2, 13)).toMatchObject({ id: null, name: "TBD" });
+    expect(g.rounds[2].blocks.flatMap((b: any) => b.rows).every((r: any) => r.id === null)).toBe(true);
+    expect(JSON.stringify(m)).toBe(snap);
+  });
+  it("upset: loser seed 1 drops to slot 24", () => {
+    const { g } = build("p24");
+    expect(row(g, 2, 1).id).toBe("p24"); expect(row(g, 2, 24).id).toBe("p1");
+  });
+  it("pending match projects nothing", () => {
+    expect(build(null).g.rounds[1].blocks.flatMap((b: any) => b.rows).every((r: any) => r.id === null)).toBe(true);
+  });
+  it("Result column shows games won only (3–1), never per-game points", () => {
+    expect(build("p1").g.rounds[0].blocks.find((b: any) => b.matchId === "m0")!.score).toBe("3–1");
+  });
+});

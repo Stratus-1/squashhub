@@ -2005,19 +2005,19 @@ export default function Tournaments() {
             <TabsList className="grid w-full grid-cols-3 h-auto gap-1 bg-muted p-1">
               <TabsTrigger
                 value="upcoming"
-                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"}`} data-cls=" font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"} py-2.5 font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all`}
               >
                 🗓️ {fixturesPilot ? "Upcoming Fixtures" : `Current${champs.length > 0 ? ` (${champs.length})` : ""}`}
               </TabsTrigger>
               <TabsTrigger
                 value="standings"
-                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"}`} data-cls=" font-semibold border-2 border-amber-500/60 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500 data-[state=active]:shadow-md transition-all"
+                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"} py-2.5 font-semibold border-2 border-amber-500/60 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500 data-[state=active]:shadow-md transition-all`}
               >
                 🏆 {fixturesPilot ? "Progression & Log" : "Standings"}
               </TabsTrigger>
               <TabsTrigger
                 value="past"
-                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"}`} data-cls=" font-semibold border-2 border-slate-500/60 data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:border-slate-700 data-[state=active]:shadow-md transition-all"
+                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"} py-2.5 font-semibold border-2 border-slate-500/60 data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:border-slate-700 data-[state=active]:shadow-md transition-all`}
               >
                 ✓ {fixturesPilot ? "Past Fixtures" : `Past${pastChamps.length > 0 ? ` (${pastChamps.length})` : ""}`}
               </TabsTrigger>

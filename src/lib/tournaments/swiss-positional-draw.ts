@@ -186,7 +186,7 @@ export function scheduleDraws(draws: CategoryDraw[], opts: ScheduleOptions): Rec
       ready.set(rk(d.categoryKey, f.round + 1, f.slotB), free);
       break;
     }
-    out[key] = placed ?? { kind: "unscheduled", reason: opts.courts.length && times.length ? "Not scheduled — no free court/time with rest" : "Not scheduled — no courts or times" };
+    out[key] = placed ?? { kind: "unscheduled", reason: opts.courts.length && times.length ? `Shortage — no free court/time on ${date}; organiser must add courts or start times` : `Shortage — no courts or start times set for ${date}` };
     carryBye();
   }
   return out;
@@ -231,3 +231,30 @@ export function slotOnlyDraw(categoryKey: string, entrants: number, rounds: numb
 
 export const fmtFixtureSchedule = (s?: FixtureSchedule | null) =>
   !s ? "Not scheduled" : s.kind === "planned" ? `${s.date} ${s.time} · ${s.courtName}` : s.kind === "play_by" ? `Play by ${s.date}` : s.reason;
+
+/** Fixed-date capacity per date: matches needing a slot vs court×time slots available (minus existing bookings). */
+export function capacityReport(draws: CategoryDraw[], opts: ScheduleOptions): Array<{ date: string; needed: number; available: number; short: number }> {
+  const need = new Map<string, number>();
+  for (const d of draws) for (const f of d.fixtures) {
+    const date = opts.roundDates[d.categoryKey]?.[f.round - 1];
+    if (date) need.set(date, (need.get(date) ?? 0) + 1);
+  }
+  const slotsPerDay = new Set(opts.times).size * opts.courts.length;
+  return [...need].sort(([a], [b]) => a.localeCompare(b)).map(([date, needed]) => {
+    const taken = (opts.busy ?? []).filter((b) => b.date === date && opts.times.includes(b.time) && opts.courts.some((c) => String(c.id) === String(b.courtId))).length;
+    const available = Math.max(0, slotsPerDay - taken);
+    return { date, needed, available, short: Math.max(0, needed - available) };
+  });
+}
+
+/** Parse organiser round entries: "2026-11-04" = fixed date; "by:2026-11-25" = play-by deadline; "" = not set. Never guesses. */
+export function parseRoundEntries(text: string): { dates: Array<string | null>; playBy: Array<string | null> } {
+  const parts = text.split(",").map((x) => x.trim());
+  const dates: Array<string | null> = [], playBy: Array<string | null> = [];
+  for (const p of parts) {
+    const m = /^by:\s*(\d{4}-\d{2}-\d{2})$/i.exec(p);
+    if (m) { dates.push(null); playBy.push(m[1]); }
+    else { dates.push(/^\d{4}-\d{2}-\d{2}$/.test(p) ? p : null); playBy.push(null); }
+  }
+  return { dates, playBy };
+}

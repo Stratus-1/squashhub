@@ -20,7 +20,7 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
         <table key={rd.round} className="border-collapse min-w-[300px] self-start">
           <thead>
             <tr className="bg-muted text-left">
-              <th colSpan={4} className="px-2 py-1 font-semibold">Round {rd.round}{proposedRounds ? <div className="text-[11px] font-normal">{rd.round === 1 && rd.created ? "Saved live matches · factual" : "Proposed slots · not live fixtures"}</div> : null}</th>
+              <th colSpan={4} className="px-2 py-1 font-semibold">Round {rd.round}{proposedRounds ? <div className="text-[11px] font-normal">{rd.round === 1 && rd.created ? "Saved live matches · factual" : "Proposed slots · not live fixtures"}{rd.schedule ? <div className="text-[11px] font-normal" data-testid={`swiss-round-schedule-${rd.round}`}>{rd.schedule.label}{rd.schedule.kind === "window" ? " · round-level plan, no court booked per match" : ""}</div> : null}</div> : null}</th>
             </tr>
             <tr className="text-left text-muted-foreground">
               <th className="px-2 w-8">Pos</th><th className="px-2">Player</th><th className="px-2">Day &amp; time</th><th className="px-2">Result</th>
@@ -34,7 +34,7 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
                   <td className="px-2 whitespace-nowrap">{r.name}</td>
                   {i === 0 ? (
                     <td rowSpan={2} className="px-2 whitespace-nowrap align-middle text-muted-foreground">
-                      {r.when ?? "TBD"}{b.court ? <div>{b.court}</div> : null}
+                      {r.when ?? (rd.created ? "Not scheduled" : "TBD")}{b.court ? <div>{b.court}</div> : null}
                     </td>
                   ) : null}
                   <td className="px-2 whitespace-nowrap">{r.result}{i === 0 && b.score ? <span className="ml-1 text-muted-foreground">{b.score}</span> : null}</td>

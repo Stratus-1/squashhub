@@ -92,6 +92,9 @@ import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
+import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
+import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
@@ -167,6 +170,9 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   });
   const arch = inlineStandings?.arch ?? fetchedArch;
   const isStructured = arch?.builder_architecture === "structured";
+  // Riverside pilot: read-only Swiss progression view needs BOTH its own switch and the viewer switch.
+  const { data: pilotViewerOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_viewer_shell");
+  const { data: pilotSwissOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_swiss_progression_view");
   // Saved per-category scoring lives on the tournaments row; the club_champs
   // row doesn't carry it, so merge (tournament values win) for scoring labels.
   const champForScoring = useMemo(() => ({ ...(champ as any), ...(arch as any) }), [champ, arch]);
@@ -1186,7 +1192,26 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
       // while any of their matches are still unplayed; only once every match
       // is decided does the table become a historical (untinted) final.
       const divisionDone = fixturesComplete((matches as any[]).filter((m: any) => m.group_number === gn));
-      return renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn) && divisionDone, statuses });
+      const classic = renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn) && divisionDone, statuses });
+      const swissSt = swissStageFor(gn);
+      if (!swissSt || !pilotViewerOn || !pilotSwissOn || !canManage || isDoublesLeague(gn)) return classic;
+      const gEntries = (entries as any[]).filter((e: any) => e.group_number === gn).sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
+      const names: Record<string, string> = {};
+      rows.forEach((r: any) => { names[r.club_member_id] = r.name; });
+      const model = buildSwissProgression({
+        seedOrder: [...new Set([...gEntries.map((e: any) => e.club_member_id), ...rows.map((r: any) => r.club_member_id)])].filter(Boolean),
+        names,
+        totalRounds: swissSt.rounds,
+        tieBreaks: swissSt.tieBreaks,
+        matches: (matches as any[]).filter((m: any) => m.group_number === gn && (m.round_number ?? 0) > 0).map((m: any) => ({
+          id: m.id, round: Number(m.round_number),
+          a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null,
+          winner: m.winner_member_id, isBye: !!m.is_bye, status: m.status, score: m.score,
+          date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by,
+          placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
+        })),
+      });
+      return <>{classic}<div className="mt-4"><SwissProgressionPilotView title={`Group ${gn}`} model={model} /></div></>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

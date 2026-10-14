@@ -94,6 +94,7 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
+import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";

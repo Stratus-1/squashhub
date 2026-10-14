@@ -1998,7 +1998,6 @@ export default function Tournaments() {
                     <SelectContent>{pastChamps.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 )}
-                {pilotChampId && <Button variant="ghost" size="sm" className="shrink-0 gap-1" onClick={() => navigate(`/club-champs/${pilotChampId}`)}>Details <ChevronRight className="h-3 w-3" /></Button>}
               </div>
             </div>
           )}

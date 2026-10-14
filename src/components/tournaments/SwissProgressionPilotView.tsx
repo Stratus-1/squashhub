@@ -11,7 +11,7 @@ import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, mo
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots }: { slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
+export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, hideCalendar = false }: { hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
   const [mode, setMode] = useState<"grid" | "classic" | "calendar">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
@@ -20,7 +20,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
       <div role="tablist" aria-label="Swiss view" className="grid grid-cols-3 border border-border">
-        {([["grid", positionalPreview ? "Positional Preview" : "Grid"], ["classic", "Classic View"], ["calendar", "Calendar View"]] as const).map(([k, label]) => (
+        {([["grid", positionalPreview ? "Positional Preview" : "Grid"], ["classic", "Classic View"], ...(hideCalendar ? [] : [["calendar", "Calendar View"]])] as [string, string][]).map(([k, label]) => (
           <button key={k} type="button" role="tab" id={`swiss-tab-${k}`} aria-selected={mode === k} aria-controls="swiss-tabpanel" onClick={() => setMode(k)}
             className={cn("px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm",
               mode === k ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground")}>{label}</button>

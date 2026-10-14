@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
+import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 
@@ -10,8 +11,7 @@ describe("Riverside optional classic standings", () => {
   it("hides colored table by default; offers reversible show/hide and factual positions/results", () => {
     render(<SwissProgressionPilotView title="Test" model={makeModel()} positionalPreview classicStandings={classic} />);
     expect(screen.queryByTestId("classic-standings")).toBeNull();
-    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("W v Ann");
-    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("live score-based standings");
+    expect(screen.queryByTestId("swiss-current-positions")).toBeNull(); // moved to Results tab
     fireEvent.click(screen.getByRole("button",{name:"Show classic standings"}));
     expect(screen.getByTestId("classic-standings")).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:"Hide classic standings"}));
@@ -32,5 +32,10 @@ describe("Riverside optional classic standings", () => {
     render(<SwissPilotBoundary fallback={classic}><Broken /></SwissPilotBoundary>);
     expect(screen.getByTestId("classic-standings")).toBeTruthy();
     error.mockRestore();
+  });
+  it("Results-tab table shows factual live score-based positions", () => {
+    render(<SwissCurrentPositionsTable model={makeModel()} />);
+    const t = screen.getByTestId("swiss-current-positions").textContent ?? "";
+    expect(t).toContain("W v Ann"); expect(t).toContain("live score-based standings");
   });
 });

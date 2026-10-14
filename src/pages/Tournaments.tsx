@@ -594,7 +594,7 @@ export default function Tournaments() {
       if (ga !== gb) return ga - gb;
       return (a.pool ?? 999) - (b.pool ?? 999);
     });
-  }, [upcomingMatches, champById, poolByMatchId]);
+  }, [scopedUpcoming, champById, poolByMatchId]);
 
   // Give every league/pool bucket its own distinct colour (sorted order), so
   // Pool A and Pool B of the same league never look alike.

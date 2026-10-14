@@ -27,7 +27,7 @@
 - Bookings affect availability, balances, visitors, reflow, lights, access and notifications. Device/integration boundaries (Shelly, routers, GoBook) need timeouts, retries, idempotency, audit logs; never expose device credentials to the browser. Shelly devices are managed only from the `IoT / Shelly` tile (`docs/IOT_DEVICE_OWNERSHIP.md`).
 - Tournament court-slot ownership comes from the structured stage rule or explicit legacy club mode without a linked player booking, never from saved date/time alone; why: player-booked fixtures must retain rescheduling and their play-by deadline.
 - Payment callbacks (Stitch, Yoco) retry/arrive out of order: handlers idempotent; server verification is authoritative; billing/ledger changes must be auditable.
-- Preserve web, PWA, Android and iOS behaviour; deep links, OAuth, push and payment returns need platform testing; native config/signing is sensitive.
+- Preserve web/PWA/Android/iOS; test deep links, OAuth, push, payment returns per platform; native signing is sensitive.
 - Integrations: identify authority and credential owner; preserve external IDs/idempotency keys; document env names only; never log secrets/PII.
 - Supabase → GCP migration is incremental: one writable authority per domain per phase, authenticated service APIs, outbox/replayable workers; don't move live marking or booking without measuring realtime needs.
 
@@ -42,5 +42,5 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 - Court grids share P/peak logic; why: one rule set.
 
-- Menu order/hide prefs (`user_menu_preferences`) apply only after permission filtering; why: never grant access.
+- Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.

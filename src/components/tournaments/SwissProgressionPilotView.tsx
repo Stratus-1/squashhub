@@ -3,17 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { SwissPositionGrid } from "@/components/tournaments/SwissPositionGrid";
+import type { FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type StageScheduleConfig, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
 
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName }: { title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
+export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots }: { slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
   const [mode, setMode] = useState<"grid" | "classic">("grid");
   const [showStandings, setShowStandings] = useState(false);
   const roundNums = model.rounds.map((r) => r.round);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
-  const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName });
+  const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots });
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
@@ -32,7 +33,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
           {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420}><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
-            <p className="text-muted-foreground">Round 1 shows saved matches only. Later columns are proposed template slots, not the existing live score-based draw. Players were not moved into fixed slots; future names and results remain TBD. Dates shown for later rounds are the round-level plan from setup (round window or play-by), not per-match court bookings.</p>
+            <p className="text-muted-foreground">Round 1 shows saved matches only. Later columns are proposed template slots, not the existing live score-based draw. Players were not moved into fixed slots; future names and results remain TBD. Later rounds show a PROPOSED court and start time per match, laid out from the tournament's daily window, match length and courts across all categories; proposals only, not court bookings.</p>
             <p className="text-muted-foreground">Base template only: bye fairness and rematch adjustments are not applied. No pairing engine conversion has been made.</p>
           </div>
           {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (

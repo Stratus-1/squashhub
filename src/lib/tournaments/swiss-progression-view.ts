@@ -6,6 +6,7 @@
  * The new positional format (Phase 1 templates) is only labelled here; it is not active anywhere.
  */
 import { swissTable, type SwissGame } from "@/lib/tournaments/swiss-standings";
+import { fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { categoryTemplate, planCategory, validateTemplate } from "@/lib/tournaments/swiss-positional";
 
 export type SwissFormatKind = "results_based" | "positional";
@@ -183,7 +184,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * Occupant-aware bye/rematch adjustments require separately approved engine integration.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string } = {}): { rounds: GridRound[]; issues: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule> } = {}): { rounds: GridRound[]; issues: string[] } {
   const n = model.rows.length;
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
@@ -195,9 +196,15 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
     if (rd.round === 1 && savedFirst?.created) return savedFirst;
     const schedule = proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos: number | null, bye = false): GridRow => ({ pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" });
-    const blocks: GridBlock[] = rd.pairs.map((p) => ({
-      matchId: `proposed-${rd.round}-${p.a}-${p.b}`, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null,
-    }));
+    const blocks: GridBlock[] = rd.pairs.map((p) => {
+      const id = `proposed-${rd.round}-${p.a}-${p.b}`;
+      const slot = opts.slots?.[fixtureKey(rd.round, p.a, p.b)];
+      const withWhen = (when: string) => [{ ...pending(p.a), when }, { ...pending(p.b), when }] as [GridRow, GridRow];
+      if (slot?.kind === "planned") return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
+      if (slot?.kind === "play_by") return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };
+      if (slot?.kind === "unscheduled" && schedule.kind === "window") return { matchId: id, rows: withWhen(`${schedule.label} · no free court/time in window`), score: null, court: null, playBy: null };
+      return { matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null };
+    });
     if (rd.bye != null) blocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
     return { round: rd.round, created: false, blocks, schedule };
   }) };

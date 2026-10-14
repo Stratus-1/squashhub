@@ -566,12 +566,12 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
    */
   // Per-render: Swiss standings heading status per group, filled by the standings calculation.
   const swissStatusByGroup = new Map<number, SwissStandingsStatus>();
-  const swissStageFor = (gn: number): { tieBreaks?: string[]; rounds: number | null } | null => {
+  const swissStageFor = (gn: number): { tieBreaks?: string[]; rounds: number | null; schedule?: any } | null => {
     if (isStructured) {
       const spec = arch?.builder_spec;
       const d = (spec?.divisions ?? []).find((x: any) => divisionGroup(spec, x) === gn);
       const st = [...(d?.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
-      return st?.kind === "swiss" ? { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null } : null;
+      return st?.kind === "swiss" ? { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null } : null;
     }
     if (!isSwissForLeague(gn)) return null;
     const r = Number(((champ as any)?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
@@ -1213,7 +1213,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         })),
       });
       const riversidePreview = champ.club_id === "11111111-1111-1111-1111-111111111111";
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

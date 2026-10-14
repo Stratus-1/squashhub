@@ -43,3 +43,30 @@ describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
     expect(buildProposedSwissGrid(modelFor(5,3)).issues.length).toBeGreaterThan(0);
   });
 });
+import { proposedRoundSchedule as prs, buildProposedSwissGrid as bpg, buildSwissProgression as bsp } from "@/lib/tournaments/swiss-progression-view";
+describe("proposed round schedule labels", () => {
+  const fixed = { rule: "fixed", date: "2026-11-04", roundDates: ["2026-11-04", "2026-11-11", "2026-11-18", "2026-11-25"] };
+  it("fixed round dates become a round window, never a per-match booking", () => {
+    expect(prs(fixed, 2)).toEqual({ kind: "window", label: expect.stringContaining("Round window: Wed 11 Nov") });
+    expect(prs({ ...fixed, timeFrom: "18:00", timeTo: "21:00", courtIds: [20] }, 3, (c) => `C${c}`).label).toContain("18:00–21:00 · C20");
+  });
+  it("a round beyond the configured dates is Not scheduled (Mens A round 5)", () => {
+    expect(prs(fixed, 5)).toEqual({ kind: "none", label: "Not scheduled" });
+    expect(prs(null, 2).label).toBe("Not scheduled");
+  });
+  it("play-by stages show Play by", () => {
+    expect(prs({ rule: "play_by", roundDates: [null, "2026-11-12"] }, 2).label).toMatch(/^Play by Thu 12 Nov/);
+    expect(prs({ rule: "play_by", deadline: "2026-11-30" }, 3).label).toMatch(/^Play by/);
+  });
+  it("grid rows carry the round label; saved round 1 stays factual", () => {
+    const ids = Array.from({ length: 24 }, (_, i) => `p${i + 1}`);
+    const model = bsp({ seedOrder: ids, names: Object.fromEntries(ids.map((i) => [i, i])), totalRounds: 5,
+      matches: Array.from({ length: 12 }, (_, k) => ({ id: `m${k}`, round: 1, a: ids[k], b: ids[23 - k], status: "scheduled", date: "2026-10-14", time: "15:00:00", court: "Court 1" })) } as any);
+    const { rounds } = bpg(model, { schedule: fixed });
+    expect(rounds[0].blocks[0].rows[0].when).toBe("2026-10-14 15:00");
+    expect(rounds[0].schedule).toBeUndefined();
+    expect(rounds[1].blocks[0].rows[0].when).toContain("Round window");
+    expect(rounds[4].blocks.every((b) => b.rows[0].when === "Not scheduled")).toBe(true);
+    expect(rounds[1].blocks.every((b) => b.rows.every((r) => r.name === "TBD"))).toBe(true);
+  });
+});

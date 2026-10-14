@@ -60,7 +60,7 @@ function EventBlock({ e, top, height, left, width, compact, onOpen, preview }: {
   const st = e.state ?? "upcoming";
   const badge = e.kind === "proposed" ? "Proposed" : STATE_TEXT[st];
   return (
-    <Button variant="outline" onClick={() => onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st}
+    <Button variant="outline" onClick={() => e.id.startsWith("allocation:") && preview?.canDrop(e.id) ? preview.drop(e.id) : onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st}
       onDragOver={(event) => { if (preview?.canDrop(e.id)) event.preventDefault(); }} onDrop={(event) => { if (preview?.canDrop(e.id)) { event.preventDefault(); preview.drop(e.id); } }}
       aria-label={`${e.time?.slice(0, 5) ?? ""} ${e.court ?? ""} ${e.title} ${badge}${e.score ? ` ${e.score}` : ""}${e.currentGame ? ` Game ${e.currentGame.number} ${e.currentGame.a}–${e.currentGame.b}` : ""}`}
       className={cn("absolute block h-auto overflow-y-auto whitespace-normal rounded-md px-1.5 py-1 text-left text-[11px] leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

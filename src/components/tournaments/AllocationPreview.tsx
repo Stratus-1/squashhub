@@ -11,6 +11,11 @@ export function AllocationPreview({ context, events }: { context: AllocationCont
   const selected = context.matches.find((m) => m.id === selectedId);
   const matches = context.matches.filter((m) => m.champ_id === context.tournamentId);
   const blocks = context.blocks;
+  const targets = selected && selected.duration ? blocks.flatMap((block) => {
+    const duration = selected.duration ?? 0, start = minutesOf(block.start_time), end = minutesOf(block.end_time);
+    return Array.from({ length: Math.min(96, Math.max(0, Math.floor((end - start) / duration))) }, (_, i) => ({ id: `allocation:${block.id}:${i}`, date: block.date, time: timeOf(start + i * duration), courtId: block.court_id }));
+  }).filter((slot) => !validateAllocation(context, selected, slot)) : [];
+  const calendarEvents: CalEvent[] | undefined = events ? [...events, ...targets.map((slot) => ({ id: slot.id, date: slot.date, time: slot.time, court: events.find((e) => matches.find((m) => m.id === e.id)?.court_id === slot.courtId)?.court ?? `Court ${slot.courtId}`, title: "Free allocation · preview", subtitle: "Verified block capacity", kind: "proposed" as const, durationMin: selected?.duration ?? undefined }))] : undefined;
   const choose = (m: AllocationMatch) => { if (!fixtureEligibility(context, m)) { select(m.id); setReview(null); } };
   const drop = (slot: AllocationSlot, target?: AllocationMatch) => {
     if (!selected) return;
@@ -20,7 +25,7 @@ export function AllocationPreview({ context, events }: { context: AllocationCont
   };
   const label = (m: AllocationMatch) => m.title ?? `${m.category ?? "Fixture"} · ${m.scheduled_date} ${m.scheduled_time?.slice(0, 5)} C${m.court_id}`;
   return <section className="space-y-3 border-t border-border pt-3" data-testid="allocation-preview">
-    {events && <FixtureCalendar events={events} preview={{ eligible: (id) => { const m = matches.find((x) => x.id === id); return !!m && !fixtureEligibility(context, m); }, start: (id) => { const m = matches.find((x) => x.id === id); if (m) choose(m); }, canDrop: (id) => { const m = matches.find((x) => x.id === id); return !!selected && !!m && !previewSwap(context, selected, m); }, drop: (id) => { const m = matches.find((x) => x.id === id); if (m) drop({ date: m.scheduled_date ?? "", time: m.scheduled_time ?? "", courtId: m.court_id ?? 0 }, m); } }} />}
+    {calendarEvents && <FixtureCalendar events={calendarEvents} preview={{ eligible: (id) => { const m = matches.find((x) => x.id === id); return !!m && !fixtureEligibility(context, m); }, start: (id) => { const m = matches.find((x) => x.id === id); if (m) choose(m); }, canDrop: (id) => { if (targets.some((t) => t.id === id)) return true; const m = matches.find((x) => x.id === id); return !!selected && !!m && !previewSwap(context, selected, m); }, drop: (id) => { const target = targets.find((t) => t.id === id); if (target) { drop(target); return; } const m = matches.find((x) => x.id === id); if (m) drop({ date: m.scheduled_date ?? "", time: m.scheduled_time ?? "", courtId: m.court_id ?? 0 }, m); } }} />}
     <h3 className="text-sm font-semibold">Move / Swap preview</h3>
     <p className="text-xs font-medium text-warning" role="status">Preview only — no changes saved</p>
     {!context.complete && <p className="text-xs text-destructive">Availability or ownership could not be read completely. Targets are unavailable.</p>}

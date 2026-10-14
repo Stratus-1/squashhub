@@ -981,6 +981,13 @@
       "when": 1791958326510,
       "tag": "0139_auto_release_uitsig_champ_holds",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1791979030626,
+      "tag": "0140_beta_feature_swiss_progression",
+      "breakpoints": true
     }
   ]
 }

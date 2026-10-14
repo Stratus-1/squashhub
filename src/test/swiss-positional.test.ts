@@ -30,9 +30,11 @@ describe("templates 8–32 (all counts, odd included)", () => {
     expect(blocksForRound(16, 2)).toEqual([[1, 8], [9, 16]]);
     expect(slotTemplate(16, 2).pairs.map((p) => [p.a, p.b])).toEqual([[1, 8], [2, 7], [3, 6], [4, 5], [9, 16], [10, 15], [11, 14], [12, 13]]);
   });
-  it("odd block floats its bottom slot into the next block (10, round 2)", () => {
-    expect(blocksForRound(10, 2)).toEqual([[1, 5], [6, 10]]);
-    expect(slotTemplate(10, 2).pairs.map((p) => [p.a, p.b])).toEqual([[1, 4], [2, 3], [5, 10], [6, 9], [7, 8]]);
+  it("odd half: middle winner crosses to the top loser (10, round 2)", () => {
+    expect(slotTemplate(10, 2).pairs.map((p) => [p.a, p.b])).toEqual([[1, 5], [2, 4], [3, 6], [7, 10], [8, 9]]);
+  });
+  it("round 3 slides in groups of four (16 → 1v3, 2v4 …)", () => {
+    expect(slotTemplate(16, 3).pairs.slice(0, 4).map((p) => [p.a, p.b])).toEqual([[1, 3], [2, 4], [5, 7], [6, 8]]);
   });
   it("rejects counts outside 8–32 and too many rounds", () => {
     expect(planCategory(7).issues.length).toBeGreaterThan(0);
@@ -132,8 +134,8 @@ describe("unresolved opponents (immediate progression preview)", () => {
 });
 
 describe("SportyHQ reference maps (owner-supplied)", () => {
-  it("no maps encoded yet — equivalence is NOT claimed", () => {
-    expect(Object.keys(SPORTYHQ_REFERENCE_MAPS)).toEqual([]);
+  it("12, 14 and 18 are encoded", () => {
+    expect(Object.keys(SPORTYHQ_REFERENCE_MAPS)).toEqual(["12", "14", "18"]);
   });
   for (const [n, rounds] of Object.entries(SPORTYHQ_REFERENCE_MAPS)) for (const [r, pairs] of Object.entries(rounds)) {
     it(`${n} entrants round ${r} matches SportyHQ`, () => {

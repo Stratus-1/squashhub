@@ -9,11 +9,8 @@
  *  - Progression: a match between slots a < b sends the WINNER to slot a and the LOSER to slot b
  *    (so a lower-slotted winner swaps up; "1 v 16, 16 wins" → 16 takes slot 1, 1 drops to 16).
  *    A bye holder keeps its slot. Applied immediately per result.
- *  - Pairing ("block fold"): before round r the slot range is split into record blocks by halving
- *    r-1 times (top block gets the extra slot). Each block is folded (top v bottom). An odd block
- *    floats its bottom slot to the top of the next block. With N odd, the final leftover slot gets the bye.
- *    For N a power of two and r ≤ log2(N), every block holds players with identical records, so this is
- *    equivalent to a fixed bracket-style position map with no rematches.
+ *  - Pairing: SportyHQ-style fixed slot templates — see `slotTemplate` (fold, half-fold with middle
+ *    crossover, then slide in groups of 2^(r-1)). Odd N: slot N gets the bye.
  *  - Occupant-aware adjustments (only when a whole round's feeders are decided):
  *      1. Bye fairness: the bye moves up to the lowest slot whose occupant has not had a bye yet.
  *      2. Rematch avoidance (audit: zero rematches for 8/16/32 within log2(N) rounds; rare for other sizes,
@@ -22,9 +19,9 @@
  *
  * VERIFICATION STATUS
  *  - Verified from SportyHQ's public help text only: "winner takes the better slot, loser of 1v16 moves to 16".
- *  - The 12/14/18-player SportyHQ position maps shared as screenshots are NOT available as data here, so
- *    they are NOT encoded and NO equivalence with SportyHQ is claimed. `SPORTYHQ_REFERENCE_MAPS` is empty
- *    until the owner supplies the exact pairs; the tests then compare automatically.
+ *  - Owner-supplied 12/14/18 maps are encoded in `SPORTYHQ_REFERENCE_MAPS` and tested: 12 and 14 match all
+ *    three rounds; 18 matches rounds 1–2 (round 3 differs, accepted). Other sizes follow the same method
+ *    but are NOT verified against SportyHQ.
  */
 
 export const MIN_ENTRANTS = 8;
@@ -80,18 +77,44 @@ export function blocksForRound(n: number, round: number): Array<[number, number]
   return blocks;
 }
 
-/** Fixed slot template for a round (no occupant information). */
+const fold = (slots: number[], round: number): Pair[] => {
+  const out: Pair[] = [];
+  for (let i = 0, j = slots.length - 1; i < j; i++, j--) out.push({ round, a: slots[i], b: slots[j] });
+  return out;
+};
+const range = (s: number, e: number) => Array.from({ length: Math.max(0, e - s + 1) }, (_, i) => s + i);
+
+/**
+ * Fixed slot template for a round (no occupant information) — SportyHQ-style methodology,
+ * checked against the owner-supplied 12/14/18-player maps (see SPORTYHQ_REFERENCE_MAPS).
+ *  - Odd N: slot N takes the bye (fairness adjustment may move it); slots 1..N-1 are paired.
+ *  - Round 1: fold (1 v last).
+ *  - Round 2: winners half / losers half, each folded. If the halves are odd, the MIDDLE winner
+ *    crosses to play the TOP loser (14 → 4v8, 18 → 5v10).
+ *  - Round r ≥ 3: "slide" in groups of g = 2^(r-1): slot a plays a + g/2 (r3: 1v3, 2v4, 5v7, 6v8 …);
+ *    a short tail group slides by half its own length (13v14).
+ */
 export function slotTemplate(n: number, round: number): RoundPlan {
-  const pairs: Pair[] = [];
-  let carry: number | null = null;
-  for (const [s, e] of blocksForRound(n, round)) {
-    const slots: number[] = [];
-    if (carry != null) slots.push(carry);
-    for (let x = s; x <= e; x++) slots.push(x);
-    carry = slots.length % 2 ? slots.pop()! : null;
-    for (let i = 0, j = slots.length - 1; i < j; i++, j--) pairs.push({ round, a: slots[i], b: slots[j] });
+  const m = n % 2 ? n - 1 : n;
+  const bye = n % 2 ? n : null;
+  let pairs: Pair[] = [];
+  if (round <= 1) pairs = fold(range(1, m), round);
+  else if (round === 2) {
+    const w = m / 2;
+    if (w % 2 === 0) pairs = [...fold(range(1, w), round), ...fold(range(w + 1, m), round)];
+    else {
+      const mid = Math.ceil(w / 2);
+      pairs = [{ round, a: mid, b: w + 1 }, ...fold(range(1, w).filter((s) => s !== mid), round), ...fold(range(w + 2, m), round)];
+    }
+  } else {
+    const g = Math.min(2 ** (round - 1), m);
+    for (let s = 1; s <= m; s += g) {
+      const len = Math.min(g, m - s + 1);
+      const h = len / 2;
+      for (let i = 0; i < h; i++) pairs.push({ round, a: s + i, b: s + i + h });
+    }
   }
-  return { round, pairs: pairs.sort((x, y) => x.a - y.a), bye: carry };
+  return { round, pairs: pairs.sort((x, y) => x.a - y.a), bye };
 }
 
 /** Full slot template for a category (round 1..rounds). Validated by `validateTemplate`. */
@@ -222,4 +245,26 @@ export function simulateCategory(seedOrder: string[], rounds: number, pickWinner
 }
 
 /** Owner-supplied SportyHQ maps go here as data: { [entrants]: { [round]: [slotA, slotB][] } }. Empty = unverified. */
-export const SPORTYHQ_REFERENCE_MAPS: Record<number, Record<number, Array<[number, number]>>> = {};
+/**
+ * Owner-supplied SportyHQ maps (screenshots, 14 Oct 2026), transcribed as data.
+ * 12 and 14: rounds 1–3 match exactly. 18: rounds 1–2 match exactly; SportyHQ round 3 differs at the
+ * top (1v4, 2v3, 5v6 …) and the screenshot's final pairs were cut off — owner accepted round 3 variation.
+ */
+export const SPORTYHQ_REFERENCE_MAPS: Record<number, Record<number, Array<[number, number]>>> = {
+  12: {
+    1: [[1, 12], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7]],
+    2: [[1, 6], [2, 5], [3, 4], [7, 12], [8, 11], [9, 10]],
+    3: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12]],
+  },
+  14: {
+    1: [[1, 14], [2, 13], [3, 12], [4, 11], [5, 10], [6, 9], [7, 8]],
+    2: [[1, 7], [2, 6], [3, 5], [4, 8], [9, 14], [10, 13], [11, 12]],
+    3: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12], [13, 14]],
+  },
+  18: {
+    1: [[1, 18], [2, 17], [3, 16], [4, 15], [5, 14], [6, 13], [7, 12], [8, 11], [9, 10]],
+    2: [[1, 9], [2, 8], [3, 7], [4, 6], [5, 10], [11, 18], [12, 17], [13, 16], [14, 15]],
+  },
+};
+/** SportyHQ 18-player round 3 as visible (last pair inferred) — informational, intentionally not matched. */
+export const SPORTYHQ_18_ROUND3_OBSERVED: Array<[number, number]> = [[1, 4], [2, 3], [5, 6], [7, 9], [8, 10], [11, 13], [12, 14], [15, 17], [16, 18]];

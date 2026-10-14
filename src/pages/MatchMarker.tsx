@@ -71,8 +71,8 @@ function serializeLiveScores(games: GameScore[], current?: { a: number; b: numbe
 
 export default function MatchMarker() {
   const [searchParams] = useSearchParams();
-  const { club: markerClub } = useClubContext();
-  const riversideLoad = markerClub?.id === "11111111-1111-1111-1111-111111111111" || searchParams.get("club") === "riverside";
+  const linkSource = searchParams.get("source");
+  const linkMatchId = searchParams.get("matchId");
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
     if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
@@ -425,7 +425,7 @@ export default function MatchMarker() {
       setTournamentLoadState("error");
     }).finally(() => deadline.cancel());
     return () => { cancelled = true; deadline.cancel(); };
-  }, [config?.sourceId, markTournamentLive, navigate, searchParams, user?.id, loadAttempt, riversideLoad]);
+  }, [config?.sourceId, markTournamentLive, navigate, searchParams, user?.id, loadAttempt]);
 
   useEffect(() => {
     if (config?.source !== "tournament" || !config.sourceId) return;

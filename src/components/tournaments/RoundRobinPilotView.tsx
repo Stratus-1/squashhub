@@ -27,7 +27,7 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
                 <th className="border border-border px-2 py-1 text-left">#</th>
                 <th className="border border-border px-2 py-1 text-left">Player</th>
                 {players.map((p, i) => <th key={p.id} className="border border-border px-2 py-1 min-w-[64px]" title={p.name}>{i + 1}</th>)}
-                <th className="border border-border px-2 py-1">W</th><th className="border border-border px-2 py-1">L</th><th className="border border-border px-2 py-1">Pts +/−</th><th className="border border-border px-2 py-1">Rank</th>
+                <th className="border border-border px-2 py-1">W</th><th className="border border-border px-2 py-1">L</th><th className="border border-border px-2 py-1 whitespace-nowrap" title="Recorded rally points for / against; excludes live games and walkover awards">Pts F/A</th><th className="border border-border px-2 py-1">Rank</th>
               </tr>
             </thead>
             <tbody>
@@ -46,7 +46,7 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
                   })}
                   <td className="border border-border px-2 text-center tabular-nums">{totals[p.id].wins}</td>
                   <td className="border border-border px-2 text-center tabular-nums">{totals[p.id].losses}</td>
-                  <td className="border border-border px-2 text-center tabular-nums">{totals[p.id].pointsFor}/{totals[p.id].pointsAgainst}</td>
+                  <td data-testid={`rr-points-${p.id}`} title={totals[p.id].pointsKnown ? "Recorded rally points for / against" : "Incomplete recorded rally-point detail"} className="border border-border px-2 text-center tabular-nums whitespace-nowrap">{totals[p.id].pointsKnown ? `${totals[p.id].pointsFor}/${totals[p.id].pointsAgainst}` : "—"}</td>
                   <td className="border border-border px-2 text-center tabular-nums font-semibold">{i + 1}</td>
                 </tr>
               ))}

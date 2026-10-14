@@ -16,6 +16,43 @@ function circle(n: number): RRMatchInput[] {
 }
 
 describe("round-robin pilot view", () => {
+  it("sums rally points for both participants in 3–1 and 3–2 matches", () => {
+    const ms: RRMatchInput[] = [{id:"a",a:"p1",b:"p2",round:1,status:"completed",winner:"p1",score:"0-11, 11-0, 11-0, 11-0"}, {id:"b",a:"p1",b:"p3",round:2,status:"completed",winner:"p1",score:"3-2",gameScores:JSON.stringify({sets:[{a:0,b:11},{a:0,b:11},{a:11,b:0},{a:11,b:0},{a:11,b:0}]})}];
+    const v = buildRoundRobinView({players:P(3),matches:ms});
+    expect(v.totals.p1).toMatchObject({pointsFor:66,pointsAgainst:33});
+    expect(v.totals.p2).toMatchObject({pointsFor:11,pointsAgainst:33});
+    expect(v.totals.p3).toMatchObject({pointsFor:22,pointsAgainst:33});
+  });
+  it("does not count pending results even with stale winner or live saved sets", () => {
+    const v = buildRoundRobinView({players:P(2),matches:[{id:"x",a:"p1",b:"p2",round:1,status:"in_progress",winner:"p1",score:"11-0",gameScores:{sets:[{a:11,b:0}],current:{a:8,b:6}}}]});
+    expect(v.totals.p1).toMatchObject({played:0,wins:0,pointsFor:0,pointsAgainst:0});
+    expect(v.totals.p2.played).toBe(0);
+  });
+  it("byes, walkover awards and void results never fabricate rally points", () => {
+    const v = buildRoundRobinView({players:P(3),matches:[{id:"bye",a:"p1",b:null,round:1,status:"completed",winner:"p1",isBye:true}, {id:"wo",a:"p1",b:"p2",round:2,status:"completed",winner:"p1",gameScores:JSON.stringify({sets:[{a:11,b:0},{a:11,b:0},{a:11,b:0}],walkover:true}),forfeitMemberId:"p2"}, {id:"void",a:"p2",b:"p3",round:3,status:"completed",score:"No result — A no show"}]});
+    expect(v.totals.p1).toMatchObject({played:1,wins:1,pointsFor:0,pointsAgainst:0});
+    expect(v.totals.p2).toMatchObject({played:1,losses:1,pointsFor:0,pointsAgainst:0});
+    expect(v.totals.p3.played).toBe(0);
+  });
+  it("keeps pools independent and never labels games-won counts as rally points", () => {
+    const m: RRMatchInput = {id:"x",a:"p1",b:"p2",round:1,status:"completed",winner:"p1",score:"3-1"};
+    const v = buildRoundRobinView({players:P(2),matches:[m]});
+    expect(v.totals.p1.pointsKnown).toBe(false);
+    render(<RoundRobinPilotView title="Pool A" view={v} />);
+    expect(screen.getByTestId("rr-points-p1").textContent).toBe("—");
+    const other=buildRoundRobinView({players:[{id:"p3",name:"Other"}],matches:[m]});
+    expect(other.totals.p3).toMatchObject({played:0,pointsFor:0,pointsAgainst:0});
+  });
+  it("recomputes both point totals when saved matches refetch, without changing order or inputs", () => {
+    const m: RRMatchInput={id:"x",a:"p1",b:"p2",round:1,status:"in_progress",score:"0-11, 11-0, 11-0, 11-0"};
+    const make=(matches:RRMatchInput[])=>buildRoundRobinView({players:P(2),matches,rankOrder:["p2","p1"]});
+    const {rerender}=render(<RoundRobinPilotView title="Pool A" view={make([m])}/>);
+    expect(screen.getByTestId("rr-points-p1").textContent).toBe("0/0");
+    rerender(<RoundRobinPilotView title="Pool A" view={make([{...m,status:"completed",winner:"p1"}])}/>);
+    expect(screen.getByTestId("rr-points-p1").textContent).toBe("33/11");
+    expect(screen.getByTestId("rr-points-p2").textContent).toBe("11/33");
+    expect(m.status).toBe("in_progress"); expect(make([m]).players[0].id).toBe("p2");
+  });
   it("shows recorded games won only, mirrored, without changing saved score or totals", () => {
     const m: RRMatchInput = { id: "done", a: "p1", b: "p2", round: 1, winner: "p1", status: "completed", score: "0-11, 11-0, 11-0, 11-0" };
     const before = JSON.stringify(m);

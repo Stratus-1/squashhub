@@ -1,7 +1,7 @@
 # Riverside tournament calendar: safe Move / Swap pilot
 
 ## Scope and feasibility
-**Feasible, but not safe to implement as a drag-only addition.** A move must keep the match schedule, court booking and tournament reservation consistent. Swaps need one all-or-nothing operation, not two separate saves.
+**Feasible with an atomic booking-aware operation, not drag alone.** Match schedules, bookings and reservations must stay consistent.
 
 Read-only audit and plan: no app code, records, switches, migrations or publishing. Marker recovery is the first gate; plan approval does not authorize real fixture changes or hardware.
 
@@ -12,13 +12,13 @@ Read-only audit and plan: no app code, records, switches, migrations or publishi
 - **Legacy holds lack exact tournament ownership.** Recognition relies on championship labels and no participants. Saved courts/day schedules are configuration, not reservations. Ambiguous holds must not be claimed or cancelled.
 - **Windows differ.** Existing play-by booking allows after-deadline scheduling with a warning. Fixed centrally managed slots, linked player bookings and explicit deadlines must remain distinct; stricter new-pilot checks must not alter legacy player scheduling.
 - **Concurrency is not established.** Bookings have an overlap trigger and unique same-start index, but these alone do not prove safety for concurrent overlapping inserts at different starts. Availability must include unbooked fixtures and all categories/tournaments, not only bookings.
-- **Permission is not scoring access.** Current backend has `can_manage_tournament` and club `champs` permission helpers; members/participants can also score. Captain role, scoring access and pilot switches are not move authority. A separately appointed organizer model was not established.
+- **Permission is not scoring access.** Use current tournament/champs management authority, not scoring access, captain role or switches. A separately appointed organizer model was not established.
 - **Refresh is reusable.** Scoped match updates patch the query, Riverside polls every five seconds, and marker presence is separately subscribed/polled. Retain historical FINAL calendar events and refresh List/Calendar/Progression/open details.
 
 ## Priority gate: saved-score initialization
 **Exact Android failure: UNRESOLVED.** Riverside has a 20-second error/Retry timer and proposed-ID guard, but prior verification did not reproduce the owner's exact grid/native path. The timer covers the whole operation; later requests lack abort signals, so cleanup needs checking. Route/context/effect races remain hypotheses, not proven causes.
 
-Obtain the failing URL/recording and compare grid vs Upcoming signed-in desktop/mobile/Android without points or marker takeover. Trace IDs/auth/pending reads; verify bounded Retry, Back/reopen, context hydration, preserved scores and proposed-ID rejection, including stalls/repeated mounts. Require owner confirmation before rescheduling development. No fresh marker lock existed at audit time; in-progress rows alone do not prove active marking.
+Obtain the failing URL/recording and compare grid vs Upcoming signed-in desktop/mobile/Android without points or marker takeover. Trace IDs/auth/pending reads; verify bounded Retry, Back/reopen, context hydration, preserved scores and proposed-ID rejection, including stalls/repeated mounts. Require owner confirmation before rescheduling development. No fresh marker lock existed during this audit.
 
 ## Intended interaction
 Keep tournament selection and the three existing tabs; moves belong in Fixtures Calendar. Authorized desktop users get a drag handle separate from pan/zoom/card tap. Mobile/keyboard alternative: **Move match → choose date/time/court target → review → confirm**.

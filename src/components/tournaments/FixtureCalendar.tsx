@@ -111,6 +111,9 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
   };
   const rangeLabel = view === "day" ? calDayLabel(anchor) : view === "week" ? `${calDayLabel(days[0])} – ${calDayLabel(days[6])} ${parse(days[6]).getUTCFullYear()}` : `${MON[parse(anchor).getUTCMonth()]} ${parse(anchor).getUTCFullYear()}`;
   const deadlines = events.filter((e) => e.kind === "play_by" && days.includes(e.date));
+  // Days with simultaneous games get proportionally wider columns so names stay readable.
+  const laneCount = (d: string) => { const c = new Map<string, number>(); timed.filter((e) => e.date === d).forEach((e) => c.set(e.time!.slice(0, 5), (c.get(e.time!.slice(0, 5)) ?? 0) + 1)); return Math.max(1, ...c.values()); };
+  const colFlex = (d: string) => ({ flex: `${view === "week" ? laneCount(d) : 1} 1 0`, minWidth: 0 });
   const hours = Array.from({ length: h1 - h0 }, (_, i) => h0 + i);
 
   return (
@@ -169,13 +172,13 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
             {/* header */}
             <div className="sticky top-0 z-10 flex border-b border-border bg-muted">
               <div className="w-16 shrink-0" />
-              {days.map((d) => <button type="button" key={d} onClick={() => { setAnchor(d); setView("day"); }} aria-label={`Open ${calDayLabel(d)}`} className={cn("flex-1 border-l border-border px-2 py-1.5 text-center font-semibold hover:bg-accent/40", d === todayIso() && "text-primary")} data-testid="cal-day">{calDayLabel(d)}{view === "week" && <span className="ml-1 font-normal text-muted-foreground">({timed.filter((e) => e.date === d).length})</span>}</button>)}
+              {days.map((d) => <button type="button" key={d} onClick={() => { setAnchor(d); setView("day"); }} aria-label={`Open ${calDayLabel(d)}`} style={colFlex(d)} className={cn("border-l border-border px-2 py-1.5 text-center font-semibold hover:bg-accent/40", d === todayIso() && "text-primary")} data-testid="cal-day">{calDayLabel(d)}{view === "week" && <span className="ml-1 font-normal text-muted-foreground">({timed.filter((e) => e.date === d).length})</span>}</button>)}
             </div>
             {deadlines.length > 0 && (
               <div className="flex border-b border-border">
                 <div className="w-16 shrink-0 px-1 py-1 text-[10px] text-muted-foreground">Play by</div>
                 {(view === "day" ? [anchor] : days).map((d) => (
-                  <div key={d} className="flex-1 space-y-0.5 border-l border-border p-1">
+                  <div key={d} style={colFlex(d)} className="space-y-0.5 border-l border-border p-1">
                     {deadlines.filter((e) => e.date === d).map((e) => <div key={e.id} data-testid="cal-deadline" className="truncate rounded-sm border border-warning/60 bg-warning/10 px-1 text-[10px]">{e.title}</div>)}
                   </div>
                 ))}
@@ -197,7 +200,7 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
                 const slots = new Map<string, CalEvent[]>();
                 colEvents.forEach((e) => slots.set(e.time!.slice(0, 5), [...(slots.get(e.time!.slice(0, 5)) ?? []), e]));
                 return (
-                  <div key={col} className="relative flex-1 border-l border-border">
+                  <div key={col} style={colFlex(col)} className="relative border-l border-border">
                     {hours.map((h) => <div key={h} className="border-t border-border/70" style={{ height: 60 * ppm, backgroundImage: "linear-gradient(to bottom, transparent calc(50% - 0.5px), hsl(var(--border) / .35) calc(50% - 0.5px), hsl(var(--border) / .35) calc(50% + 0.5px), transparent calc(50% + 0.5px))" }} />)}
                     {[...slots.values()].flatMap((group) => {
                       group.sort((x, y) => (x.court ?? "").localeCompare(y.court ?? "", undefined, { numeric: true }));

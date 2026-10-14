@@ -1,3 +1,9 @@
+### 2026-10-14 — Riverside RR matrix missing rally-point totals
+- Root cause: pilot totals parsed only a single numeric score and skipped comma-separated games and saved JSON sets, leaving 0/0 despite completed results. The official Standard format already sums saved set points separately from games-won ranking credit.
+- Pilot now uses the shared saved-set parser, sums confirmed completed pool rally points for both sides, skips live/void/bye/synthetic walkover points, and displays missing point detail as unknown rather than games counts. Label clarified to Pts F/A; official standings/ranking and stored results unchanged.
+- Read-only audit found four Ladies A finals: one 3–1 with 33/11 and three 3–2 with 33/22; saved JSON and score text agree. A live match has only current 3/5 and contributes no completed totals. Zero-point losing games are recorded facts, not corrected.
+- Verified all three pools in signed-in desktop/mobile preview, mirrored totals and no page errors/overflow; 16 tests passed including reactive rerender. Existing tournament realtime invalidation and 10-second polling retained. PAR 15 category label differs from these recorded 11-point game scores; no rule or result was changed.
+
 ### 2026-10-14 — Riverside RR matrix overflowing point-score breakdown
 - Matrix now renders separate games-won summary from saved sets/score, mirrored from each row player's perspective, with light-green completed cells and dark contrasting text. Pending round references and in-progress state remain distinct.
 - Raw scores, totals, standings, detailed order-of-play and Past Fixtures/details remain unchanged. Riverside-only existing gate; no writes or publishing.

@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { SwissPositionGrid } from "@/components/tournaments/SwissPositionGrid";
-import { movement, SWISS_FORMAT_LABEL, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
+import { buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
 
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
@@ -12,26 +12,29 @@ export function SwissProgressionPilotView({ title, model }: { title: string; mod
   const [mode, setMode] = useState<"grid" | "classic">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
+  const proposed = buildProposedSwissGrid(model);
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">{SWISS_FORMAT_LABEL[model.format]}</span>
         <div className="ml-auto flex gap-1" role="group" aria-label="Swiss view">
-          <Button size="sm" className="h-7" variant={mode === "grid" ? "default" : "outline"} aria-pressed={mode === "grid"} onClick={() => setMode("grid")}>Grid</Button>
+          <Button size="sm" className="h-7" variant={mode === "grid" ? "default" : "outline"} aria-pressed={mode === "grid"} onClick={() => setMode("grid")}>Positional preview</Button>
           <Button size="sm" className="h-7" variant={mode === "classic" ? "default" : "outline"} aria-pressed={mode === "classic"} onClick={() => setMode("classic")}>Classic</Button>
         </div>
       </div>
       {mode === "grid" ? (
         <>
-          {model.format !== "positional" && (
-            <p className="text-[11px] text-muted-foreground">
-              Shown in grid form only. Players in this category were paired by score, not moved into fixed slots — position numbers are the standings position going into each round.
-            </p>
+          <div className="space-y-1 text-xs">
+            <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
+            <p className="text-muted-foreground">Round 1 shows saved matches only. Later columns are proposed template slots, not the existing live score-based draw. Players were not moved into fixed slots; future names, dates and results remain TBD.</p>
+            <p className="text-muted-foreground">Base template only: bye fairness and rematch adjustments are not applied. No pairing engine conversion has been made.</p>
+          </div>
+          {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (
+            <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420}>
+              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} />
+            </TournamentInteractiveViewer>
           )}
-          <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420}>
-            <SwissPositionGrid model={model} />
-          </TournamentInteractiveViewer>
         </>
       ) : (
         <>

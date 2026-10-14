@@ -15,6 +15,7 @@
 - Scope member-home and club bottom-nav presentation locally; deduplicate only mobile shortcuts, preserving desktop/association access and domain hooks.
 - Generate draw leaves player ordering and scheduling in setup; only format confirmation, read-only scoring and necessary pool allocation appear here; why: avoid conflicting copies.
 - Bar menus share spirit-category mixer inclusion in `src/lib/bar-spirit-menu.ts`, preserving original IDs and independent basket lines; why: display changes must not create combo sales or alter stock definitions.
+- Proposed Swiss grids retain factual saved Round 1 and separate future base-template slots from legacy fixtures; why: read-only visualization must not reinterpret results or convert the engine.
 <!-- LOVABLE:END -->
 
 ## Architecture rules

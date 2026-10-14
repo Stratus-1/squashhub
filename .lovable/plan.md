@@ -3,7 +3,7 @@
 ## Scope and feasibility
 **Feasible, but not safe to implement as a drag-only addition.** A move must keep the match schedule, court booking and tournament reservation consistent. Swaps need one all-or-nothing operation, not two separate saves.
 
-This is a read-only audit and plan. No app code, database records, results, bookings, permissions or switches changed; no migration or publishing. The scoring initialization defect remains the first release gate. Approval of this plan does not authorize changes to real fixtures or operation of hardware.
+Read-only audit and plan: no app code, records, switches, migrations or publishing. Marker recovery is the first gate; plan approval does not authorize real fixture changes or hardware.
 
 ## Audit findings
 - **Schedule ≠ booking.** Calendar reads match dates/times/courts, not full availability. Riverside-wide read-only audit: 130 fixture rows, 129 with date/time/court, zero linked booking IDs (multiple tournaments, including synthetic). Empty calendar space is not proof of a free court; scheduled fixtures are not proof of reservations.
@@ -16,9 +16,9 @@ This is a read-only audit and plan. No app code, database records, results, book
 - **Refresh is reusable.** Scoped match updates patch the query, Riverside polls every five seconds, and marker presence is separately subscribed/polled. Retain historical FINAL calendar events and refresh List/Calendar/Progression/open details.
 
 ## Priority gate: saved-score initialization
-**Exact Android failure: UNRESOLVED.** Riverside has a 20-second error/Retry timer, rejection cleanup and proposed-ID guard. Previous checks covered Upcoming and stalled-read recovery, not the owner's exact grid/native Android path. The timer covers the entire operation, including later lookups; some requests lack abort signals, so transport cleanup needs checking. Missing club context, repeated effect restarts or stale route/config are hypotheses, not proven causes.
+**Exact Android failure: UNRESOLVED.** Riverside has a 20-second error/Retry timer and proposed-ID guard, but prior verification did not reproduce the owner's exact grid/native path. The timer covers the whole operation; later requests lack abort signals, so cleanup needs checking. Route/context/effect races remain hypotheses, not proven causes.
 
-Before rescheduling development, obtain the failing URL or screen recording; reproduce exact grid vs Upcoming routes signed in on desktop/mobile/Android without entering points or taking over a real marker. Trace fixture/tournament IDs, auth and pending reads. Test bounded error/Retry, Back/reopen, context hydration, preserved scores and proposed-ID rejection, including stalled reads/repeated mounts. Require owner confirmation of recovery. No fresh Riverside marker lock existed at audit time; three in-progress rows do not establish active marking. Uitsig receives checks, not changes.
+Obtain the failing URL/recording and compare grid vs Upcoming signed-in desktop/mobile/Android without points or marker takeover. Trace IDs/auth/pending reads; verify bounded Retry, Back/reopen, context hydration, preserved scores and proposed-ID rejection, including stalls/repeated mounts. Require owner confirmation before rescheduling development. No fresh marker lock existed at audit time; in-progress rows alone do not prove active marking.
 
 ## Intended interaction
 Keep tournament selection and the three existing tabs; moves belong in Fixtures Calendar. Authorized desktop users get a drag handle separate from pan/zoom/card tap. Mobile/keyboard alternative: **Move match → choose date/time/court target → review → confirm**.
@@ -46,7 +46,7 @@ Targets use text/icons plus colour: **Free**, **Reserved for this tournament**, 
 
 ## Technical design and evidence
 - Reuse `FixtureCalendar`, `ClubFixturesPilot`, `Tournaments`, the shared viewer, `fixture-scheduling.ts`, `self-schedule.ts`, `bookable-courts.ts` and saved round/stage rules. Do not use `SwapFixtureButton` for commit.
-- Live schema was inspected: `club_champs_matches` owns schedule/result/identity; `bookings` owns physical occupancy; rounds/stages own constraints; `champ_marker_locks` owns marker presence. Current backend permissions supersede old migration assumptions.
+- Live schema was inspected: `club_champs_matches` owns schedule/result/identity; `bookings` owns physical occupancy; rounds/stages own constraints; `champ_marker_locks` owns marker presence. 
 - Preview/commit accept tournament/fixture IDs, target or swap, expected version/schedule snapshots and an idempotency key. Derive actor from validated auth; server-check management permission and Riverside scope on both calls.
 - One transaction locks matches/bookings and affected court/day allocations deterministically, revalidates everything, applies both schedules/bookings, and writes audit + notification outbox. Full rollback on failure; preserve IDs, results, participants and unrelated allocations. Conflict protection must coordinate normal booking writers and marker acquisition, not just this operation.
 - Do not call the scheduler twice or weaken global overlap guards. Approve the locking/exclusion approach and any additive schema changes separately. Preserve reservation leftovers and old-slot capacity without cancelling ambiguous holds.
@@ -54,15 +54,15 @@ Targets use text/icons plus colour: **Free**, **Reserved for this tournament**, 
 - Review booking triggers for cancellation penalties, lights, access, reminders and external sync. Isolated tests must block hardware/provider/message actions; if isolation is unavailable, write testing stays blocked.
 
 ## Tests and acceptance
-**Audit checks: 45 existing tests passed** (marker deadline, calendar scores, scheduling/display/split, club fixtures). Non-failing warnings: dialog description and JSDOM scrolling. No new Move/Swap or commit flow tested.
+**Audit checks: 45 existing tests passed** (marker deadline, calendar scores, scheduling/display/split, club fixtures). Non-failing warnings: dialog description and JSDOM scrolling. No commit flow tested.
 
 Future tests: free/owned/ambiguous/external targets; all categories/tournaments; unequal durations/partial overlaps; deadlines/windows/past starts; doubles/person clashes/rest; live/final/marker races; unauthorized/wrong-club callers; stale preview/two admins/normal booking race; timeout/idempotent retry; forced mid-swap rollback; preserved holds; one post-commit notification; no hardware; consistent List/Calendar/Progression/finals; desktop drag vs zoom and mobile/keyboard; Uitsig unchanged.
 
 Acceptance: both match and booking read back consistently; no overlaps/lost holds; results unchanged; before/after audit identifies actor; views agree; owner signs off before activation.
 
-## Blockers and decisions for review
-- Exact Android initialization failure still needs its failing entry URL/recording and verification.
-- Legacy hold ownership, effective durations/windows and external availability must be provable before target eligibility.
-- Isolated write-testing environment must prevent real messages, provider actions and hardware schedules.
-- Confirm whether “organizer” means existing `champs`/tournament management permission or a separately appointed per-tournament organizer; no new role is assumed.
-- Confirm genuinely free-slot reservation policy; recommendation: start with proven tournament-owned slots and introduce new reservations only after that phase is signed off.
+## Decisions and blockers
+- Exact Android URL/recording and verified recovery.
+- Proven reservation ownership, durations/windows and external availability.
+- Isolated commit tests without hardware/providers/messages.
+- Confirm organizer authority: existing tournament/champs permission or separately appointed organizer; no new role assumed.
+- Recommend owned-slot moves first; approve genuinely free-slot reservations separately.

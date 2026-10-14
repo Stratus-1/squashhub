@@ -22,6 +22,6 @@ describe("positional Swiss (position_swap)", () => {
   it("default Swiss is unchanged without the switch", () => {
     const t = swissTable(seeds, [{ a: "p1", b: "p24", winner: "p24" }]);
     expect(t[0].id).toBe("p24");
-    expect(t[1].id).toBe("p2");
+    expect(t[1].id).toBe("p1"); // old rule: loser sits 2nd on Buchholz
   });
 });

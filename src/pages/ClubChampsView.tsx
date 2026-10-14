@@ -559,6 +559,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
    */
   // Per-render: Swiss standings heading status per group, filled by the standings calculation.
   const swissStatusByGroup = new Map<number, SwissStandingsStatus>();
+  // Riverside pilot: progression-table input per Swiss group (display only).
+  const swissProgressionByGroup = new Map<number, SwissProgressionInput>();
   const swissStageFor = (gn: number): { tieBreaks?: string[]; rounds: number | null } | null => {
     if (isStructured) {
       const spec = arch?.builder_spec;

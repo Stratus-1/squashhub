@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { buildRoundRobinView, rrWhen, type RRMatchInput } from "@/lib/tournaments/round-robin-view";
-import { RoundRobinPilotView } from "@/components/tournaments/RoundRobinPilotView";
+import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 
 const P = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }));
 /** Circle-method schedule; odd n => one player sits out per round (no bye rows, like Riverside). */
@@ -16,6 +16,18 @@ function circle(n: number): RRMatchInput[] {
 }
 
 describe("round-robin pilot view", () => {
+  it("resets display bands independently per pool without sorting standings", () => {
+    expect(Array.from({ length: 5 }, (_, i) => poolRankTone(i, 5))).toEqual([0, 1, 2, 3, 4]);
+    expect(poolRankTone(0, 6)).toBe(0); expect(poolRankTone(5, 6)).toBe(4);
+    expect(poolRankTone(0, 1)).toBe(2);
+  });
+  it("gives rounds distinct restrained accents without changing schedule or results", () => {
+    const view = buildRoundRobinView({ players: P(5), matches: circle(5) });
+    const before = JSON.stringify(view);
+    const { container } = render(<RoundRobinPilotView title="Pool A" view={view} />);
+    expect([...container.querySelectorAll(".round-panel")].map(r => r.getAttribute("data-round-tone"))).toEqual(["1", "2", "3", "4", "5"]);
+    expect(JSON.stringify(view)).toBe(before);
+  });
   it("6-player pool: full matrix, 5 rounds of 3, diagonal empty, schedule shown", () => {
     const v = buildRoundRobinView({ players: P(6), matches: circle(6) });
     expect(v.rounds.map((r) => r.label)).toEqual(["Round 1", "Round 2", "Round 3", "Round 4", "Round 5"]);

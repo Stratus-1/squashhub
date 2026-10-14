@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 import { startMarkerLoadDeadline } from "@/lib/marker/load-deadline";
-import { useClubContext } from "@/contexts/ClubContext";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];
@@ -94,6 +93,8 @@ export default function MatchMarker() {
       return null;
     }
   });
+  // A tournament link that has not been turned into a scoreboard yet.
+  const pendingTournamentLink = linkSource === "tournament" && !!linkMatchId && config?.sourceId !== linkMatchId;
   const md = useMatchDayDevice();
   const { user: sessionUser } = useAuth();
   const user = md ? (md.deviceUser as any) : sessionUser;

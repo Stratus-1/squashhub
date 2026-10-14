@@ -1008,9 +1008,9 @@ export default function MyAccount() {
                   </span>
                   <span className={cn(
                     "text-right font-semibold tabular-nums",
-                    line.balance > 0 ? "text-destructive" : line.balance < 0 ? "text-green-600" : ""
+                    line.balance < 0 ? "text-green-600" : line.balance > 0 ? "text-destructive" : ""
                   )}>
-                    {line.balance < 0 ? "-" : ""}{money(Math.abs(line.balance))}
+                    {line.balance < 0 ? "+" : line.balance > 0 ? "-" : ""}{money(Math.abs(line.balance))}
                   </span>
                 </div>
               ))}

@@ -40,7 +40,7 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Access devices may carry an optional `club_devices.min_age` (NULL = unrestricted); device-control enforces it server-side on unlock via `_shared/member-age.ts` (DOB, then SA ID), unknown age is a separate denial from underage, and denials log to access_events; why: one reusable age gate, never a club-specific hard-code.
 - Outstanding-balance plans (`mandate_arrears_plans`) are separate from fee mandates: they finance only `member_outstanding_breakdown().uncovered`, snapshot `covered_fee_ids`, and may share one combined debit, but each component is settled/tracked separately and the plan part drops off when done; why: no double-financing of membership.
 - Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
-- Court grids share P and peak logic; why: no separate rules.
+- Court grids share P/peak logic; why: one rule set.
 
 - Menu order/hide prefs (`user_menu_preferences`) apply only after permission filtering; why: never grant access.
-- Dense tournament views render inside the shared display-only `TournamentInteractiveViewer` (react-zoom-pan-pinch) and are gated per club by `club_beta_features` rows toggled from the Super Admin switches card, never by migration-inserted rows; why: one zoom/expand behaviour and safe opt-in pilots.
+- Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.

@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Hide Riverside pilot Swiss colored standings by default, retain optional classic standings and error/empty fallback, show factual current positions/results in the grid.
+- [x] Hide Riverside pilot Swiss colored standings by default; optional classic standings and error/empty fallback preserved, factual current positions/results included; 103 tests pass and signed-in desktop/mobile/fullscreen checks completed; not published.
 
 - [x] Riverside read-only positional grid preview: template slots in every round, factual saved Round 1 separated from proposed future rounds; tests and browser checks; no engine/data/publish changes.
 

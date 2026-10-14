@@ -660,12 +660,16 @@ export default function Tournaments() {
   const pilotPast = useMemo(() => !pilotChampId ? [] : (allMatches as any[])
     .filter((m: any) => m.champ_id === pilotChampId && m.status === "completed")
     .sort((a: any, b: any) => `${b.scheduled_date ?? ""} ${b.scheduled_time ?? ""}`.localeCompare(`${a.scheduled_date ?? ""} ${a.scheduled_time ?? ""}`)), [allMatches, pilotChampId]);
+  // Calendar = exactly the same upcoming/live set as the List (all categories), minus undated rows it cannot place.
+  const pilotUpcomingIds = useMemo(() => new Set(upcomingMatches.filter((m: any) => m.champ_id === pilotChampId).map((m: any) => m.id)), [upcomingMatches, pilotChampId]);
   const pilotCalendar = useMemo(() => pilotFixtures
-    .filter((f) => f.competitionId === pilotChampId && f.state !== "completed" && f.timing !== "unscheduled")
+    .filter((f) => pilotUpcomingIds.has(f.id) && f.timing !== "unscheduled")
     .map((f) => ({ id: f.id, date: (f.date ?? f.playBy)!, time: f.timing === "saved" ? f.time : null, durationMin: champById.get(f.competitionId)?.match_duration_minutes ?? 40, court: f.court, title: `${f.a} v ${f.b}`, subtitle: `${f.category}${f.round ? ` · R${f.round}` : ""}`, kind: (f.timing === "saved" ? "confirmed" : "play_by") as "confirmed" | "play_by", state: f.state, score: f.liveGames ?? f.score })), [pilotFixtures, pilotChampId]);
   useEffect(() => {
     if (!fixturesPilot || !pilotChampId) return;
     if (champFilter !== pilotChampId) setChampFilter(pilotChampId);
+    // New tournament => category/date filters back to "All" (never carry a restrictive filter across).
+    setPoolFilter("all"); setDateFilter("all");
     try { window.localStorage.setItem("tournaments.pilotChamp", pilotChampId); } catch { /* ignore */ }
   }, [fixturesPilot, pilotChampId]);
 

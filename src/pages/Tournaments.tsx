@@ -344,7 +344,8 @@ export default function Tournaments() {
       return md?.court != null ? (named as any[]).filter((m: any) => m.court_id === md.court) : named;
     },
     enabled: champIds.length > 0,
-    refetchInterval: 10000,
+    // Match the spectator scoreboard's safety poll in the Riverside pilot.
+    refetchInterval: clubId === "11111111-1111-1111-1111-111111111111" ? 5000 : 10000,
   });
 
   // Rounds created later from the draw hold the live play-by dates (round 4
@@ -716,6 +717,13 @@ export default function Tournaments() {
         (payload: any) => {
           const champId = payload?.new?.champ_id || payload?.old?.champ_id;
           if (!champId || watchedChampIds.has(champId)) {
+            // Apply canonical score events immediately, retaining hydrated names/courts.
+            // Inserts/deletes still require the normal scoped read.
+            if (fixturesPilot && payload.eventType === "UPDATE" && watchedChampIds.has(champId)) {
+              qc.setQueriesData<any[]>({ queryKey: ["tournaments-all-matches"], predicate: (query) =>
+                Array.isArray(query.queryKey[1]) && [...query.queryKey[1]].sort().join("|") === champIdsKey }, (rows) =>
+                rows?.map((row) => row.id === payload.new.id ? { ...row, ...payload.new } : row));
+            }
             qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
           }
         },
@@ -725,7 +733,7 @@ export default function Tournaments() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [champIdsKey, qc]);
+  }, [champIdsKey, qc, fixturesPilot]);
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);

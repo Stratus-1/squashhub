@@ -3006,6 +3006,7 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Frontend only: preview until published.
 
 ### 2026-10-14 — Fixed-position Swiss full-draw pilot
+- 2026-10-14 Riverside calendar spectator scores: LIVE comes from marker-lock presence independently of match score persistence. Cards/details now explicitly show "Live · score pending" when no score exists, identify A/B score order, apply scoped canonical match updates immediately without losing hydrated names/courts, and use the existing spectator's 5-second safety poll. Ndlovu fixture was already completed (A/B 0–3) on read-only inspection; no active live marker available to reproduce original screenshot. Initial-load deadline/retry retained; no marker writes, results, bookings, permissions or publishing changed.
 - Symptom: owner needs whole positional draw generated up front, names resolved from results.
 - Fix: `swiss-positional-draw.ts` (generate once, resolve, record, schedule, conflicts); table `swiss_positional_pilot_draws` (migration 0142) with freeze trigger + idempotent result RPC; page `/admin/tournaments/positional-swiss-pilot` (synthetic entrants).
 - Guard: `src/test/swiss-positional-draw.test.ts` (8–32, byes, progression, TBD labels, 10/15/24 rounds, scheduling conflicts). Live Club Champs untouched.

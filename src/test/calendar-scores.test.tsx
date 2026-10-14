@@ -30,6 +30,20 @@ describe("canonical calendar scores", () => {
 
 const base: CalEvent = { id: "live", date: "2026-10-14", time: "17:40", court: "Court 1", title: "Willem Pretorius v Ethan Tshabalala", kind: "confirmed", state: "live", ...fixtureScoreDetails({ status: "in_progress", game_scores: { sets }, side_a_points: 8, side_b_points: 6 }) };
 describe("calendar live/final presentation", () => {
+  it("explicitly shows pending live scores on card and tap, then updates without closing", () => {
+    const pending = { ...base, score: null, currentGame: null, gameScores: [] };
+    const { rerender } = render(<FixtureCalendar events={[pending]} />);
+    expect(screen.getByTestId("cal-event").textContent).toContain("Live · score pending");
+    expect(screen.getByTestId("cal-event").textContent).not.toContain("0–0");
+    fireEvent.click(screen.getByTestId("cal-event"));
+    expect(screen.getByTestId("cal-detail").textContent).toContain("Live · score pending");
+    rerender(<FixtureCalendar events={[base]} />);
+    const detail = screen.getByTestId("cal-detail");
+    expect(detail.textContent).toContain("Games won · 2–1");
+    expect(detail.textContent).toContain("Game 4 · 8–6");
+    expect(detail.textContent).toContain("Score order: Willem Pretorius · Ethan Tshabalala");
+    expect(detail.textContent).not.toContain("score pending");
+  });
   it("shows matching block/dialog scores and refreshes the open dialog through LIVE to FINAL", () => {
     const { rerender } = render(<FixtureCalendar events={[base]} />);
     const card = screen.getByTestId("cal-event");

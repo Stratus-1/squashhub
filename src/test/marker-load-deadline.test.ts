@@ -19,3 +19,17 @@ describe("saved-score load deadline", () => {
     vi.advanceTimersByTime(60000); expect(timeout).not.toHaveBeenCalled(); expect(load.signal.aborted).toBe(false); load.cancel();
   });
 });
+import { readFileSync } from "node:fs";
+describe("tournament Mark Game link never strands the spinner", () => {
+  const src = readFileSync("src/pages/MatchMarker.tsx", "utf8");
+  it("keeps the manual setup screen unmounted while a tournament link is pending", () => {
+    const loading = src.indexOf('tournamentLoadState === "loading" || pendingTournamentLink');
+    const setup = src.indexOf("<MarkerSetup");
+    expect(loading).toBeGreaterThan(0);
+    expect(setup).toBeGreaterThan(loading);
+  });
+  it("clears a cancelled load instead of spinning forever, and bounds every club's load", () => {
+    expect(src).toContain('setTournamentLoadState((s) => (s === "loading" ? "idle" : s))');
+    expect(src).toMatch(/startMarkerLoadDeadline\([\s\S]*?\}, 20000\)/);
+  });
+});

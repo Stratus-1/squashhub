@@ -3027,3 +3027,9 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Fix: `timeSlots`/`slotOnlyDraw` + `scheduleDraws` lay out PROPOSED per-match slots tournament-wide in the Riverside preview; pilot page gains per-match edit, clash checks and confirmed-only court reservations (`sbs:pswiss-<drawId>:` external ids).
 
 - 2026-10-14 Swiss positional preview (Riverside pilot): proposed rounds stayed TBD because preview never projected saved results by design. Added read-only projection (winner→lower slot, loser→higher, only from completed saved matches whose players match the template pair) and games-won summary (3–1) in grid Result column. No engine/data changes.
+
+### 2026-10-14 — Mark Game stuck on "Loading saved tournament score…", refresh shows empty setup
+- Symptom: tapping Mark Game on a tournament fixture spun forever; a refresh opened the manual "select players" screen with nothing selected.
+- Permissions checked: club_champs_matches / tournaments / tournament_rules / champ_marker_locks read policies allow club members and tournament officials; signed-in Riverside reads succeeded. Not a permission problem.
+- Root cause (race): `MatchMarker` briefly rendered `MarkerSetup` before its loader set "loading". `MarkerSetup`'s deep-link prefill strips `source`/`matchId` from the address (synchronously when the match is already in its cached list). The address change cancelled `MatchMarker`'s loader (and its deadline) without resetting state → endless spinner; refresh then had a bare `/match-marker` URL → empty setup.
+- Fix: `MatchMarker` shows the loading view (never `MarkerSetup`) while a tournament link is pending; a cancelled load resets to idle; the 20 s read deadline + Retry now applies to all clubs. Regression test in `src/test/marker-load-deadline.test.ts`.

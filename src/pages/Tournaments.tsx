@@ -71,6 +71,7 @@ import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { ClubFixturesPilot } from "@/components/tournaments/ClubFixturesPilot";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
+import ClubChampsView from "@/pages/ClubChampsView";
 import { fixtureState, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -434,6 +435,13 @@ export default function Tournaments() {
   // Riverside pilot: club-wide fixtures (Fixtures / Progression / Past labels), read-only.
   const { data: fixturesBoardOn = false } = useClubBetaFeature(md ? undefined : clubId, "tournament_schedule_board");
   const fixturesPilot = fixturesBoardOn && clubId === "11111111-1111-1111-1111-111111111111";
+  // ?champ=<id> deep-links straight to one tournament's games (e.g. after Generate draw & fixtures).
+  const [champFilter, setChampFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    return new URLSearchParams(window.location.search).get("champ") ?? "all";
+  });
+  // Pilot: counts/options derive ONLY from the selected tournament (no cross-tournament leakage).
+  const scopedUpcoming = fixturesPilot && champFilter !== "all" ? upcomingMatches.filter((m: any) => m.champ_id === champFilter) : upcomingMatches;
   const pilotFixtures = useMemo<ClubFixture[]>(() => !fixturesPilot ? [] : (allMatches as any[])
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.stage ?? "group") !== "placeholder")
     .map((m: any) => {
@@ -557,7 +565,7 @@ export default function Tournaments() {
 
   const buckets = useMemo(() => {
     const seen = new Map<string, { key: string; champId: string; group: number | null; pool: number | null; stage: string | null; stageLabel: string | null; count: number }>();
-    for (const m of upcomingMatches) {
+    for (const m of scopedUpcoming) {
       const key = bucketKeyOf(m);
       const existing = seen.get(key);
       if (existing) { existing.count++; continue; }
@@ -586,7 +594,7 @@ export default function Tournaments() {
       if (ga !== gb) return ga - gb;
       return (a.pool ?? 999) - (b.pool ?? 999);
     });
-  }, [upcomingMatches, champById, poolByMatchId]);
+  }, [scopedUpcoming, champById, poolByMatchId]);
 
   // Give every league/pool bucket its own distinct colour (sorted order), so
   // Pool A and Pool B of the same league never look alike.
@@ -628,11 +636,6 @@ export default function Tournaments() {
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
-  // ?champ=<id> deep-links straight to one tournament's games (e.g. after Generate draw & fixtures).
-  const [champFilter, setChampFilter] = useState<string>(() => {
-    if (typeof window === "undefined") return "all";
-    return new URLSearchParams(window.location.search).get("champ") ?? "all";
-  });
   const gamesCardRef = useRef<HTMLDivElement | null>(null);
   // "round" (default) | "slot" | "flat"
   const [groupMode, setGroupMode] = useState<"round" | "slot" | "flat">(() => {
@@ -668,9 +671,9 @@ export default function Tournaments() {
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
-    for (const m of upcomingMatches) if (m.scheduled_date) set.add(m.scheduled_date);
+    for (const m of scopedUpcoming) if (m.scheduled_date) set.add(m.scheduled_date);
     return [...set].sort();
-  }, [upcomingMatches]);
+  }, [scopedUpcoming]);
 
   const applyFilters = (list: any[]) =>
     list.filter(
@@ -1995,7 +1998,6 @@ export default function Tournaments() {
                     <SelectContent>{pastChamps.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 )}
-                {pilotChampId && <Button variant="ghost" size="sm" className="shrink-0 gap-1" onClick={() => navigate(`/club-champs/${pilotChampId}`)}>Details <ChevronRight className="h-3 w-3" /></Button>}
               </div>
             </div>
           )}
@@ -2003,19 +2005,19 @@ export default function Tournaments() {
             <TabsList className="grid w-full grid-cols-3 h-auto gap-1 bg-muted p-1">
               <TabsTrigger
                 value="upcoming"
-                className="text-sm py-2.5 font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"} py-2.5 font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all`}
               >
                 🗓️ {fixturesPilot ? "Upcoming Fixtures" : `Current${champs.length > 0 ? ` (${champs.length})` : ""}`}
               </TabsTrigger>
               <TabsTrigger
                 value="standings"
-                className="text-sm py-2.5 font-semibold border-2 border-amber-500/60 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500 data-[state=active]:shadow-md transition-all"
+                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"} py-2.5 font-semibold border-2 border-amber-500/60 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500 data-[state=active]:shadow-md transition-all`}
               >
                 🏆 {fixturesPilot ? "Progression & Log" : "Standings"}
               </TabsTrigger>
               <TabsTrigger
                 value="past"
-                className="text-sm py-2.5 font-semibold border-2 border-slate-500/60 data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:border-slate-700 data-[state=active]:shadow-md transition-all"
+                className={`${fixturesPilot ? "whitespace-normal leading-tight text-xs sm:text-sm" : "text-sm"} py-2.5 font-semibold border-2 border-slate-500/60 data-[state=active]:bg-slate-700 data-[state=active]:text-white data-[state=active]:border-slate-700 data-[state=active]:shadow-md transition-all`}
               >
                 ✓ {fixturesPilot ? "Past Fixtures" : `Past${pastChamps.length > 0 ? ` (${pastChamps.length})` : ""}`}
               </TabsTrigger>
@@ -2209,7 +2211,7 @@ export default function Tournaments() {
                   {(buckets.length > 1 || availableDates.length > 1 || champFilter !== "all") && (
                     <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2">
                       <label className="text-xs text-muted-foreground shrink-0">Filter:</label>
-                      {champs.length > 1 && (
+                      {champs.length > 1 && !fixturesPilot && (
                         <Select value={champFilter} onValueChange={setChampFilter}>
                           <SelectTrigger className="h-8 text-xs w-full sm:max-w-[200px]">
                             <SelectValue placeholder="All tournaments" />
@@ -2230,9 +2232,9 @@ export default function Tournaments() {
                             <SelectValue placeholder="All dates" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All dates ({upcomingMatches.length})</SelectItem>
+                            <SelectItem value="all">All dates ({scopedUpcoming.length})</SelectItem>
                             {availableDates.map((d) => {
-                              const count = upcomingMatches.filter((m: any) => m.scheduled_date === d).length;
+                              const count = scopedUpcoming.filter((m: any) => m.scheduled_date === d).length;
                               return (
                                 <SelectItem key={d} value={d}>
                                   {format(new Date(d), "EEE dd MMM")} ({count})
@@ -2248,7 +2250,7 @@ export default function Tournaments() {
                             <SelectValue placeholder="All leagues & pools" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All leagues & pools ({upcomingMatches.length})</SelectItem>
+                            <SelectItem value="all">All {fixturesPilot ? "categories" : "leagues & pools"} ({scopedUpcoming.length})</SelectItem>
                             {buckets.map((b) => {
                               const color = bucketColor(b.key);
                               return (
@@ -2390,12 +2392,12 @@ export default function Tournaments() {
 
             <TabsContent value="standings" className="mt-4 space-y-3">
               {(entriesLoading || matchesLoading || stageArchLoading || roundsLoading) ? <div role="status" className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading standings…</div> : <>
-              {champs.length === 0 && (
+              {!fixturesPilot && champs.length === 0 && (
                 <Card className="p-6 text-center text-sm text-muted-foreground">
                   No tournament is running. Standings for finished events are under <span className="font-medium">Past</span>.
                 </Card>
               )}
-              {(fixturesPilot ? pilotSelectable.filter((c: any) => c.id === pilotChampId) : champs).map((champ: any) => {
+              {fixturesPilot ? (pilotChampId ? <ClubChampsView key={pilotChampId} embeddedChampId={pilotChampId} /> : null) : champs.map((champ: any) => {
                 return (
 
                   <Card key={champ.id}>
@@ -2415,7 +2417,7 @@ export default function Tournaments() {
                         className="gap-1"
                         onClick={() => navigate(`/club-champs/${champ.id}`)}
                       >
-                        <BarChart3 className="w-3.5 h-3.5" /> {fixturesPilot ? "Open progression & log" : "View Standings"}
+                        <BarChart3 className="w-3.5 h-3.5" /> View Standings
                       </Button>
                     </CardHeader>
                     <CardContent className="pt-0">

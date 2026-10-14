@@ -90,7 +90,7 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
     const onWheel = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
-      if (zoomTo(ppmRef.current * Math.exp(-dy * 0.01), e.clientY)) e.preventDefault();
+      if (zoomTo(ppmRef.current * Math.exp(-dy * 0.003), e.clientY)) e.preventDefault();
       else if (e.ctrlKey) e.preventDefault(); // block browser page zoom even at bounds
     };
     el.addEventListener("wheel", onWheel, { passive: false });

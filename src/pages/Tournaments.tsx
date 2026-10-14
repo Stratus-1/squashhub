@@ -2054,8 +2054,7 @@ export default function Tournaments() {
               )}
               {fixturesPilot && upView === "calendar" && (
                 <Card className="p-3" data-testid="pilot-tournament-calendar">
-                  <FixtureCalendar key={pilotChampId} events={pilotCalendar} historicalEvents={pilotCalendarHistory} />
-                  {pilotChampId && clubId && (canManageChamps || isClubAdmin) && !md && <RiversideAllocationPreview clubId={clubId} tournamentId={pilotChampId} />}
+                  {pilotChampId && clubId && (canManageChamps || isClubAdmin) && !md ? <RiversideAllocationPreview key={pilotChampId} clubId={clubId} tournamentId={pilotChampId} events={pilotCalendarAll} /> : <FixtureCalendar key={pilotChampId} events={pilotCalendar} historicalEvents={pilotCalendarHistory} />}
                   <details className="mt-3 text-xs">
                     <summary className="cursor-pointer text-muted-foreground">All club fixtures (every tournament) — optional shortcut</summary>
                     <div className="mt-2"><ClubFixturesPilot fixtures={pilotFixtures} canMine={myIds.length > 0} /></div>

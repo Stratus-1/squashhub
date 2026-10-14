@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, GripVertical } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ export interface CalEvent {
   gameScores?: Array<{ a: number; b: number }>; currentGame?: { number: number; a: number; b: number } | null; winner?: string | null;
 }
 type View = "day" | "week" | "month";
+export interface CalendarPreviewActions { eligible: (id: string) => boolean; start: (id: string) => void; drop: (id: string) => void; canDrop: (id: string) => boolean }
 
 /** Visual scale only (px per minute). Never alters times or data. */
 export const ZOOM_MIN = 1, ZOOM_MAX = 5, ZOOM_DEFAULT = 2.5;
@@ -55,16 +56,18 @@ export function hourRange(events: CalEvent[]): [number, number] {
 /** "Willem Pretorius v Ethan Tshabalala" -> "Pretorius v Tshabalala" for narrow week lanes (full names in the detail dialog). */
 export const shortTitle = (t: string) => t.split(/\s+v\s+/).map((side) => side.split(" & ").map((n) => n.trim().split(/\s+/).pop()).join(" & ")).join(" v ");
 
-function EventBlock({ e, top, height, left, width, compact, onOpen }: { e: CalEvent; top: number; height: number; left: string; width: string; compact?: boolean; onOpen: (e: CalEvent) => void }) {
+function EventBlock({ e, top, height, left, width, compact, onOpen, preview }: { e: CalEvent; top: number; height: number; left: string; width: string; compact?: boolean; onOpen: (e: CalEvent) => void; preview?: CalendarPreviewActions }) {
   const st = e.state ?? "upcoming";
   const badge = e.kind === "proposed" ? "Proposed" : STATE_TEXT[st];
   return (
     <Button variant="outline" onClick={() => onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st}
+      onDragOver={(event) => { if (preview?.canDrop(e.id)) event.preventDefault(); }} onDrop={(event) => { if (preview?.canDrop(e.id)) { event.preventDefault(); preview.drop(e.id); } }}
       aria-label={`${e.time?.slice(0, 5) ?? ""} ${e.court ?? ""} ${e.title} ${badge}${e.score ? ` ${e.score}` : ""}${e.currentGame ? ` Game ${e.currentGame.number} ${e.currentGame.a}–${e.currentGame.b}` : ""}`}
       className={cn("absolute block h-auto overflow-y-auto whitespace-normal rounded-md px-1.5 py-1 text-left text-[11px] leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         e.kind === "proposed" ? "border border-dashed border-muted-foreground/60 bg-muted/40" : cn("border shadow-sm", STATE_STYLE[st]))}
       style={{ top, height, left, width }}>
       <div className="flex items-center gap-1">
+        {preview?.eligible(e.id) && <span role="button" tabIndex={0} draggable aria-label={`Move match ${e.title}`} title="Drag to preview or select with Enter" className="cursor-grab p-1" onClick={(event) => { event.stopPropagation(); preview.start(e.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); preview.start(e.id); } }} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData("text/plain", e.id); preview.start(e.id); }}><GripVertical className="h-3 w-3" /></span>}
         {e.court && <span className="rounded bg-muted px-1 text-[10px] font-semibold text-muted-foreground">{compact ? e.court.replace(/court\s*/i, "C") : e.court}</span>}
         <span className={cn("ml-auto inline-flex items-center gap-1 rounded px-1 text-[10px] font-bold", st === "live" ? "bg-destructive text-destructive-foreground" : "bg-muted text-foreground")}>
           {st === "live" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current motion-safe:animate-pulse" />}{badge}
@@ -77,7 +80,7 @@ function EventBlock({ e, top, height, left, width, compact, onOpen }: { e: CalEv
   );
 }
 
-export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [], defaultDuration = 40 }: { events: CalEvent[]; historicalEvents?: CalEvent[]; defaultDuration?: number }) {
+export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [], defaultDuration = 40, preview }: { events: CalEvent[]; historicalEvents?: CalEvent[]; defaultDuration?: number; preview?: CalendarPreviewActions }) {
   const events = [...upcomingEvents, ...historicalEvents];
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(() => initialCalendarDate(events));
@@ -217,7 +220,7 @@ export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [],
                     {[...slots.values()].flatMap((group) => {
                       group.sort((x, y) => (x.court ?? "").localeCompare(y.court ?? "", undefined, { numeric: true }));
                       const w = 100 / group.length;
-                      return group.map((e, i) => { const { top, height } = ev(e); return <EventBlock key={e.id} e={e} top={top} height={height} left={`calc(${i * w}% + 1px)`} width={`calc(${w}% - 2px)`} compact={view === "week" && group.length > 2} onOpen={setOpen} />; });
+                      return group.map((e, i) => { const { top, height } = ev(e); return <EventBlock key={e.id} e={e} top={top} height={height} left={`calc(${i * w}% + 1px)`} width={`calc(${w}% - 2px)`} compact={view === "week" && group.length > 2} onOpen={setOpen} preview={preview} />; });
                     })}
                   </div>
                 );

@@ -4,6 +4,7 @@ import { AllocationPreview } from "./AllocationPreview";
 import { verifyPlanBlocks, type AllocationBooking, type AllocationMatch } from "@/lib/tournaments/allocation-preview";
 import { stageScheduleIndex } from "@/lib/tournaments/stage-schedule";
 import { Button } from "@/components/ui/button";
+import { FixtureCalendar, type CalEvent } from "./FixtureCalendar";
 const RIVERSIDE = "11111111-1111-1111-1111-111111111111";
 async function readAll(make: () => any) {
   const out: any[] = [];
@@ -16,7 +17,7 @@ async function readAll(make: () => any) {
   throw new Error("Availability exceeds safe preview read limit");
 }
 /** Read-only inventory; the permission RPC also only reads. No commit exists. */
-export function RiversideAllocationPreview({ clubId, tournamentId }: { clubId: string; tournamentId: string }) {
+export function RiversideAllocationPreview({ clubId, tournamentId, events }: { clubId: string; tournamentId: string; events: CalEvent[] }) {
   const query = useQuery({
     queryKey: ["riverside-allocation-preview", clubId, tournamentId], enabled: clubId === RIVERSIDE,
     retry: false, refetchInterval: 10000,
@@ -54,8 +55,8 @@ export function RiversideAllocationPreview({ clubId, tournamentId }: { clubId: s
         now: new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Johannesburg", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).replace(" ", "T") };
     },
   });
-  if (clubId !== RIVERSIDE || query.data === null) return null;
-  if (query.isPending) return <p className="mt-3 text-xs text-muted-foreground">Loading read-only allocation availability…</p>;
-  if (query.isError) return <div className="mt-3 text-xs"><p>Move / Swap preview unavailable: ownership or availability could not be verified.</p><Button variant="outline" size="sm" onClick={() => query.refetch()}>Retry preview</Button></div>;
-  return query.data ? <AllocationPreview key={tournamentId} context={query.data} /> : null;
+  if (clubId !== RIVERSIDE || query.data === null) return <FixtureCalendar events={events} />;
+  if (query.isPending) return <><FixtureCalendar events={events} /><p className="mt-3 text-xs text-muted-foreground">Loading read-only allocation availability…</p></>;
+  if (query.isError) return <><FixtureCalendar events={events} /><div className="mt-3 text-xs"><p>Move / Swap preview unavailable: ownership or availability could not be verified.</p><Button variant="outline" size="sm" onClick={() => query.refetch()}>Retry preview</Button></div></>;
+  return query.data ? <AllocationPreview key={tournamentId} context={query.data} events={events} /> : <FixtureCalendar events={events} />;
 }

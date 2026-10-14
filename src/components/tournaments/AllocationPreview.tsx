@@ -3,8 +3,9 @@ import { GripVertical, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { blockAt, fixtureEligibility, individuallyBooked, minutesOf, previewSwap, timeOf, validateAllocation, type AllocationContext, type AllocationMatch, type AllocationSlot } from "@/lib/tournaments/allocation-preview";
+import { FixtureCalendar, type CalEvent } from "./FixtureCalendar";
 
-export function AllocationPreview({ context }: { context: AllocationContext }) {
+export function AllocationPreview({ context, events }: { context: AllocationContext; events?: CalEvent[] }) {
   const [selectedId, select] = useState<string | null>(null);
   const [review, setReview] = useState<Array<{ match: AllocationMatch; slot: AllocationSlot }> | null>(null);
   const selected = context.matches.find((m) => m.id === selectedId);
@@ -19,6 +20,7 @@ export function AllocationPreview({ context }: { context: AllocationContext }) {
   };
   const label = (m: AllocationMatch) => m.title ?? `${m.category ?? "Fixture"} · ${m.scheduled_date} ${m.scheduled_time?.slice(0, 5)} C${m.court_id}`;
   return <section className="space-y-3 border-t border-border pt-3" data-testid="allocation-preview">
+    {events && <FixtureCalendar events={events} preview={{ eligible: (id) => { const m = matches.find((x) => x.id === id); return !!m && !fixtureEligibility(context, m); }, start: (id) => { const m = matches.find((x) => x.id === id); if (m) choose(m); }, canDrop: (id) => { const m = matches.find((x) => x.id === id); return !!selected && !!m && !previewSwap(context, selected, m); }, drop: (id) => { const m = matches.find((x) => x.id === id); if (m) drop({ date: m.scheduled_date ?? "", time: m.scheduled_time ?? "", courtId: m.court_id ?? 0 }, m); } }} />}
     <h3 className="text-sm font-semibold">Move / Swap preview</h3>
     <p className="text-xs font-medium text-warning" role="status">Preview only — no changes saved</p>
     {!context.complete && <p className="text-xs text-destructive">Availability or ownership could not be read completely. Targets are unavailable.</p>}

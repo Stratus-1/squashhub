@@ -71,6 +71,7 @@ import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { ClubFixturesPilot } from "@/components/tournaments/ClubFixturesPilot";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
+import ClubChampsView from "@/pages/ClubChampsView";
 import { fixtureState, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -2395,7 +2396,7 @@ export default function Tournaments() {
                   No tournament is running. Standings for finished events are under <span className="font-medium">Past</span>.
                 </Card>
               )}
-              {(fixturesPilot ? pilotSelectable.filter((c: any) => c.id === pilotChampId) : champs).map((champ: any) => {
+              {fixturesPilot ? (pilotChampId ? <ClubChampsView key={pilotChampId} embeddedChampId={pilotChampId} /> : null) : champs.map((champ: any) => {
                 return (
 
                   <Card key={champ.id}>
@@ -2415,7 +2416,7 @@ export default function Tournaments() {
                         className="gap-1"
                         onClick={() => navigate(`/club-champs/${champ.id}`)}
                       >
-                        <BarChart3 className="w-3.5 h-3.5" /> {fixturesPilot ? "Open progression & log" : "View Standings"}
+                        <BarChart3 className="w-3.5 h-3.5" /> View Standings
                       </Button>
                     </CardHeader>
                     <CardContent className="pt-0">

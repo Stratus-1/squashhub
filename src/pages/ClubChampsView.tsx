@@ -117,10 +117,11 @@ export interface InlineStandingsData {
   arch: any;
 }
 
-export default function ClubChampsView({ inlineStandings }: { inlineStandings?: InlineStandingsData } = {}) {
+/** embeddedChampId: render only this tournament's progression/standings body (Riverside Tournaments pilot tab). Same data + logic as the full page. */
+export default function ClubChampsView({ inlineStandings, embeddedChampId }: { inlineStandings?: InlineStandingsData; embeddedChampId?: string } = {}) {
   const md = useMatchDayDevice();
   const { champId: routeChampId } = useParams<{ champId: string }>();
-  const champId = inlineStandings?.champ.id ?? (md?.kind === "tournament" ? md.competitionId : routeChampId);
+  const champId = inlineStandings?.champ.id ?? embeddedChampId ?? (md?.kind === "tournament" ? md.competitionId : routeChampId);
   // Diamond League (team) tournaments show team standings only — the
   // per-player league tables don't apply. Shares DiamondStandings' cache key.
   const { data: diamondEvent, isLoading: diamondLoading } = useQuery({
@@ -2318,6 +2319,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
     return () => { cancelled = true; };
   }, [isLoading, champ, champId]);
 
+  if (embeddedChampId && isLoading) return <div role="status" className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading progression…</div>;
   if (isLoading || redirecting) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>;
   }
@@ -2327,6 +2329,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   }
 
   if (inlineStandings) return renderAllGroups();
+  if (embeddedChampId) return <div className="space-y-4" data-testid="embedded-progression">{renderAllGroups()}</div>;
 
 
   return (

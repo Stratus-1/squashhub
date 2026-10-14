@@ -3,7 +3,10 @@ import { cn } from "@/lib/utils";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import type { RRPoolView, RRRound } from "@/lib/tournaments/round-robin-view";
 
-const ROUND_TONE = ["border-l-primary", "border-l-accent", "border-l-secondary", "border-l-muted-foreground"];
+/** Display bands only: caller supplies existing official order, independently per pool. */
+export function poolRankTone(index: number, count: number) {
+  return count <= 1 ? 2 : Math.round(index * 4 / (count - 1));
+}
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
 
 /** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
@@ -17,7 +20,7 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
       </div>
       {view.issues.length > 0 && <p className="text-xs text-destructive">{view.issues.join(" ")}</p>}
       <TournamentInteractiveViewer title={`${title} — pool matrix & order of play`} inlineHeight={460} defaultFit="none">
-        <div className="space-y-4 bg-background p-3 text-xs text-foreground">
+        <div className="riverside-round-visuals space-y-4 bg-background p-3 text-xs text-foreground">
           <table className="border-collapse" data-testid="rr-matrix">
             <thead>
               <tr className="bg-muted">
@@ -36,8 +39,8 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
                     if (q.id === p.id) return <td key={q.id} className="border border-border bg-muted-foreground/40" aria-label="Not applicable" />;
                     const c = matrix[p.id][q.id];
                     return (
-                      <td key={q.id} data-testid={`rr-cell-${p.id}-${q.id}`} className={cn("border border-border px-2 py-1 text-center tabular-nums", c?.result === "W" && "bg-primary/15 font-semibold", c?.result === "L" && "text-muted-foreground")}>
-                        {!c ? "—" : c.result ? <>{c.result}<div className="text-[10px]">{c.score}</div></> : <span className="text-muted-foreground">R{c.round ?? "?"}</span>}
+                      <td key={q.id} data-testid={`rr-cell-${p.id}-${q.id}`} className={cn("border border-border px-2 py-1 text-center tabular-nums", c?.result === "W" && "bg-success/10 font-semibold", c?.result === "L" && "text-muted-foreground")}>
+                        {!c ? "—" : c.result ? <>{c.result}<div className="text-[10px]">{c.score}</div></> : <span className="round-reference" data-round-tone={((c.round ?? 1) - 1) % 5 + 1}>R{c.round ?? "?"}</span>}
                       </td>
                     );
                   })}
@@ -52,8 +55,8 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
           <div className="space-y-2" data-testid="rr-order-of-play">
             <h4 className="font-semibold">Order of play</h4>
             {rounds.map((rd, ri) => (
-              <div key={rd.label} className={cn("border border-border border-l-4", ROUND_TONE[ri % ROUND_TONE.length])}>
-                <div className="flex items-center gap-2 bg-muted px-2 py-1 font-semibold">
+              <div key={rd.label} data-round-tone={ri % 5 + 1} className="round-panel border border-border border-l-4">
+                <div className="round-header flex flex-wrap items-center gap-2 px-2 py-1 font-semibold">
                   <span>{rd.label}</span><Badge variant="outline" className="text-[10px]">{ROUND_STATUS[rd.status]}</Badge>
                   {rd.sittingOut.length > 0 && <span className="ml-auto text-[11px] font-normal text-muted-foreground">Sitting out: {rd.sittingOut.join(", ")}</span>}
                 </div>
@@ -61,7 +64,7 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
                   <thead><tr className="text-left text-muted-foreground"><th className="px-2">Pos</th><th className="px-2">Player</th><th className="px-2">v</th><th className="px-2">Pos</th><th className="px-2">Player</th><th className="px-2">Result</th><th className="px-2">Score</th><th className="px-2">Day / time · court</th></tr></thead>
                   <tbody>
                     {rd.matches.map((m) => (
-                      <tr key={m.id} className="border-t border-border">
+                      <tr key={m.id} className={cn("border-t border-border", m.status === "played" && "bg-success/5")}>
                         <td className="px-2 tabular-nums">{m.posA ?? ""}</td>
                         <td className={cn("px-2 whitespace-nowrap", m.winner && m.winner === m.a && "font-semibold")}>{m.aName}</td>
                         <td className="px-2 text-muted-foreground">v</td>

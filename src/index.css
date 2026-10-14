@@ -47,6 +47,11 @@
     --round-3: 262 50% 55%;
     --round-4: 36 90% 44%;
     --round-5: 145 55% 36%;
+    --pool-rank-1: 152 36% 82%;
+    --pool-rank-2: 145 32% 87%;
+    --pool-rank-3: 125 20% 91%;
+    --pool-rank-4: 344 35% 89%;
+    --pool-rank-5: 354 38% 83%;
     --success: 152 60% 36%;
     --success-foreground: 152 65% 24%;
 
@@ -145,6 +150,11 @@
     --round-3: 262 50% 68%;
     --round-4: 36 90% 56%;
     --round-5: 145 55% 50%;
+    --pool-rank-1: 153 48% 20%;
+    --pool-rank-2: 147 36% 25%;
+    --pool-rank-3: 125 23% 30%;
+    --pool-rank-4: 342 29% 29%;
+    --pool-rank-5: 354 45% 22%;
     --success: 152 55% 45%;
     --success-foreground: 152 60% 70%;
     --border: 220 20% 18%;

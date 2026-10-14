@@ -30,7 +30,7 @@ export function verifyPlanBlocks(bookings: AllocationBooking[], tournament: { id
   const answers = tournament.beta_lifecycle?.answers;
   if (!answers?.planId || !Array.isArray(answers.stages)) return [];
   return bookings.flatMap((b) => {
-    if (b.club_id !== tournament.club_id || individuallyBooked(b) || b.external_booker_name?.trim() || b.source !== "club_event" || b.ops_note !== "Tournament court reservation (Step-by-Step Beta)") return [];
+    if (b.club_id !== tournament.club_id || individuallyBooked(b) || b.external_booker_name?.trim() || b.guest_name?.trim() || b.source !== "club_event" || b.ops_note !== "Tournament court reservation (Step-by-Step Beta)") return [];
     const stage = answers.stages.find((s: any) => {
       if (!s.id || s.mode !== "scheduled") return false;
       const days = [{ date: s.date, from: s.from, to: s.to, courtIds: s.courtIds, extra: false }, ...(s.extraDays ?? []).map((d: any) => ({ ...d, extra: true }))];
@@ -54,6 +54,7 @@ export function fixtureEligibility(ctx: AllocationContext, m: AllocationMatch): 
   if (m.booking_id) return "Individually booked — member arrangement required";
   if (!m.duration || m.duration <= 0) return "Saved match duration unavailable";
   if (!m.scheduled_date || !m.scheduled_time || !m.court_id) return "No saved allocation";
+  if (`${m.scheduled_date}T${m.scheduled_time.slice(0, 5)}` <= ctx.now) return "Past fixture allocation";
   if (!blockAt(ctx, { date: m.scheduled_date, time: m.scheduled_time, courtId: m.court_id }, m.duration)) return "Block ownership verification required";
   return null;
 }

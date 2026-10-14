@@ -152,3 +152,23 @@ describe("scheduling planned slots", () => {
     expect(scheduleConflicts([d], bad as never, { matchMinutes: 45, restMinutes: 30 }).length).toBe(1);
   });
 });
+
+import { timeSlots, slotOnlyDraw } from "@/lib/tournaments/swiss-positional-draw";
+describe("daily window → start times and per-match slots", () => {
+  it("18:00–20:00 at 30 min gives 4 starts", () => {
+    expect(timeSlots("18:00:00", "20:00:00", 30)).toEqual(["18:00", "18:30", "19:00", "19:30"]);
+    expect(timeSlots("18:00", "20:00", 30, 10)).toEqual(["18:00", "18:40", "19:20"]);
+    expect(timeSlots(null, "20:00", 30)).toEqual([]);
+  });
+  it("Riverside-like capacity: 24 + 18 entrants on one evening, 4 courts, overflow reported", () => {
+    const a = slotOnlyDraw("A", 24, 5), b = slotOnlyDraw("B", 18, 4);
+    const opts = { roundDates: { A: [null, "2026-11-11"], B: [null, "2026-11-11"] }, courts: [1, 2, 3, 4].map((id) => ({ id, name: `Court ${id}` })), times: timeSlots("18:00", "20:00", 30), matchMinutes: 30, restMinutes: 0 };
+    const s = scheduleDraws([a, b], opts);
+    const r2 = Object.entries(s).filter(([k]) => k.includes(":r2-"));
+    expect(r2.filter(([, v]) => v.kind === "planned").length).toBe(16);
+    expect(r2.filter(([, v]) => v.kind === "unscheduled").length).toBe(12 + 9 - 16);
+    expect(scheduleConflicts([a, b], s, opts)).toEqual([]);
+    const keys = r2.filter(([, v]) => v.kind === "planned").map(([, v]) => v.kind === "planned" && `${v.time}|${v.courtId}`);
+    expect(new Set(keys).size).toBe(16);
+  });
+});

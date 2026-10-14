@@ -214,3 +214,20 @@ export function scheduleConflicts(draws: CategoryDraw[], sched: Record<string, F
   }
   return out;
 }
+
+/** Start times from a daily window: every (match + break) minutes, last start leaves room for a full match. */
+export function timeSlots(from: string | null | undefined, to: string | null | undefined, matchMinutes: number, breakMinutes = 0): string[] {
+  if (!from || !to || !(matchMinutes > 0)) return [];
+  const out: string[] = [];
+  for (let t = mins(from.slice(0, 5)); t + matchMinutes <= mins(to.slice(0, 5)); t += matchMinutes + Math.max(0, breakMinutes))
+    out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+  return out;
+}
+
+/** Slot-only draw (players unknown) for scheduling previews of a category. */
+export function slotOnlyDraw(categoryKey: string, entrants: number, rounds: number): CategoryDraw {
+  return generateCategoryDraw({ categoryKey, label: categoryKey, rounds, entrants: Array.from({ length: entrants }, (_, i) => ({ id: `${categoryKey}#${i + 1}`, name: `Position ${i + 1}` })) });
+}
+
+export const fmtFixtureSchedule = (s?: FixtureSchedule | null) =>
+  !s ? "Not scheduled" : s.kind === "planned" ? `${s.date} ${s.time} · ${s.courtName}` : s.kind === "play_by" ? `Play by ${s.date}` : s.reason;

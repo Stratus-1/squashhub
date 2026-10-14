@@ -18,6 +18,8 @@ import { saveTieBreakRules } from "@/lib/tournaments/progression";
 import { atomically } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
+import { SwissCategoryRoundsPanel, type SwissCategoryRow } from "./SwissCategoryRoundsPanel";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
 import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -541,6 +543,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (patch === null) delete next[key]; else next[key] = { ...playoffFor(key), ...patch };
     setA({ ...a, playoffOverrides: next });
   };
+  const { data: swissPilot = false } = useClubBetaFeature(clubId, "tournament_swiss_category_rounds");
   const format: FormatPlan = { ...DEFAULT_FORMAT, ...a.format };
   const formatFor = (key: string): FormatPlan => a.formatOverrides?.[key] ?? a.formatOverrides?.[key.split("::")[0]] ?? format;
   const setFormat = (patch: Partial<FormatPlan>) => setA({ ...a, format: { ...format, ...patch } });
@@ -2217,6 +2220,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <Q t="What format are you planning?" h="How players will compete — separate from how each match is scored." />
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">This is your planned format. Once registrations close and final player numbers are known, SquashHub will revisit the format with you before pools, draws or fixtures are generated.</div>
               <FormatFields value={format} onChange={setFormat} units={units} entries={a.unitEntries ?? {}} stages={a.stages} />
+              {swissPilot && <SwissCategoryRoundsPanel liveDraw={!!entryTournamentId} rows={units.map((u): SwissCategoryRow => {
+                const f = formatFor(u.key);
+                let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length; let guessed = false;
+                if (!n) { n = Number(a.unitEntries?.[u.key]) || 0; guessed = n > 0; }
+                const entrants = u.disc === "doubles" ? Math.floor(n / 2) : n;
+                const sel = Number(f.swissRoundsConfirmed || f.swissRounds);
+                return { key: u.key, label: u.base, entrants, entrantsGuessed: guessed, isSwiss: f.kind === "swiss", formatName: f.kind ? f.kind.replace(/_/g, " ") : "not set", selected: sel >= 1 ? sel : null, ownSetting: !!a.formatOverrides?.[u.key] };
+              })} onChange={(k, r) => setFormatOverride(k, { swissRounds: String(r), swissRoundsConfirmed: String(r) })} />}
               {units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
                 <div className="text-sm font-semibold">Category and subcategory exceptions</div>
                 <p className="text-xs text-muted-foreground">Leave a group on the tournament format, or plan a different one.</p>

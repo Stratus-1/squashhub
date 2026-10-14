@@ -988,6 +988,13 @@
       "when": 1791987661844,
       "tag": "0140_beta_feature_viewer_switch_names",
       "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1791989610550,
+      "tag": "0141_beta_feature_swiss_category_rounds",
+      "breakpoints": true
     }
   ]
 }

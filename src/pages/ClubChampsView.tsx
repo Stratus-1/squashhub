@@ -97,6 +97,7 @@ import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
+import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
@@ -1192,6 +1193,8 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   // Renders either a single standings table for a league, or one table per pool
   // (Swiss with multiple pools, or knockout sections). Pool headers appear as
   // "Pool A", "Pool B" etc.
+  // Riverside Swiss pilot: models built while rendering standings, reused on the Results tab (same data, no recalculation).
+  const pilotSwissModels: Record<number, any> = {};
   const renderGroupStandings = (gn: number) => {
     const ko = renderKnockoutStandings(gn);
     if (ko) return ko;
@@ -1242,6 +1245,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         })),
       });
       const riversidePreview = champ.club_id === "11111111-1111-1111-1111-111111111111";
+      if (riversidePreview) pilotSwissModels[gn] = model;
       return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
     }
 
@@ -3893,7 +3897,17 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             </div>
           ),
           upcoming: listNode(split.upcoming, groupMatches.length ? "No games left to play in this category." : "No fixtures for this category yet.", "upcoming"),
-          results: listNode(split.results, "No results yet.", "results"),
+          results: pilotSwissModels[gn] ? (
+            <div className="space-y-4">
+              <SwissPilotBoundary fallback={null}>
+                <div data-testid="swiss-results-current-positions" className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Live score-based standings — not the proposed fixed-position preview.</p>
+                  <SwissCurrentPositionsTable model={pilotSwissModels[gn]} />
+                </div>
+              </SwissPilotBoundary>
+              {listNode(split.results, "No results yet.", "results")}
+            </div>
+          ) : listNode(split.results, "No results yet.", "results"),
           upcomingCount: split.upcoming.length,
           resultsCount: split.results.length,
         });

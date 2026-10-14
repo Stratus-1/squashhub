@@ -1275,7 +1275,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       });
       const riversidePreview = champ.club_id === "11111111-1111-1111-1111-111111111111";
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view
@@ -1650,7 +1650,9 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Standings / Upcoming Fixtures / Results view: one category at a time, shared
   // across both tabs so switching tabs keeps the same category selected.
   // Standings | Upcoming Fixtures | Results — shared by the signed-in page and the public QR view.
-  const [catTab, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
+  const [catTabState, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
+  // Embedded in the Tournaments "Progression & Log" tab: progression only (fixtures/results live in the top-level tabs).
+  const catTab: TournamentTab = embeddedChampId ? "standings" : catTabState;
   const [catGroup, setCatGroup] = useState<number | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
@@ -4062,11 +4064,11 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     );
     const categoryViewsNode = activeCat ? (
       <Card key="category-views" className={cn("rounded-none overflow-hidden", activeCat.leading && "border-primary/40")}>
-        <div role="tablist" aria-label="Tournament view" className="flex">
+        {!embeddedChampId && <div role="tablist" aria-label="Tournament view" className="flex">
           {tabBtn("standings", "Standings")}
           {tabBtn("upcoming", "Upcoming Fixtures")}
           {tabBtn("results", "Results")}
-        </div>
+        </div>}
         {categoryViews.length > 1 && (
           <div className="border-b bg-muted/40 px-3 py-2">
             <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Category">
@@ -4092,7 +4094,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             </div>
           </div>
         )}
-        <CardContent id="cat-tabpanel" role="tabpanel" aria-labelledby={`cat-tab-${catTab}`} className="pt-4 space-y-4">
+        <CardContent id="cat-tabpanel" role={embeddedChampId ? undefined : "tabpanel"} aria-labelledby={embeddedChampId ? undefined : `cat-tab-${catTab}`} className="pt-4 space-y-4">
           <h3 className="text-lg font-semibold">
             {activeCat.title}
             {catTab !== "standings" && <span className="sr-only"> — {catTab === "upcoming" ? "Upcoming Fixtures" : "Results"}</span>}

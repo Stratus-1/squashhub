@@ -449,24 +449,6 @@ export default function Tournaments() {
       };
     }), [fixturesPilot, allMatches, champs, myIds, freshMatchIds]);
 
-  // Riverside pilot IA: pick ONE tournament first; tabs then show only that tournament's matches.
-  const [upView, setUpView] = useState<"list" | "calendar">("list");
-  const pilotSelectable = useMemo(() => [...champs, ...pastChamps] as any[], [champs, pastChamps]);
-  const storedPilotChamp = typeof window !== "undefined" ? window.localStorage.getItem("tournaments.pilotChamp") : null;
-  const pilotChampId = fixturesPilot ? (pilotSelectable.find((c: any) => c.id === champFilter)?.id ?? pilotSelectable.find((c: any) => c.id === storedPilotChamp)?.id ?? champs[0]?.id ?? pastChamps[0]?.id ?? null) : null;
-  const pilotChamp = pilotChampId ? champById.get(pilotChampId) : null;
-  const pilotPast = useMemo(() => !pilotChampId ? [] : (allMatches as any[])
-    .filter((m: any) => m.champ_id === pilotChampId && m.status === "completed")
-    .sort((a: any, b: any) => `${b.scheduled_date ?? ""} ${b.scheduled_time ?? ""}`.localeCompare(`${a.scheduled_date ?? ""} ${a.scheduled_time ?? ""}`)), [allMatches, pilotChampId]);
-  const pilotCalendar = useMemo(() => pilotFixtures
-    .filter((f) => f.competitionId === pilotChampId && f.state !== "completed" && f.timing !== "unscheduled")
-    .map((f) => ({ id: f.id, date: (f.date ?? f.playBy)!, time: f.timing === "saved" ? f.time : null, durationMin: champById.get(f.competitionId)?.match_duration_minutes ?? 40, court: f.court, title: `${f.a} v ${f.b}`, subtitle: `${f.category}${f.round ? ` · R${f.round}` : ""}`, kind: (f.timing === "saved" ? "confirmed" : "play_by") as "confirmed" | "play_by", state: f.state, score: f.liveGames ?? f.score })), [pilotFixtures, pilotChampId]);
-  useEffect(() => {
-    if (!fixturesPilot || !pilotChampId) return;
-    if (champFilter !== pilotChampId) setChampFilter(pilotChampId);
-    try { window.localStorage.setItem("tournaments.pilotChamp", pilotChampId); } catch { /* ignore */ }
-  }, [fixturesPilot, pilotChampId]);
-
   const myUpcoming = upcomingMatches.filter((m: any) => involvesMe(m, myIds));
   const myAll = selectMyFixtures(
     (allMatches as any[]).filter((m: any) => activeChampIds.has(m.champ_id)),
@@ -665,6 +647,24 @@ export default function Tournaments() {
   }, [groupMode]);
 
 
+
+  // Riverside pilot IA: pick ONE tournament first; tabs then show only that tournament's matches.
+  const [upView, setUpView] = useState<"list" | "calendar">("list");
+  const pilotSelectable = useMemo(() => [...champs, ...pastChamps] as any[], [champs, pastChamps]);
+  const storedPilotChamp = typeof window !== "undefined" ? window.localStorage.getItem("tournaments.pilotChamp") : null;
+  const pilotChampId = fixturesPilot ? (pilotSelectable.find((c: any) => c.id === champFilter)?.id ?? pilotSelectable.find((c: any) => c.id === storedPilotChamp)?.id ?? champs[0]?.id ?? pastChamps[0]?.id ?? null) : null;
+  const pilotChamp = pilotChampId ? champById.get(pilotChampId) : null;
+  const pilotPast = useMemo(() => !pilotChampId ? [] : (allMatches as any[])
+    .filter((m: any) => m.champ_id === pilotChampId && m.status === "completed")
+    .sort((a: any, b: any) => `${b.scheduled_date ?? ""} ${b.scheduled_time ?? ""}`.localeCompare(`${a.scheduled_date ?? ""} ${a.scheduled_time ?? ""}`)), [allMatches, pilotChampId]);
+  const pilotCalendar = useMemo(() => pilotFixtures
+    .filter((f) => f.competitionId === pilotChampId && f.state !== "completed" && f.timing !== "unscheduled")
+    .map((f) => ({ id: f.id, date: (f.date ?? f.playBy)!, time: f.timing === "saved" ? f.time : null, durationMin: champById.get(f.competitionId)?.match_duration_minutes ?? 40, court: f.court, title: `${f.a} v ${f.b}`, subtitle: `${f.category}${f.round ? ` · R${f.round}` : ""}`, kind: (f.timing === "saved" ? "confirmed" : "play_by") as "confirmed" | "play_by", state: f.state, score: f.liveGames ?? f.score })), [pilotFixtures, pilotChampId]);
+  useEffect(() => {
+    if (!fixturesPilot || !pilotChampId) return;
+    if (champFilter !== pilotChampId) setChampFilter(pilotChampId);
+    try { window.localStorage.setItem("tournaments.pilotChamp", pilotChampId); } catch { /* ignore */ }
+  }, [fixturesPilot, pilotChampId]);
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();

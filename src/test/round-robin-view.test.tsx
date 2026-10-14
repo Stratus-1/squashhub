@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { buildRoundRobinView, rrWhen, type RRMatchInput } from "@/lib/tournaments/round-robin-view";
+import { buildRoundRobinView, rrWhen, rrSetSummary, type RRMatchInput } from "@/lib/tournaments/round-robin-view";
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 
 const P = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }));
@@ -16,6 +16,30 @@ function circle(n: number): RRMatchInput[] {
 }
 
 describe("round-robin pilot view", () => {
+  it("shows recorded games won only, mirrored, without changing saved score or totals", () => {
+    const m: RRMatchInput = { id: "done", a: "p1", b: "p2", round: 1, winner: "p1", status: "completed", score: "0-11, 11-0, 11-0, 11-0" };
+    const before = JSON.stringify(m);
+    const view = buildRoundRobinView({ players: P(3), matches: [m, { id: "pending", a: "p1", b: "p3", round: 2 }] });
+    expect(view.matrix.p1.p2?.setSummary).toBe("3–1"); expect(view.matrix.p2.p1?.setSummary).toBe("1–3");
+    render(<RoundRobinPilotView title="Pool A" view={view} />);
+    expect(screen.getByTestId("rr-cell-p1-p2").textContent).toBe("3–1");
+    expect(screen.getByTestId("rr-cell-p2-p1").textContent).toBe("1–3");
+    expect(screen.getByTestId("rr-cell-p2-p1").className).toContain("rr-matrix-final");
+    expect(screen.getByTestId("rr-cell-p1-p3").textContent).toBe("R2");
+    expect(view.matrix.p1.p2?.score).toBe(m.score); expect(JSON.stringify(m)).toBe(before);
+  });
+  it("uses JSON saved sets before score text and supports 3–2 and missing scores", () => {
+    const m = { id: "x", round: 1, a: "p1", b: "p2", score: "3-1", gameScores: JSON.stringify({ sets: [{a:11,b:0},{a:0,b:11},{a:11,b:0},{a:0,b:11},{a:11,b:0}], current: {a:8,b:6} }) };
+    expect(rrSetSummary(m)).toBe("3–2"); expect(rrSetSummary(m, true)).toBe("2–3");
+    expect(rrSetSummary({...m,gameScores:null,score:null})).toBeNull();
+  });
+  it("never gives live or pending cells final tint or a completed set count", () => {
+    const view = buildRoundRobinView({ players: P(2), matches: [{ id:"live",a:"p1",b:"p2",round:1,status:"in_progress",score:"11-0" }] });
+    render(<RoundRobinPilotView title="Pool A" view={view} />);
+    expect(screen.getByTestId("rr-cell-p1-p2").getAttribute("data-state")).toBe("live");
+    expect(screen.getByTestId("rr-cell-p1-p2").className).not.toContain("rr-matrix-final");
+    expect(view.matrix.p1.p2?.setSummary).toBeNull();
+  });
   it("resets display bands independently per pool without sorting standings", () => {
     expect(Array.from({ length: 5 }, (_, i) => poolRankTone(i, 5))).toEqual([0, 1, 2, 3, 4]);
     expect(poolRankTone(0, 6)).toBe(0); expect(poolRankTone(5, 6)).toBe(4);

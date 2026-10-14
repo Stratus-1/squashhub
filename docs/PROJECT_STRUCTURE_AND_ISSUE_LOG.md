@@ -1,3 +1,7 @@
+### 2026-10-14 — Riverside RR matrix overflowing point-score breakdown
+- Matrix now renders separate games-won summary from saved sets/score, mirrored from each row player's perspective, with light-green completed cells and dark contrasting text. Pending round references and in-progress state remain distinct.
+- Raw scores, totals, standings, detailed order-of-play and Past Fixtures/details remain unchanged. Riverside-only existing gate; no writes or publishing.
+
 ### 2026-10-14 — Riverside pool rank and progression colour refinement
 - Classic Log uses independent dark-green through lighter-green/pink to dark-red semantic rank bands within each pool, following existing standings order. Before results the same bands are softened and labelled provisional draw order.
 - RR round headers/borders and matrix round references use restrained coordinated accents; Swiss proposed preview headers gain the same scoped accents. Existing results alone drive winner highlights; no fabricated live state.

@@ -39,8 +39,8 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
                     if (q.id === p.id) return <td key={q.id} className="border border-border bg-muted-foreground/40" aria-label="Not applicable" />;
                     const c = matrix[p.id][q.id];
                     return (
-                      <td key={q.id} data-testid={`rr-cell-${p.id}-${q.id}`} className={cn("border border-border px-2 py-1 text-center tabular-nums", c?.result === "W" && "bg-success/10 font-semibold", c?.result === "L" && "text-muted-foreground")}>
-                        {!c ? "—" : c.result ? <>{c.result}<div className="text-[10px]">{c.score}</div></> : <span className="round-reference" data-round-tone={((c.round ?? 1) - 1) % 5 + 1}>R{c.round ?? "?"}</span>}
+                      <td key={q.id} data-testid={`rr-cell-${p.id}-${q.id}`} data-state={c?.status === "played" ? "final" : c?.live ? "live" : "pending"} aria-label={`${p.name} versus ${q.name}: ${c?.status === "played" ? `Final ${c.setSummary ?? "score not recorded"}${c.result ? `, ${c.result === "W" ? "won" : "lost"}` : ""}` : c?.live ? "In progress" : `Round ${c?.round ?? "not assigned"}`}`} className={cn("border border-border px-2 py-1 text-center tabular-nums whitespace-nowrap", c?.status === "played" && "rr-matrix-final font-semibold", c?.live && "border-destructive bg-destructive/10")}>
+                        {!c ? "—" : c.status === "played" ? c.setSummary ?? "Final" : c.live ? <span className="text-[10px] font-semibold">In progress</span> : <span className="round-reference" data-round-tone={((c.round ?? 1) - 1) % 5 + 1}>R{c.round ?? "?"}</span>}
                       </td>
                     );
                   })}

@@ -52,6 +52,8 @@
     --pool-rank-3: 125 20% 91%;
     --pool-rank-4: 344 35% 89%;
     --pool-rank-5: 354 38% 83%;
+    --matrix-final: 145 31% 80%;
+    --matrix-final-foreground: 153 44% 12%;
     --success: 152 60% 36%;
     --success-foreground: 152 65% 24%;
 
@@ -155,6 +157,8 @@
     --pool-rank-3: 125 23% 30%;
     --pool-rank-4: 342 29% 29%;
     --pool-rank-5: 354 45% 22%;
+    --matrix-final: 145 31% 76%;
+    --matrix-final-foreground: 153 44% 12%;
     --success: 152 55% 45%;
     --success-foreground: 152 60% 70%;
     --border: 220 20% 18%;
@@ -591,6 +595,7 @@ body:has(.admin-contrast) [role="dialog"] {
   background-image: linear-gradient(90deg, hsl(var(--pool-row) / .65), hsl(var(--pool-row) / .4));
 }
 .riverside-pool-rank > td { padding-left: .5rem; padding-right: .5rem; }
+.riverside-round-visuals .rr-matrix-final { background-color: hsl(var(--matrix-final)); color: hsl(var(--matrix-final-foreground)); }
 .riverside-round-visuals [data-round-tone="1"] { --round-tone: var(--round-1); }
 .riverside-round-visuals [data-round-tone="2"] { --round-tone: var(--round-2); }
 .riverside-round-visuals [data-round-tone="3"] { --round-tone: var(--round-3); }

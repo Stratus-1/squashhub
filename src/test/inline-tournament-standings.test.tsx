@@ -12,7 +12,7 @@ describe("inline tournament standings", () => {
     expect(source).toContain('{tabBtn("upcoming", "Upcoming Fixtures")}');
     expect(source).toContain('{tabBtn("results", "Results")}');
     expect(source).not.toContain('Fixtures & Results`)}');
-    expect(source).toContain('role="tabpanel" aria-labelledby={`cat-tab-${catTab}`}');
+    expect(source).toContain('role={embeddedChampId ? undefined : "tabpanel"} aria-labelledby={embeddedChampId ? undefined : `cat-tab-${catTab}`}');
     expect(source).toContain('catTab === "standings" ? activeCat.standings : catTab === "upcoming" ? activeCat.upcoming : activeCat.results');
   });
   it("opens standings by default with an accessible collapse control", () => {

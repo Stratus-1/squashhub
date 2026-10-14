@@ -25,7 +25,7 @@ type Row = { id: string; pilot_label: string; category_key: string; category_lab
 
 const synthetic = (c: CatInput) => Array.from({ length: c.entrants }, (_, i) => ({ id: `${c.key}-p${i + 1}`, name: `PILOT ${c.label} ${i + 1}` }));
 const toDraw = (r: Row): CategoryDraw => ({ categoryKey: r.category_key, label: r.category_label, rounds: r.rounds, entrants: r.entrants, fixtures: r.fixtures, byes: r.byes, issues: [] });
-const fmtSched = (s?: FixtureSchedule) => !s ? "Not scheduled" : s.kind === "planned" ? `${s.date} ${s.time} · ${s.courtName} (planned)` : s.kind === "play_by" ? `Play by ${s.date}` : s.reason;
+const fmtSched = (s?: FixtureSchedule) => !s ? "Not scheduled" : s.kind === "planned" ? `Proposed: ${s.date} ${s.time} · ${s.courtName}` : s.kind === "play_by" ? `Play by ${s.date}` : s.reason;
 
 export default function PositionalSwissPilot() {
   const qc = useQueryClient();
@@ -146,6 +146,12 @@ export default function PositionalSwissPilot() {
             {!saved.data?.length && <p className="text-xs text-muted-foreground">None yet.</p>}
             {(saved.data ?? []).map((row) => <DrawGrid key={row.id} row={row} onWin={(k, s) => record(row, k, s)} />)}
           </section>
+          <section className="space-y-3">
+            <h3 className="font-semibold text-sm">3. Review and edit every match's date, time and court</h3>
+            {[...new Set((saved.data ?? []).map((r) => r.pilot_label))].map((label) => (
+              <ScheduleReview key={label + (saved.dataUpdatedAt ?? 0)} rows={(saved.data ?? []).filter((r) => r.pilot_label === label)} courts={(courts.data ?? []).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` }))} onSaved={() => qc.invalidateQueries({ queryKey: ["swiss-pilot-draws"] })} />
+            ))}
+          </section>
         </>
       )}
     </div>
@@ -193,6 +199,76 @@ function DrawGrid({ row, onWin }: { row: Row; onWin: (key: string, side: ResultS
           </div>
         </div>
       </TournamentInteractiveViewer>
+    </div>
+  );
+}
+
+/** Organiser review: edit each match's date/time/court or play-by, check clashes, save, then (only on explicit confirmation) reserve courts. */
+export function ScheduleReview({ rows, courts, onSaved }: { rows: Row[]; courts: Array<{ id: number; name: string }>; onSaved: () => void }) {
+  const [edit, setEdit] = useState<Record<string, Record<string, FixtureSchedule>>>(() => Object.fromEntries(rows.map((r) => [r.id, { ...(r.schedule ?? {}) }])));
+  const [matchMin, setMatchMin] = useState(45);
+  const [restMin, setRestMin] = useState(45);
+  const [diary, setDiary] = useState<string[] | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const draws = rows.map(toDraw);
+  const merged: Record<string, FixtureSchedule> = Object.fromEntries(rows.flatMap((r) => Object.entries(edit[r.id] ?? {}).map(([k, v]) => [`${r.category_key}:${k}`, v])));
+  const conflicts = scheduleConflicts(draws, merged, { matchMinutes: matchMin, restMinutes: restMin });
+  const set = (rid: string, key: string, v: FixtureSchedule) => { setEdit((e) => ({ ...e, [rid]: { ...e[rid], [key]: v } })); setDiary(null); setConfirmed(false); };
+  const endOf = (t: string) => { const m = Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) + matchMin; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:00`; };
+  const slots = (r: Row) => Object.entries(edit[r.id] ?? {}).flatMap(([k, v]) => v.kind === "planned" ? [{ stageId: k, stageName: `${r.category_label} ${k}`, courtId: Number(v.courtId), date: v.date, start: `${v.time}:00`, end: endOf(v.time), externalId: `sbs:pswiss-${r.id}:${k}` }] : []);
+
+  async function save() {
+    setBusy(true);
+    for (const r of rows) { const { error } = await fromExt("swiss_positional_pilot_draws").update({ schedule: edit[r.id] }).eq("id", r.id); if (error) { setBusy(false); return toast.error(error.message); } }
+    setBusy(false); toast.success("Schedule saved (still proposed — no courts reserved)."); onSaved();
+  }
+  async function checkDiary() {
+    const { findConflicts } = await import("@/lib/smart-builder/stage-bookings");
+    const all = (await Promise.all(rows.map((r) => findConflicts(RIVERSIDE, slots(r))))).flat();
+    setDiary(all.map((c) => `${c.stageName} ${c.date} ${c.start.slice(0, 5)} court ${c.courtId}: ${c.reason}`));
+  }
+  async function reserve() {
+    if (!confirmed || conflicts.length || diary == null || diary.length) return;
+    setBusy(true);
+    const { bookPlanSlots } = await import("@/lib/smart-builder/stage-bookings");
+    let booked = 0; const skipped: string[] = [];
+    for (const r of rows) { const res = await bookPlanSlots(RIVERSIDE, `pswiss-${r.id}`, `PILOT ${r.pilot_label}`, slots(r)); booked += res.booked; skipped.push(...res.conflicts.map((c) => c.reason)); }
+    setBusy(false); toast.success(`Reserved ${booked} court slot(s).${skipped.length ? ` Skipped ${skipped.length}.` : ""}`); onSaved();
+  }
+
+  return (
+    <div className="rounded-xl bg-card p-3 text-card-foreground text-xs space-y-2" data-testid="schedule-review">
+      <div className="flex flex-wrap items-center gap-2"><span className="font-semibold text-sm">Schedule review — {rows[0]?.pilot_label}</span><Badge variant="outline">Proposed until reserved</Badge>
+        <label>Match min <Input type="number" className="h-7 w-16 inline-block" value={matchMin} onChange={(e) => setMatchMin(Number(e.target.value))} /></label>
+        <label>Rest min <Input type="number" className="h-7 w-16 inline-block" value={restMin} onChange={(e) => setRestMin(Number(e.target.value))} /></label>
+      </div>
+      <TournamentInteractiveViewer title="Schedule review" inlineHeight={360} defaultFit="none">
+        <table className="bg-background text-foreground text-xs"><thead><tr className="text-left text-muted-foreground"><th className="px-1">Category</th><th className="px-1">Round</th><th className="px-1">Match</th><th className="px-1">Type</th><th className="px-1">Date</th><th className="px-1">Time</th><th className="px-1">Court</th></tr></thead>
+          <tbody>{rows.flatMap((r) => r.fixtures.map((f) => {
+            const v = edit[r.id]?.[f.key] ?? { kind: "unscheduled", reason: "Not scheduled" } as FixtureSchedule;
+            const date = v.kind === "unscheduled" ? "" : v.date;
+            return (
+              <tr key={r.id + f.key} className="border-t border-border">
+                <td className="px-1">{r.category_label}</td><td className="px-1">{f.round}</td><td className="px-1 whitespace-nowrap">Pos {f.slotA} v Pos {f.slotB}</td>
+                <td className="px-1"><select aria-label="type" className="bg-background border border-border rounded h-7" value={v.kind} onChange={(e) => {
+                  const k = e.target.value;
+                  set(r.id, f.key, k === "planned" ? { kind: "planned", date: date || "", time: "18:00", courtId: courts[0]?.id ?? 0, courtName: courts[0]?.name ?? "" } : k === "play_by" ? { kind: "play_by", date: date || "" } : { kind: "unscheduled", reason: "Not scheduled" });
+                }}><option value="planned">Court &amp; time</option><option value="play_by">Play by</option><option value="unscheduled">Not scheduled</option></select></td>
+                <td className="px-1">{v.kind !== "unscheduled" && <Input type="date" className="h-7 w-36" value={date} onChange={(e) => set(r.id, f.key, { ...v, date: e.target.value } as FixtureSchedule)} />}</td>
+                <td className="px-1">{v.kind === "planned" && <Input type="time" className="h-7 w-24" value={v.time} onChange={(e) => set(r.id, f.key, { ...v, time: e.target.value })} />}</td>
+                <td className="px-1">{v.kind === "planned" && <select aria-label="court" className="bg-background border border-border rounded h-7" value={String(v.courtId)} onChange={(e) => { const c = courts.find((x) => String(x.id) === e.target.value); if (c) set(r.id, f.key, { ...v, courtId: c.id, courtName: c.name }); }}>{courts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}</td>
+              </tr>);
+          }))}</tbody></table>
+      </TournamentInteractiveViewer>
+      {conflicts.length ? <div className="text-destructive">{conflicts.map((c) => <div key={c}>{c}</div>)}</div> : <p className="text-muted-foreground">No court double-ups or rest problems in this plan.</p>}
+      {diary && (diary.length ? <div className="text-destructive">{diary.map((c) => <div key={c}>{c}</div>)}</div> : <p className="text-muted-foreground">No clashes with the court diary.</p>)}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" variant="outline" disabled={busy || conflicts.length > 0} onClick={save}>Save proposed schedule</Button>
+        <Button size="sm" variant="outline" disabled={busy || conflicts.length > 0} onClick={checkDiary}>Check against court diary</Button>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /> I confirm this exact schedule and want these courts reserved</label>
+        <Button size="sm" disabled={busy || !confirmed || conflicts.length > 0 || diary == null || diary.length > 0} onClick={reserve}>Reserve courts for this schedule</Button>
+      </div>
     </div>
   );
 }

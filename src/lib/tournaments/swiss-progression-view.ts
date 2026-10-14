@@ -131,7 +131,9 @@ export interface StageScheduleConfig {
 
 const fmtDay = (d: string) => {
   const dt = new Date(`${d.slice(0, 10)}T00:00:00Z`);
-  return Number.isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  if (Number.isNaN(dt.getTime())) return d.slice(0, 10);
+  const W = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${W[dt.getUTCDay()]} ${dt.getUTCDate()} ${M[dt.getUTCMonth()]}`;
 };
 
 /** What the configured stage schedule says about ONE round. Read-only; reports only what is saved. */

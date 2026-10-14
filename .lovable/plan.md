@@ -26,30 +26,23 @@ Keep tournament selection and the three existing tabs; moves belong in Fixtures 
 Targets use text/icons plus colour: **Free**, **Reserved for this tournament**, **Same-tournament swap candidate**, **Unavailable / ownership unknown**. Dragging never saves. Confirmation lists both matches' full names/category/duration and old/new date/time/court, booking consequences and notification channels. Changed availability rejects and refreshes the preview; Cancel changes nothing.
 
 ## Validation and protection rules
-- Only existing, eligible fixture UUIDs in the selected Riverside tournament may move. No cross-tournament swaps, external booking swaps, byes, cancelled/decided fixtures, LIVE/COMPLETED matches or past target starts.
-- Check saved in-progress state, recorded ongoing scoring and fresh marker locks, not scheduled time alone. Coordinate schedule commit with marker acquisition so marking cannot begin in a race between validation and saving.
-- Validate each match's full duration using its applicable pool/category/stage settings and linked booking. Missing/conflicting duration or window information blocks the move; never invent it. Use club-local dates/times and real current time.
-- Check active court eligibility, tournament dates and saved allowed day/time windows. Only explicit play-by rules impose a deadline; moving a fixed fixture must not turn it into play-by or erase an existing deadline. Respect round/stage ordering and configured rest. Ambiguous constraints block until clarified.
-- Check all overlapping club bookings, imported external bookings, other tournaments and every category/pool—not just currently filtered calendar cards. Validate singles/doubles participants and shared person identities without conflating different family members using one login. An unavailable external availability service means “availability unknown,” not free.
-- A genuinely free slot is eligible only inside the saved tournament scheduling envelope and when confirmation explicitly authorizes any required new reservation. An owned hold is usable only with proven tournament ownership and sufficient duration; preserve unused portions and old reservation capacity.
-- Swap validates BOTH resulting schedules, excluding only the two legitimately displaced allocations. Different durations must fit independently; a swap is not automatically valid because start times exchange.
-- Proposed positional TBD preview slots remain view-only and cannot become marker targets or bookings. Persisted synthetic positional fixtures with unknown players need a separate later policy: first pilot excludes them because player-clash validation is incomplete. No engine conversion or fixture creation in this feature.
+- Existing eligible UUID fixtures only, same selected Riverside tournament. Block unauthorized users, LIVE/COMPLETED/decided/cancelled matches, byes and past starts. Check saved scoring and fresh marker locks, never time alone; interlock commit with marker acquisition.
+- Validate full duration from linked booking and saved pool/category/stage settings, active eligible courts, tournament dates/windows, round order and configured rest. Missing/ambiguous information blocks rather than invents. Use club-local time. Enforce explicit play-by deadlines without converting fixed fixtures to deadlines or changing legacy player scheduling.
+- Check overlapping bookings/imported external occupancy AND unbooked fixtures across all categories and tournaments. Check singles/doubles participants and shared person identities without conflating family members sharing a login. Unavailable external checks mean availability unknown.
+- Free slots must lie inside the saved tournament envelope; confirmation separately authorizes any required reservation. Own holds require proven ownership/full duration; preserve unused hold portions and old capacity. Ambiguous/external holds are blocked.
+- Swaps validate both resulting schedules/durations, excluding only the two displaced allocations. Different durations must each fit. No cross-tournament/external-booking swap.
+- Proposed positional TBD slots remain read-only, never marker IDs/bookings. First pilot also excludes persisted synthetic TBD fixtures because player-clash validation is incomplete. No fixture creation or positional engine conversion.
 
 ## Phased pilot and approval gates
-### 0. Resolve marker loading — first
-Complete the priority checks above. Calendar write development remains blocked until this gate is passed.
+**0 — Resolve marker loading first.** Complete the exact-path recovery checks and owner confirmation; rescheduling development remains blocked.
 
-### 1. Read-only Move / Swap preview
-After approval, implement a shared validator and target preview behind a separate Riverside-only, fail-closed switch. No writes, reservations or notifications. Use local synthetic scenarios; inspect live availability read-only. Review desktop/mobile targets, confirmation and rejection reasons with the owner.
+**1 — Read-only preview, after approval.** Riverside-only fail-closed switch, shared target validator, desktop/mobile Move/Swap review. Local synthetic scenarios and live availability inspection only; no reservations, writes or messages. Owner reviews targets and confirmation.
 
-### 2. Safe backend operation in an isolated test environment
-Requires separate approval for any additive backend changes and test records. Implement authenticated preview/commit, atomic move/swap, reservation ownership, audit and notification outbox. Use synthetic fixtures and bookings where hardware/provider/message delivery cannot run; a synthetic tournament on the shared live backend is NOT sufficient isolation because booking triggers can schedule lights and send notifications.
+**2 — Atomic operation in isolated tests, separately approved.** Any additive backend changes/test records need approval. Build authenticated commit, reservation ownership, audit and outbox. Synthetic fixtures on the shared live backend are not sufficient isolation: booking triggers may schedule lights/send notifications. No testing unless provider/hardware/messages are prevented.
 
-### 3. Riverside real-fixture opt-in
-Separate owner sign-off on the tested operation and the specific tournament. Start with single moves into clearly owned slots; then enable validated swaps. Permit genuinely free slots only after reservation behaviour is approved. Keep rollback/recovery available through a new validated reverse operation, never direct edits. No bulk moves, automatic rescheduling, scoring changes or positional conversion.
+**3 — Explicit real-tournament sign-off.** Riverside opt-in only. Start with single moves into proven owned slots, then swaps; free-slot reservations require separate policy approval. Reverse changes only through a freshly validated operation. No bulk moves, scoring changes or automatic rescheduling.
 
-### 4. Broader rollout — outside this approval
-Uitsig and every other club remain unchanged until explicitly approved. Publishing always requires an explicit request.
+**4 — Broader rollout is not authorized.** Uitsig/other clubs remain unchanged. Publishing requires an explicit request.
 
 ## Technical design and evidence
 - Reuse `FixtureCalendar`, `ClubFixturesPilot`, `Tournaments`, the shared viewer, `fixture-scheduling.ts`, `self-schedule.ts`, `bookable-courts.ts` and saved round/stage rules. Do not use `SwapFixtureButton` for commit.
@@ -61,11 +54,11 @@ Uitsig and every other club remain unchanged until explicitly approved. Publishi
 - Review booking triggers for cancellation penalties, lights, access, reminders and external sync. Isolated tests must block hardware/provider/message actions; if isolation is unavailable, write testing stays blocked.
 
 ## Tests and acceptance
-**This audit:** 45 existing tests passed across marker deadline, calendar scores, fixture scheduling/display/split and club fixtures. Non-failing warnings: dialog description and JSDOM scrolling. No new drag/swap implementation or end-to-end commit was tested.
+**Audit checks: 45 existing tests passed** (marker deadline, calendar scores, scheduling/display/split, club fixtures). Non-failing warnings: dialog description and JSDOM scrolling. No new Move/Swap or commit flow tested.
 
-Future coverage: free/owned/ambiguous/external targets; every category and other tournament; unequal durations and partial overlaps; deadlines/windows/past time; singles/doubles identity and rest; live/final/marker races; wrong-club/unauthorized callers; stale preview/two admins/normal booking race; timeout then idempotent retry; forced mid-swap failure with complete rollback; reservation preservation; notifications once after commit; no hardware calls; List/Calendar/Progression consistency and finals retained; desktop drag vs pan/zoom and keyboard/mobile alternative; Uitsig unchanged.
+Future tests: free/owned/ambiguous/external targets; all categories/tournaments; unequal durations/partial overlaps; deadlines/windows/past starts; doubles/person clashes/rest; live/final/marker races; unauthorized/wrong-club callers; stale preview/two admins/normal booking race; timeout/idempotent retry; forced mid-swap rollback; preserved holds; one post-commit notification; no hardware; consistent List/Calendar/Progression/finals; desktop drag vs zoom and mobile/keyboard; Uitsig unchanged.
 
-**Acceptance:** both match and booking schedules read back consistently, no overlaps or lost holds, all result fields unchanged, audit identifies actor and before/after slots, realtime views agree, and owner signs off before real activation.
+Acceptance: both match and booking read back consistently; no overlaps/lost holds; results unchanged; before/after audit identifies actor; views agree; owner signs off before activation.
 
 ## Blockers and decisions for review
 - Exact Android initialization failure still needs its failing entry URL/recording and verification.

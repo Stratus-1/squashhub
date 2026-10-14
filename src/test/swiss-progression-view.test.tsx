@@ -61,7 +61,7 @@ describe("Swiss progression (read-only)", () => {
     expect(g.map((r) => r.blocks.length)).toEqual([3, 2, 0]);
     const first = g[0].blocks[0];
     expect(first.rows.map((r) => [r.pos, r.name, r.result])).toEqual([[1, "Ann", "L"], [5, "Eve", "W"]]);
-    expect(first.score).toBe("3-1");
+    expect(first.score).toBe("3–1");
     expect(g[0].blocks.find((b) => b.rows[1].name === "Bye")!.rows[0].result).toBe("Bye");
     const pending = g[1].blocks.find((b) => b.rows[0].id == null)!;
     expect(pending.rows.map((r) => r.name)).toEqual(["Winner R1", "To be decided"]);

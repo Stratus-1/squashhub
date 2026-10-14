@@ -35,7 +35,7 @@ describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
     const snapshot = JSON.stringify(model);
     const preview = buildProposedSwissGrid(model);
     expect(preview.rounds[0]).toEqual(buildSwissGrid(model)[0]);
-    expect(preview.rounds[1].blocks.every((b) => b.rows.every((x) => x.id === null && x.name === "TBD" && x.result === "" && x.when === null) && b.court === null && b.score === null)).toBe(true);
+    expect(preview.rounds[1].blocks.every((b) => b.rows.every((x) => x.id === null && x.name === "TBD" && x.result === "" && x.when === "Not scheduled") && b.court === null && b.score === null)).toBe(true);
     expect(JSON.stringify(model)).toBe(snapshot);
   });
   it("unsupported entrant count fails visibly instead of inventing positions", () => {

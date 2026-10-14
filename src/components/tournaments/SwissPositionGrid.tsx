@@ -37,7 +37,7 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
   const [selected, setSelected] = useState<string | null>(null);
   const selName = selected ? model.rows.find((r) => r.id === selected)?.name ?? null : null;
   return (
-    <div className="bg-background p-3 text-xs text-foreground" data-testid="swiss-position-grid">
+    <div className={cn("bg-background p-3 text-xs text-foreground", proposedRounds && "riverside-round-visuals")} data-testid="swiss-position-grid">
       <div className="mb-2 flex min-h-7 items-center gap-2 text-[11px] text-muted-foreground">
         {selName ? <>
           <span data-testid="swiss-path-selected">Showing known path: <strong className="text-foreground">{selName}</strong> · future rounds stay TBD until results decide them</span>
@@ -48,10 +48,10 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
       {rounds.map((rd) => {
         const rs = roundStatus(rd);
         return (
-        <table key={rd.round} data-testid={`swiss-round-${rd.round}`} data-status={rs} className="border-collapse min-w-[320px] self-start overflow-hidden rounded-md border border-border">
+        <table key={rd.round} data-round-tone={((rd.round - 1) % 5) + 1} data-testid={`swiss-round-${rd.round}`} data-status={rs} className="round-panel border-collapse min-w-[320px] self-start overflow-hidden rounded-md border border-border">
           <thead>
-            <tr className="bg-muted text-left">
-              <th colSpan={4} className="border-t-4 px-2.5 py-1.5 font-semibold" style={{ borderTopColor: `hsl(var(--round-${((rd.round - 1) % 5) + 1}))` }}>
+            <tr className="round-header bg-muted text-left">
+              <th colSpan={4} className="border-t-4 px-2.5 py-1.5 font-semibold" style={proposedRounds ? undefined : { borderTopColor: `hsl(var(--round-${((rd.round - 1) % 5) + 1}))` }}>
                 <div className="flex items-center gap-2">
                   <span className="text-sm">Round {rd.round}</span>
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `hsl(var(${STATUS_VAR[rs]}) / 0.15)`, color: "hsl(var(--foreground))" }}>

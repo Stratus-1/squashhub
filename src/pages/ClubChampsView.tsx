@@ -97,7 +97,7 @@ import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
-import { RoundRobinPilotView } from "@/components/tournaments/RoundRobinPilotView";
+import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
@@ -932,7 +932,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus>; koStatus?: boolean; plain?: boolean }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string>; historical?: boolean; statuses?: Map<string, HistoricalPoolStatus>; koStatus?: boolean; plain?: boolean; pilotPoolColours?: boolean }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
     const poolLabels = opts?.poolLabels;
@@ -986,18 +986,19 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             {standings.map((s: any, i: number) => {
               const isMe = highlightMe && myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
               const rowStyle = getRankRowStyle(i, competitors.length);
-              const tinted = !(opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed));
+              const tinted = !!opts?.pilotPoolColours || !(opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed));
               const isWinner = !opts?.koStatus && allPlayed && i === 0;
               const isLast = !opts?.koStatus && allPlayed && i === competitors.length - 1;
               const progress = opts?.statuses?.get(s.club_member_id) ?? (s.partner_member_id ? opts?.statuses?.get(s.partner_member_id) : undefined);
               return (
                 <Fragment key={s.id}>
-                <tr key={s.id} style={opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed) ? undefined : rowStyle} className={cn(
+                <tr key={s.id} data-pool-tone={opts?.pilotPoolColours ? poolRankTone(i, competitors.length) : undefined} data-provisional={opts?.pilotPoolColours && !anyPlayed ? "true" : undefined} style={opts?.pilotPoolColours || opts?.historical || opts?.koStatus || (opts?.plain && !anyPlayed) ? undefined : rowStyle} className={cn(
                   "border-b border-border/30",
+                  opts?.pilotPoolColours && "riverside-pool-rank",
                   hasProgress && (progress?.eliminated ? "bg-pool-eliminated" : "bg-pool-survivor"),
                   isMe && "font-semibold ring-2 ring-inset ring-primary/60"
                 )}>
-                  <td className="py-2 text-muted-foreground">{i + 1}</td>
+                  <td className={cn("py-2 tabular-nums", !opts?.pilotPoolColours && "text-muted-foreground")}>{i + 1}</td>
                   <td className="py-2 font-medium min-w-24">
                     <span className={cn((isPulledOut(s) || progress?.eliminated) && "line-through decoration-2", opts?.koStatus && progress?.eliminated ? "text-destructive" : (isPulledOut(s) || progress?.eliminated) && "text-muted-foreground")}>{s.name}</span>
                     {isPulledOut(s) && <Badge variant="outline" className="text-[9px] ml-1">Withdrawn</Badge>}
@@ -1360,8 +1361,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             >
               {s.length > 0 ? (rrPilotOn(gn) ? (
                 <div className="space-y-1" data-testid="rr-classic-log-pool">
-                  {!s.some((r: any) => (r.played || 0) > 0) && <p className="text-[11px] text-muted-foreground italic">No results yet — listed in draw order, not ranked.</p>}
-                  {renderStandingsTable(s, { plain: true })}
+                  {!s.some((r: any) => (r.played || 0) > 0) ? <p className="text-[11px] text-muted-foreground italic">Provisional · draw order — no results yet, not earned rankings.</p> : <p className="text-[11px] text-muted-foreground">Current pool rankings · saved results</p>}
+                  {renderStandingsTable(s, { plain: true, pilotPoolColours: true })}
                 </div>
               ) : renderStandingsTable(s, { historical: !swissStageFor(gn), statuses })) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
@@ -3935,8 +3936,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               {rrPilotOn(gn) && renderRoundRobinPilot(gn) ? (
                 <Tabs defaultValue="rr-progression" className="space-y-3">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="rr-progression">Round-Robin Progression</TabsTrigger>
-                    <TabsTrigger value="rr-log">Classic Log</TabsTrigger>
+                    <TabsTrigger value="rr-progression" className="min-h-9 whitespace-normal text-xs leading-tight">Round-Robin Progression</TabsTrigger>
+                    <TabsTrigger value="rr-log" className="min-h-9 whitespace-normal text-xs leading-tight">Classic Log</TabsTrigger>
                   </TabsList>
                   <TabsContent value="rr-progression">{renderRoundRobinPilot(gn)}</TabsContent>
                   <TabsContent value="rr-log">{standingsTable}</TabsContent>

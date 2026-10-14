@@ -1,3 +1,8 @@
+### 2026-10-14 — Riverside pool rank and progression colour refinement
+- Classic Log uses independent dark-green through lighter-green/pink to dark-red semantic rank bands within each pool, following existing standings order. Before results the same bands are softened and labelled provisional draw order.
+- RR round headers/borders and matrix round references use restrained coordinated accents; Swiss proposed preview headers gain the same scoped accents. Existing results alone drive winner highlights; no fabricated live state.
+- Riverside pilot only; no ranking/scoring/scheduling/data changes or publishing. Desktop/mobile signed-in screenshots verified all three Ladies pools, RR and Swiss; no page errors or mobile page overflow. Android initial-load investigation remains higher priority and exact owner route remains unverified.
+
 ### 2026-10-14 — Riverside fixture calendar missing live/final scores
 - Symptom: LIVE cards/details had no scores and completed matches looked like active games.
 - Finding: the adapter accepted only arrays although the marker saves JSON strings with sets/current plus dedicated side-point columns; the calendar retained a stale event object in its dialog.

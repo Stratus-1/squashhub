@@ -1,79 +1,68 @@
-# Plan only: per-category Swiss rounds for positional Swiss
+# Riverside tournament calendar: safe Move / Swap pilot
 
-Nothing is built, migrated or published until you approve a phase. Live Riverside and Uitsig tournaments are untouched.
+## Scope and feasibility
+**Feasible with an atomic booking-aware operation, not drag alone.** Match schedules, bookings and reservations must stay consistent.
 
-## Confirmed requirement
-- Each category, or each Swiss pairing group within a category, has its own:
-  - entrant count and validated position-map template (8–32 entrants, odd counts and byes included)
-  - suggested number of rounds, which the organiser can override
-  - fixtures, round progress and standings
-- Categories move independently. For example, Men's A (10 entrants, 4 rounds) can be in Round 4 while Men's B (15 entrants, 5 rounds) is in Round 2.
-- There is no round count shared across the whole tournament.
+Read-only audit and plan: no app code, records, switches, migrations or publishing. Marker recovery is the first gate; plan approval does not authorize real fixture changes or hardware.
 
-## What already works per category
-- **Engine:** the round count sits on each division's Swiss stage (`PlannedStage.swissRounds`). The round gate, next-round creation and standings all read the stage they belong to (`engine-service.ts`: `swissRoundGate(mine, st.swissRounds)`).
-- **Server guard:** `guard_swiss_round_progression` reads `tournament_stages.config.swissRounds` for that one stage and locks per stage.
-- **Stored per category:** `tournament_stages` rows are created per division (`structured-persist.ts`). Older tournaments keep `club_champs.swiss_rounds` as data keyed by group number.
-- **Live edits:** `swiss-shorten.ts` already changes a single division's stage and that group's entry in `club_champs.swiss_rounds`.
+## Audit findings
+- **Schedule ≠ booking.** Calendar reads match dates/times/courts, not full availability. Riverside-wide read-only audit: 130 fixture rows, 129 with date/time/court, zero linked booking IDs (multiple tournaments, including synthetic). Empty calendar space is not proof of a free court; scheduled fixtures are not proof of reservations.
+- **Single-match scheduler is only partly reusable.** `self_schedule_champ_match` atomically updates booking + fixture and checks court/booking conflicts, but permits participants, does not explicitly block LIVE or enforce deadlines, and emits direct notifications. Do not call it unchanged for this feature.
+- **Existing swap is unsafe here.** `SwapFixtureButton` performs sequential client updates and best-effort rollback, never updates bookings, and permits conflict overrides. Calendar needs a separate atomic commit path; do not change unrelated swap flows in this task.
+- **Legacy holds lack exact tournament ownership.** Recognition relies on championship labels and no participants. Saved courts/day schedules are configuration, not reservations. Ambiguous holds must not be claimed or cancelled.
+- **Windows differ.** Existing play-by booking allows after-deadline scheduling with a warning. Fixed centrally managed slots, linked player bookings and explicit deadlines must remain distinct; stricter new-pilot checks must not alter legacy player scheduling.
+- **Concurrency is not established.** Bookings have an overlap trigger and unique same-start index, but these alone do not prove safety for concurrent overlapping inserts at different starts. Availability must include unbooked fixtures and all categories/tournaments, not only bookings.
+- **Permission is not scoring access.** Use current tournament/champs management authority, not scoring access, captain role or switches. A separately appointed organizer model was not established.
+- **Refresh is reusable.** Scoped match updates patch the query, Riverside polls every five seconds, and marker presence is separately subscribed/polled. Retain historical FINAL calendar events and refresh List/Calendar/Progression/open details.
 
-## Places that wrongly share one round count
-1. **`src/lib/smart-builder/to-existing.ts` (bug):**
-   - It keeps one `swissRounds` number for the whole tournament: `if (first.kind === "swiss") swissRounds = first.swissRounds ?? swissRounds`.
-   - It then writes that single number to `club_champs.swiss_rounds`, so the last Swiss category's count wins.
-   - It should write `{ "1": 4, "2": 5, ... }` keyed by group, the same way `swiss_pools` is already written.
-2. **`src/lib/tournaments/swiss-progress.ts`, `setupSwissRounds`:**
-   - When a category has no override, it falls back to the tournament-wide `setup.format.swissRounds`.
-   - It matches categories by the start of their label (`startsWith`). That is fragile: for example, "Men's A" also matches the start of "Men's AB".
-   - It should use each category's own saved setting and match by category id, not label.
-3. **`src/lib/smart-builder/swiss-progression.ts`:** its estimated and confirmed round counts take one `format` object. The builder needs these per category, with the global value only as a starting suggestion.
-4. **Legacy readers of `club_champs.swiss_rounds`:** we must check that nothing reads this as a single number. Old tournaments that saved a single number need a read-only fallback (apply it to every group), never a rewrite of saved data.
+## Priority gate: saved-score initialization
+**Exact Android failure: UNRESOLVED.** Riverside has a 20-second error/Retry timer and proposed-ID guard, but prior verification did not reproduce the owner's exact grid/native path. The timer covers the whole operation; later requests lack abort signals, so cleanup needs checking. Route/context/effect races remain hypotheses, not proven causes.
 
-These are to be fixed in the new path. The fallback for existing tournaments stays unchanged.
+Obtain the failing URL/recording and compare grid vs Upcoming signed-in desktop/mobile/Android without points or marker takeover. Trace IDs/auth/pending reads; verify bounded Retry, Back/reopen, context hydration, preserved scores and proposed-ID rejection, including stalls/repeated mounts. Require owner confirmation before rescheduling development. No fresh marker lock existed during this audit.
 
-## Architecture
-- **Setup:** each category in the builder gets its own Swiss settings:
-  - template type (Positional Swiss)
-  - entrant count, from entries or an expected number
-  - the template picked automatically for that count
-  - suggested rounds, the organiser's chosen rounds, and whether the count is confirmed
-- **Builder view, one row per category:**
-  - entrants
-  - template name, plus how many byes each round
-  - suggested and chosen rounds
-  - estimated matches (rounds × number of matches per round)
-  - court demand (matches × slot length, against available court time)
-  - warnings: more rounds than the template supports, or repeat opponents expected
-- **Engine:** a new stage type `swiss_positional`, one per category, with its own:
-  - template and round count
-  - set positions for each fixture, with winners and losers moved into the next round's positions as soon as a result is confirmed (atomic and safe to repeat)
-  - standings: the final position equals the final slot
-- **Guards on changing rounds:**
-  - Before the draw: free to change.
-  - After the draw: the count can't go below the number of rounds already created or completed (reuse `swissConfirmIssues`).
-  - Changing it needs a preview of the impact and confirmation. It affects only that category's stage, and never deletes results.
-- **Isolation:** no change to existing `swiss` stages, the `position_swap` rule, Uitsig or live Riverside tournaments. The new path only runs behind a Riverside switch.
+## Intended interaction
+Keep tournament selection and the three existing tabs; moves belong in Fixtures Calendar. Authorized desktop users get a drag handle separate from pan/zoom/card tap. Mobile/keyboard alternative: **Move match → choose date/time/court target → review → confirm**.
 
-## Later: Swiss, then round robin, then play-offs
-- Each category's stage list becomes `swiss_positional` → `round_robin` (top N, or pools) → `knockout`, using the existing progression and qualifier rules.
-- Each change of stage waits on that category's own gate. Other categories are unaffected.
-- To be designed once positional Swiss is signed off.
+Targets use text/icons plus colour: **Free**, **Reserved for this tournament**, **Same-tournament swap candidate**, **Unavailable / ownership unknown**. Dragging never saves. Confirmation lists both matches' full names/category/duration and old/new date/time/court, booking consequences and notification channels. Changed availability rejects and refreshes the preview; Cancel changes nothing.
 
-## Phases
-1. **Pure calculations and tests:**
-   - templates for 8–32 entrants
-   - a checker for each template
-   - per-category suggested rounds and demand estimates
-   - tests based on your screenshots
-   - tests that one category's round count never changes another's
-2. **Fix the shared count in the new path only:** per-group `swiss_rounds` from the builder, and category matching by id. Includes tests that old tournaments still read correctly.
-3. **Engine:** `swiss_positional` per category, moving players between positions on results, and standings.
-4. **Saving and server guard:** new optional position fields, and a separate guard for each stage.
-5. **Builder screen** for each category, Riverside only.
-6. **Tests with made-up Riverside players:** four categories with different entrant and round counts, running in parallel. Then your sign-off.
+## Validation and protection rules
+- Existing eligible UUID fixtures only, same selected Riverside tournament. Block unauthorized users, LIVE/COMPLETED/decided/cancelled matches, byes and past starts. Check saved scoring and fresh marker locks, never time alone; interlock commit with marker acquisition.
+- Validate full duration from linked booking and saved pool/category/stage settings, active eligible courts, tournament dates/windows, round order and configured rest. Missing/ambiguous information blocks rather than invents. Use club-local time. Enforce explicit play-by deadlines without converting fixed fixtures to deadlines or changing legacy player scheduling.
+- Check overlapping bookings/imported external occupancy AND unbooked fixtures across all categories and tournaments. Check singles/doubles participants and shared person identities without conflating family members sharing a login. Unavailable external checks mean availability unknown.
+- Free slots must lie inside the saved tournament envelope; confirmation separately authorizes any required reservation. Own holds require proven ownership/full duration; preserve unused hold portions and old capacity. Ambiguous/external holds are blocked.
+- Swaps validate both resulting schedules/durations, excluding only the two displaced allocations. Different durations must each fit. No cross-tournament/external-booking swap.
+- Proposed positional TBD slots remain read-only, never marker IDs/bookings. First pilot also excludes persisted synthetic TBD fixtures because player-clash validation is incomplete. No fixture creation or positional engine conversion.
 
-## Decisions still needed
-- How suggested rounds are worked out:
-  - the smallest number of rounds that gives one clear winner, or
-  - your SportyHQ sizes (e.g. 10 entrants → 4 rounds, 12 → 3)?
-- Should a Swiss pairing group inside one category also be allowed its own round count, or only whole categories?
-- Should repeat opponents be allowed (as SportyHQ does) or avoided?
+## Phased pilot and approval gates
+**0 — Resolve marker loading first.** Complete the exact-path recovery checks and owner confirmation; rescheduling development remains blocked.
+
+**1 — Read-only preview, after approval.** Riverside-only fail-closed switch, shared target validator, desktop/mobile Move/Swap review. Local synthetic scenarios and live availability inspection only; no reservations, writes or messages. Owner reviews targets and confirmation.
+
+**2 — Atomic operation in isolated tests, separately approved.** Any additive backend changes/test records need approval. Build authenticated commit, reservation ownership, audit and outbox. Synthetic fixtures on the shared live backend are not sufficient isolation: booking triggers may schedule lights/send notifications. No testing unless provider/hardware/messages are prevented.
+
+**3 — Explicit real-tournament sign-off.** Riverside opt-in only. Start with single moves into proven owned slots, then swaps; free-slot reservations require separate policy approval. Reverse changes only through a freshly validated operation. No bulk moves, scoring changes or automatic rescheduling.
+
+**4 — Broader rollout is not authorized.** Uitsig/other clubs remain unchanged. Publishing requires an explicit request.
+
+## Technical design and evidence
+- Reuse `FixtureCalendar`, `ClubFixturesPilot`, `Tournaments`, the shared viewer, `fixture-scheduling.ts`, `self-schedule.ts`, `bookable-courts.ts` and saved round/stage rules. Do not use `SwapFixtureButton` for commit.
+- Live schema was inspected: `club_champs_matches` owns schedule/result/identity; `bookings` owns physical occupancy; rounds/stages own constraints; `champ_marker_locks` owns marker presence. 
+- Preview/commit accept tournament/fixture IDs, target or swap, expected version/schedule snapshots and an idempotency key. Derive actor from validated auth; server-check management permission and Riverside scope on both calls.
+- One transaction locks matches/bookings and affected court/day allocations deterministically, revalidates everything, applies both schedules/bookings, and writes audit + notification outbox. Full rollback on failure; preserve IDs, results, participants and unrelated allocations. Conflict protection must coordinate normal booking writers and marker acquisition, not just this operation.
+- Do not call the scheduler twice or weaken global overlap guards. Approve the locking/exclusion approach and any additive schema changes separately. Preserve reservation leftovers and old-slot capacity without cancelling ambiguous holds.
+- Dispatch after commit through Communications engine and approved tournament messaging settings, deduplicated/retryable. Result-notification settings are not schedule consent. Delivery failure does not undo a committed move; prevent duplicate legacy notifications.
+- Review booking triggers for cancellation penalties, lights, access, reminders and external sync. Isolated tests must block hardware/provider/message actions; if isolation is unavailable, write testing stays blocked.
+
+## Tests and acceptance
+**Audit checks: 45 existing tests passed** (marker deadline, calendar scores, scheduling/display/split, club fixtures). Non-failing warnings: dialog description and JSDOM scrolling. No commit flow tested.
+
+Future tests: free/owned/ambiguous/external targets; all categories/tournaments; unequal durations/partial overlaps; deadlines/windows/past starts; doubles/person clashes/rest; live/final/marker races; unauthorized/wrong-club callers; stale preview/two admins/normal booking race; timeout/idempotent retry; forced mid-swap rollback; preserved holds; one post-commit notification; no hardware; consistent List/Calendar/Progression/finals; desktop drag vs zoom and mobile/keyboard; Uitsig unchanged.
+
+Acceptance: both match and booking read back consistently; no overlaps/lost holds; results unchanged; before/after audit identifies actor; views agree; owner signs off before activation.
+
+## Decisions and blockers
+- Exact Android URL/recording and verified recovery.
+- Proven reservation ownership, durations/windows and external availability.
+- Isolated commit tests without hardware/providers/messages.
+- Confirm organizer authority: existing tournament/champs permission or separately appointed organizer; no new role assumed.
+- Recommend owned-slot moves first; approve genuinely free-slot reservations separately.

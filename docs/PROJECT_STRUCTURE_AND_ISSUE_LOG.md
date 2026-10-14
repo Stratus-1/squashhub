@@ -1,3 +1,7 @@
+### 2026-10-14 — Riverside prominent progression category selector
+- Embedded Riverside Progression & Log category buttons now use solid blue/teal/purple semantic accents, saturated selected backgrounds, readable inactive labels, rectangular borders and explicit focus. Desktop distributes generously sized buttons across the available width; mobile retains unclipped horizontal scrolling with 56px targets.
+- Presentation only: category selection callbacks, navigation/data scope, scoring and schedules unchanged; other clubs retain existing appearance. No publishing or live-data changes; outstanding Android marker initialization investigation remains the priority blocker.
+
 ### 2026-10-14 — Riverside read-only allocation preview Phase 1
 - Added server-permission-gated Riverside drag handles, accessible selection, free-capacity targets, swap review and cancellation; no commit or mutation path exists. Exact server-saved plan/stage/range/provenance verifies newer blocks; display labels alone never qualify. Block rows remain untouched and personal linked bookings excluded.
 - Read-only paginated inventory spans club tournament categories and active bookings, checks duration, player overlap/rest, saved stage windows/deadlines, scoring state and marker locks. Ambiguous/legacy reservations fail closed. This verifier does not claim ownership of other reservation formats.

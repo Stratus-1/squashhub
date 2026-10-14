@@ -4085,16 +4085,18 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           {tabBtn("results", "Results")}
         </div>}
         {categoryViews.length > 1 && (
-          <div className="border-b bg-muted/40 px-3 py-2">
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Category">
-              {categoryViews.map((c) => (
-                <button
+          <div className={cn("border-b bg-muted/40 px-3 py-2", embeddedChampId && champ?.club_id === "11111111-1111-1111-1111-111111111111" && "riverside-category-selector")}>
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 category-options" role="group" aria-label="Category">
+              {categoryViews.map((c, index) => (
+                <Button
                   key={c.gn}
+                  variant="outline"
+                  data-category-tone={index % 3}
                   type="button"
                   aria-pressed={c.gn === activeCat.gn}
                   onClick={() => setCatGroup(c.gn)}
                   className={cn(
-                    "shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "category-option h-auto rounded-none shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     c.gn === activeCat.gn
                       ? "bg-secondary text-secondary-foreground border-primary"
                       : "bg-background text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground",
@@ -4104,7 +4106,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                       live on the heading badge below, so the tab stays short. */}
                   {c.label}
                    {catTab !== "standings" && <span className="ml-1 opacity-70 tabular-nums">({catTab === "upcoming" ? c.upcomingCount : c.resultsCount})</span>}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

@@ -1650,7 +1650,9 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Standings / Upcoming Fixtures / Results view: one category at a time, shared
   // across both tabs so switching tabs keeps the same category selected.
   // Standings | Upcoming Fixtures | Results — shared by the signed-in page and the public QR view.
-  const [catTab, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
+  const [catTabState, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
+  // Embedded in the Tournaments "Progression & Log" tab: progression only (fixtures/results live in the top-level tabs).
+  const catTab: TournamentTab = embeddedChampId ? "standings" : catTabState;
   const [catGroup, setCatGroup] = useState<number | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
@@ -4042,8 +4044,6 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
 
     // Standings / Fixtures & Results — solid rectangular tabs, one category at a time.
     const activeCat = categoryViews.find((c) => c.gn === catGroup) ?? categoryViews[0];
-    // Embedded in the Tournaments "Progression & Log" tab: progression only (fixtures/results live in the top-level tabs).
-    const catTab: TournamentTab = embeddedChampId ? "standings" : catTabState;
     const tabBtn = (key: TournamentTab, label: string) => (
       <button
         type="button"

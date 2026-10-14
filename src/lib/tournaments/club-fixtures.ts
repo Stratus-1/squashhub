@@ -44,7 +44,7 @@ export function fixtureScoreDetails(m: { status?: string; score?: string | null;
   const current = m.status === "in_progress" ? (hasPoints ? { a: m.side_a_points as number, b: m.side_b_points as number } : parsed.current) : null;
   const score = pointsOnly
     ? (m.status === "completed" ? m.score ?? (sets.length ? `${sets[0].a}–${sets[0].b}` : null) : null)
-    : sets.length ? `${sets.filter((g) => g.a > g.b).length}–${sets.filter((g) => g.b > g.a).length}` : null;
+    : sets.length ? `${sets.filter((g) => g.a > g.b).length}–${sets.filter((g) => g.b > g.a).length}` : current ? "0–0" : null;
   return { score, gameScores: saved.pointsKnown ? sets : [], currentGame: current ? { number: parsed.sets.length + 1, ...current } : null };
 }
 

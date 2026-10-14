@@ -2212,7 +2212,7 @@ export default function Tournaments() {
                   {(buckets.length > 1 || availableDates.length > 1 || champFilter !== "all") && (
                     <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2">
                       <label className="text-xs text-muted-foreground shrink-0">Filter:</label>
-                      {champs.length > 1 && (
+                      {champs.length > 1 && !fixturesPilot && (
                         <Select value={champFilter} onValueChange={setChampFilter}>
                           <SelectTrigger className="h-8 text-xs w-full sm:max-w-[200px]">
                             <SelectValue placeholder="All tournaments" />

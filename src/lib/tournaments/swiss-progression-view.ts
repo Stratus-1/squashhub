@@ -209,3 +209,29 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
     return { round: rd.round, created: false, blocks, schedule };
   }) };
 }
+
+/** Calendar entry: confirmed = saved live fixture; proposed = preview positional slot (never a booking). */
+export interface SwissCalendarEntry { kind: "confirmed" | "proposed" | "play_by" | "unscheduled"; round: number; date: string | null; time: string | null; court: string | null; label: string; status?: string }
+/** Read-only calendar from saved fixtures plus (optionally) proposed slots. No data is written. */
+export function buildSwissCalendar(model: SwissProgressionModel, proposed?: GridRound[], slots?: Record<string, FixtureSchedule>): SwissCalendarEntry[] {
+  const out: SwissCalendarEntry[] = [];
+  for (const rd of model.rounds) for (const f of rd.fixtures) {
+    if (f.state === "bye") continue;
+    const [date, time] = f.when ? f.when.split(" ") : [null, null];
+    out.push({ kind: date ? "confirmed" : f.playBy ? "play_by" : "unscheduled", round: rd.round, date: date ?? f.playBy ?? null, time: time ?? null, court: f.court, label: `${f.aLabel} v ${f.bLabel}`, status: f.state });
+  }
+  const live = new Set(model.rounds.filter((r) => r.created).map((r) => r.round));
+  for (const rd of proposed ?? []) {
+    if (live.has(rd.round)) continue;
+    for (const b of rd.blocks) {
+      const [a, c] = [b.rows[0].pos, b.rows[1].pos];
+      if (a == null || c == null) continue;
+      const s = slots?.[fixtureKey(rd.round, a, c)];
+      const label = `Position ${a} v Position ${c} (TBD)`;
+      if (s?.kind === "planned") out.push({ kind: "proposed", round: rd.round, date: s.date, time: s.time, court: s.courtName, label });
+      else if (s?.kind === "play_by") out.push({ kind: "play_by", round: rd.round, date: s.date, time: null, court: null, label });
+      else out.push({ kind: "unscheduled", round: rd.round, date: null, time: null, court: null, label });
+    }
+  }
+  return out.sort((x, y) => (x.date ?? "9999").localeCompare(y.date ?? "9999") || (x.time ?? "99").localeCompare(y.time ?? "99") || (x.court ?? "").localeCompare(y.court ?? ""));
+}

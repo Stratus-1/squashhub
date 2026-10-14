@@ -19,8 +19,8 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
-      <div role="tablist" aria-label="Swiss view" className="grid grid-cols-3 border border-border">
-        {([["grid", positionalPreview ? "Positional Preview" : "Grid"], ["classic", "Classic View"], ...(hideCalendar ? [] : [["calendar", "Calendar View"]])] as [string, string][]).map(([k, label]) => (
+      <div role="tablist" aria-label="Swiss view" className={cn("grid border border-border", hideCalendar ? "grid-cols-2" : "grid-cols-3")}>
+        {([["grid", positionalPreview ? "Positional Preview" : "Grid"], ["classic", "Classic View"], ...(hideCalendar ? [] : [["calendar", "Calendar View"]])] as ["grid" | "classic" | "calendar", string][]).map(([k, label]) => (
           <button key={k} type="button" role="tab" id={`swiss-tab-${k}`} aria-selected={mode === k} aria-controls="swiss-tabpanel" onClick={() => setMode(k)}
             className={cn("px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm",
               mode === k ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground")}>{label}</button>

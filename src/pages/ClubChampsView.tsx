@@ -835,6 +835,29 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         swiss.rounds ?? lastRound,
       );
       swissStatusByGroup.set(groupNum, status);
+      {
+        const names = new Map<string, string>();
+        rows.forEach((r: any) => { if (r.name) names.set(keyOf(r), r.name); });
+        const withdrawn = new Set<string>(
+          groupEntries.filter((e: any) => e.withdrawn_at || String(e.status || "").toLowerCase() === "withdrawn").map(keyOf),
+        );
+        swissProgressionByGroup.set(groupNum, {
+          seedOrder,
+          games: [
+            ...groupMatches.map((m: any) => ({
+              a: byMember.get(m.player_a_member_id) ?? null,
+              b: byMember.get(m.player_b_member_id) ?? null,
+              winner: m.winner_member_id ? byMember.get(m.winner_member_id) ?? null : null,
+              round: Number(m.round_number) || null,
+              score: m.score ?? null,
+            })).filter((g) => g.a && g.b),
+            ...groupByes.filter((m: any) => isPoolStage(m)).map((m: any) => ({ a: byMember.get(m.bye_member_id || m.player_a_member_id) ?? null, b: null, winner: null, round: Number(m.round_number) || null })).filter((g) => g.a),
+          ],
+          tieBreaks: swiss.tieBreaks,
+          names,
+          withdrawn,
+        });
+      }
       const finished = status.state === "final";
       return rows
         .map((r: any) => {

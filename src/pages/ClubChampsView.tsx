@@ -97,6 +97,8 @@ import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
+import { RoundRobinPilotView } from "@/components/tournaments/RoundRobinPilotView";
+import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
@@ -176,6 +178,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   const isStructured = arch?.builder_architecture === "structured";
   // Riverside pilot: read-only Swiss progression view needs BOTH its own switch and the viewer switch.
   const { data: pilotViewerOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_viewer_shell");
+  const { data: pilotPoolMatrixOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_pool_matrix_view");
   const { data: pilotSwissOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_swiss_progression_view");
   // Saved per-category scoring lives on the tournaments row; the club_champs
   // row doesn't carry it, so merge (tournament values win) for scoring labels.
@@ -1195,6 +1198,31 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   // "Pool A", "Pool B" etc.
   // Riverside Swiss pilot: models built while rendering standings, reused on the Results tab (same data, no recalculation).
   const pilotSwissModels: Record<number, any> = {};
+  // Riverside round-robin pilot: read-only pool matrix + order of play per pool, from the same saved matches.
+  const renderRoundRobinPilot = (gn: number) => {
+    if (champ?.club_id !== "11111111-1111-1111-1111-111111111111" || !pilotViewerOn || !pilotPoolMatrixOn || !canManage) return null;
+    if (swissStageFor(gn) || isSwissForLeague(gn) || !isRoundRobinForLeague(gn) || isDoublesLeague(gn) || matchupForGroup(matchups, gn)) return null;
+    const pc = poolCountFor(gn);
+    const gm = (matches as any[]).filter((m: any) => m.group_number === gn && (m.stage || "group") === "group");
+    if (!gm.length) return null;
+    return (
+      <SwissPilotBoundary fallback={null}>
+        <div className="space-y-4">
+          {Array.from({ length: pc }, (_, i) => i + 1).map((pn) => {
+            const rows = getGroupStandings(gn, pc > 1 ? pn : null) as any[];
+            const pm = gm.filter((m: any) => pc <= 1 || resolvePoolNumber(m, gn) === pn);
+            if (!pm.length) return null;
+            const view = buildRoundRobinView({
+              players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })),
+              rankOrder: rows.map((r: any) => r.club_member_id),
+              matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
+            });
+            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} />;
+          })}
+        </div>
+      </SwissPilotBoundary>
+    );
+  };
   const renderGroupStandings = (gn: number) => {
     const ko = renderKnockoutStandings(gn);
     if (ko) return ko;
@@ -3894,6 +3922,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
             <div className="space-y-4">
               {swissControlsFor(gn)}
               {standingsTable}
+              {renderRoundRobinPilot(gn)}
             </div>
           ),
           upcoming: listNode(split.upcoming, groupMatches.length ? "No games left to play in this category." : "No fixtures for this category yet.", "upcoming"),

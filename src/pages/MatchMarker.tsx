@@ -214,6 +214,11 @@ export default function MatchMarker() {
     const src = searchParams.get("source");
     const matchId = searchParams.get("matchId");
     if (src !== "tournament" || !matchId || config?.sourceId === matchId) return;
+    if (riversideLoad && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(matchId)) {
+      setLoadError("This is not a saved fixture. Proposed positional slots cannot be marked.");
+      setTournamentLoadState("error");
+      return;
+    }
 
     let cancelled = false;
     setLoadError(null);

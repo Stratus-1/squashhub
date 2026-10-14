@@ -14,4 +14,8 @@ describe("saved-score load deadline", () => {
     expect(retry.signal.aborted).toBe(false); retry.cancel();
     vi.advanceTimersByTime(20000); expect(timeout).not.toHaveBeenCalled();
   });
+  it("does not enable the pilot deadline for other clubs", () => {
+    vi.useFakeTimers(); const timeout = vi.fn(); const load = startMarkerLoadDeadline(timeout, null);
+    vi.advanceTimersByTime(60000); expect(timeout).not.toHaveBeenCalled(); expect(load.signal.aborted).toBe(false); load.cancel();
+  });
 });

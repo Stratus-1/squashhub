@@ -2983,3 +2983,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Symptom: owner needs whole positional draw generated up front, names resolved from results.
 - Fix: `swiss-positional-draw.ts` (generate once, resolve, record, schedule, conflicts); table `swiss_positional_pilot_draws` (migration 0142) with freeze trigger + idempotent result RPC; page `/admin/tournaments/positional-swiss-pilot` (synthetic entrants).
 - Guard: `src/test/swiss-positional-draw.test.ts` (8–32, byes, progression, TBD labels, 10/15/24 rounds, scheduling conflicts). Live Club Champs untouched.
+
+### 2026-10-14 — Per-match proposed slots for positional Swiss
+- Symptom: Round 2+ showed only "Round window" per match.
+- Finding: Riverside stage schedules save only roundDates; daily window (18:00–20:00), 30-min match length and courts live on `tournaments`; the score-based engine creates no Round 2+ rows, so nothing carried a time/court.
+- Fix: `timeSlots`/`slotOnlyDraw` + `scheduleDraws` lay out PROPOSED per-match slots tournament-wide in the Riverside preview; pilot page gains per-match edit, clash checks and confirmed-only court reservations (`sbs:pswiss-<drawId>:` external ids).

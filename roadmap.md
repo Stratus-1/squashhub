@@ -1,4 +1,7 @@
 # Roadmap
+- [ ] Riverside calendar: audit saved live/final scores, fix cards/details and refresh transitions; tests and desktop/mobile read-only checks, no publishing.
+- [ ] Urgent Riverside: calendar retains every scheduled match including finals by default; diagnose Mark Game loading/save delay with non-destructive checks, bounded errors/retries and regression tests.
+- [ ] Highest priority: reproduce initial saved-score loading hang on real Riverside R1 grid versus Upcoming routes, mobile/desktop; reject proposed IDs, bounded retry, preserve Uitsig.
 
 - [x] Hide Riverside pilot Swiss colored standings by default; optional classic standings and error/empty fallback preserved, factual current positions/results included; 103 tests pass and signed-in desktop/mobile/fullscreen checks completed; not published.
 

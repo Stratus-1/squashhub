@@ -19,7 +19,7 @@ function When({ f }: { f: ClubFixture }) {
   return <span className="text-muted-foreground">Not scheduled</span>;
 }
 function Score({ f }: { f: ClubFixture }) {
-  if (f.state === "live" || f.state === "paused") return <span className="tabular-nums font-semibold">{f.score ?? "0-0"}{f.liveGames ? <span className="ml-1 font-normal text-muted-foreground">({f.liveGames})</span> : null}</span>;
+  if (f.state === "live" || f.state === "paused") return <span className="tabular-nums font-semibold">{f.score}{f.currentGame ? ` · Game ${f.currentGame.number} ${f.currentGame.a}–${f.currentGame.b}` : f.liveGames ? <span className="ml-1 font-normal text-muted-foreground">({f.liveGames})</span> : null}</span>;
   return f.score ? <span className="tabular-nums">{f.score}</span> : null;
 }
 
@@ -77,7 +77,7 @@ export function ClubFixturesPilot({ fixtures, canMine }: { fixtures: ClubFixture
         </ul>
       ) : (
         <div data-testid="club-fixtures-calendar">
-          <FixtureCalendar events={shown.filter((x) => x.timing !== "unscheduled").map((x) => ({ id: x.id, date: (x.date ?? x.playBy)!, time: x.timing === "saved" ? x.time : null, court: x.court, title: `${x.a} v ${x.b}`, subtitle: `${x.competition} · ${x.category}${x.round ? ` · R${x.round}` : ""}`, kind: x.timing === "saved" ? "confirmed" : "play_by", state: x.state, score: x.score }))} />
+          <FixtureCalendar events={shown.flatMap((x) => { const date = x.date ?? x.playBy; return x.timing !== "unscheduled" && date ? [{ id: x.id, date, time: x.timing === "saved" ? x.time : null, court: x.court, title: `${x.a} v ${x.b}`, subtitle: `${x.competition} · ${x.category}${x.round ? ` · R${x.round}` : ""}`, kind: x.timing === "saved" ? "confirmed" as const : "play_by" as const, state: x.state, score: x.score, gameScores: x.gameScores, currentGame: x.currentGame, winner: x.winner }] : []; })} />
           {shown.some((x) => x.timing === "unscheduled") && <p className="mt-2 text-[11px] text-muted-foreground">{shown.filter((x) => x.timing === "unscheduled").length} fixture(s) have no saved date — see List View.</p>}
         </div>
       )}

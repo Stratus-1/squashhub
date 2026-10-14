@@ -1,3 +1,9 @@
+### 2026-10-14 — Riverside fixture calendar missing live/final scores
+- Symptom: LIVE cards/details had no scores and completed matches looked like active games.
+- Finding: the adapter accepted only arrays although the marker saves JSON strings with sets/current plus dedicated side-point columns; the calendar retained a stale event object in its dialog.
+- Fix: read-only adapter reuses the saved result reader, separates games won from current rally points, shares card/detail score presentation, and resolves open details by ID on each update. Existing realtime invalidation and 10-second refetch remain; optional completed history is selected-tournament-only and upcoming stays the default.
+- Guard: score mapping and open-dialog transition regression tests; no scoring, scheduling, permission, backend or publication changes.
+
 ### 2026-10-14 — Riverside proposed Swiss slots and primary grid
 - Symptom: undrawn rounds had blank positions; the colored table dominated the pilot.
 - Finding: live Riverside Swiss remains score-based; assigning template slots to its live future fixtures would misrepresent the draw.

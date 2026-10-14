@@ -44,4 +44,3 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- Fixed-position Swiss full draws live only in `swiss_positional_pilot_draws` (pure engine `src/lib/tournaments/swiss-positional-draw.ts`, generated once, fixtures frozen by trigger, results via `swiss_pilot_record_result`), gated by `tournament_swiss_positional_draw`; why: the pilot must never write to live club_champs_matches, rankings or bookings until sign-off.

@@ -612,6 +612,55 @@ body:has(.admin-contrast) [role="dialog"] {
   border-bottom: 2px solid hsl(var(--round-tone) / .7);
   color: hsl(var(--foreground));
 }
+/* Embedded Riverside progression only; other clubs retain their selector. */
+.riverside-category-selector {
+  --category-blue: 214 72% 38%;
+  --category-teal: 176 65% 25%;
+  --category-purple: 262 48% 40%;
+  --category-active-foreground: 0 0% 100%;
+  padding: 12px;
+  background-color: hsl(var(--background));
+}
+.riverside-category-selector [data-category-tone="0"] { --category-tone: var(--category-blue); --category-edge: var(--round-1); }
+.riverside-category-selector [data-category-tone="1"] { --category-tone: var(--category-teal); --category-edge: var(--round-2); }
+.riverside-category-selector [data-category-tone="2"] { --category-tone: var(--category-purple); --category-edge: var(--round-3); }
+.riverside-category-selector .category-options { gap: 12px; padding: 4px; }
+.riverside-category-selector .category-option {
+  min-height: 56px;
+  padding: 14px 20px;
+  font-size: 16px !important;
+  font-weight: 600;
+  line-height: 1.4;
+  border: 1px solid hsl(var(--category-edge) / .65);
+  border-left: 5px solid hsl(var(--category-edge));
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.riverside-category-selector .category-option:hover {
+  background-color: color-mix(in srgb, hsl(var(--muted)) 82%, hsl(var(--category-edge)));
+}
+.riverside-category-selector .category-option[aria-pressed="true"] {
+  background-color: hsl(var(--category-tone));
+  color: hsl(var(--category-active-foreground));
+  border-color: hsl(var(--category-edge));
+}
+.riverside-category-selector .category-option[aria-pressed="true"]:hover {
+  background-color: color-mix(in srgb, hsl(var(--category-tone)) 90%, hsl(var(--category-edge)));
+}
+.riverside-category-selector .category-option:focus-visible {
+  outline: 2px solid hsl(var(--category-edge));
+  outline-offset: 2px;
+  box-shadow: none;
+}
+@media (min-width: 768px) {
+  .riverside-category-selector .category-option {
+    flex: 1 1 0;
+    min-width: 180px;
+    min-height: 64px;
+    white-space: normal;
+    font-size: 18px !important;
+  }
+}
 .dark .member-device-push { --device-highlight: 215 40% 85%; }
 @media (prefers-reduced-motion: reduce) {
   .member-home *, .member-bottom-nav * { animation: none !important; transition: none !important; }

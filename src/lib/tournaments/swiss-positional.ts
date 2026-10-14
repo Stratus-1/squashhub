@@ -9,11 +9,8 @@
  *  - Progression: a match between slots a < b sends the WINNER to slot a and the LOSER to slot b
  *    (so a lower-slotted winner swaps up; "1 v 16, 16 wins" → 16 takes slot 1, 1 drops to 16).
  *    A bye holder keeps its slot. Applied immediately per result.
- *  - Pairing ("block fold"): before round r the slot range is split into record blocks by halving
- *    r-1 times (top block gets the extra slot). Each block is folded (top v bottom). An odd block
- *    floats its bottom slot to the top of the next block. With N odd, the final leftover slot gets the bye.
- *    For N a power of two and r ≤ log2(N), every block holds players with identical records, so this is
- *    equivalent to a fixed bracket-style position map with no rematches.
+ *  - Pairing: SportyHQ-style fixed slot templates — see `slotTemplate` (fold, half-fold with middle
+ *    crossover, then slide in groups of 2^(r-1)). Odd N: slot N gets the bye.
  *  - Occupant-aware adjustments (only when a whole round's feeders are decided):
  *      1. Bye fairness: the bye moves up to the lowest slot whose occupant has not had a bye yet.
  *      2. Rematch avoidance (audit: zero rematches for 8/16/32 within log2(N) rounds; rare for other sizes,
@@ -22,9 +19,9 @@
  *
  * VERIFICATION STATUS
  *  - Verified from SportyHQ's public help text only: "winner takes the better slot, loser of 1v16 moves to 16".
- *  - The 12/14/18-player SportyHQ position maps shared as screenshots are NOT available as data here, so
- *    they are NOT encoded and NO equivalence with SportyHQ is claimed. `SPORTYHQ_REFERENCE_MAPS` is empty
- *    until the owner supplies the exact pairs; the tests then compare automatically.
+ *  - Owner-supplied 12/14/18 maps are encoded in `SPORTYHQ_REFERENCE_MAPS` and tested: 12 and 14 match all
+ *    three rounds; 18 matches rounds 1–2 (round 3 differs, accepted). Other sizes follow the same method
+ *    but are NOT verified against SportyHQ.
  */
 
 export const MIN_ENTRANTS = 8;
@@ -248,4 +245,26 @@ export function simulateCategory(seedOrder: string[], rounds: number, pickWinner
 }
 
 /** Owner-supplied SportyHQ maps go here as data: { [entrants]: { [round]: [slotA, slotB][] } }. Empty = unverified. */
-export const SPORTYHQ_REFERENCE_MAPS: Record<number, Record<number, Array<[number, number]>>> = {};
+/**
+ * Owner-supplied SportyHQ maps (screenshots, 14 Oct 2026), transcribed as data.
+ * 12 and 14: rounds 1–3 match exactly. 18: rounds 1–2 match exactly; SportyHQ round 3 differs at the
+ * top (1v4, 2v3, 5v6 …) and the screenshot's final pairs were cut off — owner accepted round 3 variation.
+ */
+export const SPORTYHQ_REFERENCE_MAPS: Record<number, Record<number, Array<[number, number]>>> = {
+  12: {
+    1: [[1, 12], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7]],
+    2: [[1, 6], [2, 5], [3, 4], [7, 12], [8, 11], [9, 10]],
+    3: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12]],
+  },
+  14: {
+    1: [[1, 14], [2, 13], [3, 12], [4, 11], [5, 10], [6, 9], [7, 8]],
+    2: [[1, 7], [2, 6], [3, 5], [4, 8], [9, 14], [10, 13], [11, 12]],
+    3: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12], [13, 14]],
+  },
+  18: {
+    1: [[1, 18], [2, 17], [3, 16], [4, 15], [5, 14], [6, 13], [7, 12], [8, 11], [9, 10]],
+    2: [[1, 9], [2, 8], [3, 7], [4, 6], [5, 10], [11, 18], [12, 17], [13, 16], [14, 15]],
+  },
+};
+/** SportyHQ 18-player round 3 as visible (last pair inferred) — informational, intentionally not matched. */
+export const SPORTYHQ_18_ROUND3_OBSERVED: Array<[number, number]> = [[1, 4], [2, 3], [5, 6], [7, 9], [8, 10], [11, 13], [12, 14], [15, 17], [16, 18]];

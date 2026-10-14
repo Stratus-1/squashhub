@@ -425,7 +425,7 @@ export default function Bookings() {
       return [...new Set(((data || []) as any[]).filter((b) => isChampsReservation(b)).map((b) => String(b.date)))].sort();
     },
   });
-  const champsOnly = champsHoldDates.length > 0 && !isMemberAdmin && !isSuperAdmin;
+  const champsOnly = champsHoldDates.length > 0 && !isSuperAdmin;
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
   // Booking-provider settings are read straight from the club row. The club

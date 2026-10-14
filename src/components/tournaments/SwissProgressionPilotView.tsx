@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
@@ -8,21 +8,25 @@ import { buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type SwissProgres
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model, positionalPreview = false }: { title: string; model: SwissProgressionModel; positionalPreview?: boolean }) {
+export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings }: { title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode }) {
   const [mode, setMode] = useState<"grid" | "classic">("grid");
+  const [showStandings, setShowStandings] = useState(false);
   const roundNums = model.rounds.map((r) => r.round);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
   const proposed = buildProposedSwissGrid(model);
+  const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">{SWISS_FORMAT_LABEL[model.format]}</span>
+        {classicStandings && <Button size="sm" variant="outline" aria-pressed={showStandings} onClick={() => setShowStandings((v) => !v)}>{showStandings ? "Hide classic standings" : "Show classic standings"}</Button>}
         <div className="ml-auto flex gap-1" role="group" aria-label="Swiss view">
           <Button size="sm" className="h-7" variant={mode === "grid" ? "default" : "outline"} aria-pressed={mode === "grid"} onClick={() => setMode("grid")}>{positionalPreview ? "Positional preview" : "Grid"}</Button>
           <Button size="sm" className="h-7" variant={mode === "classic" ? "default" : "outline"} aria-pressed={mode === "classic"} onClick={() => setMode("classic")}>Classic</Button>
         </div>
       </div>
+      {classicStandings && (showStandings || unavailable) ? classicStandings : null}
       {mode === "grid" ? (
         <>
           {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420}><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>

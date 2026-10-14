@@ -21,3 +21,5 @@
 - [x] Buddy images: bottle on Coke Bulk, glass of coke on Glass 250ml (live)
 - [x] Search box on Club Admin → Bar POS → Items & prices: filters by name, brand/group, category, variant, barcode; verified in preview (brandy 1, coke 5, no match 0, cleared 288). Preview only — publish pending.
 - [ ] Offer: search box on the staff/customer bar menu screens (laptop POS + phone) — awaiting owner
+- [x] Removed the "30 min match" pill from the bottom of the Champs booking dialog (preview only; publish pending).
+

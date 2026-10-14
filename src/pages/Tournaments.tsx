@@ -122,6 +122,7 @@ export default function Tournaments() {
    * (or, worse, letting two devices clobber each other's score).
    */
   const openMarker = async (m: any, markRoute: string, label: string) => {
+    if (clubId === "11111111-1111-1111-1111-111111111111") markRoute += `${markRoute.includes("?") ? "&" : "?"}club=riverside`;
     try {
       const lock = await fetchChampMarkerLock(m.id);
       if (lock && isLockFresh(lock) && lock.user_id !== user?.id) {

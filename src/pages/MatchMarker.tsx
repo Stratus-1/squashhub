@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 import { startMarkerLoadDeadline } from "@/lib/marker/load-deadline";
+import { useClubContext } from "@/contexts/ClubContext";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];
@@ -70,6 +71,8 @@ function serializeLiveScores(games: GameScore[], current?: { a: number; b: numbe
 
 export default function MatchMarker() {
   const [searchParams] = useSearchParams();
+  const { club: markerClub } = useClubContext();
+  const riversideLoad = markerClub?.id === "11111111-1111-1111-1111-111111111111" || searchParams.get("club") === "riverside";
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
     if (new URLSearchParams(window.location.search).has("matchId")) return null;
     try {
@@ -218,7 +221,7 @@ export default function MatchMarker() {
       cancelled = true;
       setLoadError("Loading took too long. Check your connection and tap Retry. No score has been changed.");
       setTournamentLoadState("error");
-    });
+    }, riversideLoad ? 20000 : null);
     const loadLinkedTournamentMatch = async () => {
       setTournamentLoadState("loading");
       const { data, error } = await fromExt("club_champs_matches")
@@ -409,7 +412,7 @@ export default function MatchMarker() {
       setTournamentLoadState("error");
     }).finally(() => deadline.cancel());
     return () => { cancelled = true; deadline.cancel(); };
-  }, [config?.sourceId, markTournamentLive, navigate, searchParams, user?.id, loadAttempt]);
+  }, [config?.sourceId, markTournamentLive, navigate, searchParams, user?.id, loadAttempt, riversideLoad]);
 
   useEffect(() => {
     if (config?.source !== "tournament" || !config.sourceId) return;

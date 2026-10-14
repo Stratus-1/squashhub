@@ -62,6 +62,7 @@ import { hasKnockoutStage, winnerMemberIds, winnerRows, eliminatedMemberIds } fr
 
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { scheduleDraws, slotOnlyDraw, timeSlots, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { resolveFixtureSchedule, stageScheduleIndex } from "@/lib/tournaments/stage-schedule";
 import {
   canScheduleFixture,
@@ -247,6 +248,15 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
   );
 
 
+  // Riverside pilot: club courts for PROPOSED per-match slots (read only).
+  const { data: pilotCourts = [] } = useQuery({
+    queryKey: ["pilot-swiss-courts", champ?.club_id],
+    enabled: !inlineStandings && champ?.club_id === "11111111-1111-1111-1111-111111111111",
+    queryFn: async () => {
+      const { data } = await supabase.from("courts").select("id, name, active").eq("club_id", champ!.club_id).order("id");
+      return (data ?? []).filter((c: any) => c.active !== false && !(c as any).is_external);
+    },
+  });
   const { data: clubInfo } = useQuery({
     queryKey: ["club-payment-gateway", champ?.club_id],
     queryFn: async () => {
@@ -577,6 +587,24 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
     const r = Number(((champ as any)?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
     return { rounds: Number.isFinite(r) && r > 0 ? r : null };
   };
+  /** Riverside pilot: one tournament-wide PROPOSED per-match slot plan across all Swiss categories (rounds 2+). */
+  let pilotSlotsCache: Record<string, FixtureSchedule> | null = null;
+  const pilotSlots = (): Record<string, FixtureSchedule> => {
+    if (pilotSlotsCache) return pilotSlotsCache;
+    const a: any = arch ?? {};
+    const groups = [...new Set((entries as any[]).map((e: any) => e.group_number))].filter((gn) => swissStageFor(gn)?.rounds && !isDoublesLeague(gn));
+    const draws = groups.map((gn) => slotOnlyDraw(String(gn), (entries as any[]).filter((e: any) => e.group_number === gn).length, swissStageFor(gn)!.rounds!)).filter((d) => !d.issues.length);
+    const allowed = (a.court_ids ?? []).map(Number);
+    const courts = (pilotCourts as any[]).filter((c) => !allowed.length || allowed.includes(Number(c.id))).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` }));
+    const busy = (matches as any[]).filter((m: any) => m.scheduled_date && m.scheduled_time && m.court_id).map((m: any) => ({ date: m.scheduled_date, time: String(m.scheduled_time).slice(0, 5), courtId: m.court_id }));
+    const dur = Number(a.match_duration_minutes) || 30;
+    pilotSlotsCache = scheduleDraws(draws, {
+      roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStageFor(Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x: any, i: number) => (i === 0 ? null : x))])),
+      courts, times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0), matchMinutes: dur, restMinutes: Number(a.default_break_minutes) || 0, busy,
+    });
+    return pilotSlotsCache;
+  };
+  const pilotSlotsFor = (gn: number) => Object.fromEntries(Object.entries(pilotSlots()).filter(([k]) => k.startsWith(`${gn}:`)).map(([k, v]) => [k.slice(String(gn).length + 1), v]));
   /** Human label for a group's playing format, shown next to the group name so
    * players know whether their category is a round robin, Swiss, etc. */
   const formatLabelFor = (gn: number): string | null =>
@@ -1213,7 +1241,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         })),
       });
       const riversidePreview = champ.club_id === "11111111-1111-1111-1111-111111111111";
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

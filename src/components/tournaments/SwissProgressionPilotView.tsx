@@ -36,7 +36,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
             <p className="text-muted-foreground">Base template only: bye fairness and rematch adjustments are not applied. No pairing engine conversion has been made.</p>
           </div>
           {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (
-            <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420}>
+            <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none">
               <SwissPositionGrid model={model} proposedRounds={proposed.rounds} />
             </TournamentInteractiveViewer>
           )}

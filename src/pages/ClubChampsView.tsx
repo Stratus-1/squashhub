@@ -3936,8 +3936,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               {rrPilotOn(gn) && renderRoundRobinPilot(gn) ? (
                 <Tabs defaultValue="rr-progression" className="space-y-3">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="rr-progression">Round-Robin Progression</TabsTrigger>
-                    <TabsTrigger value="rr-log">Classic Log</TabsTrigger>
+                    <TabsTrigger value="rr-progression" className="min-h-9 whitespace-normal text-xs leading-tight">Round-Robin Progression</TabsTrigger>
+                    <TabsTrigger value="rr-log" className="min-h-9 whitespace-normal text-xs leading-tight">Classic Log</TabsTrigger>
                   </TabsList>
                   <TabsContent value="rr-progression">{renderRoundRobinPilot(gn)}</TabsContent>
                   <TabsContent value="rr-log">{standingsTable}</TabsContent>

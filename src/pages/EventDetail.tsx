@@ -165,7 +165,7 @@ export default function EventDetail() {
                 </p>
                 <Button
                   className="mt-1"
-                  onClick={() => navigate(`/auth?redirect=${encodeURIComponent(`/events/${id}`)}`)}
+                  onClick={() => navigate(`/auth?redirectTo=${encodeURIComponent(`/events/${id}`)}`)}
                 >
                   Log in to continue
                 </Button>

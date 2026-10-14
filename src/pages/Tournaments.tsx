@@ -2391,7 +2391,7 @@ export default function Tournaments() {
 
             <TabsContent value="standings" className="mt-4 space-y-3">
               {(entriesLoading || matchesLoading || stageArchLoading || roundsLoading) ? <div role="status" className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading standings…</div> : <>
-              {champs.length === 0 && (
+              {!fixturesPilot && champs.length === 0 && (
                 <Card className="p-6 text-center text-sm text-muted-foreground">
                   No tournament is running. Standings for finished events are under <span className="font-medium">Past</span>.
                 </Card>

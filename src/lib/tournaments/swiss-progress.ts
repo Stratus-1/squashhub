@@ -50,10 +50,22 @@ export function scheduleForRound(plan: PlanStage[] | null | undefined, round: nu
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /** Setup's Swiss round count for one category (category/subcategory override → tournament format). */
-export function setupSwissRounds(setup: SwissSetupPlan | null | undefined, label: string): number | null {
+export type SwissRoundsLookup = { byKey?: boolean };
+
+/** Stable category key used by the Step builder ("Mens › A · Singles" → "Mens::A"); mirrors step-draw `unitKeyOf`. */
+export const categoryKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
+
+export function setupSwissRounds(setup: SwissSetupPlan | null | undefined, label: string, opts: SwissRoundsLookup = {}): number | null {
   const o = setup?.formatOverrides ?? {};
-  const key = Object.keys(o).filter((k) => !!o[k] && norm(label).startsWith(norm(k.split("::")[0])))
-    .sort((x, y) => y.length - x.length)[0];
+  let key: string | undefined;
+  if (opts.byKey) {
+    // Riverside pilot: exact category key, then its parent category — never a name prefix ("Men's A" ≠ "Men's AB").
+    const k = categoryKeyOf(label);
+    key = [k, k.split("::")[0]].find((x) => !!o[x]);
+  } else {
+    key = Object.keys(o).filter((k) => !!o[k] && norm(label).startsWith(norm(k.split("::")[0])))
+      .sort((x, y) => y.length - x.length)[0];
+  }
   const pick = (f: any) => f ? (f.swissRoundsConfirmed || f.swissRounds) : undefined;
   const n = Number((key ? pick(o[key]) : undefined) || pick(setup?.format));
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -67,7 +79,7 @@ const joinNames = (xs: string[]) => xs.join(" → ");
  * draw is handed over to stage progression.
  */
 export function swissTransition(args: {
-  label: string; round: number; complete: boolean; liveRounds: number; liveHasNextStage: boolean; liveNextName?: string | null; setup?: SwissSetupPlan | null;
+  label: string; round: number; complete: boolean; liveRounds: number; liveHasNextStage: boolean; liveNextName?: string | null; setup?: SwissSetupPlan | null; lookup?: SwissRoundsLookup;
 }): SwissTransition | null {
   const { label, round, complete, liveRounds, liveHasNextStage, setup } = args;
   if (!complete || round < 1) return null;
@@ -77,7 +89,7 @@ export function swissTransition(args: {
   const playoffs = mine.filter((s) => s?.phase === "playoff").map((s) => String(s.name || "Play-off"));
   if (!playoffs.length) return null;
   const mainRounds = mine.filter((s) => (s?.phase ?? "main") === "main").length;
-  const setupRounds = setupSwissRounds(setup, label);
+  const setupRounds = setupSwissRounds(setup, label, args.lookup);
   const po = joinNames(playoffs);
   const base = { liveRounds, playoffs, liveHasPlayoff: liveHasNextStage };
   if (finished) return {
@@ -103,6 +115,7 @@ export function swissDivisionProgress(
   fixturesFor: (divisionIndex: number, stageId: string) => GateFixture[],
   plan: PlanStage[] | null | undefined,
   setup?: SwissSetupPlan | null,
+  lookup?: SwissRoundsLookup,
 ): SwissDivisionProgress[] {
   const out: SwissDivisionProgress[] = [];
   divisions.forEach((d, di) => d.stages.filter((s) => s.kind === "swiss").forEach((s) => {
@@ -118,7 +131,7 @@ export function swissDivisionProgress(
     const liveNextName = later[0]?.name ?? d.deferredStages?.[0]?.name ?? null;
     const transition = swissTransition({
       label: d.label, round, complete: gate.state === "ready" || gate.state === "finished", liveRounds,
-      liveHasNextStage: later.length > 0 || (d.deferredStages?.length ?? 0) > 0, liveNextName, setup,
+      liveHasNextStage: later.length > 0 || (d.deferredStages?.length ?? 0) > 0, liveNextName, setup, lookup,
     });
     const base = gate.state === "finished" ? "final" : gate.state === "in_progress" ? "wait" : gate.state === "ready" ? (schedule ? "generate" : "setup_round") : "none";
     const action = transition?.kind === "conflict" ? "plan_conflict" : transition?.kind === "playoff_next" ? "playoffs" : base;

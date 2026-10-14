@@ -46,7 +46,13 @@ const GENDER: Record<Division["eligibility"], string> = {
 
 const MAPPABLE_FIRST = new Set(["knockout", "round_robin", "swiss"]);
 
-export function mapToExistingTournament(input: TournamentDefinition): ExistingMapping {
+export interface MapOptions {
+  /** Riverside pilot (`tournament_swiss_category_rounds`): write `swiss_rounds` keyed by game group
+   *  ({ "1": 4, "2": 5 }) so each Swiss category keeps its own count. Off = legacy single value. */
+  perCategorySwissRounds?: boolean;
+}
+
+export function mapToExistingTournament(input: TournamentDefinition, opts: MapOptions = {}): ExistingMapping {
   // "Define later" stages are intentional and are mapped to nothing — see ./deferred.
   const def = definedOnly(input);
   const blockers = engineBlockers(def);
@@ -62,6 +68,7 @@ export function mapToExistingTournament(input: TournamentDefinition): ExistingMa
   const playoffModes: Record<string, string> = {};
   const playoffQualifiers: Record<string, number> = {};
   let swissRounds: number | null = null;
+  const swissRoundsByGroup: Record<string, number> = {};
   let g = 0;
 
   const defer = (label: string, stages: Stage[], reason: string) =>
@@ -95,7 +102,10 @@ export function mapToExistingTournament(input: TournamentDefinition): ExistingMa
       return;
     }
     leagueFormats[key] = first.kind === "swiss" ? "swiss" : "single_round_robin";
-    if (first.kind === "swiss") swissRounds = first.swissRounds ?? swissRounds;
+    if (first.kind === "swiss") {
+      swissRounds = first.swissRounds ?? swissRounds;
+      if (first.swissRounds) swissRoundsByGroup[key] = first.swissRounds;
+    }
     if (!second) return;
     const secondOk = second.kind === "knockout" && second.discipline === first.discipline;
     if (secondOk) {
@@ -139,7 +149,9 @@ export function mapToExistingTournament(input: TournamentDefinition): ExistingMa
     round_format: firstFormat === "knockout" ? undefined : firstFormat,
     league_formats: leagueFormats,
     swiss_pools: swissPools,
-    swiss_rounds: swissRounds,
+    swiss_rounds: opts.perCategorySwissRounds
+      ? (Object.keys(swissRoundsByGroup).length ? swissRoundsByGroup : null)
+      : swissRounds,
     expected_players: Object.keys(expected).length ? expected : null,
     group_labels: labels,
   };

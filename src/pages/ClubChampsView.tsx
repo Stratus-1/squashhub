@@ -1211,7 +1211,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
           placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
         })),
       });
-      return <>{classic}<div className="mt-4"><SwissProgressionPilotView title={`Group ${gn}`} model={model} /></div></>;
+      return <>{classic}<div className="mt-4"><SwissProgressionPilotView title={getGroupLabel(champ, gn)} model={model} /></div></>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

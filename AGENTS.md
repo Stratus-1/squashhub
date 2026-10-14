@@ -43,3 +43,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Court grids share P and peak logic; why: no separate rules.
 
 - Menu order/hide prefs (`user_menu_preferences`) apply only after permission filtering; why: never grant access.
+- Dense tournament views render inside the shared display-only `TournamentInteractiveViewer` (react-zoom-pan-pinch) and are gated per club by `club_beta_features` rows toggled from the Super Admin switches card, never by migration-inserted rows; why: one zoom/expand behaviour and safe opt-in pilots.

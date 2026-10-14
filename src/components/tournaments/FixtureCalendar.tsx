@@ -18,7 +18,7 @@ export interface CalEvent {
 type View = "day" | "week" | "month";
 
 /** Visual scale only (px per minute). Never alters times or data. */
-export const ZOOM_MIN = 1, ZOOM_MAX = 4, ZOOM_DEFAULT = 2;
+export const ZOOM_MIN = 1, ZOOM_MAX = 5, ZOOM_DEFAULT = 2.5;
 export const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100));
 const iso = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 const parse = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
@@ -47,6 +47,9 @@ export function hourRange(events: CalEvent[]): [number, number] {
   return [Math.max(0, Math.floor(lo / 60) - 1), Math.min(24, Math.ceil(hi / 60) + 1)];
 }
 
+/** "Willem Pretorius v Ethan Tshabalala" -> "Pretorius v Tshabalala" for narrow week lanes (full names in the detail dialog). */
+export const shortTitle = (t: string) => t.split(/\s+v\s+/).map((side) => side.split(" & ").map((n) => n.trim().split(/\s+/).pop()).join(" & ")).join(" v ");
+
 function EventBlock({ e, top, height, left, width, compact, onOpen }: { e: CalEvent; top: number; height: number; left: string; width: string; compact?: boolean; onOpen: (e: CalEvent) => void }) {
   const st = e.state ?? "upcoming";
   const badge = e.kind === "proposed" ? "Proposed" : (st === "live" || st === "completed" || st === "paused") ? `${STATE_TEXT[st]}${e.score ? ` ${e.score}` : ""}` : null;
@@ -60,7 +63,7 @@ function EventBlock({ e, top, height, left, width, compact, onOpen }: { e: CalEv
         {e.court && <span className="rounded bg-muted px-1 text-[10px] font-semibold text-muted-foreground">{compact ? e.court.replace(/court\s*/i, "C") : e.court}</span>}
         {badge && <span className="ml-auto truncate rounded px-1 text-[10px] font-semibold" style={{ backgroundColor: `hsl(var(${e.kind === "proposed" ? "--muted-foreground" : STATE_VAR[st]}) / .25)` }}>{badge}</span>}
       </div>
-      <div className={cn("mt-0.5 font-semibold", compact ? "line-clamp-3 break-words" : "line-clamp-2")}>{e.title}</div>
+      <div className={cn("mt-0.5 font-semibold", compact ? "line-clamp-3" : "line-clamp-2")}>{compact ? shortTitle(e.title) : e.title}</div>
       {!compact && e.subtitle && <div className="truncate text-muted-foreground">{e.subtitle}</div>}
     </button>
   );
@@ -100,7 +103,7 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
   const timed = events.filter((e) => e.time && e.kind !== "play_by");
   const [h0, h1] = hourRange(timed);
   const gridH = (h1 - h0) * 60 * ppm;
-  const ev = (e: CalEvent) => ({ top: (mins(e.time!) - h0 * 60) * ppm, height: Math.max(44, (e.durationMin ?? defaultDuration) * ppm - 3) });
+  const ev = (e: CalEvent) => ({ top: (mins(e.time!) - h0 * 60) * ppm, height: Math.max(56, (e.durationMin ?? defaultDuration) * ppm - 3) });
   const days = view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(weekStart(anchor), i));
   const step = view === "day" ? 1 : view === "week" ? 7 : 0;
   const move = (dir: 1 | -1) => {
@@ -162,7 +165,7 @@ export function FixtureCalendar({ events, defaultDuration = 40 }: { events: CalE
         );
       })() : (
         <div className="overflow-x-auto rounded-md border border-border">
-          <div style={{ minWidth: view === "day" ? 320 : 860 }}>
+          <div style={{ minWidth: view === "day" ? 320 : 1180 }}>
             {/* header */}
             <div className="sticky top-0 z-10 flex border-b border-border bg-muted">
               <div className="w-16 shrink-0" />

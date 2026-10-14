@@ -435,6 +435,13 @@ export default function Tournaments() {
   // Riverside pilot: club-wide fixtures (Fixtures / Progression / Past labels), read-only.
   const { data: fixturesBoardOn = false } = useClubBetaFeature(md ? undefined : clubId, "tournament_schedule_board");
   const fixturesPilot = fixturesBoardOn && clubId === "11111111-1111-1111-1111-111111111111";
+  // ?champ=<id> deep-links straight to one tournament's games (e.g. after Generate draw & fixtures).
+  const [champFilter, setChampFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return "all";
+    return new URLSearchParams(window.location.search).get("champ") ?? "all";
+  });
+  // Pilot: counts/options derive ONLY from the selected tournament (no cross-tournament leakage).
+  const scopedUpcoming = fixturesPilot && champFilter !== "all" ? upcomingMatches.filter((m: any) => m.champ_id === champFilter) : upcomingMatches;
   const pilotFixtures = useMemo<ClubFixture[]>(() => !fixturesPilot ? [] : (allMatches as any[])
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.stage ?? "group") !== "placeholder")
     .map((m: any) => {
@@ -558,7 +565,7 @@ export default function Tournaments() {
 
   const buckets = useMemo(() => {
     const seen = new Map<string, { key: string; champId: string; group: number | null; pool: number | null; stage: string | null; stageLabel: string | null; count: number }>();
-    for (const m of upcomingMatches) {
+    for (const m of scopedUpcoming) {
       const key = bucketKeyOf(m);
       const existing = seen.get(key);
       if (existing) { existing.count++; continue; }
@@ -629,11 +636,6 @@ export default function Tournaments() {
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
-  // ?champ=<id> deep-links straight to one tournament's games (e.g. after Generate draw & fixtures).
-  const [champFilter, setChampFilter] = useState<string>(() => {
-    if (typeof window === "undefined") return "all";
-    return new URLSearchParams(window.location.search).get("champ") ?? "all";
-  });
   const gamesCardRef = useRef<HTMLDivElement | null>(null);
   // "round" (default) | "slot" | "flat"
   const [groupMode, setGroupMode] = useState<"round" | "slot" | "flat">(() => {
@@ -669,9 +671,9 @@ export default function Tournaments() {
 
   const availableDates = useMemo(() => {
     const set = new Set<string>();
-    for (const m of upcomingMatches) if (m.scheduled_date) set.add(m.scheduled_date);
+    for (const m of scopedUpcoming) if (m.scheduled_date) set.add(m.scheduled_date);
     return [...set].sort();
-  }, [upcomingMatches]);
+  }, [scopedUpcoming]);
 
   const applyFilters = (list: any[]) =>
     list.filter(
@@ -2231,9 +2233,9 @@ export default function Tournaments() {
                             <SelectValue placeholder="All dates" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All dates ({upcomingMatches.length})</SelectItem>
+                            <SelectItem value="all">All dates ({scopedUpcoming.length})</SelectItem>
                             {availableDates.map((d) => {
-                              const count = upcomingMatches.filter((m: any) => m.scheduled_date === d).length;
+                              const count = scopedUpcoming.filter((m: any) => m.scheduled_date === d).length;
                               return (
                                 <SelectItem key={d} value={d}>
                                   {format(new Date(d), "EEE dd MMM")} ({count})
@@ -2249,7 +2251,7 @@ export default function Tournaments() {
                             <SelectValue placeholder="All leagues & pools" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All leagues & pools ({upcomingMatches.length})</SelectItem>
+                            <SelectItem value="all">All {fixturesPilot ? "categories" : "leagues & pools"} ({scopedUpcoming.length})</SelectItem>
                             {buckets.map((b) => {
                               const color = bucketColor(b.key);
                               return (

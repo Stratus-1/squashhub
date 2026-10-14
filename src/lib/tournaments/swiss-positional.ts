@@ -16,7 +16,8 @@
  *    equivalent to a fixed bracket-style position map with no rematches.
  *  - Occupant-aware adjustments (only when a whole round's feeders are decided):
  *      1. Bye fairness: the bye moves up to the lowest slot whose occupant has not had a bye yet.
- *      2. Rematch avoidance: a repeat pairing is fixed by swapping the lower slot with the lower slot of a
+ *      2. Rematch avoidance (audit: zero rematches for 8/16/32 within log2(N) rounds; rare for other sizes,
+ *         e.g. 10×4 had 4 in 200 simulated rounds; frequent once rounds exceed ceil(log2 N), e.g. 9×8): a repeat pairing is fixed by swapping the lower slot with the lower slot of a
  *         neighbouring pair in the same block (then any block); if no swap works the rematch is kept and reported.
  *
  * VERIFICATION STATUS

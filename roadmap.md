@@ -26,4 +26,5 @@
 - [x] Revert premature Swiss progression view + its Riverside switch; tests/typecheck pass
 - [x] Phase 1: shared TournamentInteractiveViewer shell + Super Admin harness + pilot switches (preview only)
 - [ ] Pool matrix view — awaiting approval to start
-- [ ] Swiss positional Phase 1: pure templates 8-32 + simulations/tests (no live integration) — in progress
+- [x] Swiss positional Phase 1: pure templates + tests (not wired in)
+- [ ] Swiss positional Phase 2 — awaiting approval + SportyHQ 12/14/18 maps as exact pairs

@@ -2247,6 +2247,10 @@ export default function Bookings() {
                               setBookingDetails(booking);
                               return;
                             }
+                            if (champsOnly) {
+                              toast.info("Only the reserved Club Championships slots are available right now — tap a Club Championships slot to book your match.");
+                              return;
+                            }
                             // For non-GoBook external providers, redirect.
                             // GoBook clubs book in-app and silently push to GoBook.
                             if (usesExternalBooking && externalProvider !== "gobook" && externalUrl) {

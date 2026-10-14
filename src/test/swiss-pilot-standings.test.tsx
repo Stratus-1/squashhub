@@ -24,7 +24,7 @@ describe("Riverside optional classic standings", () => {
   it("legacy default still uses factual saved grid, not proposed/current-position columns", () => {
     render(<SwissProgressionPilotView title="Test" model={makeModel()} />);
     expect(screen.queryByTestId("swiss-current-positions")).toBeNull();
-    expect(screen.getByRole("button",{name:"Grid"})).toBeTruthy();
+    expect(screen.getByRole("tab",{name:"Grid"})).toBeTruthy();
   });
   it("render errors fall back to original standings", () => {
     const error = vi.spyOn(console,"error").mockImplementation(() => {});

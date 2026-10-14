@@ -2967,3 +2967,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - "Test Guest" (opened while checking the new cell-number field) had no lines — closed and removed.
 - "Willem test guest" (+27833759003) held 8 unpaid QR lines totalling R216. Owner chose "cancel items, return stock": the 8 `bar_visitor_sales` rows were deleted (all `on_tab`, so no journal entry existed to unpost), the tab row removed, and stock returned with an `adjustment` movement each — Whiskey +4 tots, Chocolates +1, Vodka +4 tots, KWV 5 Years +2 tots, Klipdrift Premium +3 tots, Coke Bulk +250 ml.
 - Verified afterwards: 0 sales left against the tab, no open tabs at Uitsig, stock counts back to pre-test values (Chocolates 107, Coke Bulk 523 250 ml, Klipdrift Premium 377 tots, KWV 5 Years 84 tots, Vodka 13 tots, Whiskey 19 tots).
+
+## 2026-10-14 — "30 min match" label on the Champs booking dialog
+- Symptom: the bottom of "Make your court booking" showed a `30 min match` pill. Reserved Champs slots are 45 minutes and the booking takes the whole slot, so the label was wrong and confusing (owner asked for it removed).
+- Fix: `ScheduleMatchDialog` no longer renders the duration badge; the row now only appears when a court/time is already booked, holding the "Clear court & time" action (right-aligned). Booking length logic is untouched — `duration` still drives availability checks and the booked slot length.
+- Frontend only: preview until published.

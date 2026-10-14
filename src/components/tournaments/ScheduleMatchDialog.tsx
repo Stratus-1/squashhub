@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { CalendarClock, Loader2 } from "lucide-react";
 import {
   buildSlots,
@@ -433,9 +432,8 @@ export function ScheduleMatchDialog({
           </div>
           </>)}
 
-          <div className="flex items-center justify-between gap-2">
-            <Badge variant="outline" className="text-[10px]">{duration} min match</Badge>
-            {alreadyScheduled && (
+          {alreadyScheduled && (
+            <div className="flex items-center justify-end gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -447,8 +445,9 @@ export function ScheduleMatchDialog({
               >
                 Clear court & time
               </Button>
-            )}
-          </div>
+            </div>
+          )}
+
 
         </div>
       </DialogContent>

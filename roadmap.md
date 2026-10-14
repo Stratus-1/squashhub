@@ -39,3 +39,4 @@
 
 - [x] Fixture calendar: date/time-slot layout, court labels per game, click a date to open day detail (read-only)
 - [ ] Admin drag-to-reschedule (awaiting separate approval)
+- [ ] Riverside Tournaments: select tournament first; 3 tabs scoped to it (original Tournament Games list, progression, past); persist selection

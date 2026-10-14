@@ -23,3 +23,5 @@
 - [ ] Offer: search box on the staff/customer bar menu screens (laptop POS + phone) — awaiting owner
 - [x] Removed the "30 min match" pill from the bottom of the Champs booking dialog (preview only; publish pending).
 
+- [x] Revert premature Swiss progression view + its Riverside switch; tests/typecheck pass
+- [ ] Shared TournamentInteractiveViewer + 4 views — PLAN ONLY, awaiting owner approval

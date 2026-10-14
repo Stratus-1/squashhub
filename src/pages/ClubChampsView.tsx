@@ -99,7 +99,6 @@ import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwar
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
-import { SwissProgressionPilot, type SwissProgressionInput } from "@/components/tournaments/SwissProgressionView";
 
 export interface InlineStandingsData {
   champ: any;
@@ -560,8 +559,6 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
    */
   // Per-render: Swiss standings heading status per group, filled by the standings calculation.
   const swissStatusByGroup = new Map<number, SwissStandingsStatus>();
-  // Riverside pilot: progression-table input per Swiss group (display only).
-  const swissProgressionByGroup = new Map<number, SwissProgressionInput>();
   const swissStageFor = (gn: number): { tieBreaks?: string[]; rounds: number | null } | null => {
     if (isStructured) {
       const spec = arch?.builder_spec;
@@ -836,29 +833,6 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
         swiss.rounds ?? lastRound,
       );
       swissStatusByGroup.set(groupNum, status);
-      {
-        const names = new Map<string, string>();
-        rows.forEach((r: any) => { if (r.name) names.set(keyOf(r), r.name); });
-        const withdrawn = new Set<string>(
-          groupEntries.filter((e: any) => e.withdrawn_at || String(e.status || "").toLowerCase() === "withdrawn").map(keyOf),
-        );
-        swissProgressionByGroup.set(groupNum, {
-          seedOrder,
-          games: [
-            ...groupMatches.map((m: any) => ({
-              a: byMember.get(m.player_a_member_id) ?? null,
-              b: byMember.get(m.player_b_member_id) ?? null,
-              winner: m.winner_member_id ? byMember.get(m.winner_member_id) ?? null : null,
-              round: Number(m.round_number) || null,
-              score: m.score ?? null,
-            })).filter((g) => g.a && g.b),
-            ...groupByes.filter((m: any) => isPoolStage(m)).map((m: any) => ({ a: byMember.get(m.bye_member_id || m.player_a_member_id) ?? null, b: null, winner: null, round: Number(m.round_number) || null })).filter((g) => g.a),
-          ],
-          tieBreaks: swiss.tieBreaks,
-          names,
-          withdrawn,
-        });
-      }
       const finished = status.state === "final";
       return rows
         .map((r: any) => {
@@ -4040,9 +4014,7 @@ export default function ClubChampsView({ inlineStandings }: { inlineStandings?: 
               </div>
             );
           })()}
-          {catTab === "standings"
-            ? <SwissProgressionPilot clubId={(champ as any)?.club_id} canManage={canManage} input={swissProgressionByGroup.get(activeCat.gn)} classic={activeCat.standings} />
-            : catTab === "upcoming" ? activeCat.upcoming : activeCat.results}
+          {catTab === "standings" ? activeCat.standings : catTab === "upcoming" ? activeCat.upcoming : activeCat.results}
         </CardContent>
       </Card>
     ) : null;

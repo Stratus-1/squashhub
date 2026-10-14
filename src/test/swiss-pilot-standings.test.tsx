@@ -45,7 +45,7 @@ describe("Riverside optional classic standings", () => {
     expect(screen.queryByRole("button", { name: /classic standings/i })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));
     const cal = screen.getByTestId("swiss-calendar");
-    expect(cal.querySelector('[data-kind="unscheduled"], [data-kind="confirmed"]')).toBeTruthy();
-    expect(cal.textContent).toContain("Position 1 v Position");
+    expect(cal.querySelector('[data-testid="fixture-calendar"]')).toBeTruthy();
+    expect(cal.textContent).toContain("Proposed slot");
   });
 });

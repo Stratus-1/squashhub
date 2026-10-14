@@ -38,7 +38,7 @@ describe("club fixtures pilot", () => {
     expect(screen.getByTestId("club-fixtures-list").textContent).toContain("11-7, 5-3");
     fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));
     const cal = screen.getByTestId("club-fixtures-calendar");
-    expect(cal.querySelector('[data-timing="play_by"]')).toBeTruthy();
+    expect(cal.querySelector('[data-testid="fixture-calendar"]')).toBeTruthy();
     expect(cal.textContent).toContain("Saved fixture");
     fireEvent.click(screen.getByLabelText("My matches"));
     expect(screen.getByTestId("club-fixtures-count").textContent).toBe("1 of 4 fixtures");

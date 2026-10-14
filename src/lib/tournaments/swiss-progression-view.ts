@@ -111,3 +111,37 @@ export function movement(row: ProgressionRow): number | null {
   if (known.length < 2) return null;
   return known[known.length - 2] - known[known.length - 1];
 }
+
+/* ---------- Positional grid (read-only display of saved matches) ---------- */
+export interface GridRow { pos: number | null; id: string | null; name: string; when: string | null; result: string }
+export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null }
+export interface GridRound { round: number; created: boolean; blocks: GridBlock[] }
+
+/**
+ * Lays saved matches out as side-by-side round columns of 2-row blocks.
+ * Position numbers: round 1 = seed; later rounds = the position each player held after the previous
+ * round, as calculated by the SAME standings the live page uses. For the existing score-based Swiss this
+ * is a display aid only — players were NOT moved into fixed slots, and nothing here re-pairs anyone.
+ */
+export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
+  const byId = new Map(model.rows.map((r) => [r.id, r]));
+  const posEntering = (id: string | null, round: number): number | null => {
+    if (!id) return null;
+    const row = byId.get(id);
+    if (!row) return null;
+    return round === 1 ? row.seed : row.positions[round - 2] ?? null;
+  };
+  return model.rounds.map((rd) => {
+    const blocks = rd.fixtures.map((f): GridBlock => {
+      const res = (id: string | null) =>
+        f.state === "bye" ? (id ? "Bye" : "") :
+        f.state === "completed" && id ? (f.winner === id ? "W" : "L") : "";
+      const when = f.when ?? (f.playBy ? `Play by ${f.playBy}` : null);
+      const a: GridRow = { pos: posEntering(f.a, rd.round), id: f.a, name: f.aLabel, when, result: res(f.a) };
+      const b: GridRow = { pos: f.state === "bye" ? null : posEntering(f.b, rd.round), id: f.b, name: f.state === "bye" ? "Bye" : f.bLabel, when, result: res(f.b) };
+      const pair: [GridRow, GridRow] = b.pos != null && (a.pos == null || b.pos < a.pos) ? [b, a] : [a, b];
+      return { matchId: f.id, rows: pair, score: f.score, court: f.court, playBy: f.playBy };
+    }).sort((x, y) => (x.rows[0].pos ?? 999) - (y.rows[0].pos ?? 999));
+    return { round: rd.round, created: rd.created, blocks };
+  });
+}

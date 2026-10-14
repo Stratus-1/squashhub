@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { buildSwissProgression, movement, type ProgressionMatchInput } from "@/lib/tournaments/swiss-progression-view";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { buildSwissGrid, buildSwissProgression, movement, type ProgressionMatchInput } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 
 const names = { p1: "Ann", p2: "Ben", p3: "Cal", p4: "Dee", p5: "Eve" };
@@ -48,7 +48,23 @@ describe("Swiss progression (read-only)", () => {
   it("renders labelled existing format, rounds and unresolved text", () => {
     render(<SwissProgressionPilotView title="Men's A" model={model} />);
     expect(screen.getByText(/Existing Swiss/)).toBeTruthy();
+    expect(screen.getByTestId("swiss-position-grid")).toBeTruthy();
+    expect(screen.getByText(/not moved into fixed slots/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Classic" }));
     expect(screen.getAllByText("Opponent to be decided").length).toBeGreaterThan(0);
     expect(screen.getByText(/Not drawn yet/)).toBeTruthy();
+  });
+
+  it("grid: 2-row blocks, seeds in round 1, TBD/bye and no re-pairing", () => {
+    const g = buildSwissGrid(model);
+    expect(g.map((r) => r.blocks.length)).toEqual([3, 2, 0]);
+    const first = g[0].blocks[0];
+    expect(first.rows.map((r) => [r.pos, r.name, r.result])).toEqual([[1, "Ann", "L"], [5, "Eve", "W"]]);
+    expect(first.score).toBe("3-1");
+    expect(g[0].blocks.find((b) => b.rows[1].name === "Bye")!.rows[0].result).toBe("Bye");
+    const pending = g[1].blocks.find((b) => b.rows[0].id == null)!;
+    expect(pending.rows.map((r) => r.name)).toEqual(["Winner R1", "To be decided"]);
+    expect(g[1].blocks.flatMap((b) => b.rows.map((r) => r.id)).filter(Boolean).sort()).toEqual(["p2", "p5"]);
+    expect(g[2].created).toBe(false);
   });
 });

@@ -19,7 +19,9 @@ export type ScheduleRule = "fixed" | "play_by" | "window";
 export type GenerationMode = "automatic" | "owner_approval";
 export type QualifierMapping = "cross_pool" | "reseed" | "same_pool";
 
-export type SwissTieBreak = "buchholz" | "sonneborn_berger" | "seed";
+/** "position_swap" switches the stage to positional Swiss: winner takes the better of the two
+ *  positions, loser the worse, every round; next round pairs neighbours by position. */
+export type SwissTieBreak = "buchholz" | "sonneborn_berger" | "seed" | "position_swap";
 
 /** How entrants move from the previous stage into this one. Stage 1 always takes the entries. */
 /**

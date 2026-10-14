@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { TournamentViewSwitchesCard } from "@/components/tournaments/viewer/TournamentViewSwitchesCard";
 import {
-  generateCategoryDraw, resolveCategoryDraw, recordDrawResult, scheduleDraws, scheduleConflicts,
+  generateCategoryDraw, resolveCategoryDraw, recordDrawResult, scheduleDraws, scheduleConflicts, capacityReport, parseRoundEntries,
   type CategoryDraw, type DrawResults, type FixtureSchedule, type ResultSide,
 } from "@/lib/tournaments/swiss-positional-draw";
 
@@ -36,8 +36,8 @@ export default function PositionalSwissPilot() {
     { key: "mens-b", label: "Men's B", entrants: 15, rounds: 5 },
     { key: "mens-c", label: "Men's C", entrants: 24, rounds: 6 },
   ]);
-  const [dates, setDates] = useState("2026-11-04, 2026-11-11, 2026-11-18, 2026-11-25, 2026-12-02, 2026-12-09");
-  const [times, setTimes] = useState("17:00, 17:45, 18:30, 19:15, 20:00, 20:45");
+  const [dates, setDates] = useState("");
+  const [times, setTimes] = useState("");
   const [courtIds, setCourtIds] = useState<number[] | null>(null);
   const [matchMin, setMatchMin] = useState(45);
   const [restMin, setRestMin] = useState(45);
@@ -64,10 +64,14 @@ export default function PositionalSwissPilot() {
   const selectedCourts = (courts.data ?? []).filter((c) => (courtIds ?? (courts.data ?? []).map((x) => x.id)).includes(c.id)).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` }));
   const preview = useMemo(() => {
     const draws = cats.map((c) => generateCategoryDraw({ categoryKey: c.key, label: c.label, entrants: synthetic(c), rounds: c.rounds }));
-    const dl = dates.split(",").map((s) => s.trim()).filter(Boolean);
-    const opts = { roundDates: Object.fromEntries(cats.map((c) => [c.key, dl])), courts: selectedCourts, times: times.split(",").map((s) => s.trim()).filter(Boolean), matchMinutes: matchMin, restMinutes: restMin };
+    const pr = parseRoundEntries(dates);
+    const opts = { roundDates: Object.fromEntries(cats.map((c) => [c.key, pr.dates])), playBy: Object.fromEntries(cats.map((c) => [c.key, pr.playBy])), courts: selectedCourts, times: times.split(",").map((s) => s.trim()).filter(Boolean), matchMinutes: matchMin, restMinutes: restMin };
     const sched = scheduleDraws(draws.filter((d) => !d.issues.length), opts);
-    return { draws, sched, conflicts: scheduleConflicts(draws, sched, opts) };
+    const capacity = capacityReport(draws.filter((d) => !d.issues.length), opts);
+    const shortages = capacity.filter((c) => c.short > 0).map((c) => `${c.date}: ${c.needed} matches need a slot, only ${c.available} court/time slots — short by ${c.short}. Add courts or start times.`);
+    const unset = Math.max(0, Math.max(...cats.map((c) => c.rounds)) - pr.dates.filter((d, i) => d || pr.playBy[i]).length);
+    if (unset) shortages.push(`${unset} round(s) have no fixed date or play-by date yet — organiser must set them (nothing is guessed).`);
+    return { draws, sched, conflicts: [...scheduleConflicts(draws, sched, opts), ...shortages] };
   }, [cats, dates, times, matchMin, restMin, selectedCourts.map((c) => c.id).join()]);
 
   const existingForPilot = (saved.data ?? []).filter((r) => r.pilot_label === pilot.trim());
@@ -125,7 +129,7 @@ export default function PositionalSwissPilot() {
                 </tr>))}</tbody></table>
             <Button size="sm" variant="outline" onClick={() => setCats([...cats, { key: `cat-${Date.now()}`, label: `Category ${cats.length + 1}`, entrants: 8, rounds: 3 }])}>Add category</Button>
             <div className="grid gap-2 md:grid-cols-2">
-              <label>Round dates (round 1, 2, …) <Input className="h-8 mt-1" value={dates} onChange={(e) => setDates(e.target.value)} /></label>
+              <label>Rounds (1, 2, …): a date = fixed play with exact court/time; "by:YYYY-MM-DD" = play-by deadline <Input placeholder="2026-11-04, 2026-11-11, by:2026-11-25" className="h-8 mt-1" value={dates} onChange={(e) => setDates(e.target.value)} /></label>
               <label>Start times each date <Input className="h-8 mt-1" value={times} onChange={(e) => setTimes(e.target.value)} /></label>
               <label>Match length (min) <Input type="number" className="h-8 mt-1 w-24" value={matchMin} onChange={(e) => setMatchMin(Number(e.target.value))} /></label>
               <label>Rest between a player's matches (min) <Input type="number" className="h-8 mt-1 w-24" value={restMin} onChange={(e) => setRestMin(Number(e.target.value))} /></label>

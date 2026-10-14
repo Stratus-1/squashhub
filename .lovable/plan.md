@@ -1,37 +1,31 @@
-# Tournament views pilot at Riverside: Pool grid and Swiss progression
+# Tournament views pilot at Riverside: Pool grid, Swiss progression, Knockout/Monrad bracket
 
-Planning only. No code is written until you confirm the layouts and rules. There are two separate views so that neither design is forced onto the other format.
+Planning only. No code is written until you confirm the layouts and rules. There are three separate views, each matched to its own format, so that no single design is forced onto every format.
 
 ## Shared foundation (what exists today)
-- **Tournament page:** `src/pages/ClubChampsView.tsx` (Standings tab, Swiss pairing, rank colours) and `src/components/tournaments/InlineTournamentStandings.tsx`.
-- **Shared logic:**
-  - `src/lib/tournaments/swiss-standings.ts` (`swissTable`, `positionSwapOrder`)
-  - `src/lib/swiss-pairing.ts` (pools and pairing)
-  - `swiss-round-gate.ts`, `structured-matchups.ts`, `standings-outcome.ts`
-- **Data tables:**
-  - `club_champs_registrations`: entries, seeds, withdrawals
-  - `club_champs_matches`: `round_number`, players, scores, status, court, date and time
-  - `club_champs_rounds`
-  - Tournament settings: `builder_spec` divisions and pools
+- **Tournament page:**
+  - `src/pages/ClubChampsView.tsx` (Standings tab)
+  - `InlineTournamentStandings.tsx`
+  - knockout display parts: `DrawBoard.tsx`, `KnockoutCard.tsx`
+- **Shared logic in `src/lib/tournaments/`:**
+  - Swiss: `swiss-standings.ts`, `swiss-round-gate.ts`, `src/lib/swiss-pairing.ts`
+  - Knockout: `knockout.ts`, `knockout-progression.ts` (round types: knockout / semi_final / final / third_place), `knockout-round-display.ts`, `knockout-sections.ts` (power-of-two sections)
+  - Seeding: `seeded-bracket.ts` (`seededOrder`, sizes 4/8/16)
+  - Draws and withdrawals: `draw-board.ts`, `active-draw.ts`, `withdraw.ts`, `provisional-playoffs.ts`
+- **Match data (`club_champs_matches`):**
+  - round and stage: `round_number`, `round_id`, `stage`, `stage_id`, `stage_key`, `stage_label`
+  - draw position: `bracket_position`, `section_number`, `pool_id`/`pool_number`, `division_id`
+  - byes: `is_bye`, `bye_member_id`
+  - result: `forfeit_member_id`, `winner_member_id`, `placeholder_a/b`, `score`, `game_scores`
+  - scheduling: `court_id`, `scheduled_date/time`
+- **Other tables:** `club_champs_registrations` (seeds, withdrawals) and `club_champs_rounds`.
 - **Pilot switch:** `club_beta_features`, where each club can have features switched on one by one. These are off by default and managed by Super Admin.
-- **Schema:** no database change is expected for either view. Everything shown can be worked out from data already stored.
 
 ## View A: Pool grid and order of play (round-robin pools)
 Based on the NJSA "Pool Matches" layout.
-
-**Top: pool grid**
-- Columns: Nr, Name, one column per player number (1..N), Total Games, Rank.
-- Each cell holds the score from the row player's point of view, for example "3-1". Unplayed games are blank.
-- Cells where a player meets themselves are blacked out.
-- Rank uses the division's existing round-robin ranking rules, so no new ranking rules are needed.
-
-**Bottom: order of play**
-- Columns: Rd, Order of Play (e.g. "1v5"), Result, Score, Day/Time, Venue, Court.
-- Rows are grouped by `round_number`.
-- Day/time, venue and court come from the match or its booking.
-- "1v5" means player number 1 against player number 5 within that pool.
-
-**Data support:** fully supported. The only open question is where the player numbers 1..N come from: seed order, entry order, or numbers fixed when the draw was made.
+- **Grid:** Nr, Name, one column per player number (1..N), Total Games, Rank. Cells where a player meets themselves are blacked out, and scores are shown from the row player's point of view.
+- **Order of play:** Rd, Order of Play ("1v5"), Result, Score, Day/Time, Venue, Court.
+- **Data support:** fully supported by existing data. Player numbers 1..N are worked out from seed order unless you say otherwise.
 
 ## View B: Swiss progression table (Swiss events)
 - **Columns:**
@@ -41,55 +35,93 @@ Based on the NJSA "Pool Matches" layout.
   - Seed
   - R1..Rn, each showing the opponent, W/L and score, or BYE / WO / —
   - P / W / L
-  - Games +/- (optional)
+  - Games +/-
   - Pts, only when the division isn't position-swap
-- **Order:**
-  - Position-swap divisions follow `positionSwapOrder`, replayed round by round.
-  - Other divisions follow `swissTable` with the division's tie-breaks.
-- **Movement:** the change in position compared with the replay up to the previous round.
+- **Order:** `positionSwapOrder` for position-swap divisions, otherwise `swissTable` with the division's tie-breaks. Movement compares positions with the previous round.
+- **Data support:** fully supported by existing data.
 
-**Data support:** fully supported. Matches without a round number can't be placed in a round column.
+## View C: Knockout / Monrad bracket (SportyHQ reference)
+**Main draw**
+- The left column lists the slots (1..16), each with:
+  - seed in brackets, e.g. "[1]"
+  - club or region abbreviation
+  - player name
+  - BYE where a slot has no player
+- Connecting lines lead to the next matches, ending at the final.
+- Match labels are shown at each meeting point, e.g. A9..A15.
 
-## Riverside-only pilot
-- Add two separate pilot feature keys: `tournament_pool_matrix_view` and `tournament_swiss_progression_view`.
-- Both are switched on for Riverside only. Every other club, including Uitsig, keeps today's view unchanged.
-- The view shown depends on each division's format:
-  - round-robin or pool divisions get View A
-  - Swiss divisions get View B
-  - other formats keep the current standings
-- A "Classic view" option stays available during the pilot.
-- Both are display changes only: no results, pairings, bookings or messages are touched.
-- Testing uses made-up players in a Riverside test tournament, then your sign-off, before any staged rollout.
+**Placement brackets below the main draw**
+- Smaller brackets labelled "Position 3-4", "5-8", "11-12", "13-16", "15-16" and so on.
+- Labels are E/F/G/H, e.g. E5, G3, H1.
+
+**What already works**
+- Main-draw slot order: `bracket_position` and `seededOrder`.
+- Seeds: the registration seed.
+- Byes: `is_bye`/`bye_member_id`, which advance the player automatically.
+- Winner progression: `winner_member_id` combined with the round order.
+- Third-place matches: the `third_place` round type.
+- Sections: `section_number`, so one division can have several brackets.
+
+**Match labels (A9, E5, ...)**
+- These are not stored anywhere today.
+- Proposal: work them out for display only, with no database change.
+  - Each bracket gets a letter (A = main draw, then B, C... in order of the positions being decided).
+  - Matches are numbered within each bracket, first round top-to-bottom, then the next round.
+- The labels stay the same as long as the bracket's size and positions don't change.
+
+**Monrad / play-through finishing positions**
+- I found no dedicated Monrad engine in the code today, only main-draw knockout and the third-place match.
+- **Option 1 (preferred):** show only. When a tournament already has placement matches stored as separate stages (`stage_key`/`stage_label`, e.g. "pos_5_8"), the view groups them into placement brackets. No database change is needed.
+- **Option 2:** if Riverside needs placement draws *generated automatically* (losers moved down into position brackets), that is a change to the tournament engine.
+  - It falls under the Riverside pilot process: audit, then approval, then made-up-player tests, then sign-off.
+  - It may need a small addition to record which match feeds which (e.g. "loser of A9 goes to E1"). That would be scoped separately before any database change.
+
+**Bracket layout:** a wide bracket scrolls sideways on phones and shows in full on desktop. A finished match shows its score under the winner, and an unplayed one shows "Winner A9" / "Loser A9" as a placeholder.
+
+## Riverside-only pilot (three separate switches)
+- `tournament_pool_matrix_view` (View A)
+- `tournament_swiss_progression_view` (View B)
+- `tournament_bracket_view` (View C)
+
+Each switch is on for Riverside only, and the view shown depends on each division's format. Every other club, including Uitsig, keeps today's views. A "Classic view" option stays available. All three are display changes only, so no results, draws, bookings or messages change. Each view goes through testing with made-up players at Riverside and then your sign-off before a staged rollout.
+
+## Recommended build order
+1. **View B: Swiss progression.** The logic exists and has tests, and it is what Riverside needs first.
+2. **View A: Pool grid.** It uses existing round-robin data, so the risk is low.
+3. **View C, display part:** main draw, byes, seeds and match labels, plus placement brackets wherever placement matches already exist as stages.
+4. **View C, engine part (only if needed):** automatic Monrad / play-through placement draws. This needs its own audit and approval.
 
 ## Still needed before building
-**View A (pool grid)**
-1. How player numbers 1..N are assigned.
-2. The score shown in a grid cell: game score, points, or W/L.
-3. What "Total Games" counts: games won, or games won minus games lost.
-4. Rank tie-breaks: confirm the current division rules apply.
-5. Should the order-of-play table follow the standard rotation (1v5, 2v3, 4v6...), or the actual schedule order?
-6. Should the "Venue" column only appear when there is more than one venue?
+**View A:** how player numbers are assigned; what a grid cell shows; what "Total Games" counts; tie-breaks; whether order of play follows the standard rotation or the actual schedule; when to show the Venue column.
 
-**View B (Swiss)**
-1. SportyHQ screenshots, on phone and desktop.
-2. What a round cell shows.
-3. Byes and walkovers: count as wins? Do they move position?
-4. Withdrawals: does the player stay on the table, greyed out, or keep their spot?
-5. During a round: show live movement, or only after the round is complete?
+**View B:** SportyHQ screenshots of the progression table; what a round cell shows; how byes and walkovers count; how withdrawals are shown; whether to show live movement or update after each round.
 
-**Both**
-- Do players see the new views as well, or only admins at first?
+**View C:**
+- Should every match decide a finishing position (full Monrad, 1-16), or only selected position brackets?
+- Which positions are played out?
+- Should consolation be first-round losers only, or every loser?
+- Confirm the label lettering. Must it match SportyHQ exactly, or just stay consistent?
+- Which metadata columns to show: club, region, country flag, ranking?
+- Can a withdrawal after the draw is made be shown as a walkover, or must the player be removed?
+
+**All views:** do players see the new views as well, or only admins at first?
 
 ## Risks
-- **Older tournaments:** matches with no round number, or pools with no saved player numbers, fall back to the classic view.
-- **Incomplete matches:** shown as pending. Nobody moves, and no grid cell fills, until the result is confirmed.
-- **Withdrawals and byes:** a withdrawn player's remaining pool games show as WO. The Swiss rules need your explicit answers above.
-- **Ties:** pool ranks use the division's existing tie-breaks. Ties can't happen in position-swap divisions.
-- **Several divisions or pools:** each division and pool gets its own grid or table, and players are never mixed between them.
+- **Older tournaments:** missing round numbers, bracket positions or stage keys mean that view falls back to the classic one.
+- **Incomplete matches:** shown as pending or placeholders. Nothing moves forward until the result is confirmed.
+- **Byes:** the player moves through automatically, the bye is never counted as a played match, and the BYE is shown in the bracket.
+- **Withdrawals:** shown as walkovers. Completed results are never rewritten.
+- **Ties:** pool ranks use the division's tie-breaks, and ties can't happen in position-swap divisions or knockouts.
+- **Several divisions or sections:** each division, pool or section gets its own grid, table or bracket, and players are never mixed between them.
+- **Labels:** if a bracket is regenerated, display-only labels may renumber. This is acceptable until you need labels printed on match sheets.
 - **Uitsig:** stays on its current live views unless you approve otherwise.
 
 ## Technical steps (after approval)
-1. Add two pure functions with tests: `poolMatrix(pool, entries, matches)` and `progressionTable(division, entries, matches)`. Tests cover byes, walkovers, withdrawals, pending results, missing round numbers and several divisions.
-2. Build two components: `PoolMatrixView.tsx` and `SwissProgressionView.tsx`. Each is chosen per division inside the Standings tab, behind its pilot switch.
-3. Add a `useClubBetaFeature(clubId, key)` helper and switch both features on for Riverside.
-4. Test end to end at Riverside with made-up players, then get your sign-off before a staged rollout.
+1. Add pure functions with tests:
+   - `progressionTable(...)`
+   - `poolMatrix(...)`
+   - `bracketModel(division, entries, matches)`, which returns slots, rounds, labels and placement groups
+2. Tests cover byes, walkovers, withdrawals, pending results, missing round numbers and several divisions or sections.
+3. Build three components (`SwissProgressionView`, `PoolMatrixView`, `BracketView`), each chosen per division and behind its own switch.
+4. Add a `useClubBetaFeature(clubId, key)` helper and switch the features on for Riverside one at a time.
+5. Test end to end with made-up players and get your sign-off for each view.

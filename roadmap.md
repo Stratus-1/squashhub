@@ -1,5 +1,5 @@
 # Roadmap
-- [x] Riverside Progression & Log prominent solid category tabs — visual-only implementation; focused tests and desktop/mobile verification pending.
+- [x] Riverside Progression & Log prominent solid category tabs — six tests passed; signed-in desktop/mobile category switching and screenshots verified, 64px/56px targets, no overflow/errors, no writes/publish. Marker blocker unchanged.
 - [x] Phase 1 read-only Move/Swap preview built; 51 focused tests passed; signed-in Riverside desktop/mobile confirmed fail-closed no verified blocks. Interactive successful real-data drag remains unverified pending proven inventory. No writes/Phase 2.
 - [x] Riverside calendar move/swap — read-only model/permissions/availability audit and staged plan prepared; 45 existing focused tests passed; no app/data changes or publishing.
 - [ ] Riverside calendar actual move/swap Phase 2 — BLOCKED: separate owner approval, verified Android initialization recovery, proven reservation ownership and isolated write-testing without hardware/messages.

@@ -1200,9 +1200,10 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Riverside Swiss pilot: models built while rendering standings, reused on the Results tab (same data, no recalculation).
   const pilotSwissModels: Record<number, any> = {};
   // Riverside round-robin pilot: read-only pool matrix + order of play per pool, from the same saved matches.
+  const rrPilotOn = (gn: number) => champ?.club_id === "11111111-1111-1111-1111-111111111111" && pilotViewerOn && pilotPoolMatrixOn && canManage
+    && !swissStageFor(gn) && !isSwissForLeague(gn) && isRoundRobinForLeague(gn) && !isDoublesLeague(gn) && !matchupForGroup(matchups, gn);
   const renderRoundRobinPilot = (gn: number) => {
-    if (champ?.club_id !== "11111111-1111-1111-1111-111111111111" || !pilotViewerOn || !pilotPoolMatrixOn || !canManage) return null;
-    if (swissStageFor(gn) || isSwissForLeague(gn) || !isRoundRobinForLeague(gn) || isDoublesLeague(gn) || matchupForGroup(matchups, gn)) return null;
+    if (!rrPilotOn(gn)) return null;
     const pc = poolCountFor(gn);
     const gm = (matches as any[]).filter((m: any) => m.group_number === gn && (m.stage || "group") === "group");
     if (!gm.length) return null;
@@ -1357,7 +1358,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                 </>
               }
             >
-              {s.length > 0 ? renderStandingsTable(s, { historical: !swissStageFor(gn), statuses }) : (
+              {s.length > 0 ? (rrPilotOn(gn) ? (
+                <div className="space-y-1" data-testid="rr-classic-log-pool">
+                  {!s.some((r: any) => (r.played || 0) > 0) && <p className="text-[11px] text-muted-foreground italic">No results yet — listed in draw order, not ranked.</p>}
+                  {renderStandingsTable(s, { plain: true })}
+                </div>
+              ) : renderStandingsTable(s, { historical: !swissStageFor(gn), statuses })) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
               )}
             </CollapsibleSection>
@@ -3926,8 +3932,16 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           standings: (
             <div className="space-y-4">
               {swissControlsFor(gn)}
-              {standingsTable}
-              {renderRoundRobinPilot(gn)}
+              {rrPilotOn(gn) && renderRoundRobinPilot(gn) ? (
+                <Tabs defaultValue="rr-progression" className="space-y-3">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="rr-progression">Round-Robin Progression</TabsTrigger>
+                    <TabsTrigger value="rr-log">Classic Log</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="rr-progression">{renderRoundRobinPilot(gn)}</TabsContent>
+                  <TabsContent value="rr-log">{standingsTable}</TabsContent>
+                </Tabs>
+              ) : (<>{standingsTable}{renderRoundRobinPilot(gn)}</>)}
             </div>
           ),
           upcoming: listNode(split.upcoming, groupMatches.length ? "No games left to play in this category." : "No fixtures for this category yet.", "upcoming"),

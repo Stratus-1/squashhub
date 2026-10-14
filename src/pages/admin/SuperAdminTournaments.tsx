@@ -45,6 +45,11 @@ export default function SuperAdminTournaments() {
           Interactive viewer test harness + pilot switches
         </Link>
       )}
+      {isSuperAdmin && (
+        <Link to="/admin/tournaments/positional-swiss-pilot" className="block rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white hover:bg-white/[0.08]">
+          Fixed-position Swiss — full draw pilot (Riverside, synthetic)
+        </Link>
+      )}
 
       <TournamentPlanner mode="platform" dark />
     </div>

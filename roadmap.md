@@ -28,4 +28,4 @@
 - [ ] Pool matrix view — awaiting approval to start
 - [x] Swiss positional Phase 1: pure templates + tests (not wired in)
 - [ ] Swiss positional Phase 2 — awaiting approval + SportyHQ 12/14/18 maps as exact pairs
-- [ ] Phase 2b: per-category Swiss rounds controls (entrants, suggested, editable selected) in real Riverside setup, flag-gated, ID-backed save/reload
+- [x] Phase 2b: per-category Swiss rounds controls (entrants, suggested, editable selected) in real Riverside setup, flag-gated, ID-backed save/reload

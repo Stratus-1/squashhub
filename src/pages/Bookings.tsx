@@ -408,6 +408,24 @@ export default function Bookings() {
       return ((data || []) as any[]).filter((m) => m.champ?.club_id === myClub!.id && fixtureScheduleState(m) === "unscheduled");
     },
   });
+  // While the club has reserved "Club Championships" court holds, ordinary
+  // members may only book into those slots — the rest of the grid is closed
+  // to them. Admins keep the full grid.
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const { data: champsHoldDates = [] } = useQuery({
+    queryKey: ["bookings-champs-hold-dates", myClub?.id, todayStr],
+    enabled: !!myClub?.id,
+    queryFn: async () => {
+      const { data } = await fromExt("bookings")
+        .select("date, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id")
+        .eq("club_id", myClub!.id)
+        .eq("status", "active")
+        .gte("date", todayStr)
+        .ilike("external_booker_name", "club championship%");
+      return [...new Set(((data || []) as any[]).filter((b) => isChampsReservation(b)).map((b) => String(b.date)))].sort();
+    },
+  });
+  const champsOnly = champsHoldDates.length > 0 && !isMemberAdmin && !isSuperAdmin;
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
   // Booking-provider settings are read straight from the club row. The club

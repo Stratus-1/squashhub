@@ -24,4 +24,5 @@
 - [x] Removed the "30 min match" pill from the bottom of the Champs booking dialog (preview only; publish pending).
 
 - [x] Revert premature Swiss progression view + its Riverside switch; tests/typecheck pass
-- [ ] Shared TournamentInteractiveViewer + 4 views — PLAN ONLY, awaiting owner approval
+- [x] Phase 1: shared TournamentInteractiveViewer shell + Super Admin harness + pilot switches (preview only)
+- [ ] Pool matrix view — awaiting approval to start

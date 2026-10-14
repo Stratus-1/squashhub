@@ -40,6 +40,11 @@ export default function SuperAdminTournaments() {
         </Link>
       )}
       {isSuperAdmin && <TournamentBetaClubsCard />}
+      {isSuperAdmin && (
+        <Link to="/admin/tournaments/viewer-demo" className="block rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white hover:bg-white/[0.08]">
+          Interactive viewer test harness + pilot switches
+        </Link>
+      )}
 
       <TournamentPlanner mode="platform" dark />
     </div>

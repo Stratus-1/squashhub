@@ -42,3 +42,13 @@ describe("club beta feature lookup fails closed", () => {
   it("error → off", async () => { expect(await fetchClubBetaFeature("c", "tournament_viewer_shell", stub({ data: null, error: { message: "denied" } }))).toBe(false); });
   it("throw → off", async () => { expect(await fetchClubBetaFeature("c", "tournament_viewer_shell", stub(null, true))).toBe(false); });
 });
+
+import { nextWheelScale } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
+describe("wheel zoom maths", () => {
+  it("scales by delta, normalises line mode, clamps at bounds", () => {
+    expect(nextWheelScale(1, { deltaY: -100, deltaMode: 0 }, 0.25, 3)).toBeCloseTo(Math.exp(0.15));
+    expect(nextWheelScale(1, { deltaY: 3, deltaMode: 1 }, 0.25, 3)).toBeCloseTo(nextWheelScale(1, { deltaY: 48, deltaMode: 0 }, 0.25, 3));
+    expect(nextWheelScale(3, { deltaY: -500, deltaMode: 0 }, 0.25, 3)).toBe(3);
+    expect(nextWheelScale(0.25, { deltaY: 500, deltaMode: 0 }, 0.25, 3)).toBe(0.25);
+  });
+});

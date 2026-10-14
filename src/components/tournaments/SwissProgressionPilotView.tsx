@@ -36,14 +36,14 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
       {mode === "calendar" ? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
         <>
-          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420}><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
+          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
             <p className="text-muted-foreground">Round 1 shows saved matches only. Later columns are proposed template slots, not the existing live score-based draw. Players were not moved into fixed slots; future names and results remain TBD. Later rounds show a PROPOSED court and start time per match, laid out from the tournament's daily window, match length and courts across all categories; proposals only, not court bookings.</p>
             <p className="text-muted-foreground">Base template only: bye fairness and rematch adjustments are not applied. No pairing engine conversion has been made.</p>
           </div>
           {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (
-            <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none">
+            <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none" wheelZoom="direct">
               <SwissPositionGrid model={model} proposedRounds={proposed.rounds} />
             </TournamentInteractiveViewer>
           )}

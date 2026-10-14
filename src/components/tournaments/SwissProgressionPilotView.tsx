@@ -10,10 +10,10 @@ export function SwissProgressionPilotView({ title, model }: { title: string; mod
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Badge variant="outline">Pilot · read only</Badge>
+        <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">{SWISS_FORMAT_LABEL[model.format]}</span>
       </div>
-      <TournamentInteractiveViewer title={`${title} — Swiss progression`} inlineHeight={360}>
+      <TournamentInteractiveViewer title={`${title} — Swiss progression (${model.format === "positional" ? "fixed-position" : "score-based"})`} inlineHeight={360}>
         <table className="text-xs border-collapse bg-background text-foreground">
           <thead>
             <tr className="text-left text-muted-foreground">

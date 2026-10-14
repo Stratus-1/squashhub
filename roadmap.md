@@ -33,3 +33,5 @@
 - [x] Swiss positional Phase 1: pure templates + tests (not wired in)
 - [ ] Swiss positional Phase 2 — awaiting approval + SportyHQ 12/14/18 maps as exact pairs
 - [x] Phase 2b: per-category Swiss rounds controls (entrants, suggested, editable selected) in real Riverside setup, flag-gated, ID-backed save/reload
+- [x] Positional Swiss full-draw pilot (synthetic, Riverside only): engine, persistence, scheduling, pilot page, tests.
+- [ ] Activate positional Swiss on a real tournament — waits on owner sign-off.

@@ -16391,6 +16391,65 @@ export type Database = {
         }
         Relationships: []
       }
+      swiss_positional_pilot_draws: {
+        Row: {
+          byes: Json
+          category_key: string
+          category_label: string
+          club_id: string
+          created_at: string
+          created_by: string | null
+          entrants: Json
+          fixtures: Json
+          id: string
+          pilot_label: string
+          results: Json
+          rounds: number
+          schedule: Json
+          updated_at: string
+        }
+        Insert: {
+          byes?: Json
+          category_key: string
+          category_label: string
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          entrants: Json
+          fixtures: Json
+          id?: string
+          pilot_label: string
+          results?: Json
+          rounds: number
+          schedule?: Json
+          updated_at?: string
+        }
+        Update: {
+          byes?: Json
+          category_key?: string
+          category_label?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          entrants?: Json
+          fixtures?: Json
+          id?: string
+          pilot_label?: string
+          results?: Json
+          rounds?: number
+          schedule?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swiss_positional_pilot_draws_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_league_events: {
         Row: {
           club_id: string
@@ -21603,6 +21662,17 @@ export type Database = {
       submit_platform_invoice_eft_proof: {
         Args: { _invoice_id: string; _path: string }
         Returns: undefined
+      }
+      swiss_pilot_allowed: { Args: { _club_id: string }; Returns: boolean }
+      swiss_pilot_record_result: {
+        Args: {
+          _draw_id: string
+          _key: string
+          _replace?: boolean
+          _score: string
+          _winner: string
+        }
+        Returns: Json
       }
       sync_association_clubs_from_federation: {
         Args: { _tenant_id?: string }

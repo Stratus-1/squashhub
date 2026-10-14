@@ -2978,3 +2978,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Symptom: the bottom of "Make your court booking" showed a `30 min match` pill. Reserved Champs slots are 45 minutes and the booking takes the whole slot, so the label was wrong and confusing (owner asked for it removed).
 - Fix: `ScheduleMatchDialog` no longer renders the duration badge; the row now only appears when a court/time is already booked, holding the "Clear court & time" action (right-aligned). Booking length logic is untouched — `duration` still drives availability checks and the booked slot length.
 - Frontend only: preview until published.
+
+### 2026-10-14 — Fixed-position Swiss full-draw pilot
+- Symptom: owner needs whole positional draw generated up front, names resolved from results.
+- Fix: `swiss-positional-draw.ts` (generate once, resolve, record, schedule, conflicts); table `swiss_positional_pilot_draws` (migration 0142) with freeze trigger + idempotent result RPC; page `/admin/tournaments/positional-swiss-pilot` (synthetic entrants).
+- Guard: `src/test/swiss-positional-draw.test.ts` (8–32, byes, progression, TBD labels, 10/15/24 rounds, scheduling conflicts). Live Club Champs untouched.

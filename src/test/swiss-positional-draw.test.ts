@@ -10,7 +10,7 @@ function playAll(d: CategoryDraw, upset = (_r: number) => false): DrawResults {
   for (let r = 1; r <= d.rounds; r++) {
     const rd = resolveCategoryDraw(d, res).rounds[r - 1];
     for (const f of rd.fixtures) {
-      const seedOf = (id: string) => Number(id.replace(/^\D+\d*?(?=\d+$)/, "").match(/\d+$/)![0]);
+      const seedOf = (id: string) => d.entrants.findIndex((e) => e.id === id);
       const better = seedOf(f.a!.id) < seedOf(f.b!.id) ? "a" : "b";
       res = recordDrawResult(d, res, f.key, upset(r) ? (better === "a" ? "b" : "a") : better, "3-1");
     }

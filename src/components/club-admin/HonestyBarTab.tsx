@@ -215,8 +215,8 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     <div className="space-y-6 mt-4">
       <CounterModeCard clubId={clubId} />
       <Card className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <h3 className="font-semibold">Self-service Bar &amp; POS</h3>
             <p className="text-sm text-muted-foreground">
               Let members and visitors buy from the bar without staff assistance. Share one Menu QR for the full
@@ -233,7 +233,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </span>
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             <Button size="sm" variant="outline" onClick={() => setMenuQrOpen(true)}>
               <QrCode className="w-3.5 h-3.5 mr-1" /> Menu QR
             </Button>

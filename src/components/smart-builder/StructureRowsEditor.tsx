@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CATEGORY_LABELS, COMPETITION_CATEGORIES } from "@/lib/leagues/category";
-import { DIVISION_PRESETS, STRUCTURE_HELP, duplicateStructureRow, renameStructureKey, rowStages, writeRowStages, structureUnits, structureRowIssues, poolSizesFor } from "@/lib/smart-builder/structure-rows";
+import { DIVISION_PRESETS, STRUCTURE_HELP, duplicateStructureRow, renameStructureKey, rowStages, writeRowStages, structureUnits, structureRowIssues, poolSizesFor, selectedStructureEntries } from "@/lib/smart-builder/structure-rows";
 import { newStageId, validateStagePlan, type StageKind, type StagePlanItem } from "@/lib/smart-builder/stage-plan";
 import { evaluateStructures, type GuideAnswers } from "@/lib/smart-builder/structure-guide";
 import { categoryEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
@@ -95,7 +95,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
         {(s.advance?.mode === "top_n" || s.advance?.mode === "per_pool" || s.advance?.mode === "shared_playoff") && <Input type="number" min={1} className="h-8 w-20 text-xs" aria-label={`${key} stage ${i + 1} qualifiers`} value={(s.advance.mode === "per_pool" ? s.advance.perPool : s.advance.topN) ?? ""} onChange={(e) => patchStage(key, i, { advance: { mode: s.advance?.mode ?? "top_n", [s.advance?.mode === "per_pool" ? "perPool" : "topN"]: Number(e.target.value) || null }, sharedWith: s.advance?.mode === "shared_playoff" ? key.split("::")[0] : s.sharedWith })} />}
         <Badge variant="outline">Planned</Badge>
         {i > 0 && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Remove ${key} stage ${i + 1}`} onClick={() => stages(key, (all) => all.filter((_, j) => j !== i))}><Trash2 className="h-3.5 w-3.5" /></Button>}
-        {(s.kind === "round_robin" || s.kind === "pools") && <RRTopologyEditor stage={s} entrants={unitCapacity(draft, key, Number(draft.unitEntries[key]) || 0).stages[i].entrants} label={`${key} stage ${i + 1}`} onChange={(patch) => patchStage(key, i, patch)} />}
+        {(s.kind === "round_robin" || s.kind === "pools") && <RRTopologyEditor stage={s} entrants={unitCapacity(draft, key, Number(draft.unitEntries[key]) || 0).stages[i].entrants} selectedEntrants={i === 0 ? selectedStructureEntries(draft, key) : undefined} label={`${key} stage ${i + 1}`} onChange={(patch) => patchStage(key, i, patch)} />}
       </div>)}
       <Button variant="ghost" size="sm" onClick={() => stages(key, (s) => [...s, { id: newStageId(), kind: null, advance: { mode: "all_continue" } }])}><Plus className="mr-1 h-3 w-3" />Add future stage</Button>
     </div>;

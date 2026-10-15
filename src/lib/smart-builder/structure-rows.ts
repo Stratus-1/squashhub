@@ -105,6 +105,18 @@ export function poolSizesFor(a: StepAnswers, key: string, stage: StagePlanItem) 
   return n > 0 && (stage.kind === "pools" || stage.kind === "round_robin") ? rrSizes(n, stage.pools ?? 1, stage.rrTopology) : [];
 }
 
+/** Selected entries are separate from planning estimates; doubles count reciprocal configured pairs only. */
+export function selectedStructureEntries(a: StepAnswers, key: string): number {
+  const ids = new Set(Object.keys(a.picks).filter((id) => placesOf(a.picks, id).includes(key)));
+  const disc = a.disc[key] ?? a.disc[key.split("::")[0]] ?? a.playType;
+  if (disc !== "doubles") return ids.size;
+  const used = new Set<string>();
+  return (a.pairs?.[key] ?? []).reduce((n, [x, y]) => {
+    if (x === y || !ids.has(x) || !ids.has(y) || used.has(x) || used.has(y)) return n;
+    used.add(x); used.add(y); return n + 1;
+  }, 0);
+}
+
 /** New UI remains unavailable on published hosts or existing tournaments, even if flags broaden. */
 export const rowStructurePilot = (clubId: string, flag: boolean, hostname: string, tournamentId?: string) =>
   clubId === "11111111-1111-1111-1111-111111111111" && flag && !tournamentId && (hostname === "localhost" || hostname.endsWith(".lovable.app") && hostname.includes("id-preview--"));

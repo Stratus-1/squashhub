@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { parentProgressionGroups, parentFixtureLanes, parentProgressionEnabled } from "@/lib/tournaments/parent-progression";
-import { ParentCategoryProgression } from "@/components/tournaments/ParentCategoryProgression";
+import { ParentCategoryProgression, placeholderBracket } from "@/components/tournaments/ParentCategoryProgression";
+import { rrSlot } from "@/lib/tournaments/round-robin-view";
 
 const spec = { divisions: [1, 2].map((g) => ({ divisionId: `g${g}`, groupNumber: g, label: `Mens A › ${g} · Singles`, stages: [{ id: "main", name: "Round robin", kind: "round_robin", order: 0 }], deferredStages: [{ stageKey: "shared-final", name: "Final" }] })) };
 const lifecycle = { answers: { subcats: { "Mens A": ["1", "2"] }, playoffSync: true }, format_plan: { playoffOverrides: { "Mens A": { choice: "playoffs", qualification: "top_pools", pairing: "later", style: "placement", rounds: 1 } } } };

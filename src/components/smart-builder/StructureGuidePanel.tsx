@@ -34,8 +34,9 @@ function Pick({ active, onClick, title, desc }: { active: boolean; onClick: () =
 }
 const H = ({ n, t, h }: { n: number; t: string; h: string }) => <div><h3 className="text-sm font-semibold">{n}. {t}</h3><p className="text-xs text-muted-foreground">{h}</p></div>;
 
-export function RecommendationCard({ cat, n, unit, options, applied, current, onUse, onOther, note, share, change }: {
+export function RecommendationCard({ cat, n, unit, options, applied, current, onUse, onOther, note, share, change, source, onReset }: {
   cat: string; n: number; unit: string; options: StructureOption[]; applied: boolean; current?: string; onUse: (o: StructureOption) => void; onOther: () => void; note?: string;
+  source?: "default" | "category" | "override" | "unset"; onReset?: () => void;
   share?: number | null; change?: string;
 }) {
   const [best, alt] = options;
@@ -58,18 +59,23 @@ export function RecommendationCard({ cat, n, unit, options, applied, current, on
       )}
       {best.fit && <p className="text-xs"><span className={cn("font-semibold", fitClass(best.fit))}>{FIT_TEXT[best.fit]}</span><span className="text-muted-foreground"> — this category's share is about {share} match slots of the tournament total.</span></p>}
       {alt && <p className="text-xs text-muted-foreground">Next best: {alt.title} — {alt.pools ? `pools of ${alt.pools.join("/")}, ${alt.rounds} rounds per pool + ${alt.playoffRounds} playoff,` : `${alt.rounds} rounds,`} about {alt.matches} matches, ~{alt.courtHours} court-hours{alt.fit ? ` (${FIT_TEXT[alt.fit].toLowerCase()})` : ""}.</p>}
-      {current && <p className="text-xs text-muted-foreground">Currently planned: {current}</p>}
+      {source === "default" && <p className="text-xs font-medium" data-testid={`format-source-${cat}`}>Using tournament default: {current?.replace(/ \(planned\)$/, "")}</p>}
+      {source === "override" && <p className="text-xs font-medium text-primary" data-testid={`format-source-${cat}`}>Override: {current?.replace(/ \(planned\)$/, "")}</p>}
+      {source === "unset" && <p className="text-xs font-medium text-destructive" data-testid={`format-source-${cat}`}>No format chosen — set the tournament format above.</p>}
+      {!source && current && <p className="text-xs text-muted-foreground">Currently planned: {current}</p>}
       <div className="flex flex-wrap gap-2 pt-1">
         <Button type="button" size="sm" variant={applied ? "secondary" : "default"} onClick={() => onUse(best)}>{applied ? "Recommendation in use" : "Use recommendation"}</Button>
         <Button type="button" size="sm" variant="outline" onClick={onOther}>Choose another format</Button>
+        {source === "override" && onReset && <Button type="button" size="sm" variant="ghost" onClick={onReset}>Reset to tournament default</Button>}
       </div>
     </div>
   );
 }
 
-export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, onUse, onOther, entryCounts = {}, subcats = {}, countState = "ready", actualOf, review, estimateOf, onEstimate, conflicts = [], onResolve, categoryEstimateOf }: {
+export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, currentOf, sourceOf, onReset, onUse, onOther, entryCounts = {}, subcats = {}, countState = "ready", actualOf, review, estimateOf, onEstimate, conflicts = [], onResolve, categoryEstimateOf }: {
   cats: string[]; guide: GuideAnswers; onChange: (g: GuideAnswers) => void; isChamps: boolean;
   unitOf: (cat: string) => string; currentOf: (cat: string) => string | undefined;
+  sourceOf?: (cat: string) => "default" | "category" | "override" | "unset" | undefined; onReset?: (cat: string) => void;
   onUse: (cat: string, o: StructureOption) => void; onOther: () => void;
   entryCounts?: Record<string, GuideEntryCount>; subcats?: Record<string, string[]>; countState?: "ready" | "loading" | "error";
   /** Actual entries per category (players, or pairs for doubles); 0 when none yet. */
@@ -191,7 +197,7 @@ export function StructureGuidePanel({ cats, guide, onChange, isChamps, unitOf, c
               if (!r) return null;
               const isActual = actual(c) >= 2;
               return <RecommendationCard key={c} cat={c} n={r.n} unit={unitOf(c)} note={isActual ? "actual" : "expected"} options={r.options} share={r.share} change={changeFor(c)}
-                applied={!!guide.applied?.[c] && guide.applied[c] === r.options[0]?.kind} current={currentOf(c)} onUse={(o) => onUse(c, o)} onOther={onOther} />;
+                applied={!!guide.applied?.[c] && guide.applied[c] === r.options[0]?.kind} current={currentOf(c)} source={sourceOf?.(c)} onReset={onReset ? () => onReset(c) : undefined} onUse={(o) => onUse(c, o)} onOther={onOther} />;
             })}
             <div className="rounded-lg border border-border p-3 text-xs" data-testid="guide-total">
               <div className="font-semibold text-sm">Whole tournament</div>

@@ -391,6 +391,28 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const confirmedNames = rsvpData?.confirmedNames;
   const declinedNames = rsvpData?.declinedNames;
 
+  // Next upcoming (non-cancelled) occurrence per repeating event, so the list
+  // shows the next date instead of the series' first date.
+  const { data: nextDates } = useQuery({
+    queryKey: ["club-event-next-dates", eventIds.join(",")],
+    queryFn: async () => {
+      const out: Record<string, string> = {};
+      if (eventIds.length === 0) return out;
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { data } = await fromExt("club_event_instances")
+        .select("event_id, instance_date, status")
+        .in("event_id", eventIds)
+        .gte("instance_date", today)
+        .order("instance_date", { ascending: true });
+      for (const i of (data || []) as any[]) {
+        if (String(i.status).toLowerCase() === "cancelled") continue;
+        if (!out[i.event_id]) out[i.event_id] = String(i.instance_date);
+      }
+      return out;
+    },
+    enabled: eventIds.length > 0,
+  });
+
 
   // How many of each event's court slots are actually booked (spot missing bookings)
   const { data: bookingCoverage } = useQuery({
@@ -1707,7 +1729,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{e.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {e.start_date ? format(new Date(e.start_date + "T00:00:00"), "EEE d MMM yyyy") : DAYS[e.day_of_week]}
+                        {(() => {
+                          const d = (recLabel && nextDates?.[e.id]) || e.start_date;
+                          const txt = d ? format(new Date(d + "T00:00:00"), "EEE d MMM yyyy") : DAYS[e.day_of_week];
+                          return recLabel && nextDates?.[e.id] ? `Next: ${txt}` : txt;
+                        })()}
                         {recLabel ? ` · ${recLabel.charAt(0).toUpperCase() + recLabel.slice(1)}` : ""}
                         {" · "}{String(e.start_time).slice(0, 5)}–{String(e.end_time).slice(0, 5)}
                       </p>

@@ -33,7 +33,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
       <div id="swiss-tabpanel" role="tabpanel" aria-labelledby={`swiss-tab-${mode}`} className="space-y-3">
       {mode === "grid" && unavailable && classicStandings ? classicStandings : null}
       {mode === "classic" && classicStandings ? classicStandings : null}
-      {mode === "calendar" ? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(k.split(":")[0])])) : slots)} title={title} /> : null}
+      {mode === "calendar" ? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(/^r(\d+)-/.exec(k)?.[1])])) : slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
         <>
           {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>

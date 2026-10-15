@@ -9,6 +9,7 @@ function chain(): any {
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: () => chain(), rpc: () => chain(), auth: { getUser: async () => ({ data: { user: { id: "u1" } } }) }, functions: { invoke: async () => ({ data: null, error: null }) } } }));
 vi.mock("@/hooks/use-tournament-eligibility", () => ({ useOrgHierarchyLite: () => ({ data: null, isLoading: false }) }));
 vi.mock("@/hooks/use-association-tenant", () => ({ useAssociationTenant: () => ({ isAssociation: false, orgId: null }) }));
+vi.mock("@/hooks/use-club-beta-feature", () => ({ useClubBetaFeature: () => ({ data: false }) }));
 vi.mock("@/pages/admin/SmartTournamentBuilder", () => ({ SmartTournamentBuilderCore: () => null }));
 vi.mock("@/components/club-admin/ClubChampsTab", () => ({ ClubChampsTab: ({ launchDiamond }: any) => <div data-testid="diamond-setup">{launchDiamond ? "existing Diamond setup" : "other"}</div> }));
 // Management screen stub: shows which tournament id it opened.

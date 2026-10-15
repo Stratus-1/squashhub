@@ -31,7 +31,7 @@ describe("Riverside canonical visual structure", () => {
     expect(roundtrip.picks).toEqual({}); expect(roundtrip.createdTournamentId).toBeUndefined();
   });
   it("replaces a blank wizard placeholder and numbers editable subgroups without affecting other answers", () => {
-    const base = { ...empty(), categories: [""], name: "Synthetic", fee: { amount: 0 } } as StepAnswers;
+    const base = { ...empty(), categories: [""], name: "Synthetic", fee: { has: false, amount: "0", varies: false, perUnit: {}, doublesBasis: "pair" as const, doublesCover: null } };
     let a = addCanvasDivision(base); expect(a.categories).toEqual(["Division 1"]);
     const d = canvasProjection(a).items[0];
     a = attachCanvasBlock(a, d, "subdivision").answers;

@@ -1,6 +1,7 @@
 # Roadmap
 
-## Riverside Tournament Structure pilot (switched off by owner)
+## Riverside replacement Tournament Structure pilot (live planning tests approved)
+- [ ] Enable Riverside-only new drafts on published hosts and request publication; preserve creation block.
 - [x] Retire old Riverside row/canvas and stage-planner entry points even if old flags are cached; preserve saved answers and other clubs.
 - [x] Build approved Riverside preview card-based replacement: merge seven structure steps, separate subdivisions/pools, include Monrad, preserve scheduling.
 - [x] Add separate row-by-row Structure review for the saved basic structure, with draft edits and extra divisions/groups/pools; same answers, no draw application.

@@ -15,6 +15,7 @@
 - Scope member-home and club bottom-nav presentation locally; deduplicate only mobile shortcuts, preserving desktop/association access and domain hooks.
 - Generate draw leaves player ordering and scheduling in setup; only format confirmation, read-only scoring and necessary pool allocation appear here; why: avoid conflicting copies.
 - Bar menus share spirit-category mixer inclusion in `src/lib/bar-spirit-menu.ts`, preserving original IDs and independent basket lines; why: display changes must not create combo sales or alter stock definitions.
+- Row structure projects existing StepAnswers through pure adapters and is gated to flagged Riverside preview new drafts; why: one authority, no live tournament autosave or global layout change.
 <!-- LOVABLE:END -->
 
 ## Architecture rules

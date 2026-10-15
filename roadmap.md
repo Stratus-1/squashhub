@@ -53,3 +53,5 @@
 - [ ] Admin drag-to-reschedule (awaiting separate approval)
 - [x] Riverside Tournaments: select tournament first; 3 tabs scoped to it (original Tournament Games list, progression, past); persist selection
 - [x] Riverside Tournaments: all three tabs show content inline (no Open/Details second click)
+
+- [ ] Uitsig GoBook blocks: Phase 0 inventory, Phase 1 backup feasibility, Phase 2 fake-GoBook logic+tests (no live changes)

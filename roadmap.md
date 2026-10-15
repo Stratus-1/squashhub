@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Uitsig R50 test knockout fees: identify exact test tournament and linked member charges; reverse only confirmed test fees with audit, preserve legitimate fees/payments; verify read-back.
+- [x] Uitsig R50 test knockout fees: 11 unpaid, uninvoiced NSP Knock out fees (R550) removed with 22 balanced reversal entries and 11 audit records; originals preserved, no payment/registration links, zero matching fees/net debt remain; signed-in member card verified R0. No publishing.
 - [x] Bar remote-order fulfilment plan: inspected self/counter tab flows; proposed club-wide partial delivery checklist, collection/delivery choice, Bar Setup “Use order process” toggle and matching poster wording. No app/data changes or publishing; implementation and isolated pilot await approval.
 - [x] Bar/shop QR setup: Poster (PDF) action, heading choice, large QR, instructions and saved enabled methods; 21 tests and signed-in Riverside downloads/visual PDF checks passed. Preview only; no settings/payment/stock changes, native downloads untested.
 - [x] Uitsig preview-only parent Progression & Log: saved A1/A2 membership, stacked RR rankings/fixtures/results, one deferred shared Final; 24 tests + signed-in desktop/mobile verified, 12 unique fixtures, no writes/publish. Actual playoff qualifiers/pairings blocked by saved Define later / unspecified qualification count.

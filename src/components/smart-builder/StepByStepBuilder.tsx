@@ -20,6 +20,8 @@ import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
 import { SwissCategoryRoundsPanel, type SwissCategoryRow } from "./SwissCategoryRoundsPanel";
 import { StagePlanPanel } from "./StagePlanPanel";
+import { StructureOverview } from "./StructureOverview";
+const StructSection = ({ title }: { title: string; children?: null }) => <h3 className="border-t border-border pt-4 text-sm font-semibold">{title}</h3>;
 import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
@@ -285,8 +287,8 @@ const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [], split: {}, playoffSync: null, syncCutoff: "", scope: null, ownerName: "" };
 /** A blank setup must never overwrite what is saved on the tournament. */
 const hasRealAnswers = (x: Partial<StepAnswers>) => !!(x.name?.trim() || (x.categories ?? []).some((c) => c?.trim()) || x.format?.kind || (x.stages ?? []).length);
-type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Guide" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Guide: "Structure guide", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick / Allocate players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
+type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Guide" | "Subcategories" | "Overrides" | "Format" | "Structure" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Guide: "Structure guide", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Structure: "Tournament structure", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick / Allocate players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -550,7 +552,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     setA({ ...a, playoffOverrides: next });
   };
   const { data: swissPilot = false } = useClubBetaFeature(clubId, "tournament_swiss_category_rounds");
-  const { data: stagePlanner = false } = useClubBetaFeature(clubId, "tournament_stage_planner");
+  const { data: stagePlannerFlag = false } = useClubBetaFeature(clubId, "tournament_stage_planner");
+  /** Riverside pilot: Structure guide + Subcategories + Format overrides + Planned format merged into one step; scoring exceptions move to Match format. */
+  const { data: structureStep = false } = useClubBetaFeature(clubId, "tournament_structure_step");
+  const stagePlanner = stagePlannerFlag || structureStep;
+  const [structEditing, setStructEditing] = useState<string | null>(null);
   const format: FormatPlan = { ...DEFAULT_FORMAT, ...a.format };
   const formatFor = (key: string): FormatPlan => a.formatOverrides?.[key] ?? a.formatOverrides?.[key.split("::")[0]] ?? format;
   const setFormat = (patch: Partial<FormatPlan>) => setA({ ...a, format: { ...format, ...patch } });
@@ -1012,9 +1018,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       ...(showPickStep ? ["Pick" as const] : []), ...commsSteps, "Fees", "Schedule", "Summary"]
     : ["Type", "Basics", "Entries", "What", "Match", "Categories", "Guide", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
       ...(showPickStep ? ["Pick" as const] : []), ...commsSteps, "Fees", "Dates", "Courts", "Playoffs", "Summary"];
+  if (structureStep) {
+    const merged = steps.filter((k) => !["Guide", "Subcategories", "Overrides", "Format"].includes(k));
+    merged.splice(merged.indexOf("Categories") + 1, 0, "Structure");
+    steps.splice(0, steps.length, ...merged);
+  }
   const cur = steps[Math.min(step, steps.length - 1)];
+  const isStruct = cur === "Structure";
   // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
-  const go = (k: StepKey) => { const i = steps.indexOf(k === "ExpEntries" ? "Guide" : k); if (i >= 0) setStep(i); };
+  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0) setStep(i); };
 
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;
@@ -1047,8 +1059,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
-  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: estimateConflicts(a, cats).length === 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Structure: false, Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: estimateConflicts(a, cats).length === 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
+  okFor.Structure = okFor.Guide && okFor.Subcategories && okFor.Format;
+  if (structureStep) okFor.Match = okFor.Match && okFor.Overrides;
   const canNext = okFor[cur];
   /** Structure guidance (advisory): estimates, actual field and applying a recommendation on request only. */
   const guide: GuideAnswers = a.guide ?? {};
@@ -1431,7 +1445,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Guide" && (<>
+          {isStruct && <>
+            <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />
+            <StructureOverview answers={a} units={units.map((u) => ({ key: u.key, label: u.label }))} editing={structEditing}
+              entrants={Object.fromEntries(units.map((u) => { let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length; if (!n) n = Number(a.unitEntries?.[u.key]) || 0; return [u.key, u.disc === "doubles" ? Math.floor(n / 2) : n]; }))}
+              onEdit={(k) => { setStructEditing(k); document.getElementById("structure-stage-planner")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+            <StructSection title="Entries & recommendations">{null}</StructSection>
+          </>}
+          {(cur === "Guide" || isStruct) && (<>
             <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="tournament-default-format">
               <div className="text-sm font-semibold">Tournament format (applies to every category)</div>
               <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tournament default format">
@@ -1448,7 +1469,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               review={initialStep === "Guide" && tournamentId ? { onDone: () => go("Summary") } : undefined} />
           </>)}
 
-          {cur === "Subcategories" && (
+          {isStruct && <StructSection title="Subcategories & pools">{null}</StructSection>}
+          {(cur === "Subcategories" || isStruct) && (
             <>
               <Q t="Do any categories need subcategories?" h="Optional — e.g. Men's could be split into Group A, Group B, Group C. Ladies can stay as one group." />
               {cats.some((c) => guide.applied?.[c] === "pools") && <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">From the structure guide: {cats.filter((c) => guide.applied?.[c] === "pools").join(", ")} will use round-robin pools. Pools are made automatically inside a category from real entries — add subcategories only if you want separate strength groups (e.g. A/B), each with its own winner.</p>}
@@ -1495,7 +1517,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Overrides" && (
+          {(cur === "Overrides" || (structureStep && cur === "Match" && units.length > 1)) && (
             <>
               <Q t="Does any group need a different match format?" h="The tournament match format already applies to every group. Only change the groups that need an exception." />
               <p className="text-sm">For all groups: <span className="font-medium">{scoring ? scoringText(scoring) : "Not chosen"}</span></p>
@@ -2239,9 +2261,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Format" && (
+          {isStruct && <div id="structure-stage-planner"><StructSection title="Stages per category">{null}</StructSection></div>}
+          {(cur === "Format" || isStruct) && (
             <>
-              <Q t="What format are you planning?" h="How players will compete — separate from how each match is scored." />
+              {!isStruct && <Q t="What format are you planning?" h="How players will compete — separate from how each match is scored." />}
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">This is your planned format. Once registrations close and final player numbers are known, SquashHub will revisit the format with you before pools, draws or fixtures are generated.</div>
               {stagePlanner && <StagePlanPanel answers={a} onSave={(next) => setA(next)} tournamentId={entryTournamentId} units={units.map((u) => ({ key: u.key, base: u.base }))}
                 entrants={Object.fromEntries(units.map((u) => { let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length; if (!n) n = Number(a.unitEntries?.[u.key]) || 0; return [u.key, u.disc === "doubles" ? Math.floor(n / 2) : n]; }))} />}

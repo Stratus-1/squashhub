@@ -15,3 +15,14 @@ export function splitFixtures<T extends SplitMatch>(list: T[]) {
 export type TournamentTab = "standings" | "upcoming" | "results";
 export const tabFromParam = (v: string | null | undefined): TournamentTab =>
   v === "upcoming" || v === "fixtures" ? "upcoming" : v === "results" ? "results" : "standings";
+
+/**
+ * Swiss progressive-lock rule: a Swiss slot is only a real fixture once BOTH players are known.
+ * Unresolved slots (e.g. "#1 vs #12" / TBD) stay out of Upcoming Fixtures and the calendar even if a
+ * date/court/time is already assigned; they appear automatically once the pairing is filled in.
+ */
+export type SwissSlotLike = { is_bye?: boolean | null; player_a_member_id?: string | null; player_b_member_id?: string | null; stage?: string | null; stage_key?: string | null };
+export const isSwissMatch = (m: SwissSlotLike, champ?: { scoring_mode?: string | null } | null) =>
+  champ?.scoring_mode === "swiss" || /swiss/i.test(String(m.stage_key ?? "")) || /swiss/i.test(String(m.stage ?? ""));
+export const isProvisionalSwissSlot = (m: SwissSlotLike, champ?: { scoring_mode?: string | null } | null) =>
+  !m.is_bye && isSwissMatch(m, champ) && (!m.player_a_member_id || !m.player_b_member_id);

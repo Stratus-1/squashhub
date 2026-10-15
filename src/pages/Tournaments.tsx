@@ -1,4 +1,5 @@
 import { allocateAllFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
+import { isProvisionalSwissSlot } from "@/lib/tournaments/fixture-split";
 import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
 import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import React from "react";
@@ -449,9 +450,10 @@ export default function Tournaments() {
     return new URLSearchParams(window.location.search).get("champ") ?? "all";
   });
   // Pilot: counts/options derive ONLY from the selected tournament (no cross-tournament leakage).
-  const scopedUpcoming = fixturesPilot && champFilter !== "all" ? upcomingMatches.filter((m: any) => m.champ_id === champFilter) : upcomingMatches;
+  const scopedUpcoming = (fixturesPilot && champFilter !== "all" ? upcomingMatches.filter((m: any) => m.champ_id === champFilter) : upcomingMatches)
+    .filter((m: any) => !isProvisionalSwissSlot(m, champById.get(m.champ_id)));
   const pilotFixtures = useMemo<ClubFixture[]>(() => !fixturesPilot ? [] : (allMatches as any[])
-    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.stage ?? "group") !== "placeholder")
+    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.stage ?? "group") !== "placeholder" && !isProvisionalSwissSlot(m, champById.get(m.champ_id)))
     .map((m: any) => {
       const champ = champById.get(m.champ_id);
       const dbl = champ?.match_type === "doubles";

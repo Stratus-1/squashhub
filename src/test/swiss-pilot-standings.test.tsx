@@ -12,7 +12,7 @@ describe("Riverside optional classic standings", () => {
     render(<SwissProgressionPilotView title="Test" model={makeModel()} positionalPreview classicStandings={classic} />);
     expect(screen.queryByTestId("classic-standings")).toBeNull();
     expect(screen.queryByTestId("swiss-current-positions")).toBeNull(); // moved to Results tab
-    fireEvent.click(screen.getByRole("tab",{name:"Classic View"}));
+    fireEvent.click(screen.getByRole("tab",{name:"Log View"}));
     expect(screen.getByTestId("classic-standings")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab",{name:"Positional Preview"}));
     expect(screen.queryByTestId("classic-standings")).toBeNull();
@@ -40,7 +40,7 @@ describe("Riverside optional classic standings", () => {
   });
   it("one three-tab bar, no duplicate classic button; calendar separates saved vs proposed", () => {
     render(<SwissProgressionPilotView title="Test" model={makeModel(8)} positionalPreview classicStandings={classic} />);
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Positional Preview", "Classic View", "Calendar View"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Positional Preview", "Log View", "Calendar View"]);
     expect(screen.getByRole("tab", { name: "Positional Preview" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("button", { name: /classic standings/i })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));

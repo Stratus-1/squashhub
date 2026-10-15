@@ -1086,6 +1086,13 @@
       "when": 1792078537470,
       "tag": "0154_bar_counter_tab_phone",
       "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1792078851446,
+      "tag": "0155_bar_open_for_orders",
+      "breakpoints": true
     }
   ]
 }

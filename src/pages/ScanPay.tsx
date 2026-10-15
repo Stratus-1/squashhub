@@ -141,6 +141,16 @@ export default function ScanPay() {
       return data === true;
     },
   });
+  // The person running the counter opens/closes the bar for phone orders.
+  const { data: barOpen = false } = useQuery({
+    queryKey: ["bar-accepting-orders", club?.id],
+    enabled: !!club?.id && orderProcess,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("bar_accepting_orders", { _club_id: club!.id });
+      return data === true;
+    },
+  });
   const [orderTab, setOrderTab] = useState<GuestTab | null>(null);
   const queryClient = useQueryClient();
 
@@ -1152,14 +1162,19 @@ export default function ScanPay() {
                     </Button>
                   )}
 
+                  {orderProcess && !barOpen && (
+                    <p className="rounded-md border border-dashed p-2 text-xs text-center text-muted-foreground">
+                      The bar is closed for orders right now. Please order at the counter when someone is there.
+                    </p>
+                  )}
                   <Button
                     variant="secondary"
                     className="w-full gap-2 h-11"
-                    disabled={submitting || (!member && !tab && !visitorName.trim())}
+                    disabled={submitting || (orderProcess && !barOpen) || (!member && !tab && !visitorName.trim())}
                     onClick={addToOpenTab}
                   >
                     <Receipt className="w-4 h-4" />
-                    {orderProcess ? "Place order" : tab ? "Add to my open tab" : "Open a tab for the evening"}
+                    {orderProcess ? (barOpen ? "Place order" : "Bar closed for orders") : tab ? "Add to my open tab" : "Open a tab for the evening"}
                   </Button>
 
                   <p className="text-[11px] text-muted-foreground text-center">

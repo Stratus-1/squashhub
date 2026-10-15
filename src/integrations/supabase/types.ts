@@ -7152,6 +7152,8 @@ export type Database = {
           bar_card_swipe_enabled: boolean
           bar_cash_enabled: boolean
           bar_order_process_enabled: boolean
+          bar_orders_open_until: string | null
+          bar_orders_opened_by: string | null
           bar_pay_online_enabled: boolean
           baseline_amount: number | null
           baseline_currency: string | null
@@ -7312,6 +7314,8 @@ export type Database = {
           bar_card_swipe_enabled?: boolean
           bar_cash_enabled?: boolean
           bar_order_process_enabled?: boolean
+          bar_orders_open_until?: string | null
+          bar_orders_opened_by?: string | null
           bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null
@@ -7472,6 +7476,8 @@ export type Database = {
           bar_card_swipe_enabled?: boolean
           bar_cash_enabled?: boolean
           bar_order_process_enabled?: boolean
+          bar_orders_open_until?: string | null
+          bar_orders_opened_by?: string | null
           bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null
@@ -19274,6 +19280,7 @@ export type Database = {
         }
         Returns: string
       }
+      bar_accepting_orders: { Args: { _club_id: string }; Returns: boolean }
       bar_account_charge_preview: {
         Args: { _club_member_id: string }
         Returns: {
@@ -19323,6 +19330,10 @@ export type Database = {
         Args: { _token: string }
         Returns: string
       }
+      bar_counter_open_state: {
+        Args: { _club_id?: string; _token?: string }
+        Returns: Json
+      }
       bar_counter_open_tab:
         | {
             Args: { _club_id?: string; _guest_name: string; _token?: string }
@@ -19352,6 +19363,15 @@ export type Database = {
           _club_id?: string
           _delivered: number
           _line_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
+      bar_counter_set_open: {
+        Args: {
+          _club_id?: string
+          _open: boolean
+          _operator?: string
           _token?: string
         }
         Returns: Json

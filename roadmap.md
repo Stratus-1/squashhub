@@ -67,3 +67,7 @@
 - [ ] REMIND OWNER: roll out grouped Men's A progression block (one-line switch in parent-progression.ts) to all clubs once Uitsig is signed off
 - [ ] Round-robin progression/log must look identical for all round robins (dates/times/courts in cells when available); group subcategories of one category into one block; single categories stay as-is
 - [ ] Round 1 cells/heading must show the play-by date (e.g. "by 19 Oct") even before results
+- [x] Planned Format stage planner (Riverside pilot flag `tournament_stage_planner`): starting default, category summary, ordered stage planner, single Save plan, versioning, impact preview; 13 new tests. No live/Uitsig activation.
+- [ ] Stage planner phase 3 apply-to-draw (withdraw unplayed games, keep bookings by default) — BLOCKED: separate approval; no server apply function built.
+- [ ] Stage planner: consumers (Progression & Log, Upcoming, step-draw) still read Stage 1 via legacy format; later stages not yet drawn by engine.
+- [ ] Stage planner browser check of the Planned format step at Riverside — new drafts lock the step until earlier steps are filled.

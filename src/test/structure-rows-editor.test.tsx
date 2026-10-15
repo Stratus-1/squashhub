@@ -55,10 +55,10 @@ describe("row structure editor", () => {
     expect(screen.getByRole("button", { name: "I know what I want" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByLabelText("Structure advice")).toBeNull();
     expect(screen.getByText("4 / 4 / 4 / 4 entries · 24 within-pool matches")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Mens A next stage"), { target: { value: "undecided" } });
+    fireEvent.change(screen.getByLabelText("Mens A Swiss rounds"), { target: { value: "4" } });
     expect(save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save Structure" }));
-    expect(save.mock.calls[0][0].stagePlans["Mens A"][1].kind).toBeNull();
+    expect(save.mock.calls[0][0].stagePlans["Mens A"][0].rounds).toBe(4);
     expect(save.mock.calls[0][0].createdTournamentId).toBeUndefined();
   });
   it("guided questions never change formats until Apply", () => {

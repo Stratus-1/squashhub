@@ -1229,7 +1229,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Riverside Swiss pilot: models built while rendering standings, reused on the Results tab (same data, no recalculation).
   const pilotSwissModels: Record<number, any> = {};
   // Riverside round-robin pilot: read-only pool matrix + order of play per pool, from the same saved matches.
-  const rrPilotOn = (gn: number) => isTournamentViewPilotClub(champ?.club_id) && pilotViewerOn && pilotPoolMatrixOn && canManage
+  const rrPilotOn = (gn: number) => isTournamentViewPilotClub(champ?.club_id) && pilotViewerOn && pilotPoolMatrixOn
     && !swissStageFor(gn) && !isSwissForLeague(gn) && isRoundRobinForLeague(gn) && !isDoublesLeague(gn) && !matchupForGroup(matchups, gn);
   const renderRoundRobinPilot = (gn: number) => {
     if (!rrPilotOn(gn)) return null;
@@ -1286,7 +1286,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const divisionDone = fixturesComplete((matches as any[]).filter((m: any) => m.group_number === gn));
       const classic = renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn) && divisionDone, statuses });
       const swissSt = swissStageFor(gn);
-      if (!swissSt || !pilotViewerOn || !pilotSwissOn || !canManage || isDoublesLeague(gn)) return classic;
+      if (!swissSt || !pilotViewerOn || !pilotSwissOn || isDoublesLeague(gn)) return classic;
       const gEntries = (entries as any[]).filter((e: any) => e.group_number === gn).sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
       const names: Record<string, string> = {};
       rows.forEach((r: any) => { names[r.club_member_id] = r.name; });

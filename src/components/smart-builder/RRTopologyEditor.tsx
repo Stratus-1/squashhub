@@ -14,7 +14,7 @@ export function RRTopologyEditor({ stage, entrants, selectedEntrants, label, onC
   ];
   const candidateFor = (mode: RRTopology["mode"]): RRTopology => ({ ...t, mode, edges: mode === "within" ? t.edges : t.edges ? (mode === "between" ? t.edges.filter(([a, b]) => a !== b) : t.edges) : mode === "between" ? Array.from({ length: count }, (_, a) => Array.from({ length: count - a - 1 }, (_, d) => [a, a + d + 1] as [number, number])).flat() : rrEdges(count) });
   const choose = (mode: RRTopology["mode"]) => onChange({ rrTopology: candidateFor(mode) });
-  return <section className="basis-full w-[min(850px,calc(100vw-100px))] space-y-2 border-t border-border py-2" aria-label={`${label} Who plays whom?`}>
+  return <section className="basis-auto w-[min(850px,calc(100vw-100px))] shrink-0 space-y-2 border-t border-border py-2" aria-label={`${label} Who plays whom?`}>
     <div className="flex flex-wrap items-center gap-2"><span className="font-medium">Who plays whom?</span><label className="flex items-center gap-1 text-xs">Pools/groups <Input aria-label={`${label} group count`} className="h-7 w-16 text-xs" type="number" min={1} max={26} value={count} onChange={(e) => onChange({ pools: Math.max(1, Math.min(26, Number(e.target.value) || 1)) })} /></label></div>
     <div className="flex flex-wrap gap-2" role="group" aria-label={`${label} pairing options`}>{options.map((o) => {
       const candidate = candidateFor(o.mode);

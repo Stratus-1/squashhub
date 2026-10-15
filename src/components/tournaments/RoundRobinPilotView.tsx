@@ -105,6 +105,7 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
           </div>}
         </div>
       </TournamentInteractiveViewer>
+      )}
     </div>
   );
 }

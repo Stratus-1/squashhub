@@ -1,6 +1,7 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { swissTable, isPositionSwap } from "./swiss-standings";
 import { swissRoundGate } from "./swiss-round-gate";
+import { slotTemplate, MIN_ENTRANTS, MAX_ENTRANTS } from "./swiss-positional";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
@@ -198,9 +199,50 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
   if (gate.state === "not_started") throw new IntegrityError("prereq", gate.message);
   if (gate.state === "in_progress") throw new IntegrityError("prereq", gate.message);
   if (gate.state === "finished") throw new IntegrityError("swiss_done", gate.message);
+  const fixed = fixedPositionRound(d, mine, gate.nextRound);
+  if (fixed) return fixed.map(([a, b], i) => ({
+    tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b,
+  }));
   const table = swissStandings(d, st, rows);
   const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a!, f.b!)));
   return swissFixtures(tid, d, st, gate.nextRound, table.map((t, i) => ({ id: t.id, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played);
+}
+
+/**
+ * Fixed-position (SportyHQ-style) pairing for the next round. Replays every saved round against the
+ * slot template from seed order: winner → better slot, loser → worse slot, bye keeps its slot.
+ * Returns null (caller falls back to score-based pairing) when the field is outside 8–32 or any saved
+ * round does not match the template exactly — e.g. tournaments whose earlier rounds were drawn dynamically.
+ */
+export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRound: number): Array<[string, string | null]> | null {
+  const seeds = d.entrants.map((e) => e.id);
+  const n = seeds.length;
+  if (n < MIN_ENTRANTS || n > MAX_ENTRANTS) return null;
+  let occ = [...seeds];
+  const k = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
+  for (let r = 1; r < nextRound; r++) {
+    const saved = mine.filter((f) => (f.round ?? 1) === r);
+    const tpl = slotTemplate(n, r);
+    if (saved.filter((f) => f.a && f.b).length !== tpl.pairs.length) return null;
+    const byKey = new Map(saved.filter((f) => f.a && f.b).map((f) => [k(f.a!, f.b!), f]));
+    const next = [...occ];
+    for (const p of tpl.pairs) {
+      const A = occ[p.a - 1], B = occ[p.b - 1];
+      const f = byKey.get(k(A, B));
+      const w = f ? swissWinner(f) : null;
+      if (!f || (w !== A && w !== B)) return null;
+      next[p.a - 1] = w; next[p.b - 1] = w === A ? B : A;
+    }
+    if (tpl.bye != null) {
+      const byeRow = saved.find((f) => f.a && !f.b);
+      if (byeRow && byeRow.a !== occ[tpl.bye - 1]) return null;
+    }
+    occ = next;
+  }
+  const tpl = slotTemplate(n, nextRound);
+  const pairs: Array<[string, string | null]> = tpl.pairs.map((p) => [occ[p.a - 1], occ[p.b - 1]]);
+  if (tpl.bye != null) pairs.push([occ[tpl.bye - 1], null]);
+  return pairs;
 }
 
 /** Organiser-confirmed pairings must be real, distinct entrants of the right field/pool — never guessed or repaired. */

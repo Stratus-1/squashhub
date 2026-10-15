@@ -1,7 +1,7 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { swissTable, isPositionSwap } from "./swiss-standings";
 import { swissRoundGate } from "./swiss-round-gate";
-import { slotTemplate, MIN_ENTRANTS, MAX_ENTRANTS } from "./swiss-positional";
+import { slotTemplate, resolveRound, startState, MIN_ENTRANTS, MAX_ENTRANTS, type CategoryState, type PlayedRound } from "./swiss-positional";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";

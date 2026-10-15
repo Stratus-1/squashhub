@@ -199,6 +199,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
   const template = categoryTemplate(n, model.totalRounds);
+  const rawTemplate = categoryTemplate(n, model.totalRounds); // slot keys for the proposed schedule
   const issues = validateTemplate(n, template);
   if (issues.length) return { rounds: [], issues };
   const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
@@ -251,9 +252,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
         : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
-    const blocks: GridBlock[] = rd.pairs.map((p) => {
+    const blocks: GridBlock[] = rd.pairs.map((p, pi) => {
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
-      const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, p.a, p.b)];
+      const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
+      const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
       const withWhen = (when: string) => [{ ...pending(p.a), when }, { ...pending(p.b), when }] as [GridRow, GridRow];
       if (slot?.kind === "planned") return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
       if (slot?.kind === "play_by") return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };

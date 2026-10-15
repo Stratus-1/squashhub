@@ -201,12 +201,13 @@ export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], ma
     ? await db.from("bookings").select("id, court_id, date, start_time, end_time, status, external_booker_name, external_id, user_id, club_member_id, opponent_id, opponent_member_id").in("date", dates).eq("status", "active")
     : { data: [], error: null };
   if (error) throw error;
+  const ownBookings = new Set(need.map((m) => m.booking_id).filter(Boolean));
   // Existing allocations of this tournament on those days also occupy courts/players.
   const taken: SlotBooking[] = matches.filter((m) => m.scheduled_date && dates.includes(m.scheduled_date) && m.court_id && m.scheduled_time && !m.booking_id && isOpen(m) && !moving.has(m.id))
     .map((m) => ({ id: `m:${m.id}`, court_id: Number(m.court_id), date: m.scheduled_date!, start_time: m.scheduled_time!, end_time: hm(mins(m.scheduled_time!) + minutes), club_member_id: m.player_a_member_id, opponent_member_id: m.player_b_member_id }));
   return allocateRoundSlots(
     need.map((m) => ({ id: m.id, players: [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[] })),
-    stage.windows.map((w) => ({ ...w, minutes })), [...((bk ?? []) as SlotBooking[]), ...taken], { allowUnreserved: true });
+    stage.windows.map((w) => ({ ...w, minutes })), [...((bk ?? []) as SlotBooking[]).filter((b) => !ownBookings.has(b.id)), ...taken], { allowUnreserved: true });
 }
 
 /** Apply an APPROVED proposal. */

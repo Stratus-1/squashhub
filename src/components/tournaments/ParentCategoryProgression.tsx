@@ -64,7 +64,7 @@ export function ParentCategoryProgression({ parent, children, playoffs }: { pare
           <div className="min-w-0 space-y-4"><div className="min-w-0 divide-y divide-border rounded-md border border-border" data-testid="parent-main-block">{children.map((child) => <section key={child.group} className="min-w-0 space-y-2 p-3" aria-label={child.label}>
             <div className="flex flex-wrap items-center gap-2"><h4 className="text-base font-semibold">{child.label}</h4><Badge variant="outline">{child.format}</Badge>
               <span className="text-xs text-muted-foreground">{child.upcoming.length ? child.results.length ? "Provisional rankings · matches still to play" : "Provisional draw order · no results yet" : "Rankings"}</span></div>
-            {mode === "progression" && child.matrix ? <RoundRobinPilotView title={child.label} view={child.matrix} matrixOnly showSlots /> : <div className="max-w-full overflow-x-auto">{child.standings}</div>}
+            {mode === "progression" && child.matrix ? <RoundRobinPilotView title={child.label} view={child.matrix} matrixOnly showSlots withCalendar /> : <div className="max-w-full overflow-x-auto">{child.standings}</div>}
             {mode === "log" && <Fixtures title="Results" rows={child.results} />}
           </section>)}</div>
             <section aria-label="Shared playoffs" className="space-y-3 rounded-md border border-border p-3">

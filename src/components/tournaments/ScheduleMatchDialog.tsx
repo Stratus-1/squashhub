@@ -14,6 +14,7 @@ import {
   isChampsReservation,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
+import { matchParticipantIds, bookingConflictsWithParticipants } from "@/lib/tournaments/self-schedule";
 import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
 
 
@@ -217,6 +218,22 @@ export function ScheduleMatchDialog({
       .sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
   }, [bookings, courtOptions, duration, match]);
 
+  // The players' own existing bookings that day. Times overlapping them are
+  // hidden (the server refuses them too), so say why instead of silently
+  // leaving a gap — e.g. a player's earlier GoBook booking at 18:00.
+  const playerClashes = useMemo(() => {
+    if (!match) return [] as { id: string; time: string; court: string }[];
+    const ids = matchParticipantIds(match);
+    return (bookings as any[])
+      .filter((b) => b.id !== match.booking_id && bookingConflictsWithParticipants(b, ids))
+      .map((b) => ({
+        id: String(b.id),
+        time: `${String(b.start_time).slice(0, 5)}–${String(b.end_time).slice(0, 5)}`,
+        court: courts.find((c) => c.id === b.court_id)?.name || `Court ${b.court_id}`,
+      }))
+      .sort((x, y) => x.time.localeCompare(y.time));
+  }, [bookings, match, courts]);
+
   const selectedCourtId = courtId;
   const confirm = async (time: string, courtOverride?: number) => {
     const courtId = courtOverride ?? selectedCourtId;
@@ -337,6 +354,16 @@ export function ScheduleMatchDialog({
             )}
           </div>
 
+
+          {playerClashes.length > 0 && (
+            <div className="rounded-md border border-border bg-muted/40 p-2 text-[11px]" data-testid="player-clash-note" role="note">
+              <p className="font-semibold">A player in this match already has a booking this day</p>
+              <ul className="mt-1 space-y-0.5">
+                {playerClashes.map((c) => <li key={c.id} className="tabular-nums">{c.time} · {c.court}</li>)}
+              </ul>
+              <p className="mt-1 text-muted-foreground">Times that overlap these are not offered. To use one of them for this match, cancel that booking first, then come back here.</p>
+            </div>
+          )}
 
           {champsSlots.length > 0 && (
             <div className="space-y-1 rounded-md border border-primary/40 bg-primary/5 p-2">

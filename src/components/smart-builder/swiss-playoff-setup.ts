@@ -7,7 +7,7 @@ import { plannedPlayoffStages } from "@/lib/smart-builder/step-draw";
 // Presentation/preflight pilot only; this is not an authorization or generation gate.
 export const RIVERSIDE_PLAYOFF_PILOT = "11111111-1111-1111-1111-111111111111";
 export const swissSetupPilot = (clubId: unknown, optedIn: boolean, sourceKind: unknown) =>
-  clubId === RIVERSIDE_PLAYOFF_PILOT && optedIn === true && sourceKind === "swiss";
+  !!clubId && optedIn === true && sourceKind === "swiss";
 
 export type LaterStage = { stageKey: string; name: string; plannedDate: string | null; plan?: PlannedPlayoff };
 

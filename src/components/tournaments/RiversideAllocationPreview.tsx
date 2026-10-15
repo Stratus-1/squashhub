@@ -19,7 +19,7 @@ async function readAll(make: () => any) {
 /** Read-only inventory; the permission RPC also only reads. No commit exists. */
 export function RiversideAllocationPreview({ clubId, tournamentId, events }: { clubId: string; tournamentId: string; events: CalEvent[] }) {
   const query = useQuery({
-    queryKey: ["riverside-allocation-preview", clubId, tournamentId], enabled: clubId === RIVERSIDE,
+    queryKey: ["riverside-allocation-preview", clubId, tournamentId], enabled: !!clubId,
     retry: false, refetchInterval: 10000,
     queryFn: async () => {
       const permission = await rpcExt("can_manage_tournament", { _tournament_id: tournamentId }).abortSignal(AbortSignal.timeout(15000));
@@ -55,7 +55,7 @@ export function RiversideAllocationPreview({ clubId, tournamentId, events }: { c
         now: new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Johannesburg", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).replace(" ", "T") };
     },
   });
-  if (clubId !== RIVERSIDE || query.data === null) return <FixtureCalendar events={events} />;
+  if (!clubId || query.data === null) return <FixtureCalendar events={events} />;
   if (query.isPending) return <><FixtureCalendar events={events} /><p className="mt-3 text-xs text-muted-foreground">Loading read-only allocation availability…</p></>;
   if (query.isError) return <><FixtureCalendar events={events} /><div className="mt-3 text-xs"><p>Move / Swap preview unavailable: ownership or availability could not be verified.</p><Button variant="outline" size="sm" onClick={() => query.refetch()}>Retry preview</Button></div></>;
   return query.data ? <AllocationPreview key={tournamentId} context={query.data} events={events} /> : <FixtureCalendar events={events} />;

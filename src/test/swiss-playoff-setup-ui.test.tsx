@@ -23,7 +23,8 @@ describe("Riverside Swiss playoff preflight", () => {
   it("is source-kind keyed, fails closed and leaves non-pilot/multi-pool RR unchanged", () => {
     expect(swissSetupPilot(RIVERSIDE_PLAYOFF_PILOT, true, "swiss")).toBe(true);
     expect(swissSetupPilot(RIVERSIDE_PLAYOFF_PILOT, false, "swiss")).toBe(false);
-    expect(swissSetupPilot("another-club", true, "swiss")).toBe(false);
+    expect(swissSetupPilot("another-club", true, "swiss")).toBe(true);
+    expect(swissSetupPilot(null as any, true, "swiss")).toBe(false);
     expect(swissSetupPilot(RIVERSIDE_PLAYOFF_PILOT, true, "pools")).toBe(false);
     expect(swissSetupPilot(RIVERSIDE_PLAYOFF_PILOT, true, "round_robin")).toBe(false);
   });

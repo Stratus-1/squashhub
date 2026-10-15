@@ -214,7 +214,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   return (
     <div className="space-y-6 mt-4">
       <CounterModeCard clubId={clubId} />
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <h3 className="font-semibold">Self-service Bar &amp; POS</h3>

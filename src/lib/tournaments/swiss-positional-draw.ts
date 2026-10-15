@@ -164,6 +164,11 @@ export function scheduleDraws(draws: CategoryDraw[], opts: ScheduleOptions): Rec
     .sort((x, y) => x.f.round - y.f.round || x.f.match - y.f.match || x.d.categoryKey.localeCompare(y.d.categoryKey));
   for (const { d, f } of queue) {
     const key = `${d.categoryKey}:${f.key}`;
+    const date = opts.roundDates[d.categoryKey]?.[f.round - 1] ?? null;
+    const carryBye = () => {
+      const bye = d.byes.find((y) => y.round === f.round);
+      if (bye) { const rr = ready.get(rk(d.categoryKey, f.round, bye.slot)); if (rr) ready.set(rk(d.categoryKey, f.round + 1, bye.slot), rr); }
+    };
     const wins = opts.roundWindows?.[f.round];
     if (wins && wins.length) {
       let placedW: FixtureSchedule | null = null;
@@ -187,11 +192,6 @@ export function scheduleDraws(draws: CategoryDraw[], opts: ScheduleOptions): Rec
       out[key] = placedW ?? { kind: "unscheduled", reason: `Shortage — no free court/time left in Round ${f.round}'s saved windows` };
       carryBye(); continue;
     }
-    const date = opts.roundDates[d.categoryKey]?.[f.round - 1] ?? null;
-    const carryBye = () => {
-      const bye = d.byes.find((y) => y.round === f.round);
-      if (bye) { const rr = ready.get(rk(d.categoryKey, f.round, bye.slot)); if (rr) ready.set(rk(d.categoryKey, f.round + 1, bye.slot), rr); }
-    };
     if (!date) {
       const pb = opts.playBy?.[d.categoryKey]?.[f.round - 1];
       out[key] = pb ? { kind: "play_by", date: pb } : { kind: "unscheduled", reason: "Not scheduled — no round date" };

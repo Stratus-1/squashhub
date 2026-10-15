@@ -73,5 +73,6 @@ export function attachCanvasBlock(a: StepAnswers, source: CanvasItem, block: Can
   return { answers: next, selected: stageNodeId(source.key, s.id) };
 }
 
-export const visualStructurePilot = (clubId: string, flag: boolean, hostname: string, tournamentId?: string) =>
-  clubId === "11111111-1111-1111-1111-111111111111" && flag && !tournamentId && (hostname === "localhost" || hostname.includes("preview") || hostname.endsWith("lovableproject.com") || hostname.endsWith("lovable.app"));
+// Riverside-only pilot; available on every host (preview, lovable.app, squashhub.co.za and club subdomains).
+export const visualStructurePilot = (clubId: string, flag: boolean, _hostname: string, tournamentId?: string) =>
+  clubId === "11111111-1111-1111-1111-111111111111" && flag && !tournamentId;

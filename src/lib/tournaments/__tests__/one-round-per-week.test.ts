@@ -24,3 +24,12 @@ describe("one round per week", () => {
     expect(res.issues[0]).toMatch(/Round 2/);
   });
 });
+
+import { windowsInRoundWeek } from "../round-scheduling";
+describe("Swiss/live round timed windows", () => {
+  it("keeps only nights in the week ending on the play-by date", () => {
+    const w = [{ date: "2026-10-20" }, { date: "2026-10-21" }, { date: "2026-10-27" }, { date: "2026-10-30" }];
+    expect(windowsInRoundWeek(w, "2026-10-29").map((x) => x.date)).toEqual(["2026-10-27"]);
+    expect(windowsInRoundWeek(w, null)).toHaveLength(4);
+  });
+});

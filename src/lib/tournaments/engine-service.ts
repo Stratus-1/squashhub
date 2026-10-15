@@ -1,7 +1,7 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { swissTable, isPositionSwap } from "./swiss-standings";
 import { swissRoundGate } from "./swiss-round-gate";
-import { slotTemplate, resolveRound, startState, MIN_ENTRANTS, MAX_ENTRANTS, type CategoryState, type PlayedRound } from "./swiss-positional";
+import { slotTemplate, startState, MIN_ENTRANTS, MAX_ENTRANTS, type CategoryState, type PlayedRound } from "./swiss-positional";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
@@ -214,6 +214,26 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
  * Returns null (caller falls back to score-based pairing) when the field is outside 8–32 or any saved
  * round does not match the template exactly — e.g. tournaments whose earlier rounds were drawn dynamically.
  */
+/** Positional template for round r with bye fairness only (nobody sits out twice); matches the preview grid. */
+function byeFairPlan(state: CategoryState, r: number): { pairs: Array<{ a: number; b: number }>; bye: number | null } {
+  const n = state.occupants.length;
+  const tpl = slotTemplate(n, r);
+  const pairs = tpl.pairs.map((p) => ({ a: p.a, b: p.b }));
+  let bye = tpl.bye;
+  const had = new Set(state.history.map((h) => h.bye).filter(Boolean) as string[]);
+  if (bye != null && had.has(state.occupants[bye - 1])) {
+    for (let sl = n; sl >= 1; sl--) {
+      if (had.has(state.occupants[sl - 1])) continue;
+      const pi = pairs.findIndex((p) => p.a === sl || p.b === sl);
+      if (pi < 0) break;
+      const p = pairs[pi], other = p.a === sl ? p.b : p.a;
+      pairs[pi] = { a: Math.min(other, bye), b: Math.max(other, bye) };
+      bye = sl; break;
+    }
+  }
+  return { pairs: pairs.sort((x, y) => x.a - y.a), bye };
+}
+
 export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRound: number): Array<[string, string | null]> | null {
   const seeds = d.entrants.map((e) => e.id);
   const n = seeds.length;
@@ -225,9 +245,8 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
     const saved = mine.filter((f) => (f.round ?? 1) === r);
     const occ = state.occupants;
     const raw = slotTemplate(n, r);
-    const adj = resolveRound(state, r);
-    // Accept rounds drawn by the raw template (older draws) or the fairness-adjusted template (no repeat byes).
-    const candidates = [asPlan(raw.pairs, raw.bye), asPlan(adj.pairs.map((p) => ({ a: p.slotA, b: p.slotB })), adj.bye?.slot ?? null)];
+    // Accept rounds drawn by the raw template (older draws) or the bye-fair template (no repeat byes).
+    const candidates = [asPlan(raw.pairs, raw.bye), byeFairPlan(state, r)];
     const byKey = new Map(saved.filter((f) => f.a && f.b).map((f) => [k(f.a!, f.b!), f]));
     const byeRow = saved.find((f) => f.a && !f.b);
     const tpl = candidates.find((c) => c.pairs.length === byKey.size && c.pairs.every((p) => byKey.has(k(occ[p.a - 1], occ[p.b - 1])))
@@ -244,10 +263,11 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
     }
     state = { occupants: next, history: [...state.history, played] };
   }
-  // Next round: positional template with bye fairness (nobody gets a second bye) and rematch avoidance.
-  const res = resolveRound(state, nextRound);
-  const pairs: Array<[string, string | null]> = res.pairs.map((p) => [p.a, p.b]);
-  if (res.bye) pairs.push([res.bye.id, null]);
+  // Next round: positional template with bye fairness (nobody gets a second bye).
+  const plan = byeFairPlan(state, nextRound);
+  const occ = state.occupants;
+  const pairs: Array<[string, string | null]> = plan.pairs.map((p) => [occ[p.a - 1], occ[p.b - 1]]);
+  if (plan.bye != null) pairs.push([occ[plan.bye - 1], null]);
   return pairs;
 }
 

@@ -78,6 +78,7 @@ export default function BarCounter() {
   const [category, setCategory] = useState<string | null>(null);
   const [itemSearch, setItemSearch] = useState("");
   const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
   const [onlineOpen, setOnlineOpen] = useState(false);
@@ -221,9 +222,11 @@ export default function BarCounter() {
     try {
       const { data, error } = await supabase.rpc("bar_counter_open_tab", {
         _guest_name: newName.trim(), _token: token, _club_id: clubId,
+        _guest_phone: newPhone.trim() || null,
       } as any);
       if (error) throw error;
       setNewName("");
+      setNewPhone("");
       await refetch();
       setActiveTabId((data as any)?.tab_id ?? null);
       toast.success("Tab opened");

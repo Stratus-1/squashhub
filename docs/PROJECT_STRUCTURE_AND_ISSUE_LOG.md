@@ -3114,3 +3114,7 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 
 ### 2026-10-15 — Planned Format stage planner pilot (Riverside)
 Added compact per-category stage planner behind `tournament_stage_planner` (Riverside only). Plan saves are versioned and display-only impact preview; no apply-to-draw yet. Pre-existing failures: StepByStepBuilder tests lack QueryClientProvider (swissPilot hook), plus 9 unrelated suites.
+
+### 2026-10-15 — Bar POS: card machine shown as online payment / "paid" too early
+- Cause: customer "Swipe at the club" closed the tab as `closing` (same state as online card) so Counter Mode showed "Waiting for an online card payment"; cart swipe (`record_bar_terminal_sale`) inserted sales as `paid` before any terminal approval; customer saw "Thank you".
+- Fix: tabs carry `settled_method` (online | terminal | cash) to both screens; terminal/cash orders stay `awaiting_terminal`/`awaiting_cash` until staff "Confirm card payment received" (`bar_counter_settle_tab`, row-locked, idempotent, records confirmed_by/at + `bar_tab_payment_events`). Staff "Declined / not paid" (`bar_counter_reopen_tab`, reason) and customer cancel (`bar_guest_cancel_counter_payment`) reopen the tab. Cart swipe now creates an awaiting tab. Online flow unchanged (provider verification only). Ledger posts only on confirmation.

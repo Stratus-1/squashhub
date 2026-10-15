@@ -44,4 +44,3 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- Planned Format stage plans live on Step answers `stagePlans` (pure logic `src/lib/smart-builder/stage-plan.ts`); Stage 1 is mirrored to `format`/`formatOverrides`, status is derived from games, saves create `tournament_plan_versions` rows via `save_tournament_plan_version` and never touch fixtures/bookings; why: one plan authority with backward-compatible readers and explicit, separate apply approval.

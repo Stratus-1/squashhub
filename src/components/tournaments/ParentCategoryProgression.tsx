@@ -31,8 +31,6 @@ const ord = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "r
 export function placeholderBracket(labels: string[], rounds: number): string[][] {
   if (rounds < 1 || labels.length !== 2) return [];
   const per = 2 ** rounds / 2;
-  const first = Array.from({ length: per }, (_, j) => [`${labels[j % 2]} ${ord(Math.floor(j / 2) * 2 + 1 - (j % 2 ? 0 : 0) + (j % 2 ? 0 : 0))}`]);
-  void first;
   const out: string[][] = [];
   // Cross-pool seeding: X 1st v Y kth, Y 1st v X kth, …
   const r1: string[] = [];

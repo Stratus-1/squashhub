@@ -5,11 +5,13 @@
  * screen for a visitor to scan, copy the link, or share it via the native
  * share sheet / WhatsApp.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
-import { buildBarPoster, loadImageAsDataUrlWithSize } from "@/lib/bar/bar-poster";
+import { buildBarPoster, barPosterPaymentMethods, loadImageAsDataUrlWithSize } from "@/lib/bar/bar-poster";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Copy, Share2, MessageCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,9 +28,18 @@ interface Props {
 }
 
 export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomain, posterClub }: Props) {
-  const [posterBusy, setPosterBusy] = useState(false);
+  const [venue, setVenue] = useState<"bar" | "shop" | "bar-shop">("bar-shop");
+  const [poster, setPoster] = useState<Blob | null>(null);
+  const [posterError, setPosterError] = useState<string | null>(null);
+  const qrRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(false);
-  const [url, setUrl] = useState<string | null>(null);
+  const [resolved, setResolved] = useState<{ clubId: string; subdomain?: string | null; url: string } | null>(null);
+  const url = resolved?.clubId === clubId && resolved.subdomain === subdomain ? resolved.url : null;
+  const accountEnabled = posterClub?.bar_account_tab_enabled !== false;
+  const cardOnlineEnabled = posterClub?.bar_pay_online_enabled !== false;
+  const swipeEnabled = posterClub?.bar_card_swipe_enabled !== false;
+  const cashEnabled = posterClub?.bar_cash_enabled === true;
+  const paymentMethods = barPosterPaymentMethods({ accountEnabled, cardOnlineEnabled, swipeEnabled, cashEnabled });
 
   useEffect(() => {
     if (!open || !clubId || url) return;
@@ -42,7 +53,7 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
         toast.error("Could not load the bar QR code");
         return;
       }
-      setUrl(buildScanUrl(data as string, subdomain));
+      setResolved({ clubId, subdomain, url: buildScanUrl(data as string, subdomain) });
     })();
     return () => { cancelled = true; };
   }, [open, clubId, subdomain, url]);
@@ -66,41 +77,54 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
     void copy();
   };
 
-  const downloadPoster = async () => {
-    if (!url || !posterClub) return;
-    setPosterBusy(true);
-    try {
-      const canvas = document.getElementById("bar-poster-qr") as HTMLCanvasElement | null;
-      if (!canvas) throw new Error("QR not ready");
-      const logo = posterClub.logo_url ? await loadImageAsDataUrlWithSize(posterClub.logo_url) : null;
-      const doc = buildBarPoster({
-        clubName: clubName || posterClub.name || "Club",
+  const logoUrl = posterClub?.logo_url;
+  const posterName = clubName || posterClub?.name || "Club";
+  useEffect(() => {
+    setPoster(null);
+    setPosterError(null);
+    if (!open || !url || !posterClub) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const logo = logoUrl ? await loadImageAsDataUrlWithSize(logoUrl) : null;
+        const canvas = qrRef.current;
+        if (!canvas || cancelled) return;
+        const doc = buildBarPoster({
+        clubName: posterName,
         url,
         qrDataUrl: canvas.toDataURL("image/png"),
         logoDataUrl: logo?.dataUrl ?? null,
         logoWidth: logo?.width,
         logoHeight: logo?.height,
-        accountEnabled: posterClub.bar_account_tab_enabled !== false,
-        cardOnlineEnabled: posterClub.bar_pay_online_enabled !== false,
-        swipeEnabled: posterClub.bar_card_swipe_enabled !== false,
-        cashEnabled: posterClub.bar_cash_enabled === true,
+        accountEnabled, cardOnlineEnabled, swipeEnabled, cashEnabled, venue,
       });
-      const safe = (clubName || "Club").replace(/[^a-z0-9]+/gi, "_");
-      doc.save(`${safe}_Bar_Usage_Poster.pdf`);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not create the poster");
-    } finally {
-      setPosterBusy(false);
-    }
+        if (!cancelled) setPoster(doc.output("blob"));
+      } catch {
+        if (!cancelled) setPosterError("Could not create the poster. Please close and reopen this window.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, url, posterClub, posterName, logoUrl, accountEnabled, cardOnlineEnabled, swipeEnabled, cashEnabled, venue]);
+
+  const downloadPoster = () => {
+    if (!poster) return;
+    const objectUrl = URL.createObjectURL(poster);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = `${posterName.replace(/[^a-z0-9]+/gi, "_")}_${venue}_Scan_to_Pay.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Menu QR code</DialogTitle>
           <DialogDescription>
-            One code for the whole bar. Anyone can scan it with their phone camera to open the full menu, pick items and pay by card — members can also charge purchases to their member account.
+            Scan to open the club's bar/shop menu and choose from its available payment options.
           </DialogDescription>
         </DialogHeader>
 
@@ -133,9 +157,26 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
               </div>
               {posterClub && (
                 <>
-                  <div className="hidden"><QRCodeCanvas id="bar-poster-qr" value={url} size={1024} marginSize={1} /></div>
-                  <Button size="sm" className="w-full gap-1" onClick={downloadPoster} disabled={posterBusy}>
-                    {posterBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+                  <div className="hidden"><QRCodeCanvas ref={qrRef} value={url} size={1024} marginSize={4} level="M" /></div>
+                  <div className="w-full space-y-2">
+                    <Label htmlFor="bar-poster-heading">Poster heading</Label>
+                    <Select value={venue} onValueChange={(value: "bar" | "shop" | "bar-shop") => setVenue(value)}>
+                      <SelectTrigger id="bar-poster-heading"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bar-shop">Bar & Shop</SelectItem>
+                        <SelectItem value="bar">Bar</SelectItem>
+                        <SelectItem value="shop">Shop</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs font-medium">Accepted payment methods</p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      {paymentMethods.map(method => <li key={method}>{method}</li>)}
+                      {!paymentMethods.length && <li>No payment methods enabled.</li>}
+                    </ul>
+                    {posterError && <p role="alert" className="text-xs text-destructive">{posterError}</p>}
+                  </div>
+                  <Button size="sm" className="w-full gap-1" onClick={downloadPoster} disabled={!poster}>
+                    {!poster && !posterError ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
                     Download A4 poster (PDF)
                   </Button>
                 </>

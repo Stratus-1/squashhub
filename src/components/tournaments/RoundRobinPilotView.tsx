@@ -12,7 +12,7 @@ export function poolRankTone(index: number, count: number) {
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
 
 /** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
-export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots = false }: { title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean }) {
+export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots = false, withCalendar = false }: { title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
   const { players, matrix, totals, rounds } = view;
   const [mode, setMode] = useState<"matrix" | "calendar">("matrix");
   const calEvents = rounds.flatMap((rd) => rd.matches.filter((m) => m.status !== "bye" && (m.date || m.playBy)).map((m) => ({

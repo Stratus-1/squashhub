@@ -3147,3 +3147,7 @@ Added compact per-category stage planner behind `tournament_stage_planner` (Rive
 ### 2026-10-15 — Owner-requested Riverside tournament pilot deactivation
 - Removed only Riverside club_beta_features rows for tournament_structure_step and tournament_stage_planner, restoring the standard separate setup steps and hiding the experimental row/canvas editor. Existing canonical drafts and all tournament, fixture, booking, result, payment and notification data preserved.
 - Shared tournament-view and Swiss switches remain enabled as in Uitsig; no other club settings changed. Configuration-only restoration takes effect on refresh without publication.
+
+### 2026-10-15 — Retire old Riverside pilot before replacement
+- Added a frontend retirement guard for Riverside's old structure/stage-planner flags, including stale cached enabled values. Standard setup remains the fallback; other clubs keep their flag behaviour.
+- Retained canonical draft answers, adapters and readers for compatibility. No tournament, fixture, booking, result, payment, notification or backend records changed; no publication. Replacement card-based pilot is not activated by this cleanup.

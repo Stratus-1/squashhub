@@ -71,6 +71,8 @@ describe("Riverside canonical visual structure", () => {
     expect(visualStructurePilot(id, true, "localhost")).toBe(true);
     expect(visualStructurePilot(id, true, "id-preview--example.lovable.app")).toBe(true);
     expect(visualStructurePilot(id, true, "squashhub.lovable.app")).toBe(true);
+    expect(visualStructurePilot(id, true, "riverside.squashhub.co.za")).toBe(true);
+    expect(visualStructurePilot("other-club", true, "riverside.squashhub.co.za")).toBe(false);
     expect(visualStructurePilot(id, false, "localhost")).toBe(false);
     expect(visualStructurePilot(id, true, "localhost", "existing")).toBe(false);
     expect(visualStructurePilot(id, true, "localhost", "existing")).toBe(false);

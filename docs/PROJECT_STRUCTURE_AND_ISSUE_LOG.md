@@ -609,6 +609,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-15 · Bar/shop scan-to-pay PDF poster
+- **Symptom:** Admin needed a visible poster action in QR setup and printed instructions reflecting cash/swipe and other enabled methods.
+- **Finding:** A PDF was hidden inside Menu QR; its verbose layout could extend into the footer, and online wording did not check supported gateway availability.
+- **Fix:** Added Poster (PDF) alongside QR controls; Bar / Shop / Bar & Shop heading choices; single-page large QR, three purchase steps, and explicit enabled-method list. PDF is prepared before the download click. Member-account wording specifies membership number/Bar PIN; online appears only for enabled supported gateways.
+- **Guard:** 21 tests pass, including all 16 payment-switch combinations. Signed-in Riverside admin downloaded both combined and shop posters; both pages visually checked with no overlaps or clipping, no page errors. Payment processing, settings, stock and live data unchanged; preview only, native downloads not device-tested.
+
 ### 2026-10-13 · Standalone mixers on the spirits menu
 - **Follow-up:** The first bulk tile was an inventory container, not the bottled Buddy. Mixer selection now includes the real Buddy/Buddies product and excludes parent containers when a serving option exists. Uitsig's existing Buddies renamed Buddy with the requested bottle image, preserving its R22 price and stock. Both bulk records have R0 saved; no selling price inferred from specials. Four focused tests plus 13 inventory tests pass; browser shows separate Buddy and bulk-serving basket lines. Menu code remains preview-only; Buddy name/image saved live as requested.
 - **Symptom:** Buddy controls beside every spirit option were unwanted; Buddy and Coke Bulk should be separate items on the spirits page.

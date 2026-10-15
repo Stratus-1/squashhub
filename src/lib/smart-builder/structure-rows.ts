@@ -2,6 +2,36 @@ import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
 import { newStageId, resolveStagePlan, setCategoryStagePlan, type StagePlanItem } from "./stage-plan";
 import { placesOf } from "./pick-entries";
 import { rrSizes } from "./rr-topology";
+import { inferCategory, type CompetitionCategory } from "@/lib/leagues/category";
+
+export const STRUCTURE_ELIGIBILITY_LABELS: Record<CompetitionCategory, string> = {
+  open: "Open", mens: "Men only", ladies: "Ladies only", mixed: "Mixed",
+};
+
+/** Explicit gender eligibility is independent of names; subdivisions inherit it. */
+export function structureEligibility(a: StepAnswers, key: string): CompetitionCategory | null {
+  const parent = key.split("::")[0];
+  return a.categoryTypes?.[parent]
+    ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim().toLowerCase() === parent.trim().toLowerCase())?.[1]
+    ?? null;
+}
+
+export function structureEligibilityAdvisory(a: StepAnswers, key: string): string | null {
+  const eligibility = structureEligibility(a, key);
+  const inferred = inferCategory(key.split("::")[0]);
+  return eligibility && inferred && eligibility !== inferred
+    ? `Name suggests ${STRUCTURE_ELIGIBILITY_LABELS[inferred]}; eligibility is ${STRUCTURE_ELIGIBILITY_LABELS[eligibility]}. Your selection applies.` : null;
+}
+
+/** Presets prefill missing eligibility only, never replace an explicit selection. */
+export function applyStructurePreset(a: StepAnswers, cat: string, name: string): StepAnswers {
+  const p = DIVISION_PRESETS.find((x) => x.name === name);
+  if (!p || p.name !== cat && a.categories.includes(p.name)) return a;
+  const eligibility = structureEligibility(a, cat) ?? p.type;
+  const next = renameStructureKey(a, cat, p.name);
+  const keys = [p.name, ...(next.subcats[p.name] ?? []).map((s) => `${p.name}::${s}`)];
+  return { ...next, categoryTypes: { ...next.categoryTypes, [p.name]: eligibility }, disc: { ...next.disc, ...Object.fromEntries(keys.map((k) => [k, p.discipline])) } };
+}
 
 export const DIVISION_PRESETS = [
   { name: "Men's Singles", type: "mens", discipline: "singles" },
@@ -90,7 +120,7 @@ export function structureRowIssues(a: StepAnswers): string[] {
     if (subs.some((s) => !s.trim() || s.includes("::")) || new Set(subs.map((s) => s.toLowerCase())).size !== subs.length) issues.push(`${cat}: use unique, non-empty subdivision names.`);
   }
   for (const key of structureUnits(a)) {
-    if (!a.categoryTypes?.[key.split("::")[0]]) issues.push(`${key}: choose an eligibility type.`);
+    if (!structureEligibility(a, key)) issues.push(`${key}: choose eligibility.`);
     if (!(a.disc[key] ?? a.disc[key.split("::")[0]] ?? (a.playType !== "both" ? a.playType : null))) issues.push(`${key}: choose singles or doubles.`);
     const n = Number(a.unitEntries[key]);
     if (!Number.isInteger(n) || n < 2) issues.push(`${key}: enter at least 2 expected entries.`);

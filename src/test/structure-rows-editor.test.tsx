@@ -3,12 +3,53 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StructureRowsEditor } from "@/components/smart-builder/StructureRowsEditor";
 import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
-import { duplicateStructureRow, renameStructureKey, rowStructurePilot, writeRowStages, selectedStructureEntries } from "@/lib/smart-builder/structure-rows";
+import { duplicateStructureRow, renameStructureKey, rowStructurePilot, writeRowStages, selectedStructureEntries, applyStructurePreset, structureEligibility, structureEligibilityAdvisory } from "@/lib/smart-builder/structure-rows";
+import { isPlayerEligibleForCategory, validatePairComposition } from "@/lib/leagues/category";
 
 const answers = (): StepAnswers => ({ categories: ["Mens A", "Mens B", "Ladies A"], categoryTypes: { "Mens A": "mens", "Mens B": "mens", "Ladies A": "ladies" }, subcats: {}, unitEntries: { "Mens A": "24", "Mens B": "18", "Ladies A": "16" }, disc: { "Mens A": "singles", "Mens B": "singles", "Ladies A": "singles" }, playType: "singles", format: { kind: "swiss", swissRounds: "5" }, formatOverrides: {}, picks: {}, scoringOverrides: {}, playoffOverrides: {}, poolPlan: {}, playoff: { choice: "later", rounds: 2, qualification: "later", pairing: "later" }, stagePlans: { "Mens A": [{ id: "a", kind: "swiss", rounds: 5 }], "Mens B": [{ id: "b", kind: "swiss", rounds: 4 }], "Ladies A": [{ id: "l", kind: "pools", pools: 4 }] } } as unknown as StepAnswers);
 const draw = (a = answers()) => { const onSave = vi.fn(); render(<TooltipProvider><StructureRowsEditor answers={a} onSave={onSave} /></TooltipProvider>); return onSave; };
 
 describe("row structure editor", () => {
+  it.each(["singles", "doubles"] as const)("keeps Men's %s Open or Men only independently of name and format", (disc) => {
+    const a = answers(); a.categoryTypes["Mens A"] = "open";
+    const name = disc === "singles" ? "Men's Singles" : "Men's Doubles";
+    const preset = applyStructurePreset(a, "Mens A", name);
+    expect(structureEligibility(preset, name)).toBe("open");
+    expect(isPlayerEligibleForCategory("female", structureEligibility(preset, name))).toBe(true);
+    expect(validatePairComposition(["male", "female"], structureEligibility(preset, name)).valid).toBe(true);
+    const save = draw(preset);
+    expect(screen.getByRole("columnheader", { name: "Match type" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Eligibility" })).toBeTruthy();
+    expect(screen.getByRole("note").textContent).toContain("eligibility is Open");
+    fireEvent.change(screen.getByLabelText(`${name} eligibility type`), { target: { value: "mens" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Structure" }));
+    const next = save.mock.calls[0][0] as StepAnswers;
+    expect(next.categories).toContain(name);
+    expect(next.disc[name]).toBe(disc);
+    expect(next.stagePlans[name]).toEqual(preset.stagePlans[name]);
+    expect(isPlayerEligibleForCategory("female", structureEligibility(next, name))).toBe(false);
+    expect(validatePairComposition(["male", "female"], structureEligibility(next, name)).valid).toBe(false);
+    expect(validatePairComposition(["male", "male"], structureEligibility(next, name)).valid).toBe(true);
+  });
+  it("preserves explicit eligibility on presets, duplicate, rename and subgroup inheritance", () => {
+    const a = answers(); a.categoryTypes["Mens A"] = "open"; a.subcats["Mens A"] = ["A", "B"];
+    const p = applyStructurePreset(a, "Mens A", "Men's Doubles");
+    expect(structureEligibility(p, "Men's Doubles::A")).toBe("open");
+    expect(p.disc["Men's Doubles::B"]).toBe("doubles");
+    expect(structureEligibility(duplicateStructureRow(p, "Men's Doubles"), "Men's Doubles copy::A")).toBe("open");
+    expect(structureEligibility(renameStructureKey(p, "Men's Doubles", "Custom"), "Custom::A")).toBe("open");
+    expect(structureEligibilityAdvisory(p, "Men's Doubles")).toContain("Your selection applies");
+    expect(applyStructurePreset(p, "Men's Doubles", "Ladies Doubles").categoryTypes["Ladies Doubles"]).toBe("open");
+  });
+  it("prefills only missing eligibility and renders inherited subgroup eligibility", () => {
+    const a = answers(); delete a.categoryTypes["Mens A"];
+    expect(applyStructurePreset(a, "Mens A", "Men's Singles").categoryTypes["Men's Singles"]).toBe("mens");
+    a.categoryTypes["Mens A"] = "open"; a.subcats["Mens A"] = ["A"]; a.unitEntries["Mens A::A"] = "24";
+    draw(a); fireEvent.click(screen.getByRole("button", { name: "Expand Mens A" }));
+    expect(screen.getByText("Open · inherited")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Mens A eligibility type"), { target: { value: "mens" } });
+    expect(screen.getByText("Men only · inherited")).toBeTruthy();
+  });
   it("starts direct with correct capacity and saves only explicitly", () => {
     const save = draw();
     expect(screen.getByRole("button", { name: "I know what I want" }).getAttribute("aria-pressed")).toBe("true");

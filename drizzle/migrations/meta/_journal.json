@@ -1065,6 +1065,13 @@
       "when": 1792072652444,
       "tag": "0151_bar_order_process_pilot",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1792078326526,
+      "tag": "0152_migration",
+      "breakpoints": true
     }
   ]
 }

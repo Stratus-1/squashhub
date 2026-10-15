@@ -112,7 +112,7 @@ export function RoundSchedulingEditor({ clubId, tournamentId, draftStages, onSta
       setReview({ kind: "ask_generate", stage, rounds: live });
     } else {
       if (diff.inSync) { toast.success(`${stage.name} is already up to date`); return; }
-      const proposal = await proposeTimed(stage, live, fresh.matches, fresh.minutes);
+      const proposal = await proposeTimed(stage, live, fresh.matches, fresh.minutes, fresh.blockName);
       await loadNames(proposal.assign.map((a) => a.matchId).concat(proposal.unplaced.map((u) => u.matchId)));
       setReview({ kind: "timed", stage, rounds: live, proposal });
     }
@@ -148,7 +148,7 @@ export function RoundSchedulingEditor({ clubId, tournamentId, draftStages, onSta
         await done();
       } else if (review.kind === "ask_generate") {
         const fresh = await reload();
-        const proposal = await proposeTimed(review.stage, review.rounds, fresh.matches, fresh.minutes);
+        const proposal = await proposeTimed(review.stage, review.rounds, fresh.matches, fresh.minutes, fresh.blockName);
         await loadNames(proposal.assign.map((a) => a.matchId).concat(proposal.unplaced.map((u) => u.matchId)));
         setReview({ kind: "timed", stage: review.stage, rounds: review.rounds, proposal });
       } else {

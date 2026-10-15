@@ -21557,6 +21557,7 @@ export type Database = {
           p_court_id: number
           p_date: string
           p_duration_minutes?: number
+          p_fill_hold?: boolean
           p_match_id: string
           p_time: string
         }

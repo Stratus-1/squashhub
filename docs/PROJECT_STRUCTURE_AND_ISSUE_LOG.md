@@ -3073,3 +3073,6 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 
 ## 2026-10-15 Live Swiss uses fixed-position maps
 - `nextSwissRound` now pairs Round 2+ via `fixedPositionRound` (slot templates replayed from seed order); falls back to score-based pairing when the field is outside 8–32 or saved rounds do not match the template. Test: `src/test/swiss-fixed-live.test.ts`.
+
+## 2026-10-15 Per-tournament GoBook block name + 35-min packing
+- Courts & Dates has "Block booking name"; fixed rounds use only matching holds (merged across consecutive 45-min rows) and pass `p_fill_hold=false` (migration 0149) so games pack back-to-back. Server still recognises only names starting "Club Championship".

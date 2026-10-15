@@ -895,7 +895,10 @@ export default function Bookings() {
       const matchingTournament = explicitlyLinked || (isSavedTournamentBlock
         ? (linkedMatchId
             ? (champsBookings as any[]).find((cb: any) => cb.champ_match_id === linkedMatchId)
-            : null) || (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
+            : null)
+            // Prefer the fixture that STARTS inside this row (35-min games in 45-min GoBook rows), then any overlap.
+            || (champsBookings as any[]).find((cb: any) => overlaps(b, cb) && !claimedMatchIds.has(String(cb.champ_match_id)) && timeToMinutes(String(cb.start_time).slice(0, 5)) >= timeToMinutes(String(b.start_time).slice(0, 5)) && timeToMinutes(String(cb.start_time).slice(0, 5)) < timeToMinutes(String(b.end_time).slice(0, 5)))
+            || (isNamedChampsBlock ? null : (champsBookings as any[]).find((cb: any) => overlaps(b, cb)))
         : null);
       if (!matchingTournament) {
         merged.set(key, b);

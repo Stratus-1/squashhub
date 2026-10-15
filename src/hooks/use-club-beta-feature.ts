@@ -10,6 +10,7 @@ export const TOURNAMENT_VIEW_FEATURES = {
   tournament_schedule_board: "Court schedule board",
   tournament_swiss_category_rounds: "Swiss rounds per category (setup)",
   tournament_swiss_positional_draw: "Fixed-position Swiss draw (pilot)",
+  tournament_stage_planner: "Stage planner in Planned format (pilot)",
 } as const;
 export type TournamentViewFeature = keyof typeof TOURNAMENT_VIEW_FEATURES;
 

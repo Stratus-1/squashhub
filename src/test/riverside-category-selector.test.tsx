@@ -5,7 +5,7 @@ describe("Riverside category selector presentation", () => {
   const source = readFileSync("src/pages/ClubChampsView.tsx", "utf8");
   const css = readFileSync("src/index.css", "utf8");
   it("scopes the prominent selector to embedded Riverside progression", () => {
-    expect(source).toContain('embeddedChampId && champ?.club_id === "11111111-1111-1111-1111-111111111111" && "riverside-category-selector"');
+    expect(source).toContain('pilotLayout && "riverside-category-selector"');
   });
   it("preserves accessible category selection with the design-system Button", () => {
     expect(source).toContain('aria-pressed={c.gn === activeCat.gn}');

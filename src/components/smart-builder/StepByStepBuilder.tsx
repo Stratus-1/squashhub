@@ -581,6 +581,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   };
   const formatDetail = (f: FormatPlan) => {
     if (!f.kind) return "Not chosen";
+    if (cardStructure && String(f.kind) === "monrad") return "Monrad (positional draw) · planned";
+    if (cardStructure && f.kind === "pools") return `Round robin · ${f.pools || 1} pool${Number(f.pools || 1) === 1 ? "" : "s"} (planned)`;
     const extra = f.kind === "knockout" ? (units.some((u) => (poolPlanOf(a, u.key)?.mode ?? "none") !== "none") ? " · elimination inside pools where pools are set, down to each pool's qualifiers, then play-offs" : " · bracket from expected entries") : f.kind === "swiss" && (f.swissRoundsConfirmed || f.swissRounds) ? (f.swissRoundsConfirmed ? ` · ${f.swissRoundsConfirmed} rounds (confirmed)` : ` · about ${f.swissRounds} rounds`) : f.kind === "cross" ? ` · ${f.crossMode === "parent" ? "between subcategories of the same category only" : f.crossMode === "chosen" ? (f.crossPairs?.length ? `only ${f.crossPairs.map(([x, y]) => `${unitBase(x)} v ${unitBase(y)}`).join(", ")}` : "pairings not chosen") : crossList(f).length >= 2 ? `across ${crossList(f).map(unitBase).join(", ")} (all play each other)` : "participating groups not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
     return `${COMP_LABEL[f.kind]}${extra} (planned)`;
   };
@@ -2701,7 +2703,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {scoring && <TreeNode icon={<Trophy className="h-4 w-4" />} title={scoringText(scoring)} onClick={() => go("Match")}>
                 {validOverrides.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}
               </TreeNode>}
-              {(format.kind || formatExceptions.length > 0) && <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Format: ${formatDetail(format)}`} onClick={() => go("Format")}>
+              {(format.kind || formatExceptions.length > 0) && <TreeNode icon={<Trophy className="h-4 w-4" />} title={cardStructure ? "Formats by division" : `Format: ${formatDetail(format)}`} onClick={() => go("Format")}>
                 {formatExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Format")}>{u.base}: {formatDetail(formatFor(u.key))}</Button></TreeLeaf>)}
                 <TreeLeaf><span className="text-muted-foreground">Confirm final format after entries close</span></TreeLeaf>
               </TreeNode>}

@@ -909,6 +909,7 @@ export default function Bookings() {
         ...b,
         is_champ: true,
         champ_match_id: matchingTournament.champ_match_id,
+        booking_id: matchingTournament.booking_id ?? null,
         champ_title: matchingTournament.champ_title,
         champ_compact_title: matchingTournament.champ_compact_title,
         champ_context: matchingTournament.champ_context,

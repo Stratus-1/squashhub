@@ -3045,3 +3045,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 
 ### 2026-10-15 — Draw notification modes (Automatic / Prompt me to send / Off)
 - Per-fixture state on `club_champs_matches` (migration 0143) set by trigger when both players become known; Automatic sends in-app/email immediately (WhatsApp/SMS queued until an admin opens Tournament Management); Prompt shows `FixtureDrawNoticePrompt` with Send / Later; Off never sends or prompts. Existing round-level sends mark their fixtures notified. Dry-run verified in a rolled-back transaction.
+
+## 2026-10-15 — Re-scheduling an existing round (timed <-> Play by date)
+- No flow existed to change an existing round's scheduling after fixtures were drawn. Added `admin_set_round_play_by` / `admin_set_round_timed` (migrations 0144/0145), `src/lib/tournaments/round-scheduling.ts` and the Manage Tournament "Round scheduling" editor.
+- Play by: deadline applied to round + open matches; only each match's own `champ:<t>:match:<id>` booking is cancelled and released holds restored; block and personal bookings untouched; pairings/results/players untouched. Schedule-change notice (`tournament_schedule_change`) only to players already draw-notified and only when draw mode is not Off.
+- Timed: confirmed unscheduled matches placed in tournament hold slots via `self_schedule_champ_match`; shortages reported, never downgraded.

@@ -288,17 +288,20 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               <h3 className="font-semibold text-sm">Scan-to-pay QR codes</h3>
               <p className="text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">Menu QR</span> — one code (poster or screen) that opens
-                your full bar menu: anyone can pick items and pay by card, members can charge to their account.{" "}
+                your full bar/shop menu with the payment options enabled above.{" "}
                 <span className="font-medium text-foreground">Product QR labels</span> — a club-specific sticker per
                 product so a customer scans straight to that item and buys it in a tap.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => setMenuQrOpen(true)}>
                 <QrCode className="w-3.5 h-3.5 mr-1" /> Menu QR
               </Button>
               <Button size="sm" variant="outline" onClick={() => openQrLabels()}>
                 <QrCode className="w-3.5 h-3.5 mr-1" /> Product QR labels
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setMenuQrOpen(true)}>
+                <FileText className="w-3.5 h-3.5 mr-1" /> Poster (PDF)
               </Button>
             </div>
           </Card>

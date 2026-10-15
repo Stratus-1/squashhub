@@ -40,13 +40,14 @@ export function ParentCategoryProgression({ parent, children, playoffs }: { pare
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)]">
           <div className="min-w-0 space-y-6">{children.map((child) => <section key={child.group} className="min-w-0 space-y-3 border-b border-border pb-5" aria-label={child.label}>
             <div className="flex flex-wrap items-center gap-2"><h4 className="text-base font-semibold">{child.label}</h4><Badge variant="outline">{child.format}</Badge></div>
+            <p className="text-xs text-muted-foreground">{child.upcoming.length ? child.results.length ? "Provisional rankings · matches still to play" : "Provisional draw order · no results yet" : "Rankings"}</p>
             {mode === "progression" && child.matrix ? <RoundRobinPilotView title={child.label} view={child.matrix} matrixOnly /> : <div className="max-w-full overflow-x-auto">{child.standings}</div>}
             <Fixtures title="Upcoming Fixtures" rows={child.upcoming} />
             <Fixtures title="Results" rows={child.results} />
           </section>)}</div>
           <section aria-label="Shared playoffs" className="min-w-0 space-y-4 xl:border-l xl:border-border xl:pl-4">
             <h4 className="text-base font-semibold">{parent.label} · Shared playoffs</h4>
-            <div className="space-y-1 text-xs"><p>{parent.qualification}</p><p className="text-muted-foreground">Qualifiers and pairings await confirmation.</p></div>
+            <div className="space-y-1 text-xs"><p>{parent.qualification}</p>{!playoffs.length && <p className="text-muted-foreground">Qualifiers and pairings await confirmation.</p>}</div>
             {!parent.stages.length && <p className="text-xs text-muted-foreground">Playoff stages not configured.</p>}
             {parent.stages.map((stage) => {
               const rows = playoffs.filter((m) => m.stageKey === stage.id);

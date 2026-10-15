@@ -14,7 +14,7 @@ describe("StagePlanPanel", () => {
     const onSave = vi.fn();
     const answers: PlanAnswers = { format: { kind: "swiss", swissRounds: "5" } };
     wrap(<StagePlanPanel answers={answers} onSave={onSave} units={units} entrants={{ "Mens B": 12, "Ladies A": 6 }} />);
-    expect(screen.getAllByText("Swiss")).toHaveLength(2);
+    expect(screen.getAllByRole("cell", { name: "Swiss" })).toHaveLength(2);
     expect(screen.getByText(/Suggested for 12 entrants/)).toBeTruthy();
     expect(screen.queryByText("Unsaved changes")).toBeNull();
 

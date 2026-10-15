@@ -11,6 +11,9 @@ import { evaluateStructures, type GuideAnswers } from "@/lib/smart-builder/struc
 import { categoryEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
 import type { StepAnswers } from "./StepByStepBuilder";
 import { StructureOverview } from "./StructureOverview";
+import { RRTopologyEditor } from "./RRTopologyEditor";
+import { rrIssues, rrMatchCount } from "@/lib/smart-builder/rr-topology";
+import { unitCapacity } from "@/lib/smart-builder/structure-capacity";
 
 const control = "h-8 rounded-md border border-input bg-background px-2 text-xs max-w-full";
 const kinds: { value: StageKind | ""; label: string }[] = [{ value: "swiss", label: "Swiss" }, { value: "round_robin", label: "Round robin" }, { value: "pools", label: "RR pools" }, { value: "knockout", label: "Knockout" }, { value: "", label: "Undecided" }];
@@ -37,13 +40,17 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
   }, [dirty]);
   const update = (fn: (a: StepAnswers) => StepAnswers) => { setSaved(false); setDraft(fn); };
   const units = structureUnits(draft);
-  const issues = [...structureRowIssues(draft), ...units.flatMap((key) => validateStagePlan(rowStages(draft, key), { entrants: Number(draft.unitEntries[key]) || null }).filter((x) => x.level === "error").map((x) => `${key}: ${x.message}`))];
+  const issues = [...structureRowIssues(draft), ...units.flatMap((key) => {
+    const n = Number(draft.unitEntries[key]) || 0;
+    const cap = unitCapacity(draft, key, n);
+    return [...validateStagePlan(rowStages(draft, key), { entrants: n }).filter((x) => x.level === "error").map((x) => `${key}: ${x.message}`), ...rowStages(draft, key).flatMap((s, i) => s.kind === "pools" || s.kind === "round_robin" ? rrIssues(cap.stages[i].entrants, s.pools ?? 1, s.rrTopology).map((x) => `${key} stage ${i + 1}: ${x}`) : [])];
+  })];
   const stages = (key: string, fn: (s: StagePlanItem[]) => StagePlanItem[]) => update((a) => writeRowStages(a, key, fn(rowStages(a, key))));
   const patchStage = (key: string, index: number, patch: Partial<StagePlanItem>) => stages(key, (s) => s.map((x, i) => i === index ? { ...x, ...patch } : x));
   const toggle = (key: string) => setOpen((x) => ({ ...x, [key]: !x[key] }));
   const hasPeople = (key: string) => Object.values(draft.picks).some((v) => (Array.isArray(v) ? v : [v]).some((k) => k === key || k.startsWith(`${key}::`)));
   const setKind = (key: string, kind: StageKind | null) => {
-    stages(key, (s) => [{ ...s[0], id: s[0]?.id ?? newStageId(), kind, pools: kind === "pools" ? s[0]?.pools ?? 2 : null, rounds: kind === "swiss" ? s[0]?.rounds ?? null : null }, ...s.slice(1)]);
+    stages(key, (s) => [{ ...s[0], id: s[0]?.id ?? newStageId(), kind, pools: kind === "pools" ? s[0]?.pools ?? 2 : kind === "round_robin" ? s[0]?.pools ?? 1 : null, rounds: kind === "swiss" ? s[0]?.rounds ?? null : null }, ...s.slice(1)]);
     update((a) => ({ ...a, poolPlan: { ...a.poolPlan, [key]: { mode: kind === "pools" ? "later" : "none", ...(a.poolPlan?.[key]?.target ? { target: a.poolPlan[key].target } : {}) } } }));
   };
   const add = () => update((a) => {
@@ -88,6 +95,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
         {(s.advance?.mode === "top_n" || s.advance?.mode === "per_pool" || s.advance?.mode === "shared_playoff") && <Input type="number" min={1} className="h-8 w-20 text-xs" aria-label={`${key} stage ${i + 1} qualifiers`} value={(s.advance.mode === "per_pool" ? s.advance.perPool : s.advance.topN) ?? ""} onChange={(e) => patchStage(key, i, { advance: { mode: s.advance?.mode ?? "top_n", [s.advance?.mode === "per_pool" ? "perPool" : "topN"]: Number(e.target.value) || null }, sharedWith: s.advance?.mode === "shared_playoff" ? key.split("::")[0] : s.sharedWith })} />}
         <Badge variant="outline">Planned</Badge>
         {i > 0 && <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Remove ${key} stage ${i + 1}`} onClick={() => stages(key, (all) => all.filter((_, j) => j !== i))}><Trash2 className="h-3.5 w-3.5" /></Button>}
+        {(s.kind === "round_robin" || s.kind === "pools") && <RRTopologyEditor stage={s} entrants={unitCapacity(draft, key, Number(draft.unitEntries[key]) || 0).stages[i].entrants} label={`${key} stage ${i + 1}`} onChange={(patch) => patchStage(key, i, patch)} />}
       </div>)}
       <Button variant="ghost" size="sm" onClick={() => stages(key, (s) => [...s, { id: newStageId(), kind: null, advance: { mode: "all_continue" } }])}><Plus className="mr-1 h-3 w-3" />Add future stage</Button>
     </div>;
@@ -116,13 +124,13 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
         <td className="p-2">{parentOnly ? <span className="text-xs text-muted-foreground">Per subdivision ↓</span> : <><select className={`${control} w-full`} aria-label={`${key} initial format`} value={initialValue} onChange={(e) => setKind(key, (e.target.value || null) as StageKind | null)}>{kinds.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</select>
           {first?.kind === "swiss" && <Input className="mt-1 h-8 w-20 text-xs" type="number" min={1} max={15} aria-label={`${key} Swiss rounds`} placeholder="Rounds" value={first.rounds ?? ""} onChange={(e) => patchStage(key, 0, { rounds: Number(e.target.value) || null })} />}
           {first?.kind === "pools" && <div className="mt-1 flex items-center gap-1"><Input className="h-8 w-16 text-xs" type="number" min={1} aria-label={`${key} pool count`} value={first.pools ?? ""} onChange={(e) => patchStage(key, 0, { pools: Number(e.target.value) || null })} /><span className="text-xs">pools</span></div>}
-          {sizes.length > 0 && <span className="text-[11px] text-muted-foreground">{sizes.join(" / ")} entries · {sizes.reduce((n, size) => n + size * (size - 1) / 2, 0)} within-pool matches</span>}</>}</td>
+          {sizes.length > 0 && <><span className="text-[11px] text-muted-foreground">{sizes.join(" / ")} entries · {rrMatchCount(sizes, first?.rrTopology)} {first?.rrTopology?.mode && first.rrTopology.mode !== "within" ? `${first.rrTopology.mode} matches` : "within-pool matches"}</span><Button size="sm" variant="ghost" className="h-7 px-0" onClick={() => setOpen((o) => ({ ...o, [key]: true }))}>Who plays whom?</Button></>}</>}</td>
         <td className="p-2">{parentOnly ? "Per subdivision ↓" : <select className={`${control} w-full`} aria-label={`${key} next stage`} value={list.length > 1 ? list[1].kind ?? "undecided" : "none"} onChange={(e) => stages(key, (s) => e.target.value === "none" ? s.slice(0, 1) : [s[0], { ...s[1], id: s[1]?.id ?? newStageId(), kind: e.target.value === "undecided" ? null : e.target.value as StageKind, advance: s[1]?.advance ?? { mode: "all_continue" } }, ...s.slice(2)])}><option value="none">No next stage</option><option value="undecided">Decide later</option>{kinds.filter((k) => k.value).map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</select>}</td>
         <td className="p-2">{parentOnly ? "—" : <label className="flex items-center gap-1 text-xs"><input type="checkbox" aria-label={`${key} playoffs`} checked={draft.playoffOverrides[key]?.choice === "playoffs"} onChange={(e) => update((a) => ({ ...a, playoffOverrides: { ...a.playoffOverrides, [key]: { ...a.playoff, ...a.playoffOverrides[key], choice: e.target.checked ? "playoffs" : "none", qualification: "later", pairing: "later" } } }))} />Playoffs</label>}
           {draft.playoffOverrides[key]?.choice === "playoffs" && <select className={`${control} mt-1`} aria-label={`${key} playoff path`} value={draft.playoffOverrides[key].rounds} onChange={(e) => update((a) => ({ ...a, playoffOverrides: { ...a.playoffOverrides, [key]: { ...a.playoffOverrides[key], rounds: Number(e.target.value) as 1 | 2 | 3 } } }))}><option value={3}>QF / SF / Final</option><option value={2}>SF / Final</option><option value={1}>Final</option></select>}</td>
         <td className="p-2"><div className="flex gap-1">{!isSub && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Duplicate ${cat}`} onClick={() => update((a) => duplicateStructureRow(a, cat))}><Copy className="h-3.5 w-3.5" /></Button>}<Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Delete ${key}`} disabled={hasPeople(key)} onClick={() => update((a) => isSub ? { ...a, subcats: { ...a.subcats, [cat]: a.subcats[cat].filter((s) => `${cat}::${s}` !== key) } } : { ...a, categories: a.categories.filter((c) => c !== cat) })}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
       </tr>
-      {open[key] && <tr><td colSpan={8} className="bg-muted/30 px-2">{parentOnly ? null : stageDetails(key)}{!isSub && subs.map((s) => <span key={s} className="sr-only">{s}</span>)}{sizes.map((size, i) => <div key={i} className="border-t border-border py-1 pl-8 text-xs">Pool {String.fromCharCode(65 + i)} · {size} expected entries · {size * (size - 1) / 2} matches · within this pool only</div>)}</td></tr>}
+      {open[key] && <tr><td colSpan={8} className="bg-muted/30 px-2">{parentOnly ? null : stageDetails(key)}{!isSub && subs.map((s) => <span key={s} className="sr-only">{s}</span>)}</td></tr>}
       {!isSub && open[key] && subs.map((s) => row(`${cat}::${s}`, cat, true))}
     </Fragment>;
   }

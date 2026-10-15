@@ -653,7 +653,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const feeSummary = fee.has === null ? "Not chosen" : !fee.has ? "No entry fee" : fee.varies ? "Varies by category" : `R${fee.amount || "?"}`;
   const discOk = units.every((u) => u.disc !== null);
   const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
-  const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;
+  const eligOf = (k: string): Elig => a.elig[k] ?? (rowStructure && k.includes("::") ? a.elig[k.split("::")[0]] : undefined) ?? DEFAULT_ELIG;
   const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
   const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
   // Eligibility = gender category +, when the event is scoped to leagues, actual
@@ -678,7 +678,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     }
     return true;
   };
-  const autoPlace = (id: string) => placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
+  const autoPlace = (id: string) => {
+    const key = placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
+    // The legacy women's-in-men's-leagues fallback must never bypass explicit Men only in the row pilot.
+    return rowStructure && key && !fits(id, key) ? "" : key;
+  };
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
   /** Import an entry-form CSV: tick matched members and place them per entered event; never creates people. */

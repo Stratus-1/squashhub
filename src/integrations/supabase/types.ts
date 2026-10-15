@@ -19284,6 +19284,10 @@ export type Database = {
         }[]
       }
       bar_allow_negative_stock: { Args: { _club: string }; Returns: boolean }
+      bar_can_manage_pins: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       bar_cost_of_sales: {
         Args: { _club: string; _from: string; _to: string }
         Returns: {

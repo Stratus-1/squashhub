@@ -14,6 +14,13 @@ const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", 
 /** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
 export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots = false }: { title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean }) {
   const { players, matrix, totals, rounds } = view;
+  const [mode, setMode] = useState<"matrix" | "calendar">("matrix");
+  const calEvents = rounds.flatMap((rd) => rd.matches.filter((m) => m.status !== "bye" && (m.date || m.playBy)).map((m) => ({
+    id: m.id, date: (m.date ?? m.playBy)!, time: m.date ? m.time ?? null : null, court: m.court ?? null,
+    title: `${m.aName} v ${m.bName}`, subtitle: `R${rd.round ?? "?"}`,
+    kind: (m.date ? "confirmed" : "play_by") as "confirmed" | "play_by",
+    state: (m.status === "played" ? "completed" : "upcoming") as "completed" | "upcoming",
+  })));
   return (
     <div className="space-y-2" data-testid="rr-pilot">
       {!matrixOnly && <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -21,6 +28,20 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
         <span className="text-muted-foreground">Same saved matches as the standings table; order follows official standings. No results can be entered here.</span>
       </div>}
       {view.issues.length > 0 && <p className="text-xs text-destructive">{view.issues.join(" ")}</p>}
+      {!matrixOnly && (
+        <div role="tablist" aria-label="Round robin view" className="grid grid-cols-2 border border-border">
+          {([["matrix", "Matrix"], ["calendar", "Calendar View"]] as const).map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
+              className={cn("px-3 py-1.5 text-xs font-medium", mode === k ? "bg-primary text-primary-foreground" : "bg-muted/40 text-muted-foreground hover:bg-muted")}>{label}</button>
+          ))}
+        </div>
+      )}
+      {mode === "calendar" && !matrixOnly ? (
+        <div className="space-y-2 text-xs" data-testid="rr-calendar">
+          <p className="text-muted-foreground">Read-only calendar for this pool. Solid blocks are saved fixtures; play-by rounds show their deadline day.</p>
+          <FixtureCalendar events={calEvents} />
+        </div>
+      ) : (
       <TournamentInteractiveViewer title={`${title} — ${matrixOnly ? "Rankings & results" : "pool matrix & order of play"}`} inlineHeight={matrixOnly ? 240 : 460} defaultFit="none">
         <div className="riverside-round-visuals space-y-4 bg-background p-3 text-xs text-foreground">
           <table className="border-collapse" data-testid="rr-matrix">

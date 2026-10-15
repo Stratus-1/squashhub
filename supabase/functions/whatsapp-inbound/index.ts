@@ -230,7 +230,11 @@ Deno.serve(async (req) => {
           response: `unknown: ${(text || buttonPayload).slice(0, 300)}`,
         });
       }
-      return twiml("Sorry, I didn't catch that. Please reply YES to get your entry link or NO to decline.");
+      return twiml(
+        interaction.kind === "champ_entry"
+          ? "Sorry, I didn't catch that. Please reply YES to get your entry link or NO to decline."
+          : "Sorry, I didn't catch that. Please reply YES if you're in or NO to decline.",
+      );
     }
 
     let reply = answer === "yes" ? "Thanks — you're confirmed." : "Noted — thanks for letting us know.";

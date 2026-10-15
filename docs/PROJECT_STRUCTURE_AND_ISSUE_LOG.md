@@ -3097,3 +3097,6 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Identified 11 Uitsig-only unpaid, uninvoiced `NSP Knock out entry fee` rows at R50 each, created 14 October. No registration, wallet, payment or visitor-pass links; active Club Champs tournament and fees excluded.
 - Removed the exact 11 fee IDs in one guarded data operation; added 22 counterbalancing ledger lines linked to original journal groups and 11 audit records naming the authorisation. Original journal entries retained; no real payments altered or refunds fabricated.
 - Read-back: no matching fee rows remain; associated debtors and tournament-income net impact both zero. Signed-in Uitsig Members screen verified the supplied example member's balance R0 rather than R50. No application changes, hardware, messaging or publishing.
+
+## 2026-10-15 — Approved Uitsig parent view publication
+- Publishing did not expose the combined Men's A page because its display predicate explicitly rejected production hosts. Owner approved enabling and publishing; removed only the hostname restriction, retaining Uitsig scope and saved parent/playoff association checks. No tournament data, settings, notifications or bookings changed.

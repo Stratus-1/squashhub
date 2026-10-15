@@ -111,7 +111,7 @@ import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwar
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
-import { parentProgressionGroups, parentProgressionPreview, parentFixtureLanes } from "@/lib/tournaments/parent-progression";
+import { parentProgressionGroups, parentProgressionEnabled, parentFixtureLanes } from "@/lib/tournaments/parent-progression";
 import { ParentCategoryProgression, type ParentFixtureDisplay } from "@/components/tournaments/ParentCategoryProgression";
 import { rrWhen } from "@/lib/tournaments/round-robin-view";
 
@@ -4087,8 +4087,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
 
-    // Compose saved children only on the approved club's preview; never change engine state.
-    if (isStructured && parentProgressionPreview(champ?.club_id, window.location.hostname)) {
+    // Compose saved children only for the approved club; never change engine state.
+    if (isStructured && parentProgressionEnabled(champ?.club_id)) {
       for (const parent of parentProgressionGroups(arch?.builder_spec, arch?.beta_lifecycle)) {
         const childViews = parent.groups.map((g) => categoryViews.find((c) => c.gn === g));
         const first = childViews[0];

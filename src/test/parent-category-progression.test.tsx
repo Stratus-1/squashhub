@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { parentProgressionGroups, parentFixtureLanes, parentProgressionPreview } from "@/lib/tournaments/parent-progression";
+import { parentProgressionGroups, parentFixtureLanes, parentProgressionEnabled } from "@/lib/tournaments/parent-progression";
 import { ParentCategoryProgression } from "@/components/tournaments/ParentCategoryProgression";
 
 const spec = { divisions: [1, 2].map((g) => ({ divisionId: `g${g}`, groupNumber: g, label: `Mens A › ${g} · Singles`, stages: [{ id: "main", name: "Round robin", kind: "round_robin", order: 0 }], deferredStages: [{ stageKey: "shared-final", name: "Final" }] })) };
 const lifecycle = { answers: { subcats: { "Mens A": ["1", "2"] }, playoffSync: true }, format_plan: { playoffOverrides: { "Mens A": { choice: "playoffs", qualification: "top_pools", pairing: "later", style: "placement", rounds: 1 } } } };
 
-describe("preview-only parent progression", () => {
+describe("approved club-only parent progression", () => {
   it("uses explicit saved membership and deduplicates a deferred shared Final", () => {
     const before = JSON.stringify({ spec, lifecycle });
     expect(parentProgressionGroups(spec, lifecycle)).toEqual([{ label: "Mens A", groups: [1, 2], stages: [{ id: "shared-final", name: "Final", deferred: true, plannedDate: undefined }], qualification: "Top pool finishers · qualifier count not configured" }]);
@@ -18,13 +18,11 @@ describe("preview-only parent progression", () => {
     expect(parentProgressionGroups(spec, { ...lifecycle, answers: { ...lifecycle.answers, playoffSync: false } })).toEqual([]);
     expect(parentProgressionGroups({ divisions: spec.divisions.slice(0, 1) }, lifecycle)).toEqual([]);
   });
-  it("never runs on production or another club", () => {
+  it("enables the approved club independently of hostname, never another club", () => {
     const id = "d8397b8a-60d3-4c4b-afee-25dab218bf19";
-    expect(parentProgressionPreview(id, "localhost")).toBe(true);
-    expect(parentProgressionPreview(id, "id-preview--example.lovable.app")).toBe(true);
-    expect(parentProgressionPreview(id, "squashhub.co.za")).toBe(false);
-    expect(parentProgressionPreview(id, "squashhub.lovable.app")).toBe(false);
-    expect(parentProgressionPreview("riverside", "localhost")).toBe(false);
+    expect(parentProgressionEnabled(id)).toBe(true);
+    expect(parentProgressionEnabled("11111111-1111-1111-1111-111111111111")).toBe(false);
+    expect(parentProgressionEnabled(undefined)).toBe(false);
   });
   it("keeps each fixture in one lane, retains IDs, and orders rounds", () => {
     const parent = parentProgressionGroups(spec, lifecycle)[0];

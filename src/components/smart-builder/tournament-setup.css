@@ -9,6 +9,10 @@
   .player-board-dialog > .flex button, .player-board-dialog > .flex input { min-height: 44px; }
 }
 .tournament-setup { font-size: 13px; line-height: 1.5; letter-spacing: 0; }
+.tournament-setup-row-pilot { grid-template-columns: minmax(0, 1fr); }
+.tournament-setup-row-pilot [data-testid="structure-overview"] table { min-width: 700px; }
+.tournament-setup-row-pilot [data-testid="structure-rows-editor"] select { min-width: 115px; }
+.tournament-setup-row-pilot [data-testid="structure-rows-editor"] [data-testid="structure-table-scroll"] { scrollbar-gutter: stable; }
 .tournament-setup-nav { padding-block: 4px 16px; border-bottom: 1px solid hsl(var(--border)); }
 .tournament-setup .tournament-setup-step:disabled { background: hsl(var(--muted) / .35); color: hsl(var(--muted-foreground)); opacity: 1; }
 .tournament-setup :is(button, input, select, textarea):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }

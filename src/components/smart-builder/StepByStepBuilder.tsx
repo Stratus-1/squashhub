@@ -1251,7 +1251,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [completing, setCompleting] = useState(false);
   const [completeErr, setCompleteErr] = useState<string | null>(null);
   const conflicts = setupConflicts(a);
-  const setupComplete = steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
+  const setupComplete = !rowStructure && steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
   // ---- Pick players: explicit save state + safe removal ----
   const curPickSig = picksSignature(a.picks, a.removedPicks);
   const [savedPickSig, setSavedPickSig] = useState<string | null>(null);
@@ -1293,6 +1293,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     finally { setSavingPlayers(false); }
   };
   const completeSetup = async (stay = false) => {
+    if (rowStructure) { toast.message("This structure preview saves drafts only. Tournament creation requires separate review."); return; }
     setCompleting(true); setCompleteErr(null);
     try {
       const dates = a.days.map((d) => d.date).filter(Boolean).sort();
@@ -1376,12 +1377,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const playerLockControls = <div className="flex flex-wrap items-center gap-2">{playerLockStatus}{playerLockButtons}</div>;
 
   return (
-    <div className="tournament-admin tournament-setup grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className={`tournament-admin tournament-setup grid items-start gap-5 ${rowStructure ? "tournament-setup-row-pilot" : "xl:grid-cols-[minmax(0,1fr)_300px]"}`}>
       <div className="min-w-0 space-y-5">
         {!tournamentId && <TemplateReviewBanner clubId={clubId} />}
         {/* progress */}
         <TournamentSetupNavigator current={step} reached={reached} onSelect={(i) => { if (!rowStructureDirty) setStep(i); }} steps={steps.map((s) => ({
-          key: s, label: s === "Pick" && pairMode ? "Select & pair players" : s === "Messaging" && notifyOnly ? "Entry notification" : STEP_LABEL[s],
+          key: s, label: rowStructure && s === "Categories" ? "Tournament structure" : s === "Pick" && pairMode ? "Select & pair players" : s === "Messaging" && notifyOnly ? "Entry notification" : STEP_LABEL[s],
           validated: okFor[s] && !["Guide", "Playoffs", "Split", "Summary"].includes(s),
         }))} />
 

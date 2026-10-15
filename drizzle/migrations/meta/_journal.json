@@ -1058,6 +1058,13 @@
       "when": 1792064711375,
       "tag": "0150_champ_match_link_booking",
       "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1792072652444,
+      "tag": "0151_bar_order_process_pilot",
+      "breakpoints": true
     }
   ]
 }

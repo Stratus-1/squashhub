@@ -52,6 +52,15 @@ export interface RoundRowLike {
   stage_key?: string | null;
   label?: string | null;
   play_by?: string | null;
+  scheduling_mode?: string | null;
+}
+
+/**
+ * Authoritative "Play by date" applied to a live round (Round scheduling → Save & Apply / Refresh writes
+ * `scheduling_mode = 'self'` + `play_by`). Wins over a stale fixed rule in the original spec.
+ */
+export function appliedRoundPlayBy(row: RoundRowLike | undefined | null): string | null {
+  return row && row.scheduling_mode === "self" && row.play_by ? String(row.play_by).slice(0, 10) : null;
 }
 
 export interface FixtureLikeForSchedule {
@@ -118,6 +127,8 @@ export function resolveFixtureSchedule(
     playBy: null,
     bookable: false,
   });
+  const applied = m.round_id && opts.rows ? appliedRoundPlayBy(opts.rows.find((r) => r.id === m.round_id)) : null;
+  if (applied) return { mode: "play_by", playBy: applied, bookable: true };
   if (st?.rule === "fixed") return scheduled();
   const own = m.play_by ? String(m.play_by).slice(0, 10) : "";
   if (own) return { mode: "play_by", playBy: own, bookable: true };

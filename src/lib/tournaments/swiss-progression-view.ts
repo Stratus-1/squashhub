@@ -194,7 +194,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * Occupant-aware bye/rematch adjustments require separately approved engine integration.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule> } = {}): { rounds: GridRound[]; issues: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
   const n = model.rows.length;
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
@@ -222,7 +222,9 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
   return { issues: [], rounds: template.map((rd): GridRound => {
     if (rd.round === 1 && savedFirst?.created) return savedFirst;
     const into = occ[rd.round - 1];
-    const schedule = proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
+    // A round switched to Play by date (applied to live rounds) overrides stale proposed court/time slots.
+    const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
+    const schedule: ProposedRoundSchedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos: number | null, bye = false): GridRow => {
       const id = !bye && pos != null ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
@@ -230,7 +232,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
     };
     const blocks: GridBlock[] = rd.pairs.map((p) => {
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
-      const slot = opts.slots?.[fixtureKey(rd.round, p.a, p.b)];
+      const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, p.a, p.b)];
       const withWhen = (when: string) => [{ ...pending(p.a), when }, { ...pending(p.b), when }] as [GridRow, GridRow];
       if (slot?.kind === "planned") return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
       if (slot?.kind === "play_by") return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };

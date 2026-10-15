@@ -51,7 +51,7 @@ describe("replacement card structure", () => {
   it("renders palette, explicit save and editable group/pool fields", () => {
     const onSave = vi.fn();
     render(<CardStructureEditor answers={base()} onSave={onSave} />);
-    fireEvent.click(screen.getAllByRole("button", { name: "Round robin", exact: true })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Round robin$/ })[0]);
     fireEvent.change(screen.getByLabelText("Division 1 expected entries"), { target: { value: "16" } });
     fireEvent.click(screen.getByRole("button", { name: "Add Group" }));
     fireEvent.change(screen.getByLabelText("Division 1::Group 1 pool count"), { target: { value: "2" } });

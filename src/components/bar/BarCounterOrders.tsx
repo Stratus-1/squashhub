@@ -5,13 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Minus, Plus, MapPin, ShoppingBag } from "lucide-react";
+import { Check, Minus, Plus, MapPin, ShoppingBag, Bell } from "lucide-react";
 
-export type BarOrderLine = { id: string; item_name: string; quantity: number; delivered_qty: number };
+export type BarOrderLine = {
+  id: string; item_name: string; quantity: number; delivered_qty: number;
+  ready_qty?: number; ready_notified_at?: string | null; ready_notify_count?: number;
+};
 export type BarOrder = {
   id: string; order_number: number; customer_name: string; fulfilment: "collect" | "deliver";
   location: string | null; note: string | null; status: string; created_at: string;
-  completed_at: string | null; tab_status: string | null; lines: BarOrderLine[];
+  completed_at: string | null; tab_status: string | null; member_linked?: boolean; lines: BarOrderLine[];
 };
 
 function ago(iso: string) {
@@ -49,6 +52,25 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
   };
+
+  /** Collect-at-bar only. Marks the item ready and notifies the member; never marks delivered or paid. */
+  const notifyReady = async (line: BarOrderLine, resend: boolean) => {
+    if (resend && !window.confirm(`Send the "${line.item_name}" ready message again?`)) return;
+    setBusy(line.id);
+    const { data, error } = await (supabase as any).rpc("bar_counter_notify_ready", {
+      _line_ids: [line.id], _resend: resend, _token: token, _club_id: token ? null : clubId,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    const r = data as any;
+    if (r?.already) toast.info("Already notified — use Resend if they need a reminder.");
+    else if (r?.notified) toast.success(`${line.item_name}: member notified it's ready`);
+    else if (r?.reason === "no_member_account") toast.info(`${line.item_name} marked ready — this customer has no member account to notify. Call them.`);
+    else if (r?.reason === "all_delivered") toast.info("Already delivered.");
+    qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
+  };
+
+  const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="space-y-2">
@@ -89,12 +111,30 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
             <div className="divide-y rounded-md border">
               {o.lines.map((l) => {
                 const done = l.delivered_qty >= l.quantity;
+                const canReady = o.fulfilment === "collect" && o.status === "open" && !done;
+                const notified = !!l.ready_notified_at;
                 return (
-                  <div key={l.id} className="flex items-center justify-between gap-2 px-2 py-1.5">
-                    <span className={`text-xs ${done ? "line-through text-muted-foreground" : ""}`}>
-                      {l.quantity}× {l.item_name}
-                    </span>
-                    <div className="flex items-center gap-1">
+                  <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-2 py-1.5">
+                    <div className="min-w-0">
+                      <span className={`text-xs ${done ? "line-through text-muted-foreground" : ""}`}>
+                        {l.quantity}× {l.item_name}
+                      </span>
+                      {o.fulfilment === "collect" && notified && !done && (
+                        <p className="text-[10px] text-primary">
+                          Ready for collection · notified {time(l.ready_notified_at!)}
+                          {(l.ready_notify_count ?? 0) > 1 ? ` (sent ${l.ready_notify_count}×)` : ""}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      {canReady && (
+                        <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
+                          disabled={busy === l.id} onClick={() => notifyReady(l, notified)}
+                          title={o.member_linked ? "Tell the member this item is ready at the bar" : "No member account linked — marks ready only"}>
+                          <Bell className="w-3 h-3" />
+                          {notified ? "Resend" : o.member_linked ? "Ready — notify" : "Mark ready"}
+                        </Button>
+                      )}
                       {l.quantity > 1 && (
                         <>
                           <Button size="icon" variant="ghost" className="h-7 w-7" aria-label={`One less ${l.item_name} delivered`}
@@ -110,7 +150,7 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
                       )}
                       <Button size="sm" variant={done ? "outline" : "default"} className="h-7 text-[11px] gap-1"
                         disabled={busy === l.id} onClick={() => setDelivered(l, done ? 0 : l.quantity)}>
-                        {done ? "Undo" : <><Check className="w-3 h-3" /> Delivered</>}
+                        {done ? "Undo" : <><Check className="w-3 h-3" /> {o.fulfilment === "collect" ? "Collected" : "Delivered"}</>}
                       </Button>
                     </div>
                   </div>

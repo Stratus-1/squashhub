@@ -1121,6 +1121,13 @@
       "when": 1792081078079,
       "tag": "0159_bar_terminal_keep_card_method",
       "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1792081501311,
+      "tag": "0160_bar_order_ready_for_collection",
+      "breakpoints": true
     }
   ]
 }

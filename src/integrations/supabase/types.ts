@@ -1287,6 +1287,9 @@ export type Database = {
           item_name: string
           order_id: string
           quantity: number
+          ready_notified_at: string | null
+          ready_notify_count: number
+          ready_qty: number
           unit_price: number
           visitor_sale_id: string | null
         }
@@ -1298,6 +1301,9 @@ export type Database = {
           item_name: string
           order_id: string
           quantity: number
+          ready_notified_at?: string | null
+          ready_notify_count?: number
+          ready_qty?: number
           unit_price: number
           visitor_sale_id?: string | null
         }
@@ -1309,6 +1315,9 @@ export type Database = {
           item_name?: string
           order_id?: string
           quantity?: number
+          ready_notified_at?: string | null
+          ready_notify_count?: number
+          ready_qty?: number
           unit_price?: number
           visitor_sale_id?: string | null
         }
@@ -19464,6 +19473,15 @@ export type Database = {
       bar_counter_device_for_token: {
         Args: { _token: string }
         Returns: string
+      }
+      bar_counter_notify_ready: {
+        Args: {
+          _club_id?: string
+          _line_ids: string[]
+          _resend?: boolean
+          _token?: string
+        }
+        Returns: Json
       }
       bar_counter_open_state: {
         Args: { _club_id?: string; _token?: string }

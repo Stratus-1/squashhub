@@ -55,4 +55,4 @@
 - [x] Riverside Tournaments: all three tabs show content inline (no Open/Details second click)
 
 - [ ] Uitsig GoBook blocks: Phase 0+2 logic done; blocked on backup/restore facility, GoBook test account, and go/no-go
-- [ ] Trace why Uitsig Club Champs progression log still shows Round 6 (find the source of "6")
+- [x] Trace why Uitsig Club Champs progression log still shows Round 6 (source: swissRoundsConfirmed=6; set to 5)

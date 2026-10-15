@@ -10,7 +10,7 @@ export function poolRankTone(index: number, count: number) {
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
 
 /** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
-export function RoundRobinPilotView({ title, view }: { title: string; view: RRPoolView }) {
+export function RoundRobinPilotView({ title, view, matrixOnly = false }: { title: string; view: RRPoolView; matrixOnly?: boolean }) {
   const { players, matrix, totals, rounds } = view;
   return (
     <div className="space-y-2" data-testid="rr-pilot">
@@ -52,7 +52,7 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
               ))}
             </tbody>
           </table>
-          <div className="space-y-2" data-testid="rr-order-of-play">
+          {!matrixOnly && <div className="space-y-2" data-testid="rr-order-of-play">
             <h4 className="font-semibold">Order of play</h4>
             {rounds.map((rd, ri) => (
               <div key={rd.label} data-round-tone={ri % 5 + 1} className="round-panel border border-border border-l-4">
@@ -79,7 +79,7 @@ export function RoundRobinPilotView({ title, view }: { title: string; view: RRPo
                 </table>
               </div>
             ))}
-          </div>
+          </div>}
         </div>
       </TournamentInteractiveViewer>
     </div>

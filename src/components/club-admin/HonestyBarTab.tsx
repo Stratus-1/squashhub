@@ -1,5 +1,4 @@
 import { OrderProcessSwitch } from "@/components/bar/OrderProcessSwitch";
-import { OrderProcessSwitch } from "@/components/bar/OrderProcessSwitch";
 import { MemberDebitSwitches } from "@/components/club-admin/bar/MemberDebitSwitches";
 import { useBarImageLibrary, suggestLibraryImages } from "@/lib/bar-image-library";
 import { showBarChargeError } from "@/lib/bar-charge-toast";

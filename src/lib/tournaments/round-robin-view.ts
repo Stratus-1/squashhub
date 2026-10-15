@@ -64,6 +64,14 @@ export function rrSlot(m: Pick<RRMatchInput, "date" | "time" | "court">): string
   return [`${da} ${mon ?? ""}`.trim(), m.time?.slice(0, 5), court].filter(Boolean).join(" ");
 }
 
+/** Compact play-by fallback for a matrix cell: "by 19 Oct"; null when none saved. */
+export function rrPlayBySlot(m: Pick<RRMatchInput, "date" | "playBy">): string | null {
+  if (m.date || !m.playBy) return null;
+  const [, mo, da] = m.playBy.split("-").map(Number);
+  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][mo - 1];
+  return `by ${da} ${mon ?? ""}`.trim();
+}
+
 /** Saved schedule only: "Wed 14 Oct 18:20 · Court 2", "Play by 25 Nov", or "Not scheduled". */
 export function rrWhen(m: Pick<RRMatchInput, "date" | "time" | "court" | "playBy">): string {
   const day = (d: string) => {

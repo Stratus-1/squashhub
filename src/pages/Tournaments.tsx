@@ -1,3 +1,4 @@
+import { isTournamentViewPilotClub } from "@/lib/tournaments/pilot-clubs";
 import { allocateAllFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
 import { isProvisionalSwissSlot } from "@/lib/tournaments/fixture-split";
 import { useMatchDayDevice, useMdNavigate } from "@/contexts/MatchDayDevice";
@@ -443,7 +444,7 @@ export default function Tournaments() {
   // entries, doubles partners). Upcoming keeps the page's live-first order.
   // Riverside pilot: club-wide fixtures (Fixtures / Progression / Past labels), read-only.
   const { data: fixturesBoardOn = false } = useClubBetaFeature(md ? undefined : clubId, "tournament_schedule_board");
-  const fixturesPilot = fixturesBoardOn && clubId === "11111111-1111-1111-1111-111111111111";
+  const fixturesPilot = fixturesBoardOn && isTournamentViewPilotClub(clubId);
   // ?champ=<id> deep-links straight to one tournament's games (e.g. after Generate draw & fixtures).
   const [champFilter, setChampFilter] = useState<string>(() => {
     if (typeof window === "undefined") return "all";

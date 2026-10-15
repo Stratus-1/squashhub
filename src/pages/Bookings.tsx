@@ -800,6 +800,9 @@ export default function Bookings() {
           scheduled_time,
           scheduled_date,
           is_bye,
+          booking_id,
+          placeholder_a,
+          placeholder_b,
           player_a:player_a_member_id(name, user_id, profiles:user_id(name)),
           player_b:player_b_member_id(name, user_id, profiles:user_id(name)),
           partner_a:partner_a_member_id(name, user_id, profiles:user_id(name)),
@@ -842,6 +845,7 @@ export default function Bookings() {
           is_friendly: false,
           is_champ: true,
           champ_match_id: m.id,
+          booking_id: m.booking_id ?? null,
           champ_title: label.title,
           champ_compact_title: label.compactTitle,
           champ_context: label.context,
@@ -878,15 +882,18 @@ export default function Bookings() {
       const key = `${b.court_id}-${String(b.start_time || "").slice(0, 5)}-${String(b.end_time || "").slice(0, 5)}`;
       const extId = String(b.external_id || "");
       const isSavedTournamentBlock = b.source === "club_event" && extId.startsWith("champ:");
+      // Any booking (incl. paid GoBook bookings) explicitly linked to a fixture
+      // via the fixture's booking_id shows as a Club Champs match. Never inferred.
+      const explicitlyLinked = (champsBookings as any[]).find((cb: any) => cb.booking_id && String(cb.booking_id) === String(b.id));
       // Player-scheduled tournament bookings carry the match id
       // (`champ:<champId>:match:<matchId>`) — resolve those by id first so the
       // names always belong to the right fixture, then fall back to overlap.
-      const linkedMatchId = extId.includes(":match:") ? extId.split(":match:")[1] : null;
-      const matchingTournament = isSavedTournamentBlock
+      const linkedMatchId = explicitlyLinked ? String(explicitlyLinked.champ_match_id) : extId.includes(":match:") ? extId.split(":match:")[1] : null;
+      const matchingTournament = explicitlyLinked || (isSavedTournamentBlock
         ? (linkedMatchId
             ? (champsBookings as any[]).find((cb: any) => cb.champ_match_id === linkedMatchId)
             : null) || (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
-        : null;
+        : null);
       if (!matchingTournament) {
         merged.set(key, b);
         continue;

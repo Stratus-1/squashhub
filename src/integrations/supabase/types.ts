@@ -1211,6 +1211,189 @@ export type Database = {
           },
         ]
       }
+      bar_order_events: {
+        Row: {
+          action: string
+          actor_device_id: string | null
+          actor_user_id: string | null
+          club_id: string
+          created_at: string
+          id: string
+          line_id: string | null
+          order_id: string
+          quantity: number | null
+        }
+        Insert: {
+          action: string
+          actor_device_id?: string | null
+          actor_user_id?: string | null
+          club_id: string
+          created_at?: string
+          id?: string
+          line_id?: string | null
+          order_id: string
+          quantity?: number | null
+        }
+        Update: {
+          action?: string
+          actor_device_id?: string | null
+          actor_user_id?: string | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          line_id?: string | null
+          order_id?: string
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_order_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_order_events_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "bar_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "bar_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_order_lines: {
+        Row: {
+          bar_item_id: string | null
+          club_id: string
+          delivered_qty: number
+          id: string
+          item_name: string
+          order_id: string
+          quantity: number
+          unit_price: number
+          visitor_sale_id: string | null
+        }
+        Insert: {
+          bar_item_id?: string | null
+          club_id: string
+          delivered_qty?: number
+          id?: string
+          item_name: string
+          order_id: string
+          quantity: number
+          unit_price: number
+          visitor_sale_id?: string | null
+        }
+        Update: {
+          bar_item_id?: string | null
+          club_id?: string
+          delivered_qty?: number
+          id?: string
+          item_name?: string
+          order_id?: string
+          quantity?: number
+          unit_price?: number
+          visitor_sale_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_order_lines_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_order_lines_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_order_lines_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "bar_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_order_lines_visitor_sale_id_fkey"
+            columns: ["visitor_sale_id"]
+            isOneToOne: false
+            referencedRelation: "bar_visitor_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_orders: {
+        Row: {
+          club_id: string
+          completed_at: string | null
+          created_at: string
+          customer_name: string
+          fulfilment: string
+          guest_tab_id: string | null
+          id: string
+          idempotency_key: string
+          location: string | null
+          note: string | null
+          order_number: number
+          status: string
+        }
+        Insert: {
+          club_id: string
+          completed_at?: string | null
+          created_at?: string
+          customer_name: string
+          fulfilment: string
+          guest_tab_id?: string | null
+          id?: string
+          idempotency_key: string
+          location?: string | null
+          note?: string | null
+          order_number: number
+          status?: string
+        }
+        Update: {
+          club_id?: string
+          completed_at?: string | null
+          created_at?: string
+          customer_name?: string
+          fulfilment?: string
+          guest_tab_id?: string | null
+          id?: string
+          idempotency_key?: string
+          location?: string | null
+          note?: string | null
+          order_number?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_orders_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_orders_guest_tab_id_fkey"
+            columns: ["guest_tab_id"]
+            isOneToOne: false
+            referencedRelation: "bar_guest_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_special_components: {
         Row: {
           club_id: string
@@ -6968,6 +7151,7 @@ export type Database = {
           bar_account_tab_enabled: boolean
           bar_card_swipe_enabled: boolean
           bar_cash_enabled: boolean
+          bar_order_process_enabled: boolean
           bar_pay_online_enabled: boolean
           baseline_amount: number | null
           baseline_currency: string | null
@@ -7127,6 +7311,7 @@ export type Database = {
           bar_account_tab_enabled?: boolean
           bar_card_swipe_enabled?: boolean
           bar_cash_enabled?: boolean
+          bar_order_process_enabled?: boolean
           bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null
@@ -7286,6 +7471,7 @@ export type Database = {
           bar_account_tab_enabled?: boolean
           bar_card_swipe_enabled?: boolean
           bar_cash_enabled?: boolean
+          bar_order_process_enabled?: boolean
           bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null
@@ -18701,6 +18887,7 @@ export type Database = {
       }
     }
     Functions: {
+      _bar_order_json: { Args: { _order_id: string }; Returns: Json }
       _champ_admin_guard: { Args: { p_champ_id: string }; Returns: undefined }
       _champ_draw_notice_mode: { Args: { p_champ_id: string }; Returns: string }
       _champ_fee_adjust: {
@@ -19137,11 +19324,24 @@ export type Database = {
         Returns: Json
       }
       bar_counter_operators: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_orders: {
+        Args: { _club_id?: string; _status?: string; _token?: string }
+        Returns: Json
+      }
       bar_counter_remove_operator: {
         Args: { _club_id: string; _device_id: string }
         Returns: Json
       }
       bar_counter_revoke_devices: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_set_delivered: {
+        Args: {
+          _club_id?: string
+          _delivered: number
+          _line_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
       bar_counter_set_pin:
         | {
             Args: { _club_id: string; _label?: string; _pin: string }
@@ -19170,6 +19370,10 @@ export type Database = {
         Args: { _code: string; _pin: string }
         Returns: Json
       }
+      bar_guest_orders: {
+        Args: { _tab_id: string; _token: string }
+        Returns: Json
+      }
       bar_item_on_menu: {
         Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
         Returns: boolean
@@ -19189,6 +19393,7 @@ export type Database = {
         }[]
       }
       bar_open_tabs: { Args: { _club_id: string }; Returns: Json }
+      bar_order_process_status: { Args: { _club_id: string }; Returns: boolean }
       bar_post_sale_journal: {
         Args: {
           _sale: Database["public"]["Tables"]["bar_visitor_sales"]["Row"]
@@ -19248,6 +19453,10 @@ export type Database = {
         Args: { _cost_per_purchase_unit: number; _item: string; _note: string }
         Returns: number
       }
+      bar_set_order_process: {
+        Args: { _club_id: string; _enabled: boolean }
+        Returns: Json
+      }
       bar_special_available: { Args: { _special: string }; Returns: number }
       bar_staff_can_serve: {
         Args: { _club_id: string; _user_id: string }
@@ -19281,6 +19490,18 @@ export type Database = {
       bar_stock_take_start: {
         Args: { _club_id: string; _date: string }
         Returns: string
+      }
+      bar_submit_guest_order: {
+        Args: {
+          _fulfilment: string
+          _idempotency_key: string
+          _lines: Json
+          _location: string
+          _note: string
+          _tab_id: string
+          _token: string
+        }
+        Returns: Json
       }
       bar_units_per_sale: {
         Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }

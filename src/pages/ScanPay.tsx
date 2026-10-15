@@ -9,7 +9,8 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { GuestOrderDialog, GuestOrderProgress } from "@/components/bar/GuestOrderDialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,6 +133,16 @@ export default function ScanPay() {
   const currency = club?.currency_code;
   const { data: catRows } = useBarCategories(club?.id);
   const { divisions: configuredDivisions } = useBarDivisions(club?.id);
+  const { data: orderProcess = false } = useQuery({
+    queryKey: ["bar-order-process", club?.id],
+    enabled: !!club?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("bar_order_process_status", { _club_id: club!.id });
+      return data === true;
+    },
+  });
+  const [orderTab, setOrderTab] = useState<GuestTab | null>(null);
+  const queryClient = useQueryClient();
 
   // The public QR page is deliberately identity-free: even if the phone is
   // still signed in, a member must identify with their membership number and
@@ -360,6 +371,11 @@ export default function ScanPay() {
         localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
         current = { tab_id: data.tab_id, token: data.token, guest_name: data.guest_name, status: "open", total: 0, lines: [] };
         setTab(current);
+      }
+      if (orderProcess) {
+        // Order process: the customer explicitly places an order (collect/deliver).
+        setOrderTab(current);
+        return;
       }
       const { data: res, error: addErr } = await (supabase as any).rpc("add_to_bar_guest_tab", {
         _tab_id: current.tab_id, _token: current.token, _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
@@ -744,6 +760,7 @@ export default function ScanPay() {
                     </div>
                   ))}
                 </div>
+                {orderProcess && <GuestOrderProgress tab={tab} />}
                 <Separator />
                 <p className="text-[11px] text-muted-foreground">
                   {tab.status === "open"
@@ -1142,7 +1159,7 @@ export default function ScanPay() {
                     onClick={addToOpenTab}
                   >
                     <Receipt className="w-4 h-4" />
-                    {tab ? "Add to my open tab" : "Open a tab for the evening"}
+                    {orderProcess ? "Place order" : tab ? "Add to my open tab" : "Open a tab for the evening"}
                   </Button>
 
                   <p className="text-[11px] text-muted-foreground text-center">
@@ -1162,6 +1179,20 @@ export default function ScanPay() {
           </>
         )}
       </main>
+      <GuestOrderDialog
+        tab={orderTab}
+        open={!!orderTab}
+        onOpenChange={(v) => { if (!v) setOrderTab(null); }}
+        lines={cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty }))}
+        onPlaced={async (o) => {
+          const t = orderTab!;
+          setOrderTab(null); setCart({}); setCheckingOut(false);
+          const { data } = await (supabase as any).rpc("get_bar_guest_tab", { _tab_id: t.tab_id, _token: t.token });
+          applyTabPayload(data);
+          queryClient.invalidateQueries({ queryKey: ["bar-guest-orders", t.tab_id] });
+          toast.success(`Order #${o.order_number} placed — the bar has it.`);
+        }}
+      />
 
       {/* Sticky cart bar — always visible while items are selected */}
       {!done && !checkingOut && count > 0 && (
@@ -1176,7 +1207,7 @@ export default function ScanPay() {
               {tab ? (
                 <Button className="gap-2 h-11" disabled={submitting} onClick={addToOpenTab}>
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-                  Add to my open tab
+                  {orderProcess ? "Place order" : "Add to my open tab"}
                 </Button>
               ) : (
                 <div className="flex gap-2">

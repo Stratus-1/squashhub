@@ -56,3 +56,4 @@
 - Tournament games split into Upcoming vs Results only via `src/lib/tournaments/fixture-split.ts` (byes/cancelled/walkovers → Results), used by every ClubChampsView layout incl. the public QR view; why: one game must never appear in both lists or differ between app and QR.
 
 - Fixed-position Swiss full draws live only in `swiss_positional_pilot_draws` (pure engine `src/lib/tournaments/swiss-positional-draw.ts`, generated once, fixtures frozen by trigger, results via `swiss_pilot_record_result`), gated by `tournament_swiss_positional_draw`; why: the pilot must never write to live club_champs_matches, rankings or bookings until sign-off.
+- Bar orders (`bar_orders`/lines/events) track fulfilment only; sales/stock are written once at submission via RPC and delivery never charges again; why: no double charging.

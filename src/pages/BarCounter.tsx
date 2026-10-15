@@ -18,6 +18,7 @@ import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BarCounterOrders } from "@/components/bar/BarCounterOrders";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -97,6 +98,7 @@ export default function BarCounter() {
 
   const clubId: string | null = code ? null : (contextClub?.id ?? (myClub as any)?.club?.id ?? null);
   const enabled = Boolean(token || clubId);
+  const [pane, setPane] = useState<"tabs" | "orders">("tabs");
 
 
   const { data: board, isLoading, error: boardError, refetch } = useQuery({
@@ -119,6 +121,15 @@ export default function BarCounter() {
   });
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
   // Signed-in staff can also see their club's edited category and division labels.
+  const { data: orderProcess = false } = useQuery({
+    queryKey: ["bar-order-process", board?.club_id],
+    enabled: !!board?.club_id,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("bar_order_process_status", { _club_id: board!.club_id });
+      return data === true;
+    },
+  });
   const { data: categoryRows = [] } = useBarCategories(code ? undefined : board?.club_id);
   const { divisions: configuredDivisions } = useBarDivisions(code ? undefined : board?.club_id);
   const menuDivisions = useMemo(() => {
@@ -440,7 +451,18 @@ export default function BarCounter() {
         </div>
       </div>
 
-      {settled ? (
+      {orderProcess && (
+        <div className="px-4 pt-3 max-w-7xl mx-auto flex gap-1">
+          <Button size="sm" variant={pane === "tabs" ? "default" : "outline"} onClick={() => setPane("tabs")}>Tabs</Button>
+          <Button size="sm" variant={pane === "orders" ? "default" : "outline"} onClick={() => setPane("orders")}>Orders</Button>
+        </div>
+      )}
+
+      {orderProcess && pane === "orders" ? (
+        <div className="p-4 max-w-7xl mx-auto">
+          <BarCounterOrders token={token} clubId={clubId} />
+        </div>
+      ) : settled ? (
         <div className="p-4 space-y-4 max-w-7xl mx-auto">
           <Card className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />

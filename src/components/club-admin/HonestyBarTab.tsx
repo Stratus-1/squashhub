@@ -1,3 +1,4 @@
+import { OrderProcessSwitch } from "@/components/bar/OrderProcessSwitch";
 import { MemberDebitSwitches } from "@/components/club-admin/bar/MemberDebitSwitches";
 import { useBarImageLibrary, suggestLibraryImages } from "@/lib/bar-image-library";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
@@ -274,6 +275,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             </div>
           ))}
         </div>
+        {clubId && <OrderProcessSwitch clubId={clubId} />}
         {(club as any)?.bar_account_tab_enabled !== false && clubId && <MemberDebitSwitches clubId={clubId} />}
       </Card>
 

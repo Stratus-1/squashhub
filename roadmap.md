@@ -61,3 +61,6 @@
 
 - [ ] Uitsig GoBook blocks: Phase 0+2 logic done; blocked on backup/restore facility, GoBook test account, and go/no-go
 - [x] Trace why Uitsig Club Champs progression log still shows Round 6 (source: swissRoundsConfirmed=6; set to 5)
+
+- [x] Bar orders stage 1: Use order process switch (off by default), guest-tab order placement (collect/deliver), counter Orders list with item delivery (backend rehearsal passed, rolled back)
+- [ ] Bar orders stage 2: member-account & online-pay orders, cancellations, poster "SCAN TO ORDER" wording

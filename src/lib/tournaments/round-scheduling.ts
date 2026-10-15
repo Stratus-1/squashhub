@@ -204,6 +204,14 @@ export async function applyPlayBy(rounds: LiveRound[], deadline: string) {
   return total;
 }
 
+/** One round per week: keep only windows inside the 7 days ending on the round's play-by date (none set = all). */
+export function windowsInRoundWeek<W extends { date: string }>(windows: W[], playBy: string | null | undefined): W[] {
+  if (!playBy) return windows;
+  const end = new Date(`${playBy.slice(0, 10)}T00:00:00Z`);
+  const start = new Date(end.getTime() - 6 * 86400000).toISOString().slice(0, 10);
+  return windows.filter((w) => w.date >= start && w.date <= playBy.slice(0, 10));
+}
+
 /** Build a timed proposal (NO writes). */
 export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], matches: LiveMatch[], minutes: number, blockName?: string | null): Promise<Allocation> {
   const ids = new Set(rounds.map((r) => r.id));
@@ -211,7 +219,9 @@ export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], ma
   const need = matches.filter((m) => m.round_id && ids.has(m.round_id) && isOpen(m) && isConfirmed(m)
     && ((!m.scheduled_date && !m.booking_id) || (club.get(m.round_id) && !!m.scheduled_date && !insideWindows(m, stage.windows))));
   const moving = new Set(need.map((m) => m.id));
-  const dates = [...new Set(stage.windows.map((w) => w.date))];
+  const deadlines = rounds.map((r) => r.play_by).filter(Boolean).map((d) => String(d).slice(0, 10)).sort();
+  const windows = windowsInRoundWeek(stage.windows, deadlines[0] ?? null);
+  const dates = [...new Set(windows.map((w) => w.date))];
   const { data: bk, error } = dates.length
     ? await db.from("bookings").select("id, court_id, date, start_time, end_time, status, external_booker_name, external_id, user_id, club_member_id, opponent_id, opponent_member_id").in("date", dates).eq("status", "active")
     : { data: [], error: null };
@@ -222,7 +232,7 @@ export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], ma
     .map((m) => ({ id: `m:${m.id}`, court_id: Number(m.court_id), date: m.scheduled_date!, start_time: m.scheduled_time!, end_time: hm(mins(m.scheduled_time!) + minutes), club_member_id: m.player_a_member_id, opponent_member_id: m.player_b_member_id }));
   return allocateRoundSlots(
     need.map((m) => ({ id: m.id, players: [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[] })),
-    stage.windows.map((w) => ({ ...w, minutes })), [...((bk ?? []) as SlotBooking[]).filter((b) => !ownBookings.has(b.id)), ...taken], { allowUnreserved: !blockName, blockName });
+    windows.map((w) => ({ ...w, minutes })), [...((bk ?? []) as SlotBooking[]).filter((b) => !ownBookings.has(b.id)), ...taken], { allowUnreserved: !blockName, blockName });
 }
 
 /** Apply an APPROVED proposal. */

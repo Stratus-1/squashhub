@@ -65,7 +65,7 @@ import { hasKnockoutStage, winnerMemberIds, winnerRows, eliminatedMemberIds } fr
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { scheduleDraws, slotOnlyDraw, timeSlots, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
-import { resolveFixtureSchedule, stageScheduleIndex } from "@/lib/tournaments/stage-schedule";
+import { appliedRoundPlayBy, resolveFixtureSchedule, stageScheduleIndex } from "@/lib/tournaments/stage-schedule";
 import {
   canScheduleFixture,
   canUnscheduleFixture,
@@ -192,6 +192,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       stage: (m?.stage_key && stageSched.get(m.stage_key)) || null,
       organiserScheduled: !m?.stage_key && !m?.booking_id && !!m?.scheduled_date && !!m?.scheduled_time &&
         stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "club",
+      rows: champRounds as any[],
     }).mode === "scheduled";
   // Beta "between subcategories" matchups: several entry groups share one set of games.
   const matchups = useMemo(() => (isStructured ? structuredMatchups(arch?.builder_spec) : []), [isStructured, arch?.builder_spec]);
@@ -611,6 +612,18 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       courts, times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0), matchMinutes: dur, restMinutes: Number(a.default_break_minutes) || 0, busy,
     });
     return pilotSlotsCache;
+  };
+  /** Round number → applied Play by deadline from the live round rows of this category (authoritative). */
+  const appliedPlayByFor = (gn: number): Record<number, string> => {
+    const out: Record<number, string> = {};
+    for (const r of (champRounds as any[]) ?? []) {
+      if (r.group_number != null && Number(r.group_number) !== gn) continue;
+      const pb = appliedRoundPlayBy(r);
+      if (pb && !out[Number(r.round_number)]) out[Number(r.round_number)] = pb;
+    }
+    // Round settings apply across categories: a round applied in one category governs its sibling rounds too.
+    for (const r of (champRounds as any[]) ?? []) { const pb = appliedRoundPlayBy(r); if (pb && !out[Number(r.round_number)]) out[Number(r.round_number)] = pb; }
+    return out;
   };
   const pilotSlotsFor = (gn: number) => Object.fromEntries(Object.entries(pilotSlots()).filter(([k]) => k.startsWith(`${gn}:`)).map(([k, v]) => [k.slice(String(gn).length + 1), v]));
   /** Human label for a group's playing format, shown next to the group name so
@@ -1279,7 +1292,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       });
       const riversidePreview = champ.club_id === "11111111-1111-1111-1111-111111111111";
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

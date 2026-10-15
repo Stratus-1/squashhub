@@ -11,11 +11,11 @@ import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, mo
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, hideCalendar = false }: { hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
+export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false }: { appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
   const [mode, setMode] = useState<"grid" | "classic" | "calendar">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
-  const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots });
+  const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots, appliedPlayBy });
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">

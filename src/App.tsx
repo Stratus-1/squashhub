@@ -98,6 +98,7 @@ const SuperAdminFederation = lazy(() => import("./pages/admin/SuperAdminFederati
 const SuperAdminTournaments = lazy(() => import("./pages/admin/SuperAdminTournaments"));
 const TournamentViewerDemo = lazy(() => import("./pages/admin/TournamentViewerDemo"));
 const PositionalSwissPilot = lazy(() => import("./pages/admin/PositionalSwissPilot"));
+const SuperAdminTournamentPreview = lazy(() => import("./pages/admin/SuperAdminTournamentPreview"));
 const SmartTournamentBuilder = lazy(() => import("./pages/admin/SmartTournamentBuilder"));
 const SuperAdminRankings = lazy(() => import("./pages/admin/SuperAdminRankings"));
 const SuperAdminUsers = lazy(() => import("./pages/admin/SuperAdminUsers"));
@@ -604,6 +605,7 @@ function AppRoutes() {
           <Route path="tournaments" element={<SuperAdminTournaments />} />
           <Route path="tournaments/viewer-demo" element={<TournamentViewerDemo />} />
           <Route path="tournaments/positional-swiss-pilot" element={<PositionalSwissPilot />} />
+          <Route path="tournaments/snapshot-preview" element={<SuperAdminTournamentPreview />} />
           <Route path="tournaments/smart" element={<SmartTournamentBuilder />} />
           <Route path="tournaments/smart/:draftId" element={<SmartTournamentBuilder />} />
           <Route path="users" element={<SuperAdminUsers />} />

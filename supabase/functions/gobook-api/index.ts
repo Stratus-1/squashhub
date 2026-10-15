@@ -752,14 +752,25 @@ Deno.serve(async (req) => {
       }
 
 
-      const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
+      const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id, external_booker_name").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
       if (existingError) throw existingError;
-      const stale = (existing ?? []).filter((row: any) => !seen.has(row.external_id)).map((row: any) => row.id);
+      const staleRows = (existing ?? []).filter((row: any) => !seen.has(row.external_id));
+      // Protected: Club Championship holds and any booking explicitly linked to
+      // a tournament fixture are never auto-cancelled by a sync (a missed/partial
+      // GoBook read must not wipe the schedule). Moving holds is an admin re-run.
+      const { data: linked } = staleRows.length
+        ? await admin.from("club_champs_matches").select("booking_id").in("booking_id", staleRows.map((r: any) => r.id))
+        : { data: [] as any[] };
+      const linkedIds = new Set((linked ?? []).map((r: any) => String(r.booking_id)));
+      const isProtected = (r: any) => linkedIds.has(String(r.id)) || /^club championship/i.test(String(r.external_booker_name ?? "").trim());
+      const protectedRows = staleRows.filter(isProtected);
+      const stale = staleRows.filter((r: any) => !isProtected(r)).map((r: any) => r.id);
       if (stale.length) {
         const { error } = await admin.from("bookings").update({ status: "cancelled" }).in("id", stale);
         if (error) throw error;
       }
-      return json({ success: true, date, synced, cancelled: stale.length, skipped });
+      if (protectedRows.length) console.warn("gobook-api sync kept protected champs bookings", date, protectedRows.length);
+      return json({ success: true, date, synced, cancelled: stale.length, skipped, protected_kept: protectedRows.length });
     }
 
     if (action === "book") {

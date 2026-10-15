@@ -486,13 +486,20 @@ async function syncClub(
     // Cancellations: delete any gobook rows for this date+club not in seen set.
     const { data: existing } = await admin
       .from("bookings")
-      .select("id, external_id")
+      .select("id, external_id, external_booker_name")
       .eq("club_id", clubId)
       .eq("source", "gobook")
       .eq("date", dateStr);
-    const stale = (existing ?? []).filter(
+    const staleRows = (existing ?? []).filter(
       (r: any) => r.external_id && !seenExternal.has(r.external_id),
     );
+    // Never remove Club Championship holds or fixture-linked bookings on sync.
+    const { data: linked } = staleRows.length
+      ? await admin.from("club_champs_matches").select("booking_id").in("booking_id", staleRows.map((r: any) => r.id))
+      : { data: [] as any[] };
+    const linkedIds = new Set((linked ?? []).map((r: any) => String(r.booking_id)));
+    const stale = staleRows.filter((r: any) =>
+      !linkedIds.has(String(r.id)) && !/^club championship/i.test(String(r.external_booker_name ?? "").trim()));
     if (stale.length > 0) {
       const { error: delErr } = await admin
         .from("bookings")

@@ -83,3 +83,37 @@ describe("reconcile diff (Riverside Round 2 shape)", () => {
     expect(d.roundsToUpdate).toEqual(["r1"]);
   });
 });
+
+import { stageSignature, insideWindows } from "./round-scheduling";
+describe("in-place round edits are detected immediately", () => {
+  const plan = (patch: any) => ({ stages: [{ id: "st2", name: "Round 2", mode: "scheduled", date: D, from: "18:00", to: "21:00", courtIds: ["1", "2"], ...patch }] });
+  const rounds: LiveRound[] = [{ id: "r2", label: "Round 2", round_number: 2, scheduling_mode: "club", play_by: null, group_number: 1 }];
+  const m = (o: Partial<LiveMatch>): LiveMatch => ({ id: "m1", round_id: "r2", status: "scheduled", is_bye: false, booking_id: null, scheduled_date: D, scheduled_time: "18:00", court_id: 1, play_by: null, player_a_member_id: "a", player_b_member_id: "b", ...o });
+  it("in sync when allocation sits inside the window", () => {
+    const [s] = stageSchedules(plan({}));
+    expect(diffRound(s, rounds, [m({})]).inSync).toBe(true);
+  });
+  it("timed date change flags fixtures outside the new window", () => {
+    const [s] = stageSchedules(plan({ date: "2026-10-28" }));
+    const d = diffRound(s, rounds, [m({})]);
+    expect(d.inSync).toBe(false); expect(d.outsideWindow).toEqual(["m1"]);
+  });
+  it("court and time window changes are detected", () => {
+    expect(diffRound(stageSchedules(plan({ courtIds: ["2"] }))[0], rounds, [m({})]).outsideWindow).toEqual(["m1"]);
+    expect(diffRound(stageSchedules(plan({ from: "19:00" }))[0], rounds, [m({})]).outsideWindow).toEqual(["m1"]);
+  });
+  it("play-by deadline edit needs refresh; completed results untouched", () => {
+    const pr: LiveRound[] = [{ ...rounds[0], scheduling_mode: "self", play_by: "2026-11-13" }];
+    const [s] = stageSchedules(plan({ mode: "play_by", deadline: "2026-11-20" }));
+    const d = diffRound(s, pr, [m({ scheduled_date: null, scheduled_time: null, court_id: null, play_by: "2026-11-13" }), m({ id: "m2", status: "completed" })]);
+    expect(d.inSync).toBe(false); expect(d.deadlineUpdates).toEqual(["m1"]); expect(d.untouched).toBe(1);
+  });
+  it("signature ignores non-meaningful differences", () => {
+    const a = stageSchedules(plan({ courtIds: ["1", "2"] }))[0], b = stageSchedules(plan({ courtIds: ["2", "1"], deadline: "x" }))[0];
+    expect(stageSignature(a)).toBe(stageSignature(b));
+    expect(stageSignature(a)).not.toBe(stageSignature(stageSchedules(plan({ to: "22:00" }))[0]));
+  });
+  it("player-booked match in a self round is not flagged", () => {
+    expect(insideWindows({ scheduled_date: D, scheduled_time: "18:30", court_id: 2 }, stageSchedules(plan({}))[0].windows)).toBe(true);
+  });
+});

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { fromExt } from "@/lib/supabase-ext";
 import {
-  applyPlayBy, applyTimed, diffRound, loadRoundState, proposeTimed, roundsForStage, saveStageSettings,
+  applyPlayBy, applyTimed, diffRound, loadRoundState, proposeTimed, roundsForStage, saveStageSettings, stageSchedules, stageSignature,
   type Allocation, type LiveMatch, type LiveRound, type StageSchedule,
 } from "@/lib/tournaments/round-scheduling";
 
@@ -20,7 +20,10 @@ type Review =
  * Round SCHEDULE management (never pairings). "Save & Apply to Fixtures" saves settings and reconciles the round's
  * matches; "Refresh Fixtures & Log" reconciles settings saved earlier. Timed allocations are previewed and approved.
  */
-export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string; tournamentId: string }) {
+/** Settings patch persisted for one stage (same fields the builder's round cards edit). */
+const stagePatch = (raw: any) => ({ mode: raw.mode, deadline: raw.deadline ?? null, date: raw.date ?? null, from: raw.from ?? null, to: raw.to ?? null, courtIds: raw.courtIds ?? [], extraDays: raw.extraDays ?? [] });
+
+export function RoundSchedulingEditor({ clubId, tournamentId, draftStages, onStagePatch }: { clubId: string; tournamentId: string; draftStages?: any[]; onStagePatch?: (id: string, patch: Record<string, unknown>) => void }) {
   const qc = useQueryClient();
   const [st, setSt] = useState<State | null>(null);
   const [courts, setCourts] = useState<Array<{ id: number; name: string }>>([]);
@@ -36,8 +39,37 @@ export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string
     fromExt("courts").select("id, name").eq("club_id", clubId).order("name").then(({ data }) => setCourts((data ?? []) as any));
   }, [clubId, tournamentId]);
 
-  const rows = useMemo(() => (st ? st.stages.map((s) => { const rounds = roundsForStage(s, st.rounds); return { s, rounds, diff: diffRound(s, rounds, st.matches) }; }).filter((r) => r.rounds.length) : []), [st]);
+  // The round cards above edit `draftStages` in memory; compare by stable stage ID so this panel reacts immediately.
+  const draft = useMemo(() => (draftStages ? new Map(stageSchedules({ stages: draftStages }).map((s) => [s.id, s])) : null), [draftStages]);
+  const rawDraft = (id: string) => draftStages?.find((x) => String(x.id) === id);
+  const rows = useMemo(() => (st ? st.stages.map((saved) => {
+    const s = draft?.get(saved.id) ?? saved;
+    const rounds = roundsForStage(s, st.rounds);
+    return { s, saved, unsaved: stageSignature(s) !== stageSignature(saved), rounds, diff: diffRound(s, rounds, st.matches) };
+  }).filter((r) => r.rounds.length) : []), [st, draft]);
+
+  // Prompt once per meaningful change (signature), only when fixtures actually differ.
+  const prompted = useRef<Map<string, string>>(new Map());
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!st) return;
+    for (const r of rows) {
+      const sig = stageSignature(r.s);
+      const prev = prompted.current.get(r.s.id);
+      prompted.current.set(r.s.id, sig);
+      if (prev === undefined || prev === sig || r.diff.inSync || review) continue;
+      toast("Round scheduling changed", {
+        id: `round-sched-${r.s.id}`,
+        description: `${r.s.name}: apply updated dates/times to existing fixtures and Progression Log now?`,
+        duration: 15000,
+        action: { label: "Apply", onClick: () => { panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); reconcileRef.current?.(r.s); } },
+        cancel: { label: "Not now", onClick: () => {} },
+      });
+    }
+  }, [rows, st, review]);
+  const reconcileRef = useRef<((s: StageSchedule) => void) | null>(null);
   if (!st || !rows.length) return null;
+  const stale = rows.filter((r) => !r.diff.inSync);
 
   const courtName = (id: number) => courts.find((c) => c.id === id)?.name ?? `Court ${id}`;
   const matchLabel = (id: string) => {
@@ -60,7 +92,13 @@ export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string
   };
 
   /** Reconcile one stage with its (already saved) settings: preview first, nothing written yet. */
-  const reconcile = async (s: StageSchedule, rounds: LiveRound[], fromSwitch = false) => {
+  const reconcile = async (s: StageSchedule, _rounds?: LiveRound[], fromSwitch = false) => {
+    const before = st.stages.find((x) => x.id === s.id);
+    const raw = rawDraft(s.id);
+    if (raw && before && stageSignature(s) !== stageSignature(before)) {
+      await saveStageSettings(tournamentId, s.id, stagePatch(raw));
+      fromSwitch = fromSwitch || (s.mode === "scheduled" && before.mode === "play_by");
+    }
     const fresh = await reload();
     const stage = fresh.stages.find((x) => x.id === s.id) ?? s;
     const live = roundsForStage(stage, fresh.rounds);
@@ -80,18 +118,22 @@ export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string
     }
   };
 
+  reconcileRef.current = (s) => { reconcile(s).catch((e) => toast.error(e?.message || "Could not refresh fixtures")); };
+
   const saveAndApply = async (s: StageSchedule, rounds: LiveRound[]) => {
     setBusy(true);
     try {
       if (form.mode === "play_by") {
         if (!form.deadline) throw new Error("Choose a play-by date");
         await saveStageSettings(tournamentId, s.id, { mode: "play_by", deadline: form.deadline });
+        onStagePatch?.(s.id, { mode: "play_by", deadline: form.deadline });
       } else {
         if (!form.date || !form.courtIds.length) throw new Error("Choose a date and at least one court");
         await saveStageSettings(tournamentId, s.id, { mode: "scheduled", date: form.date, from: form.from, to: form.to, courtIds: form.courtIds.map(String) });
+        onStagePatch?.(s.id, { mode: "scheduled", date: form.date, from: form.from, to: form.to, courtIds: form.courtIds.map(String) });
       }
       toast.success("Round settings saved");
-      await reconcile(s, rounds, form.mode === "scheduled" && s.mode === "play_by");
+      await reconcile({ ...s, mode: form.mode }, rounds, form.mode === "scheduled" && s.mode === "play_by");
     } catch (e: any) { toast.error(e?.message || "Could not save round settings"); }
     finally { setBusy(false); }
   };
@@ -120,8 +162,14 @@ export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string
   };
 
   return (
-    <section className="rounded-md border border-border p-3 space-y-2">
+    <section ref={panelRef} className="rounded-md border border-border p-3 space-y-2" aria-label="Round scheduling">
       <h3 className="text-sm font-semibold">Round scheduling</h3>
+      {stale.length > 0 && (
+        <div role="status" className="rounded border border-destructive/60 bg-destructive/10 p-2 text-xs flex flex-wrap items-center justify-between gap-2">
+          <span><strong>Round scheduling changed.</strong> Apply updated dates/times to existing fixtures and Progression Log now? ({stale.map((r) => r.s.name).join(", ")})</span>
+          {stale.length === 1 && <Button size="sm" disabled={busy} onClick={() => reconcileRef.current?.(stale[0].s)}>Apply</Button>}
+        </div>
+      )}
       <p className="text-xs text-muted-foreground">Schedule only — pairings, results and locks are never changed here. Draws are generated separately. Tournament block bookings and personally named bookings are never cancelled.</p>
       {rows.map(({ s, rounds, diff }) => (
         <div key={s.id} className="rounded border border-border p-2 text-xs space-y-2">
@@ -129,6 +177,7 @@ export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string
             <span>
               <strong>{s.name}</strong> · {s.mode === "play_by" ? `Play by ${s.deadline ?? "—"}` : `Timed · ${s.windows.map((w) => `${w.date} ${w.from}–${w.to}`).join(", ") || "no window"}`}
               {" · "}<span className={diff.inSync ? "text-muted-foreground" : "text-destructive"}>{diff.inSync ? "Fixtures in sync" : "Fixtures need refresh"}</span>
+              {diff.outsideWindow.length > 0 && <span className="text-destructive"> · {diff.outsideWindow.length} fixture(s) outside the new window</span>}
             </span>
             {edit !== s.id && (
               <span className="flex gap-1">

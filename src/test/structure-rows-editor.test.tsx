@@ -57,6 +57,33 @@ describe("row structure editor", () => {
     expect(a.stagePlans?.["Mens A"][0].kind).toBe("round_robin");
     expect(a.formatOverrides["Mens A"].kind).toBe("pools");
   });
+  it("saves exact between/custom choices without applying a draw and restores them on remount", () => {
+    const save = draw();
+    fireEvent.click(screen.getByRole("button", { name: "Expand Ladies A" }));
+    fireEvent.click(screen.getByRole("button", { name: "Between selected pools/groups · 96 matches" }));
+    expect(screen.getByTestId("structure-capacity").textContent).toContain("192");
+    fireEvent.click(screen.getByRole("button", { name: "Custom group matchup matrix · 96 matches" }));
+    fireEvent.click(screen.getByLabelText("Ladies A stage 1 Pool A vs Pool A"));
+    expect(screen.getByTestId("structure-capacity").textContent).toContain("198");
+    expect(save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Save Structure" }));
+    const next = save.mock.calls[0][0] as StepAnswers;
+    expect(next.stagePlans?.["Ladies A"][0].rrTopology?.mode).toBe("custom");
+    expect(next.stagePlans?.["Ladies A"][0].rrTopology?.edges).toContainEqual([0, 0]);
+    expect(answers().stagePlans?.["Ladies A"][0].rrTopology).toBeUndefined();
+  });
+  it("keeps unequal allocation and blocks invalid totals or stale group edges", () => {
+    draw();
+    fireEvent.click(screen.getByRole("button", { name: "Expand Ladies A" }));
+    fireEvent.change(screen.getByLabelText("Ladies A stage 1 Pool A entries"), { target: { value: "5" } });
+    expect((screen.getByRole("button", { name: "Save Structure" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Ladies A stage 1 Pool B entries"), { target: { value: "3" } });
+    expect((screen.getByRole("button", { name: "Save Structure" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Between selected pools/groups · 95 matches" }));
+    fireEvent.change(screen.getByLabelText("Ladies A stage 1 group count"), { target: { value: "2" } });
+    expect(screen.getByLabelText("Structure issues").textContent).toContain("unavailable groups");
+    expect((screen.getByRole("button", { name: "Save Structure" }) as HTMLButtonElement).disabled).toBe(true);
+  });
   it("fails closed outside flagged Riverside preview new drafts", () => {
     const r = "11111111-1111-1111-1111-111111111111";
     expect(rowStructurePilot(r, true, "localhost")).toBe(true);

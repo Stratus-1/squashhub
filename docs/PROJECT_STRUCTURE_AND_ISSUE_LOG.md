@@ -1,3 +1,7 @@
+### 2026-10-15 — Riverside preview round-robin matchup topology
+- Added per-stage Within / selected Between / Custom group matrix to the gated new-draft row builder, optional unequal expected group allocations, explicit match examples/counts and canonical unordered-edge capacity maths. Missing group coverage, invalid totals and stale matrix references block Save rather than silently changing saved choices.
+- Saved choices remain in local stage plans. No generator, bookings, pool boundaries, standings, results, qualification rules or live records are changed. Cross-group application remains blocked by the existing new-draft pilot creation gate until mapped-engine/standings/qualification review and separate approval; no publication or Uitsig changes.
+
 ### 2026-10-15 — Riverside preview row-based structure first pass
 - Replaced separate category/structure pages for flagged Riverside preview new drafts with direct-first rows, preset/custom names, independent type/discipline, expected entries, expandable subdivisions/pools and ordered future-stage plans. Optional guidance applies only explicitly; one local Save Structure, dirty-navigation guard, reload persistence and no creation/apply path in this pilot.
 - Backward-compatible pure adapters preserve existing answers; duplication excludes entrants/pairs and gives stages fresh IDs. Existing tournaments, published hosts and other clubs retain prior flow. No backend/data changes or publishing in this refinement.

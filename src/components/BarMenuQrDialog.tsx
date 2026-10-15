@@ -36,7 +36,8 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
   const [resolved, setResolved] = useState<{ clubId: string; subdomain?: string | null; url: string } | null>(null);
   const url = resolved?.clubId === clubId && resolved.subdomain === subdomain ? resolved.url : null;
   const accountEnabled = posterClub?.bar_account_tab_enabled !== false;
-  const cardOnlineEnabled = posterClub?.bar_pay_online_enabled !== false;
+  const cardOnlineEnabled = posterClub?.bar_pay_online_enabled !== false
+    && ["stitch", "yoco", "payfast"].includes(String(posterClub?.payment_gateway || "").toLowerCase());
   const swipeEnabled = posterClub?.bar_card_swipe_enabled !== false;
   const cashEnabled = posterClub?.bar_cash_enabled === true;
   const paymentMethods = barPosterPaymentMethods({ accountEnabled, cardOnlineEnabled, swipeEnabled, cashEnabled });

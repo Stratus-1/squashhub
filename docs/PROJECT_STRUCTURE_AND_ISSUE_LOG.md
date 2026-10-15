@@ -3111,3 +3111,6 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Cause 1: `sync_event_rsvp_to_instances` copies a series-level WhatsApp "No" onto every future occurrence; the reminder job skipped `declined`, so 8 of 12 Thursday Social invitees stopped getting reminders.
 - Cause 2: reminders used `club_notice` (view-details link) with no `interaction`, so YES/NO replies were not recorded.
 - Fix: reminders ask every occurrence invitee (invited/confirmed/declined) via `rsvp_question` with `interaction.kind = event_instance_rsvp` (target = instance id); `whatsapp-inbound` writes that reply to `club_event_instance_rsvps` for that occurrence only. Opt-outs still respected.
+
+### 2026-10-15 — Planned Format stage planner pilot (Riverside)
+Added compact per-category stage planner behind `tournament_stage_planner` (Riverside only). Plan saves are versioned and display-only impact preview; no apply-to-draw yet. Pre-existing failures: StepByStepBuilder tests lack QueryClientProvider (swissPilot hook), plus 9 unrelated suites.

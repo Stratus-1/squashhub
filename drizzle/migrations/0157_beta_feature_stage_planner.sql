@@ -1,0 +1,2 @@
+ALTER TABLE public.club_beta_features DROP CONSTRAINT club_beta_features_feature_check;
+ALTER TABLE public.club_beta_features ADD CONSTRAINT club_beta_features_feature_check CHECK (feature = ANY (ARRAY['tournament_beta','ai_actions','tournament_viewer_shell','tournament_swiss_progression_view','tournament_pool_matrix_view','tournament_bracket_view','tournament_schedule_board','tournament_swiss_category_rounds','tournament_swiss_positional_draw','tournament_stage_planner']::text[]));

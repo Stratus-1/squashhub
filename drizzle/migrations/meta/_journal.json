@@ -1093,6 +1093,20 @@
       "when": 1792078851446,
       "tag": "0155_bar_open_for_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1792080002059,
+      "tag": "0156_tournament_plan_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1792080626201,
+      "tag": "0157_beta_feature_stage_planner",
+      "breakpoints": true
     }
   ]
 }

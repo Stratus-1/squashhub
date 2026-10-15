@@ -17098,6 +17098,67 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_plan_versions: {
+        Row: {
+          applied_at: string | null
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          stage_plans: Json
+          starting_default: Json | null
+          tournament_id: string
+          version: number
+        }
+        Insert: {
+          applied_at?: string | null
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          stage_plans?: Json
+          starting_default?: Json | null
+          tournament_id: string
+          version: number
+        }
+        Update: {
+          applied_at?: string | null
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          stage_plans?: Json
+          starting_default?: Json | null
+          tournament_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_plan_versions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_plan_versions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_plan_versions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_pools: {
         Row: {
           created_at: string
@@ -21759,6 +21820,16 @@ export type Database = {
       save_my_application_progress: {
         Args: { _club_member_id: string; _progress: Json }
         Returns: boolean
+      }
+      save_tournament_plan_version: {
+        Args: {
+          _expected_version: number
+          _note?: string
+          _stage_plans: Json
+          _starting_default: Json
+          _tournament_id: string
+        }
+        Returns: Json
       }
       scope_eligible_club_ids: {
         Args: { _club_id: string; _owner_org_id: string; _scope: string }

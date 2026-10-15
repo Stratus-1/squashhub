@@ -1,7 +1,7 @@
 import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
 import { newStageId, resolveStagePlan, setCategoryStagePlan, type StagePlanItem } from "./stage-plan";
 import { placesOf } from "./pick-entries";
-import { balancedSizes } from "./pool-plan";
+import { rrSizes } from "./rr-topology";
 
 export const DIVISION_PRESETS = [
   { name: "Men's Singles", type: "mens", discipline: "singles" },
@@ -13,8 +13,8 @@ export const DIVISION_PRESETS = [
 ] as const;
 
 export const STRUCTURE_HELP = {
-  round_robin: "Everyone in the defined group or pool plays everyone else in that same group or pool.",
-  pools: "Round robin within each pool only. Pool qualifiers meet only in a separately configured later stage.",
+  round_robin: "Within: everyone plays everyone else in the same group. Between: everyone plays everyone in selected other groups. Custom: only the group meetings you select, with optional within-group play.",
+  pools: "Pools assign entrants to groups. Who plays whom is a separate stage choice; qualification and later playoffs are configured separately.",
   swiss: "Entrants typically play a specified number of rounds. After initial pairing, opponents have similar current results; this is not single elimination. Fixed-position Swiss uses the club's configured positional pairing rules.",
   knockout: "Losing eliminates an entrant from the title bracket, unless a consolation or positional draw is configured.",
   playoffs: "Qualifying stages: quarterfinals, semifinals and final, or a custom sequence. Qualification and pairings must be confirmed separately.",
@@ -102,7 +102,7 @@ export function structureRowIssues(a: StepAnswers): string[] {
 
 export function poolSizesFor(a: StepAnswers, key: string, stage: StagePlanItem) {
   const n = Number(a.unitEntries[key]) || 0;
-  return n > 0 && stage.kind === "pools" && stage.pools ? balancedSizes(n, stage.pools) : [];
+  return n > 0 && (stage.kind === "pools" || stage.kind === "round_robin") ? rrSizes(n, stage.pools ?? 1, stage.rrTopology) : [];
 }
 
 /** New UI remains unavailable on published hosts or existing tournaments, even if flags broaden. */

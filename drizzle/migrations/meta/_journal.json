@@ -1135,6 +1135,13 @@
       "when": 1792081680521,
       "tag": "0161_bar_counter_payment_invariant",
       "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1792092704148,
+      "tag": "0162_allow_structure_step_beta",
+      "breakpoints": true
     }
   ]
 }

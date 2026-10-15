@@ -499,13 +499,21 @@ export default function BarCounter() {
         </div>
       ) : !activeTab ? (
         <div className="p-4 space-y-4 max-w-7xl mx-auto">
-          <Card className="p-3 flex gap-2">
+          <Card className="p-3 flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="Name for a new tab"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && openTab()}
               className="h-11"
+            />
+            <Input
+              placeholder="Cell number (optional)"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && openTab()}
+              inputMode="tel"
+              className="h-11 sm:max-w-[180px]"
             />
             <Button className="h-11 gap-1" disabled={!newName.trim() || busy} onClick={openTab}>
               <Plus className="w-4 h-4" /> Tab
@@ -526,6 +534,9 @@ export default function BarCounter() {
                 >
                   <div className="min-w-0">
                     <div className="font-semibold truncate">{t.guest_name}</div>
+                    {(t as any).phone && (
+                      <div className="text-[11px] text-muted-foreground">{(t as any).phone}</div>
+                    )}
                     <div className="text-[11px] text-muted-foreground">
                       open {formatDistanceToNowStrict(new Date(t.opened_at))} · {t.lines.length} item
                       {t.lines.length === 1 ? "" : "s"}
@@ -554,7 +565,12 @@ export default function BarCounter() {
 
           <Card className="p-3">
             <div className="flex items-center justify-between">
-              <div className="font-semibold">{activeTab.guest_name}</div>
+              <div>
+                <div className="font-semibold">{activeTab.guest_name}</div>
+                {(activeTab as any).phone && (
+                  <div className="text-[11px] text-muted-foreground">{(activeTab as any).phone}</div>
+                )}
+              </div>
               <Badge variant="secondary" className="text-sm">{money(activeTab.total)}</Badge>
             </div>
             {activeTab.lines.length > 0 && (

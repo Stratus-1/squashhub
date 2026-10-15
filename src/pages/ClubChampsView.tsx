@@ -1229,7 +1229,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Riverside Swiss pilot: models built while rendering standings, reused on the Results tab (same data, no recalculation).
   const pilotSwissModels: Record<number, any> = {};
   // Riverside round-robin pilot: read-only pool matrix + order of play per pool, from the same saved matches.
-  const rrPilotOn = (gn: number) => isTournamentViewPilotClub(champ?.club_id) && pilotViewerOn && pilotPoolMatrixOn && canManage
+  const rrPilotOn = (gn: number) => isTournamentViewPilotClub(champ?.club_id) && pilotViewerOn && pilotPoolMatrixOn
     && !swissStageFor(gn) && !isSwissForLeague(gn) && isRoundRobinForLeague(gn) && !isDoublesLeague(gn) && !matchupForGroup(matchups, gn);
   const renderRoundRobinPilot = (gn: number) => {
     if (!rrPilotOn(gn)) return null;

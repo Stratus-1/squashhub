@@ -4113,9 +4113,14 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           return { group: g, label: getGroupLabel(champ, g), format: formatLabelFor(g), standings: renderStandingsTable(rows),
             matrix: division?.stages?.[0]?.kind === "round_robin" ? buildRoundRobinView({
               players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })), rankOrder: rows.map((r: any) => r.club_member_id),
-              matches: childMatches.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id, b: m.player_b_member_id,
-                winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, status: m.status, isBye: !!m.is_bye, forfeitMemberId: m.forfeit_member_id,
-                date: m.scheduled_date ?? null, time: m.scheduled_time ?? null, court: m.court?.name ?? null })),
+              matches: childMatches.map((m: any) => {
+                const mStage = division?.stages?.find((s: any) => s.id === m.stage_key);
+                const mSchedule = resolveFixtureSchedule(m, { stage: stageSched.get(m.stage_key), rows: champRounds as any[] });
+                const mDeadline = m.play_by ?? mSchedule.playBy ?? (mStage?.schedule?.rule === "play_by" ? mStage.schedule.roundDates?.[(Number(m.round_number) || 1) - 1] ?? mStage.schedule.deadline : null);
+                return { id: m.id, round: m.round_number ?? null, a: m.player_a_member_id, b: m.player_b_member_id,
+                  winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, status: m.status, isBye: !!m.is_bye, forfeitMemberId: m.forfeit_member_id,
+                  date: m.scheduled_date ?? null, time: m.scheduled_time ?? null, court: m.court?.name ?? null, playBy: mDeadline ?? null };
+              }),
             }) : null,
             upcoming: split.upcoming.map(displayFixture), results: split.results.map(displayFixture) };
         })} />;

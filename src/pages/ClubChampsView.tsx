@@ -1675,7 +1675,9 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Standings | Upcoming Fixtures | Results — shared by the signed-in page and the public QR view.
   const [catTabState, setCatTab] = useState<TournamentTab>(() => typeof window === "undefined" ? "standings" : tabFromParam(new URLSearchParams(window.location.search).get("view")));
   // Embedded in the Tournaments "Progression & Log" tab: progression only (fixtures/results live in the top-level tabs).
-  const catTab: TournamentTab = embeddedChampId ? "standings" : catTabState;
+  // New tournament layout (all clubs): fixtures/results live on the Tournaments page, so the full page shows progression only.
+  const pilotLayout = !!embeddedChampId || (!md && !inlineStandings && isTournamentViewPilotClub(champ?.club_id));
+  const catTab: TournamentTab = pilotLayout ? "standings" : catTabState;
   const [catGroup, setCatGroup] = useState<number | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
@@ -4095,13 +4097,19 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     );
     const categoryViewsNode = activeCat ? (
       <Card key="category-views" className={cn("rounded-none overflow-hidden", activeCat.leading && "border-primary/40")}>
-        {!embeddedChampId && <div role="tablist" aria-label="Tournament view" className="flex">
+        {!embeddedChampId && pilotLayout && (
+          <div className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm">
+            <span className="font-medium">Progression &amp; Log</span>
+            <Button size="sm" variant="outline" onClick={() => { try { window.localStorage.setItem("tournaments.pilotChamp", champ.id); } catch { /* ignore */ } window.location.assign("/tournaments"); }}>Upcoming &amp; past fixtures</Button>
+          </div>
+        )}
+        {!pilotLayout && <div role="tablist" aria-label="Tournament view" className="flex">
           {tabBtn("standings", "Standings")}
           {tabBtn("upcoming", "Upcoming Fixtures")}
           {tabBtn("results", "Results")}
         </div>}
         {categoryViews.length > 1 && (
-          <div className={cn("border-b bg-muted/40 px-3 py-2", embeddedChampId && isTournamentViewPilotClub(champ?.club_id) && "riverside-category-selector")}>
+          <div className={cn("border-b bg-muted/40 px-3 py-2", pilotLayout && "riverside-category-selector")}>
             <div className="flex gap-1.5 overflow-x-auto pb-0.5 category-options" role="group" aria-label="Category">
               {categoryViews.map((c, index) => (
                 <Button
@@ -4127,7 +4135,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             </div>
           </div>
         )}
-        <CardContent id="cat-tabpanel" role={embeddedChampId ? undefined : "tabpanel"} aria-labelledby={embeddedChampId ? undefined : `cat-tab-${catTab}`} className="pt-4 space-y-4">
+        <CardContent id="cat-tabpanel" role={pilotLayout ? undefined : "tabpanel"} aria-labelledby={pilotLayout ? undefined : `cat-tab-${catTab}`} className="pt-4 space-y-4">
           <h3 className="text-lg font-semibold">
             {activeCat.title}
             {catTab !== "standings" && <span className="sr-only"> — {catTab === "upcoming" ? "Upcoming Fixtures" : "Results"}</span>}
@@ -4300,8 +4308,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
           {!diamondEvent && categoryViewsNode}
           {!diamondEvent && standingsCards}
-          {fixtureCards}
-          {combinedFixtures}
+          {!pilotLayout && fixtureCards}
+          {!pilotLayout && combinedFixtures}
         </div>
         {diamondEvent && <DiamondStandings tournamentId={champId!} canManage={canManage} />}
         {isHandicapChamp && champ?.club_id && (

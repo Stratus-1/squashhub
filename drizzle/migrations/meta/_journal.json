@@ -1079,6 +1079,13 @@
       "when": 1792078411398,
       "tag": "0153_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1792078537470,
+      "tag": "0154_bar_counter_tab_phone",
+      "breakpoints": true
     }
   ]
 }

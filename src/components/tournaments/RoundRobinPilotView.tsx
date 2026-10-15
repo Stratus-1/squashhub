@@ -36,7 +36,7 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
           ))}
         </div>
       )}
-      {mode === "calendar" && !matrixOnly ? (
+      {mode === "calendar" && (!matrixOnly || withCalendar) ? (
         <div className="space-y-2 text-xs" data-testid="rr-calendar">
           <p className="text-muted-foreground">Read-only calendar for this pool. Solid blocks are saved fixtures; play-by rounds show their deadline day.</p>
           <FixtureCalendar events={calEvents} />

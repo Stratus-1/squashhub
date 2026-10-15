@@ -25,39 +25,71 @@ function Fixtures({ title, rows }: { title: string; rows: ParentFixtureDisplay[]
   </section>;
 }
 
+const ord = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
+
+/** Positional placeholders only ("A1 1st v A2 2nd"); never real names until qualification is confirmed. */
+export function placeholderBracket(labels: string[], rounds: number): string[][] {
+  if (rounds < 1 || labels.length !== 2) return [];
+  const per = 2 ** rounds / 2;
+  const first = Array.from({ length: per }, (_, j) => [`${labels[j % 2]} ${ord(Math.floor(j / 2) * 2 + 1 - (j % 2 ? 0 : 0) + (j % 2 ? 0 : 0))}`]);
+  void first;
+  const out: string[][] = [];
+  // Cross-pool seeding: X 1st v Y kth, Y 1st v X kth, …
+  const r1: string[] = [];
+  for (let j = 0; j < per; j += 1) {
+    const [x, y] = j % 2 === 0 ? labels : [labels[1], labels[0]];
+    const rank = Math.floor(j / 2) + 1;
+    r1.push(`${x} ${ord(rank)} v ${y} ${ord(per + 1 - rank)}`);
+  }
+  out.push(r1);
+  for (let r = 1; r < rounds; r += 1) out.push(Array.from({ length: out[r - 1].length / 2 }, (_, i) => `Winner M${2 * i + 1} v Winner M${2 * i + 2}`));
+  return out;
+}
+
 /** No action callbacks or data hooks: parent composition is strictly a spectator view. */
 export function ParentCategoryProgression({ parent, children, playoffs }: { parent: ParentProgressionGroup; children: ParentChildDisplay[]; playoffs: ParentFixtureDisplay[] }) {
   const [view, setView] = useState("progression");
   const knownStageIds = new Set(parent.stages.map((s) => s.id));
   const unmatched = playoffs.filter((m) => !m.stageKey || !knownStageIds.has(m.stageKey));
+  const upcoming = children.flatMap((c) => c.upcoming.map((m) => ({ ...m, child: c.label })));
+  const placeholders = placeholderBracket(children.map((c) => c.label), parent.stages.length);
   return <div className="min-w-0 space-y-4" data-testid="parent-category-progression">
     <Tabs value={view} onValueChange={setView} className="min-w-0 space-y-4">
       <TabsList aria-label={`${parent.label} view`} className="grid h-auto w-full grid-cols-2">
         <TabsTrigger value="progression" className="min-h-11 whitespace-normal">Progression</TabsTrigger>
         <TabsTrigger value="log" className="min-h-11 whitespace-normal">Log View</TabsTrigger>
       </TabsList>
-      {["progression", "log"].map((mode) => <TabsContent key={mode} value={mode} className="min-w-0 space-y-6">
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)]">
-          <div className="min-w-0 space-y-6">{children.map((child) => <section key={child.group} className="min-w-0 space-y-3 border-b border-border pb-5" aria-label={child.label}>
-            <div className="flex flex-wrap items-center gap-2"><h4 className="text-base font-semibold">{child.label}</h4><Badge variant="outline">{child.format}</Badge></div>
-            <p className="text-xs text-muted-foreground">{child.upcoming.length ? child.results.length ? "Provisional rankings · matches still to play" : "Provisional draw order · no results yet" : "Rankings"}</p>
-            {mode === "progression" && child.matrix ? <RoundRobinPilotView title={child.label} view={child.matrix} matrixOnly /> : <div className="max-w-full overflow-x-auto">{child.standings}</div>}
-            <Fixtures title="Upcoming Fixtures" rows={child.upcoming} />
-            <Fixtures title="Results" rows={child.results} />
+      {["progression", "log"].map((mode) => <TabsContent key={mode} value={mode} className="min-w-0">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+          <div className="min-w-0 divide-y divide-border rounded-md border border-border" data-testid="parent-main-block">{children.map((child) => <section key={child.group} className="min-w-0 space-y-2 p-3" aria-label={child.label}>
+            <div className="flex flex-wrap items-center gap-2"><h4 className="text-base font-semibold">{child.label}</h4><Badge variant="outline">{child.format}</Badge>
+              <span className="text-xs text-muted-foreground">{child.upcoming.length ? child.results.length ? "Provisional rankings · matches still to play" : "Provisional draw order · no results yet" : "Rankings"}</span></div>
+            {mode === "progression" && child.matrix ? <RoundRobinPilotView title={child.label} view={child.matrix} matrixOnly showSlots /> : <div className="max-w-full overflow-x-auto">{child.standings}</div>}
+            {mode === "log" && <Fixtures title="Results" rows={child.results} />}
           </section>)}</div>
-          <section aria-label="Shared playoffs" className="min-w-0 space-y-4 xl:border-l xl:border-border xl:pl-4">
-            <h4 className="text-base font-semibold">{parent.label} · Shared playoffs</h4>
-            <div className="space-y-1 text-xs"><p>{parent.qualification}</p>{!playoffs.length && <p className="text-muted-foreground">Qualifiers and pairings await confirmation.</p>}</div>
-            {!parent.stages.length && <p className="text-xs text-muted-foreground">Playoff stages not configured.</p>}
-            {parent.stages.map((stage) => {
-              const rows = playoffs.filter((m) => m.stageKey === stage.id);
-              return <section key={stage.id} className="space-y-2 border-l-2 border-primary pl-3" aria-label={stage.name}>
-                <h5 className="text-sm font-semibold">{stage.name}</h5>
-                {rows.length ? rows.map((m) => <div key={m.id} data-fixture-id={m.id} className="space-y-1 rounded border border-border bg-muted/30 p-3 text-xs"><div className="break-words font-medium">{m.a}</div><div className="break-words font-medium">{m.b}</div><p>{m.score ?? m.status}</p><p className="text-muted-foreground">{m.when}</p>{m.deadline && <p>Play by {m.deadline}</p>}</div>) : <div className="space-y-1 border border-dashed border-border p-3 text-xs text-muted-foreground"><p>{stage.deferred ? "Define later · not configured" : "Awaiting confirmed fixtures"}</p><p>Participants TBD</p>{stage.plannedDate && <p>{stage.plannedDate}</p>}</div>}
-              </section>;
-            })}
-            {unmatched.length > 0 && <Fixtures title="Saved playoff fixtures" rows={unmatched} />}
-          </section>
+          <div className="min-w-0 space-y-4">
+            <section aria-label="Upcoming games" data-testid="parent-upcoming-summary" className="rounded-md border border-border p-3">
+              <h5 className="mb-1 text-sm font-semibold">Upcoming games <span className="text-muted-foreground">({upcoming.length})</span></h5>
+              {!upcoming.length ? <p className="text-xs text-muted-foreground">No upcoming games.</p> : <ul className="divide-y divide-border text-xs">{upcoming.map((m) => <li key={m.id} data-fixture-id={m.id} className="py-1">
+                <div className="break-words font-medium">{m.a} v {m.b}</div>
+                <div className="text-[11px] text-muted-foreground">{m.child}{m.round ? ` · R${m.round}` : ""} · {m.when}</div>
+              </li>)}</ul>}
+            </section>
+            <section aria-label="Shared playoffs" className="space-y-3 rounded-md border border-border p-3">
+              <h5 className="text-sm font-semibold">{parent.label} · Shared playoffs</h5>
+              <p className="text-[11px] text-muted-foreground">{parent.qualification}{!playoffs.length && " · Positions shown until qualifiers are confirmed."}</p>
+              {!parent.stages.length && <p className="text-xs text-muted-foreground">Playoff stages not configured.</p>}
+              <div className="flex gap-3 overflow-x-auto" data-testid="parent-bracket">{parent.stages.map((stage, si) => {
+                const rows = playoffs.filter((m) => m.stageKey === stage.id);
+                return <div key={stage.id} className="flex min-w-[150px] flex-1 flex-col justify-around gap-2" aria-label={stage.name}>
+                  <h6 className="text-xs font-semibold">{stage.name}{stage.plannedDate ? <span className="font-normal text-muted-foreground"> · {stage.plannedDate}</span> : null}</h6>
+                  {rows.length ? rows.map((m) => <div key={m.id} data-fixture-id={m.id} className="rounded border border-border border-l-2 border-l-primary bg-muted/30 p-2 text-xs"><div className="break-words font-medium">{m.a}</div><div className="break-words font-medium">{m.b}</div><p className="text-muted-foreground">{m.score ?? m.when}</p></div>)
+                    : (placeholders[si] ?? ["Participants TBD"]).map((label, i) => <div key={i} data-testid="bracket-placeholder" className="rounded border border-dashed border-border border-l-2 border-l-primary p-2 text-xs text-muted-foreground">{label.split(" v ").map((side) => <div key={side}>{side}</div>)}</div>)}
+                </div>;
+              })}</div>
+              {unmatched.length > 0 && <Fixtures title="Saved playoff fixtures" rows={unmatched} />}
+            </section>
+          </div>
         </div>
       </TabsContent>)}
     </Tabs>

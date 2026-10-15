@@ -65,3 +65,5 @@
 - [x] Bar orders stage 1: Use order process switch (off by default), guest-tab order placement (collect/deliver), counter Orders list with item delivery (backend rehearsal passed, rolled back)
 - [ ] Bar orders stage 2: member-account & online-pay orders, cancellations, poster "SCAN TO ORDER" wording
 - [ ] REMIND OWNER: roll out grouped Men's A progression block (one-line switch in parent-progression.ts) to all clubs once Uitsig is signed off
+- [ ] Round-robin progression/log must look identical for all round robins (dates/times/courts in cells when available); group subcategories of one category into one block; single categories stay as-is
+- [ ] Round 1 cells/heading must show the play-by date (e.g. "by 19 Oct") even before results

@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CATEGORY_LABELS, COMPETITION_CATEGORIES } from "@/lib/leagues/category";
-import { DIVISION_PRESETS, STRUCTURE_HELP, duplicateStructureRow, renameStructureKey, rowStages, writeRowStages, structureUnits, structureRowIssues, poolSizesFor, selectedStructureEntries } from "@/lib/smart-builder/structure-rows";
+import { COMPETITION_CATEGORIES } from "@/lib/leagues/category";
+import { DIVISION_PRESETS, STRUCTURE_HELP, STRUCTURE_ELIGIBILITY_LABELS, applyStructurePreset, structureEligibility, structureEligibilityAdvisory, duplicateStructureRow, renameStructureKey, rowStages, writeRowStages, structureUnits, structureRowIssues, poolSizesFor, selectedStructureEntries } from "@/lib/smart-builder/structure-rows";
 import { newStageId, validateStagePlan, type StageKind, type StagePlanItem } from "@/lib/smart-builder/stage-plan";
 import { evaluateStructures, type GuideAnswers } from "@/lib/smart-builder/structure-guide";
 import { categoryEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
@@ -69,14 +69,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
     setOpen((o) => ({ ...o, [cat]: true }));
   };
   const applyPreset = (cat: string, name: string) => {
-    const p = DIVISION_PRESETS.find((x) => x.name === name);
-    if (!p) return;
-    update((a) => {
-      const next = renameStructureKey(a, cat, p.name);
-      const target = next.categories.includes(p.name) && !a.categories.includes(p.name) || p.name === cat ? p.name : cat;
-      const keys = [target, ...(next.subcats[target] ?? []).map((s) => `${target}::${s}`)];
-      return { ...next, categoryTypes: { ...next.categoryTypes, [target]: p.type }, disc: { ...next.disc, ...Object.fromEntries(keys.map((k) => [k, p.discipline])) } };
-    });
+    update((a) => applyStructurePreset(a, cat, name));
   };
   const guide = draft.guide ?? {};
   const advice = (key: string) => evaluateStructures({ n: Number(draft.unitEntries[key]) || 0, outcome: guide.outcome, strength: guide.strength, time: guide.time, isChamps: draft.kind === "period" })[0];
@@ -117,8 +110,12 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
           {!isSub && <select className={`${control} w-full`} aria-label={`${cat} preset`} value="" disabled={hasPeople(key)} onChange={(e) => applyPreset(cat, e.target.value)}><option value="">Preset / custom name</option>{DIVISION_PRESETS.map((p) => <option key={p.name} value={p.name} disabled={p.name !== cat && draft.categories.includes(p.name)}>{p.name}</option>)}</select>}
           {isSub && <span className="text-[11px] text-muted-foreground">Subdivision</span>}</div>
         </div></td>
-        <td className="space-y-1 p-2"><select className={`${control} w-full`} aria-label={`${key} discipline`} value={disc} onChange={(e) => update((a) => ({ ...a, disc: { ...a.disc, [key]: e.target.value as "singles" | "doubles", ...(!isSub ? Object.fromEntries(subs.map((s) => [`${cat}::${s}`, e.target.value as "singles" | "doubles"])) : {}) } }))}><option value="singles">Singles</option><option value="doubles">Doubles</option></select>
-          {!isSub && <select className={`${control} w-full`} aria-label={`${cat} eligibility type`} value={draft.categoryTypes?.[cat] ?? ""} onChange={(e) => update((a) => ({ ...a, categoryTypes: { ...a.categoryTypes, [cat]: e.target.value as NonNullable<StepAnswers["categoryTypes"]>[string] } }))}><option value="">Eligibility type</option>{COMPETITION_CATEGORIES.map((t) => <option key={t} value={t}>{CATEGORY_LABELS[t]}</option>)}</select>}</td>
+        <td className="p-2"><select className={`${control} w-full`} aria-label={`${key} discipline`} value={disc} onChange={(e) => update((a) => ({ ...a, disc: { ...a.disc, [key]: e.target.value as "singles" | "doubles", ...(!isSub ? Object.fromEntries(subs.map((s) => [`${cat}::${s}`, e.target.value as "singles" | "doubles"])) : {}) } }))}><option value="singles">Singles</option><option value="doubles">Doubles</option><option value="hybrid" disabled>Hybrid (not supported here)</option></select></td>
+        <td className="p-2">
+          {isSub ? <span className="text-muted-foreground">{structureEligibility(draft, key) ? STRUCTURE_ELIGIBILITY_LABELS[structureEligibility(draft, key) ?? "open"] : "Not selected"} · inherited</span> : <select className={`${control} w-full`} aria-label={`${cat} eligibility type`} value={structureEligibility(draft, cat) ?? ""} onChange={(e) => update((a) => ({ ...a, categoryTypes: { ...a.categoryTypes, [cat]: e.target.value as NonNullable<StepAnswers["categoryTypes"]>[string] } }))}><option value="" disabled>Select eligibility</option>{COMPETITION_CATEGORIES.map((t) => <option key={t} value={t}>{STRUCTURE_ELIGIBILITY_LABELS[t]}</option>)}</select>}
+          {!isSub && structureEligibilityAdvisory(draft, key) && <p className="mt-1 max-w-48 text-[11px] text-muted-foreground" role="note">{structureEligibilityAdvisory(draft, key)}</p>}
+          {!isSub && structureEligibility(draft, key) === "mixed" && <p className="mt-1 max-w-48 text-[11px] text-muted-foreground">{disc === "doubles" ? "One man + one lady per pair." : "Any gender; mixed composition applies to doubles pairs only."}</p>}
+        </td>
         <td className="p-2">{parentOnly ? <span className="tabular-nums">{categoryEstimate(draft, cat)} total</span> : <Input className="h-8 w-20 text-xs" type="number" min={2} step={1} aria-label={`${key} expected entries`} value={draft.unitEntries[key] ?? draft.guide?.expected?.[key] ?? ""} onChange={(e) => update((a) => setEstimate(a, cat, key, e.target.value))} />}<div className="mt-1 text-[11px] text-muted-foreground">{disc === "doubles" ? "pairs" : "players"}</div></td>
         <td className="p-2">{!isSub ? <Button variant="ghost" size="sm" className="h-8" disabled={hasPeople(cat)} onClick={() => addSub(cat)}><Plus className="mr-1 h-3 w-3" />{subs.length ? `${subs.length} groups` : "Group"}</Button> : "—"}</td>
         <td className="p-2">{parentOnly ? <span className="text-xs text-muted-foreground">Per subdivision ↓</span> : <><select className={`${control} w-full`} aria-label={`${key} initial format`} value={initialValue} onChange={(e) => setKind(key, (e.target.value || null) as StageKind | null)}>{kinds.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</select>
@@ -130,7 +127,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
           {draft.playoffOverrides[key]?.choice === "playoffs" && <select className={`${control} mt-1`} aria-label={`${key} playoff path`} value={draft.playoffOverrides[key].rounds} onChange={(e) => update((a) => ({ ...a, playoffOverrides: { ...a.playoffOverrides, [key]: { ...a.playoffOverrides[key], rounds: Number(e.target.value) as 1 | 2 | 3 } } }))}><option value={3}>QF / SF / Final</option><option value={2}>SF / Final</option><option value={1}>Final</option></select>}</td>
         <td className="p-2"><div className="flex gap-1">{!isSub && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Duplicate ${cat}`} onClick={() => update((a) => duplicateStructureRow(a, cat))}><Copy className="h-3.5 w-3.5" /></Button>}<Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Delete ${key}`} disabled={hasPeople(key)} onClick={() => update((a) => isSub ? { ...a, subcats: { ...a.subcats, [cat]: a.subcats[cat].filter((s) => `${cat}::${s}` !== key) } } : { ...a, categories: a.categories.filter((c) => c !== cat) })}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
       </tr>
-      {open[key] && <tr><td colSpan={8} className="bg-muted/30 px-2">{parentOnly ? null : stageDetails(key)}{!isSub && subs.map((s) => <span key={s} className="sr-only">{s}</span>)}</td></tr>}
+      {open[key] && <tr><td colSpan={9} className="bg-muted/30 px-2">{parentOnly ? null : stageDetails(key)}{!isSub && subs.map((s) => <span key={s} className="sr-only">{s}</span>)}</td></tr>}
       {!isSub && open[key] && subs.map((s) => row(`${cat}::${s}`, cat, true))}
     </Fragment>;
   }
@@ -142,7 +139,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
       {units.map((key) => { const o = advice(key); return o ? <div key={key} className="flex flex-wrap items-center gap-2 text-xs"><span className="font-medium">{key.replace("::", " › ")}</span><span>{o.title} · {o.matches} estimated matches</span><Button size="sm" variant="outline" onClick={() => { const s: StagePlanItem = { id: newStageId(), kind: o.kind, rounds: o.kind === "swiss" ? o.rounds : null, pools: o.pools?.length, advance: { mode: "all_continue" } }; stages(key, () => [s]); update((a) => ({ ...a, poolPlan: { ...a.poolPlan, [key]: { mode: o.kind === "pools" ? "later" : "none", target: o.pools?.[0] ? String(o.pools[0]) : undefined } } })); }}>Apply recommendation</Button><span className="text-muted-foreground">{o.why}</span></div> : <span key={key} className="text-xs text-muted-foreground">{key}: enter expected entries for advice.</span>; })}
     </section>}
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">{Object.entries(STRUCTURE_HELP).filter(([k]) => k !== "pools").map(([k, text]) => <Tooltip key={k}><TooltipTrigger asChild><span tabIndex={0} className="flex cursor-help items-center gap-1">{k === "round_robin" ? "Round robin" : k === "swiss" ? "Swiss" : k === "knockout" ? "Knockout" : "Playoffs"}<Info className="h-3 w-3" /></span></TooltipTrigger><TooltipContent className="max-w-80">{text}</TooltipContent></Tooltip>)}</div>
-    <div className="overflow-x-auto" data-testid="structure-table-scroll"><table className="w-full min-w-[1080px] text-left text-xs"><thead className="bg-muted/50 text-muted-foreground"><tr>{["Division / category", "Discipline / type", "Expected", "Subdivisions", "Initial format / rounds", "Next stage", "Playoffs", ""].map((h, i) => <th key={i} className="p-2 font-medium">{h}</th>)}</tr></thead><tbody>{draft.categories.map((cat) => row(cat, cat))}</tbody></table></div>
+    <div className="overflow-x-auto" data-testid="structure-table-scroll"><table className="w-full min-w-[1080px] text-left text-xs"><thead className="bg-muted/50 text-muted-foreground"><tr>{["Division name", "Match type", "Eligibility", "Expected", "Subdivisions", "Initial format / rounds", "Next stage", "Playoffs", ""].map((h, i) => <th key={i} className="p-2 font-medium">{h}</th>)}</tr></thead><tbody>{draft.categories.map((cat) => row(cat, cat))}</tbody></table></div>
     <Button size="sm" variant="outline" onClick={add}><Plus className="mr-1 h-3.5 w-3.5" />Add row</Button>
     <StructureOverview answers={draft} units={units.map((key) => ({ key, label: key.replace("::", " › ") }))} entrants={Object.fromEntries(units.map((key) => [key, Number(draft.unitEntries[key]) || Number(draft.guide?.expected?.[key]) || 0]))} onEdit={(key) => { setOpen((o) => ({ ...o, [key]: true, [key.split("::")[0]]: true })); }} />
     {units.some((key) => draft.playoffOverrides[key]?.choice === "playoffs") && <p className="text-xs text-muted-foreground">Playoffs are planned separately; qualifier counts and pairings are not confirmed. Their matches and court-hours are not included above.</p>}

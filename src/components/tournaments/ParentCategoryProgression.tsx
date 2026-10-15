@@ -49,8 +49,10 @@ export function ParentCategoryProgression({ parent, children, playoffs }: { pare
   const [view, setView] = useState("progression");
   const knownStageIds = new Set(parent.stages.map((s) => s.id));
   const unmatched = playoffs.filter((m) => !m.stageKey || !knownStageIds.has(m.stageKey));
-  const upcoming = children.flatMap((c) => c.upcoming.map((m) => ({ ...m, child: c.label })));
-  const placeholders = placeholderBracket(children.map((c) => c.label), parent.stages.length);
+  // "Mens A › 1 · Singles" → "A1"; falls back to the full label when no number is saved.
+  const short = (c: ParentChildDisplay) => { const n = c.label.replace(parent.label, "").match(/\d+/)?.[0]; return n ? `${parent.label.split(" ").pop()}${n}` : c.label; };
+  const upcoming = children.flatMap((c) => c.upcoming.map((m) => ({ ...m, child: short(c) })));
+  const placeholders = placeholderBracket(children.map(short), parent.stages.length);
   return <div className="min-w-0 space-y-4" data-testid="parent-category-progression">
     <Tabs value={view} onValueChange={setView} className="min-w-0 space-y-4">
       <TabsList aria-label={`${parent.label} view`} className="grid h-auto w-full grid-cols-2">

@@ -38,6 +38,7 @@ interface CounterTab {
   token: string;
   guest_name: string;
   status: string;
+  settled_method?: string | null;
   opened_at: string;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
@@ -544,7 +545,7 @@ export default function BarCounter() {
                     <div className="text-[11px] text-muted-foreground">
                       open {formatDistanceToNowStrict(new Date(t.opened_at))} · {t.lines.length} item
                       {t.lines.length === 1 ? "" : "s"}
-                      {t.status === "closing" && " · awaiting payment"}
+                      {t.status === "closing" && (t.settled_method === "terminal" ? " · awaiting card swipe" : t.settled_method === "cash" ? " · awaiting cash" : " · online payment pending")}
                     </div>
                   </div>
                   <Badge variant={t.status === "closing" ? "destructive" : "secondary"} className="text-sm">
@@ -644,7 +645,7 @@ export default function BarCounter() {
 
           <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
-            {activeTab.status === "closing" && (
+            {activeTab.status === "closing" && activeTab.settled_method === "online" && (
               <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
                 <p className="flex-1 text-xs">Waiting for an online card payment. If the customer stopped or it got stuck, cancel it and choose another way to pay.</p>
                 <Button
@@ -665,6 +666,55 @@ export default function BarCounter() {
                 >
                   Cancel card payment
                 </Button>
+              </div>
+            )}
+            {activeTab.status === "closing" && (activeTab.settled_method === "terminal" || activeTab.settled_method === "cash") && (
+              <div className="space-y-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3" aria-live="polite">
+                <p className="text-sm font-semibold">
+                  {activeTab.settled_method === "terminal" ? "Awaiting card swipe" : "Awaiting cash"} · {money(activeTab.total)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {activeTab.settled_method === "terminal"
+                    ? "Not paid yet. Take the card on the card machine and only confirm once the machine shows APPROVED."
+                    : "Not paid yet. Confirm only once you have the cash."}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    className="h-11 gap-2" disabled={busy}
+                    onClick={() => {
+                      const label = activeTab.settled_method === "terminal" ? "card" : "cash";
+                      if (window.confirm(`Confirm ${money(activeTab.total)} ${label} payment received for ${activeTab.guest_name}?`)) {
+                        settle(activeTab.settled_method as "terminal" | "cash");
+                      }
+                    }}
+                  >
+                    {activeTab.settled_method === "terminal" ? <CreditCard className="w-4 h-4" /> : <Banknote className="w-4 h-4" />}
+                    {activeTab.settled_method === "terminal" ? "Confirm card payment received" : "Confirm cash received"}
+                  </Button>
+                  <Button
+                    variant="outline" className="h-11" disabled={busy}
+                    onClick={async () => {
+                      const reason = window.prompt(activeTab.settled_method === "terminal" ? "Why was it not paid? (e.g. card declined)" : "Why was it not paid?", activeTab.settled_method === "terminal" ? "Card declined" : "");
+                      if (reason === null) return;
+                      setBusy(true);
+                      try {
+                        const { error } = await (supabase as any).rpc("bar_counter_reopen_tab", {
+                          _tab_id: activeTab.tab_id, _reason: reason, _token: token, _club_id: clubId,
+                        });
+                        if (error) throw error;
+                        toast.success("Not paid — the tab is open again. Nothing was charged.");
+                        await refetch();
+                        invalidate();
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Could not update the tab");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    {activeTab.settled_method === "terminal" ? "Declined / not paid" : "Not paid"}
+                  </Button>
+                </div>
               </div>
             )}
             <Button className="w-full h-12 gap-2" disabled={cartTotal <= 0 || busy} onClick={addRound}>

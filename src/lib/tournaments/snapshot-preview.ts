@@ -4,6 +4,7 @@
  * Pure: never writes, books, notifies or mutates its input. Owner decisions are explicit inputs, never assumed.
  */
 import { buildSwissProgression, buildProposedSwissGrid, type GridRound } from "@/lib/tournaments/swiss-progression-view";
+import { applyBookingEvent, linkedScheduleLabel, type BookingEvent } from "@/lib/tournaments/linked-booking-sync";
 import { allocateRoundSlots, stageSchedules, type SlotBooking, type StageSchedule } from "@/lib/tournaments/round-scheduling";
 
 export interface SnapMatch {
@@ -23,7 +24,7 @@ export interface Decisions {
   treatMissingOpponentAsBye: boolean;// owner: yes
 }
 /** In-memory simulation inputs (never persisted). */
-export interface Simulation { results: Record<string, string>; stageOverrides: Record<string, Partial<StageSchedule>> }
+export interface Simulation { results: Record<string, string>; stageOverrides: Record<string, Partial<StageSchedule>>; bookingEvents?: Record<string, BookingEvent[]> }
 
 export type Severity = "info" | "warn" | "block";
 export interface Discrepancy { severity: Severity; category: string; text: string; matchIds?: string[] }
@@ -47,7 +48,7 @@ export function buildSnapshotPreview(snap: Snapshot, dec: Decisions, sim: Simula
   const name = (id: string | null) => (id ? snap.names[id] ?? "Unknown player" : "TBD");
   const stages = stageSchedules(snap.formatPlan).map((s) => ({ ...s, ...(sim.stageOverrides[s.id] ?? {}) }));
   const stageFor = (round: number) => stages[round - 1] ?? null;
-  const matches = withSimulatedResults(snap.matches, sim.results);
+  const matches = withSimulatedResults(snap.matches, sim.results).map((m) => (sim.bookingEvents?.[m.id] ?? []).reduce((acc, e) => applyBookingEvent(acc, e), m));
   const out: PreviewResult = { categories: [], upcoming: [], discrepancies: [], stages, proposals: [], unplaced: [] };
   const D = out.discrepancies;
   const pending: Array<{ key: string; category: string; round: number; a: string; b: string; players: string[] }> = [];
@@ -66,7 +67,7 @@ export function buildSnapshotPreview(snap: Snapshot, dec: Decisions, sim: Simula
       if (oneSided && !m.is_bye) D.push({ severity: dec.treatMissingOpponentAsBye ? "warn" : "block", category: cat, text: `R${m.round_number}: ${name(m.player_a_member_id ?? m.player_b_member_id)} has no opponent and is not marked as a bye${dec.treatMissingOpponentAsBye ? " — preview treats it as a bye (free win)." : "."}`, matchIds: [m.id] });
       if (done(m) || m.is_bye || oneSided || !m.player_a_member_id) continue;
       const r = Number(m.round_number), st = stageFor(r);
-      if (m.booking_id) { out.upcoming.push({ key: m.id, category: cat, round: r, a: name(m.player_a_member_id), b: name(m.player_b_member_id), when: `${m.scheduled_date} ${String(m.scheduled_time ?? "").slice(0, 5)} · booked (kept)`, source: "live_booked" }); continue; }
+      if (m.booking_id) { out.upcoming.push({ key: m.id, category: cat, round: r, a: name(m.player_a_member_id), b: name(m.player_b_member_id), when: linkedScheduleLabel(m), source: "live_booked" }); continue; }
       if (st?.mode === "play_by") {
         out.upcoming.push({ key: m.id, category: cat, round: r, a: name(m.player_a_member_id), b: name(m.player_b_member_id), when: `Play by ${fmt(st.deadline)}`, source: "live_play_by" });
         if (m.play_by !== st.deadline) D.push({ severity: "warn", category: cat, text: `R${r} ${name(m.player_a_member_id)} v ${name(m.player_b_member_id)}: deadline ${fmt(m.play_by)} differs from saved ${fmt(st.deadline)}.`, matchIds: [m.id] });

@@ -2,7 +2,8 @@
 
 ## Riverside Tournament Structure pilot (switched off by owner)
 - [x] Retire old Riverside row/canvas and stage-planner entry points even if old flags are cached; preserve saved answers and other clubs.
-- [ ] Replacement card-based pilot has not been built; agree the replacement scope before activation.
+- [ ] Build approved Riverside preview card-based replacement: merge seven structure steps, separate subdivisions/pools, include Monrad, preserve scheduling.
+- [ ] Verify synthetic save/reload, step navigation, tenant isolation and compact desktop/mobile layout; no publication or live-data writes.
 - [x] Restore Riverside's standard tournament setup by disabling only the consolidated structure and stage-planner switches; retain saved data.
 - [x] Simplify row-based structure step: main categories + subcategories only — next-stage and playoff columns removed (15 Oct).
 - [x] Reduce text size / vertical density in the structure editor.

@@ -1162,14 +1162,19 @@ export default function ScanPay() {
                     </Button>
                   )}
 
+                  {orderProcess && !barOpen && (
+                    <p className="rounded-md border border-dashed p-2 text-xs text-center text-muted-foreground">
+                      The bar is closed for orders right now. Please order at the counter when someone is there.
+                    </p>
+                  )}
                   <Button
                     variant="secondary"
                     className="w-full gap-2 h-11"
-                    disabled={submitting || (!member && !tab && !visitorName.trim())}
+                    disabled={submitting || (orderProcess && !barOpen) || (!member && !tab && !visitorName.trim())}
                     onClick={addToOpenTab}
                   >
                     <Receipt className="w-4 h-4" />
-                    {orderProcess ? "Place order" : tab ? "Add to my open tab" : "Open a tab for the evening"}
+                    {orderProcess ? (barOpen ? "Place order" : "Bar closed for orders") : tab ? "Add to my open tab" : "Open a tab for the evening"}
                   </Button>
 
                   <p className="text-[11px] text-muted-foreground text-center">

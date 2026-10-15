@@ -881,7 +881,10 @@ export default function Bookings() {
     for (const b of normalBookings) {
       const key = `${b.court_id}-${String(b.start_time || "").slice(0, 5)}-${String(b.end_time || "").slice(0, 5)}`;
       const extId = String(b.external_id || "");
-      const isSavedTournamentBlock = b.source === "club_event" && extId.startsWith("champ:");
+      // A GoBook/club row named "Club Championship(s)" is the organiser's court block: show the
+      // fixture scheduled inside it (names or positions) instead of the generic block name.
+      const isNamedChampsBlock = /^\s*club\s+championship/i.test(String(b.external_booker_name || b.guest_name || ""));
+      const isSavedTournamentBlock = (b.source === "club_event" && extId.startsWith("champ:")) || isNamedChampsBlock;
       // Any booking (incl. paid GoBook bookings) explicitly linked to a fixture
       // via the fixture's booking_id shows as a Club Champs match. Never inferred.
       const explicitlyLinked = (champsBookings as any[]).find((cb: any) => cb.booking_id && String(cb.booking_id) === String(b.id));
@@ -892,7 +895,10 @@ export default function Bookings() {
       const matchingTournament = explicitlyLinked || (isSavedTournamentBlock
         ? (linkedMatchId
             ? (champsBookings as any[]).find((cb: any) => cb.champ_match_id === linkedMatchId)
-            : null) || (champsBookings as any[]).find((cb: any) => overlaps(b, cb))
+            : null)
+            // Prefer the fixture that STARTS inside this row (35-min games in 45-min GoBook rows), then any overlap.
+            || (champsBookings as any[]).find((cb: any) => overlaps(b, cb) && !claimedMatchIds.has(String(cb.champ_match_id)) && timeToMinutes(String(cb.start_time).slice(0, 5)) >= timeToMinutes(String(b.start_time).slice(0, 5)) && timeToMinutes(String(cb.start_time).slice(0, 5)) < timeToMinutes(String(b.end_time).slice(0, 5)))
+            || (isNamedChampsBlock ? null : (champsBookings as any[]).find((cb: any) => overlaps(b, cb)))
         : null);
       if (!matchingTournament) {
         merged.set(key, b);
@@ -904,7 +910,7 @@ export default function Bookings() {
       if (linkedMatchId) claimedMatchIds.add(String(linkedMatchId));
       // A directly linked match is authoritative; an overlapping court block
       // only fills in a title when the booking has none of its own.
-      const adoptNames = !!linkedMatchId || !b.guest_name;
+      const adoptNames = !!linkedMatchId || !b.guest_name || isNamedChampsBlock;
       merged.set(key, {
         ...b,
         is_champ: true,

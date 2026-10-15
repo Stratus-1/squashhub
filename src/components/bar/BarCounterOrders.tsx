@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Minus, Plus, MapPin, ShoppingBag, Bell } from "lucide-react";
+import { Check, Minus, Plus, MapPin, ShoppingBag, Bell, CreditCard, Banknote } from "lucide-react";
 
 export type BarOrderLine = {
   id: string; item_name: string; quantity: number; delivered_qty: number;
@@ -14,7 +14,8 @@ export type BarOrderLine = {
 export type BarOrder = {
   id: string; order_number: number; customer_name: string; fulfilment: "collect" | "deliver";
   location: string | null; note: string | null; status: string; created_at: string;
-  completed_at: string | null; tab_status: string | null; member_linked?: boolean; lines: BarOrderLine[];
+  completed_at: string | null; tab_status: string | null; member_linked?: boolean;
+  tab_id?: string | null; tab_settled_method?: string | null; tab_total?: number; payment_confirmed_at?: string | null; lines: BarOrderLine[];
 };
 
 function ago(iso: string) {
@@ -70,6 +71,40 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
     qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
   };
 
+  /** Payment is independent of fulfilment: staff confirm only after the card machine shows APPROVED. */
+  const confirmPayment = async (o: BarOrder) => {
+    const m = o.tab_settled_method as "terminal" | "cash";
+    const amount = `R${Number(o.tab_total ?? 0).toFixed(2)}`;
+    if (!window.confirm(`Confirm ${amount} ${m === "terminal" ? "card machine" : "cash"} payment received for order #${o.order_number} (${o.customer_name})?${m === "terminal" ? "\n\nOnly confirm if the card machine showed APPROVED." : ""}`)) return;
+    setBusy(`pay-${o.id}`);
+    const { data, error } = await (supabase as any).rpc("bar_counter_settle_tab", {
+      _tab_id: o.tab_id, _method: m, _token: token, _club_id: token ? null : clubId,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success((data as any)?.already ? "Already confirmed — nothing recorded twice" : "Payment confirmed");
+    qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
+    qc.invalidateQueries({ queryKey: ["bar-counter-board"] });
+  };
+
+  const declinePayment = async (o: BarOrder) => {
+    const reason = window.prompt("Why was it not paid?", o.tab_settled_method === "terminal" ? "Card declined" : "");
+    if (reason === null) return;
+    setBusy(`pay-${o.id}`);
+    const { error } = await (supabase as any).rpc("bar_counter_reopen_tab", {
+      _tab_id: o.tab_id, _reason: reason, _token: token, _club_id: token ? null : clubId,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success("Not paid — tab is open again. Nothing charged.");
+    qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
+  };
+
+  const payLabel = (o: BarOrder) =>
+    o.tab_status === "settled" ? `Paid${o.tab_settled_method === "terminal" ? " — card machine" : o.tab_settled_method === "cash" ? " — cash" : o.tab_settled_method === "online" ? " — online" : ""}`
+    : o.tab_status === "closing" ? (o.tab_settled_method === "terminal" ? "Awaiting card swipe" : o.tab_settled_method === "cash" ? "Awaiting cash" : "Online payment pending")
+    : "On tab · unpaid";
+
   const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
@@ -104,10 +139,26 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
                   {o.status === "open" ? `${left} to go` : o.status}
                 </Badge>
                 <span className="text-[10px] text-muted-foreground">
-                  {o.tab_status === "settled" ? "Paid" : "On tab · unpaid"}
+                  {payLabel(o)}
                 </span>
               </div>
             </div>
+            {o.tab_status === "closing" && (o.tab_settled_method === "terminal" || o.tab_settled_method === "cash") && (
+              <div className="rounded-md border-2 border-amber-500/70 bg-amber-500/10 p-2 space-y-2" aria-live="polite">
+                <p className="text-xs font-semibold">
+                  {o.tab_settled_method === "terminal" ? "Awaiting card machine payment" : "Awaiting cash payment"} · R{Number(o.tab_total ?? 0).toFixed(2)} — not paid yet
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button size="sm" className="h-9 gap-1 text-[11px]" disabled={busy === `pay-${o.id}`} onClick={() => confirmPayment(o)}>
+                    {o.tab_settled_method === "terminal" ? <CreditCard className="w-3.5 h-3.5" /> : <Banknote className="w-3.5 h-3.5" />}
+                    {o.tab_settled_method === "terminal" ? "Confirm card machine payment received" : "Confirm cash received"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-9 text-[11px]" disabled={busy === `pay-${o.id}`} onClick={() => declinePayment(o)}>
+                    {o.tab_settled_method === "terminal" ? "Declined / not paid" : "Not paid"}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="divide-y rounded-md border">
               {o.lines.map((l) => {
                 const done = l.delivered_qty >= l.quantity;

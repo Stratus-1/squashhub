@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Bar remote-order fulfilment: inspect self/counter tab flows and propose club-wide orders with partial delivery tracking; plan only, no app/data changes or publishing.
+- [ ] Bar remote-order fulfilment plan: inspect self/counter tab flows; include club-wide partial delivery checklist, collection/delivery choice, Bar Setup “Use order process” toggle and matching poster wording; plan only, no app/data changes or publishing.
 - [x] Bar/shop QR setup: Poster (PDF) action, heading choice, large QR, instructions and saved enabled methods; 21 tests and signed-in Riverside downloads/visual PDF checks passed. Preview only; no settings/payment/stock changes, native downloads untested.
 - [x] Uitsig preview-only parent Progression & Log: saved A1/A2 membership, stacked RR rankings/fixtures/results, one deferred shared Final; 24 tests + signed-in desktop/mobile verified, 12 unique fixtures, no writes/publish. Actual playoff qualifiers/pairings blocked by saved Define later / unspecified qualification count.
 - [x] Riverside Progression & Log prominent solid category tabs — six tests passed; signed-in desktop/mobile category switching and screenshots verified, 64px/56px targets, no overflow/errors, no writes/publish. Marker blocker unchanged.

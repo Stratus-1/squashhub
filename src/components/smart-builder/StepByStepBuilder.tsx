@@ -24,6 +24,7 @@ import { StructureOverview } from "./StructureOverview";
 import { StructureRowsEditor } from "./StructureRowsEditor";
 import { rowStructurePilot, structureRowIssues } from "@/lib/smart-builder/structure-rows";
 import { visualStructurePilot } from "@/lib/smart-builder/structure-canvas";
+import { retiredStructurePilotFlag } from "@/lib/smart-builder/pilot-status";
 const StructSection = ({ title }: { title: string; children?: null }) => <h3 className="border-t border-border pt-4 text-sm font-semibold">{title}</h3>;
 import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
@@ -557,9 +558,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     setA({ ...a, playoffOverrides: next });
   };
   const { data: swissPilot = false } = useClubBetaFeature(clubId, "tournament_swiss_category_rounds");
-  const { data: stagePlannerFlag = false } = useClubBetaFeature(clubId, "tournament_stage_planner");
-  /** Riverside pilot: Structure guide + Subcategories + Format overrides + Planned format merged into one step; scoring exceptions move to Match format. */
-  const { data: structureStep = false } = useClubBetaFeature(clubId, "tournament_structure_step");
+  const { data: savedStagePlannerFlag = false } = useClubBetaFeature(clubId, "tournament_stage_planner");
+  const { data: savedStructureStep = false } = useClubBetaFeature(clubId, "tournament_structure_step");
+  // Retire the old Riverside pilot without deleting compatible saved answers.
+  const stagePlannerFlag = retiredStructurePilotFlag(clubId, savedStagePlannerFlag);
+  const structureStep = retiredStructurePilotFlag(clubId, savedStructureStep);
   const rowStructure = rowStructurePilot(clubId, structureStep, window.location.hostname, tournamentId ?? a.createdTournamentId);
   const [rowStructureDirty, setRowStructureDirty] = useState(false);
   const stagePlanner = stagePlannerFlag || structureStep;

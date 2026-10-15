@@ -2295,6 +2295,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   {a.serving?.[u.key] && <span className="text-xs text-muted-foreground">{DOUBLES_SERVING_METHODS.find((m) => m.value === a.serving?.[u.key])?.hint}</span>}
                 </div>)}
               </div>}
+              </ClassicWrap>
             </>
           )}
 

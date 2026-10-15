@@ -21,7 +21,7 @@ describe("bar/shop poster payment wording", () => {
     const doc = buildBarPoster({
       clubName: "A long squash club name for poster layout verification",
       url: "https://id-preview--84cdc7bd-c950-4776-9fb1-c29f6232816d.lovable.app/s/abcdefgh",
-      qrDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+      qrDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8//8/AwMDEwMDAwMDAwAkBgMB/DXemwAAAABJRU5ErkJggg==",
       venue: "shop", accountEnabled: true, cardOnlineEnabled: true, swipeEnabled: true, cashEnabled: true,
     });
     expect(doc.getNumberOfPages()).toBe(1);

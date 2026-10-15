@@ -83,7 +83,7 @@ import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog, Star, Utensil
 import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolsFromGames, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
-import { splitFixtures, tabFromParam, type TournamentTab } from "@/lib/tournaments/fixture-split";
+import { isProvisionalSwissSlot, splitFixtures, tabFromParam, type TournamentTab } from "@/lib/tournaments/fixture-split";
 import { computeFinalPlacements, placementSlotLabel } from "@/lib/tournaments/final-standings";
 import { StructuredEnginePanel } from "@/components/smart-builder/StructuredEnginePanel";
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
@@ -3790,7 +3790,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     const fixtureCards: JSX.Element[] = [];
     /** Upcoming Fixtures then Results, each game once (non-tabbed layouts: between-subcategory and cross-league). */
     const splitSections = (list: any[]) => {
-      const { upcoming, results } = splitFixtures(list);
+      const { upcoming, results } = splitFixtures(list.filter((m: any) => !isProvisionalSwissSlot(m, champ)));
       return <div className="space-y-3">
         <CollapsibleSection header={<h4 className="font-medium text-sm">Upcoming Fixtures ({upcoming.length})</h4>}>
           {upcoming.length ? <div className="space-y-1.5">{upcoming.map((m: any) => renderMatchRow(m))}</div> : <p className="text-xs text-muted-foreground italic">No games left to play.</p>}
@@ -3925,7 +3925,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             })}
           </div>
         );
-        const split = splitFixtures(groupMatches);
+        const split = splitFixtures(groupMatches.filter((m: any) => !isProvisionalSwissSlot(m, champ)));
         categoryViews.push({
           gn,
           label: getGroupLabel(champ, gn),

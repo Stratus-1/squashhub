@@ -1128,6 +1128,13 @@
       "when": 1792081501311,
       "tag": "0160_bar_order_ready_for_collection",
       "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1792081680521,
+      "tag": "0161_bar_counter_payment_invariant",
+      "breakpoints": true
     }
   ]
 }

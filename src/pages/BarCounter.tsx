@@ -727,7 +727,7 @@ export default function BarCounter() {
               <Button
                 variant="outline" className="h-11 gap-2"
                 disabled={busy || activeTab.total <= 0}
-                onClick={() => settle("cash")}
+                onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} cash received?`)) settle("cash"); }}
               >
                 <Banknote className="w-4 h-4" /> Paid cash
               </Button>
@@ -736,9 +736,9 @@ export default function BarCounter() {
               <Button
                 variant="outline" className="h-11 gap-2"
                 disabled={busy || activeTab.total <= 0}
-                onClick={() => settle("terminal")}
+                onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} card machine payment received? Only confirm if the machine showed APPROVED.`)) settle("terminal"); }}
               >
-                <CreditCard className="w-4 h-4" /> Card machine
+                <CreditCard className="w-4 h-4" /> Card payment received
               </Button>
               )}
             </div>

@@ -88,6 +88,11 @@ export function GuestOrderProgress({ tab }: { tab: { tab_id: string; token: stri
             <span>#{o.order_number} · {o.fulfilment === "deliver" ? `to ${o.location}` : "collect at bar"}</span>
             <span>{o.status === "completed" ? "Delivered" : o.status === "open" ? "In progress" : o.status}</span>
           </div>
+          <div className="text-[10px] font-medium">
+            {o.tab_status === "settled" ? `Paid${(o as any).tab_settled_method === "terminal" ? " — card machine" : (o as any).tab_settled_method === "cash" ? " — cash" : ""}`
+              : o.tab_status === "closing" ? ((o as any).tab_settled_method === "terminal" ? "Awaiting card payment at bar" : (o as any).tab_settled_method === "cash" ? "Awaiting cash payment at bar" : "Online payment pending")
+              : "On your tab · not paid yet"}
+          </div>
           {o.lines.map((l) => (
             <div key={l.id} className="flex justify-between text-muted-foreground">
               <span>{l.quantity}× {l.item_name}</span>

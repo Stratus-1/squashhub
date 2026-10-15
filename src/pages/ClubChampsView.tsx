@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Settings2 } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useIsClubAdmin } from "@/hooks/use-club";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
@@ -134,6 +135,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     enabled: !!champId && !inlineStandings,
   });
   const { activeMember: sessionMember } = useMemberContext();
+  const { user: authUser } = useAuth();
   const activeMember = md ? null : sessionMember;
   const myMemberId = activeMember?.id;
 

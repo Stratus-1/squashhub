@@ -393,8 +393,12 @@ export default function Tournaments() {
   const isPaused = (m: any) => inPlay(m) && !freshMatchIds.has(m.id);
 
   const activeChampIds = new Set(champs.map((c: any) => c.id));
+  // A fixture whose saved date has passed with no result stays visible as
+  // "Overdue" until it is scored or rescheduled, instead of vanishing.
+  const isOverdueFixture = (m: any) =>
+    !!m.scheduled_date && m.scheduled_date < today && m.status === "scheduled" && !m.winner_member_id && !m.is_bye && !isLive(m);
   const upcomingMatches = allMatches
-    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || m.status === "placeholder" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today))
+    .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || m.status === "placeholder" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today || isOverdueFixture(m)))
     .sort((a: any, b: any) => {
       // Live (actively marked) matches float to the top, paused ones just below
       const rank = (m: any) => (isLive(m) ? 0 : isPaused(m) ? 1 : 2);
@@ -1664,6 +1668,7 @@ export default function Tournaments() {
           )}
 
           {today && !isLive(m) && !isPaused(m) && <Badge className="text-[10px] shrink-0">Today</Badge>}
+          {isOverdueFixture(m) && <Badge variant="destructive" className="text-[10px] shrink-0" data-testid="overdue-badge">Overdue · no result</Badge>}
         </button>
 
         {isLive(m) && (

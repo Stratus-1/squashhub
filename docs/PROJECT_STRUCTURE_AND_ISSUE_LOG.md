@@ -3076,3 +3076,6 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 
 ## 2026-10-15 Per-tournament GoBook block name + 35-min packing
 - Courts & Dates has "Block booking name"; fixed rounds use only matching holds (merged across consecutive 45-min rows) and pass `p_fill_hold=false` (migration 0149) so games pack back-to-back. Server still recognises only names starting "Club Championship".
+
+## 2026-10-15 Structure guide: one tournament default format
+- Guide step shows a tournament default format selector; categories inherit it unless overridden. Cards show "Using tournament default" / "Override" with Reset. Applying a recommendation equal to the default stores no override (`src/lib/smart-builder/format-default.ts`). Existing saved overrides untouched.

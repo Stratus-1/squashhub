@@ -50,6 +50,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
+import { formatSource, setCategoryFormat, resetCategoryFormat, unsetCategories } from "@/lib/smart-builder/format-default";
 import { StructureGuidePanel, RecommendationCard, guideRecommendations } from "./StructureGuidePanel";
 import { guideEntryCounts, guideCountText } from "./guide-entry-counts";
 import { categoryEstimate, estimateConflicts, resolveEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
@@ -1067,7 +1068,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       : { ...DEFAULT_FORMAT, kind: "pools", pools: String(o.pools?.length ?? 1) };
     const single = cats.length === 1;
     const next: StepAnswers = { ...a, guide: { ...guide, ...extra, applied: { ...(guide.applied ?? {}), [c]: o.kind } } };
-    if (single) next.format = f; else next.formatOverrides = { ...(a.formatOverrides ?? {}), [c]: f };
+    if (single) next.format = f; else next.formatOverrides = setCategoryFormat(next, c, f).formatOverrides;
     if (o.kind === "pools" || o.kind === "round_robin") {
       const sizes = o.pools ?? [];
       next.poolPlan = { ...(a.poolPlan ?? {}), [c]: o.kind === "pools" ? { mode: "auto", target: String(Math.round(sizes.reduce((t, x) => t + x, 0) / Math.max(1, sizes.length))) } : { mode: "none" } };
@@ -1425,12 +1426,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Guide" && (
-            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats}
+          {cur === "Guide" && (<>
+            <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="tournament-default-format">
+              <div className="text-sm font-semibold">Tournament format (applies to every category)</div>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tournament default format">
+                {(["swiss", "pools", "knockout"] as CompKind[]).map((k) => <Button key={k} type="button" size="sm" role="radio" aria-checked={format.kind === k} variant={format.kind === k ? "default" : "outline"} onClick={() => setFormat({ kind: k })}>{COMP_LABEL[k]}</Button>)}
+              </div>
+              {format.kind === "swiss" && <label className="flex items-center gap-2 text-xs">Rounds <Input type="number" min={1} className="h-8 w-20" aria-label="Default Swiss rounds" value={format.swissRounds ?? ""} onChange={(e) => setFormat({ swissRounds: e.target.value })} /></label>}
+              <p className="text-xs text-muted-foreground">Every category uses this unless you choose a different format for it below. The recommendations are advice only — nothing changes unless you click "Use recommendation".</p>
+              {cats.length > 1 && unsetCategories(a, cats).length > 0 && <p className="text-xs font-medium text-destructive">No format chosen yet for: {unsetCategories(a, cats).join(", ")}. Pick a tournament format above.</p>}
+            </div>
+            <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent}
+              sourceOf={(c) => cats.length > 1 ? formatSource(a, c) : undefined} onReset={(c) => { const ap = { ...(guide.applied ?? {}) }; delete ap[c]; setA({ ...resetCategoryFormat(a, c), guide: { ...guide, applied: ap } }); }} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats}
               estimateOf={(k) => a.unitEntries?.[k] ?? (k.includes("::") ? "" : guide.expected?.[k] ?? "")} onEstimate={setUnitEstimate} categoryEstimateOf={catEstimate}
               conflicts={estimateConflicts(a, cats)} onResolve={(c, pick) => { const cf = estimateConflicts(a, cats).find((x) => x.cat === c); if (cf) setA(resolveEstimate(a, cf, pick)); }} countState={guideCountState} actualOf={catActual}
               review={initialStep === "Guide" && tournamentId ? { onDone: () => go("Summary") } : undefined} />
-          )}
+          </>)}
 
           {cur === "Subcategories" && (
             <>

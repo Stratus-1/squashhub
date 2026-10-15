@@ -121,6 +121,15 @@ export default function BarCounter() {
   });
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
   // Signed-in staff can also see their club's edited category and division labels.
+  const { data: orderProcess = false } = useQuery({
+    queryKey: ["bar-order-process", board?.club_id],
+    enabled: !!board?.club_id,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("bar_order_process_status", { _club_id: board!.club_id });
+      return data === true;
+    },
+  });
   const { data: categoryRows = [] } = useBarCategories(code ? undefined : board?.club_id);
   const { divisions: configuredDivisions } = useBarDivisions(code ? undefined : board?.club_id);
   const menuDivisions = useMemo(() => {

@@ -3065,3 +3065,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Ladies B/C R4/R5 moved to 5 Nov / 12 Nov (times/courts kept; no linked bookings).
 - Ladies A one-sided R1 match marked bye/free win.
 - Round 1 matches, results, bookings untouched. No notifications sent. Match Day guard trigger required a privileged session.
+
+## 2026-10-15 — Linked booking ↔ Play-by match sync
+- Backend trigger `sync_champ_match_from_linked_booking` (migrations 0147/0148): when a booking linked via `club_champs_matches.booking_id` is rescheduled, the match date/time/court follow; when cancelled/deleted, the match reverts to Play-by only. Decided matches, pairings, results untouched; never blocks the booking change. Applies all clubs/formats.
+- Progression grid shows booked slot + retained Play-by. Bookings page asks which open match when member has several (explicit link, never inferred).
+- Super Admin snapshot preview: simulated book/reschedule/cancel (in memory only).

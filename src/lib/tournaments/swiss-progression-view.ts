@@ -180,7 +180,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
       const res = (id: string | null) =>
         f.state === "bye" ? (id ? "Bye" : "") :
         f.state === "completed" && id ? (f.winner === id ? "W" : "L") : "";
-      const when = f.when ?? (f.playBy ? `Play by ${f.playBy}` : null);
+      const when = f.when ? (f.playBy && f.state !== "completed" ? `${f.when} · Play by ${f.playBy}` : f.when) : (f.playBy ? `Play by ${f.playBy}` : null);
       const a: GridRow = { pos: posEntering(f.a, rd.round), id: f.a, name: f.aLabel, when, result: res(f.a) };
       const b: GridRow = { pos: f.state === "bye" ? null : posEntering(f.b, rd.round), id: f.b, name: f.state === "bye" ? "Bye" : f.bLabel, when, result: res(f.b) };
       const pair: [GridRow, GridRow] = b.pos != null && (a.pos == null || b.pos < a.pos) ? [b, a] : [a, b];

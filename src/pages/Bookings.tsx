@@ -395,6 +395,7 @@ export default function Bookings() {
   // Reserved "Club Championships" slots: a Champs player taps one to book
   // their own unscheduled match into it (names replace the hold).
   const [champSlotMatch, setChampSlotMatch] = useState<any | null>(null);
+  const [champPickerOpen, setChampPickerOpen] = useState(false);
   const { data: myOpenChampMatches = [] } = useQuery({
     queryKey: ["bookings-my-open-champ-matches", myClub?.id, activeMember?.id],
     enabled: !!myClub?.id && !!activeMember?.id,
@@ -2241,7 +2242,9 @@ export default function Bookings() {
                             if (isPastSlot && !booking) return;
                             if (booking) {
                               if (isChampsReservation(booking as any) && myOpenChampMatches.length > 0) {
-                                setChampSlotMatch(myOpenChampMatches[0]);
+                                // Explicit link: one open match opens directly; several → member chooses.
+                                if (myOpenChampMatches.length === 1) setChampSlotMatch(myOpenChampMatches[0]);
+                                else setChampPickerOpen(true);
                                 return;
                               }
                               setBookingDetails(booking);
@@ -3289,6 +3292,23 @@ export default function Bookings() {
               {terminatingSession ? "Ending..." : "End Session"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={champPickerOpen} onOpenChange={setChampPickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Which tournament match is this booking for?</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {myOpenChampMatches.map((m: any) => {
+              const opp = m.player_a_member_id === activeMember?.id ? m.player_b?.name : m.player_a?.name;
+              return (
+                <Button key={m.id} variant="outline" className="w-full justify-between h-auto py-3"
+                  onClick={() => { setChampPickerOpen(false); setChampSlotMatch(m); }}>
+                  <span>vs {opp || "Opponent"}{m.round_number ? ` · Round ${m.round_number}` : ""}</span>
+                  {m.play_by && <span className="text-xs text-muted-foreground">Play by {String(m.play_by).slice(0, 10)}</span>}
+                </Button>
+              );
+            })}
+          </div>
         </DialogContent>
       </Dialog>
       <ScheduleMatchDialog

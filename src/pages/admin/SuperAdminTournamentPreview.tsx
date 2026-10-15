@@ -57,7 +57,7 @@ export default function SuperAdminTournamentPreview() {
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs">Tournament ID <Input value={id} onChange={(e) => setId(e.target.value)} className="w-80" /></label>
         <Button size="sm" variant="outline" onClick={() => refetch()}>Re-take snapshot (resync)</Button>
-        <Button size="sm" variant="outline" onClick={() => setSim({ results: {}, stageOverrides: {} })}>Reset simulation</Button>
+        <Button size="sm" variant="outline" onClick={() => setSim({ results: {}, stageOverrides: {}, bookingEvents: {} })}>Reset simulation</Button>
       </div>
       <h2 className="text-base font-semibold">{snap.name}</h2>
 
@@ -112,6 +112,11 @@ export default function SuperAdminTournamentPreview() {
             <ul className="space-y-1 pt-1">{open.map((m) => (
               <li key={m.id} className="flex flex-wrap items-center gap-1">R{m.round_number} {nm(m.player_a_member_id)} v {nm(m.player_b_member_id)}:
                 {[m.player_a_member_id!, m.player_b_member_id!].map((p) => <Button key={p} size="sm" variant={sim.results[m.id] === p ? "default" : "outline"} className="h-6 px-2" onClick={() => setSim({ ...sim, results: { ...sim.results, [m.id]: p } })}>{nm(p)} wins</Button>)}
+                {(() => { const ev = sim.bookingEvents?.[m.id] ?? []; const push = (e: any) => setSim({ ...sim, bookingEvents: { ...(sim.bookingEvents ?? {}), [m.id]: [...ev, e] } }); const bid = `sim-${m.id}`; const linked = ev.length > 0 && ev[ev.length - 1].kind !== "cancel"; return (<>
+                  {!m.booking_id && !linked && <Button size="sm" variant="outline" className="h-6 px-2" onClick={() => push({ kind: "link", bookingId: bid, date: m.play_by ?? new Date().toISOString().slice(0, 10), time: "18:00:00", courtId: m.court_id ?? 0 })}>Sim book</Button>}
+                  {(m.booking_id || linked) && <Button size="sm" variant="outline" className="h-6 px-2" onClick={() => push({ kind: "reschedule", bookingId: m.booking_id ?? bid, date: m.play_by ?? new Date().toISOString().slice(0, 10), time: "19:00:00", courtId: m.court_id ?? 0 })}>Sim reschedule</Button>}
+                  {(m.booking_id || linked) && <Button size="sm" variant="outline" className="h-6 px-2" onClick={() => push({ kind: "cancel", bookingId: m.booking_id ?? bid })}>Sim cancel</Button>}
+                </>); })()}
               </li>))}</ul>
           </details>
         )}

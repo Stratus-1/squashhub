@@ -11,10 +11,9 @@ export interface ParentProgressionGroup {
   qualification: string;
 }
 
-/** Local preview only; this is not a capability or an authorization decision. */
-export function parentProgressionPreview(clubId: string | undefined, hostname: string) {
-  return clubId === "d8397b8a-60d3-4c4b-afee-25dab218bf19" &&
-    (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("id-preview--") || hostname.startsWith("preview--"));
+/** Approved club-only display rollout; not a capability or authorization decision. */
+export function parentProgressionEnabled(clubId: string | undefined) {
+  return clubId === "d8397b8a-60d3-4c4b-afee-25dab218bf19";
 }
 
 /** Saved parent membership AND shared playoff intent are required; labels alone never group divisions. */

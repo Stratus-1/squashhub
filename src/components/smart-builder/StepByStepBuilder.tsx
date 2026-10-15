@@ -1380,7 +1380,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       <div className="min-w-0 space-y-5">
         {!tournamentId && <TemplateReviewBanner clubId={clubId} />}
         {/* progress */}
-        <TournamentSetupNavigator current={step} reached={reached} onSelect={setStep} steps={steps.map((s) => ({
+        <TournamentSetupNavigator current={step} reached={reached} onSelect={(i) => { if (!rowStructureDirty) setStep(i); }} steps={steps.map((s) => ({
           key: s, label: s === "Pick" && pairMode ? "Select & pair players" : s === "Messaging" && notifyOnly ? "Entry notification" : STEP_LABEL[s],
           validated: okFor[s] && !["Guide", "Playoffs", "Split", "Summary"].includes(s),
         }))} />

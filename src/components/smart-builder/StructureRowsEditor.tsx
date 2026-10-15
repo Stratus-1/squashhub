@@ -27,7 +27,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(answers);
-  useEffect(() => { setDraft(answers); }, [answers]);
+  useEffect(() => { setDraft({ ...answers, categories: answers.categories.filter((c) => c.trim()) }); }, [answers]);
   useEffect(() => { onDirtyChange?.(dirty); return () => onDirtyChange?.(false); }, [dirty, onDirtyChange]);
   useEffect(() => {
     if (!dirty) return;

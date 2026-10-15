@@ -19323,10 +19323,20 @@ export type Database = {
         Args: { _token: string }
         Returns: string
       }
-      bar_counter_open_tab: {
-        Args: { _club_id?: string; _guest_name: string; _token?: string }
-        Returns: Json
-      }
+      bar_counter_open_tab:
+        | {
+            Args: { _club_id?: string; _guest_name: string; _token?: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _club_id?: string
+              _guest_name: string
+              _guest_phone?: string
+              _token?: string
+            }
+            Returns: Json
+          }
       bar_counter_operators: { Args: { _club_id: string }; Returns: Json }
       bar_counter_orders: {
         Args: { _club_id?: string; _status?: string; _token?: string }

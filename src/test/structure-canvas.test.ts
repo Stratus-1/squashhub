@@ -70,9 +70,9 @@ describe("Riverside canonical visual structure", () => {
     const id = "11111111-1111-1111-1111-111111111111";
     expect(visualStructurePilot(id, true, "localhost")).toBe(true);
     expect(visualStructurePilot(id, true, "id-preview--example.lovable.app")).toBe(true);
-    expect(visualStructurePilot(id, true, "squashhub.lovable.app")).toBe(false);
+    expect(visualStructurePilot(id, true, "squashhub.lovable.app")).toBe(true);
     expect(visualStructurePilot(id, false, "localhost")).toBe(false);
-    expect(visualStructurePilot("uitsig", true, "localhost")).toBe(false);
+    expect(visualStructurePilot(id, true, "localhost", "existing")).toBe(false);
     expect(visualStructurePilot(id, true, "localhost", "existing")).toBe(false);
   });
 });

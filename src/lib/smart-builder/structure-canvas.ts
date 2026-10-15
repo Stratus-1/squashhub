@@ -74,4 +74,4 @@ export function attachCanvasBlock(a: StepAnswers, source: CanvasItem, block: Can
 }
 
 export const visualStructurePilot = (clubId: string, flag: boolean, hostname: string, tournamentId?: string) =>
-  clubId === "11111111-1111-1111-1111-111111111111" && flag && !tournamentId && (hostname === "localhost" || hostname.includes("preview") || hostname.endsWith("lovableproject.com"));
+  clubId === "11111111-1111-1111-1111-111111111111" && flag && !tournamentId && (hostname === "localhost" || hostname.includes("preview") || hostname.endsWith("lovableproject.com") || hostname.endsWith("lovable.app"));

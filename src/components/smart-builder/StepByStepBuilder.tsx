@@ -1440,7 +1440,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Categories" && rowStructure && <StructureRowsEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} visualEnabled={clubId === "11111111-1111-1111-1111-111111111111" && (window.location.hostname === "localhost" || window.location.hostname.includes("preview") || window.location.hostname.endsWith("lovableproject.com"))} />}
+          {cur === "Categories" && rowStructure && <StructureRowsEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} visualEnabled={clubId === "11111111-1111-1111-1111-111111111111" && (window.location.hostname === "localhost" || window.location.hostname.includes("preview") || window.location.hostname.endsWith("lovableproject.com") || window.location.hostname.endsWith("lovable.app"))} />}
           {cur === "Categories" && !rowStructure && (
             <>
               <Q t="What categories will you have? (subcategories will be next)" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />

@@ -3101,3 +3101,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 ## 2026-10-15 — Approved Uitsig parent view publication
 - Publishing did not expose the combined Men's A page because its display predicate explicitly rejected production hosts. Owner approved enabling and publishing; removed only the hostname restriction, retaining Uitsig scope and saved parent/playoff association checks. No tournament data, settings, notifications or bookings changed.
 - Verification: 5 focused tests pass, build OK, signed-in 1280px/390px Progression and Log View each show 12 unique fixtures and one shared playoff without page overflow. Owner chose publication with the separate security findings left open.
+
+### 2026-10-15 — Uitsig Club Champs RR rounds 3–5 packed into 20–21 Oct
+- Symptom: round-robin R3–R5 fixtures all saved on 20/21 Oct despite weekly round play-by dates (29 Oct, 5 Nov, 12 Nov).
+- Fix (data, owner-approved): 16 unbooked scheduled fixtures shifted by whole weeks into the week ending their round's play-by date; same weekday/time/court. Backup: `/mnt/documents/uitsig-rr-fixture-times-before-move-2026-10-15.csv`. No bookings, results or draw notices touched.
+- Follow-up: fixed-time placement must respect each round's play-by week rather than packing rounds into the next free evenings.

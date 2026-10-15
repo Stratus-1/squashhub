@@ -237,7 +237,24 @@ Deno.serve(async (req) => {
     let applied = false;
 
     if (interaction.member_id && interaction.target_id) {
-      if (interaction.kind === "event_rsvp") {
+      if (interaction.kind === "event_instance_rsvp") {
+        // Weekly reminder answer: applies to THIS occurrence only, never to
+        // the rest of the series.
+        const { error } = await admin
+          .from("club_event_instance_rsvps")
+          .upsert(
+            {
+              instance_id: interaction.target_id,
+              club_member_id: interaction.member_id,
+              status: answer === "yes" ? "confirmed" : "declined",
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "instance_id,club_member_id" },
+          );
+        applied = !error;
+        if (error) console.error("event instance rsvp update failed", error);
+        reply = answer === "yes" ? "You're in — see you there!" : "No problem, we've marked you as not attending this week.";
+      } else if (interaction.kind === "event_rsvp") {
         const { error } = await admin
           .from("club_event_rsvps")
           .upsert(

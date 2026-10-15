@@ -50,7 +50,7 @@ type Payload = {
    * into the app. e.g. { kind: 'event_rsvp', target_id: '<event id>' }
    */
   interaction?: {
-    kind: "event_rsvp" | "champ_entry" | "generic";
+    kind: "event_rsvp" | "event_instance_rsvp" | "champ_entry" | "generic";
     target_id?: string | null;
     prompt?: string | null;
   };

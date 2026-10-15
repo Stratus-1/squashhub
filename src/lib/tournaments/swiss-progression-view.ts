@@ -236,7 +236,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
       const withWhen = (when: string) => [{ ...pending(p.a), when }, { ...pending(p.b), when }] as [GridRow, GridRow];
       if (slot?.kind === "planned") return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
       if (slot?.kind === "play_by") return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };
-      if (slot?.kind === "unscheduled" && schedule.kind === "window") return { matchId: id, rows: withWhen("Not allocated — slot shortage on this date"), score: null, court: null, playBy: null };
+      if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason))) return { matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null };
       return { matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null };
     });
     if (rd.bye != null) blocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });

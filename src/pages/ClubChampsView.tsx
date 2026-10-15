@@ -1,3 +1,4 @@
+import { stageSchedules } from "@/lib/tournaments/round-scheduling";
 import { isTournamentViewPilotClub } from "@/lib/tournaments/pilot-clubs";
 import { supabase } from "@/integrations/supabase/client";
 import * as React from "react";
@@ -607,10 +608,18 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     const allowed = (a.court_ids ?? []).map(Number);
     const courts = (pilotCourts as any[]).filter((c) => !allowed.length || allowed.includes(Number(c.id))).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` }));
     const busy = (matches as any[]).filter((m: any) => m.scheduled_date && m.scheduled_time && m.court_id).map((m: any) => ({ date: m.scheduled_date, time: String(m.scheduled_time).slice(0, 5), courtId: m.court_id }));
-    const dur = Number(a.match_duration_minutes) || 30;
+    // Saved round timeline (Stages & Scheduling) is authoritative: its windows, courts and match length.
+    const plan = a.beta_lifecycle?.format_plan ?? null;
+    const planStages = stageSchedules(plan);
+    const roundWindows: Record<number, Array<{ date: string; from: string; to: string; courtIds: number[] }>> = {};
+    planStages.forEach((st, i) => { if (i > 0 && st.mode === "scheduled" && st.windows.length) roundWindows[i + 1] = st.windows; });
+    const planCourtIds = [...new Set(planStages.flatMap((st) => st.windows.flatMap((w) => w.courtIds)))];
+    const courtsAll = planCourtIds.length ? (pilotCourts as any[]).filter((c) => planCourtIds.includes(Number(c.id))).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` })) : courts;
+    const dur = Number(plan?.scheduling?.singles) || Number(a.match_duration_minutes) || 30;
     pilotSlotsCache = scheduleDraws(draws, {
+      roundWindows,
       roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStageFor(Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x: any, i: number) => (i === 0 ? null : x))])),
-      courts, times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0), matchMinutes: dur, restMinutes: Number(a.default_break_minutes) || 0, busy,
+      courts: courtsAll, times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0), matchMinutes: dur, restMinutes: Number(plan?.scheduling?.rest ?? a.default_break_minutes) || 0, busy,
     });
     return pilotSlotsCache;
   };

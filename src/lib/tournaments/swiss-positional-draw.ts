@@ -142,6 +142,8 @@ export interface ScheduleOptions {
   restMinutes: number;
   /** Existing saved bookings / blocked court-times to avoid. */
   busy?: Array<{ date: string; time: string; courtId: string | number }>;
+  /** Saved round timeline: per round number, its playing windows (date, from–to, courts). Overrides roundDates/times/courts for that round. */
+  roundWindows?: Record<number, Array<{ date: string; from: string; to: string; courtIds: Array<string | number> }>>;
 }
 export type FixtureSchedule =
   | { kind: "planned"; date: string; time: string; courtId: string | number; courtName: string }
@@ -167,6 +169,29 @@ export function scheduleDraws(draws: CategoryDraw[], opts: ScheduleOptions): Rec
       const bye = d.byes.find((y) => y.round === f.round);
       if (bye) { const rr = ready.get(rk(d.categoryKey, f.round, bye.slot)); if (rr) ready.set(rk(d.categoryKey, f.round + 1, bye.slot), rr); }
     };
+    const wins = opts.roundWindows?.[f.round];
+    if (wins && wins.length) {
+      let placedW: FixtureSchedule | null = null;
+      for (const w of wins) {
+        const earliestW = Math.max(...[f.slotA, f.slotB].map((sl) => { const r = ready.get(rk(d.categoryKey, f.round, sl)); return r && r.date === w.date ? r.at : -1; }));
+        const step = Math.max(15, opts.matchMinutes);
+        for (let t = mins(w.from); t + step <= mins(w.to) && !placedW; t += step) {
+          if (t < earliestW) continue;
+          const ids = w.courtIds.map(String);
+          const court = opts.courts.find((c) => ids.includes(String(c.id)) && !used.has(`${w.date}|${t}|${c.id}`));
+          if (!court) continue;
+          used.add(`${w.date}|${t}|${court.id}`);
+          const hh = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+          placedW = { kind: "planned", date: w.date, time: hh, courtId: court.id, courtName: court.name };
+          const free = { date: w.date, at: t + opts.matchMinutes + opts.restMinutes };
+          ready.set(rk(d.categoryKey, f.round + 1, f.slotA), free);
+          ready.set(rk(d.categoryKey, f.round + 1, f.slotB), free);
+        }
+        if (placedW) break;
+      }
+      out[key] = placedW ?? { kind: "unscheduled", reason: `Shortage — no free court/time left in Round ${f.round}'s saved windows` };
+      carryBye(); continue;
+    }
     if (!date) {
       const pb = opts.playBy?.[d.categoryKey]?.[f.round - 1];
       out[key] = pb ? { kind: "play_by", date: pb } : { kind: "unscheduled", reason: "Not scheduled — no round date" };

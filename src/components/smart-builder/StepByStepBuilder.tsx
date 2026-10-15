@@ -149,7 +149,7 @@ export type StepAnswers = {
   subcats: Record<string, string[]>;
   days: DayAvail[];
   /** Courts & Dates scheduling-slot estimates (minutes) — never scoring/time-cap rules. */
-  scheduling?: { singles: string; doubles: string; rest: string; pace?: "fast" | "spread"; playoffStart?: { mode: "after" | "fixed"; gap?: string; date?: string; time?: string } };
+  scheduling?: { singles: string; doubles: string; rest: string; /** Exact GoBook/club block-booking name for this tournament, e.g. "Club Championships". */ blockName?: string; pace?: "fast" | "spread"; playoffStart?: { mode: "after" | "fixed"; gap?: string; date?: string; time?: string } };
   /** Courts & Dates court restrictions: unit key ("" = all), optional round/pool → allowed court ids. */
   courtRules?: Array<{ key: string; round: string; pool: string; courtIds: string[] }>;
   /** How players get in: organiser picks, self-entry, or both. */
@@ -2152,6 +2152,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         <span className="text-xs text-muted-foreground">min</span></span></label>
                   ))}
                 </div>
+                <label className="block space-y-1 text-sm"><span className="block font-medium">Block booking name (GoBook)</span>
+                  <Input className="max-w-xs" aria-label="Block booking name" placeholder="e.g. Club Championships" value={a.scheduling?.blockName ?? ""}
+                    onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), blockName: e.target.value } })} />
+                  <span className="block text-xs text-muted-foreground">Admin books the tournament's court time in GoBook under exactly this name, as continuous blocks. Fixed-time rounds are then placed only inside those blocks, back-to-back at the match length above.</span>
+                  {!!a.scheduling?.blockName?.trim() && !/^\s*club championship/i.test(a.scheduling.blockName) && <span className="block text-xs text-destructive">For now the name must start with "Club Championship" so court bookings can use the block.</span>}
+                </label>
                 {(() => {
                   const sc = { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}) } as NonNullable<StepAnswers["scheduling"]>;
                   const setSc = (patch: Partial<NonNullable<StepAnswers["scheduling"]>>) => setA({ ...a, scheduling: { ...sc, ...patch } });

@@ -29,14 +29,29 @@ const mins = (t: string) => { const [h, m] = String(t).slice(0, 5).split(":").ma
 const hm = (n: number) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
 export const isNamedBooking = (b: SlotBooking) => !!(b.user_id || b.club_member_id || b.opponent_id || b.opponent_member_id);
 /** Tournament block reservation: a hold without any individual name (legacy "Club Championship…" or sbs: plan block). */
-export const isTournamentHold = (b: SlotBooking) =>
-  !isNamedBooking(b) && (/^\s*club championship/i.test(b.external_booker_name ?? "") || String(b.external_id ?? "").startsWith("sbs:"));
+const normName = (x: string | null | undefined) => String(x ?? "").replace(/^\s*\d+\s*;\s*/, "").trim().toLowerCase().replace(/\s+/g, " ");
+export const isTournamentHold = (b: SlotBooking, blockName?: string | null) =>
+  !isNamedBooking(b) && (blockName?.trim()
+    ? normName(b.external_booker_name) === normName(blockName) || String(b.external_id ?? "").startsWith("sbs:")
+    : /^\s*club championship/i.test(b.external_booker_name ?? "") || String(b.external_id ?? "").startsWith("sbs:"));
+
+/** Join touching/overlapping hold rows per court (GoBook stores a block as consecutive 45-min rows) so games can span row boundaries. */
+export function mergeHolds(holds: SlotBooking[]): Array<{ court: number; start: number; end: number }> {
+  const by = new Map<number, Array<{ start: number; end: number }>>();
+  for (const h of holds) { const c = Number(h.court_id); (by.get(c) ?? by.set(c, []).get(c)!).push({ start: mins(h.start_time), end: mins(h.end_time) }); }
+  const out: Array<{ court: number; start: number; end: number }> = [];
+  for (const [court, xs] of by) {
+    xs.sort((a, b) => a.start - b.start);
+    for (const x of xs) { const last = out[out.length - 1]; if (last && last.court === court && x.start <= last.end) last.end = Math.max(last.end, x.end); else out.push({ court, ...x }); }
+  }
+  return out;
+}
 
 /**
  * Pure greedy allocation across one or more windows. Block-hold slots are preferred; free (unbooked) court time
  * inside the window is used next and labelled "unreserved". Named/external bookings are never used.
  */
-export function allocateRoundSlots(matches: SlotMatch[], windows: TimedWindow | TimedWindow[], bookings: SlotBooking[], opts: { allowUnreserved?: boolean } = {}): Allocation {
+export function allocateRoundSlots(matches: SlotMatch[], windows: TimedWindow | TimedWindow[], bookings: SlotBooking[], opts: { allowUnreserved?: boolean; blockName?: string | null } = {}): Allocation {
   const ws = Array.isArray(windows) ? windows : [windows];
   const active = bookings.filter((b) => (b.status ?? "active") === "active");
   const slots: Array<{ date: string; court: number; t: number; len: number; source: SlotSource }> = [];
@@ -44,8 +59,8 @@ export function allocateRoundSlots(matches: SlotMatch[], windows: TimedWindow | 
     const len = Math.max(15, w.minutes), from = mins(w.from), to = mins(w.to);
     const courts = new Set(w.courtIds.map(Number));
     const onDay = active.filter((b) => !b.date || b.date === w.date);
-    const holds = onDay.filter((b) => isTournamentHold(b) && courts.has(Number(b.court_id)));
-    for (const h of holds) for (let t = Math.max(mins(h.start_time), from); t + len <= Math.min(mins(h.end_time), to); t += len) slots.push({ date: w.date, court: Number(h.court_id), t, len, source: "block" });
+    const holds = mergeHolds(onDay.filter((b) => isTournamentHold(b, opts.blockName) && courts.has(Number(b.court_id))));
+    for (const h of holds) for (let t = Math.max(h.start, from); t + len <= Math.min(h.end, to); t += len) slots.push({ date: w.date, court: h.court, t, len, source: "block" });
     if (opts.allowUnreserved) for (const c of courts) for (let t = from; t + len <= to; t += len) {
       if (!onDay.some((b) => Number(b.court_id) === c && mins(b.start_time) < t + len && mins(b.end_time) > t)) slots.push({ date: w.date, court: c, t, len, source: "unreserved" });
     }
@@ -53,7 +68,7 @@ export function allocateRoundSlots(matches: SlotMatch[], windows: TimedWindow | 
   const seen = new Set<string>();
   const uniq = slots.filter((s) => { const k = `${s.date}|${s.court}@${s.t}`; if (seen.has(k)) return false; seen.add(k); return true; })
     .sort((a, b) => (a.source === b.source ? 0 : a.source === "block" ? -1 : 1) || a.date.localeCompare(b.date) || a.t - b.t || a.court - b.court);
-  const others = active.filter((b) => !isTournamentHold(b));
+  const others = active.filter((b) => !isTournamentHold(b, opts.blockName));
   const ov = (s: number, e: number, t: number, len: number) => s < t + len && e > t;
   const courtBusy = (d: string, c: number, t: number, len: number) => others.some((b) => (!b.date || b.date === d) && Number(b.court_id) === c && ov(mins(b.start_time), mins(b.end_time), t, len));
   const playerBusy = (d: string, ids: string[], t: number, len: number) => others.some((b) => (!b.date || b.date === d) && [b.club_member_id, b.opponent_member_id].some((x) => x && ids.includes(x)) && ov(mins(b.start_time), mins(b.end_time), t, len));
@@ -164,7 +179,7 @@ export async function loadRoundState(tournamentId: string) {
     db.from("club_champs_matches").select("id, round_id, status, is_bye, booking_id, scheduled_date, scheduled_time, court_id, play_by, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", tournamentId),
   ]);
   const plan = (t as any)?.beta_lifecycle?.format_plan ?? null;
-  return { lifecycle: (t as any)?.beta_lifecycle ?? null, plan, minutes: Number(plan?.scheduling?.singles) || 45, stages: stageSchedules(plan), rounds: (rounds ?? []) as LiveRound[], matches: (matches ?? []) as LiveMatch[] };
+  return { lifecycle: (t as any)?.beta_lifecycle ?? null, plan, minutes: Number(plan?.scheduling?.singles) || 45, blockName: (plan?.scheduling?.blockName as string | undefined)?.trim() || null, stages: stageSchedules(plan), rounds: (rounds ?? []) as LiveRound[], matches: (matches ?? []) as LiveMatch[] };
 }
 
 /** Persist edited stage settings in the saved plan (settings only — no fixtures touched here). */
@@ -190,7 +205,7 @@ export async function applyPlayBy(rounds: LiveRound[], deadline: string) {
 }
 
 /** Build a timed proposal (NO writes). */
-export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], matches: LiveMatch[], minutes: number): Promise<Allocation> {
+export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], matches: LiveMatch[], minutes: number, blockName?: string | null): Promise<Allocation> {
   const ids = new Set(rounds.map((r) => r.id));
   const club = new Map(rounds.map((r) => [r.id, r.scheduling_mode === "club"]));
   const need = matches.filter((m) => m.round_id && ids.has(m.round_id) && isOpen(m) && isConfirmed(m)
@@ -207,7 +222,7 @@ export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], ma
     .map((m) => ({ id: `m:${m.id}`, court_id: Number(m.court_id), date: m.scheduled_date!, start_time: m.scheduled_time!, end_time: hm(mins(m.scheduled_time!) + minutes), club_member_id: m.player_a_member_id, opponent_member_id: m.player_b_member_id }));
   return allocateRoundSlots(
     need.map((m) => ({ id: m.id, players: [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[] })),
-    stage.windows.map((w) => ({ ...w, minutes })), [...((bk ?? []) as SlotBooking[]).filter((b) => !ownBookings.has(b.id)), ...taken], { allowUnreserved: true });
+    stage.windows.map((w) => ({ ...w, minutes })), [...((bk ?? []) as SlotBooking[]).filter((b) => !ownBookings.has(b.id)), ...taken], { allowUnreserved: !blockName, blockName });
 }
 
 /** Apply an APPROVED proposal. */
@@ -218,7 +233,7 @@ export async function applyTimed(rounds: LiveRound[], proposal: Allocation, minu
   }
   let booked = 0; const failed: Array<{ matchId: string; reason: string }> = [];
   for (const a of proposal.assign) {
-    const { error } = await db.rpc("self_schedule_champ_match", { p_match_id: a.matchId, p_court_id: a.courtId, p_date: a.date, p_time: a.time, p_duration_minutes: minutes });
+    const { error } = await db.rpc("self_schedule_champ_match", { p_match_id: a.matchId, p_court_id: a.courtId, p_date: a.date, p_time: a.time, p_duration_minutes: minutes, p_fill_hold: false });
     if (error) failed.push({ matchId: a.matchId, reason: error.message }); else booked++;
   }
   return { booked, failed };

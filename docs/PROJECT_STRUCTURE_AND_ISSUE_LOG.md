@@ -3059,3 +3059,9 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 ### 2026-10-15 — Round scheduling panel stayed "Fixtures in sync" after in-place edits
 - Cause: panel read saved settings once from the backend; builder round-card edits were invisible until remount, and timed date/court/time changes were never diffed.
 - Fix: `RoundSchedulingEditor` diffs live fixtures against the builder's in-memory stages (stable stage ID, `stageSignature`), shows banner + "Round scheduling changed" toast (Apply / Not now); Apply saves that stage then reuses the reconcile/preview flow. `diffRound.outsideWindow` flags organiser allocations outside the new window; `proposeTimed` re-places them (approval required).
+
+## 2026-10-15 — Uitsig Club Champs 2026 live round scheduling applied (owner-approved)
+- Swiss stages (Mens B/C/D, Ladies A): swissRounds 6→5; play-by rounds R2 22 Oct, R3 29 Oct, R4 5 Nov, R5 12 Nov (empty round rows; pairings still generated progressively after each round).
+- Ladies B/C R4/R5 moved to 5 Nov / 12 Nov (times/courts kept; no linked bookings).
+- Ladies A one-sided R1 match marked bye/free win.
+- Round 1 matches, results, bookings untouched. No notifications sent. Match Day guard trigger required a privileged session.

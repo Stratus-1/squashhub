@@ -1286,7 +1286,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const divisionDone = fixturesComplete((matches as any[]).filter((m: any) => m.group_number === gn));
       const classic = renderStandingsTable(rows, { poolLabels, historical: !!specDivision && !swissStageFor(gn) && divisionDone, statuses });
       const swissSt = swissStageFor(gn);
-      if (!swissSt || !pilotViewerOn || !pilotSwissOn || !canManage || isDoublesLeague(gn)) return classic;
+      if (!swissSt || !pilotViewerOn || !pilotSwissOn || isDoublesLeague(gn)) return classic;
       const gEntries = (entries as any[]).filter((e: any) => e.group_number === gn).sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
       const names: Record<string, string> = {};
       rows.forEach((r: any) => { names[r.club_member_id] = r.name; });

@@ -113,14 +113,26 @@ export interface ReconcileDiff {
   keepPlayerBookings: string[];    // play_by: players' own bookings that stay
   deadlineUpdates: string[];       // play_by: open matches whose deadline changes
   needAllocation: string[];        // scheduled: confirmed open matches with no slot yet
+  outsideWindow: string[];         // scheduled: organiser allocations no longer inside the saved date/time/courts
   provisional: number;             // never allocated, hidden from Upcoming
   untouched: number;               // completed/live/bye
   inSync: boolean;
 }
 
+/** Is an allocated match inside one of the saved windows (date, start time, court)? Unknown parts never fail it. */
+export function insideWindows(m: Pick<LiveMatch, "scheduled_date" | "scheduled_time" | "court_id">, windows: StageSchedule["windows"]): boolean {
+  if (!windows.length) return true;
+  return windows.some((w) => w.date === m.scheduled_date
+    && (!m.scheduled_time || (mins(m.scheduled_time) >= mins(w.from) && mins(m.scheduled_time) < mins(w.to)))
+    && (m.court_id == null || w.courtIds.map(Number).includes(Number(m.court_id))));
+}
+
+/** Stable signature of a stage's schedule settings — equal signatures mean nothing meaningful changed. */
+export const stageSignature = (s: StageSchedule) => JSON.stringify([s.mode, s.mode === "play_by" ? s.deadline : null, s.mode === "scheduled" ? s.windows.map((w) => [w.date, w.from, w.to, [...w.courtIds].sort()]) : null]);
+
 /** Pure dry-run: what "Save & Apply" / "Refresh Fixtures & Log" would change. */
 export function diffRound(stage: StageSchedule, rounds: LiveRound[], matches: LiveMatch[]): ReconcileDiff {
-  const d: ReconcileDiff = { mode: stage.mode, roundsToUpdate: [], clearAllocations: [], keepPlayerBookings: [], deadlineUpdates: [], needAllocation: [], provisional: 0, untouched: 0, inSync: true };
+  const d: ReconcileDiff = { mode: stage.mode, roundsToUpdate: [], clearAllocations: [], keepPlayerBookings: [], deadlineUpdates: [], needAllocation: [], outsideWindow: [], provisional: 0, untouched: 0, inSync: true };
   const ids = new Set(rounds.map((r) => r.id));
   for (const r of rounds) {
     const want = stage.mode === "play_by" ? "self" : "club";
@@ -135,8 +147,9 @@ export function diffRound(stage: StageSchedule, rounds: LiveRound[], matches: Li
       if (m.play_by !== stage.deadline) d.deadlineUpdates.push(m.id);
     } else if (!isConfirmed(m)) d.provisional++;
     else if (!m.scheduled_date && !m.booking_id) d.needAllocation.push(m.id);
+    else if (wasClub.get(m.round_id!) && !insideWindows(m, stage.windows)) d.outsideWindow.push(m.id);
   }
-  d.inSync = !d.roundsToUpdate.length && !d.clearAllocations.length && !d.deadlineUpdates.length && !d.needAllocation.length;
+  d.inSync = !d.roundsToUpdate.length && !d.clearAllocations.length && !d.deadlineUpdates.length && !d.needAllocation.length && !d.outsideWindow.length;
   return d;
 }
 
@@ -179,14 +192,17 @@ export async function applyPlayBy(rounds: LiveRound[], deadline: string) {
 /** Build a timed proposal (NO writes). */
 export async function proposeTimed(stage: StageSchedule, rounds: LiveRound[], matches: LiveMatch[], minutes: number): Promise<Allocation> {
   const ids = new Set(rounds.map((r) => r.id));
-  const need = matches.filter((m) => m.round_id && ids.has(m.round_id) && isOpen(m) && isConfirmed(m) && !m.scheduled_date && !m.booking_id);
+  const club = new Map(rounds.map((r) => [r.id, r.scheduling_mode === "club"]));
+  const need = matches.filter((m) => m.round_id && ids.has(m.round_id) && isOpen(m) && isConfirmed(m)
+    && ((!m.scheduled_date && !m.booking_id) || (club.get(m.round_id) && !!m.scheduled_date && !insideWindows(m, stage.windows))));
+  const moving = new Set(need.map((m) => m.id));
   const dates = [...new Set(stage.windows.map((w) => w.date))];
   const { data: bk, error } = dates.length
     ? await db.from("bookings").select("id, court_id, date, start_time, end_time, status, external_booker_name, external_id, user_id, club_member_id, opponent_id, opponent_member_id").in("date", dates).eq("status", "active")
     : { data: [], error: null };
   if (error) throw error;
   // Existing allocations of this tournament on those days also occupy courts/players.
-  const taken: SlotBooking[] = matches.filter((m) => m.scheduled_date && dates.includes(m.scheduled_date) && m.court_id && m.scheduled_time && !m.booking_id && isOpen(m))
+  const taken: SlotBooking[] = matches.filter((m) => m.scheduled_date && dates.includes(m.scheduled_date) && m.court_id && m.scheduled_time && !m.booking_id && isOpen(m) && !moving.has(m.id))
     .map((m) => ({ id: `m:${m.id}`, court_id: Number(m.court_id), date: m.scheduled_date!, start_time: m.scheduled_time!, end_time: hm(mins(m.scheduled_time!) + minutes), club_member_id: m.player_a_member_id, opponent_member_id: m.player_b_member_id }));
   return allocateRoundSlots(
     need.map((m) => ({ id: m.id, players: [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean) as string[] })),

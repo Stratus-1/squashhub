@@ -4308,8 +4308,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
           {!diamondEvent && categoryViewsNode}
           {!diamondEvent && standingsCards}
-          {fixtureCards}
-          {combinedFixtures}
+          {!pilotLayout && fixtureCards}
+          {!pilotLayout && combinedFixtures}
         </div>
         {diamondEvent && <DiamondStandings tournamentId={champId!} canManage={canManage} />}
         {isHandicapChamp && champ?.club_id && (

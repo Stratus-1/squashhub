@@ -19,6 +19,8 @@ import { atomically } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type PoolPlan, type PoolQualification } from "@/lib/smart-builder/pool-plan";
 import { SwissCategoryRoundsPanel, type SwissCategoryRow } from "./SwissCategoryRoundsPanel";
+import { StagePlanPanel } from "./StagePlanPanel";
+import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
 import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
@@ -124,6 +126,8 @@ const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => 
 };
 export type StepAnswers = {
   planId?: string;
+  /** Per-category ordered stage plans (pilot stage planner); Stage 1 is mirrored to format/formatOverrides. */
+  stagePlans?: StagePlans;
   /** Set once "Complete setup & continue" created the tournament; later saves update it. */
   createdTournamentId?: string;
   /** Organiser-supplied WhatsApp group invite link (content in messages, not a delivery channel). */
@@ -546,6 +550,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     setA({ ...a, playoffOverrides: next });
   };
   const { data: swissPilot = false } = useClubBetaFeature(clubId, "tournament_swiss_category_rounds");
+  const { data: stagePlanner = false } = useClubBetaFeature(clubId, "tournament_stage_planner");
   const format: FormatPlan = { ...DEFAULT_FORMAT, ...a.format };
   const formatFor = (key: string): FormatPlan => a.formatOverrides?.[key] ?? a.formatOverrides?.[key.split("::")[0]] ?? format;
   const setFormat = (patch: Partial<FormatPlan>) => setA({ ...a, format: { ...format, ...patch } });
@@ -2238,6 +2243,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             <>
               <Q t="What format are you planning?" h="How players will compete — separate from how each match is scored." />
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">This is your planned format. Once registrations close and final player numbers are known, SquashHub will revisit the format with you before pools, draws or fixtures are generated.</div>
+              {stagePlanner && <StagePlanPanel answers={a} onSave={(next) => setA(next)} tournamentId={entryTournamentId} units={units.map((u) => ({ key: u.key, base: u.base }))}
+                entrants={Object.fromEntries(units.map((u) => { let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length; if (!n) n = Number(a.unitEntries?.[u.key]) || 0; return [u.key, u.disc === "doubles" ? Math.floor(n / 2) : n]; }))} />}
+              {stagePlanner ? <details className="rounded-lg border border-border p-2"><summary className="cursor-pointer text-xs text-muted-foreground">Classic format controls</summary><div className="space-y-3 pt-2">{classicFormat()}</div></details> : classicFormat()}
+            </>
+          )}
+          {false && (
+            <>
               <FormatFields value={format} onChange={setFormat} units={units} entries={a.unitEntries ?? {}} stages={a.stages} />
               {swissPilot && <SwissCategoryRoundsPanel liveDraw={!!entryTournamentId} rows={units.map((u): SwissCategoryRow => {
                 const f = formatFor(u.key);

@@ -3079,3 +3079,4 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 
 ## 2026-10-15 Structure guide: one tournament default format
 - Guide step shows a tournament default format selector; categories inherit it unless overridden. Cards show "Using tournament default" / "Override" with Reset. Applying a recommendation equal to the default stores no override (`src/lib/smart-builder/format-default.ts`). Existing saved overrides untouched.
+- 2026-10-15: Paid/GoBook bookings can be explicitly linked to a champs fixture (link_booking_to_champ_match); court grid shows linked bookings and position placeholders.

@@ -1051,6 +1051,13 @@
       "when": 1792061842782,
       "tag": "0149_self_schedule_fill_hold_option",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1792064711375,
+      "tag": "0150_champ_match_link_booking",
+      "breakpoints": true
     }
   ]
 }

@@ -116,9 +116,13 @@ export function champMatchToBookingLabel(
     const profile = Array.isArray(rel.profiles) ? rel.profiles[0] : rel.profiles;
     return clean(rel.name) || clean(profile?.name);
   };
+  // Until a player is known, show the slot's position label (e.g.
+  // "Position 1"); the real name replaces it automatically once resolved.
+  const a = nameOf(row?.player_a) || clean(row?.placeholder_a);
+  const b = nameOf(row?.player_b) || clean(row?.placeholder_b);
   return champBookingLabel({
-    sideA: { name: nameOf(row?.player_a), partner: nameOf(row?.partner_a) },
-    sideB: { name: nameOf(row?.player_b), partner: nameOf(row?.partner_b) },
+    sideA: { name: a, partner: nameOf(row?.partner_a) },
+    sideB: { name: b, partner: nameOf(row?.partner_b) },
     isBye: !!row?.is_bye,
     champName: opts.champName,
     divisionLabel: opts.divisionLabel,

@@ -116,7 +116,7 @@ const COMP_DESC: Record<CompKind, string> = {
   later: "Keep setting up without fixing a competition structure yet.",
 };
 type PlayoffChoice = "none" | "playoffs" | "later";
-type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded"; style?: "later" | "championship" | "placement" };
+type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded"; style?: "later" | "championship" | "placement"; row?: import("@/lib/smart-builder/playoff-qualifiers").RowPlayoffPlan };
 const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later", style: "later" };
 const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.choice === "later" ? "Decide later" : p.rounds === 1 ? "Final only" : p.rounds === 2 ? "Semifinals + Final" : "Quarterfinals + Semifinals + Final";
 const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools/standings" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";

@@ -18913,6 +18913,11 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_round_play_by: {
+        Args: { p_play_by: string; p_round_id: string }
+        Returns: Json
+      }
+      admin_set_round_timed: { Args: { p_round_id: string }; Returns: Json }
       admin_waive_booking_penalty: {
         Args: { _penalty_id: string; _reason: string }
         Returns: Json

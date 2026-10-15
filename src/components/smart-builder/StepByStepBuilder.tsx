@@ -21,6 +21,8 @@ import { poolPlanOf, poolQualificationOf, recommendPools, type PoolMode, type Po
 import { SwissCategoryRoundsPanel, type SwissCategoryRow } from "./SwissCategoryRoundsPanel";
 import { StagePlanPanel } from "./StagePlanPanel";
 import { StructureOverview } from "./StructureOverview";
+import { StructureRowsEditor } from "./StructureRowsEditor";
+import { rowStructurePilot, structureRowIssues } from "@/lib/smart-builder/structure-rows";
 const StructSection = ({ title }: { title: string; children?: null }) => <h3 className="border-t border-border pt-4 text-sm font-semibold">{title}</h3>;
 import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
@@ -555,6 +557,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const { data: stagePlannerFlag = false } = useClubBetaFeature(clubId, "tournament_stage_planner");
   /** Riverside pilot: Structure guide + Subcategories + Format overrides + Planned format merged into one step; scoring exceptions move to Match format. */
   const { data: structureStep = false } = useClubBetaFeature(clubId, "tournament_structure_step");
+  const rowStructure = rowStructurePilot(clubId, structureStep, window.location.hostname, tournamentId ?? a.createdTournamentId);
+  const [rowStructureDirty, setRowStructureDirty] = useState(false);
   const stagePlanner = stagePlannerFlag || structureStep;
   const [structEditing, setStructEditing] = useState<string | null>(null);
   const format: FormatPlan = { ...DEFAULT_FORMAT, ...a.format };
@@ -1023,10 +1027,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     merged.splice(merged.indexOf("Categories") + 1, 0, "Structure");
     steps.splice(0, steps.length, ...merged);
   }
+  if (rowStructure) {
+    const compact = steps.filter((k) => !["What", "Structure", "Categories", "Match"].includes(k));
+    compact.splice(compact.indexOf("Basics") + 1, 0, "Categories", "Match");
+    steps.splice(0, steps.length, ...compact);
+  }
   const cur = steps[Math.min(step, steps.length - 1)];
   const isStruct = cur === "Structure";
   // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
-  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0) setStep(i); };
+  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
 
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;
@@ -1063,6 +1072,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   okFor.Structure = okFor.Guide && okFor.Subcategories && okFor.Format;
   if (structureStep) okFor.Match = okFor.Match && okFor.Overrides;
+  if (rowStructure) okFor.Categories = !rowStructureDirty && structureRowIssues(a).length === 0 && okFor.Format;
   const canNext = okFor[cur];
   /** Structure guidance (advisory): estimates, actual field and applying a recommendation on request only. */
   const guide: GuideAnswers = a.guide ?? {};
@@ -1423,7 +1433,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Categories" && (
+          {cur === "Categories" && rowStructure && <StructureRowsEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} />}
+          {cur === "Categories" && !rowStructure && (
             <>
               <Q t="What categories will you have? (subcategories will be next)" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
               <div className="space-y-2">
@@ -2640,7 +2651,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
           {cur !== "Summary" && (
             <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
-              <Button variant="outline" size="sm" className="min-h-10 min-w-24" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
+              <Button variant="outline" size="sm" className="min-h-10 min-w-24" disabled={step === 0 || rowStructureDirty} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
               <Button size="sm" className="min-h-10 min-w-24" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
             </div>
           )}

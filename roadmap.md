@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Riverside row-based Tournament Structure refinement: direct/guided entry, nested division/group/pool rows, stage planning, safe local save, synthetic tests and desktop/mobile review; no live writes or publishing.
 - [x] Enable approved Uitsig parent Progression & Log on published hosts; 5 tests and signed-in desktop/mobile both views verified, 12 unique fixtures and one shared playoff; publication requested next, no tournament-data writes.
 - [x] Uitsig R50 test knockout fees: 11 unpaid, uninvoiced NSP Knock out fees (R550) removed with 22 balanced reversal entries and 11 audit records; originals preserved, no payment/registration links, zero matching fees/net debt remain; signed-in member card verified R0. No publishing.
 - [x] Bar remote-order fulfilment plan: inspected self/counter tab flows; proposed club-wide partial delivery checklist, collection/delivery choice, Bar Setup “Use order process” toggle and matching poster wording. No app/data changes or publishing; implementation and isolated pilot await approval.

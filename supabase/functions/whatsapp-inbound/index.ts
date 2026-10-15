@@ -230,14 +230,35 @@ Deno.serve(async (req) => {
           response: `unknown: ${(text || buttonPayload).slice(0, 300)}`,
         });
       }
-      return twiml("Sorry, I didn't catch that. Please reply YES to get your entry link or NO to decline.");
+      return twiml(
+        interaction.kind === "champ_entry"
+          ? "Sorry, I didn't catch that. Please reply YES to get your entry link or NO to decline."
+          : "Sorry, I didn't catch that. Please reply YES if you're in or NO to decline.",
+      );
     }
 
     let reply = answer === "yes" ? "Thanks — you're confirmed." : "Noted — thanks for letting us know.";
     let applied = false;
 
     if (interaction.member_id && interaction.target_id) {
-      if (interaction.kind === "event_rsvp") {
+      if (interaction.kind === "event_instance_rsvp") {
+        // Weekly reminder answer: applies to THIS occurrence only, never to
+        // the rest of the series.
+        const { error } = await admin
+          .from("club_event_instance_rsvps")
+          .upsert(
+            {
+              instance_id: interaction.target_id,
+              club_member_id: interaction.member_id,
+              status: answer === "yes" ? "confirmed" : "declined",
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "instance_id,club_member_id" },
+          );
+        applied = !error;
+        if (error) console.error("event instance rsvp update failed", error);
+        reply = answer === "yes" ? "You're in — see you there!" : "No problem, we've marked you as not attending this week.";
+      } else if (interaction.kind === "event_rsvp") {
         const { error } = await admin
           .from("club_event_rsvps")
           .upsert(

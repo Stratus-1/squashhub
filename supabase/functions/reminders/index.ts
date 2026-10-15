@@ -416,12 +416,14 @@ Deno.serve(async (req) => {
         for (const inst of instances || []) {
           // Invite list: instance-level RSVPs first; fall back to the
           // event-level list when an instance carries none (older events).
+          // Every invitee is asked again for each occurrence — a "No" for one
+          // week must never silence the reminder for the weeks after it.
           let rsvps: any[] | null = null;
           const { data: instRsvps } = await supabaseAdmin
             .from("club_event_instance_rsvps")
             .select("club_member_id, status")
             .eq("instance_id", String((inst as any).id))
-            .in("status", ["invited", "confirmed"])
+            .in("status", ["invited", "confirmed", "declined"])
             .limit(500);
           if (instRsvps && instRsvps.length > 0) {
             rsvps = instRsvps;
@@ -430,7 +432,7 @@ Deno.serve(async (req) => {
               .from("club_event_rsvps")
               .select("club_member_id, status")
               .eq("event_id", String((ev as any).id))
-              .in("status", ["invited", "confirmed"])
+              .in("status", ["invited", "confirmed", "declined"])
               .limit(500);
             rsvps = evRsvps;
           }
@@ -448,9 +450,13 @@ Deno.serve(async (req) => {
           const eventType = String((ev as any).event_type || "event");
           const title = `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Event Reminder`;
           const instanceDate = String((inst as any).instance_date);
-          const message = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please confirm your attendance. Plans change? You can withdraw any time on the event page.`;
+          const niceDate = new Date(`${instanceDate}T12:00:00Z`).toLocaleDateString("en-ZA", {
+            weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
+          });
+          const question = `Are you joining "${(ev as any).title}" on ${niceDate} at ${startTime}?`;
+          const message = `${question} Please confirm whether you're in or decline.`;
           const appUrl = `/events/${String((ev as any).id)}`;
-          const waMessage = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please reply YES to confirm or NO to decline. Changed your mind later? Just reply NO any time before the event to withdraw.`;
+          const waDetails = "Reply YES if you're in, or NO to decline.";
 
           for (const mu of memberUsers || []) {
             const uid = String((mu as any).user_id);
@@ -473,7 +479,8 @@ Deno.serve(async (req) => {
             if (!ok) { skipped += 1; continue; }
             sent += 1;
 
-            // WhatsApp (opt-in channel, billed to the club)
+            // WhatsApp: a Yes/No question for THIS occurrence. The reply is
+            // written back to this week's RSVP only (event_instance_rsvp).
             if ((ev as any).notify_whatsapp && (mu as any).phone && !(mu as any).whatsapp_opt_out) {
               try {
                 const waRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-whatsapp`, {
@@ -487,12 +494,17 @@ Deno.serve(async (req) => {
                     recipients: [{ member_id: String((mu as any).id), phone: String((mu as any).phone) }],
                     kind: "event_reminder",
                     category: "utility",
-                    template_key: "club_notice",
+                    template_key: "rsvp_question",
                     template_variables: {
-                      message: waMessage,
-                      link: `${subdomainUrl(ev.club_id)}${appUrl}`,
+                      question,
+                      details: waDetails,
                     },
-                    body: waMessage,
+                    body: `${question}\n\n${waDetails}`,
+                    interaction: {
+                      kind: "event_instance_rsvp",
+                      target_id: String((inst as any).id),
+                      prompt: `RSVP for ${(ev as any).title} - ${niceDate}`,
+                    },
                   }),
                 });
                 if (!waRes.ok) console.error("Event reminder WhatsApp failed:", await waRes.text());

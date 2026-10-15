@@ -91,7 +91,7 @@ export function GuestOrderProgress({ tab }: { tab: { tab_id: string; token: stri
           {o.lines.map((l) => (
             <div key={l.id} className="flex justify-between text-muted-foreground">
               <span>{l.quantity}× {l.item_name}</span>
-              <span>{l.delivered_qty >= l.quantity ? "✓ delivered" : `${l.delivered_qty} of ${l.quantity}`}</span>
+              <span>{l.delivered_qty >= l.quantity ? (o.fulfilment === "collect" ? "✓ collected" : "✓ delivered") : (o.fulfilment === "collect" && (l as any).ready_notified_at) ? "Ready — collect at bar" : `${l.delivered_qty} of ${l.quantity}`}</span>
             </div>
           ))}
         </div>

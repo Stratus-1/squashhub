@@ -20533,6 +20533,10 @@ export type Database = {
         Returns: number
       }
       lift_expired_member_suspensions: { Args: never; Returns: number }
+      link_booking_to_champ_match: {
+        Args: { p_booking_id: string; p_match_id: string }
+        Returns: Json
+      }
       list_doubles_partner_options: {
         Args: {
           p_champ_id: string
@@ -22013,6 +22017,10 @@ export type Database = {
           _season_year: number
         }
         Returns: number
+      }
+      unlink_booking_from_champ_match: {
+        Args: { p_match_id: string }
+        Returns: Json
       }
       unschedule_champ_match: { Args: { p_match_id: string }; Returns: Json }
       validate_challenge_gender_group: {

@@ -19,6 +19,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BarCounterOrders } from "@/components/bar/BarCounterOrders";
+import { BarOpenAndAlerts } from "@/components/bar/BarOpenAndAlerts";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -455,9 +456,12 @@ export default function BarCounter() {
       </div>
 
       {orderProcess && (
-        <div className="px-4 pt-3 max-w-7xl mx-auto flex gap-1">
-          <Button size="sm" variant={pane === "tabs" ? "default" : "outline"} onClick={() => setPane("tabs")}>Tabs</Button>
-          <Button size="sm" variant={pane === "orders" ? "default" : "outline"} onClick={() => setPane("orders")}>Orders</Button>
+        <div className="px-4 pt-3 max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="flex gap-1">
+            <Button size="sm" variant={pane === "tabs" ? "default" : "outline"} onClick={() => setPane("tabs")}>Tabs</Button>
+            <Button size="sm" variant={pane === "orders" ? "default" : "outline"} onClick={() => setPane("orders")}>Orders</Button>
+          </div>
+          <BarOpenAndAlerts token={token} clubId={clubId} operator={operator} onShowOrders={() => setPane("orders")} />
         </div>
       )}
 

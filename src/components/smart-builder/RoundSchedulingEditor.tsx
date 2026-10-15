@@ -48,8 +48,8 @@ export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string
     const ms = st.matches.filter((m) => ids.includes(m.id));
     const pids = [...new Set(ms.flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))] as string[];
     if (!pids.length) return;
-    const { data } = await fromExt("club_members").select("id, first_name, last_name").in("id", pids);
-    setNames((n) => ({ ...n, ...Object.fromEntries(((data ?? []) as any[]).map((p) => [p.id, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim()])) }));
+    const { data } = await fromExt("club_members").select("id, name").in("id", pids);
+    setNames((n) => ({ ...n, ...Object.fromEntries(((data ?? []) as any[]).map((p) => [p.id, String(p.name ?? "")])) }));
   };
   const done = async () => { setReview(null); setEdit(null); await reload(); qc.invalidateQueries(); };
 

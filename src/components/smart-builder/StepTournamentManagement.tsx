@@ -17,7 +17,6 @@ import { StepRunOverview } from "./StepRunOverview";
 import { PlayerNotificationsSection } from "./PlayerNotificationsSection";
 import { PendingDrawNoticePrompt } from "./PendingDrawNoticePrompt";
 import { FixtureDrawNoticePrompt } from "./FixtureDrawNoticePrompt";
-import { RoundSchedulingEditor } from "./RoundSchedulingEditor";
 import { StepSwissRoundsPanel } from "./StepSwissRoundsPanel";
 import { StepKnockoutRoundsPanel } from "./StepKnockoutRoundsPanel";
 import { StandingsAwardsSection } from "./StandingsAwardsSection";

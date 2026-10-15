@@ -1,3 +1,4 @@
+import { isTournamentViewPilotClub } from "@/lib/tournaments/pilot-clubs";
 import { supabase } from "@/integrations/supabase/client";
 import * as React from "react";
 import { KnockoutNextActions } from "@/components/smart-builder/KnockoutNextActions";
@@ -260,7 +261,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Riverside pilot: club courts for PROPOSED per-match slots (read only).
   const { data: pilotCourts = [] } = useQuery({
     queryKey: ["pilot-swiss-courts", champ?.club_id],
-    enabled: !inlineStandings && champ?.club_id === "11111111-1111-1111-1111-111111111111",
+    enabled: !inlineStandings && isTournamentViewPilotClub(champ?.club_id),
     queryFn: async () => {
       const { data } = await supabase.from("courts").select("id, name, active").eq("club_id", champ!.club_id).order("id");
       return (data ?? []).filter((c: any) => c.active !== false && !(c as any).is_external);
@@ -1216,7 +1217,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Riverside Swiss pilot: models built while rendering standings, reused on the Results tab (same data, no recalculation).
   const pilotSwissModels: Record<number, any> = {};
   // Riverside round-robin pilot: read-only pool matrix + order of play per pool, from the same saved matches.
-  const rrPilotOn = (gn: number) => champ?.club_id === "11111111-1111-1111-1111-111111111111" && pilotViewerOn && pilotPoolMatrixOn && canManage
+  const rrPilotOn = (gn: number) => isTournamentViewPilotClub(champ?.club_id) && pilotViewerOn && pilotPoolMatrixOn && canManage
     && !swissStageFor(gn) && !isSwissForLeague(gn) && isRoundRobinForLeague(gn) && !isDoublesLeague(gn) && !matchupForGroup(matchups, gn);
   const renderRoundRobinPilot = (gn: number) => {
     if (!rrPilotOn(gn)) return null;
@@ -1290,7 +1291,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
         })),
       });
-      const riversidePreview = champ.club_id === "11111111-1111-1111-1111-111111111111";
+      const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
       return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
     }
@@ -4100,7 +4101,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           {tabBtn("results", "Results")}
         </div>}
         {categoryViews.length > 1 && (
-          <div className={cn("border-b bg-muted/40 px-3 py-2", embeddedChampId && champ?.club_id === "11111111-1111-1111-1111-111111111111" && "riverside-category-selector")}>
+          <div className={cn("border-b bg-muted/40 px-3 py-2", embeddedChampId && isTournamentViewPilotClub(champ?.club_id) && "riverside-category-selector")}>
             <div className="flex gap-1.5 overflow-x-auto pb-0.5 category-options" role="group" aria-label="Category">
               {categoryViews.map((c, index) => (
                 <Button

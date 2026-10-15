@@ -14,12 +14,12 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false }: { title
   const { players, matrix, totals, rounds } = view;
   return (
     <div className="space-y-2" data-testid="rr-pilot">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+      {!matrixOnly && <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">Same saved matches as the standings table; order follows official standings. No results can be entered here.</span>
-      </div>
+      </div>}
       {view.issues.length > 0 && <p className="text-xs text-destructive">{view.issues.join(" ")}</p>}
-      <TournamentInteractiveViewer title={`${title} — pool matrix & order of play`} inlineHeight={460} defaultFit="none">
+      <TournamentInteractiveViewer title={`${title} — ${matrixOnly ? "Rankings & results" : "pool matrix & order of play"}`} inlineHeight={matrixOnly ? 240 : 460} defaultFit="none">
         <div className="riverside-round-visuals space-y-4 bg-background p-3 text-xs text-foreground">
           <table className="border-collapse" data-testid="rr-matrix">
             <thead>

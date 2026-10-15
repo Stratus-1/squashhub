@@ -43,7 +43,7 @@ describe("preview-only parent progression", () => {
     const { container } = render(<ParentCategoryProgression parent={parent} playoffs={[]} children={[1, 2].map((g) => ({ group: g, label: `A${g}`, format: "Round robin", matrix: null, standings: <div>Rankings {g}</div>, upcoming: g === 1 ? [fixture] : [], results: [] }))} />);
     expect(screen.getByRole("region", { name: "A1" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "A2" })).toBeTruthy();
-    expect(screen.getAllByRole("heading", { name: "Final", exact: true })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { name: /^Final$/ })).toHaveLength(1);
     expect(screen.queryByText("Semifinals")).toBeNull();
     expect(screen.getByText("Participants TBD")).toBeTruthy();
     expect(container.querySelectorAll('[data-fixture-id="saved"]')).toHaveLength(1);

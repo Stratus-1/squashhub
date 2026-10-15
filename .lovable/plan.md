@@ -1,86 +1,111 @@
-# Bar & Shop orders with delivery tracking
+# Planned Format (Step 9) redesign: per-category stage plans
 
-## What changes
+Planning only. Nothing is implemented, published or written to any tournament until this plan is approved. Uitsig live data is not touched at any phase without separate approval.
 
-Add **Use order process** to Bar Setup, off by default.
+## Goals
+- One clean page replaces the current clutter: the tournament Swiss default, estimated vs confirmed rounds, the Swiss-rounds-per-category pilot table, large category exception cards and scattered confirm buttons.
+- Each category gets an ordered **stage plan** (Stage 1 → Stage 2 → …). Plan it all upfront, or leave later stages undecided. Edit future stages at any time, including mid-tournament.
+- A change to the plan never touches games that already exist. It produces an **impact preview**, and any future draw or schedule change needs its own explicit approval.
+- Recommendations are advice only. They are shown beside a choice and never replace a saved decision.
 
-- **Off:** the current self-service bar/shop experience stays unchanged. No staff order list or delivery checklist.
-- **On:** customers submit orders from their phones; authorised counter staff see all submitted orders for that club, including orders on customer-opened tabs, and tick off what has been delivered.
-- The setting enables the whole order workflow; a second overlapping “orders enabled” switch is unnecessary.
-- Turning it off requires all outstanding orders to be completed or explicitly cancelled first, so an unfinished burger cannot disappear.
+## Proposed layout
 
-This request is **plan only**. No application changes, club settings, orders, payments, stock movements, backend changes or publishing now.
+```text
++--------------------------------------------------------------------------+
+| PLANNED FORMAT                                   [Unsaved changes •]     |
+| Starting format for every category                                       |
+|  [ Swiss v ]  Rounds [ 5 ]   (Recommended for 12 entrants: 4-5 rounds)   |
++--------------------------------------------------------------------------+
+| Category      Entr. Current stage         Rnds Source   Next stage      Status     |
+| Men's A1        8   Round robin            7   Override  Shared playoff  Active R3  [Edit]|
+| Men's A2        8   Round robin            7   Override  Shared playoff  Active R3  [Edit]|
+| Men's B        12   Swiss                  5   Default   Undecided       Active R2  [Edit]|
+| Ladies A        6   Swiss                  5   Default   Knockout (top4) Planned    [Edit]|
++--------------------------------------------------------------------------+
+| v Men's B - stage plan                                                    |
+|  1  Swiss            5 rounds -> ends after R[5]   ACTIVE  R1 done, R2 on |
+|     Advances: all continue / top [ ] / positions ...                      |
+|  2  (undecided)      [Choose format v]             PLANNED               |
+|     [+ Add future stage]                                                 |
+|  Impact of unsaved changes: none yet                                     |
++--------------------------------------------------------------------------+
+| [Discard]                                   [Save plan]  [Continue ->]   |
++--------------------------------------------------------------------------+
+```
 
-## Customer experience
+- **Starting default**: one row for format plus rounds (rounds only for Swiss, number of pools only for pools). It applies to Stage 1 of every category without its own override.
+- **Summary table**: one dense row per category or subcategory, showing entrants, current stage format, rounds, source (Default / Category / Override), planned next stage, status (Planned / Active Rn / Completed) and an Edit button. Shared-playoff groups such as Men's A1/A2 are grouped under their parent, with one shared "Next stage" cell.
+- **Stage planner** (one category expanded at a time): stage cards in order. Each card has a format (Swiss, Round robin, Pools, Knockout, Positional playoff, Cross-league where the category allows it), rounds, an advancement rule (all continue / top N / positions per pool / mapping to the shared playoff) and a status badge. Completed stages are read-only. In the active stage, only "ends after round N" can change. Planned stages are fully editable or removable.
+- **One Save plan button**: a sticky footer with an unsaved-changes dot, Discard, and Save plan / Continue. Leaving with unsaved edits asks first. Saving creates a new plan version.
+- Light-only admin surface, following the existing tournament-admin light hierarchy. All 19 builder steps and their order stay unchanged.
 
-1. Open the existing bar/shop menu through the QR code or app.
-2. Add items, for example one hamburger, two Cokes and one brandy.
-3. Choose **Collect at bar** or **Deliver to me**. Delivery requires a location such as “Court 1” or a table; allow a short order note.
-4. Submit explicitly using **Place order**. Items merely added to a basket are not orders.
-5. See an order number, location, payment state and each item's progress. Further purchases create another order on the same tab rather than merging into an already delivered order.
+## Changing format mid-tournament (example)
+Men's B: Swiss, 5 rounds, now playing Round 4. The organiser edits Stage 1 to "ends after R4" and adds Stage 2 Round robin, top 6.
 
-Only the club's existing enabled payment methods are offered: member account, online payment, cash or swipe at the counter. Delivery does not mark a purchase paid, and paying does not mark it delivered.
+1. The plan saves as a new version. No games change.
+2. The impact preview lists the Round 5 games already drawn or scheduled (and any bookings on them), the "Stage 2 will be drawn from standings after R4" step, and the progression/log changes.
+3. A separate **Apply to draw** approval is needed. Only then are not-yet-played Round 5 games withdrawn and their bookings released or kept, as the organiser chooses. Played games are never withdrawn.
+4. Stage 2 is drawn later through the existing generator, once Stage 1 is complete.
 
-## Staff experience
+**Stage boundary vs round pairing:**
+- "End after R4" and "add round robin" are stage-plan changes.
+- Who plays whom inside a Swiss round stays the pairing engine's job, and nothing on this page changes it.
 
-Counter Mode gains **Orders**, alongside its existing tabs, visible only when the order process is enabled.
+## Technical plan
 
-- Show **Open** and **Completed** views, with oldest outstanding orders first.
-- Each order shows customer/tab name, order number, elapsed time, collection/delivery location, notes and payment state.
-- Staff can accept/start an order, mark an item ready, then record the quantity handed over or delivered. A collection order is complete only when collected, not merely prepared.
-- Example: tick the brandy delivered and set Cokes to **2 of 2 delivered**; the hamburger remains outstanding. Delivering the hamburger completes the order automatically.
-- For two Cokes, allow **1 of 2** as well as **2 of 2**; one checkbox must not incorrectly fulfil both.
-- Different authorised staff/devices share the same club order list. It is not restricted to tabs opened by that barman or that counter.
-- Completed orders remain available for recent history. Corrections and cancellations record who acted and when.
-- New orders update the list automatically, with an optional sound enabled by staff. Reconnection reloads the authoritative state; no silent loss of orders.
+### Data model (additive, backward compatible)
+- Add `stagePlans: Record<categoryKey, StagePlanItem[]>` to the existing answers / `beta_lifecycle.format_plan`. Each `StagePlanItem` holds:
+  - `id`, `kind`, `rounds`, `endAfterRound?`, `pools?`
+  - `advance` (mode, topN, perPool, mapping ref)
+  - `sharedWith?` (parent key, for A1/A2 playoffs)
+  - `decided: boolean`
+- Read compatibility: when `stagePlans[key]` is missing, derive Stage 1 from the existing `format`/`formatOverrides` (`swissRoundsConfirmed` ?? `swissRounds`), and later stages from the existing `stages`/`playoff`/`playoffOverrides`. Old drafts and saved tournaments open unchanged.
+- Write compatibility (transitional): on save, also write Stage 1 back into `format`/`formatOverrides`. This keeps `step-draw.ts`, the Swiss progression view and the existing tests reading the same values. Retire the old keys only after phase 4.
+- Active and completed state is **derived** from the generated `tournament_stages.status`, `club_champs_rounds` and the fixtures, never stored on the plan, so there is one truth.
+- New table `tournament_plan_versions` (tournament_id, version, plan jsonb, created_by, created_at, applied_at null), with grants, RLS for club tournament admins only, and a club-scoped `tournament_id`. It provides "Saved vs applied" and the audit trail, in line with the confirmed Final Setup Version rule.
 
-## Poster and QR setup
+### Logic (pure, in `src/lib/smart-builder/stage-plan.ts`, reusing `contract.ts`)
+- `resolveStagePlan(answers, key)`: the effective sequence plus the source of each value.
+- `deriveStatus(plan, stages, rounds, fixtures)`: Planned / Active Rn / Completed for each stage.
+- `validateStagePlan(...)`, reusing the `contract.ts` rules:
+  - A stage's kind is fixed once generated, so ending early means "close it and add a new stage", never converting it.
+  - Nothing after a knockout except qualifiers.
+  - Qualifier counts must fit the next stage.
+  - `endAfterRound` must not be below the highest round already played.
+- `planImpact(oldPlan, newPlan, fixtures, bookings)`: games to withdraw (unplayed only), bookings affected, stages to draw later, and progression changes. It is display-only.
+- `applyPlanVersion(...)`: one server function (RPC) that runs atomically and idempotently for each version. It re-checks played results, withdraws only the listed unplayed fixtures, records `applied_at`, and writes audit events. Withdrawn fixtures are marked, not deleted, so IDs survive.
 
-Reuse the existing Poster (PDF), heading choice and large menu QR.
+### Consumers (no duplicate settings)
+- The Progression & Log grouped block (`ParentCategoryProgression`, `RoundRobinPilotView`, the Swiss view) reads round counts and the next stage from `resolveStagePlan`, replacing the old saved copies. This removes the stale "Round 6" class of bug.
+- The A1/A2 shared playoff placeholders come from `advance.mapping` on the shared stage.
+- Upcoming Fixtures and scheduling (`formal-stage-schedule.ts`, `round-scheduling.ts`) read stage rounds and play-by dates from the same resolver.
+- `step-draw.ts` builds `PlannedStage[]` from the resolved plan instead of `format` plus `playoff`.
 
-- Order process **on:** use **“SCAN TO ORDER”**, with **“Place your order for delivery or collection”** and instructions to choose items, select a location/collection, and place the order.
-- Order process **off:** retain the existing scan-to-pay/self-service wording; do not promise delivery.
-- Both versions list only the enabled payment methods, including cash/swipe at the counter where allowed.
-- The poster download reflects the currently saved setting. Already printed posters cannot update automatically; show a reminder to reprint after changing it.
+### Edge cases
+- A category with no entrants yet: rounds are shown as a recommendation only.
+- Entrants change after the plan is saved: a warning appears, nothing changes automatically.
+- `endAfterRound` set while the current round is half played: the change is blocked until that round is done, or the organiser picks "after R(n+1)".
+- Byes, odd numbers, walkovers: the standings snapshot uses the existing standard tie-breaks.
+- The shared playoff when one subgroup changes format: the mapping is re-validated and blocked if positions no longer exist.
+- Two admins saving at once: a version check rejects the stale save and shows the newer version.
+- Removing a planned stage that is already referenced by a shared playoff: blocked, with an explanation.
+- Undecided later stages: progression shows "Next stage: undecided" and Continue is still allowed. Generating that stage's draw is blocked until it is decided.
 
-## What the inspection found
+### Tests
+- Unit tests for the resolver, status derivation, validation (each `contract.ts` rule), the impact diff and backward-compatible reading of old answers.
+- An apply test: played results, standings, bookings and IDs are unchanged; idempotent re-apply; a stale version is rejected.
+- A component test for the page: unsaved indicator, Discard, the leave guard, one category expanded at a time.
+- A regression test that Progression & Log shows the same rounds as the plan (Round 6 case) and that A1/A2 placeholders are unchanged.
+- Run the existing tournament suites in full.
 
-The existing counter board already lists server-saved open guest tabs, including customer-opened Scan-to-Pay tabs. It does **not** have a separate preparation/delivery queue: purchases currently have payment/tab state, not fulfilment state.
+## Phased rollout
+1. **Read-only preview** (Riverside, flag-gated): the new page renders from existing data and saves nothing. Synthetic Riverside tournament only.
+2. **Save plan** (Riverside): stage plans, versions and the transitional write-back. Consumers switch to the resolver.
+3. **Mid-tournament changes** (Riverside synthetic E2E): impact preview plus the separate Apply approval, then sign-off.
+4. **Pilot** with Uitsig, only with your separate approval, starting read-only. Then roll out to all clubs and retire the old Swiss pilot table and exception cards.
 
-Member running baskets can remain local to the customer's phone until submission/settlement. The new workflow must save submitted member orders for staff without changing how ordinary self-service baskets behave when the switch is off.
-
-## Technical approach
-
-- Introduce club-scoped order headers, order lines and delivery audit events. An order groups one submission, not an entire tab. Lines reference the existing sale/account-entry records where applicable; preserve item identity and snapshot the displayed name, price and ordered quantity.
-- Keep fulfilment separate from the existing guest tabs, member account charges and payment records. A paid or closed tab may still have an undelivered order; order visibility must not depend on tab status.
-- Extend the counter's existing server-validated PIN/session and bar-permission boundary. Validate its club on every queue read/change; a browser-stored token alone never grants access. Customers may read only their own orders through their existing authenticated/member or validated guest-tab context.
-- Reuse existing stock and sale/account logic exactly once at the current authoritative purchase commitment. Delivery/ready clicks must never deduct stock, create charges or post ledger income again.
-- Successful online payment releases its order to staff only after authoritative verification. Failed/abandoned payments do not create actionable duplicate orders. Open-tab, cash and swipe orders retain their existing eligibility and settlement rules, with unpaid status clear to staff.
-- Member order submission must create the server-visible order and its authoritative purchase linkage safely; later tab settlement must reuse that linkage, not charge the same lines again.
-- Each submission has an idempotency key, so double taps, reconnects and delayed callbacks cannot duplicate it. Quantity updates use atomic server checks to prevent two staff delivering more than ordered.
-- Cancel only undelivered quantities, using existing audited sale/stock reversal rules; paid cancellations need an explicit refund/credit outcome, never an automatic fictional refund. Preserve delivered quantities and historical prices.
-- Refresh through club-scoped realtime with a bounded polling fallback and refresh on reconnect. No fulfilment updates queued silently while offline.
-- This feature needs an additive backend change. Preview and the published app share the backend, so a true isolated pilot needs a draft/test backend; a preview-only screen is not backend isolation.
-
-## Proposed delivery stages — after approval
-
-1. **Isolated pilot:** use Riverside test orders, no live Uitsig settings or real charges. Add the off-by-default switch, orders and quantity tracking behind it; verify customer and counter visibility.
-2. **Connect all submission paths:** customer/self-opened guest tabs, member orders, counter-entered orders and enabled payment methods, preserving existing stock/accounting behaviour.
-3. **Finish presentation:** customer progress, staff open/completed views, delivery/collection locations and setting-aware PDFs.
-4. **Review and separate activation:** demonstrate the workflow, then obtain explicit approval before any Uitsig/live activation or publishing. No club-name hardcoding.
-
-## Acceptance checks
-
-- Hamburger + two Cokes + brandy: partial deliveries remain open until the last item is handed over.
-- One of two Cokes delivered, multiple orders on one tab, and orders from multiple customers/devices.
-- Self-opened guest tabs and member orders appear to authorised staff; other clubs and unrelated customers cannot see them.
-- Two staff updating the same item, repeated submission and payment callbacks, disconnect/reconnect: no duplicate order, charge or stock deduction.
-- Paying before delivery, delivering before permitted settlement and closing a tab do not erase outstanding work.
-- Cancellation/reversal and paid-order refund/credit handling remain auditable.
-- Switch off preserves today's flow; pending orders block disabling until resolved.
-- On/off poster wording and all enabled payment combinations match saved settings; downloaded PDFs stay single-page and scannable.
-- Verify customer phone and counter tablet/desktop layouts, web/PWA, and Android/iOS downloads before claiming those platforms verified.
-
-## Approval boundary
-
-No decision is needed to finish this plan. Implementation and an isolated test backend require further approval; live activation and publishing remain separate approvals.
+## Blockers and open decisions
+- **Bookings on withdrawn games:** when an applied change withdraws scheduled games, should their court bookings be released by default or kept? The proposal is that the organiser chooses each time, with "keep" as the default.
+- **Cross-league stage:** only shown where the category already has league sources, so it is not available for every category.
+- **Stopping Swiss early:** the engine currently has no "close a Swiss stage early" operation. It is a new server function in phase 3, so mid-tournament changes cannot go live before then.
+- **Pilot timing:** Uitsig's current Men's A1/A2 shared Final still lacks a qualification rule. The new planner would let the organiser set it, but setting it is a live decision that needs your approval.

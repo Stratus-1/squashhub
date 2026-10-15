@@ -1044,6 +1044,13 @@
       "when": 1792055230279,
       "tag": "0148_sync_champ_match_booking_never_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1792061842782,
+      "tag": "0149_self_schedule_fill_hold_option",
+      "breakpoints": true
     }
   ]
 }

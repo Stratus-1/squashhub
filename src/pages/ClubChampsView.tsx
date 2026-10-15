@@ -111,6 +111,9 @@ import { StandingsAwardsSection } from "@/components/smart-builder/StandingsAwar
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 import { readStandingsAwards, teamOutcome, individualAwards, fixturesComplete, OUTCOME_LABEL, type OutcomeRow } from "@/lib/tournaments/standings-outcome";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
+import { parentProgressionGroups, parentProgressionPreview, parentFixtureLanes } from "@/lib/tournaments/parent-progression";
+import { ParentCategoryProgression, type ParentFixtureDisplay } from "@/components/tournaments/ParentCategoryProgression";
+import { rrWhen } from "@/lib/tournaments/round-robin-view";
 
 export interface InlineStandingsData {
   champ: any;
@@ -4083,6 +4086,47 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       </CollapsibleCard>
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
+
+    // Compose saved children only on the approved club's preview; never change engine state.
+    if (isStructured && parentProgressionPreview(champ?.club_id, window.location.hostname)) {
+      for (const parent of parentProgressionGroups(arch?.builder_spec, arch?.beta_lifecycle)) {
+        const childViews = parent.groups.map((g) => categoryViews.find((c) => c.gn === g));
+        const first = childViews[0];
+        if (!first || childViews.some((c) => !c)) continue;
+        const lanes = parentFixtureLanes(parent, matches as any[]);
+        const displayFixture = (m: any): ParentFixtureDisplay => {
+          const division = arch.builder_spec.divisions.find((d: any) => divisionGroup(arch.builder_spec, d) === Number(m.group_number));
+          const stage = division?.stages?.find((s: any) => s.id === m.stage_key);
+          const schedule = resolveFixtureSchedule(m, { stage: stageSched.get(m.stage_key), rows: champRounds as any[] });
+          const deadline = m.play_by ?? schedule.playBy ?? (stage?.schedule?.rule === "play_by" ? stage.schedule.roundDates?.[(Number(m.round_number) || 1) - 1] ?? stage.schedule.deadline : null);
+          return { id: m.id, round: m.round_number ?? null, stageKey: m.stage_key,
+            a: getMatchTeamA(m), b: getMatchTeamB(m), score: m.score ?? null,
+            status: m.status === "completed" ? "Played" : m.is_bye ? "Bye" : m.status === "in_progress" ? "In progress" : "To play",
+            when: rrWhen({ date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name, playBy: deadline }),
+            deadline: m.scheduled_date ? deadline ?? null : null };
+        };
+        const parentBody = <ParentCategoryProgression parent={parent} playoffs={lanes.playoffs.map(displayFixture)} children={parent.groups.map((g) => {
+          const rows = getGroupStandings(g) as any[];
+          const childMatches = lanes.children.get(g) ?? [];
+          const split = splitFixtures(childMatches);
+          const division = arch.builder_spec.divisions.find((d: any) => divisionGroup(arch.builder_spec, d) === g);
+          return { group: g, label: getGroupLabel(champ, g), format: formatLabelFor(g), standings: renderStandingsTable(rows),
+            matrix: division?.stages?.[0]?.kind === "round_robin" ? buildRoundRobinView({
+              players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })), rankOrder: rows.map((r: any) => r.club_member_id),
+              matches: childMatches.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id, b: m.player_b_member_id,
+                winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, status: m.status, isBye: !!m.is_bye, forfeitMemberId: m.forfeit_member_id })),
+            }) : null,
+            upcoming: split.upcoming.map(displayFixture), results: split.results.map(displayFixture) };
+        })} />;
+        const index = categoryViews.indexOf(first);
+        const merged = { ...first, label: parent.label, title: <span>{parent.label}</span>, standings: parentBody,
+          upcoming: <div className="space-y-5">{childViews.map((c) => c && <section key={c.gn}><h4 className="mb-2 font-semibold">{c.label}</h4>{c.upcoming}</section>)}</div>,
+          results: <div className="space-y-5">{childViews.map((c) => c && <section key={c.gn}><h4 className="mb-2 font-semibold">{c.label}</h4>{c.results}</section>)}</div>,
+          upcomingCount: childViews.reduce((n, c) => n + (c?.upcomingCount ?? 0), 0), resultsCount: childViews.reduce((n, c) => n + (c?.resultsCount ?? 0), 0) };
+        for (let i = categoryViews.length - 1; i >= 0; i--) if (parent.groups.includes(categoryViews[i].gn)) categoryViews.splice(i, 1);
+        categoryViews.splice(index, 0, merged);
+      }
+    }
 
     // Standings / Fixtures & Results — solid rectangular tabs, one category at a time.
     const activeCat = categoryViews.find((c) => c.gn === catGroup) ?? categoryViews[0];

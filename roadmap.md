@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Uitsig preview-only parent Progression & Log: saved A1/A2 membership, stacked RR rankings/fixtures/results, one deferred shared Final; 24 tests + signed-in desktop/mobile verified, 12 unique fixtures, no writes/publish. Actual playoff qualifiers/pairings blocked by saved Define later / unspecified qualification count.
 - [x] Riverside Progression & Log prominent solid category tabs — six tests passed; signed-in desktop/mobile category switching and screenshots verified, 64px/56px targets, no overflow/errors, no writes/publish. Marker blocker unchanged.
 - [x] Phase 1 read-only Move/Swap preview built; 51 focused tests passed; signed-in Riverside desktop/mobile confirmed fail-closed no verified blocks. Interactive successful real-data drag remains unverified pending proven inventory. No writes/Phase 2.
 - [x] Riverside calendar move/swap — read-only model/permissions/availability audit and staged plan prepared; 45 existing focused tests passed; no app/data changes or publishing.

@@ -73,8 +73,21 @@ interface GuestTab {
   token: string;
   guest_name: string;
   status: string;
+  settled_method?: string | null;
   total: number;
   lines: { id: string; name: string; quantity: number; total: number }[];
+}
+
+/** An order waiting for staff to take payment at the counter (card machine or cash). Never "paid" until staff confirm. */
+interface CounterPayment {
+  tab_id: string;
+  token: string;
+  total: number;
+  label: string;
+  method: "terminal" | "cash";
+  reference?: string;
+  /** True when it came from an evening tab — a declined card reopens that tab. */
+  fromTab?: boolean;
 }
 
 export default function ScanPay() {
@@ -90,7 +103,7 @@ export default function ScanPay() {
   const [scanOpen, setScanOpen] = useState(false);
   const [division, setDivision] = useState<BarDivision>("bar");
   const [category, setCategory] = useState<string>("all");
-  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
+  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; counterConfirmed?: "terminal" | "cash"; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [tab, setTab] = useState<GuestTab | null>(null);
   // Guest-QR member identification: membership number + own Bar PIN.
@@ -306,6 +319,7 @@ export default function ScanPay() {
       token: stored.token,
       guest_name: payload.guest_name,
       status: payload.status,
+      settled_method: payload.settled_method ?? null,
       total: Number(payload.total || 0),
       lines: payload.lines || [],
     };
@@ -338,6 +352,73 @@ export default function ScanPay() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
+
+  /* ---------------- Awaiting payment at the counter ---------------- */
+  const counterKey = `sh.scanpay.counterpay.${code}`;
+  const [counterPay, setCounterPay] = useState<CounterPayment | null>(() => {
+    try { return JSON.parse(localStorage.getItem(`sh.scanpay.counterpay.${code}`) || "null"); } catch { return null; }
+  });
+  const startCounterPay = (cp: CounterPayment) => {
+    localStorage.setItem(counterKey, JSON.stringify(cp));
+    setCounterPay(cp);
+  };
+  const clearCounterPay = () => { localStorage.removeItem(counterKey); setCounterPay(null); };
+
+  // Refresh the counter payment status until staff confirm, decline or the customer cancels.
+  useEffect(() => {
+    if (!counterPay) return;
+    let stop = false;
+    const check = async () => {
+      const { data } = await (supabase as any).rpc("get_bar_guest_tab", { _tab_id: counterPay.tab_id, _token: counterPay.token });
+      if (stop) return;
+      const p = data as any;
+      if (!p?.found) { clearCounterPay(); return; }
+      if (p.status === "settled") {
+        clearCounterPay();
+        setDone({ total: Number(p.total || counterPay.total), itemName: counterPay.label, onAccount: false, counterConfirmed: counterPay.method, reference: counterPay.reference });
+      } else if (p.status === "open") {
+        clearCounterPay();
+        if (counterPay.fromTab) {
+          localStorage.setItem(tabKey, JSON.stringify({ tab_id: counterPay.tab_id, token: counterPay.token }));
+          applyTabPayload(p);
+          toast.info("Payment was not completed at the counter — your tab is open again. Choose a way to pay.");
+        } else {
+          toast.info("Payment was not completed at the counter. Nothing was charged.");
+        }
+      }
+    };
+    check();
+    const id = window.setInterval(check, 8000);
+    return () => { stop = true; window.clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counterPay?.tab_id]);
+
+  const cancelCounterPay = async () => {
+    if (!counterPay) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_guest_cancel_counter_payment", { _tab_id: counterPay.tab_id, _token: counterPay.token });
+      if (error) throw error;
+      const p = data as any;
+      if (p?.status === "settled") {
+        clearCounterPay();
+        setDone({ total: Number(p.total), itemName: counterPay.label, onAccount: false, counterConfirmed: counterPay.method, reference: counterPay.reference });
+        return;
+      }
+      clearCounterPay();
+      if (counterPay.fromTab && p?.found) {
+        localStorage.setItem(tabKey, JSON.stringify({ tab_id: counterPay.tab_id, token: counterPay.token }));
+        applyTabPayload(p);
+        toast.success("Your tab is open again — choose another way to pay.");
+      } else {
+        toast.success("Order cancelled. Nothing was charged.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Could not cancel");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   /** Open an empty evening tab up front — name only, no items needed. */
   const openTabNow = async () => {
@@ -443,14 +524,19 @@ export default function ScanPay() {
         _tab_id: tab.tab_id, _token: tab.token, _method: method,
       });
       if (error) throw error;
-      const total = Number((data as any)?.total || tab.total);
+      const p = data as any;
+      if (p?.status === "closing" && p?.settled_method === "online") {
+        applyTabPayload(p);
+        toast.error("An online card payment is still in progress for this tab — cancel it first.");
+        return;
+      }
       localStorage.removeItem(tabKey);
       setTab(null);
-      setDone({
-        total,
-        itemName: `Bar tab · ${tab.guest_name}`,
-        onAccount: false,
-        terminal: method === "terminal",
+      startCounterPay({
+        tab_id: tab.tab_id, token: tab.token,
+        total: Number(p?.total ?? tab.total),
+        label: `Bar tab · ${tab.guest_name}`,
+        method, fromTab: true,
       });
     } catch (err: any) {
       showBarChargeError(err, "Could not settle your tab");
@@ -472,7 +558,9 @@ export default function ScanPay() {
         _buyer_name: name || null,
       });
       if (error) throw error;
-      setDone({ total, itemName: cartLabel, onAccount: false, terminal: true, reference: (data as any)?.reference });
+      const d = data as any;
+      if (!d?.tab_id || !d?.token) throw new Error("Could not send your order to the bar");
+      startCounterPay({ tab_id: d.tab_id, token: d.token, total: Number(d.total ?? total), label: cartLabel, method: "terminal", reference: d.reference });
       setCart({});
       setCheckingOut(false);
     } catch (err: any) {
@@ -694,8 +782,8 @@ export default function ScanPay() {
             <p className="text-sm text-muted-foreground">
               {done.onAccount
                 ? "Charged to your member account."
-                : done.terminal
-                  ? `Please swipe at the bar card machine.${done.reference ? ` Order ${done.reference}.` : ""}`
+                : done.counterConfirmed
+                  ? `${done.counterConfirmed === "cash" ? "Cash" : "Card"} payment confirmed by the bar.${done.reference ? ` Order ${done.reference}.` : ""}`
                   : done.cardPaid
                     ? "Paid by card — payment confirmed."
                     : "Your purchase has been recorded."}
@@ -756,6 +844,27 @@ export default function ScanPay() {
               </Card>
             )}
 
+            {counterPay && (
+              <Card className="p-4 space-y-3 border-amber-500/60" aria-live="polite">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                  <p className="text-sm font-semibold">
+                    {counterPay.method === "cash" ? "Awaiting cash payment at the counter" : "Awaiting card payment at the counter"}
+                  </p>
+                </div>
+                <p className="text-sm">{counterPay.label} · <span className="font-semibold">{formatMoney(counterPay.total, currency)}</span></p>
+                <p className="text-[11px] text-muted-foreground">
+                  {counterPay.method === "cash"
+                    ? "Pay the barman in cash. This is not paid until the bar confirms it."
+                    : "Go to the counter and tap or swipe your card on the card machine. This is not paid until the bar confirms the card was approved."}
+                  {counterPay.reference ? ` Order ${counterPay.reference}.` : ""}
+                </p>
+                <Button size="sm" variant="outline" className="w-full gap-1.5" disabled={submitting} onClick={cancelCounterPay}>
+                  <X className="w-3.5 h-3.5" /> {counterPay.fromTab ? "Choose another way to pay" : "Cancel this order"}
+                </Button>
+              </Card>
+            )}
+
             {tab && tab.status !== "settled" && (
               <Card className="p-4 space-y-3 border-amber-500/50">
                 <div className="flex items-center justify-between">
@@ -777,7 +886,7 @@ export default function ScanPay() {
                     ? "Keep ordering all evening, then settle the whole tab once."
                     : "This tab is awaiting payment — settle it below."}
                 </p>
-                {tab.status === "closing" && (
+                {tab.status === "closing" && tab.settled_method === "online" && (
                   <Button
                     size="sm"
                     variant="outline"

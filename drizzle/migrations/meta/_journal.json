@@ -1107,6 +1107,20 @@
       "when": 1792080626201,
       "tag": "0157_beta_feature_stage_planner",
       "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1792081013260,
+      "tag": "0158_bar_terminal_payment_states",
+      "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1792081078079,
+      "tag": "0159_bar_terminal_keep_card_method",
+      "breakpoints": true
     }
   ]
 }

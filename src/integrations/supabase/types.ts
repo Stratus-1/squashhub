@@ -1002,6 +1002,9 @@ export type Database = {
           guest_phone: string | null
           id: string
           opened_at: string
+          payment_confirmed_at: string | null
+          payment_confirmed_by_device: string | null
+          payment_confirmed_by_user: string | null
           settled_method: string | null
           status: string
           token: string
@@ -1016,6 +1019,9 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           opened_at?: string
+          payment_confirmed_at?: string | null
+          payment_confirmed_by_device?: string | null
+          payment_confirmed_by_user?: string | null
           settled_method?: string | null
           status?: string
           token?: string
@@ -1030,6 +1036,9 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           opened_at?: string
+          payment_confirmed_at?: string | null
+          payment_confirmed_by_device?: string | null
+          payment_confirmed_by_user?: string | null
           settled_method?: string | null
           status?: string
           token?: string
@@ -1796,6 +1805,60 @@ export type Database = {
             columns: ["operator_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_tab_payment_events: {
+        Row: {
+          action: string
+          actor_device_id: string | null
+          actor_user_id: string | null
+          amount: number | null
+          club_id: string
+          created_at: string
+          id: string
+          method: string | null
+          reason: string | null
+          tab_id: string
+        }
+        Insert: {
+          action: string
+          actor_device_id?: string | null
+          actor_user_id?: string | null
+          amount?: number | null
+          club_id: string
+          created_at?: string
+          id?: string
+          method?: string | null
+          reason?: string | null
+          tab_id: string
+        }
+        Update: {
+          action?: string
+          actor_device_id?: string | null
+          actor_user_id?: string | null
+          amount?: number | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          method?: string | null
+          reason?: string | null
+          tab_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_tab_payment_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_payment_events_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "bar_guest_tabs"
             referencedColumns: ["id"]
           },
         ]
@@ -18954,7 +19017,18 @@ export type Database = {
       }
     }
     Functions: {
+      _bar_counter_device: { Args: { _token: string }; Returns: string }
       _bar_order_json: { Args: { _order_id: string }; Returns: Json }
+      _bar_reopen_tab: {
+        Args: {
+          _action: string
+          _device: string
+          _reason: string
+          _tab: Database["public"]["Tables"]["bar_guest_tabs"]["Row"]
+          _user: string
+        }
+        Returns: undefined
+      }
       _champ_admin_guard: { Args: { p_champ_id: string }; Returns: undefined }
       _champ_draw_notice_mode: { Args: { p_champ_id: string }; Returns: string }
       _champ_fee_adjust: {
@@ -19418,6 +19492,15 @@ export type Database = {
         Args: { _club_id: string; _device_id: string }
         Returns: Json
       }
+      bar_counter_reopen_tab: {
+        Args: {
+          _club_id?: string
+          _reason: string
+          _tab_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
       bar_counter_revoke_devices: { Args: { _club_id: string }; Returns: Json }
       bar_counter_set_delivered: {
         Args: {
@@ -19463,6 +19546,10 @@ export type Database = {
       bar_counter_status: { Args: { _club_id: string }; Returns: Json }
       bar_counter_unlock: {
         Args: { _code: string; _pin: string }
+        Returns: Json
+      }
+      bar_guest_cancel_counter_payment: {
+        Args: { _tab_id: string; _token: string }
         Returns: Json
       }
       bar_guest_orders: {

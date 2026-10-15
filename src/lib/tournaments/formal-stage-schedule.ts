@@ -321,14 +321,24 @@ export type TimedContext = {
   /** Court occupancy on the plan's dates/courts, excluding this tournament's own games. */
   busyOther: Array<Busy & { date: string }>;
   fixedStages: boolean;
+  /** Per round number: its play-by deadline. One round per week — a round's games are placed only on
+   *  configured days in the 7 days ending on that deadline (never packed into an earlier round's week). */
+  roundDeadlines?: Record<number, string>;
 };
 
 export async function loadTimedContext(champId: string): Promise<TimedContext | null> {
-  const [{ data: t }, { data: entries }] = await Promise.all([
+  const [{ data: t }, { data: entries }, { data: liveRounds }] = await Promise.all([
     fromExt("tournaments").select("name, builder_spec, beta_lifecycle, group_labels, match_duration_minutes, rules:tournament_rules(scoring_mode)").eq("id", champId).maybeSingle(),
     fromExt("club_champs_entries").select("club_member_id, partner_member_id, group_number").eq("champ_id", champId),
+    fromExt("club_champs_rounds").select("round_number, play_by, round_type").eq("champ_id", champId),
   ]);
   if (!t) return null;
+  const roundDeadlines: Record<number, string> = {};
+  for (const r of (liveRounds ?? []) as any[]) {
+    if (!r.play_by || r.round_type === "knockout") continue;
+    const n = Number(r.round_number) || 1, d = String(r.play_by).slice(0, 10);
+    if (!roundDeadlines[n] || d < roundDeadlines[n]) roundDeadlines[n] = d;
+  }
   const spec: any = (t as any).builder_spec;
   const plan: any = (t as any).beta_lifecycle?.format_plan;
   const fixed = ((spec?.divisions ?? []) as any[]).flatMap((d) => d.stages ?? []).filter((s: any) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
@@ -373,7 +383,7 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
     scheduledRounds,
     roundDates: ((fixed[0]?.schedule?.roundDates ?? []) as string[]).map((x) => String(x).slice(0, 10)),
     prefs: normaliseSchedulingPrefs((t as any).beta_lifecycle?.scheduling_prefs),
-    labels: ((t as any).group_labels ?? {}) as Record<string, string>, entryGroup, busyOther,
+    labels: ((t as any).group_labels ?? {}) as Record<string, string>, entryGroup, busyOther, roundDeadlines,
   };
 }
 
@@ -408,7 +418,35 @@ export const prefsApplicable = (_ctx: Pick<TimedContext, "bells" | "waves">) => 
  * THE timed planner used by both the Generate Draw & Fixtures preview and the real allocation.
  * Default preferences (No restriction + Any court) run the exact pre-existing planners unchanged.
  */
-export function planTimedSchedule(ctx: Omit<TimedContext, "entryGroup" | "fixedStages">, games: TimedGame[], extraBusy: Array<Busy & { date: string }> = []) {
+export function planTimedSchedule(ctx: Omit<TimedContext, "entryGroup" | "fixedStages">, games: TimedGame[], extraBusy: Array<Busy & { date: string }> = []): ReturnType<typeof planTimedScheduleAll> {
+  const dl = ctx.roundDeadlines ?? {};
+  const roundsIn = [...new Set(games.map((g) => g.round))].sort((a, b) => a - b);
+  // One round per week: when rounds carry play-by deadlines, plan each round only inside its own week.
+  if (!roundsIn.some((r) => dl[r])) return planTimedScheduleAll(ctx, games, extraBusy);
+  const busy = [...extraBusy];
+  const slots: any[] = []; const issues: string[] = []; const notes: string[] = [];
+  let required = 0, available = 0, backToBack = 0;
+  for (const r of roundsIn) {
+    const end = dl[r];
+    const start = end ? weekStart(end) : null;
+    const days = end ? ctx.days.filter((d) => d.date >= start! && d.date <= end) : ctx.days;
+    const rg = games.filter((g) => g.round === r);
+    if (!days.length) { issues.push(`Round ${r}: no configured playing night in its week (${start} – ${end}).`); required += rg.length; continue; }
+    const res: any = planTimedScheduleAll({ ...ctx, days, roundDates: [] }, rg, busy);
+    required += res.required ?? rg.length; available += res.available ?? 0; backToBack += res.backToBack ?? 0;
+    issues.push(...(res.issues ?? [])); notes.push(...(res.notes ?? []));
+    for (const s of res.slots ?? []) { slots.push(s); busy.push({ date: s.date, courtId: s.courtId, start: s.time, end: toHHMM(toMin(s.time) + Math.max(1, ctx.minutes)) }); }
+  }
+  return { slots: issues.length ? [] : slots, issues, required, available, notes, backToBack } as any;
+}
+
+/** First day of the 7-day week ending on `end` (YYYY-MM-DD). */
+function weekStart(end: string) {
+  const d = new Date(`${end}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 6);
+  return d.toISOString().slice(0, 10);
+}
+
+function planTimedScheduleAll(ctx: Omit<TimedContext, "entryGroup" | "fixedStages">, games: TimedGame[], extraBusy: Array<Busy & { date: string }> = []) {
   const sorted = [...games].sort((a, b) => a.round - b.round || a.group - b.group || a.bracket - b.bracket);
   const busy = [...ctx.busyOther, ...extraBusy];
   const keyOf = (g: number) => ctx.labels[String(g)];

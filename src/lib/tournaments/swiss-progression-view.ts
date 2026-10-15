@@ -220,7 +220,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
     occ.push(next);
   }
   return { issues: [], rounds: template.map((rd): GridRound => {
-    if (rd.round === 1 && savedFirst?.created && !opts.appliedPlayBy?.[1]) return savedFirst;
+    if (rd.round === 1 && savedFirst?.created) return savedFirst;
     const into = occ[rd.round - 1];
     // A round switched to Play by date (applied to live rounds) overrides stale proposed court/time slots.
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;

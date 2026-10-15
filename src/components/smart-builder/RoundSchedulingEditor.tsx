@@ -23,7 +23,7 @@ type Review =
 /** Settings patch persisted for one stage (same fields the builder's round cards edit). */
 const stagePatch = (raw: any) => ({ mode: raw.mode, deadline: raw.deadline ?? null, date: raw.date ?? null, from: raw.from ?? null, to: raw.to ?? null, courtIds: raw.courtIds ?? [], extraDays: raw.extraDays ?? [] });
 
-export function RoundSchedulingEditor({ clubId, tournamentId, draftStages }: { clubId: string; tournamentId: string; draftStages?: any[] }) {
+export function RoundSchedulingEditor({ clubId, tournamentId, draftStages, onStagePatch }: { clubId: string; tournamentId: string; draftStages?: any[]; onStagePatch?: (id: string, patch: Record<string, unknown>) => void }) {
   const qc = useQueryClient();
   const [st, setSt] = useState<State | null>(null);
   const [courts, setCourts] = useState<Array<{ id: number; name: string }>>([]);
@@ -126,12 +126,14 @@ export function RoundSchedulingEditor({ clubId, tournamentId, draftStages }: { c
       if (form.mode === "play_by") {
         if (!form.deadline) throw new Error("Choose a play-by date");
         await saveStageSettings(tournamentId, s.id, { mode: "play_by", deadline: form.deadline });
+        onStagePatch?.(s.id, { mode: "play_by", deadline: form.deadline });
       } else {
         if (!form.date || !form.courtIds.length) throw new Error("Choose a date and at least one court");
         await saveStageSettings(tournamentId, s.id, { mode: "scheduled", date: form.date, from: form.from, to: form.to, courtIds: form.courtIds.map(String) });
+        onStagePatch?.(s.id, { mode: "scheduled", date: form.date, from: form.from, to: form.to, courtIds: form.courtIds.map(String) });
       }
       toast.success("Round settings saved");
-      await reconcile(s, rounds, form.mode === "scheduled" && s.mode === "play_by");
+      await reconcile({ ...s, mode: form.mode }, rounds, form.mode === "scheduled" && s.mode === "play_by");
     } catch (e: any) { toast.error(e?.message || "Could not save round settings"); }
     finally { setBusy(false); }
   };

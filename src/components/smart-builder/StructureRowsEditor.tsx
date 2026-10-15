@@ -17,6 +17,7 @@ import { unitCapacity } from "@/lib/smart-builder/structure-capacity";
 import { monradNote } from "@/lib/smart-builder/monrad";
 import { FORMAT_HELP, baseFormatOf, formatHelpHidden, hideFormatHelp } from "@/lib/smart-builder/format-help";
 import { toast } from "sonner";
+import { StructureCanvas } from "./StructureCanvas";
 
 const control = "h-7 rounded-md border border-input bg-background px-2 text-xs max-w-full";
 // Base formats only. "Pools + knockout" is Round robin (pool count + who plays whom) followed by a Knockout playoff stage.
@@ -29,12 +30,15 @@ function EditableName({ value, label, disabled, onCommit }: { value: string; lab
   return <Input aria-label={label} className="h-8 min-w-36 text-xs" value={text} disabled={disabled} onChange={(e) => setText(e.target.value)} onBlur={() => { onCommit(text); if (!text.trim()) setText(value); }} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />;
 }
 
-export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void }) {
+export function StructureRowsEditor({ answers, onSave, onDirtyChange, visualEnabled = false }: { answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void; visualEnabled?: boolean }) {
+  const [view, setView] = useState<"table" | "canvas">("table");
+  const [canvasPending, setCanvasPending] = useState(false);
+  const canUseCanvas = visualEnabled && !answers.createdTournamentId && Object.keys(answers.picks).length === 0;
   const [draft, setDraft] = useState(() => ({ ...answers, categories: answers.categories.filter((c) => c.trim()) }));
   const [guided, setGuided] = useState(false);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(answers);
+  const dirty = canvasPending || JSON.stringify(draft) !== JSON.stringify(answers);
   useEffect(() => { setDraft({ ...answers, categories: answers.categories.filter((c) => c.trim()) }); }, [answers]);
   useEffect(() => { onDirtyChange?.(dirty); return () => onDirtyChange?.(false); }, [dirty, onDirtyChange]);
   useEffect(() => {
@@ -62,7 +66,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
     const b = baseFormatOf(k);
     if (!b || formatHelpHidden()) return;
     const h = FORMAT_HELP[b];
-    toast(h.title, { id: "format-help", duration: 9000, description: `${h.definition} Ideal for: ${h.idealFor} Trade-offs: ${h.tradeoffs}`, action: { label: "Learn more", onClick: () => window.open(h.learnMore, "_blank", "noopener") }, cancel: { label: "Don't show again", onClick: () => hideFormatHelp() } });
+    toast(h.title, { id: "format-help", closeButton: true, duration: 9000, description: `${h.definition} Ideal for: ${h.idealFor} Trade-offs: ${h.tradeoffs}`, action: { label: "Learn more", onClick: () => window.open(h.learnMore, "_blank", "noopener") }, cancel: { label: "Don't show again", onClick: () => hideFormatHelp() } });
   };
   const add = () => update((a) => {
     let name = `Division ${a.categories.length + 1}`;
@@ -72,8 +76,8 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
   const addSub = (cat: string) => {
     update((a) => {
       const subs = a.subcats[cat] ?? [];
-      let name = subs.length ? `Group ${subs.length + 1}` : "A";
-      while (subs.includes(name)) name += " new";
+      let suffix = subs.length + 1; let name = `Group ${suffix}`;
+      while (subs.includes(name)) name = `Group ${++suffix}`;
       const key = `${cat}::${name}`;
       return { ...a, subcats: { ...a.subcats, [cat]: [...subs, name] }, disc: { ...a.disc, [key]: a.disc[cat] ?? (a.playType === "doubles" ? "doubles" : "singles") }, unitEntries: { ...a.unitEntries, [key]: subs.length ? "" : a.unitEntries[cat] ?? "" } };
     });
@@ -137,6 +141,8 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
   }
 
   return <div className="space-y-3 text-[13px]" data-testid="structure-rows-editor">
+    {canUseCanvas && <div className="flex gap-1" role="group" aria-label="Structure view"><Button size="sm" variant={view === "table" ? "default" : "outline"} aria-pressed={view === "table"} disabled={canvasPending} onClick={() => setView("table")}>Table View</Button><Button size="sm" variant={view === "canvas" ? "default" : "outline"} aria-pressed={view === "canvas"} onClick={() => setView("canvas")}>Visual Builder</Button></div>}
+    {view === "canvas" && canUseCanvas ? <StructureCanvas answers={draft} onChange={(a) => update(() => a)} onPendingChange={setCanvasPending} /> : <>
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Tournament structure</h3><div className="flex gap-1" role="group" aria-label="Structure entry mode"><Button size="sm" variant={!guided ? "default" : "outline"} aria-pressed={!guided} onClick={() => setGuided(false)}>I know what I want</Button><Button size="sm" variant={guided ? "default" : "outline"} aria-pressed={guided} onClick={() => setGuided(true)}>Help me choose</Button></div></div>
     {guided && <section className="space-y-2 border-y border-border py-3" aria-label="Structure advice">
       <div className="flex flex-wrap gap-2"><label>Goal <select className={control} value={guide.outcome ?? "balanced"} onChange={(e) => setGuide({ outcome: e.target.value as GuideAnswers["outcome"] })}><option value="balanced">Balanced play</option><option value="rank">Rank everyone</option><option value="winner">Find a winner</option></select></label><label>Opponents <select className={control} value={guide.strength ?? "broad"} onChange={(e) => setGuide({ strength: e.target.value as GuideAnswers["strength"] })}><option value="broad">Everyone in the group</option><option value="similar">Similar results</option></select></label><label>Time <select className={control} value={guide.time ?? "some"} onChange={(e) => setGuide({ time: e.target.value as GuideAnswers["time"] })}><option value="tight">Limited</option><option value="some">Moderate</option><option value="plenty">Plenty</option></select></label></div>
@@ -145,8 +151,10 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">{Object.entries(STRUCTURE_HELP).filter(([k]) => k !== "pools" && k !== "playoffs").map(([k, text]) => <Tooltip key={k}><TooltipTrigger asChild><span tabIndex={0} className="flex cursor-help items-center gap-1">{k === "round_robin" ? "Round robin" : k === "swiss" ? "Swiss" : k === "knockout" ? "Knockout" : "Monrad"}<Info className="h-3 w-3" /></span></TooltipTrigger><TooltipContent className="max-w-80">{text}</TooltipContent></Tooltip>)}</div>
     <div className="overflow-x-auto" data-testid="structure-table-scroll"><table className="w-full min-w-[880px] text-left text-xs"><thead className="bg-muted/50 text-muted-foreground"><tr>{["Division name", "Match type", "Eligibility", "Expected", "Subdivisions", "Initial format / rounds", ""].map((h, i) => <th key={i} className="p-1.5 font-medium">{h}</th>)}</tr></thead><tbody>{draft.categories.map((cat) => row(cat, cat))}</tbody></table></div>
     <Button size="sm" variant="outline" onClick={add}><Plus className="mr-1 h-3.5 w-3.5" />Add row</Button>
+    </>}
     <StructureOverview answers={draft} units={units.map((key) => ({ key, label: key.replace("::", " › ") }))} entrants={Object.fromEntries(units.map((key) => [key, Number(draft.unitEntries[key]) || Number(draft.guide?.expected?.[key]) || 0]))} onEdit={(key) => { setOpen((o) => ({ ...o, [key]: true, [key.split("::")[0]]: true })); }} />
     {issues.length > 0 && <ul className="text-xs text-destructive" aria-label="Structure issues">{issues.map((s, i) => <li key={i}>{s}</li>)}</ul>}
-    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-2">{dirty && <Badge variant="secondary" className="mr-auto">Unsaved structure</Badge>}{saved && <span className="mr-auto text-xs text-muted-foreground" role="status">Structure saved on this device. No draw applied.</span>}<Button size="sm" variant="ghost" disabled={!dirty} onClick={() => { setDraft(answers); setSaved(false); }}>Discard changes</Button><Button size="sm" disabled={!dirty || issues.length > 0} onClick={() => { const discs = units.map((k) => draft.disc[k] ?? draft.disc[k.split("::")[0]] ?? (draft.playType === "doubles" ? "doubles" : "singles")); const playType = discs.every((d) => d === "singles") ? "singles" : discs.every((d) => d === "doubles") ? "doubles" : "both"; onSave({ ...draft, playType }); setSaved(true); }}>Save Structure</Button></div>
+    {canvasPending && <p role="alert" className="text-xs text-destructive">Connect or remove unconnected blocks before saving or switching views.</p>}
+    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-2">{dirty && <Badge variant="secondary" className="mr-auto">Unsaved structure</Badge>}{saved && <span className="mr-auto text-xs text-muted-foreground" role="status">Structure saved on this device. No draw applied.</span>}<Button size="sm" variant="ghost" disabled={!dirty} onClick={() => { setDraft(answers); setSaved(false); setCanvasPending(false); setView("table"); }}>Discard changes</Button><Button size="sm" disabled={!dirty || canvasPending || issues.length > 0} onClick={() => { const discs = units.map((k) => draft.disc[k] ?? draft.disc[k.split("::")[0]] ?? (draft.playType === "doubles" ? "doubles" : "singles")); const playType = discs.every((d) => d === "singles") ? "singles" : discs.every((d) => d === "doubles") ? "doubles" : "both"; onSave({ ...draft, playType }); setSaved(true); }}>Save Structure</Button></div>
   </div>;
 }

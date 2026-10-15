@@ -1,0 +1,8 @@
+.structure-canvas { --xy-background-color: hsl(var(--background)); --xy-node-color: hsl(var(--foreground)); --xy-edge-stroke: hsl(var(--primary)); --xy-handle-background-color: hsl(var(--primary)); --xy-handle-border-color: hsl(var(--background)); --xy-controls-button-background-color: hsl(var(--background)); --xy-controls-button-background-color-hover: hsl(var(--muted)); --xy-controls-button-color: hsl(var(--foreground)); --xy-controls-button-border-color: hsl(var(--border)); --xy-background-pattern-dots-color: hsl(var(--border)); }
+.structure-canvas-node { width: 180px; min-height: 68px; padding: 10px; border: 1px solid hsl(var(--border)); border-radius: 6px; color: hsl(var(--foreground)); background: hsl(var(--background)); }
+.structure-canvas-selected { border: 2px solid hsl(var(--primary)); padding: 9px; }
+.structure-canvas-pending { border-style: dashed; }
+.structure-canvas .react-flow__handle { width: 12px; height: 12px; }
+.structure-canvas .react-flow__edge-path { stroke-width: 2; }
+.structure-canvas .react-flow__controls { box-shadow: none; border: 1px solid hsl(var(--border)); }
+.structure-canvas aside section { width: 100%; min-width: 0; }

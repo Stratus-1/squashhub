@@ -130,6 +130,8 @@ const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => 
 };
 export type StepAnswers = {
   planId?: string;
+  /** Canvas layout only; semantic nodes/edges project the canonical categories and stage plans. */
+  structureCanvas?: import("@/lib/smart-builder/structure-canvas").CanvasLayout;
   /** Per-category ordered stage plans (pilot stage planner); Stage 1 is mirrored to format/formatOverrides. */
   stagePlans?: StagePlans;
   /** Set once "Complete setup & continue" created the tournament; later saves update it. */
@@ -1438,7 +1440,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Categories" && rowStructure && <StructureRowsEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} />}
+          {cur === "Categories" && rowStructure && <StructureRowsEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} visualEnabled={clubId === "11111111-1111-1111-1111-111111111111" && (window.location.hostname === "localhost" || window.location.hostname.includes("preview") || window.location.hostname.endsWith("lovableproject.com"))} />}
           {cur === "Categories" && !rowStructure && (
             <>
               <Q t="What categories will you have? (subcategories will be next)" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />

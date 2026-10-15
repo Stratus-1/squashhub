@@ -60,21 +60,13 @@ export function ParentCategoryProgression({ parent, children, playoffs }: { pare
         <TabsTrigger value="log" className="min-h-11 whitespace-normal">Log View</TabsTrigger>
       </TabsList>
       {["progression", "log"].map((mode) => <TabsContent key={mode} value={mode} className="min-w-0">
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
-          <div className="min-w-0 divide-y divide-border rounded-md border border-border" data-testid="parent-main-block">{children.map((child) => <section key={child.group} className="min-w-0 space-y-2 p-3" aria-label={child.label}>
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)]">
+          <div className="min-w-0 space-y-4"><div className="min-w-0 divide-y divide-border rounded-md border border-border" data-testid="parent-main-block">{children.map((child) => <section key={child.group} className="min-w-0 space-y-2 p-3" aria-label={child.label}>
             <div className="flex flex-wrap items-center gap-2"><h4 className="text-base font-semibold">{child.label}</h4><Badge variant="outline">{child.format}</Badge>
               <span className="text-xs text-muted-foreground">{child.upcoming.length ? child.results.length ? "Provisional rankings · matches still to play" : "Provisional draw order · no results yet" : "Rankings"}</span></div>
             {mode === "progression" && child.matrix ? <RoundRobinPilotView title={child.label} view={child.matrix} matrixOnly showSlots /> : <div className="max-w-full overflow-x-auto">{child.standings}</div>}
             {mode === "log" && <Fixtures title="Results" rows={child.results} />}
           </section>)}</div>
-          <div className="min-w-0 space-y-4">
-            <section aria-label="Upcoming games" data-testid="parent-upcoming-summary" className="rounded-md border border-border p-3">
-              <h5 className="mb-1 text-sm font-semibold">Upcoming games <span className="text-muted-foreground">({upcoming.length})</span></h5>
-              {!upcoming.length ? <p className="text-xs text-muted-foreground">No upcoming games.</p> : <ul className="divide-y divide-border text-xs">{upcoming.map((m) => <li key={m.id} data-fixture-id={m.id} className="py-1">
-                <div className="break-words font-medium">{m.a} v {m.b}</div>
-                <div className="text-[11px] text-muted-foreground">{m.child}{m.round ? ` · R${m.round}` : ""} · {m.when}</div>
-              </li>)}</ul>}
-            </section>
             <section aria-label="Shared playoffs" className="space-y-3 rounded-md border border-border p-3">
               <h5 className="text-sm font-semibold">{parent.label} · Shared playoffs</h5>
               <p className="text-[11px] text-muted-foreground">{parent.qualification}{!playoffs.length && " · Positions shown until qualifiers are confirmed."}</p>
@@ -88,6 +80,15 @@ export function ParentCategoryProgression({ parent, children, playoffs }: { pare
                 </div>;
               })}</div>
               {unmatched.length > 0 && <Fixtures title="Saved playoff fixtures" rows={unmatched} />}
+            </section>
+          </div>
+          <div className="min-w-0 space-y-4">
+            <section aria-label="Upcoming games" data-testid="parent-upcoming-summary" className="rounded-md border border-border p-3 lg:sticky lg:top-20">
+              <h5 className="mb-1 text-sm font-semibold">Upcoming games <span className="text-muted-foreground">({upcoming.length})</span></h5>
+              {!upcoming.length ? <p className="text-xs text-muted-foreground">No upcoming games.</p> : <ul className="divide-y divide-border text-xs">{upcoming.map((m) => <li key={m.id} data-fixture-id={m.id} className="py-1">
+                <div className="break-words font-medium">{m.a} v {m.b}</div>
+                <div className="text-[11px] text-muted-foreground">{m.child}{m.round ? ` · R${m.round}` : ""} · {m.when}</div>
+              </li>)}</ul>}
             </section>
           </div>
         </div>

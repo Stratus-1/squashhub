@@ -11,9 +11,9 @@ export interface ParentProgressionGroup {
   qualification: string;
 }
 
-/** Approved club-only display rollout; not a capability or authorization decision. */
+/** Display rollout for every club (owner-approved); not a capability or authorization decision. */
 export function parentProgressionEnabled(clubId: string | undefined) {
-  return clubId === "d8397b8a-60d3-4c4b-afee-25dab218bf19";
+  return !!clubId;
 }
 
 /** Saved parent membership AND shared playoff intent are required; labels alone never group divisions. */

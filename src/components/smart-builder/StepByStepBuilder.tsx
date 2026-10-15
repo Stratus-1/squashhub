@@ -63,6 +63,7 @@ import { FeeBasisQuestion } from "./FeeBasisQuestion";
 import { LIFECYCLE, clubAllowsTournamentLadder, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 import { StageCardShell, StageScheduleOverview } from "./StageScheduleOverview";
 import { courtOverlaps, stageStatus, type StageStatus } from "@/lib/smart-builder/schedule-view";
+import { RoundSchedulingEditor } from "./RoundSchedulingEditor";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -2343,11 +2344,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <StageScheduleOverview main={mainStages} playoffs={playoff.choice === "playoffs" ? playoffStages : []} statusOf={stageStatusOf} unitName={stageUnit} dayLabel={fmtDay}
                 courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} onJump={jumpToStage}
                 capacityText={(id) => { const s = stages.find((x) => x.id === id); const c = s ? capacityOf(s) : null; return c ? `~${c.matches} matches / ${c.slots} slots` : null; }} />
-              {drawSaved && <>
+                {drawSaved && <>
                 <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs" data-testid="schedule-running-note">The draw has been generated. Add or adjust the next round's dates, times and courts here; saving never regenerates or deletes existing games — new rounds' games are drawn from Manage Tournament.</p>
                 {renderMainRounds()}
                 {renderFieldReview()}
-              </>}
+                {tournamentId && <RoundSchedulingEditor clubId={clubId} tournamentId={tournamentId} />}
+               </>}
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Play by a date: players arrange and book their own match before the deadline — no courts are blocked. Scheduled: a set date, time window and courts. Categories progress independently through main rounds. Stage names are a plan; the real rounds come from the format you confirm after registrations close.</div>
               <div className="space-y-2 rounded-lg border border-border p-3">
                 <div className="text-sm font-semibold">Should playoff stages be synchronised across the Club Championships?</div>

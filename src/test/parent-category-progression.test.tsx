@@ -22,7 +22,7 @@ describe("approved club-only parent progression", () => {
   it("enables the approved club independently of hostname, never another club", () => {
     const id = "d8397b8a-60d3-4c4b-afee-25dab218bf19";
     expect(parentProgressionEnabled(id)).toBe(true);
-    expect(parentProgressionEnabled("11111111-1111-1111-1111-111111111111")).toBe(true);
+    expect(parentProgressionEnabled("11111111-1111-1111-1111-111111111111")).toBe(false);
     expect(parentProgressionEnabled(undefined)).toBe(false);
   });
   it("keeps each fixture in one lane, retains IDs, and orders rounds", () => {

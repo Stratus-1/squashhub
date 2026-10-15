@@ -11,9 +11,9 @@ export interface ParentProgressionGroup {
   qualification: string;
 }
 
-/** Display rollout for every club (owner-approved); not a capability or authorization decision. */
+/** Uitsig-only until signed off, then roll out to all clubs; not a capability or authorization decision. */
 export function parentProgressionEnabled(clubId: string | undefined) {
-  return !!clubId;
+  return clubId === "d8397b8a-60d3-4c4b-afee-25dab218bf19";
 }
 
 /** Saved parent membership AND shared playoff intent are required; labels alone never group divisions. */

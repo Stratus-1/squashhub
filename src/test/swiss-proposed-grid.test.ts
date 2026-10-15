@@ -25,8 +25,15 @@ describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
       const slots = rd.blocks.flatMap((b) => b.rows.map((x) => x.pos)).filter((x) => x != null);
       expect(slots.slice().sort((a,b) => a-b)).toEqual(Array.from({length:n},(_, i) => i+1));
       expect(rd.blocks.filter((b) => b.rows[1].name === "Bye").length).toBe(n % 2);
-      expect(rd.blocks.filter((b) => b.rows[1].pos != null).map((b) => b.rows.map((x) => x.pos))).toEqual(categoryTemplate(n,r)[index].pairs.map((p) => [p.a,p.b]));
+      // Even fields follow the template exactly; odd fields may move the bye so nobody sits out twice.
+      if (n % 2 === 0) expect(rd.blocks.filter((b) => b.rows[1].pos != null).map((b) => b.rows.map((x) => x.pos))).toEqual(categoryTemplate(n,r)[index].pairs.map((p) => [p.a,p.b]));
     });
+  });
+  it("9 entrants: the 9th seed does not get the bye again in later rounds", () => {
+    const grid = buildProposedSwissGrid(modelFor(9, 5));
+    const byeSlots = grid.rounds.map((rd) => rd.blocks.find((b) => b.rows[1].name === "Bye")?.rows[0].pos);
+    expect(byeSlots[0]).toBe(9);
+    expect(byeSlots[1]).not.toBe(9);
   });
   it("copies saved round 1 exactly but never imports live round 2 players/results/scheduling", () => {
     const model = modelFor(8,3);

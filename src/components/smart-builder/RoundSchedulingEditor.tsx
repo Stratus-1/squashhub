@@ -199,7 +199,7 @@ export function RoundSchedulingEditor({ clubId, tournamentId }: { clubId: string
           </div>
           <DialogFooter>
             <Button variant="ghost" disabled={busy} onClick={() => setReview(null)}>{review?.kind === "ask_generate" ? "Not now" : "Cancel"}</Button>
-            <Button disabled={busy || (review?.kind === "timed" && review.proposal.assign.length === 0)} onClick={approve}>
+            <Button disabled={busy} onClick={approve}>
               {busy ? "Working…" : review?.kind === "ask_generate" ? "Build proposal" : "Approve & apply"}
             </Button>
           </DialogFooter>

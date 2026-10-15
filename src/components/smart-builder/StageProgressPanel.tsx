@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { drawNotifyOn } from "@/lib/smart-builder/draw-notice";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Loader2, Settings2 } from "lucide-react";
@@ -40,7 +41,7 @@ const STATE_LABEL: Record<StageStatus["state"], string> = {
 async function notifyStage(champId: string, spec: TournamentSpec, divisionKey: string, stageKey: string) {
   try {
     const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champId).maybeSingle();
-    if ((data as any)?.beta_lifecycle?.draw_notify === false) return;
+    if (!drawNotifyOn((data as any)?.beta_lifecycle)) return;
     const d = spec.divisions.find((x) => x.divisionId === divisionKey);
     const r = await notifyRoundDraw({ champId, roundNumber: 1, groupNumber: d ? divisionGroup(spec, d) : null, stageKey });
     toast.success(roundNotifySummary(r));

@@ -125,7 +125,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setMeta({ name: tt?.name ?? "Tournament", start: tt?.start_date ?? null, end: tt?.end_date ?? null });
     const n = Math.max(1, Number(tt?.num_groups ?? 1));
     // This device's answers when present, else the setup saved on the tournament (works on any device).
-    if ((tt as any)?.beta_lifecycle?.draw_notify === false) setNotifyDraw(false);
+    if (!drawNotifyOn((tt as any)?.beta_lifecycle)) setNotifyDraw(false);
     // The setup saved on the tournament is authoritative (Stages & scheduling syncs it on every change);
     // this device's copy is only a fallback, so edits made in setup always show up here.
     const saved = (tt as any)?.beta_lifecycle?.format_plan ?? null;

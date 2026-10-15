@@ -3720,6 +3720,10 @@ export type Database = {
           court_id: number | null
           created_at: string
           division_id: string | null
+          draw_notice_confirmed_at: string | null
+          draw_notice_sent_at: string | null
+          draw_notice_state: string | null
+          draw_notice_wa_pending: boolean
           forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
@@ -3764,6 +3768,10 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           division_id?: string | null
+          draw_notice_confirmed_at?: string | null
+          draw_notice_sent_at?: string | null
+          draw_notice_state?: string | null
+          draw_notice_wa_pending?: boolean
           forfeit_member_id?: string | null
           game_scores?: string | null
           group_number: number
@@ -3808,6 +3816,10 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           division_id?: string | null
+          draw_notice_confirmed_at?: string | null
+          draw_notice_sent_at?: string | null
+          draw_notice_state?: string | null
+          draw_notice_wa_pending?: boolean
           forfeit_member_id?: string | null
           game_scores?: string | null
           group_number?: number
@@ -18689,9 +18701,15 @@ export type Database = {
       }
     }
     Functions: {
+      _champ_admin_guard: { Args: { p_champ_id: string }; Returns: undefined }
+      _champ_draw_notice_mode: { Args: { p_champ_id: string }; Returns: string }
       _champ_fee_adjust: {
         Args: { p_fee_id: string; p_new_amount: number; p_note: string }
         Returns: string
+      }
+      _champ_fixture_draw_notify: {
+        Args: { p_kind: string; p_match_ids: string[] }
+        Returns: Json
       }
       _champ_payment_methods: {
         Args: { p_champ_id: string }
@@ -19583,6 +19601,10 @@ export type Database = {
           match_kind: string
         }[]
       }
+      claim_champ_fixture_wa_notices: {
+        Args: { p_champ_id: string }
+        Returns: Json
+      }
       claim_email_outbox_batch: {
         Args: { p_lease_seconds?: number; p_limit?: number }
         Returns: {
@@ -19780,6 +19802,10 @@ export type Database = {
       diamond_seed_doubles_for_tie: {
         Args: { p_champ: string; p_prefix: string }
         Returns: undefined
+      }
+      dismiss_champ_fixture_draw_notices: {
+        Args: { p_champ_id: string; p_match_ids: string[] }
+        Returns: number
       }
       dismiss_duplicate_pair: {
         Args: { _a: string; _b: string; _reason?: string }
@@ -20622,6 +20648,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_champ_draw_scope_notified: {
+        Args: {
+          p_champ_id: string
+          p_group_number?: number
+          p_round_number: number
+          p_stage_key?: string
+        }
+        Returns: number
+      }
       md_admin_enable: {
         Args: { _id: string; _kind: string; _regenerate?: boolean }
         Returns: Json
@@ -21396,6 +21431,10 @@ export type Database = {
           court_id: number | null
           created_at: string
           division_id: string | null
+          draw_notice_confirmed_at: string | null
+          draw_notice_sent_at: string | null
+          draw_notice_state: string | null
+          draw_notice_wa_pending: boolean
           forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
@@ -21516,6 +21555,10 @@ export type Database = {
           p_match_id: string
           p_time: string
         }
+        Returns: Json
+      }
+      send_champ_fixture_draw_notices: {
+        Args: { p_champ_id: string; p_match_ids?: string[] }
         Returns: Json
       }
       send_champ_invite_notifications: {
@@ -21698,6 +21741,10 @@ export type Database = {
           court_id: number | null
           created_at: string
           division_id: string | null
+          draw_notice_confirmed_at: string | null
+          draw_notice_sent_at: string | null
+          draw_notice_state: string | null
+          draw_notice_wa_pending: boolean
           forfeit_member_id: string | null
           game_scores: string | null
           group_number: number

@@ -47,8 +47,18 @@ const scopeQuery = (tournamentId: string, scope: DrawScope) => {
   if (scope.stageKey) q = q.eq("stage_key", scope.stageKey);
   return q;
 };
-/** "Ask me after each draw" is the default; only an explicit Off (draw_notify === false) skips the prompt. */
-export function drawNotifyOn(betaLifecycle: any): boolean { return betaLifecycle?.draw_notify !== false; }
+/** Draw notification mode: "auto" (send each newly confirmed fixture), "prompt" (default, ask the organiser), "off". */
+export type DrawNoticeMode = "auto" | "prompt" | "off";
+export function drawNoticeMode(betaLifecycle: any): DrawNoticeMode {
+  const v = betaLifecycle?.draw_notify;
+  return v === "auto" ? "auto" : v === false || v === "off" ? "off" : "prompt";
+}
+/** The legacy round-level "Send draw to players now?" prompt only runs in Prompt mode (Automatic sends per fixture server-side). */
+export function drawNotifyOn(betaLifecycle: any): boolean { return drawNoticeMode(betaLifecycle) === "prompt"; }
+/** Marks the scope's confirmed fixtures as notified so the per-fixture prompt never repeats an initial notice. */
+export async function markScopeFixturesNotified(tournamentId: string, scope: Pick<DrawScope, "round" | "groupNumber" | "stageKey">) {
+  await (supabase as any).rpc("mark_champ_draw_scope_notified", { p_champ_id: tournamentId, p_round_number: scope.round, p_group_number: scope.groupNumber ?? null, p_stage_key: scope.stageKey ?? null });
+}
 export const drawNoticeKey = (scope: DrawScope) => `${scope.groupNumber ?? "all"}:r${scope.round}${scope.stageKey ? `:s${scope.stageKey}` : ""}`;
 /** Log a sent draw notice on the tournament so revisits show "Sent" and offer Resend instead of re-prompting. */
 export async function recordDrawNotice(tournamentId: string, key: string, sent: number) {
@@ -57,6 +67,8 @@ export async function recordDrawNotice(tournamentId: string, key: string, sent: 
   const log = { ...(bl.draw_notices ?? {}), [key]: { at: new Date().toISOString(), sent } };
   const pending = { ...(bl.draw_notice_pending ?? {}) }; delete pending[key];
   await (supabase as any).from("tournaments").update({ beta_lifecycle: { ...bl, draw_notices: log, draw_notice_pending: pending } }).eq("id", tournamentId);
+  const m = /^(all|\d+):r(\d+)(?::s(.+))?$/.exec(key);
+  if (m) await markScopeFixturesNotified(tournamentId, { round: Number(m[2]), groupNumber: m[1] === "all" ? undefined : Number(m[1]), stageKey: m[3] }).catch(() => {});
 }
 export function drawNoticeSent(betaLifecycle: any, key: string): { at: string; sent: number } | null {
   return betaLifecycle?.draw_notices?.[key] ?? null;

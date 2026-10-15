@@ -173,7 +173,7 @@ export type CreateInput = {
   /** Fees & Payment doubles answer: may one partner pay the other's fee. undefined = leave as is. */
   partnerPay?: boolean | null;
   /** Messaging step "Draw notifications": tell players their opponents + play-by date when each round/stage is drawn. undefined = leave as is. */
-  drawNotify?: boolean;
+  drawNotify?: boolean | "auto";
   /** Fees & Payment "How is the entry fee charged?". undefined = leave as is; basis null = needs confirmation. */
   feeBasis?: { basis: "per_player" | "per_category" | null; mixedRule: "highest" | "first" | null };
   /** Per-tournament "Affect club ladder" opt-in. undefined = leave as is (existing tournaments). */
@@ -311,7 +311,7 @@ export type BetaLifecycle = {
   /** Fees & Payment "A player may pay for both partners" — read server-side by step_pair_payment_context. */
   partner_pay?: boolean | null;
   /** Messaging "Draw notifications" (default on): Round 1 at Generate draw and every later stage when it is created. */
-  draw_notify?: boolean;
+  draw_notify?: boolean | "auto";
   /** Draw-relevant setup answers (format incl. within/between/custom matchups, seeding, stages, play-offs) so Generate draw works on any device. */
   format_plan?: Record<string, unknown> | null;
   category_types?: Record<string, string>;

@@ -17,6 +17,7 @@ export interface BarPosterOptions {
   cardOnlineEnabled: boolean;
   swipeEnabled: boolean;
   cashEnabled: boolean;
+  venue?: "bar" | "shop" | "bar-shop";
 }
 
 const NAVY: [number, number, number] = [30, 58, 95];
@@ -24,15 +25,13 @@ const AMBER: [number, number, number] = [217, 154, 38];
 const INK: [number, number, number] = [33, 37, 41];
 const MUTED: [number, number, number] = [100, 108, 118];
 
-function payPhrase(o: BarPosterOptions, member: boolean): string {
-  const opts: string[] = [];
-  if (member && o.accountEnabled) opts.push("add it to your member account");
-  if (o.cardOnlineEnabled) opts.push("pay by card online");
-  if (o.swipeEnabled) opts.push("pay with the club card machine");
-  if (o.cashEnabled) opts.push("pay cash at the bar");
-  if (!opts.length) return "settle with the club";
-  if (opts.length === 1) return opts[0];
-  return `${opts.slice(0, -1).join(", ")} or ${opts[opts.length - 1]}`;
+export function barPosterPaymentMethods(o: Pick<BarPosterOptions, "accountEnabled" | "cardOnlineEnabled" | "swipeEnabled" | "cashEnabled">): string[] {
+  return [
+    o.accountEnabled && "Member account - members only; membership number and Bar PIN required",
+    o.cardOnlineEnabled && "Card online - pay securely on your phone",
+    o.swipeEnabled && "Swipe card at the counter - pay using the club card machine",
+    o.cashEnabled && "Cash at the counter - settle with bar/shop staff",
+  ].filter((method): method is string => typeof method === "string");
 }
 
 export async function loadImageAsDataUrlWithSize(src: string): Promise<LoadedImage | null> {

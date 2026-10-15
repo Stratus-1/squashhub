@@ -2942,3 +2942,9 @@ function StageTable({ stages, unitName, when }: { stages: ClubStage[]; unitName:
       {po.length > 0 && <tr><td colSpan={5} className="py-1.5"><div className="rounded bg-primary/10 px-2 py-1 text-center font-semibold text-primary">▼ Playoffs begin</div></td></tr>}
       {po.map(row)}</tbody></table>;
 }
+
+/** With the stage planner on, the older format controls stay available but tucked away. */
+function ClassicWrap({ collapsed, children }: { collapsed: boolean; children: React.ReactNode }) {
+  if (!collapsed) return <>{children}</>;
+  return <details className="rounded-lg border border-border p-2"><summary className="cursor-pointer text-xs text-muted-foreground">Classic format controls</summary><div className="space-y-3 pt-2">{children}</div></details>;
+}

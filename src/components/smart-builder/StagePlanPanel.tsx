@@ -64,7 +64,7 @@ export function StagePlanPanel<A extends PlanAnswers>({ answers, onSave, units, 
     queryFn: async () => { const { data } = await (supabase as any).from("tournament_plan_versions").select("version").eq("tournament_id", tournamentId).order("version", { ascending: false }).limit(1).maybeSingle(); return (data?.version as number) ?? 0; },
   });
 
-  const gamesFor = (key: string): StageGameRow[] => fixtures.filter((f) => f.unitKey === key);
+  const gamesFor = (key: string): Fixture[] => fixtures.filter((f) => f.unitKey === key);
   const def = draft.format ?? {};
   const defKind = (STAGE_KINDS.find((k) => k.kind === def.kind)?.kind ?? null) as StageKind | null;
   const defRounds = Number(def.swissRoundsConfirmed || def.swissRounds) || null;

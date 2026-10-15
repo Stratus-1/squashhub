@@ -4114,7 +4114,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             matrix: division?.stages?.[0]?.kind === "round_robin" ? buildRoundRobinView({
               players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })), rankOrder: rows.map((r: any) => r.club_member_id),
               matches: childMatches.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id, b: m.player_b_member_id,
-                winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, status: m.status, isBye: !!m.is_bye, forfeitMemberId: m.forfeit_member_id })),
+                winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, status: m.status, isBye: !!m.is_bye, forfeitMemberId: m.forfeit_member_id,
+                date: m.scheduled_date ?? null, time: m.scheduled_time ?? null, court: m.court?.name ?? null })),
             }) : null,
             upcoming: split.upcoming.map(displayFixture), results: split.results.map(displayFixture) };
         })} />;

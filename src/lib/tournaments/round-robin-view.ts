@@ -18,7 +18,7 @@ export interface RRMatchInput {
   date?: string | null; time?: string | null; court?: string | null; playBy?: string | null;
 }
 export type RRStatus = "played" | "to_play" | "bye";
-export interface RRCell { matchId: string; round: number | null; result: "W" | "L" | null; score: string | null; status: RRStatus; setSummary?: string | null; live?: boolean }
+export interface RRCell { matchId: string; round: number | null; result: "W" | "L" | null; score: string | null; status: RRStatus; setSummary?: string | null; live?: boolean; slot?: string | null }
 export interface RRRoundMatch { id: string; a: string | null; b: string | null; aName: string; bName: string; posA: number | null; posB: number | null; winner: string | null; score: string | null; status: RRStatus; when: string }
 export interface RRRound { round: number | null; label: string; matches: RRRoundMatch[]; sittingOut: string[]; status: "complete" | "in_progress" | "not_started" }
 export interface RRTotals { played: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number; pointsKnown: boolean }
@@ -53,6 +53,15 @@ export function rrSetSummary(m: RRMatchInput, flip = false): string | null {
 export function parseScore(score?: string | null): [number, number] | null {
   const mm = /^\s*(\d+)\s*[-–:]\s*(\d+)\s*$/.exec(score ?? "");
   return mm ? [Number(mm[1]), Number(mm[2])] : null;
+}
+
+/** Compact saved slot for a matrix cell: "14 Oct 18:20 C2"; null when nothing saved. */
+export function rrSlot(m: Pick<RRMatchInput, "date" | "time" | "court">): string | null {
+  if (!m.date) return null;
+  const [, mo, da] = m.date.split("-").map(Number);
+  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][mo - 1];
+  const court = m.court ? (m.court.match(/\d+/)?.[0] ? `C${m.court.match(/\d+/)![0]}` : m.court) : null;
+  return [`${da} ${mon ?? ""}`.trim(), m.time?.slice(0, 5), court].filter(Boolean).join(" ");
 }
 
 /** Saved schedule only: "Wed 14 Oct 18:20 · Court 2", "Play by 25 Nov", or "Not scheduled". */
@@ -99,6 +108,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
       result: played && m.winner ? (m.winner === me ? "W" : "L") : null,
       setSummary: played ? rrSetSummary(m, flip) : null,
       live: !played && m.status === "in_progress",
+      slot: rrSlot(m),
       score: sc ? (flip ? `${sc[1]}-${sc[0]}` : `${sc[0]}-${sc[1]}`) : m.score ?? null,
     });
     matrix[m.a][m.b] = cell(m.a, m.b, false);

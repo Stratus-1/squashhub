@@ -10,7 +10,7 @@ export function poolRankTone(index: number, count: number) {
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
 
 /** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
-export function RoundRobinPilotView({ title, view, matrixOnly = false }: { title: string; view: RRPoolView; matrixOnly?: boolean }) {
+export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots = false }: { title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean }) {
   const { players, matrix, totals, rounds } = view;
   return (
     <div className="space-y-2" data-testid="rr-pilot">
@@ -40,7 +40,7 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false }: { title
                     const c = matrix[p.id][q.id];
                     return (
                       <td key={q.id} data-testid={`rr-cell-${p.id}-${q.id}`} data-state={c?.status === "played" ? "final" : c?.live ? "live" : "pending"} aria-label={`${p.name} versus ${q.name}: ${c?.status === "played" ? `Final ${c.setSummary ?? "score not recorded"}${c.result ? `, ${c.result === "W" ? "won" : "lost"}` : ""}` : c?.live ? "In progress" : `Round ${c?.round ?? "not assigned"}`}`} className={cn("border border-border px-2 py-1 text-center tabular-nums whitespace-nowrap", c?.status === "played" && "rr-matrix-final font-semibold", c?.live && "border-destructive bg-destructive/10")}>
-                        {!c ? "—" : c.status === "played" ? c.setSummary ?? "Final" : c.live ? <span className="text-[10px] font-semibold">In progress</span> : <span className="round-reference" data-round-tone={((c.round ?? 1) - 1) % 5 + 1}>R{c.round ?? "?"}</span>}
+                        {!c ? "—" : c.status === "played" ? c.setSummary ?? "Final" : c.live ? <span className="text-[10px] font-semibold">In progress</span> : <><span className="round-reference" data-round-tone={((c.round ?? 1) - 1) % 5 + 1}>R{c.round ?? "?"}</span>{showSlots && c.slot && <span data-testid="rr-cell-slot" className="block text-[10px] leading-tight text-muted-foreground">{c.slot}</span>}</>}
                       </td>
                     );
                   })}

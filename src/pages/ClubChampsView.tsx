@@ -595,7 +595,13 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const spec = arch?.builder_spec;
       const d = (spec?.divisions ?? []).find((x: any) => divisionGroup(spec, x) === gn);
       const st = [...(d?.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
-      return st?.kind === "swiss" ? { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null } : null;
+      if (st?.kind !== "swiss") return null;
+      // The saved round timeline (Stages & Scheduling) is authoritative for how many rounds are played and
+      // each round's week; stale per-stage copies (e.g. 6 rounds, R3–R6 all on one date) must not win.
+      const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
+      if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null };
+      const roundDates = timeline.map((t) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
+      return { tieBreaks: st.tieBreaks, rounds: timeline.length, schedule: { ...(st.schedule ?? {}), roundDates } };
     }
     if (!isSwissForLeague(gn)) return null;
     const r = Number(((champ as any)?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);

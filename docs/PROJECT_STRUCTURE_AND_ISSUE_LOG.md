@@ -3070,3 +3070,6 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Backend trigger `sync_champ_match_from_linked_booking` (migrations 0147/0148): when a booking linked via `club_champs_matches.booking_id` is rescheduled, the match date/time/court follow; when cancelled/deleted, the match reverts to Play-by only. Decided matches, pairings, results untouched; never blocks the booking change. Applies all clubs/formats.
 - Progression grid shows booked slot + retained Play-by. Bookings page asks which open match when member has several (explicit link, never inferred).
 - Super Admin snapshot preview: simulated book/reschedule/cancel (in memory only).
+
+## 2026-10-15 Live Swiss uses fixed-position maps
+- `nextSwissRound` now pairs Round 2+ via `fixedPositionRound` (slot templates replayed from seed order); falls back to score-based pairing when the field is outside 8–32 or saved rounds do not match the template. Test: `src/test/swiss-fixed-live.test.ts`.

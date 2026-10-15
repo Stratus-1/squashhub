@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveStagePlan, setCategoryStagePlan, setStartingDefault, deriveStageStatus, validateStagePlan, planImpact, recommendSwissRounds, type StagePlanItem } from "../stage-plan";
+import { type PlanAnswers, resolveStagePlan, setCategoryStagePlan, setStartingDefault, deriveStageStatus, validateStagePlan, planImpact, recommendSwissRounds, type StagePlanItem } from "../stage-plan";
 
 const swiss5: StagePlanItem = { id: "s1", kind: "swiss", rounds: 5, advance: { mode: "all_continue" } };
 
@@ -19,17 +19,17 @@ describe("stage plan — backward compatibility", () => {
 
 describe("stage plan — saving", () => {
   it("writes Stage 1 back to formatOverrides and keeps later stages", () => {
-    const a = setCategoryStagePlan({ format: { kind: "swiss", swissRounds: "5" } }, "Mens B", [{ ...swiss5, endAfterRound: 4 }, { id: "s2", kind: "round_robin" }]);
+    const a = setCategoryStagePlan<PlanAnswers>({ format: { kind: "swiss", swissRounds: "5" } }, "Mens B", [{ ...swiss5, endAfterRound: 4 }, { id: "s2", kind: "round_robin" }]);
     expect(a.formatOverrides?.["Mens B"]).toMatchObject({ kind: "swiss", swissRoundsConfirmed: "4" });
     expect(resolveStagePlan(a, "Mens B").stages.map((s) => s.kind)).toEqual(["swiss", "round_robin"]);
   });
   it("Stage 1 equal to the default stores no redundant override", () => {
-    const a = setCategoryStagePlan({ format: { kind: "swiss", swissRounds: "5" } }, "Ladies A", [swiss5, { id: "s2", kind: null }]);
+    const a = setCategoryStagePlan<PlanAnswers>({ format: { kind: "swiss", swissRounds: "5" } }, "Ladies A", [swiss5, { id: "s2", kind: null }]);
     expect(a.formatOverrides?.["Ladies A"]).toBeUndefined();
     expect(a.stagePlans?.["Ladies A"]).toHaveLength(2);
   });
   it("starting default keeps legacy format in step", () => {
-    expect(setStartingDefault({}, "swiss", 5).format).toMatchObject({ kind: "swiss", swissRounds: "5", swissRoundsConfirmed: "5" });
+    expect(setStartingDefault<PlanAnswers>({}, "swiss", 5).format).toMatchObject({ kind: "swiss", swissRounds: "5", swissRoundsConfirmed: "5" });
   });
 });
 

@@ -11,7 +11,7 @@ export interface ParentProgressionGroup {
   qualification: string;
 }
 
-/** Approved club-only display rollout; not a capability or authorization decision. */
+/** Uitsig-only until signed off, then roll out to all clubs; not a capability or authorization decision. */
 export function parentProgressionEnabled(clubId: string | undefined) {
   return clubId === "d8397b8a-60d3-4c4b-afee-25dab218bf19";
 }

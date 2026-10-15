@@ -199,6 +199,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
   const template = categoryTemplate(n, model.totalRounds);
+  const rawTemplate = categoryTemplate(n, model.totalRounds); // slot keys for the proposed schedule
   const issues = validateTemplate(n, template);
   if (issues.length) return { rounds: [], issues };
   const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
@@ -209,8 +210,29 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
   const findDone = (round: number, x: string, y: string) => model.rounds.find((r) => r.round === round)?.fixtures
     .find((f) => f.state === "completed" && f.winner && ((f.a === x && f.b === y) || (f.a === y && f.b === x)));
   const occ: Array<Array<string | null>> = [seeds];
+  // Bye fairness (same rule as the live engine): nobody sits out twice. If the bye slot's occupant already had a
+  // bye, the bye moves up to the lowest slot whose occupant hasn't had one (or isn't known yet).
+  const byeHolders = new Set<string>();
+  const savedR1Bye = savedFirst?.created ? model.rounds.find((r) => r.round === 1)?.fixtures.find((f) => f.state === "bye") : undefined;
   for (const rd of template) {
-    const cur = occ[rd.round - 1], next: Array<string | null> = Array(n).fill(null);
+    const cur = occ[rd.round - 1];
+    if (rd.round === 1 && savedR1Bye) { const id = savedR1Bye.a ?? savedR1Bye.b; if (id) byeHolders.add(id); }
+    else if (rd.bye != null) {
+      const holder = cur[rd.bye - 1];
+      if (holder && byeHolders.has(holder)) {
+        for (let sl = n; sl >= 1; sl--) {
+          const o = cur[sl - 1];
+          if (o && byeHolders.has(o)) continue;
+          const pi = rd.pairs.findIndex((p) => p.a === sl || p.b === sl);
+          if (pi < 0) break;
+          const p = rd.pairs[pi], other = p.a === sl ? p.b : p.a;
+          rd.pairs[pi] = { round: rd.round, a: Math.min(other, rd.bye), b: Math.max(other, rd.bye) };
+          rd.bye = sl; break;
+        }
+      }
+      const h = cur[rd.bye - 1]; if (h) byeHolders.add(h);
+    }
+    const next: Array<string | null> = Array(n).fill(null);
     for (const p of rd.pairs) {
       const x = cur[p.a - 1], y = cur[p.b - 1];
       const f = x && y ? findDone(rd.round, x, y) : undefined;
@@ -230,9 +252,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
         : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
-    const blocks: GridBlock[] = rd.pairs.map((p) => {
+    const blocks: GridBlock[] = rd.pairs.map((p, pi) => {
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
-      const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, p.a, p.b)];
+      const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
+      const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
       const withWhen = (when: string) => [{ ...pending(p.a), when }, { ...pending(p.b), when }] as [GridRow, GridRow];
       if (slot?.kind === "planned") return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
       if (slot?.kind === "play_by") return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };

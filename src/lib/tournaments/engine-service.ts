@@ -1,7 +1,7 @@
 import { stageShort } from "@/lib/tournaments/historical-pool-progress";
 import { swissTable, isPositionSwap } from "./swiss-standings";
 import { swissRoundGate } from "./swiss-round-gate";
-import { slotTemplate, MIN_ENTRANTS, MAX_ENTRANTS } from "./swiss-positional";
+import { slotTemplate, startState, MIN_ENTRANTS, MAX_ENTRANTS, type CategoryState, type PlayedRound } from "./swiss-positional";
 import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, type RankGame, type TieBreakCriterion } from "./tie-breaks";
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
@@ -214,34 +214,60 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
  * Returns null (caller falls back to score-based pairing) when the field is outside 8–32 or any saved
  * round does not match the template exactly — e.g. tournaments whose earlier rounds were drawn dynamically.
  */
+/** Positional template for round r with bye fairness only (nobody sits out twice); matches the preview grid. */
+function byeFairPlan(state: CategoryState, r: number): { pairs: Array<{ a: number; b: number }>; bye: number | null } {
+  const n = state.occupants.length;
+  const tpl = slotTemplate(n, r);
+  const pairs = tpl.pairs.map((p) => ({ a: p.a, b: p.b }));
+  let bye = tpl.bye;
+  const had = new Set(state.history.map((h) => h.bye).filter(Boolean) as string[]);
+  if (bye != null && had.has(state.occupants[bye - 1])) {
+    for (let sl = n; sl >= 1; sl--) {
+      if (had.has(state.occupants[sl - 1])) continue;
+      const pi = pairs.findIndex((p) => p.a === sl || p.b === sl);
+      if (pi < 0) break;
+      const p = pairs[pi], other = p.a === sl ? p.b : p.a;
+      pairs[pi] = { a: Math.min(other, bye), b: Math.max(other, bye) };
+      bye = sl; break;
+    }
+  }
+  return { pairs: pairs.sort((x, y) => x.a - y.a), bye };
+}
+
 export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRound: number): Array<[string, string | null]> | null {
   const seeds = d.entrants.map((e) => e.id);
   const n = seeds.length;
   if (n < MIN_ENTRANTS || n > MAX_ENTRANTS) return null;
-  let occ = [...seeds];
+  let state: CategoryState = startState(seeds);
   const k = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
+  const asPlan = (pairs: Array<{ a: number; b: number }>, bye: number | null) => ({ pairs, bye });
   for (let r = 1; r < nextRound; r++) {
     const saved = mine.filter((f) => (f.round ?? 1) === r);
-    const tpl = slotTemplate(n, r);
-    if (saved.filter((f) => f.a && f.b).length !== tpl.pairs.length) return null;
+    const occ = state.occupants;
+    const raw = slotTemplate(n, r);
+    // Accept rounds drawn by the raw template (older draws) or the bye-fair template (no repeat byes).
+    const candidates = [asPlan(raw.pairs, raw.bye), byeFairPlan(state, r)];
     const byKey = new Map(saved.filter((f) => f.a && f.b).map((f) => [k(f.a!, f.b!), f]));
+    const byeRow = saved.find((f) => f.a && !f.b);
+    const tpl = candidates.find((c) => c.pairs.length === byKey.size && c.pairs.every((p) => byKey.has(k(occ[p.a - 1], occ[p.b - 1])))
+      && (c.bye == null || !byeRow || byeRow.a === occ[c.bye - 1]));
+    if (!tpl) return null;
     const next = [...occ];
+    const played: PlayedRound = { round: r, pairs: [], bye: tpl.bye != null ? occ[tpl.bye - 1] : null };
     for (const p of tpl.pairs) {
       const A = occ[p.a - 1], B = occ[p.b - 1];
-      const f = byKey.get(k(A, B));
-      const w = f ? swissWinner(f) : null;
-      if (!f || (w !== A && w !== B)) return null;
+      const w = swissWinner(byKey.get(k(A, B))!);
+      if (w !== A && w !== B) return null;
       next[p.a - 1] = w; next[p.b - 1] = w === A ? B : A;
+      played.pairs.push({ a: A, b: B, winner: w });
     }
-    if (tpl.bye != null) {
-      const byeRow = saved.find((f) => f.a && !f.b);
-      if (byeRow && byeRow.a !== occ[tpl.bye - 1]) return null;
-    }
-    occ = next;
+    state = { occupants: next, history: [...state.history, played] };
   }
-  const tpl = slotTemplate(n, nextRound);
-  const pairs: Array<[string, string | null]> = tpl.pairs.map((p) => [occ[p.a - 1], occ[p.b - 1]]);
-  if (tpl.bye != null) pairs.push([occ[tpl.bye - 1], null]);
+  // Next round: positional template with bye fairness (nobody gets a second bye).
+  const plan = byeFairPlan(state, nextRound);
+  const occ = state.occupants;
+  const pairs: Array<[string, string | null]> = plan.pairs.map((p) => [occ[p.a - 1], occ[p.b - 1]]);
+  if (plan.bye != null) pairs.push([occ[plan.bye - 1], null]);
   return pairs;
 }
 

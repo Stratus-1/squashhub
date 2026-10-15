@@ -80,10 +80,27 @@ export function resolveCategoryDraw(draw: CategoryDraw, results: DrawResults = {
   const met = new Set<string>();
   const rematches: ResolvedDraw["rematches"] = [];
   const pk = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
+  const byeHad = new Set<string>();
   for (let r = 1; r <= draw.rounds; r++) {
     const cur = occupancy[r - 1];
     const next: Array<DrawEntrant | null> = Array(n).fill(null);
-    const fixtures = draw.fixtures.filter((f) => f.round === r).map<ResolvedFixture>((f) => {
+    // Bye fairness: nobody sits out twice. If the bye slot's occupant already had a bye, the bye moves up to the
+    // lowest slot whose occupant hasn't had one (or isn't known yet); that slot's opponent plays the old bye slot.
+    let byeSlot = draw.byes.find((y) => y.round === r)?.slot ?? null;
+    let roundFixtures = draw.fixtures.filter((f) => f.round === r);
+    if (byeSlot != null && cur[byeSlot - 1] && byeHad.has(cur[byeSlot - 1]!.id)) {
+      for (let sl = n; sl >= 1; sl--) {
+        const o = cur[sl - 1];
+        if (o && byeHad.has(o.id)) continue;
+        const fx = roundFixtures.find((f) => f.slotA === sl || f.slotB === sl);
+        if (!fx) break;
+        const other = fx.slotA === sl ? fx.slotB : fx.slotA, old = byeSlot;
+        roundFixtures = roundFixtures.map((f) => (f === fx ? { ...f, slotA: Math.min(other, old), slotB: Math.max(other, old) } : f));
+        byeSlot = sl; break;
+      }
+    }
+    if (byeSlot != null && cur[byeSlot - 1]) byeHad.add(cur[byeSlot - 1]!.id);
+    const fixtures = roundFixtures.map<ResolvedFixture>((f) => {
       const a = cur[f.slotA - 1], b = cur[f.slotB - 1];
       const res = results[f.key];
       if (a && b && met.has(pk(a.id, b.id))) rematches.push({ key: f.key, a: a.id, b: b.id });
@@ -100,7 +117,6 @@ export function resolveCategoryDraw(draw: CategoryDraw, results: DrawResults = {
         label: `${a ? a.name : `Position ${f.slotA}`} vs ${b ? b.name : `Position ${f.slotB}`}${a && b ? "" : " (TBD)"}`,
       };
     });
-    const byeSlot = draw.byes.find((y) => y.round === r)?.slot ?? null;
     if (byeSlot != null) next[byeSlot - 1] = cur[byeSlot - 1];
     rounds.push({ round: r, fixtures, bye: byeSlot != null ? { slot: byeSlot, entrant: cur[byeSlot - 1] } : null });
     occupancy.push(next);

@@ -25,6 +25,9 @@ import { StructureRowsEditor } from "./StructureRowsEditor";
 import { rowStructurePilot, structureRowIssues } from "@/lib/smart-builder/structure-rows";
 import { visualStructurePilot } from "@/lib/smart-builder/structure-canvas";
 import { retiredStructurePilotFlag } from "@/lib/smart-builder/pilot-status";
+import { CardStructureEditor } from "./CardStructureEditor";
+import { CardStructureReview } from "./CardStructureReview";
+import { cardStructurePilot, cardStructureIssues, mergeCardStructureSteps, MERGED_STRUCTURE_STEPS } from "@/lib/smart-builder/card-structure";
 const StructSection = ({ title }: { title: string; children?: null }) => <h3 className="border-t border-border pt-4 text-sm font-semibold">{title}</h3>;
 import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
@@ -293,8 +296,8 @@ const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [], split: {}, playoffSync: null, syncCutoff: "", scope: null, ownerName: "" };
 /** A blank setup must never overwrite what is saved on the tournament. */
 const hasRealAnswers = (x: Partial<StepAnswers>) => !!(x.name?.trim() || (x.categories ?? []).some((c) => c?.trim()) || x.format?.kind || (x.stages ?? []).length);
-type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Guide" | "Subcategories" | "Overrides" | "Format" | "Structure" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Guide: "Structure guide", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Structure: "Tournament structure", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick / Allocate players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
+type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Guide" | "Subcategories" | "Overrides" | "Format" | "Structure" | "StructureReview" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Split" | "Schedule" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Guide: "Structure guide", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Structure: "Tournament structure", StructureReview: "Structure review", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick / Allocate players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Split: "Main rounds & playoffs", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -564,6 +567,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const stagePlannerFlag = retiredStructurePilotFlag(clubId, savedStagePlannerFlag);
   const structureStep = retiredStructurePilotFlag(clubId, savedStructureStep);
   const rowStructure = rowStructurePilot(clubId, structureStep, window.location.hostname, tournamentId ?? a.createdTournamentId);
+  const cardStructure = cardStructurePilot(clubId, window.location.hostname, tournamentId ?? a.createdTournamentId);
   const [rowStructureDirty, setRowStructureDirty] = useState(false);
   const stagePlanner = stagePlannerFlag || structureStep;
   const [structEditing, setStructEditing] = useState<string | null>(null);
@@ -659,7 +663,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const feeSummary = fee.has === null ? "Not chosen" : !fee.has ? "No entry fee" : fee.varies ? "Varies by category" : `R${fee.amount || "?"}`;
   const discOk = units.every((u) => u.disc !== null);
   const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
-  const eligOf = (k: string): Elig => a.elig[k] ?? (rowStructure && k.includes("::") ? a.elig[k.split("::")[0]] : undefined) ?? DEFAULT_ELIG;
+  const eligOf = (k: string): Elig => a.elig[k] ?? ((rowStructure || cardStructure) && k.includes("::") ? a.elig[k.split("::")[0]] : undefined) ?? DEFAULT_ELIG;
   const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
   const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
   // Eligibility = gender category +, when the event is scoped to leagues, actual
@@ -687,7 +691,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const autoPlace = (id: string) => {
     const key = placeByLeague({ memberId: id, units, eligOf, leaguesByMember, genderByMember });
     // The legacy women's-in-men's-leagues fallback must never bypass explicit Men only in the row pilot.
-    return rowStructure && key && !fits(id, key) ? "" : key;
+    return (rowStructure || cardStructure) && key && !fits(id, key) ? "" : key;
   };
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
@@ -1042,10 +1046,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     compact.splice(compact.indexOf("Basics") + 1, 0, "Categories", "Match");
     steps.splice(0, steps.length, ...compact);
   }
+  if (cardStructure) {
+    const compact = mergeCardStructureSteps(steps, "Structure");
+    compact.splice(compact.indexOf("Structure") + 1, 0, "StructureReview");
+    steps.splice(0, steps.length, ...compact);
+  }
   const cur = steps[Math.min(step, steps.length - 1)];
-  const isStruct = cur === "Structure";
+  const isStruct = cur === "Structure" && !cardStructure;
   // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
-  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
+  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && MERGED_STRUCTURE_STEPS.includes(t) ? "Structure" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
 
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;
@@ -1078,11 +1087,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
-  const okFor: Record<StepKey, boolean> = { Structure: false, Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: estimateConflicts(a, cats).length === 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { StructureReview: false, Structure: false, Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: estimateConflicts(a, cats).length === 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   okFor.Structure = okFor.Guide && okFor.Subcategories && okFor.Format;
   if (structureStep) okFor.Match = okFor.Match && okFor.Overrides;
   if (rowStructure) okFor.Categories = !rowStructureDirty && structureRowIssues(a).length === 0 && okFor.Format;
+  if (cardStructure) { okFor.Structure = !rowStructureDirty && cardStructureIssues(a).length === 0; okFor.StructureReview = okFor.Structure; }
   const canNext = okFor[cur];
   /** Structure guidance (advisory): estimates, actual field and applying a recommendation on request only. */
   const guide: GuideAnswers = a.guide ?? {};
@@ -1261,7 +1271,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [completing, setCompleting] = useState(false);
   const [completeErr, setCompleteErr] = useState<string | null>(null);
   const conflicts = setupConflicts(a);
-  const setupComplete = !rowStructure && steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
+  const setupComplete = !rowStructure && !cardStructure && steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
   // ---- Pick players: explicit save state + safe removal ----
   const curPickSig = picksSignature(a.picks, a.removedPicks);
   const [savedPickSig, setSavedPickSig] = useState<string | null>(null);
@@ -1303,7 +1313,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     finally { setSavingPlayers(false); }
   };
   const completeSetup = async (stay = false) => {
-    if (rowStructure) { toast.message("This structure preview saves drafts only. Tournament creation requires separate review."); return; }
+    if (rowStructure || cardStructure) { toast.message("This structure preview saves drafts only. Tournament creation requires separate review."); return; }
     setCompleting(true); setCompleteErr(null);
     try {
       const dates = a.days.map((d) => d.date).filter(Boolean).sort();
@@ -1387,7 +1397,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const playerLockControls = <div className="flex flex-wrap items-center gap-2">{playerLockStatus}{playerLockButtons}</div>;
 
   return (
-    <div className={`tournament-admin tournament-setup grid items-start gap-5 ${rowStructure ? "tournament-setup-row-pilot" : "xl:grid-cols-[minmax(0,1fr)_300px]"}`}>
+    <div className={`tournament-admin tournament-setup grid items-start gap-5 ${rowStructure || cardStructure ? "tournament-setup-row-pilot" : "xl:grid-cols-[minmax(0,1fr)_300px]"}`}>
       <div className="min-w-0 space-y-5">
         {!tournamentId && <TemplateReviewBanner clubId={clubId} />}
         {/* progress */}
@@ -1467,6 +1477,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
+          {cardStructure && cur === "Structure" && <CardStructureEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} />}
+          {cardStructure && cur === "StructureReview" && <CardStructureReview answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} dirty={rowStructureDirty} onEdit={() => go("Structure")} />}
           {isStruct && <>
             <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />
             <StructureOverview answers={a} units={units.map((u) => ({ key: u.key, label: u.label }))} editing={structEditing}

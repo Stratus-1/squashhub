@@ -70,6 +70,8 @@ export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<Roun
     p_stage_key: scope.stageKey ?? null,
   });
   if (error) throw error;
+  // Per-fixture state: these fixtures were just told about their draw — never prompt/send them again as new.
+  await (supabase as any).rpc("mark_champ_draw_scope_notified", { p_champ_id: scope.champId, p_round_number: scope.roundNumber, p_group_number: scope.groupNumber ?? null, p_stage_key: scope.stageKey ?? null }).then(() => {}, () => {});
 
   const channels: string[] = Array.isArray(data?.channels) ? data.channels : [];
   const waList: Array<{ member_id: string; message: string; sms?: string }> = Array.isArray(data?.whatsapp)

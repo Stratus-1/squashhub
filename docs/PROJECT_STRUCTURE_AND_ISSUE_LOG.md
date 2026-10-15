@@ -3106,3 +3106,8 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 - Symptom: round-robin R3–R5 fixtures all saved on 20/21 Oct despite weekly round play-by dates (29 Oct, 5 Nov, 12 Nov).
 - Fix (data, owner-approved): 16 unbooked scheduled fixtures shifted by whole weeks into the week ending their round's play-by date; same weekday/time/court. Backup: `/mnt/documents/uitsig-rr-fixture-times-before-move-2026-10-15.csv`. No bookings, results or draw notices touched.
 - Follow-up done: `planTimedSchedule` now plans each round inside its play-by week (test `one-round-per-week.test.ts`).
+
+### 2026-10-15 — CSIR weekly event reminders reached fewer people and had no working Yes/No
+- Cause 1: `sync_event_rsvp_to_instances` copies a series-level WhatsApp "No" onto every future occurrence; the reminder job skipped `declined`, so 8 of 12 Thursday Social invitees stopped getting reminders.
+- Cause 2: reminders used `club_notice` (view-details link) with no `interaction`, so YES/NO replies were not recorded.
+- Fix: reminders ask every occurrence invitee (invited/confirmed/declined) via `rsvp_question` with `interaction.kind = event_instance_rsvp` (target = instance id); `whatsapp-inbound` writes that reply to `club_event_instance_rsvps` for that occurrence only. Opt-outs still respected.

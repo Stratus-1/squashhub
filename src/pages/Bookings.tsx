@@ -2369,6 +2369,37 @@ export default function Bookings() {
           </DialogHeader>
           {bookingDetails && (
             <div className="space-y-3 py-2">
+              {!(bookingDetails as any).is_champ && !String(bookingDetails.id || "").startsWith("champ-") && !isChampsReservation(bookingDetails as any) && myOpenChampMatches.length > 0 ? (
+                <div className="rounded-xl border border-primary/20 p-3 space-y-2">
+                  <p className="text-xs font-semibold">Is this your Club Champs match?</p>
+                  <p className="text-[11px] text-muted-foreground">Linking only labels it on the court grid and fixture. Payment stays as booked; your play-by deadline is unchanged.</p>
+                  {myOpenChampMatches.map((m: any) => (
+                    <Button key={m.id} size="sm" variant="outline" className="w-full justify-start h-auto py-1.5 text-xs"
+                      onClick={async () => {
+                        const { error } = await (supabase as any).rpc("link_booking_to_champ_match", { p_match_id: m.id, p_booking_id: bookingDetails.id });
+                        if (error) { toast.error(error.message); return; }
+                        toast.success("Linked as a Club Champs match");
+                        setBookingDetails(null);
+                        queryClient.invalidateQueries({ queryKey: ["club-champs-bookings"] });
+                        queryClient.invalidateQueries({ queryKey: ["bookings-my-open-champ-matches"] });
+                      }}>
+                      Link: {m.player_a?.name || m.placeholder_a || "TBD"} vs {m.player_b?.name || m.placeholder_b || "TBD"}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+              {(bookingDetails as any).is_champ && (bookingDetails as any).booking_id && String((bookingDetails as any).booking_id) === String(bookingDetails.id) ? (
+                <Button size="sm" variant="ghost" className="h-7 text-[11px]"
+                  onClick={async () => {
+                    const { error } = await (supabase as any).rpc("unlink_booking_from_champ_match", { p_match_id: (bookingDetails as any).champ_match_id });
+                    if (error) { toast.error(error.message); return; }
+                    toast.success("Unlinked from Club Champs");
+                    setBookingDetails(null);
+                    queryClient.invalidateQueries({ queryKey: ["club-champs-bookings"] });
+                  }}>
+                  Unlink from Club Champs
+                </Button>
+              ) : null}
               {(bookingDetails as any).champ_title ? (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                   <p className="text-sm font-semibold">{(bookingDetails as any).champ_title}</p>

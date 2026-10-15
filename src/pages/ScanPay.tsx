@@ -10,7 +10,7 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { GuestOrderDialog, GuestOrderProgress } from "@/components/bar/GuestOrderDialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -142,6 +142,7 @@ export default function ScanPay() {
     },
   });
   const [orderTab, setOrderTab] = useState<GuestTab | null>(null);
+  const queryClient = useQueryClient();
 
   // The public QR page is deliberately identity-free: even if the phone is
   // still signed in, a member must identify with their membership number and

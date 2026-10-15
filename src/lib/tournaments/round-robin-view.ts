@@ -116,7 +116,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
       result: played && m.winner ? (m.winner === me ? "W" : "L") : null,
       setSummary: played ? rrSetSummary(m, flip) : null,
       live: !played && m.status === "in_progress",
-      slot: rrSlot(m),
+      slot: rrSlot(m) ?? rrPlayBySlot(m),
       score: sc ? (flip ? `${sc[1]}-${sc[0]}` : `${sc[0]}-${sc[1]}`) : m.score ?? null,
     });
     matrix[m.a][m.b] = cell(m.a, m.b, false);

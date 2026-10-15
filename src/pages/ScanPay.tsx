@@ -132,6 +132,15 @@ export default function ScanPay() {
   const currency = club?.currency_code;
   const { data: catRows } = useBarCategories(club?.id);
   const { divisions: configuredDivisions } = useBarDivisions(club?.id);
+  const { data: orderProcess = false } = useQuery({
+    queryKey: ["bar-order-process", club?.id],
+    enabled: !!club?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("bar_order_process_status", { _club_id: club!.id });
+      return data === true;
+    },
+  });
+  const [orderTab, setOrderTab] = useState<GuestTab | null>(null);
 
   // The public QR page is deliberately identity-free: even if the phone is
   // still signed in, a member must identify with their membership number and
@@ -360,6 +369,11 @@ export default function ScanPay() {
         localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
         current = { tab_id: data.tab_id, token: data.token, guest_name: data.guest_name, status: "open", total: 0, lines: [] };
         setTab(current);
+      }
+      if (orderProcess) {
+        // Order process: the customer explicitly places an order (collect/deliver).
+        setOrderTab(current);
+        return;
       }
       const { data: res, error: addErr } = await (supabase as any).rpc("add_to_bar_guest_tab", {
         _tab_id: current.tab_id, _token: current.token, _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),

@@ -130,7 +130,7 @@ describe("row structure editor", () => {
     expect(rowStructurePilot(r, true, "localhost")).toBe(true);
     expect(rowStructurePilot(r, false, "localhost")).toBe(false);
     expect(rowStructurePilot("uitsig", true, "localhost")).toBe(false);
-    expect(rowStructurePilot(r, true, "squashhub.lovable.app")).toBe(false);
+    expect(rowStructurePilot(r, true, "squashhub.lovable.app")).toBe(true);
     expect(rowStructurePilot(r, true, "localhost", "live-tournament")).toBe(false);
   });
   it("counts selected singles and unique valid doubles pairs separately from expected entries", () => {

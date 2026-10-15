@@ -17,6 +17,7 @@ import { unitCapacity } from "@/lib/smart-builder/structure-capacity";
 import { monradNote } from "@/lib/smart-builder/monrad";
 import { FORMAT_HELP, baseFormatOf, formatHelpHidden, hideFormatHelp } from "@/lib/smart-builder/format-help";
 import { toast } from "sonner";
+import { playoffEstimate, legacyPlayoffMirror, qualifierCount, splitBands, type RowPlayoffPlan } from "@/lib/smart-builder/playoff-qualifiers";
 
 const control = "h-8 rounded-md border border-input bg-background px-2 text-xs max-w-full";
 // Base formats only. "Pools + knockout" is Round robin (pool count + who plays whom) followed by a Knockout playoff stage.
@@ -48,7 +49,8 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
   const issues = [...structureRowIssues(draft), ...units.flatMap((key) => {
     const n = Number(draft.unitEntries[key]) || 0;
     const cap = unitCapacity(draft, key, n);
-    return [...validateStagePlan(rowStages(draft, key), { entrants: n }).filter((x) => x.level === "error").map((x) => `${key}: ${x.message}`), ...rowStages(draft, key).flatMap((s, i) => s.kind === "pools" || s.kind === "round_robin" ? rrIssues(cap.stages[i].entrants, s.pools ?? 1, s.rrTopology).map((x) => `${key} stage ${i + 1}: ${x}`) : [])];
+    const po = draft.playoffOverrides[key]?.row; const pe = playoffEstimate(po, cap.stages.length ? cap.stages[cap.stages.length - 1].entrants : n);
+    return [...(pe && n >= 2 ? pe.issues.map((x) => `${key} playoffs: ${x}`) : []), ...validateStagePlan(rowStages(draft, key), { entrants: n }).filter((x) => x.level === "error").map((x) => `${key}: ${x.message}`), ...rowStages(draft, key).flatMap((s, i) => s.kind === "pools" || s.kind === "round_robin" ? rrIssues(cap.stages[i].entrants, s.pools ?? 1, s.rrTopology).map((x) => `${key} stage ${i + 1}: ${x}`) : [])];
   })];
   const stages = (key: string, fn: (s: StagePlanItem[]) => StagePlanItem[]) => update((a) => writeRowStages(a, key, fn(rowStages(a, key))));
   const patchStage = (key: string, index: number, patch: Partial<StagePlanItem>) => stages(key, (s) => s.map((x, i) => i === index ? { ...x, ...patch } : x));
@@ -107,6 +109,28 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
     </div>;
   }
 
+  function playoffCell(key: string) {
+    const cur = draft.playoffOverrides[key];
+    const p: RowPlayoffPlan = cur?.row ?? { kind: cur?.choice === "playoffs" ? (cur.style === "placement" ? "ranking" : "knockout") : "none", scope: "all" };
+    const cap = unitCapacity(draft, key, Number(draft.unitEntries[key]) || 0);
+    const field = cap.stages.length ? (cap.stages[cap.stages.length - 1].entrants) : Number(draft.unitEntries[key]) || 0;
+    const set = (patch: Partial<RowPlayoffPlan>) => update((a) => { const row = { ...p, ...patch }; return { ...a, playoffOverrides: { ...a.playoffOverrides, [key]: { ...a.playoff, ...a.playoffOverrides[key], ...legacyPlayoffMirror(row, field), row } } }; });
+    const est = playoffEstimate(p, field);
+    return <div className="space-y-1">
+      <select className={`${control} w-full`} aria-label={`${key} playoffs`} value={p.kind} onChange={(e) => { const k = e.target.value as RowPlayoffPlan["kind"]; if (k !== "none" && !formatHelpHidden()) toast(k === "knockout" ? "Knockout playoffs" : "Ranking playoffs", { id: "format-help", duration: 9000, description: k === "knockout" ? "Championship bracket for the qualifiers: lose once and you're out of the title. Optional 3rd-place match. Places below the medals are not decided by matches." : "Monrad-style placement matches: losers keep playing, so every place inside each band is decided. Needs more matches/courts. Entrants outside the bands finish on the preceding standings unless you add a band.", cancel: { label: "Don't show again", onClick: () => hideFormatHelp() } }); set({ kind: k }); }}><option value="none">None</option><option value="knockout">Knockout playoffs</option><option value="ranking">Ranking (positional)</option></select>
+      {p.kind !== "none" && <>
+        <div className="flex items-center gap-1"><select className={control} aria-label={`${key} playoff qualifiers`} value={p.scope} onChange={(e) => set({ scope: e.target.value as RowPlayoffPlan["scope"], topN: p.topN ?? Math.min(8, field || 8) })}><option value="all">All entrants</option><option value="top_n">Top N</option></select>
+        {p.scope === "top_n" && <Input className="h-8 w-16 text-xs" type="number" min={2} aria-label={`${key} playoff top N`} value={p.topN ?? ""} onChange={(e) => set({ topN: Number(e.target.value) || null, bands: undefined })} />}</div>
+        {p.kind === "knockout" && <label className="flex items-center gap-1 text-[11px]"><input type="checkbox" aria-label={`${key} third place`} checked={!!p.thirdPlace} onChange={(e) => set({ thirdPlace: e.target.checked })} />3rd-place match</label>}
+        {p.kind === "ranking" && <>
+          <label className="flex items-center gap-1 text-[11px]">Bands of <select className={control} aria-label={`${key} ranking band size`} value={p.bands?.length ? p.bands[0].to - p.bands[0].from + 1 : 0} onChange={(e) => { const n = Number(e.target.value); set({ bands: n ? splitBands(qualifierCount(p, field), n) : undefined }); }}><option value={0}>one band</option>{[4, 8, 16].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+          {p.scope === "top_n" && <select className={`${control} w-full`} aria-label={`${key} non-qualifiers`} value={p.nonQualifiers ?? "standings"} onChange={(e) => set({ nonQualifiers: e.target.value as RowPlayoffPlan["nonQualifiers"] })}><option value="standings">Others finish on standings</option><option value="band">Others play a separate band</option></select>}
+        </>}
+        {est && <p className="max-w-56 text-[11px] text-muted-foreground" data-testid={`playoff-preview-${key}`}>{est.bands.map((b) => `${b.from}–${b.to}: ${b.bracket}-draw${b.byes ? `, ${b.byes} bye${b.byes > 1 ? "s" : ""}` : ""}, ${b.matches} m`).join(" · ")}{est.bands.length ? ` · ${est.matches} matches` : ""}<br />{est.preview}</p>}
+      </>}
+    </div>;
+  }
+
   function row(key: string, cat: string, isSub = false) {
     const subs = draft.subcats[cat] ?? [];
     const parentOnly = !isSub && subs.length > 0;
@@ -137,8 +161,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
           {(first?.kind === "pools" || first?.kind === "round_robin") && <div className="mt-1 flex items-center gap-1"><Input className="h-8 w-16 text-xs" type="number" min={1} aria-label={`${key} pool count`} value={first.pools ?? 1} onChange={(e) => { const p = Math.max(1, Number(e.target.value) || 1); setKind(key, p > 1 ? "pools" : "round_robin"); patchStage(key, 0, { pools: p, kind: p > 1 ? "pools" : "round_robin" }); }} /><span className="text-xs">pools</span></div>}
           {sizes.length > 0 && <><span className="text-[11px] text-muted-foreground">{sizes.join(" / ")} entries · {rrMatchCount(sizes, first?.rrTopology)} {first?.rrTopology?.mode && first.rrTopology.mode !== "within" ? `${first.rrTopology.mode} matches` : "within-pool matches"}</span><Button size="sm" variant="ghost" className="h-7 px-0" onClick={() => setOpen((o) => ({ ...o, [key]: true }))}>Who plays whom?</Button></>}</>}</td>
         <td className="p-2">{parentOnly ? "Per subdivision ↓" : <select className={`${control} w-full`} aria-label={`${key} next stage`} value={list.length > 1 ? shownKind(list[1].kind) || "undecided" : "none"} onChange={(e) => { showHelp(e.target.value === "none" || e.target.value === "undecided" ? null : e.target.value as StageKind); stages(key, (s) => e.target.value === "none" ? s.slice(0, 1) : [s[0], { ...s[1], id: s[1]?.id ?? newStageId(), kind: e.target.value === "undecided" ? null : e.target.value as StageKind, advance: s[1]?.advance ?? { mode: "all_continue" } }, ...s.slice(2)]); }}><option value="none">No next stage</option><option value="undecided">Decide later</option>{kinds.filter((k) => k.value).map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</select>}</td>
-        <td className="p-2">{parentOnly ? "—" : <label className="flex items-center gap-1 text-xs"><input type="checkbox" aria-label={`${key} playoffs`} checked={draft.playoffOverrides[key]?.choice === "playoffs"} onChange={(e) => update((a) => ({ ...a, playoffOverrides: { ...a.playoffOverrides, [key]: { ...a.playoff, ...a.playoffOverrides[key], choice: e.target.checked ? "playoffs" : "none", qualification: "later", pairing: "later" } } }))} />Playoffs</label>}
-          {draft.playoffOverrides[key]?.choice === "playoffs" && <select className={`${control} mt-1`} aria-label={`${key} playoff path`} value={draft.playoffOverrides[key].rounds} onChange={(e) => update((a) => ({ ...a, playoffOverrides: { ...a.playoffOverrides, [key]: { ...a.playoffOverrides[key], rounds: Number(e.target.value) as 1 | 2 | 3 } } }))}><option value={3}>QF / SF / Final</option><option value={2}>SF / Final</option><option value={1}>Final</option></select>}</td>
+        <td className="p-2 min-w-44">{parentOnly ? "—" : playoffCell(key)}</td>
         <td className="p-2"><div className="flex gap-1">{!isSub && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Duplicate ${cat}`} onClick={() => update((a) => duplicateStructureRow(a, cat))}><Copy className="h-3.5 w-3.5" /></Button>}<Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Delete ${key}`} disabled={hasPeople(key)} onClick={() => update((a) => isSub ? { ...a, subcats: { ...a.subcats, [cat]: a.subcats[cat].filter((s) => `${cat}::${s}` !== key) } } : { ...a, categories: a.categories.filter((c) => c !== cat) })}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
       </tr>
       {open[key] && <tr><td colSpan={9} className="bg-muted/30 px-2">{parentOnly ? null : stageDetails(key)}{!isSub && subs.map((s) => <span key={s} className="sr-only">{s}</span>)}</td></tr>}
@@ -156,7 +179,7 @@ export function StructureRowsEditor({ answers, onSave, onDirtyChange }: { answer
     <div className="overflow-x-auto" data-testid="structure-table-scroll"><table className="w-full min-w-[1080px] text-left text-xs"><thead className="bg-muted/50 text-muted-foreground"><tr>{["Division name", "Match type", "Eligibility", "Expected", "Subdivisions", "Initial format / rounds", "Next stage", "Playoffs", ""].map((h, i) => <th key={i} className="p-2 font-medium">{h}</th>)}</tr></thead><tbody>{draft.categories.map((cat) => row(cat, cat))}</tbody></table></div>
     <Button size="sm" variant="outline" onClick={add}><Plus className="mr-1 h-3.5 w-3.5" />Add row</Button>
     <StructureOverview answers={draft} units={units.map((key) => ({ key, label: key.replace("::", " › ") }))} entrants={Object.fromEntries(units.map((key) => [key, Number(draft.unitEntries[key]) || Number(draft.guide?.expected?.[key]) || 0]))} onEdit={(key) => { setOpen((o) => ({ ...o, [key]: true, [key.split("::")[0]]: true })); }} />
-    {units.some((key) => draft.playoffOverrides[key]?.choice === "playoffs") && <p className="text-xs text-muted-foreground">Playoffs are planned separately; qualifier counts and pairings are not confirmed. Their matches and court-hours are not included above.</p>}
+    {units.some((key) => draft.playoffOverrides[key]?.choice === "playoffs") && <p className="text-xs text-muted-foreground">Playoff match counts are shown per row and are not included in the totals above. Qualifiers are taken from the preceding standings only once that stage is complete; nothing is drawn until you review and approve it.</p>}
     {issues.length > 0 && <ul className="text-xs text-destructive" aria-label="Structure issues">{issues.map((s, i) => <li key={i}>{s}</li>)}</ul>}
     <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-2">{dirty && <Badge variant="secondary" className="mr-auto">Unsaved structure</Badge>}{saved && <span className="mr-auto text-xs text-muted-foreground" role="status">Structure saved on this device. No draw applied.</span>}<Button size="sm" variant="ghost" disabled={!dirty} onClick={() => { setDraft(answers); setSaved(false); }}>Discard changes</Button><Button size="sm" disabled={!dirty || issues.length > 0} onClick={() => { const discs = units.map((k) => draft.disc[k] ?? draft.disc[k.split("::")[0]] ?? (draft.playType === "doubles" ? "doubles" : "singles")); const playType = discs.every((d) => d === "singles") ? "singles" : discs.every((d) => d === "doubles") ? "doubles" : "both"; onSave({ ...draft, playType }); setSaved(true); }}>Save Structure</Button></div>
   </div>;

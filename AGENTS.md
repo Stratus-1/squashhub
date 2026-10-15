@@ -44,4 +44,3 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- Bar orders (`bar_orders`/lines/events) track fulfilment only; sales/stock are written once at submission via RPC and delivery never charges again; why: no double charging.

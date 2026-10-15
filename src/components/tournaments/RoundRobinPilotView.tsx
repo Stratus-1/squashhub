@@ -28,7 +28,7 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
         <span className="text-muted-foreground">Same saved matches as the standings table; order follows official standings. No results can be entered here.</span>
       </div>}
       {view.issues.length > 0 && <p className="text-xs text-destructive">{view.issues.join(" ")}</p>}
-      {!matrixOnly && (
+      {(!matrixOnly || withCalendar) && (
         <div role="tablist" aria-label="Round robin view" className="grid grid-cols-2 border border-border">
           {([["matrix", "Matrix"], ["calendar", "Calendar View"]] as const).map(([k, label]) => (
             <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)}

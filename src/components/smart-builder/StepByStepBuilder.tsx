@@ -129,7 +129,7 @@ export type StepAnswers = {
   /** After-match messages: maps 1:1 to the existing tournaments.result_notify_* settings. */
   afterMatch?: { on: boolean | null; scope: "all" | "playoffs"; channels: string[] };
   /** Draw notifications (opponents, partner, phone numbers, play-by date) — default on. */
-  drawNotify?: boolean;
+  drawNotify?: boolean | "auto";
   /** Per-tournament "Affect club ladder" opt-in → tournaments.ladder_affects. Undefined = not touched
    *  (new tournaments save false; existing ones keep their stored value). Club ladder settings still win. */
   ladderAffects?: boolean;
@@ -1278,7 +1278,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         feeCents, confirmNeedsPay: fee.has ? fee.confirmNeedsPay !== false : undefined, partnerPay: fee.has && dblUnits.length ? fee.doublesCover : undefined, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         drawChannels: msg.channels.filter(chAvail),
-        drawNotify: a.drawNotify !== false,
+        drawNotify: a.drawNotify === "auto" ? "auto" : a.drawNotify !== false,
         ladderAffects: a.ladderAffects,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         categoryTypes: units.map((u) => u.categoryType ?? "open"),
@@ -1942,10 +1942,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   </div>
                   <div className="space-y-2 rounded-md border p-3">
                     <SectionHead>Draw notifications</SectionHead>
-                    <p className="text-[11px] text-muted-foreground">When a round or stage is drawn, each player can be told who they play, the opponent's phone number, the play-by date (or their court and time), and how to book a court. Nothing is ever sent automatically: with "Ask me after each draw" you are asked "Send draw to players now?" straight after every draw and choose In-app and/or Email. With "Off" you are not asked — you can still send later with "Send draw to players".</p>
-                    <div className="flex flex-wrap gap-1">{([[true, "Ask me after each draw"], [false, "Off"]] as const).map(([v, l]) => (
-                      <button key={l} type="button" aria-pressed={(a.drawNotify !== false) === v} onClick={() => setA((prev) => ({ ...prev, drawNotify: v }))}
-                        className={cn("rounded-full border px-3 py-1 text-xs", (a.drawNotify !== false) === v ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border")}>{l}</button>))}</div>
+                    <p className="text-[11px] text-muted-foreground">A draw notice goes to a player only once their match is confirmed — both players known (including later Swiss rounds and knockout winners), never for an empty "Position vs Position" slot. It names the opponent and round, and the court, date and time if set (or the play-by date). <b>Automatic</b>: sent once per match as soon as it is confirmed. <b>Prompt me to send</b>: you are asked to approve; choose Later and send any time from the tournament page. <b>Off</b>: no draw notices or prompts.</p>
+                    <div className="flex flex-wrap gap-1">{([["auto", "Automatic"], [true, "Prompt me to send"], [false, "Off"]] as const).map(([v, l]) => {
+                      const cur = a.drawNotify === "auto" ? "auto" : a.drawNotify !== false;
+                      return <button key={l} type="button" aria-pressed={cur === v} onClick={() => setA((prev) => ({ ...prev, drawNotify: v }))}
+                        className={cn("rounded-full border px-3 py-1 text-xs", cur === v ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border")}>{l}</button>; })}</div>
                     {a.drawNotify !== false && !msg.channels.filter(chAvail).some((c) => c !== "sms") && <p className="text-xs text-destructive">Choose at least one message channel above, otherwise nobody is told about the draw.</p>}
                   </div>
                   <div className="space-y-2 rounded-md border p-3">
@@ -2513,7 +2514,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
-              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `group link configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div><div className="text-xs">Draw notifications: {a.drawNotify === false ? "Off" : "On (Round 1 and each later stage; all round booking dates listed when the draw is made upfront)"}</div><div className="text-xs">After-match notifications: {am.on === null ? "not set (existing default: email after every match)" : am.on ? `On · ${am.channels.filter((c) => chAvail(c as Channel)).map((c) => ({ in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" } as Record<string, string>)[c]).join(" + ") || "no channel"}${am.scope === "playoffs" ? " · playoffs only" : ""}` : "Off"}</div></SummaryRow>}
+              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `group link configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div><div className="text-xs">Draw notifications: {a.drawNotify === false ? "Off" : a.drawNotify === "auto" ? "Automatic (once per confirmed match)" : "Prompt me to send (each newly confirmed match)"}</div><div className="text-xs">After-match notifications: {am.on === null ? "not set (existing default: email after every match)" : am.on ? `On · ${am.channels.filter((c) => chAvail(c as Channel)).map((c) => ({ in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" } as Record<string, string>)[c]).join(" + ") || "no channel"}${am.scope === "playoffs" ? " · playoffs only" : ""}` : "Off"}</div></SummaryRow>}
               {(() => {
                 // Shown value: organiser's choice → stored value when editing → OFF for new tournaments.
                 const isNew = !a.createdTournamentId && !tournamentId;

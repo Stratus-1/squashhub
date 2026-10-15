@@ -2245,11 +2245,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">This is your planned format. Once registrations close and final player numbers are known, SquashHub will revisit the format with you before pools, draws or fixtures are generated.</div>
               {stagePlanner && <StagePlanPanel answers={a} onSave={(next) => setA(next)} tournamentId={entryTournamentId} units={units.map((u) => ({ key: u.key, base: u.base }))}
                 entrants={Object.fromEntries(units.map((u) => { let n = pickIds.filter((id) => placesFor(id).includes(u.key)).length; if (!n) n = Number(a.unitEntries?.[u.key]) || 0; return [u.key, u.disc === "doubles" ? Math.floor(n / 2) : n]; }))} />}
-              {stagePlanner ? <details className="rounded-lg border border-border p-2"><summary className="cursor-pointer text-xs text-muted-foreground">Classic format controls</summary><div className="space-y-3 pt-2">{classicFormat()}</div></details> : classicFormat()}
-            </>
-          )}
-          {false && (
-            <>
+              <ClassicWrap collapsed={!!stagePlanner}>
               <FormatFields value={format} onChange={setFormat} units={units} entries={a.unitEntries ?? {}} stages={a.stages} />
               {swissPilot && <SwissCategoryRoundsPanel liveDraw={!!entryTournamentId} rows={units.map((u): SwissCategoryRow => {
                 const f = formatFor(u.key);

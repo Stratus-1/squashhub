@@ -1437,7 +1437,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {cats.length > 1 && unsetCategories(a, cats).length > 0 && <p className="text-xs font-medium text-destructive">No format chosen yet for: {unsetCategories(a, cats).join(", ")}. Pick a tournament format above.</p>}
             </div>
             <StructureGuidePanel cats={cats} guide={guide} onChange={setGuide} isChamps={isChamps} unitOf={catUnitWord} currentOf={catCurrent}
-              sourceOf={(c) => cats.length > 1 ? formatSource(a, c) : undefined} onReset={(c) => setA(resetCategoryFormat(a, c))} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats}
+              sourceOf={(c) => cats.length > 1 ? formatSource(a, c) : undefined} onReset={(c) => { const ap = { ...(guide.applied ?? {}) }; delete ap[c]; setA({ ...resetCategoryFormat(a, c), guide: { ...guide, applied: ap } }); }} onUse={(c, o) => applyStructure(c, o)} onOther={() => go("Format")} entryCounts={guideCounts} subcats={a.subcats}
               estimateOf={(k) => a.unitEntries?.[k] ?? (k.includes("::") ? "" : guide.expected?.[k] ?? "")} onEstimate={setUnitEstimate} categoryEstimateOf={catEstimate}
               conflicts={estimateConflicts(a, cats)} onResolve={(c, pick) => { const cf = estimateConflicts(a, cats).find((x) => x.cat === c); if (cf) setA(resolveEstimate(a, cf, pick)); }} countState={guideCountState} actualOf={catActual}
               review={initialStep === "Guide" && tournamentId ? { onDone: () => go("Summary") } : undefined} />

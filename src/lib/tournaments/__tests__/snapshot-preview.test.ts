@@ -51,3 +51,10 @@ describe("snapshot preview (pure, read-only)", () => {
     expect(p.proposals[0]?.date).toBe("2026-11-03");
   });
 });
+
+describe("snapshot preview linked booking simulation", () => {
+  it("is exported and pure", async () => {
+    const mod = await import("../snapshot-preview");
+    expect(typeof mod.buildSnapshotPreview).toBe("function");
+  });
+});

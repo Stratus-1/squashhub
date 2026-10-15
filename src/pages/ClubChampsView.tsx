@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Settings2 } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useIsClubAdmin } from "@/hooks/use-club";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
@@ -134,6 +135,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     enabled: !!champId && !inlineStandings,
   });
   const { activeMember: sessionMember } = useMemberContext();
+  const { user: authUser } = useAuth();
   const activeMember = md ? null : sessionMember;
   const myMemberId = activeMember?.id;
 
@@ -4116,6 +4118,15 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             {activeCat.title}
             {catTab !== "standings" && <span className="sr-only"> — {catTab === "upcoming" ? "Upcoming Fixtures" : "Results"}</span>}
           </h3>
+          {catTab === "upcoming" && !myMemberId && !md && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200" role="status">
+              {!authUser ? (
+                <>You're viewing this tournament without being logged in. <a href="/auth" className="font-semibold underline">Log in</a> to book a court or enter results for your matches.</>
+              ) : (
+                <>Your member profile for this club hasn't loaded, so booking and result entry for your matches are hidden. Open this tournament from your club's app or menu, or log out and back in.</>
+              )}
+            </div>
+          )}
           {catTab === "standings" && (() => {
             const st = swissStatusByGroup.get(activeCat.gn);
             if (!st) return null;

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { parentProgressionGroups, parentFixtureLanes, parentProgressionEnabled } from "@/lib/tournaments/parent-progression";
-import { ParentCategoryProgression } from "@/components/tournaments/ParentCategoryProgression";
+import { ParentCategoryProgression, placeholderBracket } from "@/components/tournaments/ParentCategoryProgression";
+import { rrSlot } from "@/lib/tournaments/round-robin-view";
 
 const spec = { divisions: [1, 2].map((g) => ({ divisionId: `g${g}`, groupNumber: g, label: `Mens A › ${g} · Singles`, stages: [{ id: "main", name: "Round robin", kind: "round_robin", order: 0 }], deferredStages: [{ stageKey: "shared-final", name: "Final" }] })) };
 const lifecycle = { answers: { subcats: { "Mens A": ["1", "2"] }, playoffSync: true }, format_plan: { playoffOverrides: { "Mens A": { choice: "playoffs", qualification: "top_pools", pairing: "later", style: "placement", rounds: 1 } } } };
@@ -43,7 +44,12 @@ describe("approved club-only parent progression", () => {
     expect(screen.getByRole("region", { name: "A2" })).toBeTruthy();
     expect(screen.getAllByRole("heading", { name: /^Final$/ })).toHaveLength(1);
     expect(screen.queryByText("Semifinals")).toBeNull();
-    expect(screen.getByText("Participants TBD")).toBeTruthy();
+    expect(screen.getByText("A1 1st")).toBeTruthy();
+    expect(screen.getByText("A2 1st")).toBeTruthy();
+    expect(screen.queryByText("Ann", { exact: false })).toBeTruthy(); // upcoming summary only, not bracket
+    expect(placeholderBracket(["A1", "A2"], 2)).toEqual([["A1 1st v A2 2nd", "A2 1st v A1 2nd"], ["Winner M1 v Winner M2"]]);
+    expect(rrSlot({ date: "2026-10-16", time: "18:20:00", court: "Court 2" })).toBe("16 Oct 18:20 C2");
+    expect(rrSlot({ date: null, time: "18:20", court: "Court 2" })).toBeNull();
     expect(container.querySelectorAll('[data-fixture-id="saved"]')).toHaveLength(1);
     fireEvent.click(screen.getByRole("tab", { name: "Log View" }));
     expect(screen.getByText("Rankings 1")).toBeTruthy();

@@ -21,7 +21,7 @@ export type RRStatus = "played" | "to_play" | "bye";
 export interface RRCell { matchId: string; round: number | null; result: "W" | "L" | null; score: string | null; status: RRStatus; setSummary?: string | null; live?: boolean; slot?: string | null }
 export interface RRRoundMatch { id: string; a: string | null; b: string | null; aName: string; bName: string; posA: number | null; posB: number | null; winner: string | null; score: string | null; status: RRStatus; when: string; date?: string | null; time?: string | null; court?: string | null; playBy?: string | null }
 export interface RRRound { round: number | null; label: string; matches: RRRoundMatch[]; sittingOut: string[]; status: "complete" | "in_progress" | "not_started" }
-export interface RRTotals { played: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number; pointsKnown: boolean }
+export interface RRTotals { played: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number; pointsKnown: boolean; gamesFor: number; gamesAgainst: number }
 export interface RRPoolView { players: RRPlayer[]; matrix: Record<string, Record<string, RRCell | null>>; totals: Record<string, RRTotals>; rank: Record<string, number>; rounds: RRRound[]; issues: string[] }
 
 const isPlayed = (m: RRMatchInput) => m.status === "completed";
@@ -97,7 +97,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
   const pos = (id: string | null) => (id ? players.findIndex((p) => p.id === id) + 1 || null : null);
   const matrix: RRPoolView["matrix"] = {};
   const totals: RRPoolView["totals"] = {};
-  for (const p of players) { matrix[p.id] = {}; totals[p.id] = { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0, pointsKnown: true }; for (const q of players) matrix[p.id][q.id] = null; }
+  for (const p of players) { matrix[p.id] = {}; totals[p.id] = { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0, pointsKnown: true, gamesFor: 0, gamesAgainst: 0 }; for (const q of players) matrix[p.id][q.id] = null; }
 
   for (const m of input.matches) {
     if (m.isBye || !m.a || !m.b) continue;
@@ -125,6 +125,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
       for (const [me, flip] of [[m.a, false], [m.b, true]] as const) {
         const t = totals[me]; t.played++;
         if (m.winner === me) t.wins++; else t.losses++;
+        if (sets?.length && !walkover) for (const st of sets) { const mine = flip ? st.b : st.a, theirs = flip ? st.a : st.b; if (mine > theirs) t.gamesFor++; else if (theirs > mine) t.gamesAgainst++; }
         if (rallyPoints) { t.pointsFor += flip ? rallyPoints[1] : rallyPoints[0]; t.pointsAgainst += flip ? rallyPoints[0] : rallyPoints[1]; }
         else if (!walkover) t.pointsKnown = false;
       }

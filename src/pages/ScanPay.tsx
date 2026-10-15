@@ -141,6 +141,16 @@ export default function ScanPay() {
       return data === true;
     },
   });
+  // The person running the counter opens/closes the bar for phone orders.
+  const { data: barOpen = false } = useQuery({
+    queryKey: ["bar-accepting-orders", club?.id],
+    enabled: !!club?.id && orderProcess,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("bar_accepting_orders", { _club_id: club!.id });
+      return data === true;
+    },
+  });
   const [orderTab, setOrderTab] = useState<GuestTab | null>(null);
   const queryClient = useQueryClient();
 

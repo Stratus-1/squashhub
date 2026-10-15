@@ -3100,3 +3100,4 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 
 ## 2026-10-15 — Approved Uitsig parent view publication
 - Publishing did not expose the combined Men's A page because its display predicate explicitly rejected production hosts. Owner approved enabling and publishing; removed only the hostname restriction, retaining Uitsig scope and saved parent/playoff association checks. No tournament data, settings, notifications or bookings changed.
+- Verification: 5 focused tests pass, build OK, signed-in 1280px/390px Progression and Log View each show 12 unique fixtures and one shared playoff without page overflow. Owner chose publication with the separate security findings left open.

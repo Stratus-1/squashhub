@@ -1009,6 +1009,20 @@
       "when": 1792048790907,
       "tag": "0143_fixture_draw_notice_modes",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1792049058706,
+      "tag": "0144_round_scheduling_switch",
+      "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1792049096404,
+      "tag": "0145_round_play_by_release_own_booking_only",
+      "breakpoints": true
     }
   ]
 }

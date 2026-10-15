@@ -19,7 +19,7 @@ export interface RRMatchInput {
 }
 export type RRStatus = "played" | "to_play" | "bye";
 export interface RRCell { matchId: string; round: number | null; result: "W" | "L" | null; score: string | null; status: RRStatus; setSummary?: string | null; live?: boolean; slot?: string | null }
-export interface RRRoundMatch { id: string; a: string | null; b: string | null; aName: string; bName: string; posA: number | null; posB: number | null; winner: string | null; score: string | null; status: RRStatus; when: string }
+export interface RRRoundMatch { id: string; a: string | null; b: string | null; aName: string; bName: string; posA: number | null; posB: number | null; winner: string | null; score: string | null; status: RRStatus; when: string; date?: string | null; time?: string | null; court?: string | null; playBy?: string | null }
 export interface RRRound { round: number | null; label: string; matches: RRRoundMatch[]; sittingOut: string[]; status: "complete" | "in_progress" | "not_started" }
 export interface RRTotals { played: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number; pointsKnown: boolean }
 export interface RRPoolView { players: RRPlayer[]; matrix: Record<string, Record<string, RRCell | null>>; totals: Record<string, RRTotals>; rank: Record<string, number>; rounds: RRRound[]; issues: string[] }
@@ -138,6 +138,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
       id: m.id, a: m.a, b: m.isBye ? null : m.b, aName: name(m.a), bName: m.isBye ? "Bye" : name(m.b),
       posA: pos(m.a), posB: m.isBye ? null : pos(m.b), winner: m.winner ?? null, score: m.score ?? null,
       status: m.isBye ? "bye" : isPlayed(m) ? "played" : "to_play", when: rrWhen(m),
+      date: m.date ?? null, time: m.time ?? null, court: m.court ?? null, playBy: m.playBy ?? null,
     }));
     const inRound = new Set(ms.flatMap((m) => [m.a, m.b]).filter(Boolean) as string[]);
     const live = matches.filter((m) => m.status !== "bye");

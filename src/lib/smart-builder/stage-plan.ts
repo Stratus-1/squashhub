@@ -40,6 +40,8 @@ export interface StagePlanItem {
   /** Stop this stage after round N (mid-tournament early finish). */
   endAfterRound?: number | null;
   pools?: number | null;
+  /** Optional display names for planned pools; indexes and topology remain unchanged. */
+  poolNames?: string[];
   /** Riverside row-planning only; mapped-stage apply requires separate review. */
   rrTopology?: RRTopology;
   advance?: StageAdvance;

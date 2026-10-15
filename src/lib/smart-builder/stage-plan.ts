@@ -15,6 +15,8 @@
  *  - Recommendations are advisory and never stored as decisions.
  */
 
+import type { RRTopology } from "./rr-topology";
+
 export type StageKind = "swiss" | "round_robin" | "pools" | "knockout" | "placement" | "cross_league";
 export const STAGE_KINDS: { kind: StageKind; label: string; rounds: boolean }[] = [
   { kind: "swiss", label: "Swiss", rounds: true },
@@ -37,6 +39,8 @@ export interface StagePlanItem {
   /** Stop this stage after round N (mid-tournament early finish). */
   endAfterRound?: number | null;
   pools?: number | null;
+  /** Riverside row-planning only; mapped-stage apply requires separate review. */
+  rrTopology?: RRTopology;
   advance?: StageAdvance;
   /** Parent category key when this stage is a playoff shared by sibling subcategories (e.g. Men's A1/A2). */
   sharedWith?: string | null;

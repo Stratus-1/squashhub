@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StructureRowsEditor } from "@/components/smart-builder/StructureRowsEditor";
 import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
-import { duplicateStructureRow, renameStructureKey, rowStructurePilot, writeRowStages } from "@/lib/smart-builder/structure-rows";
+import { duplicateStructureRow, renameStructureKey, rowStructurePilot, writeRowStages, selectedStructureEntries } from "@/lib/smart-builder/structure-rows";
 
 const answers = (): StepAnswers => ({ categories: ["Mens A", "Mens B", "Ladies A"], categoryTypes: { "Mens A": "mens", "Mens B": "mens", "Ladies A": "ladies" }, subcats: {}, unitEntries: { "Mens A": "24", "Mens B": "18", "Ladies A": "16" }, disc: { "Mens A": "singles", "Mens B": "singles", "Ladies A": "singles" }, playType: "singles", format: { kind: "swiss", swissRounds: "5" }, formatOverrides: {}, picks: {}, scoringOverrides: {}, playoffOverrides: {}, poolPlan: {}, playoff: { choice: "later", rounds: 2, qualification: "later", pairing: "later" }, stagePlans: { "Mens A": [{ id: "a", kind: "swiss", rounds: 5 }], "Mens B": [{ id: "b", kind: "swiss", rounds: 4 }], "Ladies A": [{ id: "l", kind: "pools", pools: 4 }] } } as unknown as StepAnswers);
 const draw = (a = answers()) => { const onSave = vi.fn(); render(<TooltipProvider><StructureRowsEditor answers={a} onSave={onSave} /></TooltipProvider>); return onSave; };
@@ -57,6 +57,33 @@ describe("row structure editor", () => {
     expect(a.stagePlans?.["Mens A"][0].kind).toBe("round_robin");
     expect(a.formatOverrides["Mens A"].kind).toBe("pools");
   });
+  it("saves exact between/custom choices without applying a draw", () => {
+    const save = draw();
+    fireEvent.click(screen.getByRole("button", { name: "Expand Ladies A" }));
+    fireEvent.click(screen.getByRole("button", { name: "Between selected pools/groups · 96 matches" }));
+    expect(screen.getByTestId("structure-capacity").textContent).toContain("192");
+    fireEvent.click(screen.getByRole("button", { name: "Custom group matchup matrix · 96 matches" }));
+    fireEvent.click(screen.getByLabelText("Ladies A stage 1 Pool A vs Pool A"));
+    expect(screen.getByTestId("structure-capacity").textContent).toContain("198");
+    expect(save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Save Structure" }));
+    const next = save.mock.calls[0][0] as StepAnswers;
+    expect(next.stagePlans?.["Ladies A"][0].rrTopology?.mode).toBe("custom");
+    expect(next.stagePlans?.["Ladies A"][0].rrTopology?.edges).toContainEqual([0, 0]);
+    expect(answers().stagePlans?.["Ladies A"][0].rrTopology).toBeUndefined();
+  });
+  it("keeps unequal allocation and blocks invalid totals or stale group edges", () => {
+    draw();
+    fireEvent.click(screen.getByRole("button", { name: "Expand Ladies A" }));
+    fireEvent.change(screen.getByLabelText("Ladies A stage 1 Pool A entries"), { target: { value: "5" } });
+    expect((screen.getByRole("button", { name: "Save Structure" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Ladies A stage 1 Pool B entries"), { target: { value: "3" } });
+    expect((screen.getByRole("button", { name: "Save Structure" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Between selected pools/groups · 95 matches" }));
+    fireEvent.change(screen.getByLabelText("Ladies A stage 1 group count"), { target: { value: "2" } });
+    expect(screen.getByLabelText("Structure issues").textContent).toContain("unavailable groups");
+    expect((screen.getByRole("button", { name: "Save Structure" }) as HTMLButtonElement).disabled).toBe(true);
+  });
   it("fails closed outside flagged Riverside preview new drafts", () => {
     const r = "11111111-1111-1111-1111-111111111111";
     expect(rowStructurePilot(r, true, "localhost")).toBe(true);
@@ -64,5 +91,14 @@ describe("row structure editor", () => {
     expect(rowStructurePilot("uitsig", true, "localhost")).toBe(false);
     expect(rowStructurePilot(r, true, "squashhub.lovable.app")).toBe(false);
     expect(rowStructurePilot(r, true, "localhost", "live-tournament")).toBe(false);
+  });
+  it("counts selected singles and unique valid doubles pairs separately from expected entries", () => {
+    const a = answers();
+    a.picks = { x: ["Mens A", "Mens B"], y: ["Mens A"], z: ["Mens A"], w: ["Mens A"] };
+    expect(selectedStructureEntries(a, "Mens A")).toBe(4);
+    a.disc["Mens A"] = "doubles";
+    a.pairs = { "Mens A": [["x", "y"], ["y", "x"], ["z", "w"], ["x", "z"]] };
+    expect(selectedStructureEntries(a, "Mens A")).toBe(2);
+    expect(a.unitEntries["Mens A"]).toBe("24");
   });
 });

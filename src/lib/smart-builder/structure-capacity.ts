@@ -1,4 +1,5 @@
 import { resolveStagePlan, stageKindLabel, stageRounds, type PlanAnswers, type StagePlanItem } from "./stage-plan";
+import { rrIssues, rrMatchCount, rrSizes } from "./rr-topology";
 
 /**
  * Display-only capacity estimate for the consolidated Tournament Structure step.
@@ -12,12 +13,11 @@ export function stageMatches(s: StagePlanItem, n: number): number | null {
   if (n < 2 || !s.kind) return null;
   switch (s.kind) {
     case "swiss": { const r = stageRounds(s); return r ? Math.floor(n / 2) * r : null; }
-    case "round_robin": return (n * (n - 1)) / 2;
+    case "round_robin":
     case "pools": {
-      const p = Math.max(1, Math.min(s.pools ?? Math.max(1, Math.round(n / 4)), Math.floor(n / 2)));
-      let total = 0;
-      for (let i = 0; i < p; i++) { const size = Math.floor(n / p) + (i < n % p ? 1 : 0); total += (size * (size - 1)) / 2; }
-      return total;
+      const p = s.pools ?? (s.kind === "round_robin" ? 1 : Math.max(1, Math.round(n / 4)));
+      if (rrIssues(n, p, s.rrTopology).length) return null;
+      return rrMatchCount(rrSizes(n, p, s.rrTopology), s.rrTopology);
     }
     case "knockout": return n - 1;
     case "placement": return Math.floor(n / 2);
@@ -39,7 +39,7 @@ export function unitCapacity(a: PlanAnswers, key: string, entrants: number): Uni
   const out: StageEstimate[] = stages.map((s, i) => {
     const m = stageMatches(s, n);
     if (m == null) { undecided++; if (nextUndecided == null) nextUndecided = i; } else matches += m;
-    const est = { label: `${stageKindLabel(s.kind)}${s.kind === "swiss" && stageRounds(s) ? ` ${stageRounds(s)}` : ""}`, entrants: n, matches: m };
+    const est = { label: `${stageKindLabel(s.kind)}${s.kind === "swiss" && stageRounds(s) ? ` ${stageRounds(s)}` : ""}${s.rrTopology ? ` · ${s.rrTopology.mode}` : ""}`, entrants: n, matches: m };
     n = nextField(s, n);
     return est;
   });

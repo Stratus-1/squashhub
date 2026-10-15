@@ -277,7 +277,7 @@ export default function BarCounter() {
     try {
       // Never lose a round that was scanned but not yet added to the tab.
       if (!(await flushCart(activeTab.tab_id))) return;
-      const { error } = await supabase.rpc("bar_counter_settle_tab", {
+      const { data: res, error } = await supabase.rpc("bar_counter_settle_tab", {
         _tab_id: activeTab.tab_id, _method: method, _token: token, _club_id: clubId,
       } as any);
       if (error) throw error;
@@ -289,7 +289,7 @@ export default function BarCounter() {
       setCart({});
       await refetch();
       invalidate();
-      toast.success("Tab settled");
+      toast.success((res as any)?.already ? "Already confirmed — no second payment recorded" : "Payment confirmed — tab settled");
     } catch (e: any) {
       showBarChargeError(e, "Could not settle the tab");
     } finally {
@@ -721,7 +721,7 @@ export default function BarCounter() {
               <Receipt className="w-4 h-4" />
               Add {money(cartTotal)} to {activeTab.guest_name}'s tab
             </Button>
-            {(board.cash_enabled || board.card_enabled) && (
+            {activeTab.status !== "closing" && (board.cash_enabled || board.card_enabled) && (
             <div className={`grid gap-2 ${board.cash_enabled && board.card_enabled ? "grid-cols-2" : "grid-cols-1"}`}>
               {board.cash_enabled && (
               <Button
@@ -743,7 +743,7 @@ export default function BarCounter() {
               )}
             </div>
             )}
-            {(board.account_enabled !== false || onlineAvailable) && (
+            {activeTab.status !== "closing" && (board.account_enabled !== false || onlineAvailable) && (
               <div className={`grid gap-2 ${board.account_enabled !== false && onlineAvailable ? "grid-cols-2" : "grid-cols-1"}`}>
                 {onlineAvailable && (
                   <Button

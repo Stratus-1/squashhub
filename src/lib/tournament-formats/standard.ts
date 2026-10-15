@@ -84,6 +84,20 @@ export const StandardFormat: TournamentFormat = {
 
   standingsColumns: [
     {
+      key: "gamesWon",
+      label: "GF",
+      title: "Games for (sets won)",
+      cellClassName: "text-xs text-muted-foreground",
+      render: (row) => `${row.gamesWon ?? 0}`,
+    },
+    {
+      key: "gamesLost",
+      label: "GA",
+      title: "Games against (sets lost)",
+      cellClassName: "text-xs text-muted-foreground",
+      render: (row) => `${row.gamesLost ?? 0}`,
+    },
+    {
       key: "gameDiff",
       label: "GD",
       title: "Game Difference",

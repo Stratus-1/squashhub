@@ -226,7 +226,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
           const pi = rd.pairs.findIndex((p) => p.a === sl || p.b === sl);
           if (pi < 0) break;
           const p = rd.pairs[pi], other = p.a === sl ? p.b : p.a;
-          rd.pairs[pi] = { a: Math.min(other, rd.bye), b: Math.max(other, rd.bye) };
+          rd.pairs[pi] = { round: rd.round, a: Math.min(other, rd.bye), b: Math.max(other, rd.bye) };
           rd.bye = sl; break;
         }
       }

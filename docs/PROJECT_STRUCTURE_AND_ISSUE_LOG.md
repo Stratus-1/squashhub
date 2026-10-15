@@ -3055,3 +3055,7 @@ Riverside Willem R34 entry showed "charged to member account" from `fee_settled_
 ### 2026-10-15 — Play by date round still showed TBD / proposed court-time (Riverside R2)
 - Cause: `resolveFixtureSchedule` let the spec's original "fixed" stage rule win over a round later switched to Play by date; Swiss positional grid read only the spec/proposed slot plan.
 - Fix: applied round rows (`scheduling_mode='self'` + `play_by`) are authoritative (`appliedRoundPlayBy`) in Upcoming headers/fixtures and the Progression grid/calendar (no court shown). No data writes.
+
+### 2026-10-15 — Round scheduling panel stayed "Fixtures in sync" after in-place edits
+- Cause: panel read saved settings once from the backend; builder round-card edits were invisible until remount, and timed date/court/time changes were never diffed.
+- Fix: `RoundSchedulingEditor` diffs live fixtures against the builder's in-memory stages (stable stage ID, `stageSignature`), shows banner + "Round scheduling changed" toast (Apply / Not now); Apply saves that stage then reuses the reconcile/preview flow. `diffRound.outsideWindow` flags organiser allocations outside the new window; `proposeTimed` re-places them (approval required).

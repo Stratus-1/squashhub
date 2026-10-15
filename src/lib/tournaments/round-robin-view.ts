@@ -138,6 +138,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
       id: m.id, a: m.a, b: m.isBye ? null : m.b, aName: name(m.a), bName: m.isBye ? "Bye" : name(m.b),
       posA: pos(m.a), posB: m.isBye ? null : pos(m.b), winner: m.winner ?? null, score: m.score ?? null,
       status: m.isBye ? "bye" : isPlayed(m) ? "played" : "to_play", when: rrWhen(m),
+      date: m.date ?? null, time: m.time ?? null, court: m.court ?? null, playBy: m.playBy ?? null,
     }));
     const inRound = new Set(ms.flatMap((m) => [m.a, m.b]).filter(Boolean) as string[]);
     const live = matches.filter((m) => m.status !== "bye");

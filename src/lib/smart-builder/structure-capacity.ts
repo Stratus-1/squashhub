@@ -1,4 +1,5 @@
 import { resolveStagePlan, stageKindLabel, stageRounds, type PlanAnswers, type StagePlanItem } from "./stage-plan";
+import { monradPlan } from "./monrad";
 import { rrIssues, rrMatchCount, rrSizes } from "./rr-topology";
 
 /**
@@ -20,6 +21,7 @@ export function stageMatches(s: StagePlanItem, n: number): number | null {
       return rrMatchCount(rrSizes(n, p, s.rrTopology), s.rrTopology);
     }
     case "knockout": return n - 1;
+    case "monrad": return monradPlan(n)?.matches ?? null;
     case "placement": return Math.floor(n / 2);
     case "cross_league": return Math.floor(n / 2);
   }

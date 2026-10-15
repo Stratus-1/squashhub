@@ -47,6 +47,7 @@ export const STRUCTURE_HELP = {
   pools: "Pools assign entrants to groups. Who plays whom is a separate stage choice; qualification and later playoffs are configured separately.",
   swiss: "Entrants typically play a specified number of rounds. After initial pairing, opponents have similar current results; this is not single elimination. Fixed-position Swiss uses the club's configured positional pairing rules.",
   knockout: "Losing eliminates an entrant from the title bracket, unless a consolation or positional draw is configured.",
+  monrad: "Knockout-like bracket where losers continue in positional brackets, so everyone keeps playing and every final place is decided. Needs more courts/matches than a knockout; odd fields give byes to top seeds.",
   playoffs: "Qualifying stages: quarterfinals, semifinals and final, or a custom sequence. Qualification and pairings must be confirmed separately.",
 };
 

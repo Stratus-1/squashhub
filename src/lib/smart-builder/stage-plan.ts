@@ -17,12 +17,13 @@
 
 import type { RRTopology } from "./rr-topology";
 
-export type StageKind = "swiss" | "round_robin" | "pools" | "knockout" | "placement" | "cross_league";
+export type StageKind = "swiss" | "round_robin" | "pools" | "knockout" | "monrad" | "placement" | "cross_league";
 export const STAGE_KINDS: { kind: StageKind; label: string; rounds: boolean }[] = [
   { kind: "swiss", label: "Swiss", rounds: true },
   { kind: "round_robin", label: "Round robin", rounds: false },
   { kind: "pools", label: "Pools", rounds: false },
   { kind: "knockout", label: "Knockout", rounds: false },
+  { kind: "monrad", label: "Monrad (positional draw)", rounds: false },
   { kind: "placement", label: "Positional playoff", rounds: false },
   { kind: "cross_league", label: "Cross-league", rounds: false },
 ];

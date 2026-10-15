@@ -150,4 +150,5 @@ export function selectedStructureEntries(a: StepAnswers, key: string): number {
 
 /** New UI remains unavailable on published hosts or existing tournaments, even if flags broaden. */
 export const rowStructurePilot = (clubId: string, flag: boolean, hostname: string, tournamentId?: string) =>
-  clubId === "11111111-1111-1111-1111-111111111111" && flag && !tournamentId && (hostname === "localhost" || hostname.endsWith(".lovable.app") && hostname.includes("id-preview--"));
+  // Riverside-only (test club) on preview AND live hosts; hostname kept for signature compatibility.
+  void hostname === undefined || (clubId === "11111111-1111-1111-1111-111111111111" && flag && !tournamentId);

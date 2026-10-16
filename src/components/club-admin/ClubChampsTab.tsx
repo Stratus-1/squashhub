@@ -4852,7 +4852,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // Cross-pool inside one league: split the league into N pools, then every
     // pool plays every other pool.
     const ingestCrossPools = (gi: number, ids: string[]) => {
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi), false, placementForLeague(gi + 1));
       if (pools.length < 2) return;
       ingestCrossGroups(pools, pools.map(() => gi + 1), formatForLeague(gi + 1) === "double_round_robin");
     };
@@ -13955,7 +13955,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               const sectionIds = distributeIntoPools(ids, sections, {
                 manual: manualSeedGroups.has(gi),
                 knockout: true,
-                mode: poolAllocation,
+                mode: placementForLeague(gn),
               }).filter((s) => s.length > 0);
               const suggested = suggestDrawBoard({
                 groupNumber: gn,

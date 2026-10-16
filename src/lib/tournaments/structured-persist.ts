@@ -433,21 +433,40 @@ export function nextKnockoutRound(tid: string, divisionKey: string, stageKey: st
   const ko = rows.filter((f) => f.divisionId === divisionKey && f.stageId === stageKey);
   if (!ko.length) throw new IntegrityError("no_stage_rows", "Knockout stage has no games yet.");
   if (ko.some((f) => f.stageKind !== "knockout")) throw new IntegrityError("stage_kind", "Only knockout stages advance by rounds.");
+  const brackets = [...new Set(ko.map((f) => f.pool ?? null))];
+  if (brackets.length <= 1) return nextBracketRound(tid, divisionKey, stageKey, ko, null, opts);
+  // Top + bottom brackets advance independently; a bracket whose final exists is skipped.
+  const out: EngineFixture[] = [];
+  let pending = false;
+  for (const b of brackets.sort((x, y) => (x ?? 0) - (y ?? 0))) {
+    const mine = ko.filter((f) => (f.pool ?? null) === b);
+    const last = Math.max(...mine.map((f) => f.round ?? 1));
+    const cur = mine.filter((f) => (f.round ?? 1) === last && !f.thirdPlace);
+    if (cur.length < 2) continue;
+    if (!cur.every((f) => f.winner || !f.a || !f.b)) { pending = true; continue; }
+    out.push(...nextBracketRound(tid, divisionKey, stageKey, mine, b, opts, out.length));
+  }
+  if (!out.length) throw new IntegrityError(pending ? "prereq" : "final_done", pending ? "Current round is not finished." : "The finals have already been generated.");
+  return out;
+}
+
+function nextBracketRound(tid: string, divisionKey: string, stageKey: string, ko: FixtureRow[], koPool: number | null, opts?: { thirdPlace?: boolean }, slotOffset = 0): EngineFixture[] {
   const last = Math.max(...ko.map((f) => f.round ?? 1));
   const cur = ko.filter((f) => (f.round ?? 1) === last && !f.thirdPlace).sort((a, b) => ((a as any).slot ?? 0) - ((b as any).slot ?? 0));
   if (cur.length < 2) throw new IntegrityError("final_done", "The final has already been generated.");
   if (!cur.every((f) => f.winner || !f.a || !f.b)) throw new IntegrityError("prereq", "Current round is not finished.");
   const win = (f: FixtureRow) => f.winner ?? f.a ?? f.b;
+  const pool = koPool != null ? { koPool } : {};
   const next: EngineFixture[] = [];
   for (let i = 0; i < cur.length; i += 2) next.push({
     tournamentId: tid, divisionId: divisionKey, stageId: stageKey, stageKind: "knockout",
-    roundId: `${stageKey}:r${last + 1}`, round: last + 1, poolId: null, slot: i / 2 + 1, a: win(cur[i]), b: win(cur[i + 1]),
+    roundId: `${stageKey}:r${last + 1}`, round: last + 1, poolId: null, ...pool, slot: slotOffset + i / 2 + 1, a: win(cur[i]), b: win(cur[i + 1]),
   });
   // 3rd/4th place: when the final is created from two semi-finals, the two losers play off.
   if (cur.length === 2 && opts?.thirdPlace) {
     const lose = (f: FixtureRow) => (f.a && f.b ? (f.winner === f.a ? f.b : f.a) : null);
     const [l1, l2] = [lose(cur[0]), lose(cur[1])];
-    if (l1 && l2) next.push({ tournamentId: tid, divisionId: divisionKey, stageId: stageKey, stageKind: "knockout", roundId: `${stageKey}:r${last + 1}`, round: last + 1, poolId: null, slot: 2, a: l1, b: l2, thirdPlace: true });
+    if (l1 && l2) next.push({ tournamentId: tid, divisionId: divisionKey, stageId: stageKey, stageKind: "knockout", roundId: `${stageKey}:r${last + 1}`, round: last + 1, poolId: null, ...pool, slot: slotOffset + 2, a: l1, b: l2, thirdPlace: true });
   }
   assertNoReentry([...ko, ...next]);
   return next;

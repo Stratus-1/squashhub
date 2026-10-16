@@ -2462,11 +2462,32 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
     return Array.from(names).sort().map((name) => ({ id: name, name }));
   }, [scopeIsWide, leagueSourceScopes, scopeLeagueRows]);
+  /**
+   * Club tournament with a regional association (e.g. NSA) picked in the
+   * filter: list EVERY league level that association runs (1st–14th…), not
+   * only the levels the host club has teams in. Read via the same scoped RPC.
+   */
+  const pickedAssocName = useMemo(() => {
+    if (scopeIsWide || leagueSourceScope === "all" || leagueSourceScope === "internal") return null;
+    return leagueSourceScopes.find((s) => s.id === leagueSourceScope)?.name ?? null;
+  }, [scopeIsWide, leagueSourceScope, leagueSourceScopes]);
+  const { data: regionLevelRows = [] } = useQuery({
+    queryKey: ["structure-region-league-levels", clubId, pickedAssocName],
+    queryFn: () => fetchScopeLeagueTree({ clubId, scope: "association" }),
+    enabled: !!clubId && showWizard && !!pickedAssocName,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const structureLevelsOnly = scopeIsWide || !!pickedAssocName;
   const structureLeagueTree = useMemo(() => {
+    if (pickedAssocName) {
+      const rows = (regionLevelRows as any[]).filter((r) => r.association_name === pickedAssocName);
+      if (rows.length > 0) return buildScopeLeagueTree(rows);
+    }
     if (!scopeIsWide) return scopedLeagueTree;
     if (leagueSourceScope === "all" || leagueSourceScope === "internal") return scopeLeagueTree;
     return scopeLeagueTree.filter((g) => g.assocName === leagueSourceScope);
-  }, [scopeIsWide, scopedLeagueTree, scopeLeagueTree, leagueSourceScope]);
+  }, [scopeIsWide, scopedLeagueTree, scopeLeagueTree, leagueSourceScope, pickedAssocName, regionLevelRows]);
 
   /** The tree the INVITE step shows: region-wide when the scope is wider than the club. */
   const audienceLeagueTree = scopeIsWide ? scopeLeagueTree : leagueTree;
@@ -9344,6 +9365,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           </div>
                                         )}
                                         <LeagueSourceTree
+                                          levelsOnly={structureLevelsOnly}
                                           groups={structureLeagueTree}
                                           selected={
                                             src.mode === "all"

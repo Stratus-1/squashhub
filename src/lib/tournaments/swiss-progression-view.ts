@@ -43,7 +43,7 @@ export interface ProgressionRow {
   cells: string[];
   wins: number; current: number;
   /** Position from the Swiss stage's own rounds only (1..configuredRounds); null when those rounds aren't all complete. */
-  swissFinalPosition: number | null;
+  swissFinalPosition?: number | null;
 }
 export interface SwissProgressionModel {
   format: SwissFormatKind; totalRounds: number; rounds: ProgressionRound[]; rows: ProgressionRow[];

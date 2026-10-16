@@ -57,3 +57,4 @@
 ## Two-stage tournaments (Swiss → round robin), Riverside preview
 - [x] Stage 2 is saved as a real later stage of Stage 1 (same players, seeded from final Swiss table, organiser presses Start once all Swiss rounds are played); defaults to play-by tournament end date when no Stage 2 dates are set.
 - [ ] Browser check of Generate draw + Start Stage 2 on "assasasa" by Willem.
+- [x] Edit setup of a created Riverside tournament opens the new card-structure screens (not the old 21-step flow).

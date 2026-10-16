@@ -591,7 +591,6 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const entries = seeded.flatMap((d) => d.units.map((u, k) => ({ member: u.member, partner: u.partner, group: d.group, order: k })));
       const { error } = await (supabase as any).rpc("step_prepare_draw", { p_champ_id: tournamentId, p_spec: spec, p_entries: entries, p_rebuild: hasDraw });
       if (error) throw new Error(error.message);
-      // Record which follow-up stages wait for which first stage, so they stay closed until it finishes.
       // Follow-up stages now live inside their first stage's division (see attachFollowUpStages).
       if (hasDraw) {
         // Replacing a draw: clear the saved scheduling preferences so the previous draw's

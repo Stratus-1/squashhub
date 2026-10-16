@@ -16,13 +16,15 @@ interface Props {
   groups: LeagueTreeGroup[];
   selected: string[];
   onChange: (ids: string[]) => void;
+  /** Show league levels only (1st League, 2nd League…) — no per-club teams. */
+  levelsOnly?: boolean;
 }
 
 /**
  * Hierarchical "Players from" picker: league level → teams / reserves.
  * Every id emitted is a canonical club league id.
  */
-export function LeagueSourceTree({ groups, selected, onChange }: Props) {
+export function LeagueSourceTree({ groups, selected, onChange, levelsOnly = false }: Props) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -49,7 +51,7 @@ export function LeagueSourceTree({ groups, selected, onChange }: Props) {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search leagues or teams"
+          placeholder={levelsOnly ? "Search leagues" : "Search leagues or teams"}
           className="h-7 pl-7 text-[11px]"
         />
       </div>
@@ -60,18 +62,18 @@ export function LeagueSourceTree({ groups, selected, onChange }: Props) {
         )}
         {visible.map((g) => {
           const state = groupSelectionState(g, selected);
-          const open = searching || (expanded[g.key] ?? autoOpen.has(g.key));
+          const open = !levelsOnly && (searching || (expanded[g.key] ?? autoOpen.has(g.key)));
           return (
             <div key={g.key} className="rounded-md border border-border/50">
               <div className="flex items-center gap-1.5 px-1.5 py-1">
-                <button
+                {!levelsOnly && <button
                   type="button"
                   onClick={() => setExpanded((m) => ({ ...m, [g.key]: !m[g.key] }))}
                   className="text-muted-foreground hover:text-foreground"
                   aria-label={open ? "Collapse league" : "Expand league"}
                 >
                   <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-90")} />
-                </button>
+                </button>}
                 <label className="flex flex-1 items-center gap-2 text-xs font-medium cursor-pointer min-w-0">
                   <input
                     type="checkbox"

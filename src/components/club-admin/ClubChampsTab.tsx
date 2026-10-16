@@ -9756,6 +9756,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     options={[
                                       { v: "20", l: "20 min" },
                                       { v: "30", l: "30 min" },
+                                      { v: "40", l: "40 min" },
                                       { v: "45", l: "45 min" },
                                       { v: "60", l: "60 min" },
                                     ]}

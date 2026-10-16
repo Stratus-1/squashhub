@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
-import { buildBarPoster, barPosterPaymentMethods, loadImageAsDataUrlWithSize } from "@/lib/bar/bar-poster";
+import { buildBarPoster, barPosterPaymentMethods, loadImageAsDataUrlWithSize, loadSquashHubBrandLogo } from "@/lib/bar/bar-poster";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Copy, Share2, MessageCircle, FileDown } from "lucide-react";
@@ -90,6 +90,8 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
         const logo = logoUrl ? await loadImageAsDataUrlWithSize(logoUrl) : null;
         const canvas = qrRef.current;
         if (!canvas || cancelled) return;
+        const brandLogo = await loadSquashHubBrandLogo();
+        if (cancelled) return;
         const doc = buildBarPoster({
         clubName: posterName,
         url,
@@ -97,6 +99,7 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
         logoDataUrl: logo?.dataUrl ?? null,
         logoWidth: logo?.width,
         logoHeight: logo?.height,
+        brandLogoDataUrl: brandLogo,
         accountEnabled, cardOnlineEnabled, swipeEnabled, cashEnabled, venue,
       });
         if (!cancelled) setPoster(doc.output("blob"));

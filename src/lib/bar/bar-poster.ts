@@ -5,6 +5,7 @@
  */
 import { jsPDF } from "jspdf";
 import { fitBox, type LoadedImage } from "@/lib/club-qr-poster";
+import squashHubLogoUrl from "@/assets/shub-logo-white.png";
 
 export interface BarPosterOptions {
   clubName: string;
@@ -13,6 +14,8 @@ export interface BarPosterOptions {
   logoDataUrl?: string | null;
   logoWidth?: number;
   logoHeight?: number;
+  /** SquashHub brand mark as a PNG data URL, loaded by the caller. */
+  brandLogoDataUrl?: string | null;
   accountEnabled: boolean;
   cardOnlineEnabled: boolean;
   swipeEnabled: boolean;
@@ -24,6 +27,13 @@ const NAVY: [number, number, number] = [30, 58, 95];
 const AMBER: [number, number, number] = [217, 154, 38];
 const INK: [number, number, number] = [33, 37, 41];
 const MUTED: [number, number, number] = [100, 108, 118];
+/** SquashHub brand mark (white lettering + icon) as shipped in src/assets. */
+export const BRAND_LOGO_PX = { w: 1920, h: 496 };
+
+/** Loads the SquashHub brand mark as a data URL so the poster can embed it. */
+export async function loadSquashHubBrandLogo(): Promise<string | null> {
+  return loadImageAsDataUrl(squashHubLogoUrl);
+}
 
 export function barPosterPaymentMethods(o: Pick<BarPosterOptions, "accountEnabled" | "cardOnlineEnabled" | "swipeEnabled" | "cashEnabled">): string[] {
   return [
@@ -82,13 +92,23 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
     } catch { /* A missing logo must not prevent printing. */ }
     textX += 40;
   }
+  // SquashHub brand mark in the top-right corner of the navy header.
+  const brandDataUrl = o.brandLogoDataUrl ?? null;
+  const brand = fitBox(BRAND_LOGO_PX.w, BRAND_LOGO_PX.h, 46, 11);
+  const brandX = W - M - brand.w;
+  if (brandDataUrl) {
+    try {
+      doc.addImage(brandDataUrl, "PNG", brandX, (48 - brand.h) / 2, brand.w, brand.h);
+    } catch { /* A missing brand mark must not prevent printing. */ }
+  }
+  const nameMaxW = Math.max(40, (brandDataUrl ? brandX - 6 : W - M) - textX);
   doc.setFont("helvetica", "bold");
   let nameSize = 22;
   doc.setFontSize(nameSize);
-  while (doc.splitTextToSize(o.clubName, W - textX - M).length > 2 && nameSize > 10) {
+  while (doc.splitTextToSize(o.clubName, nameMaxW).length > 2 && nameSize > 10) {
     doc.setFontSize(--nameSize);
   }
-  const nameLines = doc.splitTextToSize(o.clubName, W - textX - M);
+  const nameLines = doc.splitTextToSize(o.clubName, nameMaxW);
   doc.setTextColor(255, 255, 255);
   doc.text(nameLines, textX, nameLines.length > 1 ? 17 : 23);
   doc.setFontSize(12);
@@ -146,7 +166,20 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
   doc.setFillColor(...NAVY);
   doc.rect(0, H - 12, W, 12, "F");
   doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  doc.text("Powered by SquashHub", W / 2, H - 4.8, { align: "center" });
+  // "Powered by" followed by the SquashHub logo, centred as one group.
+  const foot = fitBox(BRAND_LOGO_PX.w, BRAND_LOGO_PX.h, 34, 6);
+  const label = "Powered by";
+  const labelW = doc.getTextWidth(label);
+  const gap = brandDataUrl ? 2.5 : 0;
+  const logoW = brandDataUrl ? foot.w : 0;
+  const groupX = (W - (labelW + gap + logoW)) / 2;
+  doc.text(label, groupX, H - 4.8);
+  if (brandDataUrl) {
+    try {
+      doc.addImage(brandDataUrl, "PNG", groupX + labelW + gap, H - 12 + (12 - foot.h) / 2, foot.w, foot.h);
+    } catch { /* A missing brand mark must not prevent printing. */ }
+  }
   return doc;
 }

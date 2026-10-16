@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { barPosterPaymentMethods, buildBarPoster } from "@/lib/bar/bar-poster";
+
+const QR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8//8/AwMDEwMDAwMDAwAkBgMB/DXemwAAAABJRU5ErkJggg==";
+const BRAND = `data:image/png;base64,${readFileSync("src/assets/shub-logo-white.png").toString("base64")}`;
 
 describe("bar/shop poster payment wording", () => {
   it("includes all enabled options and identifies member-only payment", () => {
@@ -27,5 +31,19 @@ describe("bar/shop poster payment wording", () => {
     expect(doc.getNumberOfPages()).toBe(1);
     expect(doc.internal.pageSize.getWidth()).toBeCloseTo(210, 0);
     expect(doc.output("blob").size).toBeGreaterThan(1000);
+  });
+  it("embeds the SquashHub brand mark when one is supplied", () => {
+    const base = {
+      clubName: "Riverside Squash Club",
+      url: "https://riv.squashhub.co.za/s/abcdefgh",
+      qrDataUrl: QR,
+      venue: "bar" as const,
+      accountEnabled: true, cardOnlineEnabled: true, swipeEnabled: true, cashEnabled: true,
+    };
+    const withBrand = buildBarPoster({ ...base, brandLogoDataUrl: BRAND });
+    const withoutBrand = buildBarPoster(base);
+    expect(withBrand.getNumberOfPages()).toBe(1);
+    expect(withoutBrand.getNumberOfPages()).toBe(1);
+    expect(withBrand.output("blob").size).toBeGreaterThan(withoutBrand.output("blob").size);
   });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { CardStructureEditor } from "@/components/smart-builder/CardStructureEditor";
 import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
-import { addCardDivision, addCardSubdivision, cardStructurePilot, cardStructureIssues, mergeCardStructureSteps, patchCardStage, saveCardStructure } from "@/lib/smart-builder/card-structure";
+import { addCardDivision, addCardSubdivision, cardStructurePilot, cardStructureIssues, dropCardStructureSeedingStep, mergeCardStructureSteps, patchCardStage, saveCardStructure } from "@/lib/smart-builder/card-structure";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
 
 const base = (): StepAnswers => ({ categories: [""], categoryTypes: {}, subcats: {}, unitEntries: {}, disc: {}, playType: null, format: { kind: null }, formatOverrides: {}, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, playoffOverrides: {}, poolPlan: {}, guide: {}, stages: [{ id: "r1", unit: "", mode: "scheduled", date: "2026-11-01", from: "18:00", to: "21:00", courtIds: ["court1"] }], days: [{ date: "2026-11-01", venue: "Test", courts: "1", windows: [{ from: "18:00", to: "21:00" }] }], playoffSync: true } as unknown as StepAnswers);
@@ -22,6 +22,11 @@ describe("replacement card structure", () => {
   });
   it("merges seven steps but preserves scheduling, dates, courts, seeding and payments", () => {
     expect(mergeCardStructureSteps(["Type", "Basics", "What", "Match", "Categories", "Guide", "Subcategories", "Overrides", "Format", "Seeding", "Fees", "Schedule", "Dates", "Courts", "Summary"], "Structure")).toEqual(["Type", "Basics", "Structure", "Seeding", "Fees", "Schedule", "Dates", "Courts", "Summary"]);
+  });
+  it("drops the separate Seeding step because the structure page sets seeding per category", () => {
+    const merged = mergeCardStructureSteps(["Type", "Basics", "What", "Match", "Categories", "Guide", "Subcategories", "Overrides", "Format", "Seeding", "Fees", "Schedule", "Dates", "Courts", "Summary"], "Structure");
+    expect(dropCardStructureSeedingStep(merged)).toEqual(["Type", "Basics", "Structure", "Fees", "Schedule", "Dates", "Courts", "Summary"]);
+    expect(dropCardStructureSeedingStep(["Type", "Seeding", "Fees"])).toEqual(["Type", "Fees"]);
   });
   it("round-trips independent subdivisions and named pools without altering scheduling", () => {
     const original = base();

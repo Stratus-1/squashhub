@@ -27,7 +27,7 @@ import { visualStructurePilot } from "@/lib/smart-builder/structure-canvas";
 import { retiredStructurePilotFlag } from "@/lib/smart-builder/pilot-status";
 import { CardStructureEditor } from "./CardStructureEditor";
 import { CardStructureReview } from "./CardStructureReview";
-import { cardStructurePilot, cardStructureIssues, mergeCardStructureSteps, MERGED_STRUCTURE_STEPS } from "@/lib/smart-builder/card-structure";
+import { cardStructurePilot, cardStructureIssues, dropCardStructureSeedingStep, mergeCardStructureSteps, MERGED_STRUCTURE_STEPS } from "@/lib/smart-builder/card-structure";
 const StructSection = ({ title }: { title: string; children?: null }) => <h3 className="border-t border-border pt-4 text-sm font-semibold">{title}</h3>;
 import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
@@ -1055,7 +1055,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     compact.splice(compact.indexOf("Structure") + 1, 0, "StructureReview");
     // Seeding is chosen per category on the structure page, so the separate
     // Seeding step is no longer part of this pilot's flow.
-    steps.splice(0, steps.length, ...compact.filter((k) => k !== "Seeding"));
+    steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact));
   }
   const cur = steps[Math.min(step, steps.length - 1)];
   const isStruct = cur === "Structure" && !cardStructure;

@@ -43,3 +43,11 @@ describe("setup rows fill missing times", () => {
     expect(r[0].schedule.courtIds).toEqual([20, 21, 24]);
   });
 });
+
+import { setupStartsAutomatically } from "@/lib/tournaments/progression";
+describe("start this stage from setup", () => {
+  const rows = [{ phase: "playoff", name: "Quarterfinal", unit: "Ladies B", start: "auto" }, { phase: "playoff", name: "Semifinal", unit: "", start: "confirm" }];
+  it("Ladies B quarterfinal set to Automatically starts by itself", () => expect(setupStartsAutomatically(rows, "Ladies B · Singles", "Quarterfinal")).toBe(true));
+  it("shared semi-final set to Wait waits", () => expect(setupStartsAutomatically(rows, "Mens A 2 · Singles", "Semifinal")).toBe(false));
+  it("no row keeps the saved setting", () => expect(setupStartsAutomatically(rows, "Ladies B · Singles", "Final")).toBeNull());
+});

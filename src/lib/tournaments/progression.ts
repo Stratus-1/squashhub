@@ -71,6 +71,20 @@ function startStage(db: Db, tid: string, d: SpecDivision, st: PlannedStage) {
     : startNextStructuredStage(db, tid, d.divisionId, st.id, { ownerConfirmed: true });
 }
 
+/**
+ * Play-off "Start this stage" from Stages & scheduling (the organiser's latest choice): the category's own row,
+ * else the shared row for that round. null = no matching row, so the saved stage setting applies.
+ */
+export function setupStartsAutomatically(rows: any[] | undefined, divisionLabel: string, stageName: string): boolean | null {
+  const rk = (n: string) => { const x = String(n).toLowerCase().replace(/[^a-z]/g, ""); return x.includes("quarter") ? "qf" : x.includes("semi") ? "sf" : x.endsWith("final") ? "final" : null; };
+  const k = rk(stageName);
+  if (!k || !Array.isArray(rows)) return null;
+  const unit = String(divisionLabel).replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
+  const cand = rows.filter((r) => r?.phase === "playoff" && rk(r.name) === k && (r.start === "auto" || r.start === "confirm" || r.start === "organiser"));
+  const r = cand.find((x) => x.unit && String(x.unit).split(" › ").join("::") === unit) ?? cand.find((x) => !x.unit);
+  return r ? r.start === "auto" : null;
+}
+
 /** Seed-pool mapped stages are created with the tournament — never "progressed into". */
 const createdUpFront = (st: PlannedStage) => st.kind === "mapped" && st.mapping?.source === "seed_pools";
 
@@ -101,7 +115,7 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
       }
       const src = sourceOf(d, st);
       if (!src) { out.push({ ...base, state: "blocked", automatic: false, detail: `${st.name}: the stage it takes players from no longer exists.` }); continue; }
-      const auto = !st.waitForOrganiser;
+      const auto = setupStartsAutomatically(t?.beta_lifecycle?.answers?.stages, d.label, st.name) ?? !st.waitForOrganiser;
       const plannedDate = st.schedule?.date ?? st.schedule?.deadline ?? null;
       if (!done.get(src.id)) {
         out.push({ ...base, state: "waiting", automatic: auto, plannedDate, detail: auto ? `Starts automatically when ${src.name} is finished.` : `Offered for your confirmation when ${src.name} is finished.` });

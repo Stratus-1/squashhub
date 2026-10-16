@@ -6172,6 +6172,19 @@ function stageDone(st, rows) {
 function startStage(db, tid, d, st) {
   return progressionOf(st).mode === "qualifiers" && st.kind !== "mapped" ? confirmStructuredPlayoffs(db, tid, d.divisionId, st.id, true) : startNextStructuredStage(db, tid, d.divisionId, st.id, { ownerConfirmed: true });
 }
+function setupStartsAutomatically(rows, divisionLabel, stageName) {
+  const rk = (n) => {
+    const x = String(n).toLowerCase().replace(/[^a-z]/g, "");
+    return x.includes("quarter") ? "qf" : x.includes("semi") ? "sf" : x.endsWith("final") ? "final" : null;
+  };
+  const k = rk(stageName);
+  if (!k || !Array.isArray(rows))
+    return null;
+  const unit = String(divisionLabel).replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
+  const cand = rows.filter((r2) => r2?.phase === "playoff" && rk(r2.name) === k && (r2.start === "auto" || r2.start === "confirm" || r2.start === "organiser"));
+  const r = cand.find((x) => x.unit && String(x.unit).split(" › ").join("::") === unit) ?? cand.find((x) => !x.unit);
+  return r ? r.start === "auto" : null;
+}
 var createdUpFront = (st) => st.kind === "mapped" && st.mapping?.source === "seed_pools";
 async function stageLifecycle(db, tid) {
   const [t] = await db.select("tournaments", { id: tid });
@@ -6204,7 +6217,7 @@ async function stageLifecycle(db, tid) {
         out.push({ ...base, state: "blocked", automatic: false, detail: `${st.name}: the stage it takes players from no longer exists.` });
         continue;
       }
-      const auto = !st.waitForOrganiser;
+      const auto = setupStartsAutomatically(t?.beta_lifecycle?.answers?.stages, d.label, st.name) ?? !st.waitForOrganiser;
       const plannedDate = st.schedule?.date ?? st.schedule?.deadline ?? null;
       if (!done.get(src.id)) {
         out.push({ ...base, state: "waiting", automatic: auto, plannedDate, detail: auto ? `Starts automatically when ${src.name} is finished.` : `Offered for your confirmation when ${src.name} is finished.` });

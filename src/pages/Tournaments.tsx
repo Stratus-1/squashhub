@@ -36,7 +36,7 @@ import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialo
 import { eliminatedMemberIds } from "@/lib/tournaments/survivors";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
-import { ProjectedSwissFixtures } from "@/components/tournaments/ProjectedSwissFixtures";
+import { useProjectedFixturesForChamps } from "@/hooks/use-projected-champ-fixtures";
 import { playoffHeadingText } from "@/lib/smart-builder/playoff-placeholders";
 import { structuredMatchups, matchupForMatchGroup, matchupHeading, type StructuredMatchup } from "@/lib/tournaments/structured-matchups";
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
@@ -400,7 +400,14 @@ export default function Tournaments() {
   // "Overdue" until it is scored or rescheduled, instead of vanishing.
   const isOverdueFixture = (m: any) =>
     !!m.scheduled_date && m.scheduled_date < today && m.status === "scheduled" && !m.winner_member_id && !m.is_bye && !isLive(m);
-  const upcomingMatches = allMatches
+  // Next-round Swiss games whose players are known from results (same as Court Bookings). Display only.
+  const projectedRows = useProjectedFixturesForChamps(champs).map((f) => {
+    const [a, b] = f.title.split(" v ");
+    return { id: f.key, projected: true, champ_id: f.champId, group_number: f.group, round_number: f.round, stage: "group", status: "scheduled",
+      scheduled_date: f.date, scheduled_time: `${f.time}:00`.slice(0, 8), court_id: f.courtId, court: { name: f.courtName },
+      player_a: { name: a }, player_b: { name: b } };
+  });
+  const upcomingMatches = [...allMatches, ...projectedRows]
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.status === "scheduled" || m.status === "in_progress" || m.status === "placeholder" || isLive(m)) && m.status !== "completed" && (!m.scheduled_date || m.scheduled_date >= today || isOverdueFixture(m)))
     .sort((a: any, b: any) => {
       // Live (actively marked) matches float to the top, paused ones just below
@@ -453,7 +460,7 @@ export default function Tournaments() {
   });
   // Pilot: counts/options derive ONLY from the selected tournament (no cross-tournament leakage).
   const scopedUpcoming = (fixturesPilot && champFilter !== "all" ? upcomingMatches.filter((m: any) => m.champ_id === champFilter) : upcomingMatches)
-    .filter((m: any) => !isProvisionalSwissSlot(m, champById.get(m.champ_id)));
+    .filter((m: any) => m.projected || !isProvisionalSwissSlot(m, champById.get(m.champ_id)));
   const pilotFixtures = useMemo<ClubFixture[]>(() => !fixturesPilot ? [] : (allMatches as any[])
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.stage ?? "group") !== "placeholder" && !isProvisionalSwissSlot(m, champById.get(m.champ_id)))
     .map((m: any) => {
@@ -1512,7 +1519,7 @@ export default function Tournaments() {
     // Dragging is only allowed once the admin has actually grabbed the handle.
     // Making the whole row draggable meant a normal finger-scroll over the
     // list could pick a fixture up and drop it on another slot.
-    const canDrag = isClubAdmin && !isByeFixture(m) && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
+    const canDrag = isClubAdmin && !m.projected && !isByeFixture(m) && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
     const armed = dragArmedId === m.id;
     const isDragging = dragId === m.id;
     const draggingMatch = dragId ? (allMatches as any[]).find((x) => x.id === dragId) : null;
@@ -1698,6 +1705,7 @@ export default function Tournaments() {
         )}
 
 
+        {m.projected ? <Badge variant="outline" className="text-[10px] shrink-0 border-primary/50 text-primary" title="Both players are known from earlier results. The real game is created when the round starts.">Pairing set by results</Badge> : <>
         {(() => {
           // Set / move the court & time. Available to the two players in this
           // match and to club / tournament admins — same rule as the standings
@@ -1833,6 +1841,7 @@ export default function Tournaments() {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        </>}
         </div>
       </div>
     );
@@ -2404,7 +2413,6 @@ export default function Tournaments() {
                   ) : (
                     renderMatchList(filteredUpcoming)
                   )}
-                  {!showMine && <ProjectedSwissFixtures champs={champs.filter((c: any) => champFilter === "all" || c.id === champFilter)} />}
 
 
                 </CardContent>

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { projectCourtFixtures, type ProjectedCourtFixture } from "@/lib/tournaments/projected-court-fixtures";
 
@@ -10,7 +10,12 @@ export function useProjectedChampFixtures(champ: any) {
     queryKey: ["projected-champ-fixtures", champ?.id],
     enabled: !!champ?.id && !!champ?.club_id,
     staleTime: 60_000,
-    queryFn: async (): Promise<ProjectedChampFixture[]> => {
+    queryFn: () => loadProjected(champ),
+  });
+}
+
+async function loadProjected(champ: any): Promise<ProjectedChampFixture[]> {
+  {
       const sb = supabase as any;
       const [courts, arch, entries, matches, rounds] = await Promise.all([
         sb.from("courts").select("id, name, active").eq("club_id", champ.club_id).order("id"),
@@ -26,6 +31,17 @@ export function useProjectedChampFixtures(champ: any) {
           .map((f) => ({ ...f, courtName: name(f.courtId) }))
           .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
       } catch { return []; }
-    },
+  }
+}
+
+/** Same projection for several tournaments at once (Tournaments page list). */
+export function useProjectedFixturesForChamps(champs: any[]): ProjectedChampFixture[] {
+  const results = useQueries({
+    queries: (champs ?? []).filter((c) => c?.id && c?.club_id).map((champ) => ({
+      queryKey: ["projected-champ-fixtures", champ.id],
+      staleTime: 60_000,
+      queryFn: () => loadProjected(champ),
+    })),
   });
+  return results.flatMap((r) => (r.data as ProjectedChampFixture[] | undefined) ?? []);
 }

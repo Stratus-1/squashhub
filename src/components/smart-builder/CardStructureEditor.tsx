@@ -112,6 +112,18 @@ export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: 
             {kind === "round_robin" && <>
               <label className="flex items-center gap-2">Pools<Input className="h-8 w-20 text-xs" type="number" min={1} max={26} aria-label={`${key} pool count`} value={first.pools ?? 1} onChange={(e) => update((a) => { const count = Math.min(26, Math.max(1, Number(e.target.value) || 1)); return patchCardStage(a, key, { pools: count, poolNames: Array.from({ length: count }, (_, i) => rowStages(a, key)[0].poolNames?.[i] ?? `Pool ${String.fromCharCode(65 + i)}`) }); })} /></label>
               {(first.pools ?? 1) > 1 && <div className="grid gap-2 sm:grid-cols-2">{Array.from({ length: first.pools ?? 1 }, (_, i) => <label key={i} className="space-y-1"><span>Pool {String.fromCharCode(65 + i)}</span><Input className={control} aria-label={`${key} pool ${i + 1} name`} value={first.poolNames?.[i] ?? `Pool ${String.fromCharCode(65 + i)}`} onChange={(e) => update((a) => patchCardStage(a, key, { poolNames: Array.from({ length: first.pools ?? 1 }, (_, j) => j === i ? e.target.value : first.poolNames?.[j] ?? `Pool ${String.fromCharCode(65 + j)}`) }))} /></label>)}</div>}
+              {(first.pools ?? 1) > 1 && <div className="space-y-1" role="radiogroup" aria-label={`${key} pool allocation`}>
+                <span className="font-medium">How are players split into the pools?</span>
+                {([
+                  { v: "snake" as const, t: "Snake (even pools)", d: `Seeds zig-zag down and back: Pool A gets 1, 4, 5, 8… and Pool B gets 2, 3, 6, 7… so both pools are equally strong.` },
+                  { v: "banded" as const, t: "Strength bands", d: `Straight down the ranking: Pool A gets seeds 1–5, Pool B gets 6–10 — Pool A is the strongest band, Pool B the next.` },
+                ]).map((o) => (
+                  <label key={o.v} className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${(first.poolAllocation ?? "snake") === o.v ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <input type="radio" name={`${key}-pool-allocation`} className="mt-0.5" checked={(first.poolAllocation ?? "snake") === o.v} onChange={() => update((a) => patchCardStage(a, key, { poolAllocation: o.v }))} />
+                    <span><span className="font-medium block">{o.t}</span><span className="text-muted-foreground">{o.d}</span></span>
+                  </label>
+                ))}
+              </div>}
               <details><summary className="cursor-pointer py-1 font-medium">Who plays whom?</summary><RRTopologyEditor stage={first} entrants={n} label={key} onChange={(p) => update((a) => patchCardStage(a, key, p))} /></details>
             </>}
             <div className="text-muted-foreground">{matches == null ? "Match estimate needs complete settings." : `${matches} estimated matches`} {rowStages(draft, key).length > 1 && "· Saved later stages retained."}</div>

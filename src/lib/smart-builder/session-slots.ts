@@ -49,7 +49,10 @@ export async function applySetupSessions(db: any, tournamentId: string) {
   ]);
   const bl: any = (t as any)?.beta_lifecycle ?? {};
   const ans = bl?.answers ?? {};
-  const slot = Number(ans?.scheduling?.singles) || 0;
+  // Fall back to the singles "Planned match time" chosen on the Tournament structure page.
+  const os = ans?.originalStructure ?? {};
+  const structSingles = Math.max(0, ...Object.keys(os.group_durations ?? {}).filter((id) => (os.league_match_types?.[id] ?? "singles") === "singles" && os.league_scoring_modes?.[id] !== "time_capped_points").map((id) => Number(os.group_durations[id]) || 0));
+  const slot = Number(ans?.scheduling?.singles) || structSingles || 0;
   const prefs = normaliseSchedulingPrefs(bl?.scheduling_prefs);
   const labels: Record<string, string> = ((t as any)?.group_labels ?? {}) as Record<string, string>;
   const keyOf = (g: number) => labels[String(g)];

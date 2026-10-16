@@ -178,6 +178,8 @@ export type CreateInput = {
   feeBasis?: { basis: "per_player" | "per_category" | null; mixedRule: "highest" | "first" | null };
   /** Per-tournament "Affect club ladder" opt-in. undefined = leave as is (existing tournaments). */
   ladderAffects?: boolean;
+  /** Scheduling "Avoid back-to-back matches". undefined = leave as is. */
+  avoidBackToBack?: boolean;
 };
 
 /** Club-wide permission for tournament results to move the ladder (column default = allowed). */
@@ -224,6 +226,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     } : { num_groups: 1 }),
     description: "Set up with the Step-by-Step Beta builder.",
     ...ladderAffectsPatch(i.ladderAffects, !i.existingId),
+    ...(i.avoidBackToBack !== undefined ? { avoid_back_to_back: i.avoidBackToBack } : {}),
   });
   let tid = i.existingId ?? null;
   if (tid) {

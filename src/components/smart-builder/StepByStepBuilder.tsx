@@ -167,7 +167,7 @@ export type StepAnswers = {
   subcats: Record<string, string[]>;
   days: DayAvail[];
   /** Courts & Dates scheduling-slot estimates (minutes) — never scoring/time-cap rules. */
-  scheduling?: { singles: string; doubles: string; rest: string; /** Exact GoBook/club block-booking name for this tournament, e.g. "Club Championships". */ blockName?: string; pace?: "fast" | "spread"; playoffStart?: { mode: "after" | "fixed"; gap?: string; date?: string; time?: string } };
+  scheduling?: { singles: string; doubles: string; rest: string; /** Exact GoBook/club block-booking name for this tournament, e.g. "Club Championships". */ blockName?: string; /** Never give a player two games in a row (default on). */ avoidBackToBack?: boolean; pace?: "fast" | "spread"; playoffStart?: { mode: "after" | "fixed"; gap?: string; date?: string; time?: string } };
   /** Courts & Dates court restrictions: unit key ("" = all), optional round/pool → allowed court ids. */
   courtRules?: Array<{ key: string; round: string; pool: string; courtIds: string[] }>;
   /** How players get in: organiser picks, self-entry, or both. */
@@ -394,6 +394,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       .then(({ data }) => setClubCourts((data ?? []).map((c) => ({ id: String(c.id), name: c.name }))));
   }, [clubId]);
   /** Court booking grid settings — time pickers offer exactly these slots. */
+  /** Only clubs that book courts through GoBook need a block booking name. */
+  const [usesGoBook, setUsesGoBook] = useState(false);
+  useEffect(() => {
+    (supabase as any).from("clubs").select("uses_gobook, external_booking_provider").eq("id", clubId).maybeSingle()
+      .then(({ data }: any) => setUsesGoBook(data?.external_booking_provider === "gobook" || (!data?.external_booking_provider && !!data?.uses_gobook)));
+  }, [clubId]);
   const [slotCfg, setSlotCfg] = useState<{ step: number; open: string | null; last: string | null }>({ step: 30, open: null, last: null });
   useEffect(() => {
     (supabase as any).from("clubs").select("booking_slot_minutes, booking_open_time, booking_last_slot_time").eq("id", clubId).maybeSingle()
@@ -503,6 +509,21 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const setMsg = (p: Partial<MsgCfg>) => setA({ ...a, msg: { ...msg, ...p } });
 
   const cats = a.categories.map((c) => c.trim()).filter(Boolean);
+  /** Planned match time already chosen per category on the Tournament structure page (longest wins). */
+  const structureMinutes = (kind: "singles" | "doubles"): string => {
+    const raw = a.originalStructure as Record<string, any> | undefined;
+    const durs = raw?.group_durations ?? {}, types = raw?.league_match_types ?? {}, modes = raw?.league_scoring_modes ?? {};
+    const vals = Object.keys(durs).filter((id) => (types[id] ?? "singles") === kind && modes[id] !== "time_capped_points").map((id) => Number(durs[id]) || 0).filter((n) => n > 0);
+    return vals.length ? String(Math.max(...vals)) : "";
+  };
+  const avoidB2BControl = (
+    <label className="flex items-start gap-2 text-sm cursor-pointer">
+      <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={a.scheduling?.avoidBackToBack ?? true}
+        onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), avoidBackToBack: e.target.checked } })} />
+      <span><span className="font-medium">Avoid back-to-back matches</span>
+        <span className="block text-xs text-muted-foreground">A player or pair is never given two games in a row; a court may stand empty for a slot instead.</span></span>
+    </label>
+  );
   /** Every place a player can end up: a subcategory, or the category itself when it has none. */
   const units = cats.flatMap((c) => {
     const subs = (a.subcats[c] ?? []).map((x) => x.trim()).filter(Boolean);
@@ -1356,7 +1377,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         drawChannels: msg.channels.filter(chAvail),
         drawNotify: a.drawNotify === "auto" ? "auto" : a.drawNotify !== false,
-        ladderAffects: a.ladderAffects,
+        ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         categoryTypes: units.map((u) => u.categoryType ?? "open"),
         divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
@@ -2251,17 +2272,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(([["singles", "Court time per Singles match (Standard format)", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match (Standard format)", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
                     <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
-                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] ?? ""}
+                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] || (k !== "rest" ? structureMinutes(k) : "")}
                         onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />
                         <span className="text-xs text-muted-foreground">min</span></span></label>
                   ))}
                 </div>
-                <label className="block space-y-1 text-sm"><span className="block font-medium">Block booking name (GoBook)</span>
+                {avoidB2BControl}
+                {usesGoBook && <label className="block space-y-1 text-sm"><span className="block font-medium">Block booking name (GoBook)</span>
                   <Input className="max-w-xs" aria-label="Block booking name" placeholder="e.g. Club Championships" value={a.scheduling?.blockName ?? ""}
                     onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), blockName: e.target.value } })} />
                   <span className="block text-xs text-muted-foreground">Admin books the tournament's court time in GoBook under exactly this name, as continuous blocks. Fixed-time rounds are then placed only inside those blocks, back-to-back at the match length above.</span>
                   {!!a.scheduling?.blockName?.trim() && !/^\s*club championship/i.test(a.scheduling.blockName) && <span className="block text-xs text-destructive">For now the name must start with "Club Championship" so court bookings can use the block.</span>}
-                </label>
+                </label>}
                 {(() => {
                   const sc = { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}) } as NonNullable<StepAnswers["scheduling"]>;
                   const setSc = (patch: Partial<NonNullable<StepAnswers["scheduling"]>>) => setA({ ...a, scheduling: { ...sc, ...patch } });
@@ -2450,17 +2472,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
                     <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
-                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] ?? ""}
+                      <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] || (k !== "rest" ? structureMinutes(k) : "")}
                         onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />
                         <span className="text-xs text-muted-foreground">min</span></span></label>
                   ))}
                 </div>
-                <label className="block space-y-1 text-sm"><span className="block font-medium">Block booking name (GoBook)</span>
+                {avoidB2BControl}
+                {usesGoBook && <label className="block space-y-1 text-sm"><span className="block font-medium">Block booking name (GoBook)</span>
                   <Input className="max-w-xs" aria-label="Block booking name" placeholder="e.g. Club Championships" value={a.scheduling?.blockName ?? ""}
                     onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), blockName: e.target.value } })} />
                   <span className="block text-xs text-muted-foreground">Admin books the tournament's court time in GoBook under exactly this name, as continuous blocks. Fixed-time rounds are then placed only inside those blocks, back-to-back at the match length above.</span>
                   {!!a.scheduling?.blockName?.trim() && !/^\s*club championship/i.test(a.scheduling.blockName) && <span className="block text-xs text-destructive">For now the name must start with "Club Championship" so court bookings can use the block.</span>}
-                </label>
+                </label>}
               </div>
               <StageScheduleOverview main={mainStages} playoffs={playoff.choice === "playoffs" ? playoffStages : []} statusOf={stageStatusOf} unitName={stageUnit} dayLabel={fmtDay}
                 courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} onJump={jumpToStage}

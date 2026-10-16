@@ -25,10 +25,10 @@ export type ServeSide = "R" | "L";
 /** Index of a player inside a pair (0 = first listed, 1 = second listed). */
 export type Slot = 0 | 1;
 
-export const DOUBLES_SERVING_METHODS: { value: DoublesServingMethod; label: string; hint: string }[] = [
-  { value: "even_odd", label: "Even / Odd", hint: "Forehand serves first, then partners alternate when the pair wins service back. Side: both pairs' points added together — even total → RIGHT, odd → LEFT." },
-  { value: "by_position", label: "By position", hint: "Forehand serves first, then partners alternate when the pair wins service back. Each turn starts Forehand RIGHT / Backhand LEFT, then the server alternates boxes on every point won." },
-  { value: "second_server", label: "Second server", hint: "Each pair serves Forehand (RIGHT) then Backhand (LEFT) before service passes to the other pair." },
+export const DOUBLES_SERVING_METHODS: { value: DoublesServingMethod; label: string; hint: string; brief: string }[] = [
+  { value: "even_odd", label: "Even / Odd", brief: "Box comes from the total score: even = right, odd = left.", hint: "Forehand serves first, then partners alternate when the pair wins service back. Side: both pairs' points added together — even total → RIGHT, odd → LEFT." },
+  { value: "by_position", label: "By position", brief: "Box comes from where you stand: forehand right, backhand left.", hint: "Forehand serves first, then partners alternate when the pair wins service back. Each turn starts Forehand RIGHT / Backhand LEFT, then the server alternates boxes on every point won." },
+  { value: "second_server", label: "Second server", brief: "Each pair serves forehand, then backhand, before service passes.", hint: "Each pair serves Forehand (RIGHT) then Backhand (LEFT) before service passes to the other pair." },
 ];
 
 export function parseServingMethod(raw: unknown): DoublesServingMethod | null {

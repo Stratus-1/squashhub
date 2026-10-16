@@ -113,9 +113,10 @@ export function buildSwissProgression(input: {
       return f.state === "awaiting_opponent" ? `v ${UNRESOLVED}` : `v ${opp}`;
     }),
     wins: cur.get(id)?.wins ?? 0, current: cur.get(id)?.position ?? i + 1,
+    swissFinalPosition: swissStageComplete ? swissFinal.get(id) ?? null : null,
   })).sort((x, y) => x.current - y.current);
 
-  return { format: input.format ?? "results_based", totalRounds, rounds, rows };
+  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows };
 }
 
 /** Movement between the two latest rounds with results: positive = moved up. */

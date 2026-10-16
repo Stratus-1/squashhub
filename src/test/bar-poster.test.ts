@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { barPosterPaymentMethods, buildBarPoster } from "@/lib/bar/bar-poster";
+
+const QR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8//8/AwMDEwMDAwMDAwAkBgMB/DXemwAAAABJRU5ErkJggg==";
+const BRAND = `data:image/png;base64,${readFileSync("src/assets/shub-logo-white.png").toString("base64")}`;
 
 describe("bar/shop poster payment wording", () => {
   it("includes all enabled options and identifies member-only payment", () => {

@@ -484,6 +484,16 @@ export function poolOptions(current: number, base: number[] = [1, 2, 3, 4, 5, 6,
   return Array.from(set).sort((a, b) => a - b);
 }
 
+/**
+ * Pool choices per format. Cross league plays pool-vs-pool, so it needs an
+ * even number of pools (2, 4 or 6). Swiss and Monrad have no pools at all
+ * (formatUsesPools is false for them, so this is never called for those).
+ */
+export function poolOptionsFor(format: string | null | undefined, current: number): number[] {
+  if (String(format || "") === "cross_league") return poolOptions(Math.max(2, current), [2, 4, 6]);
+  return poolOptions(current);
+}
+
 /* ---------------------------------------------------------- validation */
 
 export interface DivisionIssue {

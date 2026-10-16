@@ -3212,3 +3212,9 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ### 2026-10-16 — Swiss next-round games not in fixtures/draw
 - Projected Swiss games (both players decided) only showed as previews. Now `auto-progress-tournaments` (fired on result save) creates each decided game via `create_decided_swiss_game` and books its planned slot with `self_schedule_champ_match`; they are normal fixtures (reschedule/result/mark/replace). Guards relaxed per game only under that server flag. Uitsig Men's C R2: 3 games created and booked.
+
+## 2026-10-16 — Messaging screen: SMS channel switch made visible
+- Problem: Uitsig had member messaging On (whatsapp_enabled=true) while sms_enabled=false. The master "Send messages to members' phones" switch reads On when either channel is on and sets both together, but the messaging tab rendered <SmsMessagingCard hideToggle>, so there was no visible way to turn SMS on or off on its own.
+- Fix: ClubAdmin.tsx messaging tab now renders <SmsMessagingCard clubId={club.id} /> without hideToggle — the card's existing "Send SMS for this club" switch (wired to clubs.sms_enabled via its own save mutation) is visible; the tab alert text now says SMS can be turned off on its own. WhatsApp billing card keeps hideToggle (sender choice only; master switch governs WhatsApp).
+- Guard: src/test/sms-toggle-visibility.test.ts asserts the SMS card is used without hideToggle and its switch is wired to sms_enabled.
+- Verified: signed-in Uitsig messaging screen shows master On + SMS switch present and Off (live settings not toggled); focused test 2/2, tsgo clean, build OK. Preview only, not published.

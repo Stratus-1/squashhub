@@ -8,7 +8,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { atomically, autoProgress, schedulePlannedPlayoffGames } from "./engine.js";
 
 // Staged rollout: Riverside first. Use ["*"] for all clubs.
-const ROLLOUT_CLUBS: string[] = ["11111111-1111-1111-1111-111111111111"];
+const ROLLOUT_CLUBS: string[] = ["*"];
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

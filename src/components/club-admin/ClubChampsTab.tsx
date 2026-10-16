@@ -10666,7 +10666,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
                           </Button>
                           <span className="absolute right-1 top-1">
-                            <FormatLearnButton format={fmt === "double_round_robin" ? "round_robin" : fmt as LearnFormat} onOpen={setLearnFormat} />
+                            <FormatLearnButton format={fmt === "single_round_robin" || fmt === "double_round_robin" ? "round_robin" : fmt as LearnFormat} onOpen={setLearnFormat} />
                           </span>
                         </div>
                       );

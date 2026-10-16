@@ -186,6 +186,18 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   });
   const arch = inlineStandings?.arch ?? fetchedArch;
   const isStructured = arch?.builder_architecture === "structured";
+  // Stage lookup (id → kind/order) so multi-stage tournaments can split the Swiss log from later-stage logs.
+  const { data: stageRows = [] } = useQuery({
+    queryKey: ["club-champ-stages", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("tournament_stages").select("id, kind, label, stage_order").eq("tournament_id", champId!);
+      if (error) throw error;
+      return (data || []) as { id: string; kind: string; label: string | null; stage_order: number }[];
+    },
+    enabled: !!champId && isStructured && !inlineStandings,
+  });
+  const stageKindById = useMemo(() => new Map(stageRows.map((s) => [s.id, s.kind])), [stageRows]);
+  const stageLabelById = useMemo(() => new Map(stageRows.map((s) => [s.id, s.label ?? s.kind])), [stageRows]);
   // Riverside pilot: read-only Swiss progression view needs BOTH its own switch and the viewer switch.
   const { data: pilotViewerOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_viewer_shell");
   const { data: pilotPoolMatrixOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_pool_matrix_view");

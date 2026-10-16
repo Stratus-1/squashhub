@@ -1,3 +1,6 @@
+### 2026-10-16 — Required expected players in Riverside structure
+- Local Save Structure now rejects missing, zero and fractional category estimates; required player/pair inputs include a short tooltip explaining adjustment when entries are finalised. No registration, generation, live records or publication changed.
+
 ### 2026-10-16 — Riverside explicit Monrad round count
 - Added an editable Monrad rounds field prefilled from the entrant-based recommendation. Save retains the chosen count in the original snapshot and category stage plan; missing counts block save. Swiss settings, later stages, dates and live fixture generation remain unchanged. Creation stays blocked; no publication or live-data writes.
 

@@ -19,3 +19,17 @@ describe("play-off sessions from Stages & scheduling", () => {
     expect(resolvePlayoffSessions(spec).some((s) => s.keys.some((k) => k.group === 2 && k.stageId === "x-po1"))).toBe(false);
   });
 });
+
+import { buildPlayoffChain } from "@/lib/smart-builder/playoff-chain";
+describe("bottom half too", () => {
+  const plan = (n: string) => ({ name: n, plan: { mode: "scheduled", date: "2026-11-14", from: "10:00", to: "12:00", courtIds: [1], pairing: "seeded", trigger: "auto" } as any });
+  it("Swiss quarterfinals add 9 v 16, 12 v 13, 10 v 15, 11 v 14 after 1 v 8 … and the final has a top and bottom game", () => {
+    const r = buildPlayoffChain({ id: "v-main", order: 0, kind: "swiss", name: "Swiss" } as any, "v", [plan("Quarterfinal"), plan("Semifinal"), plan("Final")], { bottomHalf: true });
+    expect(r.reason).toBeNull();
+    const qf = r.stages[0].mapping!;
+    const pos = (id: string) => qf.units.find((u) => u.id === id)!.slots[0].position;
+    expect(qf.matches.map((m) => [pos(m.a), pos(m.b)])).toEqual([[1, 8], [4, 5], [2, 7], [3, 6], [9, 16], [12, 13], [10, 15], [11, 14]]);
+    expect(r.stages[1].mapping!.matches).toHaveLength(4);
+    expect(r.stages[2].mapping!.matches).toHaveLength(2);
+  });
+});

@@ -6088,6 +6088,10 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
     return { stages: [], reason: `${first.name}: choose who plays whom (pairing) in Stages & Scheduling.`, notes };
   else
     return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} groups can't be mapped automatically — set it up when the main stage finishes.`, notes };
+  if (opts.bottomHalf && pools === 1)
+    games = [...games, ...seededPairs(2 * g).map(([a, b]) => [[0, a + 2 * g], [0, b + 2 * g]])];
+  else if (opts.bottomHalf)
+    notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list (Swiss or one group).`);
   const need = Math.max(...games.flat().map(([, pos]) => pos));
   if (poolSize && need > poolSize)
     return { stages: [], reason: `${first.name} needs ${need} qualifiers per group, but groups have only ${poolSize}.`, notes };
@@ -6254,7 +6258,7 @@ async function promoteAutoDeferred(db, tid, exec = (fn) => fn(db)) {
         continue;
       const main = [...d.stages].sort((a, b) => b.order - a.order)[0];
       const version = String(later[0].stageKey).replace(/-po\d+$/, "");
-      const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan, stageKey: x.stageKey })));
+      const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan, stageKey: x.stageKey })), { bottomHalf: !!d.playoffBottomHalf });
       if (chain.reason || !chain.stages.length || chain.stages.some((c) => d.stages.some((y) => y.id === c.id)))
         continue;
       spec = { ...spec, divisions: spec.divisions.map((x) => x !== d ? x : { ...x, stages: [...x.stages, ...chain.stages], deferredStages: [] }) };

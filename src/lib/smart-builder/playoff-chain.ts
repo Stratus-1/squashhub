@@ -62,7 +62,7 @@ function scheduleOf(p: PlannedPlayoff): PlannedStage["schedule"] | null {
  * Build the predefined play-off stages that follow `main`. `forceConfirm` keeps owner confirmation for
  * tournaments whose setup never chose a trigger (historical "Decide later").
  */
-export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null } = {}): ChainResult {
+export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean } = {}): ChainResult {
   const notes: string[] = [];
   if (!planned.length) return { stages: [], reason: null, notes };
   if (planned.length > 3) return { stages: [], reason: "More than three play-off stages can't be mapped automatically.", notes };
@@ -134,6 +134,10 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
     games = seededPairs(2 * g).map(([a, b]) => [[0, a], [0, b]]);
   } else if (pairing === "later" || pairing === "winners") return { stages: [], reason: `${first.name}: choose who plays whom (pairing) in Stages & Scheduling.`, notes };
   else return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} groups can't be mapped automatically — set it up when the main stage finishes.`, notes };
+  // "Bottom half too": in one ranked list, the next 2g players play their own bracket (9 v 16, 12 v 13 …).
+  // Its games follow the top games, so every later round pairs winners top-with-top and bottom-with-bottom.
+  if (opts.bottomHalf && pools === 1) games = [...games, ...seededPairs(2 * g).map(([a, b]) => [[0, a + 2 * g], [0, b + 2 * g]] as [[number, number], [number, number]])];
+  else if (opts.bottomHalf) notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list (Swiss or one group).`);
   const need = Math.max(...games.flat().map(([, pos]) => pos));
   if (poolSize && need > poolSize) return { stages: [], reason: `${first.name} needs ${need} qualifiers per group, but groups have only ${poolSize}.`, notes };
   const stages: PlannedStage[] = [];

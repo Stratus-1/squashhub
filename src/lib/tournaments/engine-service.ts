@@ -307,12 +307,21 @@ function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seed
     const pairs: Array<[string, string]> = st.paced.pairs ?? proposePairings(field, st.paced.count, st.paced.pairing).pairs.map(([a, b]) => [a.id, b.id]);
     return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout" as const, roundId: `${st.id}:r1`, round: 1, poolId: null, pacedRound: true, slot: i + 1, a, b }));
   }
-  const size = st.drawSize ?? nextPow2(seeded.length);
+  if (st.bottomBracket && st.drawSize) {
+    // Top bracket = seeds 1..N (koPool 1); bottom bracket = seeds N+1..2N (koPool 2). Brackets never meet.
+    const n = st.drawSize;
+    if (seeded.filter(Boolean).length < n * 2) throw new IntegrityError("top_n", `${st.name}: the bottom bracket needs ${n * 2} players.`);
+    return [0, 1].flatMap((bi) => bracketRows(tid, d, st, seeded.slice(bi * n, bi * n + n), n, bi + 1, bi * (n / 2)));
+  }
+  return bracketRows(tid, d, st, seeded, st.drawSize ?? nextPow2(seeded.length));
+}
+
+function bracketRows(tid: string, d: SpecDivision, st: PlannedStage, seeded: Array<string | null>, size: number, koPool?: number, slotOffset = 0): EngineFixture[] {
   const order = bracketOrder(size);
   const at = (seed: number) => seeded[seed - 1] ?? null;
   const rows: EngineFixture[] = [];
   for (let i = 0; i < order.length; i += 2) {
-    rows.push({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, slot: i / 2 + 1, a: at(order[i]), b: at(order[i + 1]) });
+    rows.push({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, ...(koPool ? { koPool } : {}), slot: slotOffset + i / 2 + 1, a: at(order[i]), b: at(order[i + 1]) });
   }
   assertKnockoutShape(rows);
   return rows;

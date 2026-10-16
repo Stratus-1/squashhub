@@ -9292,6 +9292,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                           <div key={gn} className={poolGroup ? "border-l-2 border-border pl-3" : ""} data-testid={poolGroup ? `structure-pool-${gn}` : undefined}>
                             {poolGroup && poolIndex === 1 && <header className="flex flex-wrap items-center gap-3 border-b border-border py-3" data-testid="structure-parent-category"><span className="text-xs font-semibold">Category {displayCategory}</span><h3 className="text-sm font-semibold">{poolGroup.label}</h3><Badge variant="secondary">{poolGroup.slots.length} pools</Badge><span className="text-xs text-muted-foreground">{poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0)} players</span></header>}
                           <div className={poolGroup ? "relative border-b border-border bg-background p-3" : "relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm"}>
+                            {categoryLocked && <div className="mb-2 flex justify-end">
+                              <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 gap-1 whitespace-nowrap px-2 text-[11px] text-muted-foreground" onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }))} title={collapsed ? "Expand this category" : "Collapse this category"} aria-expanded={!collapsed}>
+                                {collapsed ? "Expand" : "Collapse"}<ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !collapsed && "rotate-180")} />
+                              </Button>
+                            </div>}
                             <fieldset disabled={categoryLocked} className="min-w-0 border-0 p-0" aria-label={`${poolGroup?.label ?? groupLabels[key] ?? `Category ${gn}`} settings`}>
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
                             <div className={cn("flex flex-wrap items-start justify-between gap-2", !collapsed && "mb-2")}>
@@ -9396,7 +9401,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 </div>
                                 )}
                               </div>
-                              <Button
+                              {!categoryLocked && <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
@@ -9406,7 +9411,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               >
                                 {collapsed ? "Expand" : "Collapse"}
                                 <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !collapsed && "rotate-180")} />
-                              </Button>
+                              </Button>}
 
                               <Button
                                 type="button"
@@ -10548,7 +10553,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 </div>
                               </div>}
 
-                              <div className="pt-1 flex justify-end">
+                              {!categoryLocked && <div className="pt-1 flex justify-end">
                                 <Button
                                   type="button"
                                   size="sm"
@@ -10559,10 +10564,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   <ChevronDown className="h-3.5 w-3.5 rotate-180" /> Collapse
                                 </Button>
 
-                              </div>
+                              </div>}
                             </div>
                             )}
                             </fieldset>
+                            {categoryLocked && !collapsed && <div className="pt-1 flex justify-end">
+                              <Button type="button" size="sm" variant="outline" className="h-7 gap-1 whitespace-nowrap text-[11px]" onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}><ChevronDown className="h-3.5 w-3.5 rotate-180" /> Collapse</Button>
+                            </div>}
                             {structureOnly && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
                               <span role="status" className="flex items-center gap-1 text-xs text-muted-foreground">{categoryLocked ? <><CategoryLockIcon className="h-3.5 w-3.5" />Locked</> : <><CategoryUnlockIcon className="h-3.5 w-3.5" />Editing</>}</span>
                               <Button type="button" size="sm" variant={categoryLocked ? "outline" : "default"} className="h-8 gap-1.5 text-xs" aria-label={`${categoryLocked ? "Edit / unlock" : "Done & lock"} ${poolGroup?.label ?? groupLabels[key] ?? `Category ${gn}`}`} onClick={() => {

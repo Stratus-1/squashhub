@@ -21,3 +21,16 @@ describe("structure planned playoffs drive scheduling stages", () => {
     expect(syncPlayoffStages([st("q", "Quarterfinals"), st("f", "Final")], p2, make).map((s) => s.id)).toEqual(["f"]);
   });
 });
+
+import { buildPlayoffChain } from "@/lib/smart-builder/playoff-chain";
+describe("play-off continues from an existing knockout stage", () => {
+  it("final after a two-game semifinal is played by the semifinal winners", () => {
+    const sf: any = { id: "v-po1", order: 1, kind: "mapped", name: "Semifinal", discipline: "singles",
+      mapping: { source: "stage_standings", sourceStageId: "v-main", pools: 2, poolSize: 4, units: [], matches: [{ a: "A1", b: "B2", round: 1, order: 1 }, { a: "B1", b: "A2", round: 1, order: 2 }] } };
+    const r = buildPlayoffChain(sf, "v", [{ name: "Final", plan: { mode: "scheduled", date: "2026-11-14", trigger: "auto", pairing: "later" } as any }]);
+    expect(r.reason).toBeNull();
+    expect(r.stages[0].id).toBe("v-po2");
+    expect(r.stages[0].mapping?.source).toBe("stage_winners");
+    expect(r.stages[0].mapping?.matches.length).toBe(1);
+  });
+});

@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { PlannedStage } from "@/lib/tournaments/contract";
 
 export type ReplacementChoice =
-  | { kind: "knockout"; qualifiers: number }
+  | { kind: "knockout"; qualifiers: number; bottomBracket?: boolean }
   | { kind: "pools"; pools: number };
 
 const KO_NAME: Record<number, string> = { 2: "Final", 4: "Semi-finals & final", 8: "Quarterfinals, semi-finals & final", 16: "Last 16 to final" };
@@ -18,9 +18,12 @@ export function buildReplacementStage(old: PlannedStage, choice: ReplacementChoi
   if (choice.kind === "knockout") {
     const q = choice.qualifiers;
     if (q < 2 || (q & (q - 1)) !== 0) throw new Error("Choose 2, 4, 8 or 16 qualifiers.");
-    if (q > entrants) throw new Error(`Only ${entrants} players are available.`);
-    return { ...base, kind: "knockout", name: `Play-offs · ${KO_NAME[q] ?? `Top ${q}`}`, drawSize: q, thirdPlace: false,
-      progression: { mode: "top_n", top: q, standings: "reset" } as PlannedStage["progression"] };
+    const bottom = !!choice.bottomBracket;
+    const need = bottom ? q * 2 : q;
+    if (need > entrants) throw new Error(bottom ? `A top and bottom bracket of ${q} needs ${need} players — only ${entrants} are available.` : `Only ${entrants} players are available.`);
+    return { ...base, kind: "knockout", name: `Play-offs · ${KO_NAME[q] ?? `Top ${q}`}${bottom ? " (top & bottom)" : ""}`, drawSize: q, thirdPlace: false,
+      ...(bottom ? { bottomBracket: true } : {}),
+      progression: { mode: "top_n", top: need, standings: "reset" } as PlannedStage["progression"] };
   }
   const pools = Math.max(1, Math.floor(choice.pools));
   if (entrants < pools * 2) throw new Error(`${entrants} players can't fill ${pools} pools.`);

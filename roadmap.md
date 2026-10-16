@@ -62,4 +62,4 @@
 - [x] Stage 2 (round robin) gets its own progression log below the Swiss log; Swiss log shows only its own rounds + locked Final standing column (verified on 'assasasa' 16 Oct)
 - [x] Swiss grid: Final standing card on the right after the last round (Projected until the last round completes, then Locked); Stage 2 round robin renders in the Uitsig pool-matrix format per pool, seeded from Swiss standings (16 Oct)
 
-- [ ] Swiss Positional Preview: show saved/decided games in rounds 2+ as real (players, results, scores), not projected
+- [x] Swiss Positional Preview: show saved/decided games in rounds 2+ as real (players, results, scores), not projected

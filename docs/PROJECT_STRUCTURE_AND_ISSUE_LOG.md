@@ -3243,3 +3243,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - SwissPositionGrid: added a "Final standing" card at the right end of the grid, after the last round — Projected (current positions) until the stage's own rounds are complete, then Locked (green) with "these positions seed the next stage".
 - ClubChampsView: follow-up stages of kind "pools" no longer render in the Swiss grid style; they render per pool in the Uitsig RoundRobinPilotView format (pool matrix with W/L/GF/GA/GD/Pts F-A/Rank, order of play, calendar), seeded from the final Swiss standings. Non-pools follow-up stages keep the Swiss-style log.
 - Tests: swiss-pilot-standings.test.tsx +1 (grid card Projected/Locked); 11/11 pass; verified in Riverside preview on "assasasa" (1 final-standing card, 2 pool matrices). Preview only, not published.
+
+### 16 Oct 2026 — Swiss Positional Preview showed rounds 2+ as "projected"
+- Cause: buildProposedSwissGrid copied only saved Round 1; later rounds always used template projections.
+- Fix: saved/decided games in any round are shown factually (players, W/L, score, time/court; block.saved=true); a fully saved round is marked created ("Real games · results as played"); partially saved rounds keep proposed slots only for undecided players. Tests: src/test/swiss-proposed-grid.test.ts.

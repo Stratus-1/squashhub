@@ -1,0 +1,4 @@
+/** Entry for the server bundle used by the auto-progress-tournaments function. Built by scripts/build-auto-progress.ts. */
+export { autoProgress, stageLifecycle } from "@/lib/tournaments/progression";
+export { atomically } from "@/lib/tournaments/structured-persist";
+export { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";

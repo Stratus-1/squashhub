@@ -156,7 +156,16 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
   doc.setFillColor(...NAVY);
   doc.rect(0, H - 12, W, 12, "F");
   doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  doc.text("Powered by SquashHub", W / 2, H - 4.8, { align: "center" });
+  // "Powered by" followed by the SquashHub logo, centred as one group.
+  const foot = fitBox(BRAND_LOGO_PX.w, BRAND_LOGO_PX.h, 34, 6);
+  const label = "Powered by";
+  const labelW = doc.getTextWidth(label);
+  const groupX = (W - (labelW + 2.5 + foot.w)) / 2;
+  doc.text(label, groupX, H - 4.8);
+  try {
+    doc.addImage(squashHubLogoDataUrl, "PNG", groupX + labelW + 2.5, H - 12 + (12 - foot.h) / 2, foot.w, foot.h);
+  } catch { /* A missing brand mark must not prevent printing. */ }
   return doc;
 }

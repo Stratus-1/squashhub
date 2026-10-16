@@ -6767,7 +6767,14 @@ var roundKey = (name) => {
   return n.includes("quarter") ? "qf" : n.includes("semi") ? "sf" : n === "final" || n.endsWith("final") ? "final" : n;
 };
 var fullSession = (s) => !!(s.schedule?.rule === "fixed" && s.schedule.date && s.schedule.timeFrom && s.schedule.timeTo && (s.schedule.courtIds ?? []).length);
-function resolvePlayoffSessions(spec) {
+function resolvePlayoffSessions(spec, setupStages = []) {
+  const unitOf = (label) => String(label).replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
+  const fromSetup = (s, label) => {
+    const rows = setupStages.filter((r2) => r2?.phase === "playoff" && r2.mode === "scheduled" && r2.date && r2.from && r2.to && (r2.courtIds ?? []).length && roundKey(r2.name) === roundKey(s.name));
+    const r = rows.find((x) => x.unit && unitOf(label) === String(x.unit).split(" › ").join("::")) ?? rows.find((x) => !x.unit);
+    return r ? { ...s, schedule: { ...s.schedule, rule: "fixed", date: r.date, timeFrom: r.from, timeTo: r.to, courtIds: r.courtIds.map(Number) } } : null;
+  };
+  spec = { ...spec, divisions: spec.divisions.map((d) => ({ ...d, stages: d.stages.map((s) => s.order > 0 && s.schedule?.rule === "fixed" && !fullSession(s) ? fromSetup(s, d.label) ?? s : s) })) };
   const byRound = new Map;
   for (const d of spec.divisions)
     for (const s of d.stages)
@@ -6796,11 +6803,11 @@ async function scheduleSessionPlayoffs(champId) {
   const adopted = await adoptProvisionalSlots(champId).catch(() => ({ adopted: 0, clashes: [] }));
   for (const c2 of adopted.clashes)
     report.unplaced.push({ stage: "Play-offs", reason: c2 });
-  const { data: t } = await fromExt("tournaments").select("builder_spec").eq("id", champId).maybeSingle();
+  const { data: t } = await fromExt("tournaments").select("builder_spec, beta_lifecycle").eq("id", champId).maybeSingle();
   const spec = t?.builder_spec;
   if (!spec?.divisions?.length)
     return report;
-  const sessionList = resolvePlayoffSessions(spec);
+  const sessionList = resolvePlayoffSessions(spec, t?.beta_lifecycle?.answers?.stages ?? []);
   if (!sessionList.length)
     return report;
   const divs = await loadSlotDivisions(champId, spec);

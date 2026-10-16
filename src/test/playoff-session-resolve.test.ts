@@ -33,3 +33,13 @@ describe("bottom half too", () => {
     expect(r.stages[2].mapping!.matches).toHaveLength(2);
   });
 });
+
+describe("setup rows fill missing times", () => {
+  it("Ladies B quarterfinal takes 10:00-14:00 on Courts 20,21,24 from its own setup row", () => {
+    const setup = [{ phase: "playoff", mode: "scheduled", name: "Quarterfinal", unit: "Ladies B", date: "2026-11-14", from: "10:00", to: "14:00", courtIds: [20, 21, 24] }];
+    const s2: any = { divisions: [{ divisionId: "l", label: "Ladies B · Singles", group: 2, stages: [{ id: "x-po1", order: 1, name: "Quarterfinal", schedule: { rule: "fixed", date: "2026-11-14" } }] }] };
+    const r = resolvePlayoffSessions(s2, setup);
+    expect(r[0].schedule.timeFrom).toBe("10:00");
+    expect(r[0].schedule.courtIds).toEqual([20, 21, 24]);
+  });
+});

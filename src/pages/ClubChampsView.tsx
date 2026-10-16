@@ -1283,7 +1283,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const koNames: Record<string, string> = {};
             for (let pn = 1; pn <= Math.max(1, pc); pn++) for (const r of getGroupStandings(gn, pc > 1 ? pn : null) as any[]) if (r.club_member_id) koNames[r.club_member_id] = r.name;
             ko.forEach((m: any) => { if (m.player_a_member_id && m.player_a?.name) koNames[m.player_a_member_id] ??= m.player_a.name; if (m.player_b_member_id && m.player_b?.name) koNames[m.player_b_member_id] ??= m.player_b.name; });
-            const order = [...new Set(ko.map((m: any) => m.stage_label ?? "Play-offs"))];
+            const rank = (l: string) => { const x = l.toLowerCase(); return x.includes("16") ? 0 : x.includes("quarter") ? 1 : x.includes("semi") ? 2 : x.includes("final") ? 3 : 4; };
+            const order = [...new Set(ko.map((m: any) => m.stage_label ?? "Play-offs"))].sort((a: any, b: any) => rank(a) - rank(b));
             return (
               <div className="mt-6 space-y-2" data-testid={`pool-playoffs-${gn}`}>
                 <div className="text-xs text-muted-foreground">Play-offs — from the final pool standings. Winners move on until the final.</div>

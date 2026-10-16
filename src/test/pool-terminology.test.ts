@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { poolLabel, poolLabelFor, poolNoun, poolSelectorLabel } from "@/lib/tournaments/divisions";
 
-describe("knockout uses sections, other formats use pools", () => {
-  it("labels knockout counts as sections", () => {
-    expect(poolLabelFor(1, "knockout")).toBe("1 section");
-    expect(poolLabelFor(2, "knockout")).toBe("2 sections");
-    expect(poolLabelFor(4, "knockout")).toBe("4 sections");
-    expect(poolLabelFor(8, "knockout")).toBe("8 sections");
+describe("every format uses pools", () => {
+  it("labels knockout counts as pools", () => {
+    expect(poolLabelFor(1, "knockout")).toBe("No pools");
+    expect(poolLabelFor(2, "knockout")).toBe("2 pools");
+    expect(poolLabelFor(4, "knockout")).toBe("4 pools");
+    expect(poolLabelFor(8, "knockout")).toBe("8 pools");
   });
 
   it("labels a single pool as No pools for non-knockout formats", () => {
@@ -21,8 +21,8 @@ describe("knockout uses sections, other formats use pools", () => {
       expect(poolSelectorLabel(fmt)).toBe("Pools");
       expect(poolNoun(fmt, false)).toBe("pool");
     }
-    expect(poolSelectorLabel("knockout")).toBe("Sections");
-    expect(poolNoun("knockout", false)).toBe("section");
+    expect(poolSelectorLabel("knockout")).toBe("Pools");
+    expect(poolNoun("knockout", false)).toBe("pool");
   });
 
   it("keeps the legacy poolLabel helper unchanged", () => {

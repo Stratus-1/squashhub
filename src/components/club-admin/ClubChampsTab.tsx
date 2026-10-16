@@ -1531,7 +1531,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     double_round_robin: { label: "Round robin (double)", short: "Double RR", desc: "Play each opponent twice — home & away." },
     swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
     cross_league: { label: "Cross league", short: "Cross league", desc: "This league plays against the other leagues instead of within itself." },
-    knockout: { label: "Knockout", short: "Knockout", desc: "Straight elimination. Split into sections; seeds spread evenly and section winners meet in the league final." },
+    knockout: { label: "Knockout", short: "Knockout", desc: "Straight elimination. Optionally split into pools; seeds spread evenly and pool winners meet in the league final." },
   };
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
     if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
@@ -9471,7 +9471,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   return (
                                     <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
                                       <SegRow
-                                        label={fmt === "knockout" ? "Knockout structure" : "Pools"}
+                                        label="Pools"
                                         value={String(pools)}
                                         color="violet"
                                         options={poolOptionsFor(fmt, pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
@@ -9482,7 +9482,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? poolNoun(fmt, false) : "draw"}. `
                                           : ""}
                                         {fmt === "knockout"
-                                          ? "Seeds are spread evenly across sections from the ladder; section winners meet in this division's final."
+                                          ? (pools > 1 ? "Seeds are spread evenly across pools from the ladder; pool winners meet in this division's final." : "No pools — one knockout draw for the whole division.")
                                           : fmt === "cross_league"
                                             ? "Each pool plays every other pool."
                                             : pools > 1

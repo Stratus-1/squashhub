@@ -462,19 +462,18 @@ export function poolLabel(n: number): string {
  * winners meet in the division final.
  */
 export function poolNoun(format: string | null | undefined, plural = true): string {
-  if (String(format || "") === "knockout") return plural ? "sections" : "section";
   return plural ? "pools" : "pool";
 }
 
 /** Organiser-facing label for a pool/section count, per format. */
 export function poolLabelFor(n: number, format: string | null | undefined): string {
-  if (n <= 1) return String(format || "") === "knockout" ? "1 section" : "No pools";
+  if (n <= 1) return "No pools";
   return `${n} ${poolNoun(format)}`;
 }
 
 /** Heading for the single pool/section selector, per format. */
 export function poolSelectorLabel(format: string | null | undefined): string {
-  return String(format || "") === "knockout" ? "Sections" : "Pools";
+  return "Pools";
 }
 
 /** Choices for the single pool selector, always including the current value. */

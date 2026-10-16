@@ -443,7 +443,6 @@ export function sectionsFromPools(
 export const POOL_FORMATS = new Set([
   "single_round_robin",
   "double_round_robin",
-  "swiss",
   "cross_league",
   "knockout",
 ]);

@@ -1,3 +1,5 @@
+import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
+import { originalStructureFromAnswers, answersFromOriginalStructure } from "@/lib/smart-builder/original-structure";
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Copy, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -41,7 +43,7 @@ function NameField({ value, label, disabled, onCommit }: { value: string; label:
   return <Input className={control} aria-label={label} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} onBlur={() => { onCommit(name); if (!name.trim() || name.includes("::")) setName(value); }} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />;
 }
 
-export function CardStructureEditor({ answers, onSave, onDirtyChange }: { answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void }) {
+export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: { clubId?: string; answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState(answers);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [help, setHelp] = useState(true);
@@ -118,6 +120,7 @@ export function CardStructureEditor({ answers, onSave, onDirtyChange }: { answer
       </div>}
     </article>;
   }
+  if (clubId) return <ClubChampsTab clubId={clubId} structureOnly={{ initial: originalStructureFromAnswers(answers), onDirtyChange, onSave: (raw) => { onSave(answersFromOriginalStructure(answers, raw)); onDirtyChange?.(false); } }} />;
   return <div className="space-y-3 text-xs" data-testid="card-structure-editor">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">Tournament structure</h3><Button size="sm" variant="outline" className="h-7 text-xs" aria-pressed={advice} onClick={() => setAdvice(!advice)}>Help me choose</Button></div>
     <details open className="border-y border-border py-3"><summary className="mb-2 cursor-pointer font-semibold">Default match rules</summary><RuleFields value={draft.scoring ?? defaults} label="Default" onChange={(p) => update((a) => ({ ...a, scoring: { ...(a.scoring ?? defaults), ...p } }))} />{!draft.scoring && <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={() => update((a) => ({ ...a, scoring: { ...defaults } }))}>Use PAR 11 · Best of 5 · Win by 2</Button>}</details>

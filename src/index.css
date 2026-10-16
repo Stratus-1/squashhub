@@ -665,3 +665,38 @@ body:has(.admin-contrast) [role="dialog"] {
 @media (prefers-reduced-motion: reduce) {
   .member-home *, .member-bottom-nav * { animation: none !important; transition: none !important; }
 }
+
+/* Original alternate structure page, scoped to the Riverside draft embed. */
+.original-structure-screen {
+  --structure-format: 263 77% 55%;
+  --structure-category: 218 82% 49%;
+  --structure-players: 158 80% 32%;
+  --structure-scoring: 39 96% 46%;
+  --structure-game: 347 82% 46%;
+  --structure-games: 330 78% 44%;
+  --structure-condition: 188 84% 34%;
+  --structure-choice-foreground: 0 0% 100%;
+}
+.original-structure-screen [data-structure-choice] { padding-bottom: 1rem; }
+.original-structure-screen [data-structure-choice="violet"] { --structure-choice: var(--structure-format); }
+.original-structure-screen [data-structure-choice="blue"] { --structure-choice: var(--structure-category); }
+.original-structure-screen [data-structure-choice="green"] { --structure-choice: var(--structure-players); }
+.original-structure-screen [data-structure-choice="amber"] { --structure-choice: var(--structure-scoring); }
+.original-structure-screen [data-structure-choice="red"] { --structure-choice: var(--structure-game); }
+.original-structure-screen [data-structure-choice="pink"] { --structure-choice: var(--structure-games); }
+.original-structure-screen [data-structure-choice="cyan"] { --structure-choice: var(--structure-condition); }
+.original-structure-screen [data-structure-choice] button {
+  border-radius: 2px;
+  min-height: 30px;
+  font-size: 11px;
+  border-color: hsl(var(--structure-choice) / .65);
+  color: hsl(var(--foreground));
+}
+.original-structure-screen [data-structure-choice] button[aria-pressed="true"] {
+  background: hsl(var(--structure-choice));
+  color: hsl(var(--structure-choice-foreground));
+}
+
+.original-structure-screen [data-structure-choice] button { min-width: 0; padding-inline: 6px; overflow-wrap: normal; word-break: normal; }
+.original-structure-screen [data-structure-choice] > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
+.original-structure-screen [data-structure-choice] > div button { width: 100%; }

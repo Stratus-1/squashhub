@@ -1,5 +1,7 @@
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
 import { monradNote, monradPlan } from "@/lib/smart-builder/monrad";
+import { FormatLearnButton, FormatLearnDialog } from "@/components/smart-builder/FormatLearnDialog";
+import type { LearnFormat } from "@/lib/smart-builder/format-learn";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 import "../smart-builder/tournament-admin.css";
 import { RankingScope } from "@/lib/rankings/provisional";
@@ -1521,6 +1523,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   };
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
+  const [learnFormat, setLearnFormat] = useState<LearnFormat | null>(null);
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
     monrad: { label: "Monrad", short: "Monrad", desc: "Positional draw: winners and losers continue to decide every finishing place." },
     single_round_robin: { label: "Round robin", short: "Round robin", desc: "Everyone in this league plays everyone else. Tick “double” to play home & away." },

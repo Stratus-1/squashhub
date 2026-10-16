@@ -2447,6 +2447,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   const scopeLeagueTree = useMemo(() => buildScopeLeagueTree(scopeLeagueRows as any[]), [scopeLeagueRows]);
 
+  /**
+   * Regional / federation tournaments draw from EVERY league in the region's
+   * associations (e.g. all NSA leagues 1–14), not only leagues the host club
+   * plays in. The scope-wide tree fetched for the invite step is reused here,
+   * so ticking "1st League" selects every club's 1st-league teams; invited
+   * clubs' players in those leagues then qualify for the category.
+   */
+  const structureSourceScopes = useMemo(() => {
+    if (!scopeIsWide) return leagueSourceScopes;
+    const names = new Set<string>();
+    (scopeLeagueRows as any[]).forEach((r) => {
+      if (r.association_name) names.add(r.association_name as string);
+    });
+    return Array.from(names).sort().map((name) => ({ id: name, name }));
+  }, [scopeIsWide, leagueSourceScopes, scopeLeagueRows]);
+  const structureLeagueTree = useMemo(() => {
+    if (!scopeIsWide) return scopedLeagueTree;
+    if (leagueSourceScope === "all" || leagueSourceScope === "internal") return scopeLeagueTree;
+    return scopeLeagueTree.filter((g) => g.assocName === leagueSourceScope);
+  }, [scopeIsWide, scopedLeagueTree, scopeLeagueTree, leagueSourceScope]);
+
   /** The tree the INVITE step shows: region-wide when the scope is wider than the club. */
   const audienceLeagueTree = scopeIsWide ? scopeLeagueTree : leagueTree;
 

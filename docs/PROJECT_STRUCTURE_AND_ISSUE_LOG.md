@@ -3203,3 +3203,9 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Typing expected players stores that same Swiss recommendation (about one round per doubling of the field, capped at players − 1) instead of the old round-robin count, so a 12-player draw no longer lands on 11 rounds.
 - Local Save Structure writes the shown number into the draft snapshot for Swiss categories and capacity planning reads the same value; other clubs' wizard still requires an explicit entry. No fixture, draw or booking data is generated.
 - Validation: 31 focused structure/Swiss tests pass; authenticated Riverside preview showed 5 rounds pre-filled with "(recommended: 5 for 12 players per draw)", a typed 7 kept its value, and Save Structure retained it. Preview only; nothing published.
+
+### 2026-10-16 — Seeding step removed from the Riverside card-structure flow
+- Seeding is chosen per category on the Tournament structure page, so the separate Seeding step (tournament-wide default plus per-category exception dropdowns) is no longer part of this pilot's flow; the remaining steps renumber and other clubs keep theirs.
+- The seeding answer still reaches the draw plan: the structure page's per-category choice is saved into the draft's seeding overrides and the draw reads those per category, with the old tournament default only as a fallback. Categories left on "Decide later" still surface at the Confirm final format checkpoint.
+- The summary's Seeding row now lists each category's choice and opens Tournament structure instead of the removed step.
+- Validation: 17 focused tests pass (new step-list check); authenticated Riverside preview shows Type → Basics → Entries → Tournament structure → Structure review → How players join … Summary with no Seeding step, and the category card's seeding control present. Preview only; nothing published.

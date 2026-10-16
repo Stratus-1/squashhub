@@ -11,10 +11,16 @@ describe("original alternate screen local adapter", () => {
     const raw = originalStructureFromAnswers(a);
     raw.league_planned_playoff_rounds = { "1": ["qf", "sf", "final"] };
     raw.league_follow_up_formats = { "1": "swiss" };
+    raw.league_seeding_plans = { "1": "ladder" };
+    raw.league_follow_up_seeding = { "1": "previous_stage" };
     const b = answersFromOriginalStructure(a, raw);
     const restored = originalStructureFromAnswers(JSON.parse(JSON.stringify(b)));
     expect(restored.league_planned_playoff_rounds).toEqual(raw.league_planned_playoff_rounds);
     expect(restored.league_follow_up_formats).toEqual(raw.league_follow_up_formats);
+    expect(restored.league_follow_up_seeding).toEqual({ "1": "previous_stage" });
+    expect(restored.league_seeding_plans).toEqual({ "1": "ladder" });
+    expect(b.seedingOverrides.Men).toBe("ladder");
+    expect(b.categories).toEqual(["Men"]);
     expect(b.stages).toEqual(a.stages);
     expect(b.days).toEqual(a.days);
     expect(rowStages(b, "Men")[1]).toEqual(a.stagePlans?.Men[1]);

@@ -6758,6 +6758,34 @@ async function schedulePlannedPlayoffGames(champId) {
     report.unplaced.push({ stage: "Play-offs", reason: i });
   return report;
 }
+var roundKey = (name) => {
+  const n = String(name).toLowerCase().replace(/[^a-z]/g, "");
+  return n.includes("quarter") ? "qf" : n.includes("semi") ? "sf" : n === "final" || n.endsWith("final") ? "final" : n;
+};
+var fullSession = (s) => !!(s.schedule?.rule === "fixed" && s.schedule.date && s.schedule.timeFrom && s.schedule.timeTo && (s.schedule.courtIds ?? []).length);
+function resolvePlayoffSessions(spec) {
+  const byRound = new Map;
+  for (const d of spec.divisions)
+    for (const s of d.stages)
+      if (s.order > 0 && fullSession(s) && !byRound.has(roundKey(s.name)))
+        byRound.set(roundKey(s.name), s);
+  const out = new Map;
+  for (const d of spec.divisions)
+    for (const s of d.stages) {
+      if (s.order <= 0 || s.schedule?.rule !== "fixed")
+        continue;
+      const src = fullSession(s) ? s : byRound.get(roundKey(s.name));
+      if (!src)
+        continue;
+      const sk = JSON.stringify([src.schedule.date, src.schedule.timeFrom, src.schedule.timeTo, src.schedule.courtIds]);
+      const e = out.get(sk) ?? { ...src, keys: [] };
+      const k = { group: Number(divisionGroup(spec, d)), stageId: s.id };
+      if (!e.keys.some((x) => x.group === k.group && x.stageId === k.stageId))
+        e.keys.push(k);
+      out.set(sk, e);
+    }
+  return [...out.values()];
+}
 async function scheduleSessionPlayoffs(champId) {
   await assertNotDiamondTournament(champId);
   const report = { booked: 0, unplaced: [] };
@@ -6768,21 +6796,17 @@ async function scheduleSessionPlayoffs(champId) {
   const spec = t?.builder_spec;
   if (!spec?.divisions?.length)
     return report;
-  const sessions = new Map;
-  for (const d of spec.divisions)
-    for (const s of d.stages)
-      if (s.order > 0 && s.schedule?.rule === "fixed" && s.schedule.date && s.schedule.timeFrom && s.schedule.timeTo && (s.schedule.courtIds ?? []).length && !sessions.has(s.id))
-        sessions.set(s.id, s);
-  if (!sessions.size)
+  const sessionList = resolvePlayoffSessions(spec);
+  if (!sessionList.length)
     return report;
   const divs = await loadSlotDivisions(champId, spec);
   const groupOf = (id) => {
     const d = spec.divisions.find((x) => x.divisionId === id);
     return d ? divisionGroup(spec, d) : 99;
   };
-  const { data: rows } = await fromExt("club_champs_matches").select("id, stage_key, group_number, court_id, booking_id, status, player_a_member_id, player_b_member_id, bracket_position").eq("champ_id", champId).in("stage_key", [...sessions.keys()]);
-  for (const s of sessions.values()) {
-    const open = (rows ?? []).filter((m) => m.stage_key === s.id && !m.court_id && !m.booking_id && m.player_a_member_id && m.player_b_member_id && !["completed", "forfeited", "walkover", "cancelled"].includes(m.status));
+  const { data: rows } = await fromExt("club_champs_matches").select("id, stage_key, group_number, court_id, booking_id, status, player_a_member_id, player_b_member_id, bracket_position").eq("champ_id", champId).in("stage_key", [...new Set(sessionList.flatMap((x) => x.keys.map((k) => k.stageId)))]);
+  for (const s of sessionList) {
+    const open = (rows ?? []).filter((m) => s.keys.some((k) => k.stageId === m.stage_key && Number(k.group) === Number(m.group_number)) && !m.court_id && !m.booking_id && m.player_a_member_id && m.player_b_member_id && !["completed", "forfeited", "walkover", "cancelled"].includes(m.status));
     if (!open.length)
       continue;
     const plan = playoffSlotOrder(divs, s.schedule.slotOrder);

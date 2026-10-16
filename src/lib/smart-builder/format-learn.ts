@@ -41,6 +41,7 @@ function game(a: string, b: string, upset = false): LearnGame {
 function rrStandings(players: string[], games: LearnGame[]): LearnStanding[] {
   const rows = new Map(players.map((p) => [p, { name: p, played: 0, won: 0, lost: 0, gf: 0, ga: 0, gd: 0, pf: 0, pa: 0, pd: 0, points: 0 }]));
   for (const g of games) {
+    if (!rows.has(g.a) || !rows.has(g.b)) continue; // per-league tables skip cross-league opponents
     const [ga, gb] = g.score.split("-").map(Number);
     const A = rows.get(g.a)!, B = rows.get(g.b)!;
     A.played++; B.played++;

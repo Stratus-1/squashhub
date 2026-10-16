@@ -102,6 +102,8 @@ import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgres
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
+import { OverallStandingsPanel } from "@/components/tournaments/OverallStandingsPanel";
+import { overallStandings } from "@/lib/tournaments/overall-standings";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { rrSeedOrder, buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
@@ -1292,6 +1294,14 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                   <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · Play-offs`} names={koNames} seedOf={() => null}
                     matches={ko.map((m: any) => ({ id: m.id, round: m.stage_label ? order.indexOf(m.stage_label) + 1 : (m.round_number ?? 1), slot: m.bracket_position ?? null, bracket: null, a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
                 </TournamentInteractiveViewer>
+                {(() => {
+                  // Overall order: play-offs, then pool finish (A1, B1, A2, B2 …).
+                  const per = Array.from({ length: Math.max(1, pc) }, (_, i) => (getGroupStandings(gn, pc > 1 ? i + 1 : null) as any[]).map((r: any) => r.club_member_id).filter(Boolean));
+                  const seedOrder: string[] = [];
+                  for (let k = 0; k < Math.max(0, ...per.map((x) => x.length)); k++) for (const p of per) if (p[k]) seedOrder.push(p[k]);
+                  const os = overallStandings(seedOrder, ko.filter((m: any) => m.stage_label !== "3rd place").map((m: any) => ({ bracket: 1, round: m.stage_label ? order.indexOf(m.stage_label) + 1 : (m.round_number ?? 1), a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null })));
+                  return <OverallStandingsPanel title={getGroupLabel(champ, gn)} rows={os.rows} complete={os.complete} names={koNames} clubId={champ.club_id} canManage={canManage} />;
+                })()}
               </div>
             );
           })()}
@@ -1411,6 +1421,10 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                 seedOf={(id) => { const i = model.rows.findIndex((r: any) => r.id === id); return i < 0 ? null : i + 1; }}
                 matches={laterMatches.map((m: any) => ({ id: m.id, round: koRound(m), ...koHalf(m), a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
             </TournamentInteractiveViewer>
+            {(() => {
+              const os = overallStandings(model.rows.map((r: any) => r.id), laterMatches.filter((m: any) => m.stage_label !== "3rd place").map((m: any) => ({ bracket: koHalf(m).bracket ?? 1, round: koRound(m), a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null })));
+              return <OverallStandingsPanel title={getGroupLabel(champ, gn)} rows={os.rows} complete={os.complete} names={names} clubId={champ.club_id} canManage={canManage} />;
+            })()}
           </div>
         ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
     }

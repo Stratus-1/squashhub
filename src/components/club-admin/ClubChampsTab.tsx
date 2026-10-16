@@ -9429,7 +9429,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         label={fmt === "knockout" ? "Knockout structure" : "Pools"}
                                         value={String(pools)}
                                         color="violet"
-                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
+                                        options={poolOptionsFor(fmt, pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
                                         onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
                                       />
                                       <p className="text-[11px] text-muted-foreground">

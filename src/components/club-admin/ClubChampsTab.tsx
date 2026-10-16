@@ -170,7 +170,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check, ChevronDown, Send, MessageCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check, ChevronDown, Send, MessageCircle, Info } from "lucide-react";
 
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -814,7 +814,7 @@ function SegRow({
 }: {
   label: string;
   value: string;
-  options: { v: string; l: string }[];
+  options: { v: string; l: string; hint?: string }[];
   onChange: (v: string) => void;
   color?: keyof typeof SEG_ROW_COLORS;
 }) {
@@ -836,7 +836,24 @@ function SegRow({
             aria-pressed={value === o.v}
             onClick={() => onChange(o.v)}
           >
-            {o.l}
+            <span className="inline-flex items-center justify-center gap-1">
+              {o.l}
+              {o.hint && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      tabIndex={0}
+                      aria-label={`What "${o.l}" means`}
+                      className="inline-flex h-3.5 w-3.5 shrink-0 cursor-help items-center justify-center rounded-full border border-current opacity-60 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    >
+                      <Info className="h-2 w-2" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-60 text-xs leading-relaxed">{o.hint}</TooltipContent>
+                </Tooltip>
+              )}
+            </span>
           </Button>
         ))}
       </div>
@@ -9705,8 +9722,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       value={leagueServingMethods[String(gn)] ?? "none"}
                                       color="cyan"
                                       options={[
-                                        { v: "none", l: "Not set" },
-                                        ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label })),
+                                        { v: "none", l: "Not set", hint: "No method saved for this group." },
+                                        ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label, hint: m.brief })),
                                       ]}
                                       onChange={(v) => setLeagueServingMethods((m) => {
                                         const next = { ...m };

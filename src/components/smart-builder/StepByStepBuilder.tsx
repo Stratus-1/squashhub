@@ -1093,7 +1093,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   }
   if (cardStructure) {
     const compact = mergeCardStructureSteps(steps, "Structure");
-    compact.splice(compact.indexOf("Structure") + 1, 0, "StructureReview");
+    // Structure review step removed: it only re-displayed the saved structure.
     // Seeding is chosen per category on the structure page, so the separate
     // Seeding step is no longer part of this pilot's flow.
     steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact).filter((k) => k !== "Entries"));

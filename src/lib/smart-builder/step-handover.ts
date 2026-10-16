@@ -269,7 +269,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   }
   if (i.categoryTypes?.length) {
     const current = (await loadLifecycle(tid)) ?? ({ stage: "invite", completed: ["planning"] } as BetaLifecycle);
-    await saveLifecycle(tid, { ...current, category_types: Object.fromEntries(i.categoryTypes.map((type, index) => [String(index + 1), type])) });
+    await saveLifecycle(tid, { ...current, category_types: Object.fromEntries(Array.from({ length: Math.max(i.categoryTypes.length, i.divisions?.length ?? 0, ...i.entrants.map((e) => e.division ?? 1)) }, (_, index) => { const t = String(i.categoryTypes?.[index] ?? "open").toLowerCase(); return [String(index + 1), t === "men" ? "mens" : ["mens", "ladies", "mixed", "open"].includes(t) ? t : "open"]; })) });
   }
   if (i.entrants.length) {
     const nDiv = Math.max(1, i.divisions?.length ?? 1);

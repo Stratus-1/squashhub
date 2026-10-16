@@ -3218,3 +3218,10 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Fix: ClubAdmin.tsx messaging tab now renders <SmsMessagingCard clubId={club.id} /> without hideToggle — the card's existing "Send SMS for this club" switch (wired to clubs.sms_enabled via its own save mutation) is visible; the tab alert text now says SMS can be turned off on its own. WhatsApp billing card keeps hideToggle (sender choice only; master switch governs WhatsApp).
 - Guard: src/test/sms-toggle-visibility.test.ts asserts the SMS card is used without hideToggle and its switch is wired to sms_enabled.
 - Verified: signed-in Uitsig messaging screen shows master On + SMS switch present and Off (live settings not toggled); focused test 2/2, tsgo clean, build OK. Preview only, not published.
+
+## 2026-10-16 — Messaging section: WhatsApp and/or SMS channel selection
+- Direction (Willem): the messaging section itself must let the club select WhatsApp and/or SMS; the single master switch that set both channels at once is removed.
+- MessagingCard.tsx rewritten: two switches (aria-labels "WhatsApp messages" / "SMS messages") wired to clubs.whatsapp_enabled / clubs.sms_enabled; enabling WhatsApp still records whatsapp_opted_in_at/by. Badge On when either channel is on.
+- ClubAdmin.tsx messaging tab: alert text updated; WhatsAppBillingCard and SmsMessagingCard both render with hideToggle (details only: sender, cost, usage).
+- Guard: src/test/messaging-channel-selection.test.ts (3 tests) asserts both switches exist, the combined-set mutation is gone, and both detail cards keep hideToggle.
+- Live: sms_enabled=true set for Uitsig on explicit request (read-back verified, WhatsApp unchanged); signed-in preview shows both switches On; build OK. Not published.

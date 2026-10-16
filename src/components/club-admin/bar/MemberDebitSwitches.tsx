@@ -46,7 +46,7 @@ export function MemberDebitSwitches({ clubId }: { clubId: string }) {
           active monthly debit order, plus the member's Credit allowed (same rule as court bookings). Members then see a warning and can pay by card or top up.
         </p>
         {creditDefault !== undefined && (
-          <p className="text-[11px] leading-tight mt-1 text-foreground">
+          <p className="text-[11px] leading-tight mt-1 text-emerald-700 dark:text-emerald-300">
             Club default Credit allowed for {clubName ?? "your"} members: <strong>R{amount.toFixed(0)}</strong>{" "}
             <span className="text-muted-foreground">(set under member billing settings; a member's own amount takes priority).</span>
           </p>

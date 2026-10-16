@@ -265,7 +265,9 @@ export function planBellsWaves(o: { rounds: TimedRound[]; days: TimedDay[]; minu
   const slotWord = o.standard ? "court slot" : "bell slot";
   const step = Math.max(1, Number(o.minutes) || 0) + Math.max(0, o.bufferMinutes ?? 0);
   const days = [...o.days].filter((d) => d.courtIds.length && toMin(d.to) > toMin(d.from)).sort((a, b) => a.date.localeCompare(b.date) || toMin(a.from) - toMin(b.from));
-  const queue = [...o.rounds].sort((a, b) => a.round - b.round).flatMap((r) => r.games.map((id) => ({ id, round: r.round })));
+  const dayDates = new Set(o.days.map((d) => d.date));
+  // A round with its own date (from Stages & scheduling) is only played on that date's session.
+  const queue = [...o.rounds].sort((a, b) => a.round - b.round).flatMap((r) => r.games.map((id) => ({ id, round: r.round, date: r.date && dayDates.has(r.date) ? r.date : null })));
   const required = queue.length;
   const busy = o.busy ?? [];
   let available = 0;
@@ -277,6 +279,7 @@ export function planBellsWaves(o: { rounds: TimedRound[]; days: TimedDay[]; minu
       const inWave = new Set<string>();
       let ci = 0;
       for (let i = 0; i < queue.length && ci < courts.length; ) {
+        if (queue[i].date && queue[i].date !== d.date) { i++; continue; }
         const ps = o.players?.[queue[i].id] ?? [];
         if (ps.some((p) => inWave.has(p))) { i++; continue; }
         ps.forEach((p) => inWave.add(p));

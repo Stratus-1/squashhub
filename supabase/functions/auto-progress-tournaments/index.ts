@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL")!;
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const sb = createClient(url, key, { auth: { persistSession: false } });
-  const { data: sec } = await sb.from("app_settings").select("value").eq("key", "auto_progress_internal_secret").maybeSingle();
+  const { data: sec } = await sb.from("app_settings").select("value").eq("key", "auto_progress_private_secret").maybeSingle();
   const given = req.headers.get("x-internal-secret") ?? "";
   if (!sec?.value || given !== String(sec.value)) return json({ error: "Not allowed" }, 401);
   (globalThis as any).__shServerClient = sb;

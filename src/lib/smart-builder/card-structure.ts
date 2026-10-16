@@ -25,6 +25,7 @@ export function cardStructureIssues(a: StepAnswers): string[] {
   for (const key of structureUnits(a)) {
     checkScoring(a.scoringOverrides[key] ?? a.scoringOverrides[key.split("::")[0]] ?? a.scoring, key);
     const n = Number(a.unitEntries[key]) || 0;
+    if (!Number.isInteger(n) || n < 1) errors.push(`${key}: enter the expected number of entries.`);
     const plan = rowStages(a, key);
     errors.push(...validateStagePlan(plan, { entrants: n }).filter((e) => e.level === "error").map((e) => `${key}: ${e.message}`));
     const s = plan[0];

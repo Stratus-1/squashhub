@@ -65,3 +65,6 @@
 - [x] Swiss Positional Preview: show saved/decided games in rounds 2+ as real (players, results, scores), not projected
 - [ ] Editing a later stage after the draw must save (assasasa Stage 2 Pools->Knockout change was lost)
 - [x] "Regenerate Stage 2" button: remove unplayed later-stage games and rebuild from current structure + final standings
+- [x] Play-offs seeded from final Swiss standings with tie-breaks (server auto-start fixed); bracket boxes no longer overlap; seed labels follow the draw (16 Oct)
+- [x] Weekend tournaments: play-offs start automatically after the last round and are booked into the weekend's remaining days/courts/times, each knockout round after the previous (16 Oct)
+- [ ] Weekly tournaments: organiser sets fixed times for quarterfinals/semis/final (later, per user)

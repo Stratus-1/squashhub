@@ -6163,6 +6163,148 @@ function allocateSlots(count, w) {
 var INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 var unitKeyOf = (label) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
 
+// src/lib/tournaments/scheduling-prefs.ts
+function normaliseSchedulingPrefs(raw) {
+  const rest = ["none", "avoid", "one", "two"].includes(raw?.rest) ? raw.rest : "none";
+  const courts = ["any", "rotate", "category"].includes(raw?.courts) ? raw.courts : "any";
+  const categoryCourts = Array.isArray(raw?.categoryCourts) ? raw.categoryCourts.filter((r) => r && typeof r.key === "string").map((r) => {
+    const out = { key: r.key, rule: r.rule === "only" ? "only" : "preferred", courtIds: (r.courtIds ?? []).map(Number).filter(Number.isFinite) };
+    if (Array.isArray(r.weekdays))
+      out.weekdays = [...new Set(r.weekdays.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))];
+    return out;
+  }) : [];
+  return raw?.courtsPreBooked === true ? { rest, courts, categoryCourts, courtsPreBooked: true } : { rest, courts, categoryCourts };
+}
+function isTournamentReservation(b, tournamentName, preBooked = false) {
+  if (String(b.external_id ?? "").startsWith("sbs:"))
+    return true;
+  if (preBooked)
+    return true;
+  const norm = (x) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const text = [b.external_booker_name, b.ops_note, b.guest_name].map(norm).join(" | ");
+  if (!text.replace(/[ |]/g, ""))
+    return false;
+  const name = norm(tournamentName);
+  if (name.length >= 4 && text.includes(name))
+    return true;
+  return /\bclub champ|\bchampionships?\b|\btournament\b/.test(text);
+}
+
+// src/lib/tournaments/formal-stage-schedule.ts
+var toMin2 = (t) => {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+var toHHMM2 = (n) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+function bellsSlotMinutes(scoring) {
+  if (scoring?.mode !== "time_capped_points")
+    return null;
+  const play = Number(scoring.timeCapPlay);
+  if (Number.isFinite(play) && play > 0)
+    return play + Math.max(0, Number(scoring.timeCapBreak) || 0);
+  const cap = Number(scoring.timeCapMinutes);
+  return Number.isFinite(cap) && cap > 0 ? cap : null;
+}
+function planDays(formatPlan) {
+  const out = [];
+  for (const d of formatPlan?.days ?? []) {
+    const courtIds = (d?.courtIds ?? []).map(Number).filter(Number.isFinite);
+    for (const w of d?.windows ?? [])
+      if (d?.date && w?.from && w?.to)
+        out.push({ date: String(d.date).slice(0, 10), from: String(w.from).slice(0, 5), to: String(w.to).slice(0, 5), courtIds });
+  }
+  return out;
+}
+async function loadTimedContext(champId) {
+  const [{ data: t }, { data: entries }, { data: liveRounds }] = await Promise.all([
+    fromExt("tournaments").select("name, builder_spec, beta_lifecycle, group_labels, match_duration_minutes, rules:tournament_rules(scoring_mode)").eq("id", champId).maybeSingle(),
+    fromExt("club_champs_entries").select("club_member_id, partner_member_id, group_number").eq("champ_id", champId),
+    fromExt("club_champs_rounds").select("round_number, play_by, round_type").eq("champ_id", champId)
+  ]);
+  if (!t)
+    return null;
+  const roundDeadlines = {};
+  for (const r of liveRounds ?? []) {
+    if (!r.play_by || r.round_type === "knockout")
+      continue;
+    const n = Number(r.round_number) || 1, d = String(r.play_by).slice(0, 10);
+    if (!roundDeadlines[n] || d < roundDeadlines[n])
+      roundDeadlines[n] = d;
+  }
+  const spec = t.builder_spec;
+  const plan = t.beta_lifecycle?.format_plan;
+  const fixed = (spec?.divisions ?? []).flatMap((d) => d.stages ?? []).filter((s) => s?.schedule?.rule === "fixed" && s.kind !== "knockout");
+  let days = planDays(plan);
+  const scheduledRounds = [];
+  if (!days.length) {
+    const stages = (t.beta_lifecycle?.answers?.stages ?? []).filter((s) => (s.phase ?? "main") === "main");
+    for (let i = 0;i < stages.length; i++) {
+      const s = stages[i];
+      if (s.mode !== "scheduled")
+        continue;
+      scheduledRounds.push(i + 1);
+      const courtIds = (s.courtIds ?? []).map(Number).filter(Number.isFinite);
+      for (const d of [s, ...s.extraDays ?? []])
+        if (d?.date && d?.from && d?.to)
+          days.push({ date: String(d.date).slice(0, 10), from: String(d.from).slice(0, 5), to: String(d.to).slice(0, 5), courtIds });
+    }
+  }
+  const rulesMode = [].concat(t.rules ?? [])[0]?.scoring_mode;
+  const fmt = resolveTimedFormat({ plan, labels: t.group_labels ?? {}, rulesMode, matchMinutes: Number(t.match_duration_minutes) || null });
+  const { bells, minutes } = fmt;
+  const entryGroup = new Map;
+  for (const e of entries ?? []) {
+    entryGroup.set(e.club_member_id, Number(e.group_number));
+    if (e.partner_member_id)
+      entryGroup.set(e.partner_member_id, Number(e.group_number));
+  }
+  const dates = Array.from(new Set(days.map((d) => d.date)));
+  const courts = Array.from(new Set(days.flatMap((d) => d.courtIds)));
+  let busyOther = [];
+  if (dates.length && courts.length) {
+    const [{ data: dayGames }, { data: bk }] = await Promise.all([
+      fromExt("club_champs_matches").select("id, champ_id, court_id, scheduled_date, scheduled_time").in("scheduled_date", dates).in("court_id", courts),
+      fromExt("bookings").select("court_id, date, start_time, end_time, external_id, external_booker_name, ops_note, guest_name").in("date", dates).eq("status", "active").in("court_id", courts)
+    ]);
+    const prefsNow = normaliseSchedulingPrefs(t.beta_lifecycle?.scheduling_prefs);
+    const inPlannedWindow = (b) => days.some((d) => d.date === String(b.date).slice(0, 10) && d.courtIds.includes(Number(b.court_id)) && String(b.start_time).slice(0, 5) < d.to && String(b.end_time).slice(0, 5) > d.from);
+    busyOther = [
+      ...(dayGames ?? []).filter((m) => m.champ_id !== champId && m.scheduled_time).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM2(toMin2(m.scheduled_time) + minutes) })),
+      ...(bk ?? []).filter((b) => !(isTournamentReservation(b, t.name, prefsNow.courtsPreBooked) && inPlannedWindow(b))).map((b) => ({ date: String(b.date).slice(0, 10), courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) }))
+    ];
+  }
+  return {
+    days,
+    minutes,
+    bells,
+    waves: !!plan?.waves,
+    fixedStages: fixed.length > 0,
+    scheduledRounds,
+    roundDates: (fixed[0]?.schedule?.roundDates ?? []).map((x) => String(x).slice(0, 10)),
+    prefs: normaliseSchedulingPrefs(t.beta_lifecycle?.scheduling_prefs),
+    labels: t.group_labels ?? {},
+    entryGroup,
+    busyOther,
+    roundDeadlines
+  };
+}
+function resolveTimedFormat(o) {
+  const plan = o.plan ?? {};
+  const hasPlanScoring = !!plan.scoring || Object.keys(plan.scoringOverrides ?? {}).length > 0;
+  const keys = Object.values(o.labels ?? {}).filter(Boolean);
+  const resolve = (k) => (plan.scoringOverrides ?? {})[k] ?? (plan.scoringOverrides ?? {})[k.split("::")[0]] ?? plan.scoring ?? null;
+  const scorings = hasPlanScoring ? keys.length ? keys.map(resolve) : [plan.scoring] : [o.rulesMode === "time_capped_points" ? { mode: "time_capped_points" } : null];
+  const bellSlots = scorings.map((x) => bellsSlotMinutes(x));
+  const bellsFlags = scorings.map((x) => x?.mode === "time_capped_points");
+  const bells = bellsFlags.length > 0 && bellsFlags.every(Boolean);
+  const mixed = bellsFlags.some(Boolean) && !bells;
+  const sch = plan.scheduling ?? {};
+  const stdEst = Math.max(0, Number(sch.singles) || 0, Number(sch.doubles) || 0) || Number(o.matchMinutes) || 30;
+  const bellMax = Math.max(0, ...bellSlots.map((x) => Number(x) || 0));
+  const minutes = bells ? bellMax || Number(o.matchMinutes) || 30 : mixed ? Math.max(stdEst, bellMax) : stdEst;
+  return { bells, mixed, minutes };
+}
+
 // src/lib/smart-builder/playoff-placeholders.ts
 var PH = "#ph";
 var isPlaceholderKey = (k) => String(k ?? "").endsWith(PH);
@@ -6281,6 +6423,100 @@ async function adoptProvisionalSlots(champId) {
   return { adopted: plan.length + fromRows, clashes };
 }
 
+// src/lib/tournaments/weekend-playoffs.ts
+var toMin3 = (t) => {
+  const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+var toHHMM3 = (n) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+function planPlayoffsAfter(o) {
+  const slots = [];
+  const unplaced = [];
+  const busy = [...o.busy];
+  const days = [...o.days].sort((a, b) => a.date.localeCompare(b.date) || a.from.localeCompare(b.from));
+  let cursor = o.after ? { date: o.after.date, min: toMin3(o.after.time) } : null;
+  const rounds = [...new Set(o.games.map((g) => g.round))].sort((a, b) => a - b);
+  for (const r of rounds) {
+    const todo = o.games.filter((g) => g.round === r).sort((a, b) => a.order - b.order);
+    let roundEnd = null;
+    for (const g of todo) {
+      let placed = null;
+      for (const d of days) {
+        if (cursor && d.date < cursor.date)
+          continue;
+        let start = toMin3(d.from);
+        if (cursor && d.date === cursor.date)
+          start = Math.max(start, cursor.min);
+        for (let t = start;t + o.minutes <= toMin3(d.to) && !placed; t += 5) {
+          for (const c2 of d.courtIds) {
+            const clash = busy.some((b) => b.date === d.date && Number(b.courtId) === c2 && toMin3(b.start) < t + o.minutes && toMin3(b.end) > t);
+            if (!clash) {
+              placed = { id: g.id, date: d.date, time: toHHMM3(t), courtId: c2 };
+              break;
+            }
+          }
+        }
+        if (placed)
+          break;
+      }
+      if (!placed) {
+        unplaced.push(g.id);
+        continue;
+      }
+      slots.push(placed);
+      busy.push({ date: placed.date, courtId: placed.courtId, start: placed.time, end: toHHMM3(toMin3(placed.time) + o.minutes) });
+      const end = { date: placed.date, min: toMin3(placed.time) + o.minutes };
+      if (!roundEnd || end.date > roundEnd.date || end.date === roundEnd.date && end.min > roundEnd.min)
+        roundEnd = end;
+    }
+    if (roundEnd)
+      cursor = roundEnd;
+  }
+  return { slots, unplaced };
+}
+var DONE5 = ["completed", "forfeited", "walkover", "cancelled", "in_progress", "live", "confirmed"];
+async function scheduleWeekendPlayoffs(champId) {
+  const out = { booked: 0, unplaced: 0, issues: [] };
+  const ctx = await loadTimedContext(champId);
+  if (!ctx || !ctx.days.length)
+    return out;
+  const { data } = await fromExt("club_champs_matches").select("id, stage, stage_key, round_number, bracket_position, pool_number, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, player_a_member_id, player_b_member_id").eq("champ_id", champId);
+  const rows = data ?? [];
+  const isKo = (m) => m.stage === "ko";
+  const open = rows.filter((m) => isKo(m) && !m.booking_id && !m.winner_member_id && m.player_a_member_id && m.player_b_member_id && !DONE5.includes(String(m.status ?? "").toLowerCase()));
+  if (!open.length)
+    return out;
+  const openIds = new Set(open.map((m) => m.id));
+  const timed = rows.filter((m) => !openIds.has(m.id) && m.scheduled_date && m.scheduled_time);
+  const minRound = Math.min(...open.map((m) => Number(m.round_number) || 1));
+  const before2 = timed.filter((m) => !isKo(m) || (Number(m.round_number) || 1) < minRound);
+  let after = null;
+  for (const m of before2) {
+    const d = String(m.scheduled_date).slice(0, 10), end = toMin3(m.scheduled_time) + ctx.minutes;
+    if (!after || d > after.date || d === after.date && end > toMin3(after.time))
+      after = { date: d, time: toHHMM3(end) };
+  }
+  const busy = [...ctx.busyOther, ...timed.filter((m) => m.court_id).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM3(toMin3(m.scheduled_time) + ctx.minutes) }))];
+  const plan = planPlayoffsAfter({
+    days: ctx.days,
+    minutes: ctx.minutes,
+    after,
+    busy,
+    games: open.map((m) => ({ id: m.id, round: Number(m.round_number) || 1, order: (Number(m.pool_number) || 1) * 1000 + (Number(m.bracket_position) || 0) }))
+  });
+  for (const s of plan.slots) {
+    const { error } = await rpcExt("self_schedule_champ_match", { p_match_id: s.id, p_court_id: s.courtId, p_date: s.date, p_time: `${s.time}:00`, p_duration_minutes: ctx.minutes });
+    if (error)
+      out.issues.push(error.message);
+    else
+      out.booked++;
+  }
+  out.unplaced = plan.unplaced.length;
+  if (plan.unplaced.length)
+    out.issues.push(`${plan.unplaced.length} play-off game(s) don't fit in the tournament's remaining playing times after ${after ? `${after.date} ${after.time}` : "the previous stage"}.`);
+  return out;
+}
+
 // src/lib/smart-builder/playoff-schedule.ts
 function isOwnStageReservation(b, w) {
   const hm = (t) => String(t).slice(0, 5);
@@ -6309,6 +6545,14 @@ async function loadSlotDivisions(champId, spec) {
   });
 }
 async function schedulePlannedPlayoffGames(champId) {
+  const report = await scheduleSessionPlayoffs(champId);
+  const w = await scheduleWeekendPlayoffs(champId).catch((e) => ({ booked: 0, unplaced: 0, issues: [e.message] }));
+  report.booked += w.booked;
+  for (const i of w.issues)
+    report.unplaced.push({ stage: "Play-offs", reason: i });
+  return report;
+}
+async function scheduleSessionPlayoffs(champId) {
   await assertNotDiamondTournament(champId);
   const report = { booked: 0, unplaced: [] };
   const adopted = await adoptProvisionalSlots(champId).catch(() => ({ adopted: 0, clashes: [] }));

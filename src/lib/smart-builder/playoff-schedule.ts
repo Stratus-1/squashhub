@@ -14,6 +14,7 @@ import type { PlannedStage } from "@/lib/tournaments/contract";
 import { playoffSlotOrder, sortGamesForSlots, type SlotDivision } from "./playoff-slot-order";
 import { allocateSlots, type Busy } from "./playoff-chain";
 import { adoptProvisionalSlots } from "@/lib/tournaments/assumed-schedule";
+import { scheduleWeekendPlayoffs } from "@/lib/tournaments/weekend-playoffs";
 
 /** A stage-session court reservation made by "Book courts now" (sbs:…) covering this stage's own window. */
 export function isOwnStageReservation(b: { external_id?: string | null; start_time: string; end_time: string; court_id: number }, w: { from: string; to: string; courtIds: number[] }): boolean {
@@ -56,6 +57,15 @@ export async function playoffSlotPlan(champId: string, spec: TournamentSpec) {
 }
 
 export async function schedulePlannedPlayoffGames(champId: string): Promise<ScheduleReport> {
+  const report = await scheduleSessionPlayoffs(champId);
+  // Weekend tournaments: any play-off game still without a court goes straight after the previous stage.
+  const w = await scheduleWeekendPlayoffs(champId).catch((e) => ({ booked: 0, unplaced: 0, issues: [(e as Error).message] }));
+  report.booked += w.booked;
+  for (const i of w.issues) report.unplaced.push({ stage: "Play-offs", reason: i });
+  return report;
+}
+
+async function scheduleSessionPlayoffs(champId: string): Promise<ScheduleReport> {
   await assertNotDiamondTournament(champId);
   const report: ScheduleReport = { booked: 0, unplaced: [] };
   // New play-off fixtures first take over the slots reserved for them by "Assign courts & times".

@@ -13,6 +13,8 @@ self.addEventListener("push", (event) => {
     icon: payload.icon || "/pwa-192x192.png",
     badge: payload.badge || "/pwa-192x192.png",
     tag: payload.tag || "squashhub-notification",
+    // Order collection alerts request vibration; unrelated alerts retain their defaults.
+    ...(payload.data?.order_id ? { vibrate: [200, 100, 200], renotify: true } : {}),
     data: {
       ...(payload.data || {}),
       url: payload.url || payload.data?.url || "/notifications",

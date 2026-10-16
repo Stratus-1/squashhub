@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getNotificationNavigation } from "@/lib/notification-navigation";
+import { showCollectionAlert } from "@/lib/bar/collection-alert";
 
 type NotificationRow = {
   id: string;
@@ -33,6 +34,7 @@ function playNotificationSound() {
     gain.connect(ctx.destination);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.25);
+    osc.onended = () => { void ctx.close().catch(() => {}); };
   } catch {
     // AudioContext not available — ignore
   }
@@ -69,13 +71,17 @@ export function NotificationListener() {
           const targetUrl = buildTargetUrl(row);
 
           // In-app toast with action button
-          toast(row.title || "Notification", {
-            description: row.message,
-            action: {
-              label: "View",
-              onClick: () => navigate(targetUrl),
-            },
-          });
+          if (row.type === "bar_order_ready") {
+            showCollectionAlert(row, () => navigate(targetUrl));
+          } else {
+            toast(row.title || "Notification", {
+              description: row.message,
+              action: {
+                label: "View",
+                onClick: () => navigate(targetUrl),
+              },
+            });
+          }
 
           queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
           queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user.id] });

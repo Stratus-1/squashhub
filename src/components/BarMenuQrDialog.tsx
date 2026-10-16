@@ -90,6 +90,8 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
         const logo = logoUrl ? await loadImageAsDataUrlWithSize(logoUrl) : null;
         const canvas = qrRef.current;
         if (!canvas || cancelled) return;
+        const brandLogo = await loadSquashHubBrandLogo();
+        if (cancelled) return;
         const doc = buildBarPoster({
         clubName: posterName,
         url,
@@ -97,6 +99,7 @@ export function BarMenuQrDialog({ open, onOpenChange, clubId, clubName, subdomai
         logoDataUrl: logo?.dataUrl ?? null,
         logoWidth: logo?.width,
         logoHeight: logo?.height,
+        brandLogoDataUrl: brandLogo,
         accountEnabled, cardOnlineEnabled, swipeEnabled, cashEnabled, venue,
       });
         if (!cancelled) setPoster(doc.output("blob"));

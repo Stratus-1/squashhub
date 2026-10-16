@@ -172,10 +172,14 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
   const foot = fitBox(BRAND_LOGO_PX.w, BRAND_LOGO_PX.h, 34, 6);
   const label = "Powered by";
   const labelW = doc.getTextWidth(label);
-  const groupX = (W - (labelW + 2.5 + foot.w)) / 2;
+  const gap = brandDataUrl ? 2.5 : 0;
+  const logoW = brandDataUrl ? foot.w : 0;
+  const groupX = (W - (labelW + gap + logoW)) / 2;
   doc.text(label, groupX, H - 4.8);
-  try {
-    doc.addImage(squashHubLogoDataUrl, "PNG", groupX + labelW + 2.5, H - 12 + (12 - foot.h) / 2, foot.w, foot.h);
-  } catch { /* A missing brand mark must not prevent printing. */ }
+  if (brandDataUrl) {
+    try {
+      doc.addImage(brandDataUrl, "PNG", groupX + labelW + gap, H - 12 + (12 - foot.h) / 2, foot.w, foot.h);
+    } catch { /* A missing brand mark must not prevent printing. */ }
+  }
   return doc;
 }

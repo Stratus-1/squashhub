@@ -1,5 +1,6 @@
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
 import { CategorySeedingSelect } from "./CategorySeedingSelect";
+import { CategorySeedingButtons, PoolPlacementButtons } from "./CategorySeedingButtons";
 import { monradNote, monradPlan } from "@/lib/smart-builder/monrad";
 import { FormatLearnButton, FormatLearnDialog } from "@/components/smart-builder/FormatLearnDialog";
 import type { LearnFormat } from "@/lib/smart-builder/format-learn";
@@ -1300,7 +1301,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const poolOptsFor = (gi: number) => ({
     manual: manualSeedGroups.has(gi),
     knockout: isKnockoutDivision(gi + 1),
-    mode: poolAllocation,
+    mode: placementForLeague(gi + 1),
     sizes: poolSizeOverrides[String(gi + 1)],
   });
 
@@ -1486,6 +1487,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leaguePlannedPlayoffRounds, setLeaguePlannedPlayoffRounds] = useState<Record<string, string[]>>({});
   const [leagueFollowUpFormats, setLeagueFollowUpFormats] = useState<Record<string, string>>({});
   const [leagueSeedingPlans, setLeagueSeedingPlans] = useState<Record<string, string>>({});
+  // Per-category pool placement (snake vs strength band); blank inherits the tournament-wide poolAllocation.
+  const [leaguePoolPlacement, setLeaguePoolPlacement] = useState<Record<string, PoolAllocationMode>>({});
+  const placementForLeague = (gn: number): PoolAllocationMode => leaguePoolPlacement[String(gn)] ?? poolAllocation;
   const [leagueFollowUpSeeding, setLeagueFollowUpSeeding] = useState<Record<string, string>>({});
   const [monradRounds, setMonradRounds] = useState<Record<string, number>>({});
   // Post-pool playoff style per division (round-robin pools):
@@ -4731,9 +4735,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // Seeded serpentine split (A: 1,4,5,8… / B: 2,3,6,7…) so generated pools
     // match what the organiser sees on the allocation step. A hand-arranged
     // division keeps its contiguous blocks.
-    const splitIntoPools = (ids: string[], pools: number, manual = false, knockout = false): string[][] => {
+    const splitIntoPools = (ids: string[], pools: number, manual = false, knockout = false, mode: PoolAllocationMode = poolAllocation): string[][] => {
       if (pools <= 1) return [ids];
-      return distributeIntoPools(ids, pools, { manual, knockout, mode: poolAllocation }).filter((g) => g.length > 0);
+      return distributeIntoPools(ids, pools, { manual, knockout, mode }).filter((g) => g.length > 0);
     };
     const ingestRounds = (gi: number, ids: string[]) => {
       // Rotating-partner doubles: no fixed pairs. Each round re-pairs every
@@ -4786,7 +4790,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         return;
       }
       // Round robin inside each pool of the league (1 pool = classic RR).
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi), false, placementForLeague(gi + 1));
       pools.forEach((poolIds, pi) => {
         if (poolIds.length < 2) return;
         const { rounds, byesPerRound } = generateRoundRobinRounds(poolIds, rrFmtForLeague(gi));
@@ -4848,7 +4852,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // Cross-pool inside one league: split the league into N pools, then every
     // pool plays every other pool.
     const ingestCrossPools = (gi: number, ids: string[]) => {
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi), false, placementForLeague(gi + 1));
       if (pools.length < 2) return;
       ingestCrossGroups(pools, pools.map(() => gi + 1), formatForLeague(gi + 1) === "double_round_robin");
     };
@@ -4859,7 +4863,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const buildSwissLeague = (gi: number, ids: string[]) => {
       const pools = poolsForLeague(gi + 1);
       const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
-      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi), mode: poolAllocation });
+      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi), mode: placementForLeague(gi + 1) });
       for (let p = 0; p < pools; p++) {
         const poolIds = poolGroups[p] || [];
         if (poolIds.length < 2) continue;
@@ -4906,7 +4910,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const sectionIds = distributeIntoPools(uniqueIds, sections, {
         manual: manualSeedGroups.has(gi),
         knockout: true,
-        mode: poolAllocation,
+        mode: placementForLeague(gn),
       }).filter((s) => s.length > 0);
       const assignments = sectionIds.map((sIds, si) => ({
         section: si + 1,
@@ -9028,6 +9032,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlannedPlayoffRounds(v.league_planned_playoff_rounds ?? {});
     setLeagueFollowUpFormats(v.league_follow_up_formats ?? {});
     setLeagueSeedingPlans(v.league_seeding_plans ?? {});
+    setLeaguePoolPlacement(v.league_pool_placement ?? {});
     setLeagueFollowUpSeeding(v.league_follow_up_seeding ?? {});
     setMonradRounds(v.monrad_rounds ?? {});
     setLeagueByeHandling(v.league_bye_handling ?? {});
@@ -9102,6 +9107,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_planned_playoff_rounds: leaguePlannedPlayoffRounds,
       league_follow_up_formats: leagueFollowUpFormats,
       league_seeding_plans: leagueSeedingPlans,
+      league_pool_placement: leaguePoolPlacement,
       league_follow_up_seeding: leagueFollowUpSeeding,
       league_bye_handling: leagueByeHandling,
       league_forfeit_rules: leagueForfeitRules,
@@ -9122,7 +9128,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
   };
 
-  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10422,7 +10428,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               {structureOnly && <div className="pt-2 space-y-3">
                                 {!followsDivision(divisionFollows, gn) && <div className="space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Category seeding · Stage 1</div>
-                                  <CategorySeedingSelect label={`Category ${gn} seeding`} value={leagueSeedingPlans[key] ?? "later"} onChange={(value) => setLeagueSeedingPlans((m) => ({ ...m, [key]: value }))} />
+                                  <CategorySeedingButtons label={`Category ${gn} seeding`} value={leagueSeedingPlans[key] ?? "later"} onChange={(value) => setLeagueSeedingPlans((m) => ({ ...m, [key]: value }))} />
+                                </div>}
+                                {!followsDivision(divisionFollows, gn) && (poolsForDivision(gn) > 1 || fmt === "knockout" || fmt === "cross_league") && <div className="space-y-1.5">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Placement option</div>
+                                  <PoolPlacementButtons label={`Category ${gn} placement`} value={placementForLeague(gn)} onChange={(value) => setLeaguePoolPlacement((m) => ({ ...m, [key]: value }))} />
                                 </div>}
                                 <div className="grid gap-3">
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
@@ -10480,7 +10490,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   </div>
                                   {!!leagueFollowUpFormats[key] && <div className="space-y-1.5 pt-1">
                                     <div className="text-[11px] font-medium">{groupLabels[key] || `Category ${gn}`} · Stage 2 · {({ round_robin: "Round robin", swiss: "Swiss pairing", knockout: "Knockout", monrad: "Monrad" } as Record<string, string>)[leagueFollowUpFormats[key]]}</div>
-                                    <CategorySeedingSelect label={`Category ${gn} follow-up seeding`} previousStage value={leagueFollowUpSeeding[key] ?? "later"} onChange={(value) => setLeagueFollowUpSeeding((m) => ({ ...m, [key]: value }))} />
+                                    <CategorySeedingButtons label={`Category ${gn} follow-up seeding`} previousStage value={leagueFollowUpSeeding[key] ?? "later"} onChange={(value) => setLeagueFollowUpSeeding((m) => ({ ...m, [key]: value }))} />
                                   </div>}
                                 </div>
                                 </div>
@@ -13945,7 +13955,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               const sectionIds = distributeIntoPools(ids, sections, {
                 manual: manualSeedGroups.has(gi),
                 knockout: true,
-                mode: poolAllocation,
+                mode: placementForLeague(gn),
               }).filter((s) => s.length > 0);
               const suggested = suggestDrawBoard({
                 groupNumber: gn,

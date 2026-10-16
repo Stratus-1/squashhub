@@ -9506,7 +9506,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     </div>
                                   );
                                  })()}
-                               {fmt === "monrad" && <p className="text-xs text-muted-foreground">{monradNote(Number(expectedPlayers[key]) || 0) ?? "Enter expected players for draw size and byes."}</p>}
+                               {fmt === "monrad" && (() => {
+                                 const n = Number(expectedPlayers[key]) || 0;
+                                 const plan = monradPlan(n);
+                                 return (
+                                   <div className="rounded-md border bg-muted/30 p-2">
+                                     <p className="text-[11px] text-muted-foreground">
+                                       {plan
+                                         ? `${n} expected player${n === 1 ? "" : "s"} → ${plan.rounds} round${plan.rounds === 1 ? "" : "s"} · ${plan.byes ? `${plan.bracket}-draw with ${plan.byes} bye${plan.byes === 1 ? "" : "s"} (top seeds)` : `full ${plan.bracket}-draw`} · ≈${plan.matches} matches. Every player plays every round and all finishing places are decided.`
+                                         : "Enter expected players to estimate the rounds, draw size and byes."}
+                                     </p>
+                                   </div>
+                                 );
+                               })()}
                                {fmt === "swiss" && (() => {
                                  const entrants =
                                    (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;

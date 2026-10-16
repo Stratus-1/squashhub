@@ -102,6 +102,7 @@ import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgres
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
+import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
@@ -1369,9 +1370,11 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         ) : laterIsKO ? (
           <div className="mt-6 space-y-2" data-testid={`stage2-progression-${gn}`}>
             <div className="text-xs text-muted-foreground">Knockout — seeded from the final Swiss standings (1 v 8, 4 v 5, 2 v 7, 3 v 6). Winners move on until the final.</div>
-            <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} names={names}
-              seedOf={(id) => { const i = model.rows.findIndex((r: any) => r.id === id); return i < 0 ? null : i + 1; }}
-              matches={laterMatches.map((m: any) => ({ id: m.id, round: m.round_number ?? 1, slot: m.bracket_position ?? null, bracket: m.pool_number ?? null, a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
+            <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · ${laterLabel} — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
+              <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} names={names}
+                seedOf={(id) => { const i = model.rows.findIndex((r: any) => r.id === id); return i < 0 ? null : i + 1; }}
+                matches={laterMatches.map((m: any) => ({ id: m.id, round: m.round_number ?? 1, slot: m.bracket_position ?? null, bracket: m.pool_number ?? null, a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
+            </TournamentInteractiveViewer>
           </div>
         ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
     }

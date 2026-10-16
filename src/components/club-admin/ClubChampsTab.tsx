@@ -1723,6 +1723,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Follow-up stage = the SAME category again (same players/rules) with a new
   // format, running after this one. Reuses divisionFollows/divisionSeedSource
   // (the single ordering authority) and moves planned playoffs to the last stage.
+  const hasFollowerStage = (gn: number) =>
+    Array.from({ length: numGroups || 0 }, (_, i) => i + 1).some((n) => n !== gn && followsDivision(divisionFollows, n) === gn);
   const addFollowUpStageAt = (gn: number, format: string) => {
     const fromKey = String(gn);
     const existing = Array.from({ length: numGroups || 0 }, (_, i) => i + 1)
@@ -10371,7 +10373,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 <div className="grid gap-3">
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Planned playoffs</div>
-                                  <div className="flex flex-wrap gap-3">
+                                  {hasFollowerStage(gn) && <p className="text-[11px] text-muted-foreground">A later stage follows — plan playoffs on the last stage.</p>}
+                                  <div className={cn("flex flex-wrap gap-3", hasFollowerStage(gn) && "pointer-events-none opacity-40")} aria-disabled={hasFollowerStage(gn)}>
                                     {[
                                       { v: "qf", l: "Quarterfinal" },
                                       { v: "sf", l: "Semifinal" },

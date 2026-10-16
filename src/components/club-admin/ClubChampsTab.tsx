@@ -1590,6 +1590,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
     const gn = (numGroups || 0) + 1;
     if (structureOnly) setRevealStage((m) => ({ ...m, [String(gn)]: 1 }));
+    setCollapsedLeagues((m) => ({ ...m, [String(gn)]: false }));
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
     // New leagues inherit the current category as their starting point.
@@ -9894,6 +9895,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       const n = Number(v) || 0;
                                       setGroupDurations((m) => ({ ...m, [key]: n }));
                                       if (gn === 1 && (!matchDuration || matchDuration <= 0)) setMatchDuration(n);
+                                      // Last row of a step-by-step card: fold it into its summary line.
+                                      if (revealStage[key] !== undefined && revealStage[key] < 99) {
+                                        setRevealStage((m) => ({ ...m, [key]: 99 }));
+                                        setCollapsedLeagues((m) => ({ ...m, [key]: true }));
+                                      }
                                     }}
                                   />
                                 </div>

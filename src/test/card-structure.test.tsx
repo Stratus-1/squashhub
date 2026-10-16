@@ -19,6 +19,7 @@ describe("replacement card structure", () => {
     }
     expect(cardStructurePilot(r, "localhost", "created")).toBe(true);
     expect(cardStructurePilot("uitsig", "localhost")).toBe(false);
+    expect(cardStructurePilot("d8397b8a-60d3-4c4b-afee-25dab218bf19", "localhost", "created", true)).toBe(true);
   });
   it("merges seven steps but preserves scheduling, dates, courts, seeding and payments", () => {
     expect(mergeCardStructureSteps(["Type", "Basics", "What", "Match", "Categories", "Guide", "Subcategories", "Overrides", "Format", "Seeding", "Fees", "Schedule", "Dates", "Courts", "Summary"], "Structure")).toEqual(["Type", "Basics", "Structure", "Seeding", "Fees", "Schedule", "Dates", "Courts", "Summary"]);

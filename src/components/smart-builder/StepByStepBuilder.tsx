@@ -592,7 +592,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const stagePlannerFlag = retiredStructurePilotFlag(clubId, savedStagePlannerFlag);
   const structureStep = retiredStructurePilotFlag(clubId, savedStructureStep);
   const rowStructure = rowStructurePilot(clubId, structureStep, window.location.hostname, tournamentId ?? a.createdTournamentId);
-  const cardStructure = cardStructurePilot(clubId, window.location.hostname, tournamentId ?? a.createdTournamentId);
+  const { data: cardStructureFlag = false } = useClubBetaFeature(clubId, "tournament_card_structure");
+  const cardStructure = cardStructurePilot(clubId, window.location.hostname, tournamentId ?? a.createdTournamentId, cardStructureFlag);
   const [rowStructureDirty, setRowStructureDirty] = useState(false);
   const stagePlanner = stagePlannerFlag || structureStep;
   const [structEditing, setStructEditing] = useState<string | null>(null);

@@ -34,6 +34,12 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
     queryKey: ["structured-stages", champId, matches.length],
     queryFn: () => supabaseDb.select("tournament_stages", { tournament_id: champId }),
   });
+  // Entry order = the seed order the engine breaks final ties with, so this table matches the play-off draw.
+  const { data: entryRows = [] } = useQuery({
+    queryKey: ["structured-entry-order", champId],
+    queryFn: () => supabaseDb.select("club_champs_entries", { champ_id: champId }),
+  });
+  const entryOrder = [...(entryRows as any[])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)).map((r) => r.club_member_id as string);
   const refresh = () => qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(champId) });
   const run = async (key: string, fn: () => Promise<unknown>, ok: string) => {
     setBusy(key);
@@ -100,10 +106,12 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
             {gate.state === "finished" && (() => {
               // Final Swiss ranking: same table the next stage is seeded from (wins, then Buchholz, then seed).
               // Player list comes from the games themselves (the panel's spec carries no entrants).
-              const seedOrder = [...new Set(mineRows.flatMap((r) => [r.a, r.b]).filter(Boolean))] as string[];
+              const inGames = new Set(mineRows.flatMap((r) => [r.a, r.b]).filter(Boolean) as string[]);
+              const seedOrder = [...new Set([...entryOrder.filter((id) => inGames.has(id)), ...inGames])];
               const table = swissTable(
                 seedOrder,
                 mineRows.map((r) => ({ a: r.a, b: r.b, winner: r.winner, round: r.round })),
+                (s as any).tieBreaks ?? null,
               );
               return (
                 <table className="mt-1 w-full text-xs" data-testid="swiss-final-standings">

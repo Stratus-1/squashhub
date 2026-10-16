@@ -1580,9 +1580,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     cross_league: { label: "Cross league", short: "Cross league", desc: "This league plays against the other leagues instead of within itself." },
     knockout: { label: "Knockout", short: "Knockout", desc: "Straight elimination. Optionally split into pools; seeds spread evenly and pool winners meet in the league final." },
   };
+  // Progressive reveal for brand-new category cards: rows open one by one as
+  // the organiser clicks. Saved/duplicated cards (no entry) show everything.
+  const [revealStage, setRevealStage] = useState<Record<string, number>>({});
+  const stageOf = (key: string) => revealStage[key] ?? 99;
+  const advanceReveal = (key: string, n: number) =>
+    setRevealStage((m) => (m[key] === undefined || m[key] > n ? m : { ...m, [key]: n + 1 }));
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
     if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
     const gn = (numGroups || 0) + 1;
+    if (structureOnly) setRevealStage((m) => ({ ...m, [String(gn)]: 1 }));
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
     // New leagues inherit the current category as their starting point.
@@ -1711,6 +1718,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
     const from = String(gn);
     const to = String((numGroups || 0) + 1);
+    setRevealStage((m) => { const n = { ...m }; delete n[to]; return n; });
     const copy = <T,>(setter: (fn: (m: Record<string, T>) => Record<string, T>) => void) =>
       setter((m) => (m[from] === undefined ? m : { ...m, [to]: m[from] }));
     setNumGroups((n) => (n || 0) + 1);
@@ -9759,7 +9767,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   Double round robin (play each opponent twice — home &amp; away)
                                 </label>
                               )}
-                              <SegRow
+                              {stageOf(key) >= 1 && <div className="animate-in fade-in slide-in-from-top-1 duration-300"><SegRow
                                 label="Category"
                                 value={genderForLeague(gn)}
                                 color="blue"
@@ -9769,9 +9777,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   { v: "mixed", l: "Mixed" },
                                   { v: "open", l: "Open" },
                                 ]}
-                                onChange={(v) => setLeagueGender(gn, v as GenderCategory)}
-                              />
-                              <SegRow
+                                onChange={(v) => { setLeagueGender(gn, v as GenderCategory); advanceReveal(key, 1); }}
+                              /></div>}
+                              {stageOf(key) >= 2 && <div className="animate-in fade-in slide-in-from-top-1 duration-300"><SegRow
                                 label="Players"
                                 value={matchTypeForLeague(gn)}
                                 color="green"
@@ -9779,9 +9787,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   { v: "singles", l: "👤 Singles" },
                                   { v: "doubles", l: "👥 Doubles" },
                                 ]}
-                                onChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
-                              />
-                              <SegRow
+                                onChange={(v) => { setLeagueMatchType(gn, v as "singles" | "doubles"); advanceReveal(key, 2); }}
+                              /></div>}
+                              {stageOf(key) >= 3 && <div className="animate-in fade-in slide-in-from-top-1 duration-300"><SegRow
                                 label="Scoring"
                                 value={scoringForLeague(gn)}
                                 color="amber"
@@ -9789,9 +9797,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   { v: "standard", l: "Standard" },
                                   { v: "time_capped_points", l: "🔔 Bells" },
                                 ]}
-                                onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
-                              />
-                              {scoringForLeague(gn) === "standard" ? (
+                                onChange={(v) => { setLeagueScoring(gn, v as "standard" | "time_capped_points"); advanceReveal(key, 3); }}
+                              /></div>}
+                              {stageOf(key) < 4 ? null : scoringForLeague(gn) === "standard" ? (
                                 <div className="space-y-2">
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <SegRow
@@ -9926,7 +9934,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   </div>
                                 </div>
                               )}
-                              {scoringForLeague(gn) === "time_capped_points" && (
+                              {stageOf(key) >= 4 && scoringForLeague(gn) === "time_capped_points" && (
                                 <SegRow
                                   label="Bye handling"
                                   value={byeForLeague(gn)}

@@ -4735,9 +4735,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // Seeded serpentine split (A: 1,4,5,8… / B: 2,3,6,7…) so generated pools
     // match what the organiser sees on the allocation step. A hand-arranged
     // division keeps its contiguous blocks.
-    const splitIntoPools = (ids: string[], pools: number, manual = false, knockout = false): string[][] => {
+    const splitIntoPools = (ids: string[], pools: number, manual = false, knockout = false, mode: PoolAllocationMode = poolAllocation): string[][] => {
       if (pools <= 1) return [ids];
-      return distributeIntoPools(ids, pools, { manual, knockout, mode: poolAllocation }).filter((g) => g.length > 0);
+      return distributeIntoPools(ids, pools, { manual, knockout, mode }).filter((g) => g.length > 0);
     };
     const ingestRounds = (gi: number, ids: string[]) => {
       // Rotating-partner doubles: no fixed pairs. Each round re-pairs every
@@ -4790,7 +4790,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         return;
       }
       // Round robin inside each pool of the league (1 pool = classic RR).
-      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
+      const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi), false, placementForLeague(gi + 1));
       pools.forEach((poolIds, pi) => {
         if (poolIds.length < 2) return;
         const { rounds, byesPerRound } = generateRoundRobinRounds(poolIds, rrFmtForLeague(gi));
@@ -4863,7 +4863,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const buildSwissLeague = (gi: number, ids: string[]) => {
       const pools = poolsForLeague(gi + 1);
       const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
-      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi), mode: poolAllocation });
+      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi), mode: placementForLeague(gi + 1) });
       for (let p = 0; p < pools; p++) {
         const poolIds = poolGroups[p] || [];
         if (poolIds.length < 2) continue;
@@ -4910,7 +4910,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const sectionIds = distributeIntoPools(uniqueIds, sections, {
         manual: manualSeedGroups.has(gi),
         knockout: true,
-        mode: poolAllocation,
+        mode: placementForLeague(gn),
       }).filter((s) => s.length > 0);
       const assignments = sectionIds.map((sIds, si) => ({
         section: si + 1,

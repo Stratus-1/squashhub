@@ -95,6 +95,13 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
     else return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} pools can't be mapped automatically — use crossover or seeded.`, notes };
   }
   else if (pools === 2 && pairing === "crossover") games = crossoverPairs(g);
+  else if (pools === 2 && pairing === "seeded") {
+    // Two pools, seeded: rank pool winners first (A1, B1), then runners-up (A2, B2) …, highest v lowest.
+    const per = q?.perPool ?? g;
+    const order: Array<[number, number]> = [];
+    for (let pos = 1; pos <= per; pos++) for (let p = 0; p < 2; p++) order.push([p, pos]);
+    games = seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]]);
+  }
   else if (pools === 2 && pairing === "same_position") games = Array.from({ length: g }, (_, i) => [[0, i + 1], [1, i + 1]] as [[number, number], [number, number]]);
   else if (pools === 1 && (pairing === "seeded" || pairing === "crossover" || pairing === "same_position")) {
     if (pairing !== "seeded") notes.push(`${first.name}: one group only — seeded 1 v ${2 * g} pairing is used.`);

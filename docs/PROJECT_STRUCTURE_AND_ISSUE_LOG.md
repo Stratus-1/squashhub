@@ -3227,3 +3227,9 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Live: sms_enabled=true set for Uitsig on explicit request (read-back verified, WhatsApp unchanged); signed-in preview shows both switches On; build OK. Not published.
 
 - 2026-10-16: Follow-up "Stage 2" categories are attached to their first stage as an all-continue, owner-approved stage (attachFollowUpStages in step-draw.ts) instead of a separate waiting division; Stage progress offers Start after the last Swiss round.
+
+
+## 2026-10-16 — Swiss final standing column + separate Stage 2 progression log
+- Problem: on a two-stage tournament (Swiss → round robin), Stage 2 games restart at round 1 and mixed into the Swiss progression grid, looking like 'rounds 4–6 of Swiss'; no visible final Swiss ranking.
+- Fix: `buildSwissProgression` now exposes `configuredRounds`, `swissStageComplete` and per-row `swissFinalPosition` (Swiss-stage rounds only). `SwissProgressionPilotView` and `SwissCurrentPositionsTable` show a 'Final standing' column that locks (green) once the configured Swiss rounds are all complete. `ClubChampsView.swissStageFor` prefers the stage's own `swissRounds` over the format-plan timeline length. Matches are split by `tournament_stages.kind` via `stage_id`: the Swiss log shows only Swiss-stage games; later-stage games render as a second progression log below (`stage2-progression-<group>`), labelled 'Round robin' via new `stageNoun`/`formatNote` props.
+- Tests: swiss-pilot-standings.test.tsx (final standing dashes → locked positions; follow-up stage doesn't block). Verified in Riverside preview on 'assasasa'. Preview only, not published.

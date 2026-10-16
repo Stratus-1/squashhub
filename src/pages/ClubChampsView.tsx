@@ -101,6 +101,7 @@ import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view"
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
+import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
 import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
@@ -1343,6 +1344,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const laterLabel = laterMatches[0]?.stage_id ? stageLabelById.get(laterMatches[0].stage_id) ?? "Stage 2" : "Stage 2";
       // Round-robin follow-up stages render in the Uitsig pool-matrix format, not the Swiss grid.
       const laterIsRR = laterMatches.length > 0 && (laterMatches[0]?.stage_id ? stageKindById.get(laterMatches[0].stage_id) : null) === "pools";
+      const laterIsKO = laterMatches.length > 0 && (laterMatches[0]?.stage_id ? stageKindById.get(laterMatches[0].stage_id) : null) === "knockout";
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
@@ -1363,6 +1365,13 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               });
               return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}${laterPools.length > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar />;
             })}
+          </div>
+        ) : laterIsKO ? (
+          <div className="mt-6 space-y-2" data-testid={`stage2-progression-${gn}`}>
+            <div className="text-xs text-muted-foreground">Knockout — seeded from the final Swiss standings (1 v 8, 4 v 5, 2 v 7, 3 v 6). Winners move on until the final.</div>
+            <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} names={names}
+              seedOf={(id) => { const i = model.rows.findIndex((r: any) => r.id === id); return i < 0 ? null : i + 1; }}
+              matches={laterMatches.map((m: any) => ({ id: m.id, round: m.round_number ?? 1, slot: m.bracket_position ?? null, bracket: m.pool_number ?? null, a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
           </div>
         ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
     }

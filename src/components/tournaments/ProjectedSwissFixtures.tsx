@@ -1,5 +1,5 @@
 import { useProjectedChampFixtures } from "@/hooks/use-projected-champ-fixtures";
-import { getGroupLabel } from "@/lib/club-champs-groups";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 
 /** Read-only next-round Swiss pairings (same as Court Bookings) for one tournament. */
 function ChampProjected({ champ }: { champ: any }) {

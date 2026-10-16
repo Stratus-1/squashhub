@@ -36,6 +36,7 @@ import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialo
 import { eliminatedMemberIds } from "@/lib/tournaments/survivors";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
+import { ProjectedSwissFixtures } from "@/components/tournaments/ProjectedSwissFixtures";
 import { playoffHeadingText } from "@/lib/smart-builder/playoff-placeholders";
 import { structuredMatchups, matchupForMatchGroup, matchupHeading, type StructuredMatchup } from "@/lib/tournaments/structured-matchups";
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
@@ -2403,6 +2404,7 @@ export default function Tournaments() {
                   ) : (
                     renderMatchList(filteredUpcoming)
                   )}
+                  {!showMine && <ProjectedSwissFixtures champs={champs.filter((c: any) => champFilter === "all" || c.id === champFilter)} />}
 
 
                 </CardContent>

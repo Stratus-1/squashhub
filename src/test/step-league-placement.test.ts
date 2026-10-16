@@ -44,3 +44,13 @@ describe("placeByLeague", () => {
     expect(place("Male")).toBe("");
     expect(place(null)).toBe("");
   });
+
+describe("ladies without a league", () => {
+  it("drop into the only Ladies category open to anyone", async () => {
+    const { placeByLeague } = await import("@/lib/smart-builder/league-placement");
+    const units = [{ key: "M", base: "Mens A", categoryType: "mens" as const }, { key: "L", base: "Ladies B", categoryType: "ladies" as const }];
+    const eligOf = (k: string) => (k === "M" ? { mode: "leagues", leagueIds: ["m2"] } : { mode: "manual", leagueIds: [], alsoEveryone: true });
+    expect(placeByLeague({ memberId: "x", units, eligOf, leaguesByMember: new Map(), genderByMember: new Map([["x", "female"]]) })).toBe("L");
+    expect(placeByLeague({ memberId: "y", units, eligOf, leaguesByMember: new Map(), genderByMember: new Map([["y", "male"]]) })).toBe("");
+  });
+});

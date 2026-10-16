@@ -234,7 +234,19 @@ function LegacySetupDialog({ champId, spec, status, exec, nameOf, onClose, onDon
   const plan = (d.deferredStages ?? []).find((x) => x.stageKey === status.stageKey)?.plan ?? null;
   const [top, setTop] = useState(0);
   // Pre-fill from the builder's plan: same_position = A1 v B1, crossover (default for two pools) = A1 v B2.
-  const [text, setText] = useState(swissSrc ? "" : pools >= 2 ? (plan?.pairing === "same_position" ? "R1: A1 v B1\nR1: A2 v B2" : "R1: A1 v B2\nR1: B1 v A2") : "R1: A1 v A4\nR1: A2 v A3");
+  // Games in this round follow the play-off depth: Quarterfinal (+SF+Final) = 4, Semifinal = 2, Final = 1.
+  const later = d.deferredStages ?? [];
+  const idx = Math.max(0, later.findIndex((x) => x.stageKey === status.stageKey));
+  const games = 2 ** Math.max(0, later.length - idx - 1);
+  const twoPoolText = (() => {
+    const per = Math.min(games, poolSize || games);
+    if (plan?.pairing === "same_position") return Array.from({ length: per }, (_, i) => `R1: A${i + 1} v B${i + 1}`).join("\n");
+    // Crossover: winner v other pool's last qualifier, kept in opposite halves (QF: A1vB4, B2vA3, B1vA4, A2vB3).
+    const top = Array.from({ length: per / 2 || 1 }, (_, i) => i % 2 === 0 ? `R1: A${i + 1} v B${per - i}` : `R1: B${i + 1} v A${per - i}`);
+    const bottom = Array.from({ length: per / 2 || 1 }, (_, i) => i % 2 === 0 ? `R1: B${i + 1} v A${per - i}` : `R1: A${i + 1} v B${per - i}`);
+    return (per === 1 ? ["R1: A1 v B1"] : [...top, ...bottom]).join("\n");
+  })();
+  const [text, setText] = useState(swissSrc ? "" : pools >= 2 ? twoPoolText : "R1: A1 v A4\nR1: A2 v A3");
   // Final Swiss standings in the canonical order (match wins → Buchholz → Sonneborn-Berger → seed), read-only.
   const { data: swissOrder } = useQuery({
     queryKey: ["setup-swiss-order", champId, status.divisionKey, src.id],

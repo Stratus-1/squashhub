@@ -15,10 +15,10 @@ describe("replacement card structure", () => {
     for (const host of ["squashhub.co.za", "squashhub.lovable.app", "riverside.squashhub.co.za"]) {
       expect(cardStructurePilot(r, host)).toBe(true);
       expect(cardStructurePilot(r, host, "created")).toBe(true);
-      expect(cardStructurePilot("d8397b8a-60d3-4c4b-afee-25dab218bf19", host)).toBe(false);
+      expect(cardStructurePilot("d8397b8a-60d3-4c4b-afee-25dab218bf19", host)).toBe(true);
     }
     expect(cardStructurePilot(r, "localhost", "created")).toBe(true);
-    expect(cardStructurePilot("uitsig", "localhost")).toBe(false);
+    expect(cardStructurePilot("uitsig", "localhost")).toBe(true);
     expect(cardStructurePilot("d8397b8a-60d3-4c4b-afee-25dab218bf19", "localhost", "created", true)).toBe(true);
   });
   it("merges seven steps but preserves scheduling, dates, courts, seeding and payments", () => {

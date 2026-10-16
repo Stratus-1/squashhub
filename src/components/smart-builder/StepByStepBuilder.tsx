@@ -667,7 +667,19 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const feeSummary = fee.has === null ? "Not chosen" : !fee.has ? "No entry fee" : fee.varies ? "Varies by category" : `R${fee.amount || "?"}`;
   const discOk = units.every((u) => u.disc !== null);
   const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
-  const eligOf = (k: string): Elig => a.elig[k] ?? ((rowStructure || cardStructure) && k.includes("::") ? a.elig[k.split("::")[0]] : undefined) ?? DEFAULT_ELIG;
+  /** A follow-up stage ("X · Stage 2") has the same players as its first stage, so it inherits that stage's entry rules. */
+  const stageParentKey = (k: string): string | null => {
+    const [cat, ...rest] = k.split("::");
+    const m = cat.match(/^(.*?)\s*·\s*Stage\s*\d+$/i);
+    if (!m || !cats.includes(m[1].trim())) return null;
+    return [m[1].trim(), ...rest].join("::");
+  };
+  const defaultElig: Elig = a.source === "both" ? { mode: "manual", leagueIds: [], placement: "choose", alsoEveryone: true } : DEFAULT_ELIG;
+  const eligOf = (k: string): Elig => {
+    const parent = stageParentKey(k);
+    if (parent && units.some((u) => u.key === parent)) return eligOf(parent);
+    return a.elig[k] ?? ((rowStructure || cardStructure) && k.includes("::") ? a.elig[k.split("::")[0]] : undefined) ?? defaultElig;
+  };
   const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
   const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
   // Eligibility = gender category +, when the event is scoped to leagues, actual
@@ -1600,7 +1612,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 </div>
               )}
               <div className="space-y-3">
-                {units.map((u) => {
+                {units.filter((u) => { const p = stageParentKey(u.key); return !(p && units.some((x) => x.key === p)); }).map((u) => {
                   const e = eligOf(u.key);
                   return (
                     <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
@@ -1629,7 +1641,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             const on = e.leagueIds.includes(l.id);
                             return <button key={l.id} type="button" aria-pressed={on} onClick={() => setElig(u.key, { leagueIds: on ? e.leagueIds.filter((x) => x !== l.id) : [...e.leagueIds, l.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{l.name}</button>;
                           })}</div>)}
-                      {e.mode !== "manual" && selfEntry && (
+                      {e.mode === "everyone" && selfEntry && (
                         <div className="space-y-1">
                           <div className="text-xs text-muted-foreground">Players who may enter:</div>
                           <div className="flex flex-wrap gap-2">

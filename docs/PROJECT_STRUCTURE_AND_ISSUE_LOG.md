@@ -3183,3 +3183,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ### 2026-10-16 — Planned match time 40-minute option
 - Added 40 min to the structure card Planned match time choices (20/30/40/45/60) so a match can be planned between the 30- and 45-minute slots; the value still feeds the capacity calculator unchanged.
 - Verification: authenticated Riverside structure screen shows all five options and selecting 40 min keeps it pressed; presentation only, no saved settings, fixtures, bookings or live records changed and no publication.
+
+### 2026-10-16 — Member bar collection-ready alerts
+- Existing counter ready RPC already inserts a per-item, deduplicated member notification; retained this authority and all order/payment data unchanged.
+- Collection-ready foreground messages now remain until dismissed with an X, retain exact ready item quantities and offer View order. Existing chime retained with AudioContext cleanup; supported browsers vibrate. The notification-only push worker requests vibration/renotify for order alerts; phone permissions, silent mode and platform limitations still apply.
+- Preview-only; synthetic presentation tests/browser checks send no real notification and operate no live order. Background/physical phone delivery remains unverified.

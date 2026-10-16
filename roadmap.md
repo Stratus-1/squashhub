@@ -1,5 +1,10 @@
 # Roadmap
 
+## Bar collection-ready alerts (preview only)
+- [x] Strengthen existing member ready popup, retain ping and add supported vibration; preserve partial fulfilment, dedupe and payments.
+- [x] Seven focused tests, synthetic browser popup/View order/X checks and background-worker simulation passed; preview build OK, no real orders, live writes or publication.
+- [ ] Physical-phone/background alert delivery needs an approved device test after publication.
+
 ## Riverside replacement Tournament Structure pilot (live planning tests approved)
 - [x] Require positive whole-number expected players/pairs on local Save Structure and add the finalised-entry tooltip; no live entry mutations.
 - [x] Add editable recommended Monrad round count; 15 tests and authenticated preview confirmed 12 entrants recommend 4, saved 5 survives reload; no fixture generation.

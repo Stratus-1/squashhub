@@ -43,6 +43,7 @@ import { ConflictPanel } from "./ConflictPanel";
 import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
 import { SaveAsTemplateButton, TemplateReviewBanner } from "./StepTemplates";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { plannedPlayoffsByUnit, syncPlayoffStages, samePlayoffStages } from "@/lib/smart-builder/structure-playoffs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fieldReviewMode } from "@/lib/smart-builder/field-review-mode";
 import { Button } from "@/components/ui/button";
@@ -885,6 +886,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const seedExceptions = units.filter((u) => seedFor(u.key) !== a.seeding);
   const stages = a.stages ?? [];
   const setStages = (s: ClubStage[]) => setA({ ...a, stages: s });
+  /** Play-offs ticked per category on the structure page are the source of truth for play-off stages here. */
+  const structurePlayoffs = useMemo(() => plannedPlayoffsByUnit(a.originalStructure as Record<string, any> | undefined), [a.originalStructure]);
+  useEffect(() => {
+    if (!structurePlayoffs) return;
+    const next = syncPlayoffStages(stages, structurePlayoffs, (n, u) => newStage(n, "scheduled", u, "playoff"));
+    if (!samePlayoffStages(stages, next)) setStages(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structurePlayoffs, stages]);
+  const bottomHalfUnits = useMemo(() => {
+    const raw = a.originalStructure as Record<string, any> | undefined, keys: string[] = raw?._unit_keys ?? [];
+    return keys.filter((_, i) => raw?.league_playoff_bottom_half?.[String(i + 1)]);
+  }, [a.originalStructure]);
   const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
   const courtChips = (ids: string[], set: (ids: string[]) => void) => clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {

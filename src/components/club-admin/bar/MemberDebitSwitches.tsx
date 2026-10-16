@@ -43,8 +43,14 @@ export function MemberDebitSwitches({ clubId }: { clubId: string }) {
         <p className="text-xs font-medium">Member account limits</p>
         <p className="text-[11px] text-muted-foreground leading-tight">
           Switch off to only allow member-account purchases the account can cover: prepaid credit, plus any fees covered by an
-          active monthly debit order (same rule as court bookings). Members then see a warning and can pay by card or top up.
+          active monthly debit order, plus the member's Credit allowed (same rule as court bookings). Members then see a warning and can pay by card or top up.
         </p>
+        {creditDefault !== undefined && (
+          <p className="text-[11px] leading-tight mt-1 text-foreground">
+            Club default Credit allowed for {clubName ?? "your"} members: <strong>R{amount.toFixed(0)}</strong>{" "}
+            <span className="text-muted-foreground">(set under member billing settings; a member's own amount takes priority).</span>
+          </p>
+        )}
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {(["bar", "shop"] as const).map((k) => {

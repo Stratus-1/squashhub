@@ -58,7 +58,7 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `hsl(var(${STATUS_VAR[rs]}))` }} />{STATUS_TEXT[rs]}
                   </span>
                 </div>
-                {proposedRounds ? <div className="text-[11px] font-normal text-muted-foreground">{rd.round === 1 && rd.created ? "Saved live matches · factual" : "Proposed slots · not live fixtures"}{rd.schedule ? <div className="text-[11px] font-normal" data-testid={`swiss-round-schedule-${rd.round}`}>{rd.schedule.label}{rd.schedule.kind === "window" ? " · round-level plan, no court booked per match" : ""}</div> : null}</div> : null}
+                {proposedRounds ? <div className="text-[11px] font-normal text-muted-foreground">{rd.created ? "Real games · results as played" : rd.blocks.some((b) => b.saved) ? "Real games shown · remaining slots still to be decided" : "Proposed slots · not live fixtures"}{rd.schedule && !rd.created ? <div className="text-[11px] font-normal" data-testid={`swiss-round-schedule-${rd.round}`}>{rd.schedule.label}{rd.schedule.kind === "window" ? " · round-level plan, no court booked per match" : ""}</div> : null}</div> : null}
               </th>
             </tr>
             <tr className="text-left text-[11px] text-muted-foreground">

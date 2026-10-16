@@ -138,7 +138,7 @@ export function gamesWonSummary(score: string | null | undefined): string | null
   let a = 0, b = 0; for (const [x, y] of sets) { if (x > y) a++; else if (y > x) b++; }
   return `${Math.max(a, b)}–${Math.min(a, b)}`;
 }
-export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null }
+export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null; saved?: boolean }
 export interface GridRound { round: number; created: boolean; blocks: GridBlock[]; schedule?: ProposedRoundSchedule }
 
 /** Round-level schedule for a PROPOSED round. Never a per-match booking. */
@@ -253,8 +253,12 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
     if (rd.bye != null) next[rd.bye - 1] = cur[rd.bye - 1];
     occ.push(next);
   }
+  const savedGrid = new Map(buildSwissGrid(model).map((r) => [r.round, r]));
   return { issues: [], rounds: template.map((rd): GridRound => {
-    if (rd.round === 1 && savedFirst?.created) return savedFirst;
+    if (rd.round === 1 && savedFirst?.created) return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
+    // Saved games for this round are shown factually (real players, results, scores) — never as "projected".
+    const saved = (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
+    const savedIds = new Set(saved.flatMap((b) => b.rows.map((r) => r.id)).filter((x): x is string => !!x));
     const into = occ[rd.round - 1];
     // A round switched to Play by date (applied to live rounds) overrides stale proposed court/time slots.
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
@@ -264,17 +268,23 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
         : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
-    const blocks: GridBlock[] = rd.pairs.map((p, pi) => {
+    const covered = (...ps: (number | null)[]) => ps.some((p) => { const id = p != null ? into[p - 1] : null; return !!id && savedIds.has(id); });
+    const proposedBlocks: GridBlock[] = rd.pairs.flatMap((p, pi): GridBlock[] => {
+      if (saved.length && covered(p.a, p.b)) return [];
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
       const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
       const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
       const withWhen = (when: string) => [{ ...pending(p.a), when }, { ...pending(p.b), when }] as [GridRow, GridRow];
-      if (slot?.kind === "planned") return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
-      if (slot?.kind === "play_by") return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };
-      if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason))) return { matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null };
-      return { matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null };
+      if (slot?.kind === "planned") return [{ matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null }];
+      if (slot?.kind === "play_by") return [{ matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date }];
+      if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason))) return [{ matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null }];
+      return [{ matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null }];
     });
-    if (rd.bye != null) blocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    if (rd.bye != null && !(saved.length && covered(rd.bye))) proposedBlocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    // Once every player in the round has a saved game, the round is fully factual.
+    const allSaved = saved.length > 0 && model.rows.every((r) => savedIds.has(r.id));
+    if (allSaved) return { round: rd.round, created: true, blocks: saved };
+    const blocks = [...saved, ...proposedBlocks].sort((x, y) => (x.rows[0].pos ?? 999) - (y.rows[0].pos ?? 999));
     return { round: rd.round, created: false, blocks, schedule };
   }) };
 }

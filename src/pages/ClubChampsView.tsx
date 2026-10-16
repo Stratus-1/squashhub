@@ -1370,7 +1370,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const laterIsKO = laterMatches.length > 0 && (laterKind === "knockout" || laterKind === "mapped" || laterMatches.every((m: any) => m.stage === "ko"));
       const koCode = (l?: string | null) => { const n = String(l ?? "").toLowerCase().replace(/[^a-z]/g, ""); return n.startsWith("quarterfinal") ? 1 : n.startsWith("semifinal") ? 2 : n === "final" ? 3 : null; };
       const koLabels = [...new Set(laterMatches.map((m: any) => koCode(m.stage_label)).filter((x: any) => x != null))].sort() as number[];
-      const koRound = (m: any) => { const c = koCode(m.stage_label); return c != null && koLabels.length ? koLabels.indexOf(c) + 1 + (koLabels[0] - 1) * 0 : m.round_number ?? 1; };
+      const koRound = (m: any) => { const c = koCode(m.stage_label); return c != null && koLabels.length ? koLabels.indexOf(c) + 1 : m.round_number ?? 1; };
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;

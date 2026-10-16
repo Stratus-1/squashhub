@@ -93,12 +93,15 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
     textX += 40;
   }
   // SquashHub brand mark in the top-right corner of the navy header.
+  const brandDataUrl = o.brandLogoDataUrl ?? null;
   const brand = fitBox(BRAND_LOGO_PX.w, BRAND_LOGO_PX.h, 46, 11);
   const brandX = W - M - brand.w;
-  try {
-    doc.addImage(squashHubLogoDataUrl, "PNG", brandX, (48 - brand.h) / 2, brand.w, brand.h);
-  } catch { /* A missing brand mark must not prevent printing. */ }
-  const nameMaxW = Math.max(40, brandX - 6 - textX);
+  if (brandDataUrl) {
+    try {
+      doc.addImage(brandDataUrl, "PNG", brandX, (48 - brand.h) / 2, brand.w, brand.h);
+    } catch { /* A missing brand mark must not prevent printing. */ }
+  }
+  const nameMaxW = Math.max(40, (brandDataUrl ? brandX - 6 : W - M) - textX);
   doc.setFont("helvetica", "bold");
   let nameSize = 22;
   doc.setFontSize(nameSize);

@@ -35,14 +35,18 @@ describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
     expect(byeSlots[0]).toBe(9);
     expect(byeSlots[1]).not.toBe(9);
   });
-  it("copies saved round 1 exactly but never imports live round 2 players/results/scheduling", () => {
+  it("copies saved round 1 exactly and shows saved later-round games as real games, without mutating the model", () => {
     const model = modelFor(8,3);
     model.rounds[0] = { round:1, created:true, complete:true, fixtures:[{ id:"saved", round:1, state:"completed", a:"p1", b:"p2", aLabel:"Saved A", bLabel:"Saved B", winner:"p2", loser:"p1", score:"3-1", when:"2026-10-14 18:00", court:"Court 1", playBy:null }] };
-    model.rounds[1] = { ...model.rounds[0], round:2 };
+    model.rounds[1] = { ...model.rounds[0], round:2, fixtures: model.rounds[0].fixtures.map((f) => ({ ...f, id: "saved-2", round: 2 })) };
     const snapshot = JSON.stringify(model);
     const preview = buildProposedSwissGrid(model);
-    expect(preview.rounds[0]).toEqual(buildSwissGrid(model)[0]);
-    expect(preview.rounds[1].blocks.every((b) => b.rows.every((x) => x.id === null && x.name === "TBD" && x.result === "" && x.when === "Not scheduled") && b.court === null && b.score === null)).toBe(true);
+    const live1 = buildSwissGrid(model)[0];
+    expect(preview.rounds[0]).toEqual({ ...live1, blocks: live1.blocks.map((b) => ({ ...b, saved: true })) });
+    const real2 = preview.rounds[1].blocks.find((b) => b.matchId === "saved-2")!;
+    expect(real2.saved).toBe(true);
+    expect(real2.rows.map((r) => r.name).sort()).toEqual(["Saved A", "Saved B"]);
+    expect(real2.rows.some((r) => r.projected)).toBe(false);
     expect(JSON.stringify(model)).toBe(snapshot);
   });
   it("unsupported entrant count fails visibly instead of inventing positions", () => {

@@ -69,3 +69,17 @@ describe("Final standing column", () => {
     expect(screen.getByTestId("swiss-final-standing-p4").textContent).toBe("4");
   });
 });
+
+describe("Final standing with a follow-up stage", () => {
+  it("locks once the Swiss rounds are done, even while later stage games are unplayed", () => {
+    const m = buildSwissProgression({ seedOrder: ["p1","p2","p3","p4"], names: {p1:"Ann",p2:"Ben",p3:"Cid",p4:"Dee"}, totalRounds: 2, matches: [
+      {id:"m1",round:1,a:"p1",b:"p2",winner:"p1",status:"completed",score:"3-0"},
+      {id:"m2",round:1,a:"p3",b:"p4",winner:"p3",status:"completed",score:"3-0"},
+      {id:"m3",round:2,a:"p1",b:"p3",winner:"p1",status:"completed",score:"3-1"},
+      {id:"m4",round:2,a:"p2",b:"p4",winner:"p2",status:"completed",score:"3-1"},
+      {id:"m5",round:3,a:"p1",b:"p4",winner:null,status:"scheduled"}, // follow-up stage, unplayed
+    ]});
+    render(<SwissCurrentPositionsTable model={m} />);
+    expect(screen.getByTestId("swiss-final-standing-p1").textContent).toBe("1");
+  });
+});

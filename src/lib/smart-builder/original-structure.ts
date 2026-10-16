@@ -33,6 +33,7 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
       out.group_break_minutes[id] = Number(sc.timeCapBreak) || 0;
     }
     out.league_doubles_serving_methods[id] = a.serving?.[key];
+    out.league_seeding_plans = { ...(out.league_seeding_plans ?? {}), [id]: saved.league_seeding_plans?.[id] ?? a.seedingOverrides?.[key] ?? a.seedingOverrides?.[cat] ?? a.seeding ?? "later" };
     const po = a.playoffOverrides[key];
     if (po) out.league_playoffs[id] = po.choice === "playoffs";
     const elig = a.elig?.[key];
@@ -70,6 +71,8 @@ export function answersFromOriginalStructure(a: StepAnswers, raw: OriginalStruct
     next = writeRowStages(next, key, [{ ...plan[0], id: plan[0]?.id ?? newStageId(), kind, pools: Number(raw.swiss_pools?.[id]) || 1, rounds: kind === "swiss" ? Number(raw.swiss_rounds?.[id]) || 5 : null }, ...plan.slice(1)]);
     next.scoringOverrides[key] = { mode: raw.league_scoring_modes?.[id] ?? "standard", pointsPerGame: raw.league_points_per_game?.[id] === 15 ? 15 : 11, bestOf: raw.league_best_of?.[id] === 3 ? 3 : 5, playAllGames: !!raw.league_play_all_games?.[id], winCondition: raw.league_win_conditions?.[id] ?? "win_by_2", timeCapPlay: String(raw.group_durations?.[id] ?? ""), timeCapBreak: String(raw.group_break_minutes?.[id] ?? ""), timeCapMinutes: "" };
     if (raw.league_doubles_serving_methods?.[id]) next.serving = { ...next.serving, [key]: raw.league_doubles_serving_methods[id] };
+    const seed = raw.league_seeding_plans?.[id];
+    if (["ranking", "ladder", "manual", "random", "none", "later"].includes(seed)) next.seedingOverrides = { ...(next.seedingOverrides ?? {}), [key]: seed };
     if (raw.league_playoffs?.[id] !== undefined) next.playoffOverrides[key] = { ...(next.playoffOverrides[key] ?? next.playoff ?? { rounds: 2, qualification: "later", pairing: "later" }), choice: raw.league_playoffs[id] ? "playoffs" : "none" };
   }
   // Deletions are draft-only; retain parent categories while any child remains.

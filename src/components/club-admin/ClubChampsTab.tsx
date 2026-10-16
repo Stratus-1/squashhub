@@ -1,3 +1,5 @@
+import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
+import { monradNote, monradPlan } from "@/lib/smart-builder/monrad";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 import "../smart-builder/tournament-admin.css";
 import { RankingScope } from "@/lib/rankings/provisional";
@@ -245,6 +247,8 @@ import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod 
 interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */
   clubId: string;
+  /** Reuse only the structure screen; all saving is delegated to a local draft callback. */
+  structureOnly?: { initial: OriginalStructure; onSave: (value: OriginalStructure) => void; onDirtyChange?: (dirty: boolean) => void };
   /**
    * Owning body of the events managed here. Omitted at club level (the club's own
    * organisation is used). Set for association / federation tournament planning.
@@ -813,7 +817,7 @@ function SegRow({
 }) {
   const c = SEG_ROW_COLORS[color] || SEG_ROW_COLORS.violet;
   return (
-    <div>
+    <div data-structure-choice={color}>
       <Label className={cn("text-[10px] uppercase tracking-wider font-semibold", c.label)}>{label}</Label>
       <div className="mt-0.5 flex flex-wrap gap-1">
         {options.map((o) => (
@@ -826,6 +830,7 @@ function SegRow({
               "h-auto min-h-8 py-1.5 px-3 text-xs flex-1 min-w-[84px] transition-colors whitespace-normal text-center leading-snug",
               value === o.v ? c.active : c.outline
             )}
+            aria-pressed={value === o.v}
             onClick={() => onChange(o.v)}
           >
             {o.l}
@@ -853,7 +858,7 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
   return error?.message || fallback;
 }
 
-export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds, launchDiamond = false, onLaunchExit, hideCreateButton = false, onManageBeta }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds, launchDiamond = false, onLaunchExit, hideCreateButton = false, onManageBeta, structureOnly }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Pull the latest club-ladder positions (and entrant list) on demand — the
@@ -1227,7 +1232,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // has no entry here, the tournament-wide `roundFormat` applies. Only used
   // when `usePerLeagueFormats` is enabled — hidden while roundFormat is
   // `cross_league` (which is inherently tournament-wide).
-  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league" | "knockout";
+  type PerLeagueFormat = "single_round_robin" | "double_round_robin" | "swiss" | "cross_league" | "knockout" | "monrad";
   const [leagueFormats, setLeagueFormats] = useState<Record<string, PerLeagueFormat>>({});
   const [usePerLeagueFormats, setUsePerLeagueFormats] = useState(false);
   // LEGACY: knockout sub-draw count per league ("sections"). The organiser no
@@ -1517,6 +1522,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
+    monrad: { label: "Monrad", short: "Monrad", desc: "Positional draw: winners and losers continue to decide every finishing place." },
     single_round_robin: { label: "Round robin", short: "Round robin", desc: "Everyone in this league plays everyone else. Tick “double” to play home & away." },
     double_round_robin: { label: "Round robin (double)", short: "Double RR", desc: "Play each opponent twice — home & away." },
     swiss: { label: "Swiss pairing", short: "Swiss", desc: "Fixed rounds; admin re-pairs each round by score." },
@@ -1524,6 +1530,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     knockout: { label: "Knockout", short: "Knockout", desc: "Straight elimination. Split into sections; seeds spread evenly and section winners meet in the league final." },
   };
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
+    if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
     const gn = (numGroups || 0) + 1;
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
@@ -1650,6 +1657,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
    * the rules once and then just rename + retarget the copies.
    */
   const duplicateLeagueAt = (gn: number) => {
+    if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
     const from = String(gn);
     const to = String((numGroups || 0) + 1);
     const copy = <T,>(setter: (fn: (m: Record<string, T>) => Record<string, T>) => void) =>
@@ -1681,6 +1689,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   };
 
   const removeLeagueAt = (gn: number) => {
+    if (structureOnly) originalKeysRef.current = originalKeysRef.current.filter((_, i) => i !== gn - 1);
 
     const shift = <T,>(map: Record<string, T>): Record<string, T> => {
       const out: Record<string, T> = {};
@@ -2959,6 +2968,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Autosave the current wizard settings to club_champs as a draft.
   // Only touches the settings row — never matches/entries/registrations.
   const saveDraft = async () => {
+    if (structureOnly) return null;
     if (!clubId) return editingChampId;
     if (!champName.trim() && !editingChampId) return editingChampId;
     const defaultName = diamondMode ? `Diamond League ${new Date().getFullYear()}` : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
@@ -3765,7 +3775,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   useEffect(() => { saveDraftRef.current = saveDraft; });
   useEffect(() => { saveEntriesDraftRef.current = saveEntriesDraft; });
   useEffect(() => {
-    if (!showWizard) return;
+    if (structureOnly || !showWizard) return;
     if (!clubId || !startDate || !endDate) return;
     const t = setTimeout(() => {
       void (async () => {
@@ -5688,7 +5698,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       return {
         groupNumber: gn,
         label: groupLabels[key] || `League ${gn}`,
-        format: fmt,
+        format: fmt === "monrad" ? "knockout" as const : fmt,
         scoring: scoringForLeague(gn),
 
         slotMinutes:
@@ -8825,6 +8835,1634 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
 
 
+  const originalKeysRef = useRef<string[]>(structureOnly?.initial._unit_keys ?? []);
+  const originalLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!structureOnly || originalLoadedRef.current) return;
+    originalLoadedRef.current = true;
+    const v = structureOnly.initial;
+    setStep("structure"); setShowWizard(true); setNumGroups(Number(v.num_groups) || 0);
+    setUsePerLeagueFormats(true); setRoundFormat("single_round_robin");
+    setScoringMode("standard"); setPointsPerGame(11); setBestOf(5); setGender("open");
+    setGroupLabels(v.group_labels ?? {});
+    setExpectedPlayers(v.expected_players ?? {});
+    setLeagueFormats(v.league_formats ?? {});
+    setSwissPools(v.swiss_pools ?? {});
+    setSwissRounds(v.swiss_rounds ?? {});
+    setLeagueGenders(v.league_genders ?? {});
+    setLeagueMatchTypes(v.league_match_types ?? {});
+    setLeagueScoringModes(v.league_scoring_modes ?? {});
+    setLeaguePointsPerGame(v.league_points_per_game ?? {});
+    setLeagueBestOf(v.league_best_of ?? {});
+    setLeaguePlayAll(v.league_play_all_games ?? {});
+    setLeagueWinConditions(v.league_win_conditions ?? {});
+    setGroupDurations(v.group_durations ?? {});
+    setGroupBreakMinutes(v.group_break_minutes ?? {});
+    setLeagueServingMethods(v.league_doubles_serving_methods ?? {});
+    setLeaguePlayoffs(v.league_playoffs ?? {});
+    setLeagueByeHandling(v.league_bye_handling ?? {});
+    setLeagueForfeitRules(v.league_forfeit_rules ?? {});
+    setLeagueForfeitPoints(v.league_forfeit_points ?? {});
+    setLeagueDrawStyles(v.league_draw_styles ?? {});
+    setSwissPairingModes(v.swiss_pairing_modes ?? {});
+    setSwissKnockoutQualifiers(v.swiss_knockout_qualifiers ?? {});
+    setDivisionFollows(v.division_follows ?? {});
+    setDivisionSeedSource(v.division_seed_source ?? {});
+    setDivisionPairing(v.division_pairing_method ?? {});
+    setPoolDurations(v.pool_durations ?? {});
+    setLeaguePlayoffModes(v.league_playoff_modes ?? {});
+    setLeaguePlayoffQualifiers(v.league_playoff_qualifiers ?? {});
+    setLeagueSources(Object.fromEntries(Object.entries(v.league_sources ?? {}).map(([key, ids]) => [key, { mode: v.league_source_modes?.[key] ?? "all", leagueIds: ids }])) as any);
+    setPartnerMode(v.partner_mode ?? "admin");
+    setRotationMaxMatches(v.rotation_max_matches ?? 0);
+    setRotationAvoidPairs(v.rotation_avoid_pairs ?? []);
+    setRotationStrengthMode(v.rotation_strength_mode ?? "mixed");
+    setAffectsRankingPoints(v.affects_ranking_points ?? false);
+    setRankingScopeOverride(v.ranking_scope ?? null);
+    setRankingWeight(v.ranking_weight ?? 1);
+    setLadderAffects(v.ladder_affects ?? null);
+    setCollapsedLeagues(Object.fromEntries(Array.from({ length: Number(v.num_groups) || 0 }, (_, i) => [String(i + 1), i !== 0])));
+    // This is a mount-only local snapshot, never a hosted tournament load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structureOnly]);
+  const saveOriginalStructure = () => {
+    if (!structureOnly) return;
+    originalBaselineRef.current = originalChangeKey;
+    structureOnly.onDirtyChange?.(false);
+    structureOnly.onSave({ ...structureOnly.initial, _unit_keys: originalKeysRef.current, num_groups: numGroups,
+      group_labels: groupLabels,
+      expected_players: expectedPlayers,
+      league_formats: leagueFormats,
+      swiss_pools: swissPools,
+      swiss_rounds: swissRounds,
+      league_genders: leagueGenders,
+      league_match_types: leagueMatchTypes,
+      league_scoring_modes: leagueScoringModes,
+      league_points_per_game: leaguePointsPerGame,
+      league_best_of: leagueBestOf,
+      league_play_all_games: leaguePlayAll,
+      league_win_conditions: leagueWinConditions,
+      group_durations: groupDurations,
+      group_break_minutes: groupBreakMinutes,
+      league_doubles_serving_methods: leagueServingMethods,
+      league_playoffs: leaguePlayoffs,
+      league_bye_handling: leagueByeHandling,
+      league_forfeit_rules: leagueForfeitRules,
+      league_forfeit_points: leagueForfeitPoints,
+      league_draw_styles: leagueDrawStyles,
+      swiss_pairing_modes: swissPairingModes,
+      swiss_knockout_qualifiers: swissKnockoutQualifiers,
+      division_follows: divisionFollows,
+      division_seed_source: divisionSeedSource,
+      division_pairing_method: divisionPairing,
+      pool_durations: poolDurations,
+      league_playoff_modes: leaguePlayoffModes,
+      league_playoff_qualifiers: leaguePlayoffQualifiers,
+      league_sources: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.leagueIds])),
+      league_source_modes: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.mode])),
+      affects_ranking_points: affectsRankingPoints, ranking_scope: rankingScopeOverride, ranking_weight: rankingWeight, ladder_affects: ladderAffects,
+      partner_mode: partnerMode, rotation_max_matches: rotationMaxMatches, rotation_avoid_pairs: rotationAvoidPairs, rotation_strength_mode: rotationStrengthMode,
+    });
+  };
+
+  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalBaselineRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
+    if (originalBaselineRef.current === null) { originalBaselineRef.current = originalChangeKey; return; }
+    structureOnly.onDirtyChange?.(originalBaselineRef.current !== originalChangeKey);
+  }, [originalChangeKey, structureOnly]);
+  const renderOriginalStructure = () => <>
+      {step === "structure" && !diamondMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Structure &amp; Capacity</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Build the leagues that make up this tournament, then check they fit the dates, times and courts you just picked.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <WizardSection
+              title={"Tournament structure"}
+              summary={`${numGroups || 0} league${numGroups === 1 ? "" : "s"} configured`}
+              complete={(numGroups || 0) > 0}
+              defaultOpen={true}
+            >
+
+
+            {/* Match rules are now decided per league in the builder below —
+                format (Standard / Bells), category, singles/doubles, par 11 / 15,
+                best-of and win condition are all independently configurable. */}
+            <div
+              ref={stepIssuesRef}
+              className={`rounded-lg border p-3 shadow-sm ${
+                showStepIssues ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/40"
+              }`}
+            >
+              <Label className="text-sm font-semibold">
+                Match rules {showStepIssues && <span className="text-destructive">*</span>}
+              </Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
+                league card in the builder below.
+              </p>
+              {showStepIssues && (
+                <p className="text-[11px] text-destructive mt-1">
+                  Still needed: {missingForStep().join(" · ")} — set these on the league card(s) below.
+                </p>
+              )}
+            </div>
+
+
+
+            {/* ─── Tournament Structure Builder ─────────────────────────── */}
+            {/* Visual builder — admin drags/clicks formats from the palette to
+                add leagues, then tweaks name / pools / expected players inline.
+                Replaces the old Round Format dropdown + Per-league overrides
+                checkbox. Cross-league mode is a toggle above the builder since
+                it's inherently tournament-wide. */}
+            <div className="rounded-xl border-2 border-border bg-card shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
+                <div>
+                  <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
+                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
+                </div>
+                {/* Playoffs are owned by each league card below. These are
+                    bulk shortcuts that write the per-league settings — not a
+                    second source of truth. */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    Playoffs: {(() => {
+                      const on = Array.from({ length: numGroups || 0 }, (_, i) => playoffsForLeague(i + 1)).filter(Boolean).length;
+                      if (!numGroups) return "—";
+                      return on === 0 ? "none" : on === numGroups ? "all leagues" : `${on} of ${numGroups}`;
+                    })()}
+                  </span>
+                  <Button
+                    type="button" size="sm" variant="outline" className="h-7 text-[11px]"
+                    disabled={!numGroups}
+                    onClick={() => {
+                      const next: Record<string, boolean> = {};
+                      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = true;
+                      setLeaguePlayoffs(next);
+                    }}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    type="button" size="sm" variant="outline" className="h-7 text-[11px]"
+                    disabled={!numGroups}
+                    onClick={() => setLeaguePlayoffs({})}
+                  >
+                    None
+                  </Button>
+                </div>
+              </div>
+
+              {roundFormat === "cross_league" && (
+                <div className="px-4 py-2 text-[11px] text-muted-foreground bg-amber-500/10 border-b border-amber-500/30">
+                  <strong className="text-foreground">Cross-league is active.</strong> Leagues set to “Cross league” play against the other leagues instead of within themselves — no intra-league matches for those leagues.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
+                  {/* Canvas */}
+                  <div
+                    className="p-4 space-y-3 min-h-[220px] bg-muted/10"
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const fmt = e.dataTransfer.getData("application/x-champ-format") as PerLeagueFormat;
+                      if (fmt && FORMAT_META[fmt]) addLeagueOfFormat(fmt);
+                    }}
+                  >
+                    {numGroups > 0 ? (
+                      Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
+                        const key = String(gn);
+                        // The card must reflect the division's REAL draw format.
+                        // Knockout / cross league were previously dropped by this
+                        // fallback, which made knockout divisions render as round
+                        // robin (wrong pool wording and wrong bottom control).
+                        const rf = roundFormat as string;
+                        const fmt: PerLeagueFormat = (leagueFormats[key]
+                          ?? (rf === "swiss" || rf === "double_round_robin"
+                              || rf === "single_round_robin" || rf === "knockout"
+                              || rf === "cross_league" || rf === "monrad"
+                              ? (roundFormat as PerLeagueFormat)
+                              : "single_round_robin"));
+                        const meta = FORMAT_META[fmt];
+                        const isSwiss = fmt === "swiss";
+                        const collapsed = collapsedLeagues[key] ?? true;
+                        return (
+                          <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
+                            <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
+                            <div className={cn("flex items-start justify-between gap-2", !collapsed && "mb-2")}>
+                              <div className="flex-1 min-w-0">
+                                <div
+                                  className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
+                                  onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
+                                >
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
+                                  {collapsed && groupLabels[key] && (
+                                    <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
+                                  )}
+                                  <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
+                                  <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                    {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
+                                    {scoringForLeague(gn) === "time_capped_points"
+                                      ? `Bells ${groupDurations[key] || matchDuration || 20}′`
+                                      : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"} · ${Number(groupDurations[key]) || matchDuration || 20}′`}
+                                  </span>
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                      Bye: {byeForLeague(gn).replace(/_/g, " ")}
+                                    </span>
+                                  )}
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-rose-500/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-400">
+                                      No show: {describeForfeitRule(forfeitRuleForLeague(gn), forfeitPointsForLeague(gn))}
+                                    </span>
+                                  )}
+                                  {collapsed && playoffsForLeague(gn) && (
+                                    <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
+                                      {fmt === "knockout" ? "Knockout rounds" : "Playoffs"}
+                                    </span>
+                                  )}
+                                  {collapsed && (
+                                    <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
+                                      {formatUsesPools(fmt) ? poolLabelFor(poolsForDivision(gn), fmt) : "Single draw"}
+                                      {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
+                                    </span>
+                                  )}
+                                </div>
+                                {!collapsed && (
+                                <div className="flex items-end gap-2">
+                                  <Input
+                                    value={groupLabels[key] || ""}
+                                    placeholder={`League ${gn}`}
+                                    onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
+                                    className="h-8 text-sm font-semibold flex-1 min-w-0"
+                                  />
+                                  {/* Read-only summary — the pool count is set
+                                      by the single Pools selector below. */}
+                                  {formatUsesPools(fmt) && (
+                                    <div className="shrink-0 pb-1.5" title={`Set the ${poolNoun(fmt, false)} count with the ${poolSelectorLabel(fmt)} selector below`}>
+                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">{poolSelectorLabel(fmt)}</Label>
+                                      <div className="text-xs font-semibold text-teal-700 dark:text-teal-400 mt-1 whitespace-nowrap">
+                                        {poolLabelFor(poolsForDivision(gn), fmt)}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* Swiss rounds are set in the Swiss settings
+                                      block below — one source of truth. */}
+                                  <div className="w-20 shrink-0">
+                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                      {isDoubles ? "Pairs" : "Players"}
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      placeholder="—"
+                                      value={expectedPlayers[key] ?? ""}
+                                      title={isDoubles ? "Expected pairs" : "Expected players"}
+                                      onChange={(e) => {
+                                        const n = Number(e.target.value);
+                                        setExpectedPlayers((m) => {
+                                          const next = { ...m };
+                                          if (!Number.isFinite(n) || n <= 0) delete next[key];
+                                          else next[key] = Math.round(n);
+                                          return next;
+                                        });
+                                        // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
+                                        if (isSwiss && Number.isFinite(n) && n >= 2) {
+                                          const pools = poolsForDivision(gn);
+                                          const perPool = Math.max(2, Math.ceil(n / pools));
+                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                        }
+                                      }}
+                                      className="h-8 text-xs mt-0.5 px-1.5"
+                                    />
+                                  </div>
+                                </div>
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground"
+                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }))}
+                                title={collapsed ? "Expand league" : "Collapse league"}
+                              >
+                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
+                                onClick={() => duplicateLeagueAt(gn)}
+                                title="Create another division with exactly these settings"
+                              >
+                                <Copy className="h-3.5 w-3.5 mr-1" />
+                                Duplicate
+                              </Button>
+                              <Button
+
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeLeagueAt(gn)}
+                                title="Remove league"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            {/* Visual, button-driven league setup — draw format,
+                                category, entity type and scoring all per league. */}
+                            {!collapsed && (
+                            <div className="space-y-2">
+                              {/* Who may play in THIS division. Real club league ids —
+                                  the population also seeds the draw. */}
+                              {(() => {
+                                const src = sourceForLeague(gn);
+                                const setSrc = (next: DivisionSource) => setSourceForLeague(gn, next);
+                                const toggle = (id: string) => {
+                                  const has = src.leagueIds.includes(id);
+                                  const ids = has ? src.leagueIds.filter((x) => x !== id) : [...src.leagueIds, id];
+                                  setSrc({ mode: src.mode === "all" ? "selected" : src.mode, leagueIds: ids });
+                                };
+                                return (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground w-full sm:w-auto">
+                                      Primarily players from <span className="normal-case tracking-normal text-muted-foreground/70">(optional)</span>
+                                    </Label>
+                                    <p className="w-full text-[10px] text-muted-foreground leading-snug order-last">
+                                      You don’t have to select any leagues. This only decides which league these players
+                                      are allocated to and seeded in — it does not limit who is invited or who may enter.
+                                    </p>
+
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]">
+                                          {describeDivisionSource(src, leagueNameById)}
+                                          <ChevronDown className="ml-1 h-3 w-3" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent align="start" className="w-80 p-2 space-y-1.5">
+                                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            className="h-3.5 w-3.5 accent-violet-500"
+                                            checked={src.mode === "all"}
+                                            onChange={() => setSrc({ ...DEFAULT_DIVISION_SOURCE })}
+                                          />
+                                          All leagues — select every league group
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground leading-snug">
+                                          Selecting leagues is optional — leave this on “All leagues” if you don’t want to
+                                          restrict seeding. “All leagues” never merges everyone into one draw. Use the
+                                          button below to give each league its own competition, with its own winner.
+                                        </p>
+
+                                        {src.mode === "all" && (
+                                          <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            className="w-full h-7 text-[11px]"
+                                            onClick={() => expandAllLeagues(gn)}
+                                          >
+                                            Create one competition per league (recommended)
+                                          </Button>
+                                        )}
+
+                                        <Separator />
+                                        {availableSeasons.length > 0 && (
+                                          <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                                Season
+                                              </Label>
+                                              <select
+                                                className="h-6 rounded border border-border/60 bg-background px-1 text-[11px]"
+                                                value={sourceSeason ?? ""}
+                                                onChange={(e) => {
+                                                  setSeasonTouched(true);
+                                                  setSourceSeason(e.target.value ? Number(e.target.value) : null);
+                                                }}
+                                              >
+                                                {availableSeasons.map((s) => (
+                                                  <option key={s} value={s}>
+                                                    {s}
+                                                  </option>
+                                                ))}
+                                                <option value="">All seasons</option>
+                                              </select>
+                                            </div>
+                                            {seasonIsFallback && (
+                                              <p className="text-[10px] text-amber-600 dark:text-amber-500 leading-snug">
+                                                No {tournamentYear} league structure yet — showing {sourceSeason}. Create
+                                                the {tournamentYear} leagues on the Leagues page to draw from them; nothing
+                                                is copied or reassigned automatically.
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {/* With "All leagues" ticked the hierarchy stays
+                                            visible and every team reads as selected; the
+                                            moment a child is unticked the source becomes an
+                                            explicit id list. */}
+                                        <LeagueSourceTree
+                                          groups={leagueTree}
+                                          selected={
+                                            src.mode === "all"
+                                              ? allTreeLeagueIds(leagueTree)
+                                              : src.leagueIds
+                                          }
+                                          onChange={(ids) =>
+                                            setSrc({
+                                              mode: src.mode === "all" ? "selected" : src.mode,
+                                              leagueIds: ids,
+                                            })
+                                          }
+                                        />
+                                        {src.leagueIds.length > 1 && (
+                                          <>
+                                            <Separator />
+                                            <label className="flex items-start gap-2 text-xs font-medium cursor-pointer">
+                                              <input
+                                                type="checkbox"
+                                                className="h-3.5 w-3.5 mt-0.5 accent-violet-500"
+                                                checked={src.mode === "combined"}
+                                                onChange={(e) =>
+                                                  setSrc({ ...src, mode: e.target.checked ? "combined" : "selected" })
+                                                }
+                                              />
+                                              <span>
+                                                Combined competition
+                                                <span className="block text-[10px] font-normal text-muted-foreground">
+                                                  Only tick this to deliberately mix the selected teams into one draw
+                                                  with one winner.
+                                                </span>
+                                              </span>
+                                            </label>
+                                          </>
+                                        )}
+                                      </PopoverContent>
+
+                                    </Popover>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-[11px]"
+                                      onClick={() => applyDivisionPrefill(gn)}
+                                    >
+                                      Load players
+                                    </Button>
+                                    {src.mode === "selected" && src.leagueIds.length > 1 && (
+                                      <span className="text-[10px] text-amber-600 dark:text-amber-500">
+                                        More than one league — tick “Combined competition” or split into separate divisions.
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              <SegRow
+                                label="Draw format"
+                                value={fmt === "double_round_robin" ? "single_round_robin" : fmt}
+                                color="violet"
+                                 options={[
+                                   { v: "single_round_robin", l: "Round robin" },
+                                   { v: "knockout", l: "Knockout" },
+                                   { v: "swiss", l: "Swiss pairing" },
+                                   { v: "cross_league", l: "Cross league" },
+                                   ...(structureOnly ? [{ v: "monrad", l: "Monrad" }] : []),
+                                 ]}
+                                 onChange={(v) => {
+                                   const nv = v as PerLeagueFormat;
+                                   setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                   setUsePerLeagueFormats(true);
+                                   if (nv === "monrad") setSwissPools((m) => ({ ...m, [key]: 1 }));
+                                   if (nv === "swiss") {
+                                     setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
+                                     setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
+                                   }
+                                    if (nv === "knockout") {
+                                      const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+                                      setSwissPools((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
+                                      // Newly configured knockout division: progression ON by default.
+                                      // (A division already on knockout keeps the organiser's choice.)
+                                      if (fmt !== "knockout") setLeaguePlayoffs((m) => ({ ...m, [key]: true }));
+                                    }
+                                    if (nv === "cross_league") setRoundFormat("cross_league");
+                                    else {
+                                      // Drop cross-league mode once no league uses it.
+                                      const next = { ...leagueFormats, [key]: nv };
+                                      const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
+                                      if (!stillCross && (!roundFormat || roundFormat === "cross_league")) {
+                                        setRoundFormat(nv === "knockout" ? "single_round_robin" : (nv as any));
+                                      }
+                                    }
+                                  }}
+                                />
+                                {/* THE pool selector for this division — the
+                                    only editable pool control, shared by every
+                                    format that uses pools. */}
+                                {formatUsesPools(fmt) && (() => {
+                                  const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+                                  const pools = poolsForDivision(gn);
+                                  const suggested = suggestSectionCount(entrants);
+                                  const perPool = pools > 0 ? Math.ceil(entrants / pools) : 0;
+                                  return (
+                                    <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
+                                      <SegRow
+                                        label={fmt === "knockout" ? "Knockout structure" : "Pools"}
+                                        value={String(pools)}
+                                        color="violet"
+                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
+                                        onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
+                                      />
+                                      <p className="text-[11px] text-muted-foreground">
+                                        {entrants > 0
+                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? poolNoun(fmt, false) : "draw"}. `
+                                          : ""}
+                                        {fmt === "knockout"
+                                          ? "Seeds are spread evenly across sections from the ladder; section winners meet in this division's final."
+                                          : fmt === "cross_league"
+                                            ? "Each pool plays every other pool."
+                                            : pools > 1
+                                              ? "Players are split into pools; each pool plays its own draw."
+                                              : "One draw — everyone in this division plays in the same group."}
+                                        {fmt === "knockout" && entrants > 0 && pools !== suggested ? ` Suggested: ${suggested}.` : ""}
+                                      </p>
+                                      {fmt === "knockout" && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Only the first round is scheduled up front — later rounds are created as each round finishes.
+                                        </p>
+                                      )}
+                                      {fmt === "knockout" && (() => {
+                                        const style: DrawStyle = leagueDrawStyles[key] === "graduated" ? "graduated" : "straight";
+                                        const perSection = pools > 0 ? Math.ceil(entrants / pools) : entrants;
+                                        return (
+                                          <div className="space-y-1 pt-1">
+                                            <SegRow
+                                              label="Entry style"
+                                              value={style}
+                                              color="violet"
+                                              options={[
+                                                { v: "straight", l: "Straight knockout" },
+                                                { v: "graduated", l: "Gradual fair entry" },
+                                              ]}
+                                              onChange={(v) =>
+                                                setLeagueDrawStyles((m) => ({
+                                                  ...m,
+                                                  [key]: v === "graduated" ? "graduated" : "straight",
+                                                }))
+                                              }
+                                            />
+                                            <p className="text-[11px] text-muted-foreground">
+                                              {style === "graduated"
+                                                ? perSection > 1
+                                                  ? `${describeGraduated(perSection, graduatedPlayInMatches(perSection))} Top seeds rest and enter once the field narrows.`
+                                                  : "Weakest players meet each other first; stronger seeds enter in later rounds."
+                                                : "Strongest plays weakest from round one — every entrant plays immediately."}
+                                            </p>
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  );
+                                 })()}
+                               {fmt === "monrad" && <p className="text-xs text-muted-foreground">{monradNote(Number(expectedPlayers[key]) || 0) ?? "Enter expected players for draw size and byes."}</p>}
+                               {fmt === "swiss" && (() => {
+                                 const entrants =
+                                   (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+                                 const pools = poolsForDivision(gn);
+                                 const perPool = pools > 0 ? Math.ceil(entrants / pools) : entrants;
+                                 const suggested = perPool >= 2 ? Math.max(1, Math.min(9, perPool - 1)) : 5;
+                                 const rounds = Number(swissRounds[key]) || 0;
+                                 const pairing = swissPairingModes[key] === "random" ? "random" : "seeded";
+                                 const qualifiers = Math.max(0, Number(swissKnockoutQualifiers[key]) || 0);
+                                 const koOn = qualifiers > 0;
+                                 const validQualifiers = [2, 4, 8].filter(
+                                   (n) => entrants === 0 || n <= entrants,
+                                 );
+                                 return (
+                                   <div className="rounded-md border border-teal-500/40 bg-teal-500/5 p-2 space-y-2">
+                                     <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                                       Swiss settings
+                                     </div>
+                                     <div className="flex items-end gap-2">
+                                       <div className="w-24">
+                                         <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                           Number of Swiss rounds
+                                         </Label>
+                                         <Input
+                                           type="number"
+                                           min={1}
+                                           max={20}
+                                           placeholder={String(suggested)}
+                                           value={rounds > 0 ? String(rounds) : ""}
+                                           onChange={(e) => {
+                                             const v = Number(e.target.value);
+                                             setSwissRounds((m) => {
+                                               const next = { ...m };
+                                               if (v > 0) next[key] = Math.min(20, Math.round(v));
+                                               else delete next[key];
+                                               return next;
+                                             });
+                                           }}
+                                           className={cn("h-8 text-xs mt-0.5", rounds <= 0 && "border-amber-500")}
+                                         />
+                                       </div>
+                                       {rounds <= 0 && (
+                                         <Button
+                                           type="button"
+                                           size="sm"
+                                           variant="outline"
+                                           className="h-8 text-[11px]"
+                                           onClick={() => setSwissRounds((m) => ({ ...m, [key]: suggested }))}
+                                         >
+                                           Use {suggested}
+                                         </Button>
+                                       )}
+                                     </div>
+                                     {rounds <= 0 && (
+                                       <p className="text-[10px] text-amber-600 dark:text-amber-500">
+                                         Required — how many qualifying rounds each player is scheduled to play.
+                                         {entrants > 0 ? ` ${suggested} suits ${perPool} per ${pools > 1 ? "pool" : "draw"}.` : ""}
+                                       </p>
+                                     )}
+                                     <SegRow
+                                       label="First-round pairing"
+                                       value={pairing}
+                                       color="cyan"
+                                       options={[
+                                         { v: "seeded", l: "Seeded" },
+                                         { v: "random", l: "Random" },
+                                       ]}
+                                       onChange={(v) =>
+                                         setSwissPairingModes((m) => ({
+                                           ...m,
+                                           [key]: v === "random" ? "random" : "seeded",
+                                         }))
+                                       }
+                                     />
+                                     <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                       {pairing === "seeded"
+                                         ? "Round 1 pairs first against last — with 10 players: 1v10, 2v9, 3v8, 4v7, 5v6."
+                                         : "Round 1 is drawn at random."}{" "}
+                                       From round 2 players meet the nearest score they have not played yet.
+                                     </p>
+                                     <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                       <input
+                                         type="checkbox"
+                                         className="h-3.5 w-3.5 accent-teal-500"
+                                         checked={koOn}
+                                         onChange={(e) =>
+                                           setSwissKnockoutQualifiers((m) => {
+                                             const next = { ...m };
+                                             if (e.target.checked) next[key] = validQualifiers.includes(4) ? 4 : (validQualifiers[0] || 2);
+                                             else delete next[key];
+                                             return next;
+                                           })
+                                         }
+                                       />
+                                       Enable knockout stage after Swiss rounds
+                                     </label>
+                                     {koOn ? (
+                                       <div className="pl-6 space-y-1">
+                                         <SegRow
+                                           label="Number qualifying for knockout"
+                                           value={String(qualifiers)}
+                                           color="cyan"
+                                           options={validQualifiers.map((n) => ({ v: String(n), l: `Top ${n}` }))}
+                                           onChange={(v) =>
+                                             setSwissKnockoutQualifiers((m) => ({ ...m, [key]: Number(v) || 2 }))
+                                           }
+                                         />
+                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                           {qualifiers >= 8
+                                             ? "Quarter-finals 1v8, 2v7, 3v6, 4v5, then semi-finals and the final."
+                                             : qualifiers >= 4
+                                               ? "Semi-finals 1v4 and 2v3, then the final."
+                                               : "Straight final between the top two."}{" "}
+                                           Dates for those rounds are set later in scheduling.
+                                         </p>
+                                       </div>
+                                     ) : (
+                                       <p className="text-[10px] text-muted-foreground pl-6 leading-relaxed">
+                                         The Swiss standings decide the finishing order after {rounds || suggested} rounds.
+                                       </p>
+                                     )}
+                                   </div>
+                                 );
+                               })()}
+                               {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
+                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-violet-500"
+                                    checked={fmt === "double_round_robin"}
+                                    onChange={(e) => {
+                                      const nv: PerLeagueFormat = e.target.checked ? "double_round_robin" : "single_round_robin";
+                                      setLeagueFormats((m) => ({ ...m, [key]: nv }));
+                                      setUsePerLeagueFormats(true);
+                                      if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
+                                    }}
+                                  />
+                                  Double round robin (play each opponent twice — home &amp; away)
+                                </label>
+                              )}
+                              <SegRow
+                                label="Category"
+                                value={genderForLeague(gn)}
+                                color="blue"
+                                options={[
+                                  { v: "men", l: "Men's" },
+                                  { v: "ladies", l: "Ladies'" },
+                                  { v: "mixed", l: "Mixed" },
+                                  { v: "open", l: "Open" },
+                                ]}
+                                onChange={(v) => setLeagueGender(gn, v as GenderCategory)}
+                              />
+                              <SegRow
+                                label="Players"
+                                value={matchTypeForLeague(gn)}
+                                color="green"
+                                options={[
+                                  { v: "singles", l: "👤 Singles" },
+                                  { v: "doubles", l: "👥 Doubles" },
+                                ]}
+                                onChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
+                              />
+                              <SegRow
+                                label="Scoring"
+                                value={scoringForLeague(gn)}
+                                color="amber"
+                                options={[
+                                  { v: "standard", l: "Standard" },
+                                  { v: "time_capped_points", l: "🔔 Bells" },
+                                ]}
+                                onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
+                              />
+                              {scoringForLeague(gn) === "standard" ? (
+                                <div className="space-y-2">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <SegRow
+                                      label="Game length"
+                                      value={String(pointsForLeague(gn))}
+                                      color="red"
+                                      options={[
+                                        { v: "11", l: "Par 11" },
+                                        { v: "15", l: "Par 15" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = Number(v) === 15 ? 15 : 11;
+                                        setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
+                                        if (gn === 1) setPointsPerGame(n);
+                                      }}
+                                    />
+                                    <SegRow
+                                      label="Games"
+                                      value={`${playAllForLeague(gn) ? "all" : "bo"}${bestOfForLeague(gn)}`}
+                                      color="pink"
+                                      options={[
+                                        { v: "bo3", l: "Best of 3" },
+                                        { v: "bo5", l: "Best of 5" },
+                                        { v: "all3", l: "Play all 3" },
+                                        { v: "all5", l: "Play all 5" },
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = v.endsWith("5") ? 5 : 3;
+                                        const all = v.startsWith("all");
+                                        setLeagueBestOf((m) => ({ ...m, [key]: n }));
+                                        setLeaguePlayAll((m) => ({ ...m, [key]: all }));
+                                        if (gn === 1) setBestOf(n);
+                                      }}
+                                    />
+
+                                  </div>
+                                  <SegRow
+                                    label="Win condition"
+                                    value={winConditionForLeague(gn)}
+                                    color="cyan"
+                                    options={[
+                                      { v: "win_by_2", l: "Win by 2" },
+                                      { v: "sudden_death", l: "Sudden death" },
+                                    ]}
+                                    onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
+                                  />
+                                  {matchTypeForLeague(gn) === "doubles" && (
+                                    <SegRow
+                                      label="Doubles serving method"
+                                      value={leagueServingMethods[String(gn)] ?? "none"}
+                                      color="cyan"
+                                      options={[
+                                        { v: "none", l: "Not set" },
+                                        ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label })),
+                                      ]}
+                                      onChange={(v) => setLeagueServingMethods((m) => {
+                                        const next = { ...m };
+                                        const parsed = parseServingMethod(v);
+                                        if (parsed) next[String(gn)] = parsed; else delete next[String(gn)];
+                                        return next;
+                                      })}
+                                    />
+                                  )}
+                                  <SegRow
+                                    label="Bye handling"
+                                    value={byeForLeague(gn)}
+                                    color="green"
+                                    options={[
+                                      { v: "no_match", l: "No match" },
+                                      { v: "walkover_win", l: "Walkover win" },
+                                      { v: "neutral", l: "Neutral" },
+                                    ]}
+                                    onChange={(v) => {
+                                      setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                      if (gn === 1) setByeHandling(v as any);
+                                    }}
+                                  />
+                                  {/* Planned time one match of this league occupies a court.
+                                      Feeds the capacity calculator (Bells leagues use the bell slot). */}
+                                  <SegRow
+                                    label="Planned match time"
+                                    value={String(Number(groupDurations[key]) || matchDuration || 20)}
+                                    color="amber"
+                                    options={[
+                                      { v: "20", l: "20 min" },
+                                      { v: "30", l: "30 min" },
+                                      { v: "45", l: "45 min" },
+                                      { v: "60", l: "60 min" },
+                                    ]}
+                                    onChange={(v) => {
+                                      const n = Number(v) || 0;
+                                      setGroupDurations((m) => ({ ...m, [key]: n }));
+                                      if (gn === 1 && (!matchDuration || matchDuration <= 0)) setMatchDuration(n);
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bell slot (min)</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={groupDurations[key] ?? ""}
+                                      placeholder="20"
+                                      onChange={(e) => {
+                                        const n = Math.max(0, Number(e.target.value) || 0);
+                                        setGroupDurations((m) => {
+                                          const next = { ...m };
+                                          if (n <= 0) delete next[key];
+                                          else next[key] = n;
+                                          return next;
+                                        });
+                                      }}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Break (min)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={groupBreakMinutes[key] ?? ""}
+                                      placeholder={String(defaultBreakMinutes || 0)}
+                                      onChange={(e) => {
+                                        const n = Math.max(0, Number(e.target.value) || 0);
+                                        setGroupBreakMinutes((m) => ({ ...m, [key]: n }));
+                                      }}
+                                      className="h-8 text-xs mt-0.5"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {scoringForLeague(gn) === "time_capped_points" && (
+                                <SegRow
+                                  label="Bye handling"
+                                  value={byeForLeague(gn)}
+                                  color="green"
+                                  options={[
+                                    { v: "no_match", l: "No match" },
+                                    { v: "walkover_win", l: "Walkover win" },
+                                    { v: "neutral", l: "Neutral" },
+                                  ]}
+                                  onChange={(v) => {
+                                    setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
+                                    if (gn === 1) setByeHandling(v as any);
+                                  }}
+                                />
+                              )}
+                              {/* Stage sequencing — does this division run alongside the
+                                  others, or only once another one has been played out?
+                                  A following doubles division inherits the finishing order
+                                  of the stage before it and pairs players from it. */}
+                                {(() => {
+                                  const allOthers = Array.from({ length: numGroups || 0 }, (_, i) => i + 1).filter(
+                                    (n) => n !== gn,
+                                  );
+                                  const waitsFor = followsDivision(divisionFollows, gn);
+                                  const leadsTo =
+                                    allOthers.find((n) => followsDivision(divisionFollows, n) === gn) ?? null;
+                                  const nameOf = (n: number) => groupLabels[String(n)] || `Division ${n}`;
+                                  const pools = sectionsForLeague(gn);
+                                  const isDoublesDivision = matchTypeForLeague(gn) === "doubles";
+                                  // Mirror the pools of the stage a follower inherits from.
+                                  const mirrorPools = (followerKey: string, sourceGn: number) => {
+                                    const mirror = sectionsForLeague(sourceGn);
+                                    setSwissPools((m) => ({ ...m, [followerKey]: mirror }));
+                                    setLeagueSections((m) =>
+                                      m[followerKey] === undefined ? m : { ...m, [followerKey]: mirror },
+                                    );
+                                  };
+                                  const orderOptions = [
+                                    { v: "0", l: "Alongside the others" },
+                                    ...allOthers.flatMap((n) => [
+                                      ...(!wouldCycle(divisionFollows, n, gn)
+                                        ? [{ v: `b:${n}`, l: `Before ${nameOf(n)}` }]
+                                        : []),
+                                      ...(!wouldCycle(divisionFollows, gn, n)
+                                        ? [{ v: `a:${n}`, l: `After ${nameOf(n)}` }]
+                                        : []),
+                                    ]),
+                                  ];
+                                  const orderValue = waitsFor
+                                    ? `a:${waitsFor}`
+                                    : leadsTo
+                                      ? `b:${leadsTo}`
+                                      : "0";
+                                  return (
+                                    <div className="space-y-1 pt-1">
+                                      {allOthers.length > 0 && (
+                                        <SegRow
+                                          label="When this stage runs"
+                                          value={orderValue}
+                                          color="violet"
+                                          options={orderOptions}
+                                          onChange={(v) => {
+                                            const n = Number(v.slice(2)) || 0;
+                                            const before = v.startsWith("b:");
+                                            const after = v.startsWith("a:");
+                                            setDivisionFollows((m) => {
+                                              const next = { ...m };
+                                              // This stage never both waits for and is waited on.
+                                              delete next[key];
+                                              if (leadsTo) delete next[String(leadsTo)];
+                                              if (after && n > 0) next[key] = n;
+                                              if (before && n > 0) next[String(n)] = gn;
+                                              return next;
+                                            });
+                                            // Same players carry over, so mirror the earlier stage's pools.
+                                            if (after && n > 0) mirrorPools(key, n);
+                                            if (before && n > 0) mirrorPools(String(n), gn);
+                                          }}
+                                         />
+                                       )}
+                                       {leadsTo != null && (
+                                         <p className="text-[10px] text-muted-foreground">
+                                           {nameOf(leadsTo)} runs after this stage and inherits its finishing order.
+                                         </p>
+                                       )}
+                                      {waitsFor != null && (
+                                        <>
+                                          <SegRow
+                                            label="Seeding for this stage"
+                                            value={seedSourceFor(gn)}
+                                            color="amber"
+                                            options={[
+                                              { v: "previous", l: `By ${nameOf(waitsFor)} results` },
+                                              { v: "ladder", l: "By club ladder (same as the first stage)" },
+                                            ]}
+                                            onChange={(v) =>
+                                              setDivisionSeedSource((m) => ({
+                                                ...m,
+                                                [key]: v === "ladder" ? "ladder" : "previous",
+                                              }))
+                                            }
+                                          />
+                                          <p className="text-[10px] text-muted-foreground">
+                                            {seedSourceFor(gn) === "ladder"
+                                              ? `Runs after ${nameOf(waitsFor)}, but players are ordered 1, 2, 3… by the club ladder.`
+                                              : `Runs after ${nameOf(waitsFor)} — players are ordered 1, 2, 3… by how they finished there. Until it is played, the order from ${nameOf(waitsFor)} is shown.`}
+                                          </p>
+                                        </>
+                                      )}
+                                      {isDoublesDivision && (() => {
+                                       // ONE place to decide how partners come about for this
+                                       // doubles division: the two automatic orders (Diamond
+                                       // League style) plus the ordinary tournament choices.
+                                       const raw = (divisionPairing as Record<string, unknown>)[key];
+                                       const explicit = isPairingMethod(raw) ? (raw as PairingMethod) : null;
+                                       const isAuto = explicit === "adjacent" || explicit === "balanced";
+                                       const current = isAuto ? explicit : (partnerMode || "");
+                                       return (
+                                         <>
+                                           <SegRow
+                                             label="How pairs are formed"
+                                             value={current}
+                                             color="cyan"
+                                             options={[
+                                               { v: "admin", l: "Admin pairs the players" },
+                                               { v: "players", l: "Players pick their own partner" },
+                                               { v: "rotate", l: "Players rotate (everyone partners everyone)" },
+                                               { v: "adjacent", l: "Automatic — adjacent (6+5, 4+3, 2+1)" },
+                                               { v: "balanced", l: "Automatic — balanced (1+6, 2+5, 3+4)" },
+                                             ]}
+                                             onChange={(v) => {
+                                               if (v === "adjacent" || v === "balanced") {
+                                                 setDivisionPairing((m) => ({ ...m, [key]: v as PairingMethod }));
+                                                 setPartnerMode((p: any) => p || "admin");
+                                               } else {
+                                                 setDivisionPairing((m) => ({ ...m, [key]: "manual" as PairingMethod }));
+                                                 setPartnerMode(v as any);
+                                               }
+                                             }}
+                                           />
+                                           <p className="text-[10px] text-muted-foreground">
+                                             {isAuto
+                                               ? `${PAIRING_METHOD_LABELS[explicit as PairingMethod]}${
+                                                   waitsFor != null
+                                                     ? ` — taken from the finishing order of ${nameOf(waitsFor)}.`
+                                                     : " — taken from the seeded order of this division."
+                                                 }`
+                                               : current === "rotate"
+                                                 ? "No fixed pairs: every round re-pairs the players so everyone partners everyone. Points are banked per player."
+                                                 : current === "players"
+                                                   ? "Entrants choose their own partner on their invitation; an admin can still override."
+                                                   : current === "admin"
+                                                     ? "The organiser builds every pair by hand."
+                                                     : "Pick how partners come about for this division."}
+                                           </p>
+                                           {current === "rotate" && (
+                                             <div className="space-y-1 pt-1">
+                                               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                 Maximum matches per player
+                                               </Label>
+                                               <div className="flex items-center gap-2">
+                                                 <input
+                                                   type="number"
+                                                   min={0}
+                                                   placeholder="No limit"
+                                                   className="h-7 w-24 rounded border bg-background px-2 text-[11px]"
+                                                   value={rotationMaxMatches > 0 ? rotationMaxMatches : ""}
+                                                   onChange={(e) => {
+                                                     const n = Math.floor(Number(e.target.value) || 0);
+                                                     setRotationMaxMatches(n > 0 ? n : 0);
+                                                   }}
+                                                 />
+                                                 {rotationMaxMatches > 0 && (
+                                                   <Button
+                                                     type="button"
+                                                     size="sm"
+                                                     variant="ghost"
+                                                     className="h-7 text-[10px]"
+                                                     onClick={() => setRotationMaxMatches(0)}
+                                                   >
+                                                     Full rotation
+                                                   </Button>
+                                                 )}
+                                               </div>
+                                               <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                 {rotationMaxMatches > 0
+                                                   ? `Each player plays at most ${rotationMaxMatches} matches. The draw spreads partners and opponents as widely as possible within that limit — not every partner combination is played.`
+                                                   : "Leave blank for a full rotation: everyone partners everyone."}
+                                               </p>
+                                               <div className="space-y-1 pt-2">
+                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                   Partner strength
+                                                 </Label>
+                                                 <select
+                                                   className="h-7 w-full rounded border bg-background px-1 text-[11px]"
+                                                   value={rotationStrengthMode}
+                                                   onChange={(e) =>
+                                                     setRotationStrengthMode(e.target.value as "any" | "mixed" | "balanced")
+                                                   }
+                                                 >
+                                                   <option value="mixed">Stronger player with a weaker player</option>
+                                                   <option value="balanced">Similar standard together</option>
+                                                   <option value="any">No preference</option>
+                                                 </select>
+                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                   {rotationStrengthMode === "mixed"
+                                                     ? "Pairs mix a stronger player with a weaker one, so the combinations left out are the weakest ones."
+                                                     : rotationStrengthMode === "balanced"
+                                                       ? "Players of a similar standard partner each other, so games stay evenly matched."
+                                                       : "Partners are drawn purely on variety, regardless of standard."}
+                                                 </p>
+                                               </div>
+                                               <div className="space-y-1 pt-2">
+                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                   Never partner each other
+                                                 </Label>
+                                                 <div className="flex flex-wrap gap-1">
+                                                   {rotationAvoidPairs.map((pair, i) => (
+                                                     <span
+                                                       key={`${pair[0]}-${pair[1]}-${i}`}
+                                                       className="inline-flex items-center gap-1 rounded border bg-muted/50 px-2 py-0.5 text-[10px]"
+                                                     >
+                                                       {rotationPlayerName(pair[0])} &amp; {rotationPlayerName(pair[1])}
+                                                       <button
+                                                         type="button"
+                                                         className="text-muted-foreground hover:text-destructive"
+                                                         onClick={() =>
+                                                           setRotationAvoidPairs((list) => list.filter((_, j) => j !== i))
+                                                         }
+                                                       >
+                                                         ×
+                                                       </button>
+                                                     </span>
+                                                   ))}
+                                                   {rotationAvoidPairs.length === 0 && (
+                                                     <span className="text-[10px] text-muted-foreground">
+                                                       No exclusions yet.
+                                                     </span>
+                                                   )}
+                                                 </div>
+                                                 <div className="flex items-center gap-2 pt-1">
+                                                   <select
+                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
+                                                     value={avoidPickA}
+                                                     onChange={(e) => setAvoidPickA(e.target.value)}
+                                                   >
+                                                     <option value="">Player…</option>
+                                                     {selectedPlayers.map((p: any) => (
+                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
+                                                     ))}
+                                                   </select>
+                                                   <select
+                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
+                                                     value={avoidPickB}
+                                                     onChange={(e) => setAvoidPickB(e.target.value)}
+                                                   >
+                                                     <option value="">Player…</option>
+                                                     {selectedPlayers.map((p: any) => (
+                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
+                                                     ))}
+                                                   </select>
+                                                   <Button
+                                                     type="button"
+                                                     size="sm"
+                                                     variant="outline"
+                                                     className="h-7 text-[10px]"
+                                                     disabled={!avoidPickA || !avoidPickB || avoidPickA === avoidPickB}
+                                                     onClick={() => {
+                                                       setRotationAvoidPairs((list) =>
+                                                         list.some(
+                                                           (p) =>
+                                                             (p[0] === avoidPickA && p[1] === avoidPickB) ||
+                                                             (p[0] === avoidPickB && p[1] === avoidPickA),
+                                                         )
+                                                           ? list
+                                                           : [...list, [avoidPickA, avoidPickB]],
+                                                       );
+                                                       setAvoidPickA("");
+                                                       setAvoidPickB("");
+                                                     }}
+                                                   >
+                                                     Add
+                                                   </Button>
+                                                 </div>
+                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                   Family members or couples you would rather not have as partners. They
+                                                   can still meet as opponents.
+                                                 </p>
+                                               </div>
+                                             </div>
+                                           )}
+                                         </>
+
+                                       );
+                                     })()}
+                                      {pools > 1 && (
+                                        <div className="space-y-1">
+                                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            Slot minutes per pool (optional)
+                                          </Label>
+                                          <div className="grid grid-cols-3 gap-2">
+                                            {Array.from({ length: pools }, (_, i) => i + 1).map((pool) => {
+                                              const pk = poolDurationKey(gn, pool);
+                                              return (
+                                                <div key={pk}>
+                                                  <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                                    Pool {String.fromCharCode(64 + pool)}
+                                                  </Label>
+                                                  <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={poolDurations[pk] ?? ""}
+                                                    placeholder={String(
+                                                      Number(groupDurations[key]) || matchDuration || 20,
+                                                    )}
+                                                    onChange={(e) => {
+                                                      const n = Math.max(0, Number(e.target.value) || 0);
+                                                      setPoolDurations((m) => {
+                                                        const next = { ...m };
+                                                        if (n <= 0) delete next[pk];
+                                                        else next[pk] = n;
+                                                        return next;
+                                                      });
+                                                    }}
+                                                    className="h-8 text-xs"
+                                                  />
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          <p className="text-[10px] text-muted-foreground">
+                                            This is the playing time (bell slot) for that pool — e.g. 15 means a
+                                            15-minute game. The {Number(groupBreakMinutes[key]) || defaultBreakMinutes || 3}
+                                            -minute break above applies to every pool. Leave blank to use this
+                                            division's time.
+                                          </p>
+                                        </div>
+                                      )}
+                                   </div>
+                                 );
+                               })()}
+                              {/* Forfeit / no-show rule — options come from THIS league's
+                                  scoring format, so a standard best-of league can only take a
+                                  walkover or a no-result, never an arbitrary points award. */}
+                              {(() => {
+                                const sc = scoringForLeague(gn);
+                                const opts = forfeitOptionsForScoring(sc);
+                                const rule = forfeitRuleForLeague(gn);
+                                const pts = forfeitPointsForLeague(gn);
+                                const hint = opts.find((o) => o.value === rule)?.hint || "";
+                                return (
+                                  <div className="space-y-1 pt-1">
+                                    <SegRow
+                                      label="Forfeit / no-show rule"
+                                      value={rule}
+                                      color="red"
+                                      options={opts.map((o) => ({ v: o.value, l: o.label }))}
+                                      onChange={(v) =>
+                                        setLeagueForfeitRules((m) => ({ ...m, [key]: v as ForfeitRule }))
+                                      }
+                                    />
+                                    {rule === "award_points" && (
+                                      <div className="flex flex-wrap items-center gap-2 pl-0.5">
+                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Opponent</Label>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          value={pts.opponent}
+                                          onChange={(e) =>
+                                            setLeagueForfeitPoints((m) => ({
+                                              ...m,
+                                              [key]: { opponent: Math.max(0, Math.round(Number(e.target.value)) || 0), player: pts.player },
+                                            }))
+                                          }
+                                          className="h-7 w-16 text-xs"
+                                        />
+                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Absent player</Label>
+                                        <Input
+                                          type="number"
+                                          value={pts.player}
+                                          onChange={(e) =>
+                                            setLeagueForfeitPoints((m) => ({
+                                              ...m,
+                                              [key]: { opponent: pts.opponent, player: Math.round(Number(e.target.value)) || 0 },
+                                            }))
+                                          }
+                                          className="h-7 w-16 text-xs"
+                                        />
+                                      </div>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground pl-0.5">{hint}</p>
+                                  </div>
+                                );
+                              })()}
+                              <div className="pt-1">
+                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    className="h-3.5 w-3.5 accent-fuchsia-500"
+                                    checked={playoffsForLeague(gn)}
+                                    onChange={(e) => {
+                                      const on = e.target.checked;
+                                      setLeaguePlayoffs((m) => ({ ...m, [key]: on }));
+                                    }}
+                                  />
+                                  {fmt === "knockout"
+                                    ? "Continue through knockout stages"
+                                    : poolsForDivision(gn) > 1
+                                      ? "Enable playoffs after pool stage"
+                                      : "Playoffs / finals for this league"}
+                                </label>
+                                {fmt === "knockout" && (
+                                  <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
+                                    Winners progress to the next knockout round as results are completed,
+                                    through to the section/division final.
+                                  </p>
+                                )}
+                                {fmt !== "knockout" && poolsForDivision(gn) > 1 && playoffsForLeague(gn) && (
+                                  <div className="pl-6 pt-1.5 space-y-1.5">
+                                    <div className="flex flex-wrap gap-3">
+                                      {([
+                                        { v: "position" as PlayoffMode, l: "Position playoffs" },
+                                        { v: "knockout" as PlayoffMode, l: "Crossover / knockout" },
+                                      ]).map((o) => (
+                                        <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            className="h-3 w-3 accent-fuchsia-500"
+                                            name={`playoff-mode-${key}`}
+                                            checked={playoffModeForLeague(gn) === o.v}
+                                            onChange={() =>
+                                              setLeaguePlayoffModes((m) => ({ ...m, [key]: o.v }))
+                                            }
+                                          />
+                                          {o.l}
+                                        </label>
+                                      ))}
+                                    </div>
+                                    {playoffModeForLeague(gn) === "position" ? (
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        <strong>{PLAYOFF_TYPE_INFO.position.name}:</strong> matching finishing positions meet: A1 v B1, A2 v B2, A3 v B3 … so every
+                                        overall position in this division is decided.
+                                      </p>
+                                    ) : poolsForDivision(gn) === 2 && playoffQualifiersForLeague(gn) === 2 ? (
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        <strong>{PLAYOFF_TYPE_INFO.crossover.name}:</strong> {PLAYOFF_TYPE_INFO.crossover.example}{" "}
+                                        <button type="button" className="underline" onClick={() => setLeaguePlayoffQualifiers((m) => ({ ...m, [key]: 4 }))}>Use a bigger knockout</button>
+                                      </p>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        <label className="flex items-center gap-2 text-[11px]">
+                                          <span>Qualify from each pool</span>
+                                          <input
+                                            type="number"
+                                            min={1}
+                                            className="h-7 w-16 rounded border bg-background px-2 text-[11px]"
+                                            value={playoffQualifiersForLeague(gn)}
+                                            onChange={(e) =>
+                                              setLeaguePlayoffQualifiers((m) => ({
+                                                ...m,
+                                                [key]: Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                                              }))
+                                            }
+                                          />
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                          {playoffQualifiersForLeague(gn) * poolsForDivision(gn)} qualifiers go into one
+                                          cross-pool knockout draw, seeded so pool rivals meet as late as possible.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="pt-1 flex justify-end">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[11px]"
+                                  onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
+                                >
+                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
+                                </Button>
+                              </div>
+                            </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : null}
+
+                    {/* Drop zone / empty state */}
+                    <div className="rounded-lg border-2 border-dashed border-border/70 py-6 flex flex-col items-center justify-center text-muted-foreground hover:border-amber-500/50 hover:text-amber-600 transition-colors text-center px-3">
+                      <Trophy className="w-6 h-6 mb-1 opacity-60" />
+                      <div className="text-xs font-medium">Drop a format here to add {numGroups > 0 ? `League ${numGroups + 1}` : "League 1"}</div>
+                      <div className="text-[10px] text-muted-foreground/80 mt-0.5">or click a format on the right</div>
+                    </div>
+
+                    {(() => {
+                      const totalExpected = Object.values(expectedPlayers).reduce((a, b) => a + (Number(b) || 0), 0);
+                      if (numGroups === 0 && totalExpected === 0) return null;
+                      // Rough estimate: sum of C(n,2) per league for single RR, x2 for double,
+                      // pools * C(n/pools,2) * rounds for Swiss (approx).
+                      let est = 0;
+                      for (let gn = 1; gn <= numGroups; gn++) {
+                        const key = String(gn);
+                        const n = Number(expectedPlayers[key]) || 0;
+                        if (n < 2) continue;
+                        const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
+                        const pools = poolsForDivision(gn);
+                        const perPool = Math.max(1, Math.ceil(n / pools));
+                        if (fmt === "monrad") {
+                          est += monradPlan(n)?.matches ?? 0;
+                        } else if (fmt === "swiss") {
+                          const pp = Math.max(2, perPool);
+                          est += pools * ((pp * (pp - 1)) / 2);
+                        } else if (fmt === "cross_league" && pools > 1) {
+                          // pool-vs-pool inside the league
+                          est += ((pools * (pools - 1)) / 2) * perPool * perPool;
+                        } else {
+                          const games = (perPool * (perPool - 1)) / 2 * pools;
+                          est += fmt === "double_round_robin" ? games * 2 : games;
+                        }
+
+                      }
+                      return (
+                        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500">
+                              <Trophy className="w-3.5 h-3.5" />
+                            </span>
+                            <div>
+                              <div className="font-semibold">{est > 0 ? `≈ ${est} match${est === 1 ? "" : "es"}` : "Planned capacity"}</div>
+                              <div className="text-[10px] text-muted-foreground">{numGroups} league{numGroups === 1 ? "" : "s"} · {totalExpected || "—"} planned {isDoubles ? `pair${totalExpected === 1 ? "" : "s"}` : `player${totalExpected === 1 ? "" : "s"}`}</div>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground italic">Refined once players register</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Format palette */}
+                  <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
+                    {(["single_round_robin", "knockout", "swiss", "cross_league", ...(structureOnly ? ["monrad" as const] : [])] as PerLeagueFormat[]).map((fmt) => {
+                      const meta = FORMAT_META[fmt];
+                      return (
+                        <Button
+                          variant="outline"
+                          key={fmt}
+                          type="button"
+                          draggable
+                          onDragStart={(e) => { e.dataTransfer.setData("application/x-champ-format", fmt); e.dataTransfer.effectAllowed = "copy"; }}
+                          onClick={() => addLeagueOfFormat(fmt)}
+                          className="h-auto block w-full whitespace-normal text-left rounded-lg border border-border bg-card p-2.5 transition-all cursor-grab active:cursor-grabbing group"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                              <Plus className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="text-xs font-semibold">{meta.label}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
+                        </Button>
+                      );
+                    })}
+                    <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
+
+                  </div>
+                </div>
+
+            </div>
+            </WizardSection>
+
+            {/* Plain-language warnings about each division's players and pools. */}
+            {(() => {
+              const issues = validateDivisions({
+                divisionCount: numGroups,
+                sources: leagueSources,
+                pools: swissPools,
+                formatFor: (gn) => formatForLeague(gn),
+              });
+              if (issues.length === 0) return null;
+              return (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
+                  {issues.map((iss, i) => (
+                    <p key={i} className="text-[11px] text-amber-700 dark:text-amber-400">
+                      <span className="font-semibold">{groupLabels[String(iss.gn)] || `League ${iss.gn}`}:</span>{" "}
+                      {iss.message}
+                    </p>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Players sitting in a division they don't qualify for. Nothing is
+                dropped silently — the organiser removes them or keeps them. */}
+            {(() => {
+              if (isDoubles) return null;
+              const bad = explainIneligibleAssignments(
+                new Map(Array.from(groupAssignments.entries()).map(([id, gi]) => [id, gi + 1])),
+                eligibilityCtx,
+              );
+              if (bad.length === 0) return null;
+              const nameOf = (id: string) =>
+                (allSelectablePlayers.find((m: any) => m.id === id) as any)?.name || "Player";
+              return (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                  <p className="text-[11px] font-semibold text-destructive">
+                    {bad.length} player{bad.length === 1 ? "" : "s"} are not in the league(s) their division draws from.
+                    They will not be seeded into the draw until you remove them or keep them anyway.
+                  </p>
+                  <div className="space-y-1">
+                    {bad.map(({ memberId, gn, memberLeagueIds, sourceLeagueIds }) => {
+                      const listNames = (ids: string[]) =>
+                        ids.map((id) => leagueNameById.get(id) || "Unknown league").join(", ");
+                      return (
+                      <div key={`${memberId}-${gn}`} className="flex items-center gap-2 text-[11px]">
+                        <span className="flex-1 min-w-0">
+                          <span className="font-medium">{nameOf(memberId)}</span>{" "}
+                          <span className="text-muted-foreground">
+                            — assigned to division “{groupLabels[String(gn)] || `League ${gn}`}”, which draws from{" "}
+                            {sourceLeagueIds.length > 0 ? listNames(sourceLeagueIds) : "no league"}.{" "}
+                            {memberLeagueIds.length > 0
+                              ? `This player is registered in ${listNames(memberLeagueIds)}.`
+                              : scopeIsWide
+                                ? "This player is not registered in any league in the region for this season."
+                                : "This player is not registered in any club league."}
+                          </span>
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() =>
+                            setEligibilityOverrides((prev) => new Set(prev).add(memberId))
+                          }
+                        >
+                          Keep anyway
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[11px]"
+                          onClick={() => {
+                            setSelectedPlayerIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(memberId);
+                              return next;
+                            });
+                            setGroupAssignments((prev) => {
+                              const next = new Map(prev);
+                              next.delete(memberId);
+                              return next;
+                            });
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+
+
+            {/* Ranking — set once here, never repeated on the messaging step. */}
+            <CompetitionRankingCard
+              className="mt-2"
+              clubId={clubId}
+              source="tournament"
+              ownerScope={scope}
+              rankingScope={rankingScopeOverride}
+              onRankingScopeChange={setRankingScopeOverride}
+              affects={affectsRankingPoints}
+              onAffectsChange={setAffectsRankingPoints}
+              weight={rankingWeight}
+              onWeightChange={setRankingWeight}
+            />
+
+            <div className="rounded-md border bg-muted/30 px-3 py-2 mt-2 space-y-1">
+              <Label className="text-xs font-medium">Do results move the club ladder?</Label>
+              <Select
+                value={ladderAffects === null ? "inherit" : ladderAffects ? "on" : "off"}
+                onValueChange={(v) => setLadderAffects(v === "inherit" ? null : v === "on")}
+              >
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">Use the club ladder setting</SelectItem>
+                  <SelectItem value="on">Yes — move the ladder</SelectItem>
+                  <SelectItem value="off">No — leave the ladder alone</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Only club-mate singles results between two ranked members can move the ladder.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-dashed p-3 bg-muted/20 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Capacity is checked later.</span>{" "}
+              This structure is sized against real court time on the <strong>Dates, Times &amp; Courts</strong> step,
+              once the dates, playing times and courts are set.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+  </>;
+  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={saveOriginalStructure}>Save Structure</Button></div></div>;
+
   // ── LIST VIEW ──
   if (!showWizard) {
     return (
@@ -9887,1526 +11525,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           </CardContent>
         </Card>
       )}
-      {step === "structure" && !diamondMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Structure &amp; Capacity</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Build the leagues that make up this tournament, then check they fit the dates, times and courts you just picked.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <WizardSection
-              title={"Tournament structure"}
-              summary={`${numGroups || 0} league${numGroups === 1 ? "" : "s"} configured`}
-              complete={(numGroups || 0) > 0}
-              defaultOpen={true}
-            >
-
-
-            {/* Match rules are now decided per league in the builder below —
-                format (Standard / Bells), category, singles/doubles, par 11 / 15,
-                best-of and win condition are all independently configurable. */}
-            <div
-              ref={stepIssuesRef}
-              className={`rounded-lg border p-3 shadow-sm ${
-                showStepIssues ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/40"
-              }`}
-            >
-              <Label className="text-sm font-semibold">
-                Match rules {showStepIssues && <span className="text-destructive">*</span>}
-              </Label>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Format, category, singles or doubles, par 11 / par 15, best-of and win condition are set on each
-                league card in the builder below.
-              </p>
-              {showStepIssues && (
-                <p className="text-[11px] text-destructive mt-1">
-                  Still needed: {missingForStep().join(" · ")} — set these on the league card(s) below.
-                </p>
-              )}
-            </div>
-
-
-
-            {/* ─── Tournament Structure Builder ─────────────────────────── */}
-            {/* Visual builder — admin drags/clicks formats from the palette to
-                add leagues, then tweaks name / pools / expected players inline.
-                Replaces the old Round Format dropdown + Per-league overrides
-                checkbox. Cross-league mode is a toggle above the builder since
-                it's inherently tournament-wide. */}
-            <div className="rounded-xl border-2 border-border bg-card shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
-                <div>
-                  <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
-                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
-                </div>
-                {/* Playoffs are owned by each league card below. These are
-                    bulk shortcuts that write the per-league settings — not a
-                    second source of truth. */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                    Playoffs: {(() => {
-                      const on = Array.from({ length: numGroups || 0 }, (_, i) => playoffsForLeague(i + 1)).filter(Boolean).length;
-                      if (!numGroups) return "—";
-                      return on === 0 ? "none" : on === numGroups ? "all leagues" : `${on} of ${numGroups}`;
-                    })()}
-                  </span>
-                  <Button
-                    type="button" size="sm" variant="outline" className="h-7 text-[11px]"
-                    disabled={!numGroups}
-                    onClick={() => {
-                      const next: Record<string, boolean> = {};
-                      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = true;
-                      setLeaguePlayoffs(next);
-                    }}
-                  >
-                    All
-                  </Button>
-                  <Button
-                    type="button" size="sm" variant="outline" className="h-7 text-[11px]"
-                    disabled={!numGroups}
-                    onClick={() => setLeaguePlayoffs({})}
-                  >
-                    None
-                  </Button>
-                </div>
-              </div>
-
-              {roundFormat === "cross_league" && (
-                <div className="px-4 py-2 text-[11px] text-muted-foreground bg-amber-500/10 border-b border-amber-500/30">
-                  <strong className="text-foreground">Cross-league is active.</strong> Leagues set to “Cross league” play against the other leagues instead of within themselves — no intra-league matches for those leagues.
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px]">
-                  {/* Canvas */}
-                  <div
-                    className="p-4 space-y-3 min-h-[220px] bg-muted/10"
-                    onDragOver={(e) => { e.preventDefault(); }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const fmt = e.dataTransfer.getData("application/x-champ-format") as PerLeagueFormat;
-                      if (fmt && FORMAT_META[fmt]) addLeagueOfFormat(fmt);
-                    }}
-                  >
-                    {numGroups > 0 ? (
-                      Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
-                        const key = String(gn);
-                        // The card must reflect the division's REAL draw format.
-                        // Knockout / cross league were previously dropped by this
-                        // fallback, which made knockout divisions render as round
-                        // robin (wrong pool wording and wrong bottom control).
-                        const rf = roundFormat as string;
-                        const fmt: PerLeagueFormat = (leagueFormats[key]
-                          ?? (rf === "swiss" || rf === "double_round_robin"
-                              || rf === "single_round_robin" || rf === "knockout"
-                              || rf === "cross_league"
-                              ? (roundFormat as PerLeagueFormat)
-                              : "single_round_robin"));
-                        const meta = FORMAT_META[fmt];
-                        const isSwiss = fmt === "swiss";
-                        const collapsed = collapsedLeagues[key] ?? true;
-                        return (
-                          <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
-                            <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
-                            <div className={cn("flex items-start justify-between gap-2", !collapsed && "mb-2")}>
-                              <div className="flex-1 min-w-0">
-                                <div
-                                  className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
-                                  onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
-                                >
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
-                                  {collapsed && groupLabels[key] && (
-                                    <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
-                                  )}
-                                  <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
-                                  <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                    {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
-                                    {scoringForLeague(gn) === "time_capped_points"
-                                      ? `Bells ${groupDurations[key] || matchDuration || 20}′`
-                                      : `Par ${pointsForLeague(gn)} · ${playAllForLeague(gn) ? `All ${bestOfForLeague(gn)}` : `Bo${bestOfForLeague(gn)}`} · ${winConditionForLeague(gn) === "sudden_death" ? "Sudden death" : "Win by 2"} · ${Number(groupDurations[key]) || matchDuration || 20}′`}
-                                  </span>
-                                  {collapsed && (
-                                    <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                                      Bye: {byeForLeague(gn).replace(/_/g, " ")}
-                                    </span>
-                                  )}
-                                  {collapsed && (
-                                    <span className="inline-flex items-center rounded border border-rose-500/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-400">
-                                      No show: {describeForfeitRule(forfeitRuleForLeague(gn), forfeitPointsForLeague(gn))}
-                                    </span>
-                                  )}
-                                  {collapsed && playoffsForLeague(gn) && (
-                                    <span className="inline-flex items-center rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
-                                      {fmt === "knockout" ? "Knockout rounds" : "Playoffs"}
-                                    </span>
-                                  )}
-                                  {collapsed && (
-                                    <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
-                                      {formatUsesPools(fmt) ? poolLabelFor(poolsForDivision(gn), fmt) : "Single draw"}
-                                      {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
-                                    </span>
-                                  )}
-                                </div>
-                                {!collapsed && (
-                                <div className="flex items-end gap-2">
-                                  <Input
-                                    value={groupLabels[key] || ""}
-                                    placeholder={`League ${gn}`}
-                                    onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
-                                    className="h-8 text-sm font-semibold flex-1 min-w-0"
-                                  />
-                                  {/* Read-only summary — the pool count is set
-                                      by the single Pools selector below. */}
-                                  {formatUsesPools(fmt) && (
-                                    <div className="shrink-0 pb-1.5" title={`Set the ${poolNoun(fmt, false)} count with the ${poolSelectorLabel(fmt)} selector below`}>
-                                      <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">{poolSelectorLabel(fmt)}</Label>
-                                      <div className="text-xs font-semibold text-teal-700 dark:text-teal-400 mt-1 whitespace-nowrap">
-                                        {poolLabelFor(poolsForDivision(gn), fmt)}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {/* Swiss rounds are set in the Swiss settings
-                                      block below — one source of truth. */}
-                                  <div className="w-20 shrink-0">
-                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                      {isDoubles ? "Pairs" : "Players"}
-                                    </Label>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      placeholder="—"
-                                      value={expectedPlayers[key] ?? ""}
-                                      title={isDoubles ? "Expected pairs" : "Expected players"}
-                                      onChange={(e) => {
-                                        const n = Number(e.target.value);
-                                        setExpectedPlayers((m) => {
-                                          const next = { ...m };
-                                          if (!Number.isFinite(n) || n <= 0) delete next[key];
-                                          else next[key] = Math.round(n);
-                                          return next;
-                                        });
-                                        // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
-                                        if (isSwiss && Number.isFinite(n) && n >= 2) {
-                                          const pools = poolsForDivision(gn);
-                                          const perPool = Math.max(2, Math.ceil(n / pools));
-                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
-                                        }
-                                      }}
-                                      className="h-8 text-xs mt-0.5 px-1.5"
-                                    />
-                                  </div>
-                                </div>
-                                )}
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground"
-                                onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }))}
-                                title={collapsed ? "Expand league" : "Collapse league"}
-                              >
-                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2 text-[11px]"
-                                onClick={() => duplicateLeagueAt(gn)}
-                                title="Create another division with exactly these settings"
-                              >
-                                <Copy className="h-3.5 w-3.5 mr-1" />
-                                Duplicate
-                              </Button>
-                              <Button
-
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => removeLeagueAt(gn)}
-                                title="Remove league"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            {/* Visual, button-driven league setup — draw format,
-                                category, entity type and scoring all per league. */}
-                            {!collapsed && (
-                            <div className="space-y-2">
-                              {/* Who may play in THIS division. Real club league ids —
-                                  the population also seeds the draw. */}
-                              {(() => {
-                                const src = sourceForLeague(gn);
-                                const setSrc = (next: DivisionSource) => setSourceForLeague(gn, next);
-                                const toggle = (id: string) => {
-                                  const has = src.leagueIds.includes(id);
-                                  const ids = has ? src.leagueIds.filter((x) => x !== id) : [...src.leagueIds, id];
-                                  setSrc({ mode: src.mode === "all" ? "selected" : src.mode, leagueIds: ids });
-                                };
-                                return (
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <Label className="text-[9px] uppercase tracking-wider text-muted-foreground w-full sm:w-auto">
-                                      Primarily players from <span className="normal-case tracking-normal text-muted-foreground/70">(optional)</span>
-                                    </Label>
-                                    <p className="w-full text-[10px] text-muted-foreground leading-snug order-last">
-                                      You don’t have to select any leagues. This only decides which league these players
-                                      are allocated to and seeded in — it does not limit who is invited or who may enter.
-                                    </p>
-
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]">
-                                          {describeDivisionSource(src, leagueNameById)}
-                                          <ChevronDown className="ml-1 h-3 w-3" />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent align="start" className="w-80 p-2 space-y-1.5">
-                                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-                                          <input
-                                            type="checkbox"
-                                            className="h-3.5 w-3.5 accent-violet-500"
-                                            checked={src.mode === "all"}
-                                            onChange={() => setSrc({ ...DEFAULT_DIVISION_SOURCE })}
-                                          />
-                                          All leagues — select every league group
-                                        </label>
-                                        <p className="text-[10px] text-muted-foreground leading-snug">
-                                          Selecting leagues is optional — leave this on “All leagues” if you don’t want to
-                                          restrict seeding. “All leagues” never merges everyone into one draw. Use the
-                                          button below to give each league its own competition, with its own winner.
-                                        </p>
-
-                                        {src.mode === "all" && (
-                                          <Button
-                                            type="button"
-                                            variant="secondary"
-                                            size="sm"
-                                            className="w-full h-7 text-[11px]"
-                                            onClick={() => expandAllLeagues(gn)}
-                                          >
-                                            Create one competition per league (recommended)
-                                          </Button>
-                                        )}
-
-                                        <Separator />
-                                        {availableSeasons.length > 0 && (
-                                          <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                              <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                                Season
-                                              </Label>
-                                              <select
-                                                className="h-6 rounded border border-border/60 bg-background px-1 text-[11px]"
-                                                value={sourceSeason ?? ""}
-                                                onChange={(e) => {
-                                                  setSeasonTouched(true);
-                                                  setSourceSeason(e.target.value ? Number(e.target.value) : null);
-                                                }}
-                                              >
-                                                {availableSeasons.map((s) => (
-                                                  <option key={s} value={s}>
-                                                    {s}
-                                                  </option>
-                                                ))}
-                                                <option value="">All seasons</option>
-                                              </select>
-                                            </div>
-                                            {seasonIsFallback && (
-                                              <p className="text-[10px] text-amber-600 dark:text-amber-500 leading-snug">
-                                                No {tournamentYear} league structure yet — showing {sourceSeason}. Create
-                                                the {tournamentYear} leagues on the Leagues page to draw from them; nothing
-                                                is copied or reassigned automatically.
-                                              </p>
-                                            )}
-                                          </div>
-                                        )}
-
-                                        {/* With "All leagues" ticked the hierarchy stays
-                                            visible and every team reads as selected; the
-                                            moment a child is unticked the source becomes an
-                                            explicit id list. */}
-                                        <LeagueSourceTree
-                                          groups={leagueTree}
-                                          selected={
-                                            src.mode === "all"
-                                              ? allTreeLeagueIds(leagueTree)
-                                              : src.leagueIds
-                                          }
-                                          onChange={(ids) =>
-                                            setSrc({
-                                              mode: src.mode === "all" ? "selected" : src.mode,
-                                              leagueIds: ids,
-                                            })
-                                          }
-                                        />
-                                        {src.leagueIds.length > 1 && (
-                                          <>
-                                            <Separator />
-                                            <label className="flex items-start gap-2 text-xs font-medium cursor-pointer">
-                                              <input
-                                                type="checkbox"
-                                                className="h-3.5 w-3.5 mt-0.5 accent-violet-500"
-                                                checked={src.mode === "combined"}
-                                                onChange={(e) =>
-                                                  setSrc({ ...src, mode: e.target.checked ? "combined" : "selected" })
-                                                }
-                                              />
-                                              <span>
-                                                Combined competition
-                                                <span className="block text-[10px] font-normal text-muted-foreground">
-                                                  Only tick this to deliberately mix the selected teams into one draw
-                                                  with one winner.
-                                                </span>
-                                              </span>
-                                            </label>
-                                          </>
-                                        )}
-                                      </PopoverContent>
-
-                                    </Popover>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-[11px]"
-                                      onClick={() => applyDivisionPrefill(gn)}
-                                    >
-                                      Load players
-                                    </Button>
-                                    {src.mode === "selected" && src.leagueIds.length > 1 && (
-                                      <span className="text-[10px] text-amber-600 dark:text-amber-500">
-                                        More than one league — tick “Combined competition” or split into separate divisions.
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                              <SegRow
-                                label="Draw format"
-                                value={fmt === "double_round_robin" ? "single_round_robin" : fmt}
-                                color="violet"
-                                 options={[
-                                   { v: "single_round_robin", l: "Round robin" },
-                                   { v: "knockout", l: "Knockout" },
-                                   { v: "swiss", l: "Swiss pairing" },
-                                   { v: "cross_league", l: "Cross league" },
-                                 ]}
-                                 onChange={(v) => {
-                                   const nv = v as PerLeagueFormat;
-                                   setLeagueFormats((m) => ({ ...m, [key]: nv }));
-                                   setUsePerLeagueFormats(true);
-                                   if (nv === "swiss") {
-                                     setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
-                                     setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));
-                                   }
-                                    if (nv === "knockout") {
-                                      const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
-                                      setSwissPools((m) => ({ ...m, [key]: m[key] || suggestSectionCount(entrants) }));
-                                      // Newly configured knockout division: progression ON by default.
-                                      // (A division already on knockout keeps the organiser's choice.)
-                                      if (fmt !== "knockout") setLeaguePlayoffs((m) => ({ ...m, [key]: true }));
-                                    }
-                                    if (nv === "cross_league") setRoundFormat("cross_league");
-                                    else {
-                                      // Drop cross-league mode once no league uses it.
-                                      const next = { ...leagueFormats, [key]: nv };
-                                      const stillCross = Array.from({ length: numGroups || 0 }, (_, i) => next[String(i + 1)]).some((f) => f === "cross_league");
-                                      if (!stillCross && (!roundFormat || roundFormat === "cross_league")) {
-                                        setRoundFormat(nv === "knockout" ? "single_round_robin" : (nv as any));
-                                      }
-                                    }
-                                  }}
-                                />
-                                {/* THE pool selector for this division — the
-                                    only editable pool control, shared by every
-                                    format that uses pools. */}
-                                {formatUsesPools(fmt) && (() => {
-                                  const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
-                                  const pools = poolsForDivision(gn);
-                                  const suggested = suggestSectionCount(entrants);
-                                  const perPool = pools > 0 ? Math.ceil(entrants / pools) : 0;
-                                  return (
-                                    <div className="rounded-md border bg-muted/30 p-2 space-y-1.5">
-                                      <SegRow
-                                        label={fmt === "knockout" ? "Knockout structure" : "Pools"}
-                                        value={String(pools)}
-                                        color="violet"
-                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
-                                        onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
-                                      />
-                                      <p className="text-[11px] text-muted-foreground">
-                                        {entrants > 0
-                                          ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? poolNoun(fmt, false) : "draw"}. `
-                                          : ""}
-                                        {fmt === "knockout"
-                                          ? "Seeds are spread evenly across sections from the ladder; section winners meet in this division's final."
-                                          : fmt === "cross_league"
-                                            ? "Each pool plays every other pool."
-                                            : pools > 1
-                                              ? "Players are split into pools; each pool plays its own draw."
-                                              : "One draw — everyone in this division plays in the same group."}
-                                        {fmt === "knockout" && entrants > 0 && pools !== suggested ? ` Suggested: ${suggested}.` : ""}
-                                      </p>
-                                      {fmt === "knockout" && (
-                                        <p className="text-[11px] text-muted-foreground">
-                                          Only the first round is scheduled up front — later rounds are created as each round finishes.
-                                        </p>
-                                      )}
-                                      {fmt === "knockout" && (() => {
-                                        const style: DrawStyle = leagueDrawStyles[key] === "graduated" ? "graduated" : "straight";
-                                        const perSection = pools > 0 ? Math.ceil(entrants / pools) : entrants;
-                                        return (
-                                          <div className="space-y-1 pt-1">
-                                            <SegRow
-                                              label="Entry style"
-                                              value={style}
-                                              color="violet"
-                                              options={[
-                                                { v: "straight", l: "Straight knockout" },
-                                                { v: "graduated", l: "Gradual fair entry" },
-                                              ]}
-                                              onChange={(v) =>
-                                                setLeagueDrawStyles((m) => ({
-                                                  ...m,
-                                                  [key]: v === "graduated" ? "graduated" : "straight",
-                                                }))
-                                              }
-                                            />
-                                            <p className="text-[11px] text-muted-foreground">
-                                              {style === "graduated"
-                                                ? perSection > 1
-                                                  ? `${describeGraduated(perSection, graduatedPlayInMatches(perSection))} Top seeds rest and enter once the field narrows.`
-                                                  : "Weakest players meet each other first; stronger seeds enter in later rounds."
-                                                : "Strongest plays weakest from round one — every entrant plays immediately."}
-                                            </p>
-                                          </div>
-                                        );
-                                      })()}
-                                    </div>
-                                  );
-                                 })()}
-                               {fmt === "swiss" && (() => {
-                                 const entrants =
-                                   (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
-                                 const pools = poolsForDivision(gn);
-                                 const perPool = pools > 0 ? Math.ceil(entrants / pools) : entrants;
-                                 const suggested = perPool >= 2 ? Math.max(1, Math.min(9, perPool - 1)) : 5;
-                                 const rounds = Number(swissRounds[key]) || 0;
-                                 const pairing = swissPairingModes[key] === "random" ? "random" : "seeded";
-                                 const qualifiers = Math.max(0, Number(swissKnockoutQualifiers[key]) || 0);
-                                 const koOn = qualifiers > 0;
-                                 const validQualifiers = [2, 4, 8].filter(
-                                   (n) => entrants === 0 || n <= entrants,
-                                 );
-                                 return (
-                                   <div className="rounded-md border border-teal-500/40 bg-teal-500/5 p-2 space-y-2">
-                                     <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-                                       Swiss settings
-                                     </div>
-                                     <div className="flex items-end gap-2">
-                                       <div className="w-24">
-                                         <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                           Number of Swiss rounds
-                                         </Label>
-                                         <Input
-                                           type="number"
-                                           min={1}
-                                           max={20}
-                                           placeholder={String(suggested)}
-                                           value={rounds > 0 ? String(rounds) : ""}
-                                           onChange={(e) => {
-                                             const v = Number(e.target.value);
-                                             setSwissRounds((m) => {
-                                               const next = { ...m };
-                                               if (v > 0) next[key] = Math.min(20, Math.round(v));
-                                               else delete next[key];
-                                               return next;
-                                             });
-                                           }}
-                                           className={cn("h-8 text-xs mt-0.5", rounds <= 0 && "border-amber-500")}
-                                         />
-                                       </div>
-                                       {rounds <= 0 && (
-                                         <Button
-                                           type="button"
-                                           size="sm"
-                                           variant="outline"
-                                           className="h-8 text-[11px]"
-                                           onClick={() => setSwissRounds((m) => ({ ...m, [key]: suggested }))}
-                                         >
-                                           Use {suggested}
-                                         </Button>
-                                       )}
-                                     </div>
-                                     {rounds <= 0 && (
-                                       <p className="text-[10px] text-amber-600 dark:text-amber-500">
-                                         Required — how many qualifying rounds each player is scheduled to play.
-                                         {entrants > 0 ? ` ${suggested} suits ${perPool} per ${pools > 1 ? "pool" : "draw"}.` : ""}
-                                       </p>
-                                     )}
-                                     <SegRow
-                                       label="First-round pairing"
-                                       value={pairing}
-                                       color="cyan"
-                                       options={[
-                                         { v: "seeded", l: "Seeded" },
-                                         { v: "random", l: "Random" },
-                                       ]}
-                                       onChange={(v) =>
-                                         setSwissPairingModes((m) => ({
-                                           ...m,
-                                           [key]: v === "random" ? "random" : "seeded",
-                                         }))
-                                       }
-                                     />
-                                     <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                       {pairing === "seeded"
-                                         ? "Round 1 pairs first against last — with 10 players: 1v10, 2v9, 3v8, 4v7, 5v6."
-                                         : "Round 1 is drawn at random."}{" "}
-                                       From round 2 players meet the nearest score they have not played yet.
-                                     </p>
-                                     <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
-                                       <input
-                                         type="checkbox"
-                                         className="h-3.5 w-3.5 accent-teal-500"
-                                         checked={koOn}
-                                         onChange={(e) =>
-                                           setSwissKnockoutQualifiers((m) => {
-                                             const next = { ...m };
-                                             if (e.target.checked) next[key] = validQualifiers.includes(4) ? 4 : (validQualifiers[0] || 2);
-                                             else delete next[key];
-                                             return next;
-                                           })
-                                         }
-                                       />
-                                       Enable knockout stage after Swiss rounds
-                                     </label>
-                                     {koOn ? (
-                                       <div className="pl-6 space-y-1">
-                                         <SegRow
-                                           label="Number qualifying for knockout"
-                                           value={String(qualifiers)}
-                                           color="cyan"
-                                           options={validQualifiers.map((n) => ({ v: String(n), l: `Top ${n}` }))}
-                                           onChange={(v) =>
-                                             setSwissKnockoutQualifiers((m) => ({ ...m, [key]: Number(v) || 2 }))
-                                           }
-                                         />
-                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                           {qualifiers >= 8
-                                             ? "Quarter-finals 1v8, 2v7, 3v6, 4v5, then semi-finals and the final."
-                                             : qualifiers >= 4
-                                               ? "Semi-finals 1v4 and 2v3, then the final."
-                                               : "Straight final between the top two."}{" "}
-                                           Dates for those rounds are set later in scheduling.
-                                         </p>
-                                       </div>
-                                     ) : (
-                                       <p className="text-[10px] text-muted-foreground pl-6 leading-relaxed">
-                                         The Swiss standings decide the finishing order after {rounds || suggested} rounds.
-                                       </p>
-                                     )}
-                                   </div>
-                                 );
-                               })()}
-                               {(fmt === "single_round_robin" || fmt === "double_round_robin") && (
-                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
-                                  <input
-                                    type="checkbox"
-                                    className="h-3.5 w-3.5 accent-violet-500"
-                                    checked={fmt === "double_round_robin"}
-                                    onChange={(e) => {
-                                      const nv: PerLeagueFormat = e.target.checked ? "double_round_robin" : "single_round_robin";
-                                      setLeagueFormats((m) => ({ ...m, [key]: nv }));
-                                      setUsePerLeagueFormats(true);
-                                      if (!roundFormat || roundFormat === "cross_league") setRoundFormat(nv as any);
-                                    }}
-                                  />
-                                  Double round robin (play each opponent twice — home &amp; away)
-                                </label>
-                              )}
-                              <SegRow
-                                label="Category"
-                                value={genderForLeague(gn)}
-                                color="blue"
-                                options={[
-                                  { v: "men", l: "Men's" },
-                                  { v: "ladies", l: "Ladies'" },
-                                  { v: "mixed", l: "Mixed" },
-                                  { v: "open", l: "Open" },
-                                ]}
-                                onChange={(v) => setLeagueGender(gn, v as GenderCategory)}
-                              />
-                              <SegRow
-                                label="Players"
-                                value={matchTypeForLeague(gn)}
-                                color="green"
-                                options={[
-                                  { v: "singles", l: "👤 Singles" },
-                                  { v: "doubles", l: "👥 Doubles" },
-                                ]}
-                                onChange={(v) => setLeagueMatchType(gn, v as "singles" | "doubles")}
-                              />
-                              <SegRow
-                                label="Scoring"
-                                value={scoringForLeague(gn)}
-                                color="amber"
-                                options={[
-                                  { v: "standard", l: "Standard" },
-                                  { v: "time_capped_points", l: "🔔 Bells" },
-                                ]}
-                                onChange={(v) => setLeagueScoring(gn, v as "standard" | "time_capped_points")}
-                              />
-                              {scoringForLeague(gn) === "standard" ? (
-                                <div className="space-y-2">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <SegRow
-                                      label="Game length"
-                                      value={String(pointsForLeague(gn))}
-                                      color="red"
-                                      options={[
-                                        { v: "11", l: "Par 11" },
-                                        { v: "15", l: "Par 15" },
-                                      ]}
-                                      onChange={(v) => {
-                                        const n = Number(v) === 15 ? 15 : 11;
-                                        setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
-                                        if (gn === 1) setPointsPerGame(n);
-                                      }}
-                                    />
-                                    <SegRow
-                                      label="Games"
-                                      value={`${playAllForLeague(gn) ? "all" : "bo"}${bestOfForLeague(gn)}`}
-                                      color="pink"
-                                      options={[
-                                        { v: "bo3", l: "Best of 3" },
-                                        { v: "bo5", l: "Best of 5" },
-                                        { v: "all3", l: "Play all 3" },
-                                        { v: "all5", l: "Play all 5" },
-                                      ]}
-                                      onChange={(v) => {
-                                        const n = v.endsWith("5") ? 5 : 3;
-                                        const all = v.startsWith("all");
-                                        setLeagueBestOf((m) => ({ ...m, [key]: n }));
-                                        setLeaguePlayAll((m) => ({ ...m, [key]: all }));
-                                        if (gn === 1) setBestOf(n);
-                                      }}
-                                    />
-
-                                  </div>
-                                  <SegRow
-                                    label="Win condition"
-                                    value={winConditionForLeague(gn)}
-                                    color="cyan"
-                                    options={[
-                                      { v: "win_by_2", l: "Win by 2" },
-                                      { v: "sudden_death", l: "Sudden death" },
-                                    ]}
-                                    onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
-                                  />
-                                  {matchTypeForLeague(gn) === "doubles" && (
-                                    <SegRow
-                                      label="Doubles serving method"
-                                      value={leagueServingMethods[String(gn)] ?? "none"}
-                                      color="cyan"
-                                      options={[
-                                        { v: "none", l: "Not set" },
-                                        ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label })),
-                                      ]}
-                                      onChange={(v) => setLeagueServingMethods((m) => {
-                                        const next = { ...m };
-                                        const parsed = parseServingMethod(v);
-                                        if (parsed) next[String(gn)] = parsed; else delete next[String(gn)];
-                                        return next;
-                                      })}
-                                    />
-                                  )}
-                                  <SegRow
-                                    label="Bye handling"
-                                    value={byeForLeague(gn)}
-                                    color="green"
-                                    options={[
-                                      { v: "no_match", l: "No match" },
-                                      { v: "walkover_win", l: "Walkover win" },
-                                      { v: "neutral", l: "Neutral" },
-                                    ]}
-                                    onChange={(v) => {
-                                      setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
-                                      if (gn === 1) setByeHandling(v as any);
-                                    }}
-                                  />
-                                  {/* Planned time one match of this league occupies a court.
-                                      Feeds the capacity calculator (Bells leagues use the bell slot). */}
-                                  <SegRow
-                                    label="Planned match time"
-                                    value={String(Number(groupDurations[key]) || matchDuration || 20)}
-                                    color="amber"
-                                    options={[
-                                      { v: "20", l: "20 min" },
-                                      { v: "30", l: "30 min" },
-                                      { v: "45", l: "45 min" },
-                                      { v: "60", l: "60 min" },
-                                    ]}
-                                    onChange={(v) => {
-                                      const n = Number(v) || 0;
-                                      setGroupDurations((m) => ({ ...m, [key]: n }));
-                                      if (gn === 1 && (!matchDuration || matchDuration <= 0)) setMatchDuration(n);
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bell slot (min)</Label>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={groupDurations[key] ?? ""}
-                                      placeholder="20"
-                                      onChange={(e) => {
-                                        const n = Math.max(0, Number(e.target.value) || 0);
-                                        setGroupDurations((m) => {
-                                          const next = { ...m };
-                                          if (n <= 0) delete next[key];
-                                          else next[key] = n;
-                                          return next;
-                                        });
-                                      }}
-                                      className="h-8 text-xs mt-0.5"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Break (min)</Label>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      value={groupBreakMinutes[key] ?? ""}
-                                      placeholder={String(defaultBreakMinutes || 0)}
-                                      onChange={(e) => {
-                                        const n = Math.max(0, Number(e.target.value) || 0);
-                                        setGroupBreakMinutes((m) => ({ ...m, [key]: n }));
-                                      }}
-                                      className="h-8 text-xs mt-0.5"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                              {scoringForLeague(gn) === "time_capped_points" && (
-                                <SegRow
-                                  label="Bye handling"
-                                  value={byeForLeague(gn)}
-                                  color="green"
-                                  options={[
-                                    { v: "no_match", l: "No match" },
-                                    { v: "walkover_win", l: "Walkover win" },
-                                    { v: "neutral", l: "Neutral" },
-                                  ]}
-                                  onChange={(v) => {
-                                    setLeagueByeHandling((m) => ({ ...m, [key]: v as any }));
-                                    if (gn === 1) setByeHandling(v as any);
-                                  }}
-                                />
-                              )}
-                              {/* Stage sequencing — does this division run alongside the
-                                  others, or only once another one has been played out?
-                                  A following doubles division inherits the finishing order
-                                  of the stage before it and pairs players from it. */}
-                                {(() => {
-                                  const allOthers = Array.from({ length: numGroups || 0 }, (_, i) => i + 1).filter(
-                                    (n) => n !== gn,
-                                  );
-                                  const waitsFor = followsDivision(divisionFollows, gn);
-                                  const leadsTo =
-                                    allOthers.find((n) => followsDivision(divisionFollows, n) === gn) ?? null;
-                                  const nameOf = (n: number) => groupLabels[String(n)] || `Division ${n}`;
-                                  const pools = sectionsForLeague(gn);
-                                  const isDoublesDivision = matchTypeForLeague(gn) === "doubles";
-                                  // Mirror the pools of the stage a follower inherits from.
-                                  const mirrorPools = (followerKey: string, sourceGn: number) => {
-                                    const mirror = sectionsForLeague(sourceGn);
-                                    setSwissPools((m) => ({ ...m, [followerKey]: mirror }));
-                                    setLeagueSections((m) =>
-                                      m[followerKey] === undefined ? m : { ...m, [followerKey]: mirror },
-                                    );
-                                  };
-                                  const orderOptions = [
-                                    { v: "0", l: "Alongside the others" },
-                                    ...allOthers.flatMap((n) => [
-                                      ...(!wouldCycle(divisionFollows, n, gn)
-                                        ? [{ v: `b:${n}`, l: `Before ${nameOf(n)}` }]
-                                        : []),
-                                      ...(!wouldCycle(divisionFollows, gn, n)
-                                        ? [{ v: `a:${n}`, l: `After ${nameOf(n)}` }]
-                                        : []),
-                                    ]),
-                                  ];
-                                  const orderValue = waitsFor
-                                    ? `a:${waitsFor}`
-                                    : leadsTo
-                                      ? `b:${leadsTo}`
-                                      : "0";
-                                  return (
-                                    <div className="space-y-1 pt-1">
-                                      {allOthers.length > 0 && (
-                                        <SegRow
-                                          label="When this stage runs"
-                                          value={orderValue}
-                                          color="violet"
-                                          options={orderOptions}
-                                          onChange={(v) => {
-                                            const n = Number(v.slice(2)) || 0;
-                                            const before = v.startsWith("b:");
-                                            const after = v.startsWith("a:");
-                                            setDivisionFollows((m) => {
-                                              const next = { ...m };
-                                              // This stage never both waits for and is waited on.
-                                              delete next[key];
-                                              if (leadsTo) delete next[String(leadsTo)];
-                                              if (after && n > 0) next[key] = n;
-                                              if (before && n > 0) next[String(n)] = gn;
-                                              return next;
-                                            });
-                                            // Same players carry over, so mirror the earlier stage's pools.
-                                            if (after && n > 0) mirrorPools(key, n);
-                                            if (before && n > 0) mirrorPools(String(n), gn);
-                                          }}
-                                         />
-                                       )}
-                                       {leadsTo != null && (
-                                         <p className="text-[10px] text-muted-foreground">
-                                           {nameOf(leadsTo)} runs after this stage and inherits its finishing order.
-                                         </p>
-                                       )}
-                                      {waitsFor != null && (
-                                        <>
-                                          <SegRow
-                                            label="Seeding for this stage"
-                                            value={seedSourceFor(gn)}
-                                            color="amber"
-                                            options={[
-                                              { v: "previous", l: `By ${nameOf(waitsFor)} results` },
-                                              { v: "ladder", l: "By club ladder (same as the first stage)" },
-                                            ]}
-                                            onChange={(v) =>
-                                              setDivisionSeedSource((m) => ({
-                                                ...m,
-                                                [key]: v === "ladder" ? "ladder" : "previous",
-                                              }))
-                                            }
-                                          />
-                                          <p className="text-[10px] text-muted-foreground">
-                                            {seedSourceFor(gn) === "ladder"
-                                              ? `Runs after ${nameOf(waitsFor)}, but players are ordered 1, 2, 3… by the club ladder.`
-                                              : `Runs after ${nameOf(waitsFor)} — players are ordered 1, 2, 3… by how they finished there. Until it is played, the order from ${nameOf(waitsFor)} is shown.`}
-                                          </p>
-                                        </>
-                                      )}
-                                      {isDoublesDivision && (() => {
-                                       // ONE place to decide how partners come about for this
-                                       // doubles division: the two automatic orders (Diamond
-                                       // League style) plus the ordinary tournament choices.
-                                       const raw = (divisionPairing as Record<string, unknown>)[key];
-                                       const explicit = isPairingMethod(raw) ? (raw as PairingMethod) : null;
-                                       const isAuto = explicit === "adjacent" || explicit === "balanced";
-                                       const current = isAuto ? explicit : (partnerMode || "");
-                                       return (
-                                         <>
-                                           <SegRow
-                                             label="How pairs are formed"
-                                             value={current}
-                                             color="cyan"
-                                             options={[
-                                               { v: "admin", l: "Admin pairs the players" },
-                                               { v: "players", l: "Players pick their own partner" },
-                                               { v: "rotate", l: "Players rotate (everyone partners everyone)" },
-                                               { v: "adjacent", l: "Automatic — adjacent (6+5, 4+3, 2+1)" },
-                                               { v: "balanced", l: "Automatic — balanced (1+6, 2+5, 3+4)" },
-                                             ]}
-                                             onChange={(v) => {
-                                               if (v === "adjacent" || v === "balanced") {
-                                                 setDivisionPairing((m) => ({ ...m, [key]: v as PairingMethod }));
-                                                 setPartnerMode((p: any) => p || "admin");
-                                               } else {
-                                                 setDivisionPairing((m) => ({ ...m, [key]: "manual" as PairingMethod }));
-                                                 setPartnerMode(v as any);
-                                               }
-                                             }}
-                                           />
-                                           <p className="text-[10px] text-muted-foreground">
-                                             {isAuto
-                                               ? `${PAIRING_METHOD_LABELS[explicit as PairingMethod]}${
-                                                   waitsFor != null
-                                                     ? ` — taken from the finishing order of ${nameOf(waitsFor)}.`
-                                                     : " — taken from the seeded order of this division."
-                                                 }`
-                                               : current === "rotate"
-                                                 ? "No fixed pairs: every round re-pairs the players so everyone partners everyone. Points are banked per player."
-                                                 : current === "players"
-                                                   ? "Entrants choose their own partner on their invitation; an admin can still override."
-                                                   : current === "admin"
-                                                     ? "The organiser builds every pair by hand."
-                                                     : "Pick how partners come about for this division."}
-                                           </p>
-                                           {current === "rotate" && (
-                                             <div className="space-y-1 pt-1">
-                                               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                                 Maximum matches per player
-                                               </Label>
-                                               <div className="flex items-center gap-2">
-                                                 <input
-                                                   type="number"
-                                                   min={0}
-                                                   placeholder="No limit"
-                                                   className="h-7 w-24 rounded border bg-background px-2 text-[11px]"
-                                                   value={rotationMaxMatches > 0 ? rotationMaxMatches : ""}
-                                                   onChange={(e) => {
-                                                     const n = Math.floor(Number(e.target.value) || 0);
-                                                     setRotationMaxMatches(n > 0 ? n : 0);
-                                                   }}
-                                                 />
-                                                 {rotationMaxMatches > 0 && (
-                                                   <Button
-                                                     type="button"
-                                                     size="sm"
-                                                     variant="ghost"
-                                                     className="h-7 text-[10px]"
-                                                     onClick={() => setRotationMaxMatches(0)}
-                                                   >
-                                                     Full rotation
-                                                   </Button>
-                                                 )}
-                                               </div>
-                                               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                                 {rotationMaxMatches > 0
-                                                   ? `Each player plays at most ${rotationMaxMatches} matches. The draw spreads partners and opponents as widely as possible within that limit — not every partner combination is played.`
-                                                   : "Leave blank for a full rotation: everyone partners everyone."}
-                                               </p>
-                                               <div className="space-y-1 pt-2">
-                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                                   Partner strength
-                                                 </Label>
-                                                 <select
-                                                   className="h-7 w-full rounded border bg-background px-1 text-[11px]"
-                                                   value={rotationStrengthMode}
-                                                   onChange={(e) =>
-                                                     setRotationStrengthMode(e.target.value as "any" | "mixed" | "balanced")
-                                                   }
-                                                 >
-                                                   <option value="mixed">Stronger player with a weaker player</option>
-                                                   <option value="balanced">Similar standard together</option>
-                                                   <option value="any">No preference</option>
-                                                 </select>
-                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                                   {rotationStrengthMode === "mixed"
-                                                     ? "Pairs mix a stronger player with a weaker one, so the combinations left out are the weakest ones."
-                                                     : rotationStrengthMode === "balanced"
-                                                       ? "Players of a similar standard partner each other, so games stay evenly matched."
-                                                       : "Partners are drawn purely on variety, regardless of standard."}
-                                                 </p>
-                                               </div>
-                                               <div className="space-y-1 pt-2">
-                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                                   Never partner each other
-                                                 </Label>
-                                                 <div className="flex flex-wrap gap-1">
-                                                   {rotationAvoidPairs.map((pair, i) => (
-                                                     <span
-                                                       key={`${pair[0]}-${pair[1]}-${i}`}
-                                                       className="inline-flex items-center gap-1 rounded border bg-muted/50 px-2 py-0.5 text-[10px]"
-                                                     >
-                                                       {rotationPlayerName(pair[0])} &amp; {rotationPlayerName(pair[1])}
-                                                       <button
-                                                         type="button"
-                                                         className="text-muted-foreground hover:text-destructive"
-                                                         onClick={() =>
-                                                           setRotationAvoidPairs((list) => list.filter((_, j) => j !== i))
-                                                         }
-                                                       >
-                                                         ×
-                                                       </button>
-                                                     </span>
-                                                   ))}
-                                                   {rotationAvoidPairs.length === 0 && (
-                                                     <span className="text-[10px] text-muted-foreground">
-                                                       No exclusions yet.
-                                                     </span>
-                                                   )}
-                                                 </div>
-                                                 <div className="flex items-center gap-2 pt-1">
-                                                   <select
-                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
-                                                     value={avoidPickA}
-                                                     onChange={(e) => setAvoidPickA(e.target.value)}
-                                                   >
-                                                     <option value="">Player…</option>
-                                                     {selectedPlayers.map((p: any) => (
-                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
-                                                     ))}
-                                                   </select>
-                                                   <select
-                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
-                                                     value={avoidPickB}
-                                                     onChange={(e) => setAvoidPickB(e.target.value)}
-                                                   >
-                                                     <option value="">Player…</option>
-                                                     {selectedPlayers.map((p: any) => (
-                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
-                                                     ))}
-                                                   </select>
-                                                   <Button
-                                                     type="button"
-                                                     size="sm"
-                                                     variant="outline"
-                                                     className="h-7 text-[10px]"
-                                                     disabled={!avoidPickA || !avoidPickB || avoidPickA === avoidPickB}
-                                                     onClick={() => {
-                                                       setRotationAvoidPairs((list) =>
-                                                         list.some(
-                                                           (p) =>
-                                                             (p[0] === avoidPickA && p[1] === avoidPickB) ||
-                                                             (p[0] === avoidPickB && p[1] === avoidPickA),
-                                                         )
-                                                           ? list
-                                                           : [...list, [avoidPickA, avoidPickB]],
-                                                       );
-                                                       setAvoidPickA("");
-                                                       setAvoidPickB("");
-                                                     }}
-                                                   >
-                                                     Add
-                                                   </Button>
-                                                 </div>
-                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                                   Family members or couples you would rather not have as partners. They
-                                                   can still meet as opponents.
-                                                 </p>
-                                               </div>
-                                             </div>
-                                           )}
-                                         </>
-
-                                       );
-                                     })()}
-                                      {pools > 1 && (
-                                        <div className="space-y-1">
-                                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                            Slot minutes per pool (optional)
-                                          </Label>
-                                          <div className="grid grid-cols-3 gap-2">
-                                            {Array.from({ length: pools }, (_, i) => i + 1).map((pool) => {
-                                              const pk = poolDurationKey(gn, pool);
-                                              return (
-                                                <div key={pk}>
-                                                  <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                                    Pool {String.fromCharCode(64 + pool)}
-                                                  </Label>
-                                                  <Input
-                                                    type="number"
-                                                    min={1}
-                                                    value={poolDurations[pk] ?? ""}
-                                                    placeholder={String(
-                                                      Number(groupDurations[key]) || matchDuration || 20,
-                                                    )}
-                                                    onChange={(e) => {
-                                                      const n = Math.max(0, Number(e.target.value) || 0);
-                                                      setPoolDurations((m) => {
-                                                        const next = { ...m };
-                                                        if (n <= 0) delete next[pk];
-                                                        else next[pk] = n;
-                                                        return next;
-                                                      });
-                                                    }}
-                                                    className="h-8 text-xs"
-                                                  />
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                          <p className="text-[10px] text-muted-foreground">
-                                            This is the playing time (bell slot) for that pool — e.g. 15 means a
-                                            15-minute game. The {Number(groupBreakMinutes[key]) || defaultBreakMinutes || 3}
-                                            -minute break above applies to every pool. Leave blank to use this
-                                            division's time.
-                                          </p>
-                                        </div>
-                                      )}
-                                   </div>
-                                 );
-                               })()}
-                              {/* Forfeit / no-show rule — options come from THIS league's
-                                  scoring format, so a standard best-of league can only take a
-                                  walkover or a no-result, never an arbitrary points award. */}
-                              {(() => {
-                                const sc = scoringForLeague(gn);
-                                const opts = forfeitOptionsForScoring(sc);
-                                const rule = forfeitRuleForLeague(gn);
-                                const pts = forfeitPointsForLeague(gn);
-                                const hint = opts.find((o) => o.value === rule)?.hint || "";
-                                return (
-                                  <div className="space-y-1 pt-1">
-                                    <SegRow
-                                      label="Forfeit / no-show rule"
-                                      value={rule}
-                                      color="red"
-                                      options={opts.map((o) => ({ v: o.value, l: o.label }))}
-                                      onChange={(v) =>
-                                        setLeagueForfeitRules((m) => ({ ...m, [key]: v as ForfeitRule }))
-                                      }
-                                    />
-                                    {rule === "award_points" && (
-                                      <div className="flex flex-wrap items-center gap-2 pl-0.5">
-                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Opponent</Label>
-                                        <Input
-                                          type="number"
-                                          min={0}
-                                          value={pts.opponent}
-                                          onChange={(e) =>
-                                            setLeagueForfeitPoints((m) => ({
-                                              ...m,
-                                              [key]: { opponent: Math.max(0, Math.round(Number(e.target.value)) || 0), player: pts.player },
-                                            }))
-                                          }
-                                          className="h-7 w-16 text-xs"
-                                        />
-                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Absent player</Label>
-                                        <Input
-                                          type="number"
-                                          value={pts.player}
-                                          onChange={(e) =>
-                                            setLeagueForfeitPoints((m) => ({
-                                              ...m,
-                                              [key]: { opponent: pts.opponent, player: Math.round(Number(e.target.value)) || 0 },
-                                            }))
-                                          }
-                                          className="h-7 w-16 text-xs"
-                                        />
-                                      </div>
-                                    )}
-                                    <p className="text-[10px] text-muted-foreground pl-0.5">{hint}</p>
-                                  </div>
-                                );
-                              })()}
-                              <div className="pt-1">
-                                <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
-                                  <input
-                                    type="checkbox"
-                                    className="h-3.5 w-3.5 accent-fuchsia-500"
-                                    checked={playoffsForLeague(gn)}
-                                    onChange={(e) => {
-                                      const on = e.target.checked;
-                                      setLeaguePlayoffs((m) => ({ ...m, [key]: on }));
-                                    }}
-                                  />
-                                  {fmt === "knockout"
-                                    ? "Continue through knockout stages"
-                                    : poolsForDivision(gn) > 1
-                                      ? "Enable playoffs after pool stage"
-                                      : "Playoffs / finals for this league"}
-                                </label>
-                                {fmt === "knockout" && (
-                                  <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
-                                    Winners progress to the next knockout round as results are completed,
-                                    through to the section/division final.
-                                  </p>
-                                )}
-                                {fmt !== "knockout" && poolsForDivision(gn) > 1 && playoffsForLeague(gn) && (
-                                  <div className="pl-6 pt-1.5 space-y-1.5">
-                                    <div className="flex flex-wrap gap-3">
-                                      {([
-                                        { v: "position" as PlayoffMode, l: "Position playoffs" },
-                                        { v: "knockout" as PlayoffMode, l: "Crossover / knockout" },
-                                      ]).map((o) => (
-                                        <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
-                                          <input
-                                            type="radio"
-                                            className="h-3 w-3 accent-fuchsia-500"
-                                            name={`playoff-mode-${key}`}
-                                            checked={playoffModeForLeague(gn) === o.v}
-                                            onChange={() =>
-                                              setLeaguePlayoffModes((m) => ({ ...m, [key]: o.v }))
-                                            }
-                                          />
-                                          {o.l}
-                                        </label>
-                                      ))}
-                                    </div>
-                                    {playoffModeForLeague(gn) === "position" ? (
-                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                        <strong>{PLAYOFF_TYPE_INFO.position.name}:</strong> matching finishing positions meet: A1 v B1, A2 v B2, A3 v B3 … so every
-                                        overall position in this division is decided.
-                                      </p>
-                                    ) : poolsForDivision(gn) === 2 && playoffQualifiersForLeague(gn) === 2 ? (
-                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                        <strong>{PLAYOFF_TYPE_INFO.crossover.name}:</strong> {PLAYOFF_TYPE_INFO.crossover.example}{" "}
-                                        <button type="button" className="underline" onClick={() => setLeaguePlayoffQualifiers((m) => ({ ...m, [key]: 4 }))}>Use a bigger knockout</button>
-                                      </p>
-                                    ) : (
-                                      <div className="space-y-1">
-                                        <label className="flex items-center gap-2 text-[11px]">
-                                          <span>Qualify from each pool</span>
-                                          <input
-                                            type="number"
-                                            min={1}
-                                            className="h-7 w-16 rounded border bg-background px-2 text-[11px]"
-                                            value={playoffQualifiersForLeague(gn)}
-                                            onChange={(e) =>
-                                              setLeaguePlayoffQualifiers((m) => ({
-                                                ...m,
-                                                [key]: Math.max(1, Math.floor(Number(e.target.value) || 1)),
-                                              }))
-                                            }
-                                          />
-                                        </label>
-                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                          {playoffQualifiersForLeague(gn) * poolsForDivision(gn)} qualifiers go into one
-                                          cross-pool knockout draw, seeded so pool rivals meet as late as possible.
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="pt-1 flex justify-end">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-[11px]"
-                                  onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
-                                >
-                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
-                                </Button>
-                              </div>
-                            </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : null}
-
-                    {/* Drop zone / empty state */}
-                    <div className="rounded-lg border-2 border-dashed border-border/70 py-6 flex flex-col items-center justify-center text-muted-foreground hover:border-amber-500/50 hover:text-amber-600 transition-colors text-center px-3">
-                      <Trophy className="w-6 h-6 mb-1 opacity-60" />
-                      <div className="text-xs font-medium">Drop a format here to add {numGroups > 0 ? `League ${numGroups + 1}` : "League 1"}</div>
-                      <div className="text-[10px] text-muted-foreground/80 mt-0.5">or click a format on the right</div>
-                    </div>
-
-                    {(() => {
-                      const totalExpected = Object.values(expectedPlayers).reduce((a, b) => a + (Number(b) || 0), 0);
-                      if (numGroups === 0 && totalExpected === 0) return null;
-                      // Rough estimate: sum of C(n,2) per league for single RR, x2 for double,
-                      // pools * C(n/pools,2) * rounds for Swiss (approx).
-                      let est = 0;
-                      for (let gn = 1; gn <= numGroups; gn++) {
-                        const key = String(gn);
-                        const n = Number(expectedPlayers[key]) || 0;
-                        if (n < 2) continue;
-                        const fmt: PerLeagueFormat = (leagueFormats[key] ?? (roundFormat as PerLeagueFormat)) || "single_round_robin";
-                        const pools = poolsForDivision(gn);
-                        const perPool = Math.max(1, Math.ceil(n / pools));
-                        if (fmt === "swiss") {
-                          const pp = Math.max(2, perPool);
-                          est += pools * ((pp * (pp - 1)) / 2);
-                        } else if (fmt === "cross_league" && pools > 1) {
-                          // pool-vs-pool inside the league
-                          est += ((pools * (pools - 1)) / 2) * perPool * perPool;
-                        } else {
-                          const games = (perPool * (perPool - 1)) / 2 * pools;
-                          est += fmt === "double_round_robin" ? games * 2 : games;
-                        }
-
-                      }
-                      return (
-                        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500">
-                              <Trophy className="w-3.5 h-3.5" />
-                            </span>
-                            <div>
-                              <div className="font-semibold">{est > 0 ? `≈ ${est} match${est === 1 ? "" : "es"}` : "Planned capacity"}</div>
-                              <div className="text-[10px] text-muted-foreground">{numGroups} league{numGroups === 1 ? "" : "s"} · {totalExpected || "—"} planned {isDoubles ? `pair${totalExpected === 1 ? "" : "s"}` : `player${totalExpected === 1 ? "" : "s"}`}</div>
-                            </div>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground italic">Refined once players register</div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Format palette */}
-                  <div className="border-t lg:border-t-0 lg:border-l border-border bg-muted/30 p-3 space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Format palette</div>
-                    {(["single_round_robin", "knockout", "swiss", "cross_league"] as PerLeagueFormat[]).map((fmt) => {
-                      const meta = FORMAT_META[fmt];
-                      return (
-                        <button
-                          key={fmt}
-                          type="button"
-                          draggable
-                          onDragStart={(e) => { e.dataTransfer.setData("application/x-champ-format", fmt); e.dataTransfer.effectAllowed = "copy"; }}
-                          onClick={() => addLeagueOfFormat(fmt)}
-                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all cursor-grab active:cursor-grabbing group"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                              <Plus className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="text-xs font-semibold">{meta.label}</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
-                        </button>
-                      );
-                    })}
-                    <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
-
-                  </div>
-                </div>
-
-            </div>
-            </WizardSection>
-
-            {/* Plain-language warnings about each division's players and pools. */}
-            {(() => {
-              const issues = validateDivisions({
-                divisionCount: numGroups,
-                sources: leagueSources,
-                pools: swissPools,
-                formatFor: (gn) => formatForLeague(gn),
-              });
-              if (issues.length === 0) return null;
-              return (
-                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 space-y-1">
-                  {issues.map((iss, i) => (
-                    <p key={i} className="text-[11px] text-amber-700 dark:text-amber-400">
-                      <span className="font-semibold">{groupLabels[String(iss.gn)] || `League ${iss.gn}`}:</span>{" "}
-                      {iss.message}
-                    </p>
-                  ))}
-                </div>
-              );
-            })()}
-
-            {/* Players sitting in a division they don't qualify for. Nothing is
-                dropped silently — the organiser removes them or keeps them. */}
-            {(() => {
-              if (isDoubles) return null;
-              const bad = explainIneligibleAssignments(
-                new Map(Array.from(groupAssignments.entries()).map(([id, gi]) => [id, gi + 1])),
-                eligibilityCtx,
-              );
-              if (bad.length === 0) return null;
-              const nameOf = (id: string) =>
-                (allSelectablePlayers.find((m: any) => m.id === id) as any)?.name || "Player";
-              return (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
-                  <p className="text-[11px] font-semibold text-destructive">
-                    {bad.length} player{bad.length === 1 ? "" : "s"} are not in the league(s) their division draws from.
-                    They will not be seeded into the draw until you remove them or keep them anyway.
-                  </p>
-                  <div className="space-y-1">
-                    {bad.map(({ memberId, gn, memberLeagueIds, sourceLeagueIds }) => {
-                      const listNames = (ids: string[]) =>
-                        ids.map((id) => leagueNameById.get(id) || "Unknown league").join(", ");
-                      return (
-                      <div key={`${memberId}-${gn}`} className="flex items-center gap-2 text-[11px]">
-                        <span className="flex-1 min-w-0">
-                          <span className="font-medium">{nameOf(memberId)}</span>{" "}
-                          <span className="text-muted-foreground">
-                            — assigned to division “{groupLabels[String(gn)] || `League ${gn}`}”, which draws from{" "}
-                            {sourceLeagueIds.length > 0 ? listNames(sourceLeagueIds) : "no league"}.{" "}
-                            {memberLeagueIds.length > 0
-                              ? `This player is registered in ${listNames(memberLeagueIds)}.`
-                              : scopeIsWide
-                                ? "This player is not registered in any league in the region for this season."
-                                : "This player is not registered in any club league."}
-                          </span>
-                        </span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[11px]"
-                          onClick={() =>
-                            setEligibilityOverrides((prev) => new Set(prev).add(memberId))
-                          }
-                        >
-                          Keep anyway
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-[11px]"
-                          onClick={() => {
-                            setSelectedPlayerIds((prev) => {
-                              const next = new Set(prev);
-                              next.delete(memberId);
-                              return next;
-                            });
-                            setGroupAssignments((prev) => {
-                              const next = new Map(prev);
-                              next.delete(memberId);
-                              return next;
-                            });
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-
-
-            {/* Ranking — set once here, never repeated on the messaging step. */}
-            <CompetitionRankingCard
-              className="mt-2"
-              clubId={clubId}
-              source="tournament"
-              ownerScope={scope}
-              rankingScope={rankingScopeOverride}
-              onRankingScopeChange={setRankingScopeOverride}
-              affects={affectsRankingPoints}
-              onAffectsChange={setAffectsRankingPoints}
-              weight={rankingWeight}
-              onWeightChange={setRankingWeight}
-            />
-
-            <div className="rounded-md border bg-muted/30 px-3 py-2 mt-2 space-y-1">
-              <Label className="text-xs font-medium">Do results move the club ladder?</Label>
-              <Select
-                value={ladderAffects === null ? "inherit" : ladderAffects ? "on" : "off"}
-                onValueChange={(v) => setLadderAffects(v === "inherit" ? null : v === "on")}
-              >
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="inherit">Use the club ladder setting</SelectItem>
-                  <SelectItem value="on">Yes — move the ladder</SelectItem>
-                  <SelectItem value="off">No — leave the ladder alone</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Only club-mate singles results between two ranked members can move the ladder.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-dashed p-3 bg-muted/20 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Capacity is checked later.</span>{" "}
-              This structure is sized against real court time on the <strong>Dates, Times &amp; Courts</strong> step,
-              once the dates, playing times and courts are set.
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {renderOriginalStructure()}
 
       {/* ── STEP: REGISTRATION & PAYMENT ── */}
       {step === "registration" && (

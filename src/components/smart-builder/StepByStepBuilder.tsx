@@ -135,6 +135,8 @@ const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => 
 };
 export type StepAnswers = {
   planId?: string;
+  /** Local snapshot from the original alternate-builder screen; no live application. */
+  originalStructure?: import("@/lib/smart-builder/original-structure").OriginalStructure;
   /** Canvas layout only; semantic nodes/edges project the canonical categories and stage plans. */
   structureCanvas?: import("@/lib/smart-builder/structure-canvas").CanvasLayout;
   /** Per-category ordered stage plans (pilot stage planner); Stage 1 is mirrored to format/formatOverrides. */
@@ -1479,7 +1481,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cardStructure && cur === "Structure" && <CardStructureEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} />}
+          {cardStructure && cur === "Structure" && <CardStructureEditor clubId={clubId} answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} />}
           {cardStructure && cur === "StructureReview" && <CardStructureReview answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} dirty={rowStructureDirty} onEdit={() => go("Structure")} />}
           {isStruct && <>
             <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />

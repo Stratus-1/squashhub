@@ -50,4 +50,4 @@
 
 ## Swiss next-round fixtures (Uitsig)
 - [x] Upcoming Fixtures list shows results-decided next-round Swiss games in the normal row format and date order (display only).
-- [ ] Make those games part of the generated draw (real fixtures) — scope/approval needed: touches live Uitsig fixtures.
+- [ ] Auto-create each next-round Swiss game as a real fixture + court booking as soon as both players are known (game by game, all clubs incl. Uitsig — user approved).

@@ -153,7 +153,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
                   let players = [...new Set(matches.filter((m) => m.stage_key === prevId).flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))] as string[];
                   if (pr.mode === "top_n" && pr.top && prevSt) {
                     const rows = matches.filter((m) => m.stage_key === prevId).map((m) => toFixtureRow(d.divisionId, m, prevSt.kind));
-                    players = stageTable(prevSt.id, rows, d.entrants.map((e) => e.id)).map((x) => x.id).slice(0, pr.top);
+                    players = stageTable(prevSt.id, rows, d.entrants.map((e) => e.id), prevSt.kind === "swiss" ? { tieBreaks: prevSt.tieBreaks } : undefined).map((x) => x.id).slice(0, pr.top);
                   }
                   setPairing({ div: d.divisionId, stage: s.id, players, pairs: [], pick: null });
                   return;

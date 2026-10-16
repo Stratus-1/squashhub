@@ -467,7 +467,13 @@ export const isStructured = (t: { builder_architecture?: string | null }) => t.b
 const unitPlayers = (u: string) => u.split("+");
 
 /** Stage table: wins per unit in one stage, ties broken by the given seed order. */
-export function stageTable(stageId: string, rows: FixtureRow[], seedOrder: string[]): Array<{ id: string; wins: number }> {
+export function stageTable(stageId: string, rows: FixtureRow[], seedOrder: string[], swiss?: { tieBreaks?: readonly string[] | null }): Array<{ id: string; wins: number }> {
+  if (swiss) {
+    // Swiss stages rank by the SAME table the Final standing column shows (points, then Buchholz etc.).
+    const games = rows.filter((x) => x.stageId === stageId);
+    const ids = [...new Set([...seedOrder, ...games.flatMap((g) => [g.a, g.b]).filter(Boolean) as string[]])].filter((id) => games.some((g) => g.a === id || g.b === id));
+    return swissTable(ids, games.map((g) => ({ a: g.a, b: g.b, winner: g.a && !g.b ? g.a : g.winner ?? null, round: g.round ?? null })), swiss.tieBreaks ?? null).map((r) => ({ id: r.id, wins: r.wins }));
+  }
   const t = new Map<string, number>();
   for (const f of rows.filter((x) => x.stageId === stageId)) {
     for (const u of [f.a, f.b]) if (u && !t.has(u)) t.set(u, 0);
@@ -567,7 +573,7 @@ export function nextStageFixtures(tid: string, d: SpecDivision, stageId: string,
   const seedOrder = d.entrants.map((e) => e.id);
   const earlier = d.stages.filter((s) => s.order < stage.order).map((s) => s.id);
   // 1. Rank the previous stage (optionally by points carried across earlier stages).
-  const prevTable = stageTable(prev.id, div, seedOrder).map((x) => x.id);
+  const prevTable = stageTable(prev.id, div, seedOrder, prev.kind === "swiss" ? { tieBreaks: prev.tieBreaks } : undefined).map((x) => x.id);
   let ranked = prevTable;
   if (p.standings === "carry") {
     const pts = playerPoints(earlier, div);

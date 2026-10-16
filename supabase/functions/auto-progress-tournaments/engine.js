@@ -6001,6 +6001,35 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
     return { stages: [], reason: null, notes };
   if (planned.length > 3)
     return { stages: [], reason: "More than three play-off stages can't be mapped automatically.", notes };
+  if (main.kind === "mapped" && (main.mapping?.source === "stage_standings" || main.mapping?.source === "stage_winners")) {
+    const offset = Number(/-po(\d+)$/.exec(main.id)?.[1] ?? 0);
+    const stages2 = [];
+    let prev2 = main;
+    for (const [i, e] of planned.entries()) {
+      const schedule = scheduleOf(e.plan);
+      if (!schedule)
+        return { stages: [], reason: `${e.name}: its date / play-by deadline is still "Decide later".`, notes };
+      const n = prev2.mapping.matches.length;
+      if (n < 2)
+        return { stages: [], reason: `${prev2.name} is already the final.`, notes };
+      const auto = !opts.forceConfirm && e.plan.trigger === "auto";
+      const st = {
+        id: `${version}-po${offset + i + 1}`,
+        order: main.order + i + 1,
+        kind: "mapped",
+        name: e.name,
+        discipline: main.discipline,
+        schedule,
+        mapping: mappingOf("stage_winners", prev2.id, 1, n, Array.from({ length: n / 2 }, (_, k) => [[0, 2 * k + 1], [0, 2 * k + 2]])),
+        progression: { mode: "all_continue", standings: "reset" },
+        generation: auto ? "automatic" : "owner_approval",
+        waitForOrganiser: !auto
+      };
+      stages2.push(st);
+      prev2 = st;
+    }
+    return { stages: stages2, reason: null, notes };
+  }
   let pools, poolSize;
   if (main.kind === "mapped" && main.mapping?.source === "seed_pools") {
     pools = main.mapping.pools;

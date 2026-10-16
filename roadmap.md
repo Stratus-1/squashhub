@@ -1,5 +1,10 @@
 # Roadmap
 
+## Category league allocation override (preview only)
+- [ ] Add and persist “Admin can override” beside category league choices, preserving automatic placement and entry eligibility.
+- [ ] Align manual allocation and the one-page structure advisory; preserve generated games and existing admin authorization.
+- [ ] Run focused regression tests and verify the preview; no live-data changes or publication.
+
 ## Member credit allowances
 - [x] Clarification: blank override inherits, explicit R0 allowed, Use club default action; My Account credit-limit notice beside balance.
 - [x] Inspect/reuse shared financial eligibility, recurring coverage and scoped finance permissions.

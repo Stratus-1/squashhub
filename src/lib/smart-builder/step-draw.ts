@@ -159,6 +159,23 @@ export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|
 /** Parent category of a division label ("Mens › A · Doubles" → "Mens"). */
 export const unitParentOf = (label: string) => unitKeyOf(label).split("::")[0];
 
+/**
+ * Follow-up stages ("Mens A · Stage 2 · Singles") have the same players as their first stage and are seeded from
+ * its final rankings, so they are never drawn with Round 1. Returns follower group -> group it waits for.
+ */
+export function followUpStageGroups(labels: string[]): Record<number, number> {
+  const key = (l: string) => unitKeyOf(l).replace(/::/g, " › ");
+  const out: Record<number, number> = {};
+  labels.forEach((l, i) => {
+    const m = key(l).match(/^(.*?)\s*·\s*Stage\s*(\d+)$/i);
+    if (!m || Number(m[2]) < 2) return;
+    const want = Number(m[2]) === 2 ? m[1].trim() : `${m[1].trim()} · Stage ${Number(m[2]) - 1}`;
+    const j = labels.findIndex((x, k) => k !== i && key(x) === want);
+    if (j >= 0) out[i + 1] = j + 1;
+  });
+  return out;
+}
+
 /** Play-off phase stages from the saved stage timeline that apply to this unit, in play order. */
 export function plannedPlayoffStages(plan: Plan | null, key: string): Array<{ name: string; plan: PlannedPlayoff }> {
   const rows: any[] = (plan?.stages ?? []).filter((s: any) => s?.phase === "playoff" && s.name && (!s.unit || s.unit === key || s.unit === key.split("::")[0]));

@@ -208,6 +208,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tournamentId]);
 
   // Seeded order follows the chosen seeding; the preview and the saved draw use the same order.
+  /** Follow-up stages wait for their first stage's final rankings — they are not part of the Round 1 draw. */
+  const followers = useMemo(() => followUpStageGroups(divs.map((d) => d.label)), [divs]);
   const seeded = useMemo(() => divs.map((d, i) => {
     const base = baseUnits[i] ?? [];
     const rk = d.format.seeding === "ranking" ? rankingIssue(base, scope, points) : null;
@@ -217,7 +219,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const mo = manual[d.group]?.order;
     if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
     return { ...d, koPairs: manual[d.group]?.pairs ?? null, blockers: [...(rk ? [rk] : []), ...planConflicts.map((m) => `Setup needs reconciling first (open the setup's Stages & scheduling step): ${m}`)], units, manualPools: (d.format.kind === "pools" || isPooledKnockout(d.format)) && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
-  }), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts, boardOrder]);
+  }).filter((d) => !followers[d.group]), [divs, baseUnits, ladder, points, scope, seed, manual, planConflicts, boardOrder, followers]);
   /** Round 1 matches the engine proposes for each paced knockout (before organiser edits) — reviewed below before anything is created. */
   const proposals = useMemo(() => meta ? proposedKnockoutRound1(meta.name, seeded, poolMode) : new Map<number, Array<Array<[string, string]>>>(), [meta, seeded, poolMode]);
   const round1Of = (g: number) => manual[g]?.pairs ?? proposals.get(g) ?? null;
@@ -575,7 +577,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       // Re-check against the freshest entries right before saving (server re-validates pairs too).
       await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
       const { data: fresh } = await fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices, division_partners").eq("champ_id", tournamentId);
-      const n = seeded.length;
+      const n = divs.length;
       const drift = seeded.some((d) => unitsFor((fresh ?? []) as RegLite[], d.group, n, d.doubles).units.length !== d.units.length);
       if (drift) { toast.error("Entries changed since this preview — the preview has been refreshed. Check it and generate again."); await load(); return; }
       const spec = finalDrawSpec(meta.name, seeded, version, poolMode);
@@ -587,6 +589,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const entries = seeded.flatMap((d) => d.units.map((u, k) => ({ member: u.member, partner: u.partner, group: d.group, order: k })));
       const { error } = await (supabase as any).rpc("step_prepare_draw", { p_champ_id: tournamentId, p_spec: spec, p_entries: entries, p_rebuild: hasDraw });
       if (error) throw new Error(error.message);
+      // Record which follow-up stages wait for which first stage, so they stay closed until it finishes.
+      if (Object.keys(followers).length) await fromExt("tournaments").update({ division_follows: Object.fromEntries(Object.entries(followers).map(([k, v]) => [k, String(v)])) } as any).eq("id", tournamentId);
       if (hasDraw) {
         // Replacing a draw: clear the saved scheduling preferences so the previous draw's
         // court allocation / category court & evening ticks don't cling to the new draw.
@@ -690,6 +694,11 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       </div>
       <p className="text-muted-foreground">Only current active entries are used; replaced or withdrawn players are left out. Outstanding fees don't exclude anyone because entries here are confirmed without payment. Doubles pairs are kept exactly as you paired them.</p>
 
+      {Object.keys(followers).length > 0 && (
+        <p className="rounded border border-border bg-muted/40 p-2 text-muted-foreground" data-testid="follow-up-stage-note">
+          {Object.entries(followers).map(([g, p]) => `${divs.find((d) => d.group === Number(g))?.label ?? `Group ${g}`} starts after ${divs.find((d) => d.group === p)?.label ?? `Group ${p}`} is complete and is seeded from its final rankings — it isn't part of this draw.`).join(" ")}
+        </p>
+      )}
       {errors.length > 0 && (
         <div className="rounded border border-destructive/50 bg-destructive/10 p-2">
           <div className="flex items-center gap-1 font-medium"><AlertTriangle className="h-3 w-3" />Can't generate yet</div>

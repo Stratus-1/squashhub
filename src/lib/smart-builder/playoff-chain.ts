@@ -65,6 +65,28 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
   const notes: string[] = [];
   if (!planned.length) return { stages: [], reason: null, notes };
   if (planned.length > 3) return { stages: [], reason: "More than three play-off stages can't be mapped automatically.", notes };
+  // Continuing an existing play-off (e.g. Quarterfinal already created): every later stage is played by
+  // the winners of the stage before — Semifinal from Quarterfinal winners, Final from Semifinal winners.
+  if (main.kind === "mapped" && (main.mapping?.source === "stage_standings" || main.mapping?.source === "stage_winners")) {
+    const offset = Number(/-po(\d+)$/.exec(main.id)?.[1] ?? 0);
+    const stages: PlannedStage[] = [];
+    let prev = main;
+    for (const [i, e] of planned.entries()) {
+      const schedule = scheduleOf(e.plan);
+      if (!schedule) return { stages: [], reason: `${e.name}: its date / play-by deadline is still "Decide later".`, notes };
+      const n = prev.mapping!.matches.length;
+      if (n < 2) return { stages: [], reason: `${prev.name} is already the final.`, notes };
+      const auto = !opts.forceConfirm && e.plan.trigger === "auto";
+      const st: PlannedStage = {
+        id: `${version}-po${offset + i + 1}`, order: main.order + i + 1, kind: "mapped", name: e.name, discipline: main.discipline, schedule,
+        mapping: mappingOf("stage_winners", prev.id, 1, n, Array.from({ length: n / 2 }, (_, k) => [[0, 2 * k + 1], [0, 2 * k + 2]] as [[number, number], [number, number]])),
+        progression: { mode: "all_continue", standings: "reset" } as any, generation: auto ? "automatic" : "owner_approval", waitForOrganiser: !auto,
+      };
+      stages.push(st);
+      prev = st;
+    }
+    return { stages, reason: null, notes };
+  }
   let pools: number, poolSize: number;
   if (main.kind === "mapped" && main.mapping?.source === "seed_pools") { pools = main.mapping.pools; poolSize = main.mapping.poolSize; }
   else if (main.kind === "pools" || main.kind === "round_robin") {

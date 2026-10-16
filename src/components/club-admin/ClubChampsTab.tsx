@@ -9031,7 +9031,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
   };
 
-  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10298,10 +10298,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               </div>}
 
                               {structureOnly && <div className="pt-2 space-y-3">
-                                <div className="space-y-1.5">
+                                {!followsDivision(divisionFollows, gn) && <div className="space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Category seeding · Stage 1</div>
                                   <CategorySeedingSelect label={`Category ${gn} seeding`} value={leagueSeedingPlans[key] ?? "later"} onChange={(value) => setLeagueSeedingPlans((m) => ({ ...m, [key]: value }))} />
-                                </div>
+                                </div>}
                                 <div className="grid gap-3">
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Planned playoffs</div>

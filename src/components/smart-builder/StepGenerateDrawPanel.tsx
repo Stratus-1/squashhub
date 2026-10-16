@@ -21,7 +21,7 @@ import { applySetupSessions } from "@/lib/smart-builder/session-slots";
 import { allocateAllFixedStages } from "@/lib/tournaments/formal-stage-schedule";
 import { DEFAULT_SCHEDULING_PREFS } from "@/lib/tournaments/scheduling-prefs";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
-import { proposedKnockoutRound1, previewTimedGames, followUpStageGroups } from "@/lib/smart-builder/step-draw";
+import { proposedKnockoutRound1, previewTimedGames, followUpStageGroups, attachFollowUpStages } from "@/lib/smart-builder/step-draw";
 import { SchedulingPreferencesSection } from "./SchedulingPreferencesSection";
 import { syncPlayoffPlaceholders } from "@/lib/smart-builder/playoff-placeholders";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
@@ -580,7 +580,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const n = divs.length;
       const drift = seeded.some((d) => unitsFor((fresh ?? []) as RegLite[], d.group, n, d.doubles).units.length !== d.units.length);
       if (drift) { toast.error("Entries changed since this preview — the preview has been refreshed. Check it and generate again."); await load(); return; }
-      const spec = finalDrawSpec(meta.name, seeded, version, poolMode);
+      const staged = attachFollowUpStages(finalDrawSpec(meta.name, seeded, version, poolMode), divs, followers, version, meta.end);
+      if (staged.skipped.length) toast.error(`Not linked as a later stage (set it up after Stage 1 finishes): ${staged.skipped.join(", ")}`);
+      const spec = staged.spec;
       { // Tie-break rules from the setup (device answers, else the plan saved on the tournament).
         const { data: lt } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
         const plan: any = readStepPlan(clubId, tournamentId) ?? (lt as any)?.beta_lifecycle?.format_plan ?? null;
@@ -589,8 +591,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const entries = seeded.flatMap((d) => d.units.map((u, k) => ({ member: u.member, partner: u.partner, group: d.group, order: k })));
       const { error } = await (supabase as any).rpc("step_prepare_draw", { p_champ_id: tournamentId, p_spec: spec, p_entries: entries, p_rebuild: hasDraw });
       if (error) throw new Error(error.message);
-      // Record which follow-up stages wait for which first stage, so they stay closed until it finishes.
-      if (Object.keys(followers).length) await fromExt("tournaments").update({ division_follows: Object.fromEntries(Object.entries(followers).map(([k, v]) => [k, String(v)])) } as any).eq("id", tournamentId);
+      // Follow-up stages now live inside their first stage's division (see attachFollowUpStages).
       if (hasDraw) {
         // Replacing a draw: clear the saved scheduling preferences so the previous draw's
         // court allocation / category court & evening ticks don't cling to the new draw.
@@ -696,7 +697,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
 
       {Object.keys(followers).length > 0 && (
         <p className="rounded border border-border bg-muted/40 p-2 text-muted-foreground" data-testid="follow-up-stage-note">
-          {Object.entries(followers).map(([g, p]) => `${divs.find((d) => d.group === Number(g))?.label ?? `Group ${g}`} starts after ${divs.find((d) => d.group === p)?.label ?? `Group ${p}`} is complete and is seeded from its final rankings — it isn't part of this draw.`).join(" ")}
+          {Object.entries(followers).map(([g, p]) => `${divs.find((d) => d.group === Number(g))?.label ?? `Group ${g}`} starts after ${divs.find((d) => d.group === p)?.label ?? `Group ${p}`} is complete and is seeded from its final rankings — no games are created for it now. When the last round is played, Stage progress shows "Start" for it.`).join(" ")}
         </p>
       )}
       {errors.length > 0 && (

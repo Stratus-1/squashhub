@@ -775,3 +775,41 @@ export function previewTimedGames(name: string, divs: DrawDivision[], poolMode: 
     return out;
   } catch { return []; }
 }
+
+/**
+ * Follow-up stages become a real second stage of their first stage's division (same players, everyone continues,
+ * seeded from the first stage's final table, organiser confirms "Start"). No games are created now; the engine's
+ * Stage progress creates them once the first stage is finished (all Swiss rounds played). Divisions whose first
+ * stage already has later stages (planned play-offs) are left unchanged and reported.
+ */
+export function attachFollowUpStages(spec: TournamentSpec, divs: DrawDivision[], followers: Record<number, number>, version: string, tournamentEnd: string | null = null): { spec: TournamentSpec; skipped: string[] } {
+  const skipped: string[] = [];
+  const divisions = spec.divisions.map((sd) => {
+    const fs = Object.entries(followers).filter(([, lead]) => lead === sd.groupNumber).map(([g]) => divs.find((d) => d.group === Number(g))).filter(Boolean) as DrawDivision[];
+    if (!fs.length) return sd;
+    const f = fs[0];
+    if (sd.stages.length !== 1 || fs.length > 1) { skipped.push(f.label); return sd; }
+    const kind = f.format.kind;
+    if (kind !== "pools" && kind !== "round_robin" && kind !== "swiss") { skipped.push(f.label); return sd; }
+    const n = sd.expectedEntrants ?? 0;
+    const pools = kind === "pools" ? Math.max(1, f.format.pools ?? 1) : undefined;
+    const stage2: any = {
+      id: `${version}-stage2`, order: 1, kind,
+      name: kind === "pools" ? "Stage 2 · Pools" : kind === "swiss" ? "Stage 2 · Swiss rounds" : "Stage 2 · Round robin",
+      pools, poolSize: pools ? Math.max(2, Math.ceil(n / pools)) : undefined,
+      swissRounds: kind === "swiss" ? f.format.swissRounds : undefined,
+      discipline: sd.stages[0].discipline,
+      progression: { mode: "all_continue", standings: "reset" },
+      generation: "owner_approval", qualify: null,
+      schedule: stageSchedule(f.format.schedule, undefined),
+    };
+    // No Stage 2 dates in setup: it must be played by the tournament's end date (organiser can change it).
+    const sc = stage2.schedule;
+    if (!(sc.rule === "fixed" ? sc.date : sc.deadline)) {
+      if (!tournamentEnd) { skipped.push(f.label); return sd; }
+      stage2.schedule = { rule: "play_by", deadline: tournamentEnd };
+    }
+    return { ...sd, stages: [...sd.stages, stage2], deferredStages: [] } as any;
+  });
+  return { spec: { ...spec, divisions }, skipped };
+}

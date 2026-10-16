@@ -3251,3 +3251,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ### 16 Oct 2026 — Changing a later stage after the draw (assasasa RR -> knockout)
 - Cause: Edit setup only saves wizard answers; the engine spec is append-only, so a generated Stage 2 could not change.
 - Fix: server function replace_unplayed_structured_stage (manager-only, last stage only, refuses played/started/booked games, audited) + "Regenerate Stage 2" on Run stages (StructuredEnginePanel). assasasa: 30 unplayed RR games replaced by 4 quarterfinals from final Swiss standings. Open: Edit setup still does not push stage-type changes to the engine.
+
+### 2026-10-16 — Play-off quarterfinals seeded 1 v 10 and dated before the Swiss stage ended
+- Cause: the scheduled `auto-progress-tournaments` function ran a stale engine bundle (wins-only ranking, no Swiss Buchholz tie-break), so it auto-started the play-offs with players 9/10 in the top 8. Regenerate also copied the old stage's Swiss round dates, so quarterfinals landed on 29 Oct, before Swiss Round 3 (31 Oct), with no court bookings.
+- Fix: rebuilt + redeployed the bundle (`bun scripts/build-auto-progress.ts`) — rebuild it whenever `src/lib/tournaments/` changes. `buildReplacementStage` now drops dates on/before the previous stage's last day (`laterStageSchedule`), leaving games undated until play-off days are chosen. Knockout draw seed labels derive from the draw position. Test: `src/test/replace-stage-dates.test.ts`.

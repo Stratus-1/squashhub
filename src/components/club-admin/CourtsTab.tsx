@@ -91,6 +91,7 @@ function DeleteConfirmDialog({
 
 export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
+  const queryClient = useQueryClient();
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
   const { symbol: currencySymbol } = useClubCurrency();

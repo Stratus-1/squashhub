@@ -103,7 +103,7 @@ import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary"
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
-import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
+import { rrSeedOrder, buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
@@ -1271,6 +1271,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const view = buildRoundRobinView({
               players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })),
               rankOrder: rows.map((r: any) => r.club_member_id),
+              seedOrder: rrSeedOrder(pm.map((m: any) => ({ round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, isBye: !!m.is_bye })), rows.map((r: any) => r.club_member_id)),
               matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
             });
             return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar />;
@@ -1361,7 +1362,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               const rankOrder = model.rows.map((r: any) => r.id).filter((id: string) => ids.includes(id));
               const view = buildRoundRobinView({
                 players: ids.map((id) => ({ id, name: names[id] ?? "Unknown" })),
-                rankOrder,
+                seedOrder: rankOrder,
                 matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
               });
               return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}${laterPools.length > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar />;

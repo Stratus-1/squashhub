@@ -1463,6 +1463,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leagueFollowUpFormats, setLeagueFollowUpFormats] = useState<Record<string, string>>({});
   const [leagueSeedingPlans, setLeagueSeedingPlans] = useState<Record<string, string>>({});
   const [leagueFollowUpSeeding, setLeagueFollowUpSeeding] = useState<Record<string, string>>({});
+  const [monradRounds, setMonradRounds] = useState<Record<string, number>>({});
   // Post-pool playoff style per division (round-robin pools):
   //   "position" (default / legacy) → A1 v B1, A2 v B2 …
   //   "knockout"                    → top N of each pool in one cross-pool draw.
@@ -1709,6 +1710,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     copy(setLeagueFollowUpFormats as any);
     copy(setLeagueSeedingPlans as any);
     copy(setLeagueFollowUpSeeding as any);
+    copy(setMonradRounds as any);
     // The copy keeps the rules but NOT the entrants — the organiser picks the
     // leagues/players for the new division, which is the whole point of it.
     setSourceForLeague(Number(to), { mode: "all", leagueIds: [] });
@@ -8962,6 +8964,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueFollowUpFormats(v.league_follow_up_formats ?? {});
     setLeagueSeedingPlans(v.league_seeding_plans ?? {});
     setLeagueFollowUpSeeding(v.league_follow_up_seeding ?? {});
+    setMonradRounds(v.monrad_rounds ?? {});
     setLeagueByeHandling(v.league_bye_handling ?? {});
     setLeagueForfeitRules(v.league_forfeit_rules ?? {});
     setLeagueForfeitPoints(v.league_forfeit_points ?? {});
@@ -8989,6 +8992,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   }, [structureOnly]);
   const saveOriginalStructure = () => {
     if (!structureOnly) return;
+    const finalMonradRounds = { ...monradRounds };
+    for (let i = 1; i <= numGroups; i++) {
+      const key = String(i);
+      if (leagueFormats[key] !== "monrad") continue;
+      const rounds = monradRounds[key] ?? monradPlan(Number(expectedPlayers[key]))?.rounds ?? 0;
+      if (!Number.isInteger(rounds) || rounds < 1 || rounds > 20) {
+        toast.error(`Enter Monrad rounds for Category ${i} (1–20).`);
+        return;
+      }
+      finalMonradRounds[key] = rounds;
+    }
     originalBaselineRef.current = originalChangeKey;
     structureOnly.onDirtyChange?.(false);
     structureOnly.onSave({ ...structureOnly.initial, _unit_keys: originalKeysRef.current, num_groups: numGroups,
@@ -8997,6 +9011,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_formats: leagueFormats,
       swiss_pools: swissPools,
       swiss_rounds: swissRounds,
+      monrad_rounds: finalMonradRounds,
       league_genders: leagueGenders,
       league_match_types: leagueMatchTypes,
       league_scoring_modes: leagueScoringModes,
@@ -9031,7 +9046,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
   };
 
-  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -9565,11 +9580,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                {fmt === "monrad" && (() => {
                                  const n = Number(expectedPlayers[key]) || 0;
                                  const plan = monradPlan(n);
+                                 const rounds = monradRounds[key] ?? plan?.rounds ?? 0;
                                  return (
-                                   <div className="rounded-md border bg-muted/30 p-2">
+                                   <div className="rounded-md border bg-muted/30 p-2 space-y-2">
+                                     <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                                       <span>Monrad rounds</span>
+                                       <Input type="number" min={1} max={20} aria-label={`${key} Monrad rounds`} value={rounds > 0 ? rounds : ""} onChange={(e) => setMonradRounds((m) => ({ ...m, [key]: e.target.value ? Math.min(20, Math.max(1, Math.round(Number(e.target.value)))) : 0 }))} className="h-7 w-16 text-xs" />
+                                       <span>(recommended: {plan?.rounds ?? "enter expected players"}{rounds <= 0 ? "; required" : ""})</span>
+                                     </div>
                                      <p className="text-[11px] text-muted-foreground">
                                        {plan
-                                         ? `${n} expected player${n === 1 ? "" : "s"} → ${plan.rounds} round${plan.rounds === 1 ? "" : "s"} · ${plan.byes ? `${plan.bracket}-draw with ${plan.byes} bye${plan.byes === 1 ? "" : "s"} (top seeds)` : `full ${plan.bracket}-draw`} · ≈${plan.matches} matches. Every player plays every round and all finishing places are decided.`
+                                         ? `${n} expected players · ${plan.byes ? `${plan.bracket}-draw with ${plan.byes} byes (top seeds)` : `full ${plan.bracket}-draw`} · recommended ${plan.rounds}-round format ≈${plan.matches} matches.`
                                          : "Enter expected players to estimate the rounds, draw size and byes."}
                                      </p>
                                    </div>

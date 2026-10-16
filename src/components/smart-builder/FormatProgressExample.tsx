@@ -4,6 +4,7 @@ import type { LearnExample, LearnRound } from "@/lib/smart-builder/format-learn"
 
 const FICTIONAL_NAMES = ["Alex", "Ben", "Cara", "Dani", "Evan", "Fran", "Gabi", "Hugo"];
 export function exampleName(id: string) {
+  if (!/^[PS]\d+$/.test(id)) return id;
   const index = Number(id.slice(1)) - 1;
   return FICTIONAL_NAMES[index] ?? id;
 }

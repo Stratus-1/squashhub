@@ -11,32 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { FormatProgressExample, exampleName } from "./FormatProgressExample";
 import { LEARN_EXAMPLES, LEARN_FORMAT_LABEL, type LearnFormat, type LearnStanding } from "@/lib/smart-builder/format-learn";
 
-/** Ladder-style standings — mirrors the Player Ladder page: position circle,
- *  initials avatar, name and win–loss record. Used for the Swiss preview so
- *  organisers see the ranking the way players will. */
-function LadderStandings({ title, note, rows }: { title: string; note?: string; rows: LearnStanding[] }) {
-  const initials = (name: string) => name.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-  return (
-    <div className="space-y-1">
-      <div className="text-xs font-semibold">{title}</div>
-      {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
-      <ul className="space-y-1.5">
-        {rows.map((r, i) => (
-          <li key={r.name} className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-2.5 py-1.5">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">{i + 1}</span>
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{initials(r.name)}</span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-semibold leading-tight">{r.name}</span>
-              <span className="block text-[10px] text-muted-foreground">{r.won}W-{r.lost}L</span>
-            </span>
-            <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{r.points} pt{r.points === 1 ? "" : "s"}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function StandingsTable({ title, note, rows }: { title: string; note?: string; rows: LearnStanding[] }) {
   return (
     <div className="space-y-1">

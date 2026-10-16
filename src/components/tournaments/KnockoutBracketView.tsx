@@ -24,7 +24,8 @@ export function KnockoutBracketView({ title, matches, names, seedOf }: { title: 
           if (n === 1) break;
         }
         const label = brackets.length > 1 ? (b === 1 ? "Top half" : "Bottom half") : null;
-        const unit = 64;
+        // Tall enough for two names + score + date/time/court line without boxes overlapping.
+        const unit = 104;
         const GAP = 32;
         const H = rounds[0].length * unit;
         // Match i in round column ci is centred at (i + 0.5) * 2^ci * unit, so each

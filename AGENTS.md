@@ -45,3 +45,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
+- Changing a generated later stage goes only through `replace_unplayed_structured_stage` (last stage, no played/booked games, audited); why: the structured spec is otherwise append-only.

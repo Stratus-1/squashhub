@@ -64,4 +64,4 @@
 
 - [x] Swiss Positional Preview: show saved/decided games in rounds 2+ as real (players, results, scores), not projected
 - [ ] Editing a later stage after the draw must save (assasasa Stage 2 Pools->Knockout change was lost)
-- [ ] "Regenerate Stage 2" button: remove unplayed later-stage games and rebuild from current structure + final standings
+- [x] "Regenerate Stage 2" button: remove unplayed later-stage games and rebuild from current structure + final standings

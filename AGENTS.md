@@ -45,4 +45,3 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- Results-decided next-round Swiss games become normal fixtures one at a time via server-only `create_decided_swiss_game` (per-player previous-round check in `guard_swiss_round_progression`), created and court-booked by `auto-progress-tournaments` from the same projection the progress log shows; why: games appear the moment players are known without waiting for the whole round, and never twice.

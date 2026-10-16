@@ -2673,6 +2673,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 ? <ul className="ml-4 list-disc">{pickProblems.slice(0, 12).map((p, i) => <li key={i}>{p}</li>)}{pickProblems.length > 12 && <li>…and {pickProblems.length - 12} more</li>}</ul>
                 : cur === "Schedule" && scheduleProblems.length
                 ? <ul className="ml-4 list-disc">{scheduleProblems.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                : cardStructure && (cur === "Structure" || cur === "StructureReview")
+                ? <ul className="ml-4 list-disc">
+                    {rowStructureDirty && <li>Save the structure first.</li>}
+                    {cardStructureIssues(a).slice(0, 12).map((p, i) => <li key={i}>{p.replace(/::/g, " – ")}</li>)}
+                  </ul>
                 : <p>Complete the required choices on this step ({STEP_LABEL[cur]}).</p>}
             </div>
           )}

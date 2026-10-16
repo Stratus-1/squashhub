@@ -9549,57 +9549,37 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                  const suggested = perPool >= 2 ? Math.max(1, Math.min(9, perPool - 1)) : 5;
                                  const rounds = Number(swissRounds[key]) || 0;
                                  const pairing = swissPairingModes[key] === "random" ? "random" : "seeded";
-                                 const qualifiers = Math.max(0, Number(swissKnockoutQualifiers[key]) || 0);
-                                 const koOn = qualifiers > 0;
-                                 const validQualifiers = [2, 4, 8].filter(
-                                   (n) => entrants === 0 || n <= entrants,
-                                 );
                                  return (
                                    <div className="rounded-md border border-teal-500/40 bg-teal-500/5 p-2 space-y-2">
                                      <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
                                        Swiss settings
                                      </div>
-                                     <div className="flex items-end gap-2">
-                                       <div className="w-24">
-                                         <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                           Number of Swiss rounds
-                                         </Label>
-                                         <Input
-                                           type="number"
-                                           min={1}
-                                           max={20}
-                                           placeholder={String(suggested)}
-                                           value={rounds > 0 ? String(rounds) : ""}
-                                           onChange={(e) => {
-                                             const v = Number(e.target.value);
-                                             setSwissRounds((m) => {
-                                               const next = { ...m };
-                                               if (v > 0) next[key] = Math.min(20, Math.round(v));
-                                               else delete next[key];
-                                               return next;
-                                             });
-                                           }}
-                                           className={cn("h-8 text-xs mt-0.5", rounds <= 0 && "border-amber-500")}
-                                         />
-                                       </div>
-                                       {rounds <= 0 && (
-                                         <Button
-                                           type="button"
-                                           size="sm"
-                                           variant="outline"
-                                           className="h-8 text-[11px]"
-                                           onClick={() => setSwissRounds((m) => ({ ...m, [key]: suggested }))}
-                                         >
-                                           Use {suggested}
-                                         </Button>
-                                       )}
-                                     </div>
-                                     {rounds <= 0 && (
-                                       <p className="text-[10px] text-amber-600 dark:text-amber-500">
-                                         Required — how many qualifying rounds each player is scheduled to play.
-                                         {entrants > 0 ? ` ${suggested} suits ${perPool} per ${pools > 1 ? "pool" : "draw"}.` : ""}
-                                       </p>
-                                     )}
+                                     <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                       <span className="whitespace-nowrap">Swiss rounds</span>
+                                       <Input
+                                         type="number"
+                                         min={1}
+                                         max={20}
+                                         placeholder={String(suggested)}
+                                         aria-label={`${key} Swiss rounds`}
+                                         value={rounds > 0 ? String(rounds) : ""}
+                                         onChange={(e) => {
+                                           const v = Number(e.target.value);
+                                           setSwissRounds((m) => {
+                                             const next = { ...m };
+                                             if (v > 0) next[key] = Math.min(20, Math.round(v));
+                                             else delete next[key];
+                                             return next;
+                                           });
+                                         }}
+                                         className={cn("h-7 w-16 text-xs", rounds <= 0 && "border-amber-500")}
+                                       />
+                                       <span>
+                                         (recommended: {suggested}
+                                         {entrants > 0 ? ` — one fewer than ${perPool} per ${pools > 1 ? "pool" : "draw"}` : ""}
+                                         {rounds <= 0 ? "; required" : ""})
+                                       </span>
+                                     </p>
                                      <SegRow
                                        label="First-round pairing"
                                        value={pairing}
@@ -9621,47 +9601,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                          : "Round 1 is drawn at random."}{" "}
                                        From round 2 players meet the nearest score they have not played yet.
                                      </p>
-                                     <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
-                                       <input
-                                         type="checkbox"
-                                         className="h-3.5 w-3.5 accent-teal-500"
-                                         checked={koOn}
-                                         onChange={(e) =>
-                                           setSwissKnockoutQualifiers((m) => {
-                                             const next = { ...m };
-                                             if (e.target.checked) next[key] = validQualifiers.includes(4) ? 4 : (validQualifiers[0] || 2);
-                                             else delete next[key];
-                                             return next;
-                                           })
-                                         }
-                                       />
-                                       Enable knockout stage after Swiss rounds
-                                     </label>
-                                     {koOn ? (
-                                       <div className="pl-6 space-y-1">
-                                         <SegRow
-                                           label="Number qualifying for knockout"
-                                           value={String(qualifiers)}
-                                           color="cyan"
-                                           options={validQualifiers.map((n) => ({ v: String(n), l: `Top ${n}` }))}
-                                           onChange={(v) =>
-                                             setSwissKnockoutQualifiers((m) => ({ ...m, [key]: Number(v) || 2 }))
-                                           }
-                                         />
-                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                           {qualifiers >= 8
-                                             ? "Quarter-finals 1v8, 2v7, 3v6, 4v5, then semi-finals and the final."
-                                             : qualifiers >= 4
-                                               ? "Semi-finals 1v4 and 2v3, then the final."
-                                               : "Straight final between the top two."}{" "}
-                                           Dates for those rounds are set later in scheduling.
-                                         </p>
-                                       </div>
-                                     ) : (
-                                       <p className="text-[10px] text-muted-foreground pl-6 leading-relaxed">
-                                         The Swiss standings decide the finishing order after {rounds || suggested} rounds.
-                                       </p>
-                                     )}
                                    </div>
                                  );
                                })()}

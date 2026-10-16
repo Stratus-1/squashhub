@@ -192,6 +192,11 @@ export function clubAllowsTournamentLadder(cfg: { ladder_from_tournaments?: bool
  * tournaments.ladder_affects patch. New tournaments are explicitly OFF unless the organiser opted in;
  * edits only write when the organiser touched the switch, so stored/legacy values are never rewritten.
  */
+/** True when saving would renumber categories of a tournament that already has games. */
+export function assertDivisionCountLocked(current: number | null | undefined, next: number, games: number): boolean {
+  return games > 0 && current != null && Number(current) !== next;
+}
+
 export function ladderAffectsPatch(value: boolean | undefined, isNew: boolean): { ladder_affects?: boolean } {
   if (value !== undefined) return { ladder_affects: value === true };
   return isNew ? { ladder_affects: false } : {};
@@ -229,6 +234,16 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     ...(i.avoidBackToBack !== undefined ? { avoid_back_to_back: i.avoidBackToBack } : {}),
   });
   let tid = i.existingId ?? null;
+  if (tid && i.divisions?.length) {
+    // Category numbers index live games/entries; never renumber once a draw exists.
+    const [{ data: cur }, { count }] = await Promise.all([
+      fromExt("tournaments").select("num_groups").eq("id", tid).maybeSingle(),
+      fromExt("club_champs_matches").select("id", { count: "exact", head: true }).eq("champ_id", tid),
+    ]);
+    if (assertDivisionCountLocked((cur as any)?.num_groups, i.divisions.length, count ?? 0)) {
+      throw new Error(`This tournament's draw already has ${(cur as any)?.num_groups} categories. Changing to ${i.divisions.length} would mix up the live games — keep the same categories (use pools/groups as they are) or regenerate the draw.`);
+    }
+  }
   if (tid) {
     const { error } = await fromExt("club_champs").update(row).eq("id", tid);
     if (error) throw error;

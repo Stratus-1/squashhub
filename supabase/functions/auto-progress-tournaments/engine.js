@@ -5945,6 +5945,177 @@ async function startMappedStage(db, tid, spec, d, st, matches, existing, ownerCo
   return insertFixtures(db, tid, withUnits, ids, fixtures, existing);
 }
 
+// src/lib/smart-builder/playoff-chain.ts
+var L = (p) => String.fromCharCode(65 + p);
+var slot = (pool, position) => ({ pool, position });
+function seededPairs(n) {
+  let order = [1];
+  while (order.length < n) {
+    const m = order.length * 2 + 1;
+    order = order.flatMap((s) => [s, m - s]);
+  }
+  const out = [];
+  for (let i = 0;i < order.length; i += 2)
+    out.push([order[i], order[i + 1]]);
+  return out;
+}
+function crossoverPairs(g) {
+  if (g === 1)
+    return [[[0, 1], [1, 1]]];
+  const top = [], bottom = [];
+  for (let k = 1;k <= g / 2; k++) {
+    const aVb = [[0, k], [1, g + 1 - k]];
+    const bVa = [[1, k], [0, g + 1 - k]];
+    if (k % 2) {
+      top.push(aVb);
+      bottom.push(bVa);
+    } else {
+      top.push(bVa);
+      bottom.push(aVb);
+    }
+  }
+  return [...top, ...bottom];
+}
+function mappingOf(source, sourceStageId, pools, poolSize, games) {
+  const units = new Map;
+  const id = ([p, pos]) => {
+    const k = `${L(p)}${pos}`;
+    if (!units.has(k))
+      units.set(k, { id: k, slots: [slot(p, pos)] });
+    return k;
+  };
+  const matches = games.map(([a, b], i) => ({ round: 1, order: i + 1, a: id(a), b: id(b) }));
+  return { source, sourceStageId, pools, poolSize, discipline: "singles", units: [...units.values()], matches, derived: true };
+}
+function scheduleOf(p) {
+  const courts = (p.courtIds ?? []).map(Number).filter(Number.isFinite);
+  if (p.mode === "scheduled" && p.date)
+    return { rule: "fixed", date: p.date, roundDates: [p.date], timeFrom: p.from || null, timeTo: p.to || null, courtIds: courts };
+  if (p.mode === "play_by" && p.deadline)
+    return { rule: "play_by", deadline: p.deadline, roundDates: [p.deadline], courtIds: courts };
+  return null;
+}
+function buildPlayoffChain(main, version, planned, opts = {}) {
+  const notes = [];
+  if (!planned.length)
+    return { stages: [], reason: null, notes };
+  if (planned.length > 3)
+    return { stages: [], reason: "More than three play-off stages can't be mapped automatically.", notes };
+  let pools, poolSize;
+  if (main.kind === "mapped" && main.mapping?.source === "seed_pools") {
+    pools = main.mapping.pools;
+    poolSize = main.mapping.poolSize;
+  } else if (main.kind === "pools" || main.kind === "round_robin") {
+    pools = main.kind === "pools" ? main.pools ?? 1 : 1;
+    poolSize = main.poolMembers?.length ? Math.min(...main.poolMembers.map((p) => p.length)) : main.poolSize ?? 0;
+  } else if (main.kind === "swiss") {
+    pools = 1;
+    poolSize = 0;
+  } else
+    return { stages: [], reason: `Play-offs after a ${main.kind} stage are set up when it finishes.`, notes };
+  const first = planned[0];
+  const g = 2 ** (planned.length - 1);
+  const pairing = first.plan.pairing ?? "later";
+  let games;
+  const q = opts.qualifiers ?? null;
+  if (q && q.runnersUp > 0)
+    return { stages: [], reason: `${first.name}: "best runners-up" can't be mapped automatically yet — set the play-off up when the pools finish, or set best runners-up to 0.`, notes };
+  if (q?.perPool && pools > 1 && q.perPool * pools !== 2 * g)
+    return { stages: [], reason: `${first.name} needs ${2 * g} qualifiers, but ${q.perPool} from each of ${pools} pools gives ${q.perPool * pools}. Change the qualifiers per pool or the play-off stages.`, notes };
+  if (pools > 2) {
+    const per = q?.perPool ?? (2 * g % pools === 0 ? 2 * g / pools : 0);
+    if (!per)
+      return { stages: [], reason: `${first.name}: ${pools} pools can't fill ${2 * g} play-off places evenly — set qualifiers in Playoffs / Progression.`, notes };
+    if (pairing === "crossover" && per === 2) {
+      games = Array.from({ length: pools }, (_, p) => [[p, 1], [(p + 1) % pools, 2]]);
+    } else if (pairing === "seeded" || pairing === "crossover") {
+      if (pairing === "crossover")
+        notes.push(`${first.name}: crossover with ${per} qualifiers per pool — seeded highest v lowest is used.`);
+      const order = [];
+      for (let pos = 1;pos <= per; pos++)
+        for (let p = 0;p < pools; p++)
+          order.push([p, pos]);
+      games = seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]]);
+    } else if (pairing === "later" || pairing === "winners")
+      return { stages: [], reason: `${first.name}: choose who plays whom (pairing) in Stages & Scheduling.`, notes };
+    else
+      return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} pools can't be mapped automatically — use crossover or seeded.`, notes };
+  } else if (pools === 2 && pairing === "crossover")
+    games = crossoverPairs(g);
+  else if (pools === 2 && pairing === "seeded") {
+    const per = q?.perPool ?? g;
+    const order = [];
+    for (let pos = 1;pos <= per; pos++)
+      for (let p = 0;p < 2; p++)
+        order.push([p, pos]);
+    games = seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]]);
+  } else if (pools === 2 && pairing === "same_position")
+    games = Array.from({ length: g }, (_, i) => [[0, i + 1], [1, i + 1]]);
+  else if (pools === 1 && (pairing === "seeded" || pairing === "crossover" || pairing === "same_position")) {
+    if (pairing !== "seeded")
+      notes.push(`${first.name}: one group only — seeded 1 v ${2 * g} pairing is used.`);
+    games = seededPairs(2 * g).map(([a, b]) => [[0, a], [0, b]]);
+  } else if (pairing === "later" || pairing === "winners")
+    return { stages: [], reason: `${first.name}: choose who plays whom (pairing) in Stages & Scheduling.`, notes };
+  else
+    return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} groups can't be mapped automatically — set it up when the main stage finishes.`, notes };
+  const need = Math.max(...games.flat().map(([, pos]) => pos));
+  if (poolSize && need > poolSize)
+    return { stages: [], reason: `${first.name} needs ${need} qualifiers per group, but groups have only ${poolSize}.`, notes };
+  const stages = [];
+  let prev = main;
+  for (const [i, e] of planned.entries()) {
+    const schedule = scheduleOf(e.plan);
+    if (!schedule)
+      return { stages: [], reason: `${e.name}: its date / play-by deadline is still "Decide later".`, notes };
+    const mapping = i === 0 ? mappingOf("stage_standings", main.id, pools, poolSize || need, games) : (() => {
+      const n = prev.mapping.matches.length;
+      if (e.plan.pairing && !["winners", "later"].includes(e.plan.pairing))
+        notes.push(`${e.name}: played by the ${prev.name} winners (its saved "${e.plan.pairing}" pairing does not apply after ${prev.name}).`);
+      return mappingOf("stage_winners", prev.id, 1, n, Array.from({ length: n / 2 }, (_, k) => [[0, 2 * k + 1], [0, 2 * k + 2]]));
+    })();
+    const st = {
+      id: `${version}-po${i + 1}`,
+      order: main.order + i + 1,
+      kind: "mapped",
+      name: e.name,
+      discipline: main.discipline,
+      schedule,
+      mapping,
+      progression: { mode: "all_continue", standings: "reset" },
+      generation: !opts.forceConfirm && e.plan.trigger === "auto" ? "automatic" : "owner_approval",
+      waitForOrganiser: !(!opts.forceConfirm && e.plan.trigger === "auto")
+    };
+    stages.push(st);
+    prev = st;
+  }
+  return { stages, reason: null, notes };
+}
+var toMin = (t) => {
+  const [h, m] = t.slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+};
+var toHHMM = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+function allocateSlots(count, w) {
+  const out = [];
+  const taken = [...w.busy];
+  const end = toMin(w.to), step = Math.max(15, w.minutes);
+  for (let t = toMin(w.from);t + step <= end && out.length < count; t += step) {
+    for (const c of w.courtIds) {
+      if (out.length >= count)
+        break;
+      const clash = taken.some((b) => b.courtId === c && toMin(b.start) < t + step && toMin(b.end) > t);
+      if (clash)
+        continue;
+      out.push({ courtId: c, time: toHHMM(t) });
+      taken.push({ courtId: c, start: toHHMM(t), end: toHHMM(t + step) });
+    }
+  }
+  while (out.length < count)
+    out.push(null);
+  return out;
+}
+
 // src/lib/tournaments/progression.ts
 var sourceOf = (d, st) => {
   if (st.kind === "mapped" && (st.mapping?.source === "stage_standings" || st.mapping?.source === "stage_winners"))
@@ -6034,8 +6205,40 @@ async function stageLifecycle(db, tid) {
   }
   return out;
 }
+async function promoteAutoDeferred(db, tid, exec = (fn) => fn(db)) {
+  const states = await stageLifecycle(db, tid);
+  const due = states.filter((s) => s.state === "needs_setup");
+  if (!due.length)
+    return 0;
+  return exec(async (tx) => {
+    const [t] = await tx.select("tournaments", { id: tid });
+    let spec = t?.builder_spec;
+    if (!spec)
+      return 0;
+    let n = 0;
+    for (const s of due) {
+      const d = spec.divisions.find((x) => x.divisionId === s.divisionKey);
+      const later = d?.deferredStages ?? [];
+      if (!d || !later.length || later[0].stageKey !== s.stageKey)
+        continue;
+      if (!later.every((x) => x.plan && x.plan.trigger === "auto"))
+        continue;
+      const main = [...d.stages].sort((a, b) => b.order - a.order)[0];
+      const version = String(later[0].stageKey).replace(/-po\d+$/, "");
+      const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan })));
+      if (chain.reason || !chain.stages.length || chain.stages.some((c) => d.stages.some((y) => y.id === c.id)))
+        continue;
+      spec = { ...spec, divisions: spec.divisions.map((x) => x !== d ? x : { ...x, stages: [...x.stages, ...chain.stages], deferredStages: [] }) };
+      n++;
+    }
+    if (n)
+      await tx.update("tournaments", { id: tid }, { builder_spec: spec });
+    return n;
+  });
+}
 async function autoProgress(db, tid, exec = (fn) => fn(db)) {
   const report = { started: [], blocked: [], needsSetup: [] };
+  await promoteAutoDeferred(db, tid, exec);
   for (let pass = 0;pass < 10; pass++) {
     const states = await stageLifecycle(db, tid);
     report.blocked = states.filter((s) => s.state === "blocked");
@@ -6131,32 +6334,6 @@ function playoffSlotOrder(divs, override) {
 function sortGamesForSlots(games, order, groupOf) {
   const rank = new Map(order.map((id, i) => [groupOf(id), i]));
   return games.slice().sort((a, b) => (rank.get(Number(a.group_number)) ?? 99) - (rank.get(Number(b.group_number)) ?? 99) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
-}
-
-// src/lib/smart-builder/playoff-chain.ts
-var toMin = (t) => {
-  const [h, m] = t.slice(0, 5).split(":").map(Number);
-  return h * 60 + m;
-};
-var toHHMM = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-function allocateSlots(count, w) {
-  const out = [];
-  const taken = [...w.busy];
-  const end = toMin(w.to), step = Math.max(15, w.minutes);
-  for (let t = toMin(w.from);t + step <= end && out.length < count; t += step) {
-    for (const c2 of w.courtIds) {
-      if (out.length >= count)
-        break;
-      const clash = taken.some((b) => b.courtId === c2 && toMin(b.start) < t + step && toMin(b.end) > t);
-      if (clash)
-        continue;
-      out.push({ courtId: c2, time: toHHMM(t) });
-      taken.push({ courtId: c2, start: toHHMM(t), end: toHHMM(t + step) });
-    }
-  }
-  while (out.length < count)
-    out.push(null);
-  return out;
 }
 
 // src/lib/smart-builder/step-draw.ts
@@ -6522,13 +6699,13 @@ function isOwnStageReservation(b, w) {
   const hm = (t) => String(t).slice(0, 5);
   return String(b.external_id ?? "").startsWith("sbs:") && w.courtIds.map(Number).includes(Number(b.court_id)) && hm(b.start_time) <= hm(w.from) && hm(b.end_time) >= hm(w.to);
 }
-function carveReservation(block, slot) {
+function carveReservation(block, slot2) {
   const hm = (t) => String(t).slice(0, 5);
   const out = [];
-  if (hm(block.start) < hm(slot.start))
-    out.push({ start: hm(block.start), end: hm(slot.start) });
-  if (hm(slot.end) < hm(block.end))
-    out.push({ start: hm(slot.end), end: hm(block.end) });
+  if (hm(block.start) < hm(slot2.start))
+    out.push({ start: hm(block.start), end: hm(slot2.start) });
+  if (hm(slot2.end) < hm(block.end))
+    out.push({ start: hm(slot2.end), end: hm(block.end) });
   return out;
 }
 async function loadSlotDivisions(champId, spec) {
@@ -6974,13 +7151,13 @@ function buildProposedSwissGrid(model, opts = {}) {
         return [];
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
       const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
-      const slot = appliedBy ? { kind: "play_by", date: appliedBy } : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
+      const slot2 = appliedBy ? { kind: "play_by", date: appliedBy } : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
       const withWhen = (when) => [{ ...pending(p.a), when }, { ...pending(p.b), when }];
-      if (slot?.kind === "planned")
-        return [{ matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null }];
-      if (slot?.kind === "play_by")
-        return [{ matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date }];
-      if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason)))
+      if (slot2?.kind === "planned")
+        return [{ matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot2.date)} ${slot2.time}`), score: null, court: `${slot2.courtName} (proposed)`, playBy: null }];
+      if (slot2?.kind === "play_by")
+        return [{ matchId: id, rows: withWhen(`Play by ${fmtDay(slot2.date)}`), score: null, court: null, playBy: slot2.date }];
+      if (slot2?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot2.reason)))
         return [{ matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null }];
       return [{ matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null }];
     });

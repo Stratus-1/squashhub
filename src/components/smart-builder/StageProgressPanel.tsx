@@ -81,7 +81,8 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [champId]);
   useEffect(() => {
-    if (running.current || !states.some((s) => s.state === "ready" && s.automatic)) return;
+    // "Set up later" play-offs with an automatic start are promoted inside autoProgress, so a due needs_setup stage also triggers it.
+    if (running.current || !states.some((s) => (s.state === "ready" && s.automatic) || s.state === "needs_setup")) return;
     running.current = true;
     autoProgress(supabaseDb, champId, exec)
       .then(async (r) => {

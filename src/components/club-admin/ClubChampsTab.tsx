@@ -13852,7 +13852,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     </div>
                     <p className="text-[11px] text-muted-foreground mb-2">
                       These players accepted the invitation but do not play in any of the leagues chosen under
-                      “Primarily players from” in Structure. Pick a league for each of them.
+                      {structureOnly ? "Who may enter" : "“Primarily players from” in Structure"}. Pick a league for each of them.
                     </p>
                     <div className="space-y-1">
                       {unassignedEntrantIds.map((id) => {

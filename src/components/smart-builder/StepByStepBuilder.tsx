@@ -1317,7 +1317,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [completing, setCompleting] = useState(false);
   const [completeErr, setCompleteErr] = useState<string | null>(null);
   const conflicts = setupConflicts(a);
-  const setupComplete = !rowStructure && !cardStructure && steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
+  const setupComplete = !rowStructure && !rowStructureDirty && steps.slice(0, -1).every((k) => okFor[k]) && conflicts.length === 0;
   // ---- Pick players: explicit save state + safe removal ----
   const curPickSig = picksSignature(a.picks, a.removedPicks);
   const [savedPickSig, setSavedPickSig] = useState<string | null>(null);
@@ -1359,7 +1359,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     finally { setSavingPlayers(false); }
   };
   const completeSetup = async (stay = false) => {
-    if (rowStructure || cardStructure) { toast.message("This structure preview saves drafts only. Tournament creation requires separate review."); return; }
+    if (rowStructure) { toast.message("This structure preview saves drafts only. Tournament creation requires separate review."); return; }
+    if (cardStructure && rowStructureDirty) { toast.message("Save the structure first."); return; }
     setCompleting(true); setCompleteErr(null);
     try {
       const dates = a.days.map((d) => d.date).filter(Boolean).sort();

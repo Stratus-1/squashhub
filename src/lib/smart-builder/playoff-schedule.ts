@@ -69,7 +69,15 @@ const roundKey = (name: string) => { const n = String(name).toLowerCase().replac
 const fullSession = (s: PlannedStage) => !!(s.schedule?.rule === "fixed" && s.schedule.date && s.schedule.timeFrom && s.schedule.timeTo && (s.schedule.courtIds ?? []).length);
 
 /** Pure: play-off sessions to fill, each listing the (draw group, stage id) pairs whose games go into it. */
-export function resolvePlayoffSessions(spec: TournamentSpec): Array<PlannedStage & { keys: Array<{ group: number; stageId: string }> }> {
+export function resolvePlayoffSessions(spec: TournamentSpec, setupStages: any[] = []): Array<PlannedStage & { keys: Array<{ group: number; stageId: string }> }> {
+  // Setup's Stages & scheduling rows are the organiser's latest times: a category's own row first, then the shared row.
+  const unitOf = (label: string) => String(label).replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
+  const fromSetup = (s: PlannedStage, label: string): PlannedStage | null => {
+    const rows = setupStages.filter((r) => r?.phase === "playoff" && r.mode === "scheduled" && r.date && r.from && r.to && (r.courtIds ?? []).length && roundKey(r.name) === roundKey(s.name));
+    const r = rows.find((x) => x.unit && unitOf(label) === String(x.unit).split(" › ").join("::")) ?? rows.find((x) => !x.unit);
+    return r ? { ...s, schedule: { ...s.schedule, rule: "fixed", date: r.date, timeFrom: r.from, timeTo: r.to, courtIds: r.courtIds.map(Number) } } : null;
+  };
+  spec = { ...spec, divisions: spec.divisions.map((d) => ({ ...d, stages: d.stages.map((s) => (s.order > 0 && s.schedule?.rule === "fixed" && !fullSession(s) ? fromSetup(s, d.label) ?? s : s)) })) };
   const byRound = new Map<string, PlannedStage>();
   for (const d of spec.divisions) for (const s of d.stages) if (s.order > 0 && fullSession(s) && !byRound.has(roundKey(s.name))) byRound.set(roundKey(s.name), s);
   const out = new Map<string, PlannedStage & { keys: Array<{ group: number; stageId: string }> }>();
@@ -92,13 +100,13 @@ async function scheduleSessionPlayoffs(champId: string): Promise<ScheduleReport>
   // New play-off fixtures first take over the slots reserved for them by "Assign courts & times".
   const adopted = await adoptProvisionalSlots(champId).catch(() => ({ adopted: 0, clashes: [] as string[] }));
   for (const c of adopted.clashes) report.unplaced.push({ stage: "Play-offs", reason: c });
-  const { data: t } = await fromExt("tournaments").select("builder_spec").eq("id", champId).maybeSingle();
+  const { data: t } = await fromExt("tournaments").select("builder_spec, beta_lifecycle").eq("id", champId).maybeSingle();
   const spec = (t as any)?.builder_spec as TournamentSpec | null;
   if (!spec?.divisions?.length) return report;
   // Each draw's play-off stage takes its own planned session; when that stage has no full session
   // (e.g. the men's semi-final saved as a different stage id than the shared semi-final row), it uses the
   // session of the same round (Quarterfinal / Semifinal / Final) set on Stages & scheduling.
-  const sessionList = resolvePlayoffSessions(spec);
+  const sessionList = resolvePlayoffSessions(spec, (t as any)?.beta_lifecycle?.answers?.stages ?? []);
   if (!sessionList.length) return report;
   const divs = await loadSlotDivisions(champId, spec);
   const groupOf = (id: string) => { const d = spec.divisions.find((x) => x.divisionId === id); return d ? divisionGroup(spec, d) : 99; };

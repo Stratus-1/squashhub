@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Riverside replacement Tournament Structure pilot (live planning tests approved)
+- [x] Require positive whole-number expected players/pairs on local Save Structure and add the finalised-entry tooltip; no live entry mutations.
 - [x] Add editable recommended Monrad round count; 15 tests and authenticated preview confirmed 12 entrants recommend 4, saved 5 survives reload; no fixture generation.
 - [x] Separate local Planned playoffs from Follow-up stages; save/reload verified, no executable stages changed.
 - [x] Add per-category seeding and same-category follow-up stage settings, including Use previous stage rankings; saved independent choices verified in Riverside preview.

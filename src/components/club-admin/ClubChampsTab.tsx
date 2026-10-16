@@ -8995,6 +8995,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const finalMonradRounds = { ...monradRounds };
     for (let i = 1; i <= numGroups; i++) {
       const key = String(i);
+      if (!Number.isInteger(expectedPlayers[key]) || expectedPlayers[key] < 1) {
+        toast.error(`Add expected ${leagueMatchTypes[key] === "doubles" ? "pairs" : "players"} for Category ${i} (a whole number greater than zero).`);
+        return;
+      }
       if (leagueFormats[key] !== "monrad") continue;
       const rounds = monradRounds[key] ?? monradPlan(Number(expectedPlayers[key]))?.rounds ?? 0;
       if (!Number.isInteger(rounds) || rounds < 1 || rounds > 20) {
@@ -9238,20 +9242,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       block below — one source of truth. */}
                                   <div className="w-20 shrink-0">
                                     <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                      {isDoubles ? "Pairs" : "Players"}
+                                      {isDoubles ? "Pairs *" : "Players *"}
                                     </Label>
+                                    <TooltipProvider delayDuration={200}>
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
                                     <Input
                                       type="number"
-                                      min={0}
+                                      min={1}
+                                      step={1}
+                                      required={Boolean(structureOnly)}
+                                      aria-label={`Category ${gn} expected ${isDoubles ? "pairs" : "players"}`}
                                       placeholder="—"
                                       value={expectedPlayers[key] ?? ""}
-                                      title={isDoubles ? "Expected pairs" : "Expected players"}
                                       onChange={(e) => {
                                         const n = Number(e.target.value);
                                         setExpectedPlayers((m) => {
                                           const next = { ...m };
                                           if (!Number.isFinite(n) || n <= 0) delete next[key];
-                                          else next[key] = Math.round(n);
+                                          else next[key] = n;
                                           return next;
                                         });
                                         // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
@@ -9263,6 +9272,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       }}
                                       className="h-8 text-xs mt-0.5 px-1.5"
                                     />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-60 text-xs leading-relaxed">
+                                      Add expected {isDoubles ? "pairs" : "players"}. This will be automatically adjusted as entries are finalised.
+                                    </TooltipContent>
+                                    </Tooltip>
+                                    </TooltipProvider>
                                   </div>
                                 </div>
                                 )}

@@ -1156,6 +1156,13 @@
       "when": 1792152079239,
       "tag": "0164_credit_booking_owner_scope_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1792158388832,
+      "tag": "0165_service_role_auto_progress",
+      "breakpoints": true
     }
   ]
 }

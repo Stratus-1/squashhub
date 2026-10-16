@@ -18,12 +18,13 @@ const KO_NAME: Record<number, string> = { 2: "Final", 4: "Semi-finals & final", 
  * is left the games stay undated until the organiser picks play-off days.
  */
 export function laterStageSchedule(old: PlannedStage["schedule"], afterDate?: string | null): PlannedStage["schedule"] {
-  if (!afterDate || !old) return old;
+  if (!old) return old;
+  if (!afterDate) return old.rule ? old : { rule: "fixed", date: null };
   const cut = String(afterDate).slice(0, 10);
   const ok = (d?: string | null) => !!d && String(d).slice(0, 10) > cut;
   const roundDates = (old.roundDates ?? []).filter(ok);
   const date = ok(old.date) ? old.date : roundDates[0] ?? null;
-  if (!date && !roundDates.length && old.rule === "fixed") return { rule: "fixed", date: null }; // timed by the weekend play-off scheduler
+  if (!date && !roundDates.length && (old.rule === "fixed" || !old.rule)) return { rule: "fixed", date: null }; // timed by the weekend play-off scheduler
   return { ...old, date, ...(old.roundDates ? { roundDates } : {}) };
 }
 

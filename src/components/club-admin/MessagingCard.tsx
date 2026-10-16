@@ -8,9 +8,10 @@ import { MessagesSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 /**
- * One switch for member messaging. The club never chooses WhatsApp vs SMS —
- * SquashHub sends a WhatsApp when a reply is expected and an SMS when it is a
- * one-way notice.
+ * Channel selection for member messaging: the club picks WhatsApp and/or SMS.
+ * SquashHub still picks the right channel per message — a WhatsApp when a
+ * reply is expected, an SMS for a one-way notice — but only among the channels
+ * the club has switched on.
  */
 export function MessagingCard({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
@@ -30,14 +31,27 @@ export function MessagingCard({ clubId }: { clubId: string }) {
 
   const on = !!(club?.whatsapp_enabled || club?.sms_enabled);
 
-  const toggle = useMutation({
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["club-messaging-settings", clubId] });
+    qc.invalidateQueries({ queryKey: ["club-whatsapp-settings", clubId] });
+    qc.invalidateQueries({ queryKey: ["club-sms-settings", clubId] });
+    qc.invalidateQueries({ queryKey: ["club-whatsapp-enabled", clubId] });
+  };
+
+  const fail = (e: unknown) =>
+    toast({
+      title: "Could not update",
+      description: e instanceof Error ? e.message : "Please try again",
+      variant: "destructive",
+    });
+
+  const setWhatsApp = useMutation({
     mutationFn: async (enabled: boolean) => {
       const { data: auth } = await supabase.auth.getUser();
       const { error } = await supabase
         .from("clubs")
         .update({
           whatsapp_enabled: enabled,
-          sms_enabled: enabled,
           whatsapp_opted_in_at: enabled ? new Date().toISOString() : null,
           whatsapp_opted_in_by: enabled ? auth.user?.id ?? null : null,
         })
@@ -45,14 +59,22 @@ export function MessagingCard({ clubId }: { clubId: string }) {
       if (error) throw error;
     },
     onSuccess: (_d, enabled) => {
-      qc.invalidateQueries({ queryKey: ["club-messaging-settings", clubId] });
-      qc.invalidateQueries({ queryKey: ["club-whatsapp-settings", clubId] });
-      qc.invalidateQueries({ queryKey: ["club-sms-settings", clubId] });
-      qc.invalidateQueries({ queryKey: ["club-whatsapp-enabled", clubId] });
-      toast({ title: enabled ? "Member messaging is on" : "Member messaging is off" });
+      invalidate();
+      toast({ title: enabled ? "WhatsApp messaging is on" : "WhatsApp messaging is off" });
     },
-    onError: (e: Error) =>
-      toast({ title: "Could not update", description: e.message, variant: "destructive" }),
+    onError: fail,
+  });
+
+  const setSms = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await supabase.from("clubs").update({ sms_enabled: enabled }).eq("id", clubId);
+      if (error) throw error;
+    },
+    onSuccess: (_d, enabled) => {
+      invalidate();
+      toast({ title: enabled ? "SMS messaging is on" : "SMS messaging is off" });
+    },
+    onError: fail,
   });
 
   return (
@@ -66,35 +88,47 @@ export function MessagingCard({ clubId }: { clubId: string }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        One switch for messages to your members' phones. You don't choose the channel — SquashHub
-        picks it for each message.
+        Select the channels your club may use — WhatsApp, SMS, or both. You don't choose the
+        channel for each message: SquashHub sends a WhatsApp when a reply is expected and an SMS
+        when it is a one-way notice. Billed per message; with both off only email and in-app
+        notices are used.
       </p>
 
       <div className="grid gap-2 sm:grid-cols-2 text-xs">
         <div className="rounded-md border p-3">
-          <p className="font-semibold">WhatsApp — when a reply is needed</p>
-          <p className="text-muted-foreground mt-1">
-            Tournament launches and invites, RSVPs, anything with Yes/No or a link the member must
-            act on.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Label className="font-semibold">WhatsApp — when a reply is needed</Label>
+              <p className="text-muted-foreground mt-1">
+                Tournament launches and invites, RSVPs, anything with Yes/No or a link the member
+                must act on.
+              </p>
+            </div>
+            <Switch
+              checked={!!club?.whatsapp_enabled}
+              disabled={setWhatsApp.isPending}
+              aria-label="WhatsApp messages"
+              onCheckedChange={(v) => setWhatsApp.mutate(v)}
+            />
+          </div>
         </div>
         <div className="rounded-md border p-3">
-          <p className="font-semibold">SMS — when it's just a notice</p>
-          <p className="text-muted-foreground mt-1">
-            Next round is starting, please make your booking, well done on your win, result and
-            payment reminders.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Label className="font-semibold">SMS — when it's just a notice</Label>
+              <p className="text-muted-foreground mt-1">
+                Next round is starting, please make your booking, well done on your win, result
+                and payment reminders.
+              </p>
+            </div>
+            <Switch
+              checked={!!club?.sms_enabled}
+              disabled={setSms.isPending}
+              aria-label="SMS messages"
+              onCheckedChange={(v) => setSms.mutate(v)}
+            />
+          </div>
         </div>
-      </div>
-
-      <div className="flex items-center justify-between rounded-md border p-3">
-        <div>
-          <Label className="text-sm">Send messages to members' phones</Label>
-          <p className="text-xs text-muted-foreground">
-            Billed per message. Switch off and only email and in-app notices are used.
-          </p>
-        </div>
-        <Switch checked={on} disabled={toggle.isPending} onCheckedChange={(v) => toggle.mutate(v)} />
       </div>
     </Card>
   );

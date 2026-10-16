@@ -297,18 +297,17 @@ export default function ClubAdmin() {
         <div className="mt-4 space-y-4">
           <Alert className="bg-blue-500/5 border-blue-500/20">
             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <AlertTitle className="text-sm">One switch — SquashHub picks the channel</AlertTitle>
+            <AlertTitle className="text-sm">Select WhatsApp and/or SMS — SquashHub picks per message</AlertTitle>
             <AlertDescription className="text-xs text-muted-foreground">
-              Member messaging is simply on or off. A WhatsApp goes out when a reply is expected
+              Choose the channels your club may use. A WhatsApp goes out when a reply is expected
               (tournament launches, invites, RSVPs) and an SMS when it is a one-way notice (next
               round starting, make your booking, well done on your win). The sections below hold
-              sender details, what each channel costs, and a switch to turn SMS off on its own if
-              you only want WhatsApp.
+              sender details and what each channel costs.
             </AlertDescription>
           </Alert>
           <MessagingCard clubId={club.id} />
           <WhatsAppBillingCard clubId={club.id} hideToggle />
-          <SmsMessagingCard clubId={club.id} />
+          <SmsMessagingCard clubId={club.id} hideToggle />
         </div>
       );
 

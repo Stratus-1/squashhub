@@ -101,6 +101,7 @@ import {
   poolNoun,
   poolSelectorLabel,
   poolOptions,
+  poolOptionsFor,
   sectionsFromPools,
   validateDivisions,
   type DivisionSource,

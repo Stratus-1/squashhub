@@ -84,6 +84,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
+import { projectCourtFixtures } from "@/lib/tournaments/projected-court-fixtures";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
@@ -789,7 +790,7 @@ export default function Bookings() {
     enabled: !!user,
     refetchInterval: 30000,
   });
-  const { data: champsBookings = [] } = useQuery({
+  const { data: champsSaved = [] } = useQuery({
     queryKey: ["club-champs-bookings", dateStr],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -861,6 +862,47 @@ export default function Bookings() {
     },
     enabled: !!dateStr,
   });
+  // Next-round Swiss pairings already decided by results, placed in their proposed
+  // Club Champs slot. Display only — no fixture or booking is written.
+  const { data: projectedChamps = [] } = useQuery({
+    queryKey: ["projected-champ-court-fixtures", myClub?.id],
+    enabled: !!myClub?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: champs } = await (supabase as any).from("club_champs").select("*").eq("club_id", myClub!.id).neq("status", "completed");
+      const [{ data: courts }] = await Promise.all([supabase.from("courts").select("id, name, active").eq("club_id", myClub!.id).order("id")]);
+      const activeCourts = ((courts ?? []) as any[]).filter((c) => c.active !== false);
+      const out: any[] = [];
+      for (const champ of (champs ?? []) as any[]) {
+        try {
+          const [arch, entries, matches, rounds] = await Promise.all([
+            (supabase as any).from("tournaments").select("builder_architecture,builder_spec,beta_lifecycle,start_time,end_time,match_duration_minutes,default_break_minutes,court_ids").eq("id", champ.id).maybeSingle(),
+            (supabase as any).from("club_champs_entries").select("*, club_members:club_member_id(id, name)").eq("champ_id", champ.id),
+            (supabase as any).from("club_champs_matches").select("*, player_a:player_a_member_id(name), player_b:player_b_member_id(name)").eq("champ_id", champ.id),
+            (supabase as any).from("club_champs_rounds").select("*").eq("champ_id", champ.id),
+          ]);
+          const fx = projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: activeCourts,
+            groupLabel: (gn) => getGroupLabel(champ, gn) });
+          out.push(...fx.map((f) => ({ ...f, champName: champ.name })));
+        } catch { /* projection is optional display */ }
+      }
+      return out;
+    },
+  });
+  const champsBookings = useMemo(() => [
+    ...(champsSaved as any[]),
+    ...(projectedChamps as any[]).filter((f) => f.date === dateStr).map((f) => {
+      const start = String(f.time).slice(0, 5);
+      return {
+        id: f.key, court_id: f.courtId, date: f.date, start_time: `${start}:00`, end_time: `${addMinutesToTime(start, f.minutes)}:00`,
+        status: "active", user_id: null, opponent_id: null, is_friendly: false, is_champ: true, champ_match_id: null, booking_id: null,
+        champ_title: f.title, champ_compact_title: f.title, champ_context: `${f.champName} · ${f.context}`,
+        guest_name: f.title, player_name: f.title, opponent_name: null, source: "club_event", player_rank: null, opponent_rank: null, created_at: null,
+      };
+    }),
+  ], [champsSaved, projectedChamps, dateStr]);
+
+
 
 
   const allCourtBookings = useMemo(() => {

@@ -218,6 +218,7 @@ function crossLeagueExample(): LearnExample {
     games: A.map((a, i) => game(a, B[(i + r) % 4], (r + i) % 3 === 2)),
   }));
   const all = rounds.flatMap((r) => r.games);
+  const combined = rrStandings([...A, ...B], all);
   return {
     format: "cross_league",
     title: "Cross league",
@@ -231,9 +232,9 @@ function crossLeagueExample(): LearnExample {
     engineNote: "SquashHub's cross-league mode plays between the linked leagues only. Whether you read one combined table or a table per league is a display choice; this example shows both.",
     rounds,
     standings: [
-      { title: "League A standings", rows: rrStandings(A, all) },
-      { title: "League B standings", rows: rrStandings(B, all) },
-      { title: "Combined standings (optional view)", note: "Both leagues ranked together.", rows: rrStandings([...A, ...B], all) },
+      { title: "League A standings", rows: combined.filter((r) => A.includes(r.name)) },
+      { title: "League B standings", rows: combined.filter((r) => B.includes(r.name)) },
+      { title: "Combined standings (optional view)", note: "Both leagues ranked together.", rows: combined },
     ],
   };
 }

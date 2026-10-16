@@ -1191,6 +1191,13 @@
       "when": 1792183592379,
       "tag": "0169_tournament_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1792184303740,
+      "tag": "0170_beta_feature_card_structure",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ export const TOURNAMENT_VIEW_FEATURES = {
   tournament_swiss_positional_draw: "Fixed-position Swiss draw (pilot)",
   tournament_stage_planner: "Stage planner in Planned format (pilot)",
   tournament_structure_step: "One Tournament structure step (pilot)",
+  tournament_card_structure: "New one-page structure builder",
 } as const;
 export type TournamentViewFeature = keyof typeof TOURNAMENT_VIEW_FEATURES;
 

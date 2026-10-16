@@ -3,10 +3,9 @@ import { structureUnits, structureRowIssues, rowStages, writeRowStages } from ".
 import { newStageId, validateStagePlan, type StageKind, type StagePlanItem } from "./stage-plan";
 import { rrIssues } from "./rr-topology";
 
-/** Independent replacement pilot; never revives the retired row/canvas flags. */
-/** Riverside pilot: new drafts AND editing an already-created tournament use the same card-structure flow (same answers). */
-export function cardStructurePilot(clubId: string, _hostname: string, _tournamentId?: string) {
-  return clubId === "11111111-1111-1111-1111-111111111111";
+/** One-page structure flow: always on for Riverside; other clubs via the `tournament_card_structure` club_beta_features row (staged rollout). */
+export function cardStructurePilot(clubId: string, _hostname: string, _tournamentId?: string, enabled = false) {
+  return clubId === "11111111-1111-1111-1111-111111111111" || enabled;
 }
 
 export const MERGED_STRUCTURE_STEPS = ["What", "Match", "Categories", "Guide", "Subcategories", "Overrides", "Format"];

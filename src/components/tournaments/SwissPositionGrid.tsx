@@ -105,7 +105,8 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
 
 /** Current live score-based standings (Pos/Player/Wins/R1..Rn results). Shown on the Results tab for Riverside Swiss pilot categories. */
 export function SwissCurrentPositionsTable({ model }: { model: SwissProgressionModel }) {
-  const allComplete = model.rounds.length > 0 && model.rounds.every((r) => r.complete);
+  // Final standing locks when the Swiss stage's own rounds (1..totalRounds) are complete — later follow-up stage games don't block it.
+  const allComplete = model.rounds.some((r) => r.round <= model.totalRounds) && model.rounds.filter((r) => r.round <= model.totalRounds).every((r) => r.complete);
   return (
     <div className="overflow-x-auto bg-background text-xs text-foreground">
      <table className="border-collapse min-w-[300px] self-start" data-testid="swiss-current-positions">

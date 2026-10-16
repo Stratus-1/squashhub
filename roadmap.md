@@ -3,6 +3,7 @@
 ## Riverside replacement Tournament Structure pilot (live planning tests approved)
 - [x] Separate local Planned playoffs from Follow-up stages; save/reload verified, no executable stages changed.
 - [ ] Add per-category seeding and same-category follow-up stage settings, including Use previous stage rankings; verify saved independent choices in Riverside preview.
+- [ ] Preserve and account for the existing When this stage runs controls; do not create a duplicate ordering mechanism.
 - [x] Reuse the actual original alternate-builder structure subtree in Riverside, square coloured choices/blank rows/Monrad, local save/review/reopen verified; no publication or live data writes.
 - [x] Enable Riverside-only new drafts on published hosts for approved publication; 28 focused tests and preview build passed, creation block preserved.
 - [x] Retire old Riverside row/canvas and stage-planner entry points even if old flags are cached; preserve saved answers and other clubs.

@@ -1610,7 +1610,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const addLeagueOfFormat = (fmt: PerLeagueFormat) => {
     if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
     const gn = (numGroups || 0) + 1;
-    if (structureOnly) setRevealStage((m) => ({ ...m, [String(gn)]: 1 }));
+    // Category, Players (singles/doubles), Scoring and game format are all
+    // pre-filled, so show them straight away — hiding them looked like they
+    // had been removed. Stage 4 still auto-collapses after match time.
+    if (structureOnly) setRevealStage((m) => ({ ...m, [String(gn)]: 4 }));
     setCollapsedLeagues((m) => ({ ...m, [String(gn)]: false }));
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));

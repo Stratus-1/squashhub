@@ -22,6 +22,7 @@ import { transitionIssues } from "./transition";
 import { specDateIssues } from "./date-window";
 import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, rankSourcePools, resolveTieBreaks, startNextStructuredStage, type Db, type SourcePool } from "./structured-persist";
 import type { TieBreakCriterion } from "./tie-breaks";
+import { buildPlayoffChain } from "../smart-builder/playoff-chain";
 import { divisionGroup, previewTransition, type SpecDivision, type TournamentSpec } from "./engine-service";
 
 export type StageState = "waiting" | "ready" | "blocked" | "active" | "completed" | "deferred" | "needs_setup";
@@ -129,6 +130,38 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
   return out;
 }
 
+/**
+ * Play-offs the organiser set to start automatically ("trigger: auto") but that were saved as
+ * "set up later" become real predefined stages once the stage before them is finished, so the normal
+ * automatic progression creates them. Only when every deferred stage has a complete auto plan and the
+ * chain maps cleanly; anything else stays for the organiser.
+ */
+export async function promoteAutoDeferred(db: Db, tid: string, exec: Exec = (fn) => fn(db)): Promise<number> {
+  const states = await stageLifecycle(db, tid);
+  const due = states.filter((s) => s.state === "needs_setup");
+  if (!due.length) return 0;
+  return exec(async (tx) => {
+    const [t] = await tx.select("tournaments", { id: tid });
+    let spec = t?.builder_spec as TournamentSpec;
+    if (!spec) return 0;
+    let n = 0;
+    for (const s of due) {
+      const d = spec.divisions.find((x) => x.divisionId === s.divisionKey);
+      const later = d?.deferredStages ?? [];
+      if (!d || !later.length || later[0].stageKey !== s.stageKey) continue;
+      if (!later.every((x) => x.plan && (x.plan as any).trigger === "auto")) continue;
+      const main = [...d.stages].sort((a, b) => b.order - a.order)[0];
+      const version = String(later[0].stageKey).replace(/-po\d+$/, "");
+      const chain = buildPlayoffChain(main as any, version, later.map((x) => ({ name: x.name, plan: x.plan as any })));
+      if (chain.reason || !chain.stages.length || chain.stages.some((c) => d.stages.some((y) => y.id === c.id))) continue;
+      spec = { ...spec, divisions: spec.divisions.map((x) => x !== d ? x : { ...x, stages: [...x.stages, ...chain.stages], deferredStages: [] }) };
+      n++;
+    }
+    if (n) await tx.update("tournaments", { id: tid }, { builder_spec: spec });
+    return n;
+  });
+}
+
 export interface ProgressReport { started: StageStatus[]; blocked: StageStatus[]; needsSetup: StageStatus[] }
 
 /**
@@ -137,6 +170,7 @@ export interface ProgressReport { started: StageStatus[]; blocked: StageStatus[]
  */
 export async function autoProgress(db: Db, tid: string, exec: Exec = (fn) => fn(db)): Promise<ProgressReport> {
   const report: ProgressReport = { started: [], blocked: [], needsSetup: [] };
+  await promoteAutoDeferred(db, tid, exec);
   for (let pass = 0; pass < 10; pass++) {
     const states = await stageLifecycle(db, tid);
     report.blocked = states.filter((s) => s.state === "blocked");

@@ -70,6 +70,9 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
   else if (main.kind === "pools" || main.kind === "round_robin") {
     pools = main.kind === "pools" ? main.pools ?? 1 : 1;
     poolSize = main.poolMembers?.length ? Math.min(...main.poolMembers.map((p) => p.length)) : main.poolSize ?? 0;
+  } else if (main.kind === "swiss") {
+    // Swiss is one ranked list: play-offs take finishing positions 1..N of the final Swiss standings.
+    pools = 1; poolSize = 0;
   } else return { stages: [], reason: `Play-offs after a ${main.kind} stage are set up when it finishes.`, notes };
   const first = planned[0];
   const g = 2 ** (planned.length - 1);

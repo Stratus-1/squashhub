@@ -1,4 +1,5 @@
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
+import { CategorySeedingSelect } from "./CategorySeedingSelect";
 import { monradNote, monradPlan } from "@/lib/smart-builder/monrad";
 import { FormatLearnButton, FormatLearnDialog } from "@/components/smart-builder/FormatLearnDialog";
 import type { LearnFormat } from "@/lib/smart-builder/format-learn";
@@ -1460,6 +1461,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
   const [leaguePlannedPlayoffRounds, setLeaguePlannedPlayoffRounds] = useState<Record<string, string[]>>({});
   const [leagueFollowUpFormats, setLeagueFollowUpFormats] = useState<Record<string, string>>({});
+  const [leagueSeedingPlans, setLeagueSeedingPlans] = useState<Record<string, string>>({});
+  const [leagueFollowUpSeeding, setLeagueFollowUpSeeding] = useState<Record<string, string>>({});
   // Post-pool playoff style per division (round-robin pools):
   //   "position" (default / legacy) → A1 v B1, A2 v B2 …
   //   "knockout"                    → top N of each pool in one cross-pool draw.
@@ -1704,6 +1707,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     copy(setLeaguePlayoffs as any);
     copy(setLeaguePlannedPlayoffRounds as any);
     copy(setLeagueFollowUpFormats as any);
+    copy(setLeagueSeedingPlans as any);
+    copy(setLeagueFollowUpSeeding as any);
     // The copy keeps the rules but NOT the entrants — the organiser picks the
     // leagues/players for the new division, which is the whole point of it.
     setSourceForLeague(Number(to), { mode: "all", leagueIds: [] });
@@ -8955,6 +8960,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffs(v.league_playoffs ?? {});
     setLeaguePlannedPlayoffRounds(v.league_planned_playoff_rounds ?? {});
     setLeagueFollowUpFormats(v.league_follow_up_formats ?? {});
+    setLeagueSeedingPlans(v.league_seeding_plans ?? {});
+    setLeagueFollowUpSeeding(v.league_follow_up_seeding ?? {});
     setLeagueByeHandling(v.league_bye_handling ?? {});
     setLeagueForfeitRules(v.league_forfeit_rules ?? {});
     setLeagueForfeitPoints(v.league_forfeit_points ?? {});
@@ -9003,6 +9010,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_playoffs: leaguePlayoffs,
       league_planned_playoff_rounds: leaguePlannedPlayoffRounds,
       league_follow_up_formats: leagueFollowUpFormats,
+      league_seeding_plans: leagueSeedingPlans,
+      league_follow_up_seeding: leagueFollowUpSeeding,
       league_bye_handling: leagueByeHandling,
       league_forfeit_rules: leagueForfeitRules,
       league_forfeit_points: leagueForfeitPoints,
@@ -9022,7 +9031,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
   };
 
-  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10288,7 +10297,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 )}
                               </div>}
 
-                              {structureOnly && <div className="pt-2 grid gap-2 sm:grid-cols-2">
+                              {structureOnly && <div className="pt-2 space-y-3">
+                                <div className="space-y-1.5">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Category seeding · Stage 1</div>
+                                  <CategorySeedingSelect label={`Category ${gn} seeding`} value={leagueSeedingPlans[key] ?? "later"} onChange={(value) => setLeagueSeedingPlans((m) => ({ ...m, [key]: value }))} />
+                                </div>
+                                <div className="grid gap-3">
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Planned playoffs</div>
                                   <div className="flex flex-wrap gap-3">
@@ -10341,6 +10355,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       </label>
                                     ))}
                                   </div>
+                                  {!!leagueFollowUpFormats[key] && <div className="space-y-1.5 pt-1">
+                                    <div className="text-[11px] font-medium">{groupLabels[key] || `Category ${gn}`} · Stage 2 · {({ round_robin: "Round robin", swiss: "Swiss pairing", knockout: "Knockout", monrad: "Monrad" } as Record<string, string>)[leagueFollowUpFormats[key]]}</div>
+                                    <CategorySeedingSelect label={`Category ${gn} follow-up seeding`} previousStage value={leagueFollowUpSeeding[key] ?? "later"} onChange={(value) => setLeagueFollowUpSeeding((m) => ({ ...m, [key]: value }))} />
+                                  </div>}
+                                </div>
                                 </div>
                               </div>}
 

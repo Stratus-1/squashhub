@@ -43,6 +43,7 @@ import { ConflictPanel } from "./ConflictPanel";
 import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
 import { SaveAsTemplateButton, TemplateReviewBanner } from "./StepTemplates";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { plannedPlayoffsByUnit, syncPlayoffStages, samePlayoffStages } from "@/lib/smart-builder/structure-playoffs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fieldReviewMode } from "@/lib/smart-builder/field-review-mode";
 import { Button } from "@/components/ui/button";
@@ -885,6 +886,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const seedExceptions = units.filter((u) => seedFor(u.key) !== a.seeding);
   const stages = a.stages ?? [];
   const setStages = (s: ClubStage[]) => setA({ ...a, stages: s });
+  /** Play-offs ticked per category on the structure page are the source of truth for play-off stages here. */
+  const structurePlayoffs = useMemo(() => plannedPlayoffsByUnit(a.originalStructure as Record<string, any> | undefined), [a.originalStructure]);
+  useEffect(() => {
+    if (!structurePlayoffs) return;
+    const next = syncPlayoffStages(stages, structurePlayoffs, (n, u) => newStage(n, "scheduled", u, "playoff"));
+    if (!samePlayoffStages(stages, next)) setStages(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structurePlayoffs, stages]);
+  const bottomHalfUnits = useMemo(() => {
+    const raw = a.originalStructure as Record<string, any> | undefined, keys: string[] = raw?._unit_keys ?? [];
+    return keys.filter((_, i) => raw?.league_playoff_bottom_half?.[String(i + 1)]);
+  }, [a.originalStructure]);
   const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
   const courtChips = (ids: string[], set: (ids: string[]) => void) => clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
@@ -2522,6 +2535,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                  {playoff.choice === "none" && <p className="text-xs text-muted-foreground">No playoffs — the tournament finishes on the main rounds.{playoffStages.length > 0 ? ` Your ${playoffStages.length} planned playoff stage${playoffStages.length === 1 ? "" : "s"} ${playoffStages.length === 1 ? "is" : "are"} kept and will reappear if you choose "Yes — playoff stages below".` : ""}</p>}
                  {playoff.choice === "playoffs" && <>
                  <p className="text-xs text-muted-foreground">Playoffs don't copy the main-round schedule — pick a method for each.</p>
+                 {structurePlayoffs && <p className="text-xs text-muted-foreground" data-testid="structure-playoffs-note">These play-off stages come from Planned playoffs on the structure page — add the dates, times and courts here. To change which rounds a category plays, change it on the structure page.</p>}
+                 {bottomHalfUnits.length > 0 && <p className="text-xs text-muted-foreground">Bottom half too: {bottomHalfUnits.map(unitBase).join(", ")} — the lower-half games are played in the same play-off sessions as the matching top-half round.</p>}
                  {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
                  {playoffStages.map(renderStage)}
                  <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); const ns = newStage(next, "later", "", "playoff"); setStageOpen((o) => ({ ...o, [ns.id]: true })); setStages([...stages, ns]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>

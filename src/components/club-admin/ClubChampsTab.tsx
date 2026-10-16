@@ -9291,7 +9291,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         return (
                           <div key={gn} className={poolGroup ? "border-l-2 border-border pl-3" : ""} data-testid={poolGroup ? `structure-pool-${gn}` : undefined}>
                             {poolGroup && poolIndex === 1 && <header className="flex flex-wrap items-center gap-3 border-b border-border py-3" data-testid="structure-parent-category"><span className="text-xs font-semibold">Category {displayCategory}</span><h3 className="text-sm font-semibold">{poolGroup.label}</h3><Badge variant="secondary">{poolGroup.slots.length} pools</Badge><span className="text-xs text-muted-foreground">{poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0)} players</span></header>}
-                          <div className={poolGroup ? "relative border-b border-border bg-background p-3" : "relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm"}>
+                          <div className={poolGroup ? "relative border-b border-border bg-background p-3" : "relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm"} onDoubleClick={categoryLocked ? (event) => {
+                            if (!(event.target instanceof Element) || !event.target.closest('[data-category-heading]')) return;
+                            setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }));
+                          } : undefined}>
                             {categoryLocked && <div className="mb-2 flex justify-end">
                               <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 gap-1 whitespace-nowrap px-2 text-[11px] text-muted-foreground" onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }))} title={collapsed ? "Expand this category" : "Collapse this category"} aria-expanded={!collapsed}>
                                 {collapsed ? "Expand" : "Collapse"}<ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !collapsed && "rotate-180")} />
@@ -9303,8 +9306,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               <div className="flex-1 min-w-fit">
 
                                 <div
-                                  className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
-                                  onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
+                                  data-category-heading
+                                  className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", (collapsed || categoryLocked) && "cursor-pointer")}
+                                  onClick={collapsed && !categoryLocked ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
                                 >
                                   <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">{poolGroup ? `${poolGroup.label} · Pool ${poolIndex}` : `Category ${displayCategory}`}</span>
                                   {collapsed && !poolGroup && groupLabels[key] && (

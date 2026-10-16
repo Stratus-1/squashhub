@@ -9253,8 +9253,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         return (
                           <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
-                            <div className={cn("flex items-start justify-between gap-2", !collapsed && "mb-2")}>
-                              <div className="flex-1 min-w-0">
+                            <div className={cn("flex flex-wrap items-start justify-between gap-2", !collapsed && "mb-2")}>
+                              <div className="flex-1 min-w-fit">
+
                                 <div
                                   className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
                                   onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}

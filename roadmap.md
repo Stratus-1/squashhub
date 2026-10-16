@@ -68,3 +68,4 @@
 - [x] Play-offs seeded from final Swiss standings with tie-breaks (server auto-start fixed); bracket boxes no longer overlap; seed labels follow the draw (16 Oct)
 - [x] Weekend tournaments: play-offs start automatically after the last round and are booked into the weekend's remaining days/courts/times, each knockout round after the previous (16 Oct)
 - [ ] Weekly tournaments: organiser sets fixed times for quarterfinals/semis/final (later, per user)
+- [ ] Play-off next round: created automatically WITH time and court after previous round finishes (result save path)

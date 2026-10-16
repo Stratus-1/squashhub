@@ -25,23 +25,43 @@ export function KnockoutBracketView({ title, matches, names, seedOf }: { title: 
         }
         const label = brackets.length > 1 ? (b === 1 ? "Top half" : "Bottom half") : null;
         const unit = 64;
+        const GAP = 32;
+        const H = rounds[0].length * unit;
+        // Match i in round column ci is centred at (i + 0.5) * 2^ci * unit, so each
+        // box sits exactly between its two feeders and connectors are straight lines.
+        const centerY = (ci: number, i: number) => (i + 0.5) * Math.pow(2, ci) * unit;
         return (
           <div key={b} className="rounded-md border border-border p-3">
             <div className="mb-2 text-sm font-semibold">{title}{label ? ` · ${label}` : ""}</div>
-            <div className="flex gap-6 overflow-x-auto">
+            <div className="flex" style={{ gap: GAP }}>
               {rounds.map((col, ci) => (
-                <div key={ci} className="min-w-[220px]">
+                <div key={ci} className="w-[220px] shrink-0">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{roundName(col.length)}</div>
-                  <div className="flex flex-col justify-around" style={{ height: rounds[0].length * unit * 1.1 }}>
-                    {col.map((m, i) => <Box key={m?.id ?? `${ci}-${i}`} m={m} names={names} seedOf={seedOf} showSeed={ci === 0} />)}
+                  <div className="relative" style={{ height: H }}>
+                    {col.map((m, i) => {
+                      const cy = centerY(ci, i);
+                      return (
+                        <div key={m?.id ?? `${ci}-${i}`} className="absolute left-0 right-0" style={{ top: cy, transform: "translateY(-50%)" }}>
+                          {ci > 0 ? <>
+                            <div aria-hidden className="absolute border-t-2 border-muted-foreground/40" style={{ left: -GAP / 2, top: "50%", width: GAP / 2 }} />
+                            <div aria-hidden className="absolute border-l-2 border-muted-foreground/40" style={{ left: -GAP / 2, top: `calc(50% - ${Math.pow(2, ci - 2) * unit}px)`, height: Math.pow(2, ci - 1) * unit }} />
+                          </> : null}
+                          {ci < rounds.length - 1 ? <div aria-hidden className="absolute border-t-2 border-muted-foreground/40" style={{ left: "100%", top: "50%", width: GAP / 2 }} /> : null}
+                          <Box m={m} names={names} seedOf={seedOf} showSeed={ci === 0} />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
-              {(() => { const fin = rounds[rounds.length - 1]?.[0]; const champ = fin?.winner; return (
-                <div className="min-w-[160px]">
+              {(() => { const fin = rounds[rounds.length - 1]?.[0]; const champ = fin?.winner; const cy = centerY(rounds.length - 1, 0); return (
+                <div className="w-[160px] shrink-0">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label ? `${label} winner` : "Winner"}</div>
-                  <div className="flex flex-col justify-around" style={{ height: rounds[0].length * unit * 1.1 }}>
-                    <div className={cn("rounded border px-2 py-2 text-sm", champ ? "border-primary font-semibold" : "border-dashed border-border text-muted-foreground")}>{champ ? names[champ] ?? "—" : "To be decided"}</div>
+                  <div className="relative" style={{ height: H }}>
+                    <div className="absolute left-0 right-0" style={{ top: cy, transform: "translateY(-50%)" }}>
+                      <div aria-hidden className="absolute border-t-2 border-muted-foreground/40" style={{ left: -GAP / 2, top: "50%", width: GAP / 2 }} />
+                      <div className={cn("rounded border px-2 py-2 text-sm", champ ? "border-primary font-semibold" : "border-dashed border-border text-muted-foreground")}>{champ ? names[champ] ?? "—" : "To be decided"}</div>
+                    </div>
                   </div>
                 </div>); })()}
             </div>

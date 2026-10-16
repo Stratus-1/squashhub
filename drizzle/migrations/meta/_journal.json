@@ -1170,6 +1170,13 @@
       "when": 1792158447635,
       "tag": "0166_auto_progress_on_result",
       "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1792159918891,
+      "tag": "0167_swiss_early_decided_games",
+      "breakpoints": true
     }
   ]
 }

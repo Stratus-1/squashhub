@@ -5,7 +5,7 @@
 // results are held. Never sends notifications.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { atomically, autoProgress, schedulePlannedPlayoffGames } from "./engine.js";
+import { atomically, autoProgress, createDecidedSwissGames, schedulePlannedPlayoffGames } from "./engine.js";
 
 // Staged rollout: Riverside first. Use ["*"] for all clubs.
 const ROLLOUT_CLUBS: string[] = ["*"];
@@ -43,7 +43,10 @@ Deno.serve(async (req) => {
       const r = await autoProgress(db as any, t.id, exec);
       let booked = 0, unplaced = 0;
       if (r.started.length) { const s = await schedulePlannedPlayoffGames(t.id); booked = s.booked; unplaced = s.unplaced.length; }
-      results.push({ id: t.id, started: r.started.map((s: any) => s.name), blocked: r.blocked.length, booked, unplaced });
+      // Swiss: each next-round game becomes a real fixture + court booking once both players are decided.
+      let swiss: any = null;
+      try { swiss = await createDecidedSwissGames(t.id); } catch (e) { swiss = { error: (e as Error).message }; }
+      results.push({ id: t.id, started: r.started.map((s: any) => s.name), blocked: r.blocked.length, booked, unplaced, swiss });
     } catch (e) {
       results.push({ id: t.id, error: (e as Error).message });
     }

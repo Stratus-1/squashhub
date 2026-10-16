@@ -2,3 +2,4 @@
 export { autoProgress, stageLifecycle } from "@/lib/tournaments/progression";
 export { atomically } from "@/lib/tournaments/structured-persist";
 export { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
+export { createDecidedSwissGames } from "@/lib/tournaments/decided-swiss";

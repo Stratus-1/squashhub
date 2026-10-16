@@ -443,6 +443,86 @@ function positionSwapOrder(seedOrder, games) {
 // src/lib/tournaments/swiss-round-gate.ts
 var CLOSED = new Set(["completed", "walkover", "cancelled", "canceled", "void", "voided", "bye", "forfeit"]);
 
+// src/lib/tournaments/swiss-positional.ts
+var MIN_ENTRANTS = 8;
+var MAX_ENTRANTS = 32;
+var log2ceil = (n) => Math.ceil(Math.log2(n));
+function planCategory(entrants, rounds) {
+  const issues = [];
+  if (!Number.isInteger(entrants) || entrants < MIN_ENTRANTS || entrants > MAX_ENTRANTS)
+    issues.push(`Positional Swiss templates cover ${MIN_ENTRANTS}–${MAX_ENTRANTS} entrants (got ${entrants}).`);
+  const n = Math.max(2, Math.floor(entrants) || 2);
+  const recommendedRounds = log2ceil(n);
+  const maxRounds = n % 2 ? n : n - 1;
+  const selectedRounds = rounds == null ? recommendedRounds : Math.floor(rounds);
+  if (!Number.isFinite(selectedRounds) || selectedRounds < 1)
+    issues.push("Rounds must be 1 or more.");
+  else if (selectedRounds > maxRounds)
+    issues.push(`${n} entrants allow at most ${maxRounds} rounds.`);
+  const matchesPerRound = Math.floor(n / 2);
+  return {
+    entrants: n,
+    recommendedRounds,
+    selectedRounds,
+    maxRounds,
+    matchesPerRound,
+    byesPerRound: n % 2,
+    estimatedMatches: matchesPerRound * Math.max(0, selectedRounds),
+    cleanRounds: recommendedRounds,
+    issues
+  };
+}
+var fold = (slots, round) => {
+  const out = [];
+  for (let i = 0, j = slots.length - 1;i < j; i++, j--)
+    out.push({ round, a: slots[i], b: slots[j] });
+  return out;
+};
+var range = (s, e) => Array.from({ length: Math.max(0, e - s + 1) }, (_, i) => s + i);
+function slotTemplate(n, round) {
+  const m = n % 2 ? n - 1 : n;
+  const bye = n % 2 ? n : null;
+  let pairs = [];
+  if (round <= 1)
+    pairs = fold(range(1, m), round);
+  else if (round === 2) {
+    const w = m / 2;
+    if (w % 2 === 0)
+      pairs = [...fold(range(1, w), round), ...fold(range(w + 1, m), round)];
+    else {
+      const mid = Math.ceil(w / 2);
+      pairs = [{ round, a: mid, b: w + 1 }, ...fold(range(1, w).filter((s) => s !== mid), round), ...fold(range(w + 2, m), round)];
+    }
+  } else {
+    const g = Math.min(2 ** (round - 1), m);
+    for (let s = 1;s <= m; s += g) {
+      const len = Math.min(g, m - s + 1);
+      const h = len / 2;
+      for (let i = 0;i < h; i++)
+        pairs.push({ round, a: s + i, b: s + i + h });
+    }
+  }
+  return { round, pairs: pairs.sort((x, y) => x.a - y.a), bye };
+}
+function categoryTemplate(n, rounds) {
+  return Array.from({ length: rounds }, (_, i) => slotTemplate(n, i + 1));
+}
+function validateTemplate(n, plan) {
+  const out = [];
+  for (const r of plan) {
+    const used = r.pairs.flatMap((p) => [p.a, p.b]).concat(r.bye != null ? [r.bye] : []);
+    if (used.length !== n || new Set(used).size !== n)
+      out.push(`Round ${r.round}: every slot must appear exactly once.`);
+    if (used.some((s) => s < 1 || s > n))
+      out.push(`Round ${r.round}: slot out of range.`);
+    if (r.pairs.some((p) => p.a >= p.b))
+      out.push(`Round ${r.round}: pair must be better slot v worse slot.`);
+    if (n % 2 === 0 !== (r.bye == null))
+      out.push(`Round ${r.round}: a bye is needed exactly when entrants are odd.`);
+  }
+  return out;
+}
+
 // src/lib/tournaments/tie-breaks.ts
 var TIE_BREAK_CRITERIA = ["game_difference", "games_won", "points_difference", "head_to_head"];
 var DEFAULT_TIE_BREAKS = ["game_difference", "games_won", "points_difference", "head_to_head"];
@@ -6289,9 +6369,543 @@ async function schedulePlannedPlayoffGames(champId) {
   }
   return report;
 }
+// src/lib/tournaments/round-scheduling.ts
+function stageSchedules(formatPlan) {
+  const stages = (formatPlan?.stages ?? []).filter((s) => (s.phase ?? "main") === "main");
+  return stages.map((s, i) => ({
+    id: String(s.id ?? i),
+    name: String(s.name ?? `Round ${i + 1}`),
+    index: i,
+    mode: s.mode === "play_by" ? "play_by" : "scheduled",
+    deadline: s.deadline || null,
+    windows: [{ date: s.date, from: s.from, to: s.to, courtIds: (s.courtIds ?? []).map(Number) }, ...(s.extraDays ?? []).map((d) => ({ date: d.date, from: d.from, to: d.to, courtIds: (d.courtIds ?? s.courtIds ?? []).map(Number) }))].filter((w) => w.date && w.from && w.to && w.courtIds.length)
+  }));
+}
+
+// src/lib/tournaments/swiss-positional-draw.ts
+var fixtureKey = (round, slotA, slotB) => `r${round}-${slotA}v${slotB}`;
+function generateCategoryDraw(input) {
+  const n = input.entrants.length;
+  const plan = planCategory(n, input.rounds);
+  const issues = [...plan.issues];
+  if (new Set(input.entrants.map((e) => e.id)).size !== n)
+    issues.push("Each entrant may appear only once.");
+  const base = { categoryKey: input.categoryKey, label: input.label, rounds: input.rounds, entrants: input.entrants };
+  if (issues.length)
+    return { ...base, fixtures: [], byes: [], issues };
+  const tpl = categoryTemplate(n, input.rounds);
+  const bad = validateTemplate(n, tpl);
+  if (bad.length)
+    return { ...base, fixtures: [], byes: [], issues: bad };
+  const fixtures = [];
+  const byes = [];
+  for (const r of tpl) {
+    r.pairs.forEach((p, i) => fixtures.push({ key: fixtureKey(r.round, p.a, p.b), round: r.round, match: i + 1, slotA: p.a, slotB: p.b }));
+    if (r.bye != null)
+      byes.push({ round: r.round, slot: r.bye });
+  }
+  return { ...base, fixtures, byes, issues: [] };
+}
+var mins = (t) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+function scheduleDraws(draws, opts) {
+  const out = {};
+  const used = new Set((opts.busy ?? []).map((b) => `${b.date}|${mins(b.time)}|${b.courtId}`));
+  const times = [...new Set(opts.times)].map(mins).sort((x, y) => x - y);
+  const ready = new Map;
+  const rk = (c2, r, s) => `${c2}|${r}|${s}`;
+  const queue = draws.flatMap((d) => d.fixtures.map((f) => ({ d, f }))).sort((x, y) => x.f.round - y.f.round || x.f.match - y.f.match || x.d.categoryKey.localeCompare(y.d.categoryKey));
+  for (const { d, f } of queue) {
+    const key = `${d.categoryKey}:${f.key}`;
+    const date = opts.roundDates[d.categoryKey]?.[f.round - 1] ?? null;
+    const carryBye = () => {
+      const bye = d.byes.find((y) => y.round === f.round);
+      if (bye) {
+        const rr = ready.get(rk(d.categoryKey, f.round, bye.slot));
+        if (rr)
+          ready.set(rk(d.categoryKey, f.round + 1, bye.slot), rr);
+      }
+    };
+    const wins = opts.roundWindows?.[f.round];
+    if (wins && wins.length) {
+      let placedW = null;
+      for (const w of wins) {
+        const earliestW = Math.max(...[f.slotA, f.slotB].map((sl) => {
+          const r = ready.get(rk(d.categoryKey, f.round, sl));
+          return r && r.date === w.date ? r.at : -1;
+        }));
+        const step = Math.max(15, opts.matchMinutes);
+        for (let t = mins(w.from);t + step <= mins(w.to) && !placedW; t += step) {
+          if (t < earliestW)
+            continue;
+          const ids = w.courtIds.map(String);
+          const court = opts.courts.find((c2) => ids.includes(String(c2.id)) && !used.has(`${w.date}|${t}|${c2.id}`));
+          if (!court)
+            continue;
+          used.add(`${w.date}|${t}|${court.id}`);
+          const hh = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+          placedW = { kind: "planned", date: w.date, time: hh, courtId: court.id, courtName: court.name };
+          const free = { date: w.date, at: t + opts.matchMinutes + opts.restMinutes };
+          ready.set(rk(d.categoryKey, f.round + 1, f.slotA), free);
+          ready.set(rk(d.categoryKey, f.round + 1, f.slotB), free);
+        }
+        if (placedW)
+          break;
+      }
+      out[key] = placedW ?? { kind: "unscheduled", reason: `Shortage — no free court/time left in Round ${f.round}'s saved windows` };
+      carryBye();
+      continue;
+    }
+    if (!date) {
+      const pb = opts.playBy?.[d.categoryKey]?.[f.round - 1];
+      out[key] = pb ? { kind: "play_by", date: pb } : { kind: "unscheduled", reason: "Not scheduled — no round date" };
+      carryBye();
+      continue;
+    }
+    const earliest = Math.max(...[f.slotA, f.slotB].map((s) => {
+      const r = ready.get(rk(d.categoryKey, f.round, s));
+      return r && r.date === date ? r.at : -1;
+    }));
+    let placed = null;
+    for (const t of times) {
+      if (t < earliest)
+        continue;
+      const court = opts.courts.find((c2) => !used.has(`${date}|${t}|${c2.id}`));
+      if (!court)
+        continue;
+      used.add(`${date}|${t}|${court.id}`);
+      const hh = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+      placed = { kind: "planned", date, time: hh, courtId: court.id, courtName: court.name };
+      const free = { date, at: t + opts.matchMinutes + opts.restMinutes };
+      ready.set(rk(d.categoryKey, f.round + 1, f.slotA), free);
+      ready.set(rk(d.categoryKey, f.round + 1, f.slotB), free);
+      break;
+    }
+    out[key] = placed ?? { kind: "unscheduled", reason: opts.courts.length && times.length ? `Shortage — no free court/time on ${date}; organiser must add courts or start times` : `Shortage — no courts or start times set for ${date}` };
+    carryBye();
+  }
+  return out;
+}
+function timeSlots(from, to, matchMinutes, breakMinutes = 0) {
+  if (!from || !to || !(matchMinutes > 0))
+    return [];
+  const out = [];
+  for (let t = mins(from.slice(0, 5));t + matchMinutes <= mins(to.slice(0, 5)); t += matchMinutes + Math.max(0, breakMinutes))
+    out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+  return out;
+}
+function slotOnlyDraw(categoryKey, entrants, rounds) {
+  return generateCategoryDraw({ categoryKey, label: categoryKey, rounds, entrants: Array.from({ length: entrants }, (_, i) => ({ id: `${categoryKey}#${i + 1}`, name: `Position ${i + 1}` })) });
+}
+
+// src/lib/tournaments/stage-schedule.ts
+function appliedRoundPlayBy(row) {
+  return row && row.scheduling_mode === "self" && row.play_by ? String(row.play_by).slice(0, 10) : null;
+}
+
+// src/lib/tournaments/swiss-progression-view.ts
+var UNRESOLVED = "To be decided";
+function buildSwissProgression(input) {
+  const { seedOrder, names, matches, tieBreaks } = input;
+  const nm = (id, ph) => id ? names[id] ?? "Unknown player" : ph || UNRESOLVED;
+  const lastCreated = Math.max(0, ...matches.map((m) => m.round || 0));
+  const totalRounds = Math.max(lastCreated, input.totalRounds ?? 0);
+  const rounds = [];
+  for (let r = 1;r <= totalRounds; r++) {
+    const ms = matches.filter((m) => m.round === r);
+    const fixtures = ms.map((m) => {
+      const bye = !!m.isBye || !!m.a !== !!m.b && m.status === "completed";
+      const done = !bye && m.status === "completed" && !!m.winner;
+      const state = bye ? "bye" : done ? "completed" : !m.a || !m.b ? "awaiting_opponent" : "scheduled";
+      const loser = done ? m.winner === m.a ? m.b : m.a : null;
+      return {
+        id: m.id,
+        round: r,
+        state,
+        a: m.a,
+        b: bye ? null : m.b,
+        aLabel: nm(m.a, m.placeholderA),
+        bLabel: bye ? "Bye" : nm(m.b, m.placeholderB),
+        winner: done ? m.winner : bye ? m.a ?? m.b : null,
+        loser,
+        score: m.score ?? null,
+        when: m.date ? `${m.date}${m.time ? ` ${m.time.slice(0, 5)}` : ""}` : null,
+        court: m.court ?? null,
+        playBy: m.playBy ?? null
+      };
+    });
+    rounds.push({ round: r, created: ms.length > 0, fixtures, complete: ms.length > 0 && fixtures.every((f) => f.state === "completed" || f.state === "bye") });
+  }
+  const ids = [...seedOrder, ...new Set(matches.flatMap((m) => [m.a, m.b]).filter((x) => !!x && !seedOrder.includes(x)))];
+  const gamesUpTo = (r) => matches.filter((m) => m.round <= r).flatMap((m) => {
+    if (m.isBye || !m.a !== !m.b)
+      return m.a || m.b ? [{ a: m.a ?? m.b, b: null, winner: null, round: m.round }] : [];
+    if (!m.a || !m.b || m.status !== "completed" || !m.winner)
+      return [];
+    return [{ a: m.a, b: m.b, winner: m.winner, round: m.round }];
+  });
+  const posAfter = rounds.map((rd) => {
+    if (!rd.fixtures.some((f) => f.state === "completed" || f.state === "bye"))
+      return null;
+    return new Map(swissTable(ids, gamesUpTo(rd.round), tieBreaks).map((t) => [t.id, t.position]));
+  });
+  const finalTable = swissTable(ids, gamesUpTo(totalRounds), tieBreaks);
+  const cur = new Map(finalTable.map((t) => [t.id, t]));
+  const rows = ids.map((id, i) => ({
+    id,
+    name: names[id] ?? "Unknown player",
+    seed: i + 1,
+    positions: posAfter.map((p) => p?.get(id) ?? null),
+    cells: rounds.map((rd) => {
+      const f = rd.fixtures.find((x) => x.a === id || x.b === id);
+      if (!f)
+        return rd.created ? "—" : "TBD";
+      if (f.state === "bye")
+        return "Bye";
+      const opp = f.a === id ? f.bLabel : f.aLabel;
+      if (f.state === "completed")
+        return `${f.winner === id ? "W" : "L"} v ${opp}`;
+      return f.state === "awaiting_opponent" ? `v ${UNRESOLVED}` : `v ${opp}`;
+    }),
+    wins: cur.get(id)?.wins ?? 0,
+    current: cur.get(id)?.position ?? i + 1
+  })).sort((x, y) => x.current - y.current);
+  return { format: input.format ?? "results_based", totalRounds, rounds, rows };
+}
+function gamesWonSummary(score) {
+  if (!score)
+    return null;
+  const sets = [...score.matchAll(/(\d+)\s*[-–]\s*(\d+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  if (!sets.length)
+    return null;
+  if (sets.length === 1 && Math.max(...sets[0]) <= 5)
+    return `${Math.max(...sets[0])}–${Math.min(...sets[0])}`;
+  let a = 0, b = 0;
+  for (const [x, y] of sets) {
+    if (x > y)
+      a++;
+    else if (y > x)
+      b++;
+  }
+  return `${Math.max(a, b)}–${Math.min(a, b)}`;
+}
+var fmtDay = (d) => {
+  const dt = new Date(`${d.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(dt.getTime()))
+    return d.slice(0, 10);
+  const W = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${W[dt.getUTCDay()]} ${dt.getUTCDate()} ${M[dt.getUTCMonth()]}`;
+};
+function proposedRoundSchedule(cfg, round, courtName) {
+  if (!cfg)
+    return { kind: "none", label: "Not scheduled" };
+  const day = cfg.roundDates?.[round - 1] ?? null;
+  if (cfg.rule === "play_by") {
+    const by = day ?? cfg.deadline ?? null;
+    return by ? { kind: "play_by", label: `Play by ${fmtDay(by)}` } : { kind: "none", label: "Not scheduled" };
+  }
+  if (!day)
+    return { kind: "none", label: "Not scheduled" };
+  const time = cfg.timeFrom || cfg.timeTo ? ` ${String(cfg.timeFrom ?? "").slice(0, 5)}–${String(cfg.timeTo ?? "").slice(0, 5)}` : "";
+  const courts = cfg.courtIds?.length ? ` · ${cfg.courtIds.map((c2) => courtName?.(c2) ?? `Court ${c2}`).join(", ")}` : "";
+  return { kind: "window", label: `Round window: ${fmtDay(day)}${time}${courts}` };
+}
+function buildSwissGrid(model) {
+  const byId = new Map(model.rows.map((r) => [r.id, r]));
+  const posEntering = (id, round) => {
+    if (!id)
+      return null;
+    const row = byId.get(id);
+    if (!row)
+      return null;
+    return round === 1 ? row.seed : row.positions[round - 2] ?? null;
+  };
+  return model.rounds.map((rd) => {
+    const blocks = rd.fixtures.map((f) => {
+      const res = (id) => f.state === "bye" ? id ? "Bye" : "" : f.state === "completed" && id ? f.winner === id ? "W" : "L" : "";
+      const when = f.when ? f.playBy && f.state !== "completed" ? `${f.when} · Play by ${f.playBy}` : f.when : f.playBy ? `Play by ${f.playBy}` : null;
+      const a = { pos: posEntering(f.a, rd.round), id: f.a, name: f.aLabel, when, result: res(f.a) };
+      const b = { pos: f.state === "bye" ? null : posEntering(f.b, rd.round), id: f.b, name: f.state === "bye" ? "Bye" : f.bLabel, when, result: res(f.b) };
+      const pair = b.pos != null && (a.pos == null || b.pos < a.pos) ? [b, a] : [a, b];
+      return { matchId: f.id, rows: pair, score: gamesWonSummary(f.score), court: f.court, playBy: f.playBy };
+    }).sort((x, y) => (x.rows[0].pos ?? 999) - (y.rows[0].pos ?? 999));
+    return { round: rd.round, created: rd.created, blocks };
+  });
+}
+function buildProposedSwissGrid(model, opts = {}) {
+  const n = model.rows.length;
+  const plan = planCategory(n, model.totalRounds);
+  if (plan.issues.length)
+    return { rounds: [], issues: plan.issues };
+  const template = categoryTemplate(n, model.totalRounds);
+  const rawTemplate = categoryTemplate(n, model.totalRounds);
+  const issues = validateTemplate(n, template);
+  if (issues.length)
+    return { rounds: [], issues };
+  const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
+  const nameOf = new Map(model.rows.map((r) => [r.id, r.name]));
+  const seeds = [...model.rows].sort((x, y) => x.seed - y.seed).map((r) => r.id);
+  const findDone = (round, x, y) => model.rounds.find((r) => r.round === round)?.fixtures.find((f) => f.state === "completed" && f.winner && (f.a === x && f.b === y || f.a === y && f.b === x));
+  const occ = [seeds];
+  const byeHolders = new Set;
+  const savedR1Bye = savedFirst?.created ? model.rounds.find((r) => r.round === 1)?.fixtures.find((f) => f.state === "bye") : undefined;
+  for (const rd of template) {
+    const cur = occ[rd.round - 1];
+    if (rd.round === 1 && savedR1Bye) {
+      const id = savedR1Bye.a ?? savedR1Bye.b;
+      if (id)
+        byeHolders.add(id);
+    } else if (rd.bye != null) {
+      const holder = cur[rd.bye - 1];
+      if (holder && byeHolders.has(holder)) {
+        for (let sl = n;sl >= 1; sl--) {
+          const o = cur[sl - 1];
+          if (o && byeHolders.has(o))
+            continue;
+          const pi = rd.pairs.findIndex((p2) => p2.a === sl || p2.b === sl);
+          if (pi < 0)
+            break;
+          const p = rd.pairs[pi], other = p.a === sl ? p.b : p.a;
+          rd.pairs[pi] = { round: rd.round, a: Math.min(other, rd.bye), b: Math.max(other, rd.bye) };
+          rd.bye = sl;
+          break;
+        }
+      }
+      const h = cur[rd.bye - 1];
+      if (h)
+        byeHolders.add(h);
+    }
+    const next = Array(n).fill(null);
+    for (const p of rd.pairs) {
+      const x = cur[p.a - 1], y = cur[p.b - 1];
+      const f = x && y ? findDone(rd.round, x, y) : undefined;
+      if (f) {
+        next[p.a - 1] = f.winner;
+        next[p.b - 1] = f.winner === x ? y : x;
+      }
+    }
+    if (rd.bye != null)
+      next[rd.bye - 1] = cur[rd.bye - 1];
+    occ.push(next);
+  }
+  return { issues: [], rounds: template.map((rd) => {
+    if (rd.round === 1 && savedFirst?.created)
+      return savedFirst;
+    const into = occ[rd.round - 1];
+    const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
+    const schedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
+    const pending = (pos, bye = false) => {
+      const id = !bye && pos != null ? into[pos - 1] ?? null : null;
+      return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true } : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
+    };
+    const blocks = rd.pairs.map((p, pi) => {
+      const id = `proposed-${rd.round}-${p.a}-${p.b}`;
+      const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
+      const slot = appliedBy ? { kind: "play_by", date: appliedBy } : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
+      const withWhen = (when) => [{ ...pending(p.a), when }, { ...pending(p.b), when }];
+      if (slot?.kind === "planned")
+        return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
+      if (slot?.kind === "play_by")
+        return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };
+      if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason)))
+        return { matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null };
+      return { matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null };
+    });
+    if (rd.bye != null)
+      blocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    return { round: rd.round, created: false, blocks, schedule };
+  }) };
+}
+
+// src/lib/tournaments/projected-court-fixtures.ts
+function swissStage(champ, arch, gn) {
+  if (arch?.builder_architecture === "structured") {
+    const spec = arch?.builder_spec;
+    const d = (spec?.divisions ?? []).find((x) => divisionGroup(spec, x) === gn);
+    const st = [...d?.stages ?? []].sort((x, y) => x.order - y.order)[0];
+    if (st?.kind !== "swiss")
+      return null;
+    const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
+    if (!timeline.length)
+      return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null };
+    const roundDates = timeline.map((t) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
+    return { tieBreaks: st.tieBreaks, rounds: timeline.length, schedule: { ...st.schedule ?? {}, roundDates } };
+  }
+  const r = Number(champ?.swiss_rounds?.[String(gn)]);
+  return Number.isFinite(r) && r > 0 ? { rounds: r } : null;
+}
+function projectCourtFixtures(i) {
+  const { champ, arch, entries, matches, rounds, courts } = i;
+  if (!champ?.id)
+    return [];
+  const types2 = champ?.league_match_types || {};
+  const doubles = (gn) => String(types2[String(gn)] || "").toLowerCase() === "doubles" || entries.some((e) => e.group_number === gn && !!e.partner_member_id);
+  const groups = [...new Set(entries.map((e) => Number(e.group_number)))].filter((gn) => Number.isFinite(gn) && !doubles(gn) && swissStage(champ, arch, gn)?.rounds);
+  if (!groups.length)
+    return [];
+  const a = { ...champ ?? {}, ...arch ?? {} };
+  const draws = groups.map((gn) => slotOnlyDraw(String(gn), entries.filter((e) => e.group_number === gn).length, swissStage(champ, arch, gn).rounds)).filter((d) => !d.issues.length);
+  const allowed = (a.court_ids ?? []).map(Number);
+  const courtList = courts.filter((c2) => !allowed.length || allowed.includes(Number(c2.id))).map((c2) => ({ id: c2.id, name: c2.name ?? `Court ${c2.id}` }));
+  const busy = matches.filter((m) => !(groups.includes(Number(m.group_number)) && Number(m.round_number) > 1)).filter((m) => m.scheduled_date && m.scheduled_time && m.court_id).map((m) => ({ date: m.scheduled_date, time: String(m.scheduled_time).slice(0, 5), courtId: m.court_id }));
+  const plan = a.beta_lifecycle?.format_plan ?? null;
+  const planStages = stageSchedules(plan);
+  const roundWindows = {};
+  planStages.forEach((st, idx) => {
+    if (idx > 0 && st.mode === "scheduled" && st.windows.length)
+      roundWindows[idx + 1] = st.windows;
+  });
+  const planCourtIds = [...new Set(planStages.flatMap((st) => st.windows.flatMap((w) => w.courtIds)))];
+  const courtsAll = planCourtIds.length ? courts.filter((c2) => planCourtIds.includes(Number(c2.id))).map((c2) => ({ id: c2.id, name: c2.name ?? `Court ${c2.id}` })) : courtList;
+  const dur = Number(plan?.scheduling?.singles) || Number(a.match_duration_minutes) || 30;
+  let slots = {};
+  try {
+    slots = scheduleDraws(draws, {
+      roundWindows,
+      roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStage(champ, arch, Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x, k) => k === 0 ? null : x)])),
+      courts: courtsAll,
+      times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0),
+      matchMinutes: dur,
+      restMinutes: Number(plan?.scheduling?.rest ?? a.default_break_minutes) || 0,
+      busy
+    });
+  } catch {
+    return [];
+  }
+  const appliedPlayBy = {};
+  for (const r of rounds ?? []) {
+    const pb = appliedRoundPlayBy(r);
+    if (pb && !appliedPlayBy[Number(r.round_number)])
+      appliedPlayBy[Number(r.round_number)] = pb;
+  }
+  const out = [];
+  for (const gn of groups) {
+    const st = swissStage(champ, arch, gn);
+    const gEntries = entries.filter((e) => e.group_number === gn).sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
+    const names = {};
+    gEntries.forEach((e) => {
+      if (e.club_member_id)
+        names[e.club_member_id] = e.club_members?.name ?? e.name ?? "Player";
+    });
+    const gm = matches.filter((m) => m.group_number === gn && (m.round_number ?? 0) > 0);
+    gm.forEach((m) => {
+      if (m.player_a_member_id && m.player_a?.name)
+        names[m.player_a_member_id] ??= m.player_a.name;
+      if (m.player_b_member_id && m.player_b?.name)
+        names[m.player_b_member_id] ??= m.player_b.name;
+    });
+    const model = buildSwissProgression({
+      seedOrder: gEntries.map((e) => e.club_member_id).filter(Boolean),
+      names,
+      totalRounds: st.rounds,
+      tieBreaks: st.tieBreaks,
+      matches: gm.map((m) => ({
+        id: m.id,
+        round: Number(m.round_number),
+        a: m.player_a_member_id ?? m.bye_member_id ?? null,
+        b: m.is_bye ? null : m.player_b_member_id ?? null,
+        winner: m.winner_member_id,
+        isBye: !!m.is_bye,
+        status: m.status,
+        score: m.score,
+        date: m.scheduled_date,
+        time: m.scheduled_time,
+        court: null,
+        playBy: m.play_by,
+        placeholderA: m.placeholder_a,
+        placeholderB: m.placeholder_b
+      }))
+    });
+    const prefix = `${gn}:`;
+    const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
+    let grid;
+    try {
+      grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy });
+    } catch {
+      continue;
+    }
+    if (grid.issues.length)
+      continue;
+    const inRound = (round, id) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
+    for (const rd of grid.rounds) {
+      if (rd.created || appliedPlayBy[rd.round])
+        continue;
+      for (const b of rd.blocks) {
+        const [x, y] = b.rows;
+        if (!x.id || !y.id || x.pos == null || y.pos == null)
+          continue;
+        if (inRound(rd.round, x.id) || inRound(rd.round, y.id))
+          continue;
+        const s = gSlots[fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
+        if (s?.kind !== "planned")
+          continue;
+        out.push({
+          key: `proj:${champ.id}:${gn}:${rd.round}:${x.pos}v${y.pos}`,
+          champId: champ.id,
+          group: gn,
+          round: rd.round,
+          date: s.date,
+          time: s.time,
+          courtId: Number(s.courtId),
+          minutes: dur,
+          title: `${x.name} v ${y.name}`,
+          aId: x.id,
+          bId: y.id,
+          context: `${i.groupLabel?.(gn) ?? `Group ${gn}`} · Round ${rd.round} · Position ${x.pos} v ${y.pos}`
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// src/lib/tournaments/decided-swiss.ts
+async function loadProjectedFixtures(champ) {
+  const sb = supabase;
+  const [courts, arch, entries, matches, rounds] = await Promise.all([
+    sb.from("courts").select("id, name, active").eq("club_id", champ.club_id).order("id"),
+    sb.from("tournaments").select("builder_architecture,builder_spec,beta_lifecycle,start_time,end_time,match_duration_minutes,default_break_minutes,court_ids").eq("id", champ.id).maybeSingle(),
+    sb.from("club_champs_entries").select("*, club_members:club_member_id(id, name)").eq("champ_id", champ.id),
+    sb.from("club_champs_matches").select("*, player_a:player_a_member_id(name), player_b:player_b_member_id(name)").eq("champ_id", champ.id),
+    sb.from("club_champs_rounds").select("*").eq("champ_id", champ.id)
+  ]);
+  const active = (courts.data ?? []).filter((c2) => c2.active !== false);
+  const name = (id) => active.find((c2) => Number(c2.id) === id)?.name ?? `Court ${id}`;
+  try {
+    return projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active }).map((f) => ({ ...f, courtName: name(f.courtId) })).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  } catch {
+    return [];
+  }
+}
+async function createDecidedSwissGames(tid) {
+  const sb = supabase;
+  const { data: champ } = await sb.from("club_champs").select("*").eq("id", tid).maybeSingle();
+  if (!champ)
+    return { created: 0, booked: 0, issues: [] };
+  const list = await loadProjectedFixtures(champ);
+  let created = 0, booked = 0;
+  const issues = [];
+  for (const f of list) {
+    const { data: id, error } = await sb.rpc("create_decided_swiss_game", { p_tid: tid, p_group: f.group, p_round: f.round, p_a: f.aId, p_b: f.bId });
+    if (error || !id) {
+      issues.push(`${f.title}: ${error?.message ?? "not created"}`);
+      continue;
+    }
+    created++;
+    const { error: be } = await sb.rpc("self_schedule_champ_match", { p_match_id: id, p_court_id: f.courtId, p_date: f.date, p_time: `${f.time}:00`, p_duration_minutes: f.minutes });
+    if (be)
+      issues.push(`${f.title}: game created, court not booked (${be.message})`);
+    else
+      booked++;
+  }
+  return { created, booked, issues };
+}
 export {
   stageLifecycle,
   schedulePlannedPlayoffGames,
+  createDecidedSwissGames,
   autoProgress,
   atomically
 };

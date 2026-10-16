@@ -17,6 +17,8 @@ export interface ProjectedCourtFixture {
   key: string; champId: string; group: number; round: number;
   date: string; time: string; courtId: number; minutes: number;
   title: string; context: string;
+  /** Member ids of the two decided players (a = lower position). */
+  aId: string; bId: string;
 }
 
 export interface ProjectionInput {
@@ -51,7 +53,8 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
   const draws = groups.map((gn) => slotOnlyDraw(String(gn), entries.filter((e) => e.group_number === gn).length, swissStage(champ, arch, gn)!.rounds!)).filter((d) => !d.issues.length);
   const allowed = (a.court_ids ?? []).map(Number);
   const courtList = courts.filter((c) => !allowed.length || allowed.includes(Number(c.id))).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` }));
-  const busy = matches.filter((m) => m.scheduled_date && m.scheduled_time && m.court_id).map((m) => ({ date: m.scheduled_date, time: String(m.scheduled_time).slice(0, 5), courtId: m.court_id }));
+  // Decided Swiss games already created for rounds 2+ keep their projected slot, so they never block it.
+  const busy = matches.filter((m) => !(groups.includes(Number(m.group_number)) && Number(m.round_number) > 1)).filter((m) => m.scheduled_date && m.scheduled_time && m.court_id).map((m) => ({ date: m.scheduled_date, time: String(m.scheduled_time).slice(0, 5), courtId: m.court_id }));
   const plan = a.beta_lifecycle?.format_plan ?? null;
   const planStages = stageSchedules(plan);
   const roundWindows: Record<number, any[]> = {};
@@ -90,18 +93,20 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
     let grid;
     try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy }); } catch { continue; }
     if (grid.issues.length) continue;
-    const savedRounds = new Set(gm.map((m) => Number(m.round_number)));
+    // Per game: skip a pairing once either player already has a saved game in that round.
+    const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
-      if (rd.created || savedRounds.has(rd.round) || appliedPlayBy[rd.round]) continue;
+      if (rd.created || appliedPlayBy[rd.round]) continue;
       for (const b of rd.blocks) {
         const [x, y] = b.rows;
         if (!x.id || !y.id || x.pos == null || y.pos == null) continue;
+        if (inRound(rd.round, x.id) || inRound(rd.round, y.id)) continue;
         const s = gSlots[fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
         if (s?.kind !== "planned") continue;
         out.push({
           key: `proj:${champ.id}:${gn}:${rd.round}:${x.pos}v${y.pos}`, champId: champ.id, group: gn, round: rd.round,
           date: s.date, time: s.time, courtId: Number(s.courtId), minutes: dur,
-          title: `${x.name} v ${y.name}`,
+          title: `${x.name} v ${y.name}`, aId: x.id, bId: y.id,
           context: `${i.groupLabel?.(gn) ?? `Group ${gn}`} · Round ${rd.round} · Position ${x.pos} v ${y.pos}`,
         });
       }

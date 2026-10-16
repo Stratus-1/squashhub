@@ -42,6 +42,8 @@ export interface StagePlanItem {
   pools?: number | null;
   /** Optional display names for planned pools; indexes and topology remain unchanged. */
   poolNames?: string[];
+  /** How seeds are dealt into pools: snake = even pools, banded = strength bands (Pool A strongest). */
+  poolAllocation?: "snake" | "banded";
   /** Riverside row-planning only; mapped-stage apply requires separate review. */
   rrTopology?: RRTopology;
   advance?: StageAdvance;

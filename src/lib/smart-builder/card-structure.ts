@@ -4,8 +4,9 @@ import { newStageId, validateStagePlan, type StageKind, type StagePlanItem } fro
 import { rrIssues } from "./rr-topology";
 
 /** Independent replacement pilot; never revives the retired row/canvas flags. */
-export function cardStructurePilot(clubId: string, _hostname: string, tournamentId?: string) {
-  return clubId === "11111111-1111-1111-1111-111111111111" && !tournamentId;
+/** Riverside pilot: new drafts AND editing an already-created tournament use the same card-structure flow (same answers). */
+export function cardStructurePilot(clubId: string, _hostname: string, _tournamentId?: string) {
+  return clubId === "11111111-1111-1111-1111-111111111111";
 }
 
 export const MERGED_STRUCTURE_STEPS = ["What", "Match", "Categories", "Guide", "Subcategories", "Overrides", "Format"];

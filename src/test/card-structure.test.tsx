@@ -8,16 +8,16 @@ import { rowStages } from "@/lib/smart-builder/structure-rows";
 const base = (): StepAnswers => ({ categories: [""], categoryTypes: {}, subcats: {}, unitEntries: {}, disc: {}, playType: null, format: { kind: null }, formatOverrides: {}, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, playoffOverrides: {}, poolPlan: {}, guide: {}, stages: [{ id: "r1", unit: "", mode: "scheduled", date: "2026-11-01", from: "18:00", to: "21:00", courtIds: ["court1"] }], days: [{ date: "2026-11-01", venue: "Test", courts: "1", windows: [{ from: "18:00", to: "21:00" }] }], playoffSync: true } as unknown as StepAnswers);
 
 describe("replacement card structure", () => {
-  it("allows Riverside new drafts on all hosts, never other clubs or existing tournaments", () => {
+  it("allows Riverside new drafts on all hosts, including editing created tournaments, never other clubs", () => {
     const r = "11111111-1111-1111-1111-111111111111";
     expect(cardStructurePilot(r, "localhost")).toBe(true);
     expect(cardStructurePilot(r, "id-preview--example.lovable.app")).toBe(true);
     for (const host of ["squashhub.co.za", "squashhub.lovable.app", "riverside.squashhub.co.za"]) {
       expect(cardStructurePilot(r, host)).toBe(true);
-      expect(cardStructurePilot(r, host, "created")).toBe(false);
+      expect(cardStructurePilot(r, host, "created")).toBe(true);
       expect(cardStructurePilot("d8397b8a-60d3-4c4b-afee-25dab218bf19", host)).toBe(false);
     }
-    expect(cardStructurePilot(r, "localhost", "created")).toBe(false);
+    expect(cardStructurePilot(r, "localhost", "created")).toBe(true);
     expect(cardStructurePilot("uitsig", "localhost")).toBe(false);
   });
   it("merges seven steps but preserves scheduling, dates, courts, seeding and payments", () => {

@@ -1,3 +1,6 @@
+### 2026-10-16 — Riverside explicit Monrad round count
+- Added an editable Monrad rounds field prefilled from the entrant-based recommendation. Save retains the chosen count in the original snapshot and category stage plan; missing counts block save. Swiss settings, later stages, dates and live fixture generation remain unchanged. Creation stays blocked; no publication or live-data writes.
+
 ### 2026-10-16 — Riverside category playoffs, follow-up and seeding plans
 - Replaced the old playoff toggle only in the Riverside original-structure pilot with independent Quarterfinal/Semifinal/Final choices and a follow-up format. Category Stage 1 seeding reuses the existing seeding choices; a same-category Stage 2 summary additionally offers previous-stage rankings. These future-stage choices persist locally and do not generate fixtures, duplicate entries or alter scheduling/results. Other clubs retain the original controls. No publication or live-data writes.
 - Playoff/follow-up save and reload verified in an authenticated synthetic Riverside draft; focused adapter tests cover independent settings and unchanged later executable stages.

@@ -1,6 +1,6 @@
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
 import { CategorySeedingSelect } from "./CategorySeedingSelect";
-import { CategorySeedingButtons, PoolPlacementButtons } from "./CategorySeedingButtons";
+import { PlacementExplanation } from "./CategorySeedingButtons";
 import { monradNote, monradPlan } from "@/lib/smart-builder/monrad";
 import { FormatLearnButton, FormatLearnDialog } from "@/components/smart-builder/FormatLearnDialog";
 import type { LearnFormat } from "@/lib/smart-builder/format-learn";
@@ -807,6 +807,22 @@ const SEG_ROW_COLORS: Record<string, { label: string; active: string; outline: s
     outline: "border-cyan-300 text-cyan-700 hover:bg-cyan-50 hover:border-cyan-400 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-950/40",
   },
 };
+const SEEDING_TILE_OPTIONS = [
+  { v: "ranking", l: "Rankings" }, { v: "ladder", l: "Club ladder" }, { v: "manual", l: "Manual seeds" },
+  { v: "random", l: "Random" }, { v: "none", l: "No seeding" }, { v: "later", l: "Decide later" },
+];
+/** Pool placement matters wherever players are split into pools/draws: round robin, cross league, knockout or any multi-pool stage. */
+export const usesPoolPlacement = (fmt: string | undefined, pools: number) =>
+  pools > 1 || ["single_round_robin", "double_round_robin", "round_robin", "cross_league", "knockout"].includes(String(fmt));
+function PlacementTiles({ label, value, onChange }: { label: string; value: "snake" | "banded"; onChange: (v: "snake" | "banded") => void }) {
+  return (
+    <div className="space-y-1">
+      <SegRow label={label} color="pink" value={value} options={[{ v: "snake", l: "Snake" }, { v: "banded", l: "Strength band" }]} onChange={(v) => onChange(v as "snake" | "banded")} />
+      <PlacementExplanation value={value} />
+    </div>
+  );
+}
+
 function SegRow({
   label,
   value,
@@ -10427,13 +10443,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
                               {structureOnly && <div className="pt-2 space-y-3">
                                 {!followsDivision(divisionFollows, gn) && <div className="space-y-1.5">
-                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Category seeding · Stage 1</div>
-                                  <CategorySeedingButtons label={`Category ${gn} seeding`} value={leagueSeedingPlans[key] ?? "later"} onChange={(value) => setLeagueSeedingPlans((m) => ({ ...m, [key]: value }))} />
+                                  <SegRow label="Category seeding · Stage 1" color="cyan" value={leagueSeedingPlans[key] ?? "later"} options={SEEDING_TILE_OPTIONS} onChange={(value) => setLeagueSeedingPlans((m) => ({ ...m, [key]: value }))} />
                                 </div>}
-                                {!followsDivision(divisionFollows, gn) && (poolsForDivision(gn) > 1 || fmt === "knockout" || fmt === "cross_league") && <div className="space-y-1.5">
-                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Placement option</div>
-                                  <PoolPlacementButtons label={`Category ${gn} placement`} value={placementForLeague(gn)} onChange={(value) => setLeaguePoolPlacement((m) => ({ ...m, [key]: value }))} />
-                                </div>}
+                                {usesPoolPlacement(fmt, poolsForDivision(gn)) && <PlacementTiles label="Placement option" value={placementForLeague(gn)} onChange={(value) => setLeaguePoolPlacement((m) => ({ ...m, [key]: value }))} />}
                                 <div className="grid gap-3">
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Planned playoffs</div>
@@ -10490,7 +10502,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   </div>
                                   {!!leagueFollowUpFormats[key] && <div className="space-y-1.5 pt-1">
                                     <div className="text-[11px] font-medium">{groupLabels[key] || `Category ${gn}`} · Stage 2 · {({ round_robin: "Round robin", swiss: "Swiss pairing", knockout: "Knockout", monrad: "Monrad" } as Record<string, string>)[leagueFollowUpFormats[key]]}</div>
-                                    <CategorySeedingButtons label={`Category ${gn} follow-up seeding`} previousStage value={leagueFollowUpSeeding[key] ?? "later"} onChange={(value) => setLeagueFollowUpSeeding((m) => ({ ...m, [key]: value }))} />
+                                    <SegRow label="Stage 2 seeding" color="cyan" value={leagueFollowUpSeeding[key] ?? "later"} options={[{ v: "previous_stage", l: "Previous stage rankings" }, ...SEEDING_TILE_OPTIONS]} onChange={(value) => setLeagueFollowUpSeeding((m) => ({ ...m, [key]: value }))} />
+                                    {["round_robin", "knockout"].includes(leagueFollowUpFormats[key]) && (() => {
+                                      const fg = Array.from({ length: numGroups || 0 }, (_, i) => i + 1).find((n) => n !== gn && followsDivision(divisionFollows, n) === gn);
+                                      if (!fg) return null;
+                                      return <PlacementTiles label="Stage 2 placement option" value={placementForLeague(fg)} onChange={(value) => setLeaguePoolPlacement((m) => ({ ...m, [String(fg)]: value }))} />;
+                                    })()}
                                   </div>}
                                 </div>
                                 </div>

@@ -124,7 +124,10 @@ export function FormatLearnDialog({ format, open, onOpenChange }: { format: Lear
               </section>
               {ex.standings && (
                 <section className="space-y-3" aria-label="Example standings">
-                  {ex.standings.map((s) => <StandingsTable key={s.title} {...s} />)}
+                  {ex.standings.map((s) =>
+                    ex.format === "swiss"
+                      ? <LadderStandings key={s.title} {...s} />
+                      : <StandingsTable key={s.title} {...s} />)}
                 </section>
               )}
               {ex.positions && (

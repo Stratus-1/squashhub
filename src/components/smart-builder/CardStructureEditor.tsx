@@ -15,6 +15,8 @@ import { monradNote } from "@/lib/smart-builder/monrad";
 import { evaluateStructures } from "@/lib/smart-builder/structure-guide";
 import { categoryEstimate } from "@/lib/smart-builder/expected-entries";
 import { RRTopologyEditor } from "./RRTopologyEditor";
+import { FormatLearnButton, FormatLearnDialog } from "./FormatLearnDialog";
+import type { LearnFormat } from "@/lib/smart-builder/format-learn";
 import type { StageKind } from "@/lib/smart-builder/stage-plan";
 
 const control = "h-8 w-full rounded-md border border-input bg-background px-2 text-xs";
@@ -48,6 +50,7 @@ export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: 
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [help, setHelp] = useState(true);
   const [advice, setAdvice] = useState(false);
+  const [learn, setLearn] = useState<LearnFormat | null>(null);
   const [saved, setSaved] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(answers);
   useEffect(() => { setDraft(answers); }, [answers]);
@@ -129,7 +132,7 @@ export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: 
         {draft.categories.filter((c) => c.trim()).map((c) => unit(c, c))}
         <div className="grid grid-cols-2 gap-2 border border-dashed border-border p-3 sm:grid-cols-4">{formats.map((f) => <Button key={f} variant="outline" size="sm" className="h-auto min-h-8 whitespace-normal text-xs" onClick={() => add(f)}><Plus className="mr-1 h-3 w-3 shrink-0" />{f === "monrad" ? "Monrad" : FORMAT_HELP[f].title}</Button>)}</div>
       </div>
-      {help ? <aside className="space-y-3 border-l border-border pl-3" aria-label="Format descriptions"><div className="flex items-center justify-between"><h4 className="font-semibold">Format palette</h4><Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Close format descriptions" onClick={() => setHelp(false)}><X className="h-3 w-3" /></Button></div>{formats.map((f) => <div key={f} className="space-y-1"><Button draggable onDragStart={(e) => e.dataTransfer.setData("application/x-card-format", f)} variant="outline" size="sm" className="h-auto min-h-8 w-full justify-start whitespace-normal text-left text-xs" onClick={() => add(f)}><Plus className="mr-1 h-3 w-3 shrink-0" />{FORMAT_HELP[f].title}</Button><p className="leading-relaxed text-muted-foreground">{FORMAT_HELP[f].definition}</p></div>)}</aside> : <Button size="sm" variant="ghost" onClick={() => setHelp(true)}>Format descriptions</Button>}
+      {help ? <aside className="space-y-3 border-l border-border pl-3" aria-label="Format descriptions"><div className="flex items-center justify-between"><h4 className="font-semibold">Format palette</h4><Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Close format descriptions" onClick={() => setHelp(false)}><X className="h-3 w-3" /></Button></div>{formats.map((f) => <div key={f} className="space-y-1"><div className="flex items-start gap-1"><Button draggable onDragStart={(e) => e.dataTransfer.setData("application/x-card-format", f)} variant="outline" size="sm" className="h-auto min-h-8 w-full justify-start whitespace-normal text-left text-xs" onClick={() => add(f)}><Plus className="mr-1 h-3 w-3 shrink-0" />{FORMAT_HELP[f].title}</Button><FormatLearnButton format={f} onOpen={setLearn} /></div><p className="leading-relaxed text-muted-foreground">{FORMAT_HELP[f].definition}</p></div>)}<FormatLearnDialog format={learn} open={learn !== null} onOpenChange={(v) => { if (!v) setLearn(null); }} /></aside> : <Button size="sm" variant="ghost" onClick={() => setHelp(true)}>Format descriptions</Button>}
     </div>
     {issues.length > 0 && <ul aria-label="Structure issues" className="space-y-1 text-destructive">{issues.map((e) => <li key={e}>{e}</li>)}</ul>}
     <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">{dirty && <Badge variant="secondary" className="mr-auto">Unsaved structure</Badge>}{saved && <span className="mr-auto text-muted-foreground" role="status">Structure saved</span>}<Button size="sm" variant="ghost" disabled={!dirty} onClick={() => { setDraft(answers); setSaved(false); }}>Discard changes</Button><Button size="sm" disabled={!dirty || issues.length > 0} onClick={() => { onSave(saveCardStructure(draft)); setSaved(true); }}><Save className="mr-1 h-3.5 w-3.5" />Save Structure</Button></footer>

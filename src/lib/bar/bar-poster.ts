@@ -5,7 +5,7 @@
  */
 import { jsPDF } from "jspdf";
 import { fitBox, type LoadedImage } from "@/lib/club-qr-poster";
-import squashHubLogoDataUrl from "@/assets/shub-logo-white.png?inline";
+import squashHubLogoUrl from "@/assets/shub-logo-white.png";
 
 export interface BarPosterOptions {
   clubName: string;
@@ -14,6 +14,8 @@ export interface BarPosterOptions {
   logoDataUrl?: string | null;
   logoWidth?: number;
   logoHeight?: number;
+  /** SquashHub brand mark as a PNG data URL, loaded by the caller. */
+  brandLogoDataUrl?: string | null;
   accountEnabled: boolean;
   cardOnlineEnabled: boolean;
   swipeEnabled: boolean;
@@ -26,7 +28,12 @@ const AMBER: [number, number, number] = [217, 154, 38];
 const INK: [number, number, number] = [33, 37, 41];
 const MUTED: [number, number, number] = [100, 108, 118];
 /** SquashHub brand mark (white lettering + icon) as shipped in src/assets. */
-const BRAND_LOGO_PX = { w: 1920, h: 496 };
+export const BRAND_LOGO_PX = { w: 1920, h: 496 };
+
+/** Loads the SquashHub brand mark as a data URL so the poster can embed it. */
+export async function loadSquashHubBrandLogo(): Promise<string | null> {
+  return loadImageAsDataUrl(squashHubLogoUrl);
+}
 
 export function barPosterPaymentMethods(o: Pick<BarPosterOptions, "accountEnabled" | "cardOnlineEnabled" | "swipeEnabled" | "cashEnabled">): string[] {
   return [

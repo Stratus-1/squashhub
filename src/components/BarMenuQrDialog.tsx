@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
-import { buildBarPoster, barPosterPaymentMethods, loadImageAsDataUrlWithSize } from "@/lib/bar/bar-poster";
+import { buildBarPoster, barPosterPaymentMethods, loadImageAsDataUrlWithSize, loadSquashHubBrandLogo } from "@/lib/bar/bar-poster";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Copy, Share2, MessageCircle, FileDown } from "lucide-react";

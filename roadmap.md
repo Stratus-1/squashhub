@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Category setup safety locks
-- [ ] Add persistent Done & lock / Edit unlock controls for category settings and both pools under a grouped category.
-- [ ] Test lock persistence and disabled controls in preview without live saves or publication.
+- [x] Add persistent Done & lock / Edit unlock controls for category settings and both pools under a grouped category.
+- [x] 32 focused tests passed; authenticated preview verified saved edits, both-pool lock, disabled controls and explicit unlock. Reload tested against an isolated saved-answer response with writes blocked; hosted persistence not exercised. No publication.
 
 ## Category league allocation override (preview only)
 - [x] Add and persist “Admin can override” beside category league choices, preserving automatic placement and entry eligibility.

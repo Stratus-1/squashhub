@@ -3209,3 +3209,6 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - The seeding answer still reaches the draw plan: the structure page's per-category choice is saved into the draft's seeding overrides and the draw reads those per category, with the old tournament default only as a fallback. Categories left on "Decide later" still surface at the Confirm final format checkpoint.
 - The summary's Seeding row now lists each category's choice and opens Tournament structure instead of the removed step.
 - Validation: 17 focused tests pass (new step-list check); authenticated Riverside preview shows Type → Basics → Entries → Tournament structure → Structure review → How players join … Summary with no Seeding step, and the category card's seeding control present. Preview only; nothing published.
+
+### 2026-10-16 — Swiss next-round games not in fixtures/draw
+- Projected Swiss games (both players decided) only showed as previews. Now `auto-progress-tournaments` (fired on result save) creates each decided game via `create_decided_swiss_game` and books its planned slot with `self_schedule_champ_match`; they are normal fixtures (reschedule/result/mark/replace). Guards relaxed per game only under that server flag. Uitsig Men's C R2: 3 games created and booked.

@@ -50,4 +50,4 @@
 
 ## Swiss next-round fixtures (Uitsig)
 - [x] Upcoming Fixtures list shows results-decided next-round Swiss games in the normal row format and date order (display only).
-- [ ] Auto-create each next-round Swiss game as a real fixture + court booking as soon as both players are known (game by game, all clubs incl. Uitsig — user approved).
+- [x] Auto-create each next-round Swiss game as a real fixture + court booking once both players are decided (all clubs; runs on result save). Uitsig Men's C R2: 3 games created and booked.

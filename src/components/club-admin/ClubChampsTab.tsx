@@ -9648,7 +9648,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                    (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                  const pools = poolsForDivision(gn);
                                  const perPool = pools > 0 ? Math.ceil(entrants / pools) : entrants;
-                                 const suggested = perPool >= 2 ? Math.max(1, Math.min(9, perPool - 1)) : 5;
+                                // Swiss needs about log2(players) rounds to find a winner; +1 for a clear order. Never more than players − 1.
+                                const suggested = perPool >= 2 ? Math.max(1, Math.min(perPool - 1, Math.ceil(Math.log2(perPool)) + 1)) : 5;
                                  const rounds = Number(swissRounds[key]) || 0;
                                  const pairing = swissPairingModes[key] === "random" ? "random" : "seeded";
                                  return (
@@ -9677,11 +9678,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                          className={cn("h-7 w-16 text-xs", rounds <= 0 && "border-amber-500")}
                                        />
                                        <span>
-                                         (recommended: {suggested}
-                                         {entrants > 0 ? ` — one fewer than ${perPool} per ${pools > 1 ? "pool" : "draw"}` : ""}
-                                         {rounds <= 0 ? "; required" : ""})
-                                       </span>
-                                     </p>
+                                        (recommended: {suggested}
+                                        {entrants > 0 ? ` for ${perPool} players per ${pools > 1 ? "pool" : "draw"}` : ""}
+                                        {rounds <= 0 ? "; required" : ""})
+                                      </span>
+                                    </p>
+                                    {perPool >= 2 && rounds >= perPool - 1 && (
+                                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                                        {rounds > perPool - 1
+                                          ? `${rounds} rounds is impossible — with ${perPool} players each player can meet at most ${perPool - 1} opponents.`
+                                          : `${rounds} rounds means everyone plays everyone — use Round robin instead.`}
+                                      </p>
+                                    )}
                                      <SegRow
                                        label="First-round pairing"
                                        value={pairing}

@@ -86,3 +86,18 @@ export function PoolPlacementButtons({ value, onChange, label }: {
     </div>
   );
 }
+
+/** Plain-language explanation of the chosen pool placement. */
+export function PlacementExplanation({ value }: { value: "snake" | "banded" }) {
+  return value === "snake" ? (
+    <p className="text-[11px] text-muted-foreground leading-relaxed">
+      <strong>Snake:</strong> seed 1 → Pool A, 2 → Pool B, 3 → Pool B, 4 → Pool A, then 5 → A, 6 → B … (1, 2 then 3 back, 4).
+      Strength is spread evenly, so every pool is about equally strong.
+    </p>
+  ) : (
+    <p className="text-[11px] text-muted-foreground leading-relaxed">
+      <strong>Strength band:</strong> seeds 1, 2, 3, 4 → Pool A, then 5, 6, 7, 8 → Pool B, 9–12 → Pool C …
+      The strongest players are banded together in Pool A, the next band in Pool B, and so on.
+    </p>
+  );
+}

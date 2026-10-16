@@ -32,6 +32,7 @@ import { BankStatementImportDialog } from "./BankStatementImportDialog";
 import { BankingPanel } from "./BankingPanel";
 import DebitOrdersPanel from "./DebitOrdersPanel";
 import { ChartOfAccountsPanel } from "./ChartOfAccountsPanel";
+import { MemberCreditControl } from "./MemberCreditControl";
 import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club-gl-accounts";
 
 
@@ -804,6 +805,11 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
           <DebitOrdersPanel clubId={clubId} />
         </TabsContent>
 
+        {party === "member" && <TabsContent value="billing-settings">
+          <h2 className="text-base font-semibold">Member Billing · Settings</h2>
+          <MemberCreditControl clubId={clubId} />
+        </TabsContent>}
+
         <TabsContent value="income">
           <IncomeStatementTab clubId={clubId} clubName={club?.name} accounts={CHART_OF_ACCOUNTS as any} />
         </TabsContent>
@@ -1474,6 +1480,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               <p className="text-sm text-muted-foreground mt-3">Select a member to view their statement.</p>
             ) : (
               <div className="flex-1 min-h-0 overflow-y-auto space-y-3 mt-3 pr-1">
+                {party === "member" && <MemberCreditControl clubId={clubId} memberId={statementMemberId} />}
                 {(() => {
                   const controlAccountEntries = (journalEntries || [])
                     .filter((e: any) => e.club_member_id === statementMemberId && ["debtors", "member_credits"].includes(e.account));
@@ -1966,7 +1973,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 }
 
 /* ─── Finance Hub: tile-based navigation ─── */
-type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders" | "banking";
+type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders" | "banking" | "billing-settings";
 
 interface FinanceHubProps {
   pendingCount: number;
@@ -2044,6 +2051,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
         { key: "" as FinanceView, label: `${Party} Balances`, desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
         { key: "renewals", label: "Annual Renewals", desc: `Generate & email yearly invoices to every ${partyLower}`, icon: CalendarDays },
         { key: "" as FinanceView, label: `Bill ${Party}`, desc: `Add an ad-hoc charge to a ${partyLower}`, icon: Receipt, onClick: onBill },
+        ...(party === "member" ? [{ key: "billing-settings" as FinanceView, label: "Settings", desc: "Member Credit", icon: Wallet }] : []),
       ],
     },
     {

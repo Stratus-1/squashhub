@@ -12,6 +12,7 @@ export function computeAccountChargeGate(opts: {
   purchase: number;
   fees: { amount: number; fee_type?: string | null }[];
   hasMandate: boolean;
+  approvedCredit?: number;
 }) {
   const projectedOwing = opts.currentOwing + opts.purchase;
   const { planAllowedDebt, shortfall } = computeBookingGate({
@@ -19,12 +20,13 @@ export function computeAccountChargeGate(opts: {
     fees: opts.fees,
     hasMandate: opts.hasMandate,
     buffer: 0,
+    approvedCredit: opts.approvedCredit,
   });
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return {
     allowed: shortfall <= 0,
     projectedOwing: r2(projectedOwing),
-    allowance: r2(planAllowedDebt),
+    allowance: r2(planAllowedDebt + (opts.approvedCredit ?? 0)),
     shortfall: shortfall > 0 ? r2(shortfall) : 0,
   };
 }

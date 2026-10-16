@@ -1,5 +1,12 @@
 # Roadmap
 
+## Member credit allowances
+- [ ] Clarification: blank override inherits, explicit R0 allowed, Use club default action; My Account credit-limit notice beside balance.
+- [ ] Inspect/reuse shared financial eligibility, recurring coverage and scoped finance permissions.
+- [ ] Add R0 club default, nullable member overrides and audited server-only edits; no ledger adjustments.
+- [ ] Add Member Billing Settings and member financial record/view controls.
+- [ ] Verify inheritance, recurring arrangements, booking boundaries, authorization and regressions; do not publish.
+
 ## Bar collection-ready alerts (preview only)
 - [x] Strengthen existing member ready popup, retain ping and add supported vibration; preserve partial fulfilment, dedupe and payments.
 - [x] Seven focused tests, synthetic browser popup/View order/X checks and background-worker simulation passed; preview build OK, no real orders, live writes or publication.

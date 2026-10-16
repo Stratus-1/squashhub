@@ -3188,3 +3188,10 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Existing counter ready RPC already inserts a per-item, deduplicated member notification; retained this authority and all order/payment data unchanged.
 - Collection-ready foreground messages now remain until dismissed with an X, retain exact ready item quantities and offer View order. Existing chime retained with AudioContext cleanup; supported browsers vibrate. The notification-only push worker requests vibration/renotify for order alerts; phone permissions, silent mode and platform limitations still apply.
 - Preview-only; synthetic presentation tests/browser checks send no real notification and operate no live order. Background/physical phone delivery remains unverified.
+
+### 2026-10-16 — Member credit eligibility allowances
+- Added a dynamically inherited R0 club credit default and individual overrides, editable only through club-scoped finance RPCs; each actual change audits old/new and effective amounts, actor, timestamp and scope. Members can read their allowance, never edit it.
+- Finance → Member Billing → Settings → Member Credit sets the default; member statements edit overrides; My Account displays read-only allowance. No journal, fund, debt or payment changes.
+- Reused `member_account_gate` for combined approved credit plus the existing active monthly, unsuspended mandate fee coverage. Booking RPC adds the minimum booking balance once and includes optional pending charges; booking trigger closes the prior client-only enforcement gap. POS debit switches and nonfinancial booking restrictions remain intact.
+- Court-light/fee charges remain actual debt in the same ledger; no retroactive charge rejection or debt reduction. Recurring outstanding-plan financing retains its existing uncovered debt calculation: an eligibility allowance is not a repayment and cannot reduce the debt a plan finances.
+- Not published; additive backend schema/rules are shared by preview and live, with zero defaults preserving existing allowances.

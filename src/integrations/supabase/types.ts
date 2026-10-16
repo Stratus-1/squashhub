@@ -5525,6 +5525,32 @@ export type Database = {
           },
         ]
       }
+      club_member_credit_defaults: {
+        Row: {
+          amount: number
+          club_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          club_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_member_credit_defaults_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_member_fee_payments: {
         Row: {
           amount: number
@@ -11960,6 +11986,42 @@ export type Database = {
             columns: ["delegated_from"]
             isOneToOne: false
             referencedRelation: "member_capability_overrides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_credit_allowance_overrides: {
+        Row: {
+          amount: number
+          club_id: string
+          club_member_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          club_id: string
+          club_member_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          club_member_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_credit_allowance_overrides_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_credit_allowance_overrides_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -21230,6 +21292,10 @@ export type Database = {
           shortfall: number
         }[]
       }
+      member_booking_eligibility: {
+        Args: { _club_id: string; _club_member_id: string; _extra?: number }
+        Returns: Json
+      }
       member_competition_status: {
         Args: { _club_member_ids: string[] }
         Returns: {
@@ -21244,6 +21310,14 @@ export type Database = {
           ssa_number: string
           ssa_status: string
         }[]
+      }
+      member_credit_allowed: {
+        Args: { _club_member_id: string }
+        Returns: number
+      }
+      member_credit_settings: {
+        Args: { _club_id: string; _club_member_id?: string }
+        Returns: Json
       }
       member_has_permission: {
         Args: { _member_id: string; _permission: string }
@@ -22069,6 +22143,10 @@ export type Database = {
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean
+      }
+      set_member_credit_allowed: {
+        Args: { _amount: number; _club_id: string; _club_member_id?: string }
+        Returns: Json
       }
       set_my_bar_pin: {
         Args: {

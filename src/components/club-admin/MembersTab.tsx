@@ -28,6 +28,7 @@ import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
 import { MemberStandingDialog, type MemberStanding } from "./MemberStandingDialog";
 import { ResolveDuplicateDialog } from "./ResolveDuplicateDialog";
+import { MemberCreditControl } from "./MemberCreditControl";
 import { useCompetitionStatus } from "@/hooks/use-competition-status";
 import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
@@ -2116,6 +2117,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             )}
           </div>
           <div className="space-y-1"><Label>Address</Label><Input value={form.address} onChange={e => setForm(p => ({ ...p, address: toTitleCase(e.target.value) }))} /></div>
+          <MemberCreditControl clubId={clubId} memberId={member.id} />
           <Button onClick={handleSave} className="w-full">Save</Button>
         </div>
       </DialogContent>

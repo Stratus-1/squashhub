@@ -11,7 +11,7 @@ import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, mo
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false }: { appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
+export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false, stageNoun = "Swiss", formatNote }: { appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; /** Wording for non-Swiss stages (e.g. "Round robin") so later-stage logs don't read as Swiss. */ stageNoun?: string; formatNote?: string }) {
   const [mode, setMode] = useState<"grid" | "classic" | "calendar">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   // Final standing locks when the Swiss stage's own rounds are complete — later follow-up stage games don't block it.
@@ -30,7 +30,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
-        <span className="text-muted-foreground">{SWISS_FORMAT_LABEL[model.format]}</span>
+        <span className="text-muted-foreground">{formatNote ?? SWISS_FORMAT_LABEL[model.format]}</span>
       </div>
       <div id="swiss-tabpanel" role="tabpanel" aria-labelledby={`swiss-tab-${mode}`} className="space-y-3">
       {mode === "grid" && unavailable && classicStandings ? classicStandings : null}
@@ -38,7 +38,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
       {mode === "calendar" ? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(/^r(\d+)-/.exec(k)?.[1])])) : slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
         <>
-          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — Swiss grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
+          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
           </div>
@@ -51,7 +51,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
         </>
       ) : (
         <>
-          <TournamentInteractiveViewer title={`${title} — Swiss progression (${kind})`} inlineHeight={360}>
+          <TournamentInteractiveViewer title={`${title} — ${stageNoun} progression (${kind})`} inlineHeight={360}>
             <table className="text-xs border-collapse bg-background text-foreground">
               <thead>
                 <tr className="text-left text-muted-foreground">
@@ -82,7 +82,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
               </tbody>
             </table>
           </TournamentInteractiveViewer>
-          <TournamentInteractiveViewer title={`${title} — Swiss rounds`} inlineHeight={360}>
+          <TournamentInteractiveViewer title={`${title} — ${stageNoun} rounds`} inlineHeight={360}>
             <div className="space-y-3 bg-background p-2 text-xs text-foreground">
               {model.rounds.map((rd) => (
                 <div key={rd.round}>

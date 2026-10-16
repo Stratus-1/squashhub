@@ -19,6 +19,7 @@ import { stageTable } from "@/lib/tournaments/engine-service";
 import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
 import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
 import { swissRoundGate } from "@/lib/tournaments/swiss-round-gate";
+import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */

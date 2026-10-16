@@ -6,6 +6,21 @@ import { rowStages } from "@/lib/smart-builder/structure-rows";
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it("keeps planned playoffs and follow-up format independent and local after reload", () => {
+    const a = base();
+    const raw = originalStructureFromAnswers(a);
+    raw.league_planned_playoff_rounds = { "1": ["qf", "sf", "final"] };
+    raw.league_follow_up_formats = { "1": "swiss" };
+    const b = answersFromOriginalStructure(a, raw);
+    const restored = originalStructureFromAnswers(JSON.parse(JSON.stringify(b)));
+    expect(restored.league_planned_playoff_rounds).toEqual(raw.league_planned_playoff_rounds);
+    expect(restored.league_follow_up_formats).toEqual(raw.league_follow_up_formats);
+    expect(b.stages).toEqual(a.stages);
+    expect(b.days).toEqual(a.days);
+    expect(rowStages(b, "Men")[1]).toEqual(a.stagePlans?.Men[1]);
+    expect(b.playoffOverrides).toEqual(a.playoffOverrides);
+    expect(a.originalStructure).toBeUndefined();
+  });
   it("round trips rules and preserves scheduling and later stages", () => {
     const a = base();
     const raw = originalStructureFromAnswers(a);

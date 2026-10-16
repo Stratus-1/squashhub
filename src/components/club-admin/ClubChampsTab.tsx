@@ -1458,6 +1458,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   // Per-league playoffs: which leagues run their own knockout / finals stage.
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
+  const [leaguePlannedPlayoffRounds, setLeaguePlannedPlayoffRounds] = useState<Record<string, string[]>>({});
+  const [leagueFollowUpFormats, setLeagueFollowUpFormats] = useState<Record<string, string>>({});
   // Post-pool playoff style per division (round-robin pools):
   //   "position" (default / legacy) → A1 v B1, A2 v B2 …
   //   "knockout"                    → top N of each pool in one cross-pool draw.
@@ -1700,6 +1702,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     copy(setLeagueBestOf as any);
     copy(setLeagueWinConditions as any);
     copy(setLeaguePlayoffs as any);
+    copy(setLeaguePlannedPlayoffRounds as any);
+    copy(setLeagueFollowUpFormats as any);
     // The copy keeps the rules but NOT the entrants — the organiser picks the
     // leagues/players for the new division, which is the whole point of it.
     setSourceForLeague(Number(to), { mode: "all", leagueIds: [] });
@@ -8949,6 +8953,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setGroupBreakMinutes(v.group_break_minutes ?? {});
     setLeagueServingMethods(v.league_doubles_serving_methods ?? {});
     setLeaguePlayoffs(v.league_playoffs ?? {});
+    setLeaguePlannedPlayoffRounds(v.league_planned_playoff_rounds ?? {});
+    setLeagueFollowUpFormats(v.league_follow_up_formats ?? {});
     setLeagueByeHandling(v.league_bye_handling ?? {});
     setLeagueForfeitRules(v.league_forfeit_rules ?? {});
     setLeagueForfeitPoints(v.league_forfeit_points ?? {});
@@ -8995,6 +9001,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       group_break_minutes: groupBreakMinutes,
       league_doubles_serving_methods: leagueServingMethods,
       league_playoffs: leaguePlayoffs,
+      league_planned_playoff_rounds: leaguePlannedPlayoffRounds,
+      league_follow_up_formats: leagueFollowUpFormats,
       league_bye_handling: leagueByeHandling,
       league_forfeit_rules: leagueForfeitRules,
       league_forfeit_points: leagueForfeitPoints,
@@ -9014,7 +9022,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
   };
 
-  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10199,7 +10207,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   </div>
                                 );
                               })()}
-                              <div className="pt-1">
+                              {!structureOnly && <div className="pt-1">
                                 <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
                                   <input
                                     type="checkbox"
@@ -10278,7 +10286,63 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     )}
                                   </div>
                                 )}
-                              </div>
+                              </div>}
+
+                              {structureOnly && <div className="pt-2 grid gap-2 sm:grid-cols-2">
+                                <div className="rounded-md border border-border p-2 space-y-1.5">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Planned playoffs</div>
+                                  <div className="flex flex-wrap gap-3">
+                                    {[
+                                      { v: "qf", l: "Quarterfinal" },
+                                      { v: "sf", l: "Semifinal" },
+                                      { v: "final", l: "Final" },
+                                    ].map((o) => {
+                                      const cur = leaguePlannedPlayoffRounds[key] ?? [];
+                                      return (
+                                        <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            className="h-3.5 w-3.5 accent-fuchsia-500"
+                                            checked={cur.includes(o.v)}
+                                            onChange={() =>
+                                              setLeaguePlannedPlayoffRounds((m) => {
+                                                const list = m[key] ?? [];
+                                                return { ...m, [key]: list.includes(o.v) ? list.filter((x) => x !== o.v) : [...list, o.v] };
+                                              })
+                                            }
+                                          />
+                                          {o.l}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                                <div className="rounded-md border border-border p-2 space-y-1.5">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Follow-up stages <span className="normal-case tracking-normal font-normal">(excluding playoffs — planned playoffs follow afterwards)</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-3">
+                                    {[
+                                      { v: "", l: "None" },
+                                      { v: "round_robin", l: "Round robin" },
+                                      { v: "swiss", l: "Swiss pairing" },
+                                      { v: "knockout", l: "Knockout" },
+                                      { v: "monrad", l: "Monrad" },
+                                    ].map((o) => (
+                                      <label key={o.v || "none"} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          className="h-3 w-3 accent-fuchsia-500"
+                                          name={`follow-up-${key}`}
+                                          checked={(leagueFollowUpFormats[key] ?? "") === o.v}
+                                          onChange={() => setLeagueFollowUpFormats((m) => ({ ...m, [key]: o.v }))}
+                                        />
+                                        {o.l}
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>}
 
                               <div className="pt-1 flex justify-end">
                                 <Button

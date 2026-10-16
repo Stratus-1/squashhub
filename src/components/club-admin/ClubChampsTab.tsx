@@ -9260,7 +9260,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
                                   onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
                                 >
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Category {gn}</span>
+                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Category {gn}</span>
                                   {collapsed && groupLabels[key] && (
                                     <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
                                   )}

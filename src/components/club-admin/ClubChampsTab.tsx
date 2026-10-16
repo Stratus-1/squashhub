@@ -9253,13 +9253,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         return (
                           <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
-                            <div className={cn("flex items-start justify-between gap-2", !collapsed && "mb-2")}>
-                              <div className="flex-1 min-w-0">
+                            <div className={cn("flex flex-wrap items-start justify-between gap-2", !collapsed && "mb-2")}>
+                              <div className="flex-1 min-w-fit">
+
                                 <div
                                   className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
                                   onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
                                 >
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Category {gn}</span>
+                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Category {gn}</span>
                                   {collapsed && groupLabels[key] && (
                                     <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
                                   )}
@@ -9356,13 +9357,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground"
+                                size="sm"
+                                className="h-7 shrink-0 gap-1 whitespace-nowrap px-2 text-[11px] text-muted-foreground"
                                 onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }))}
-                                title={collapsed ? "Expand league" : "Collapse league"}
+                                title={collapsed ? "Expand this category" : "Collapse this category"}
                               >
-                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
+                                {collapsed ? "Expand" : "Collapse"}
+                                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !collapsed && "rotate-180")} />
                               </Button>
+
                               <Button
                                 type="button"
                                 variant="outline"
@@ -10488,11 +10491,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-[11px]"
+                                  className="h-7 gap-1 whitespace-nowrap text-[11px]"
                                   onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
                                 >
-                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
+                                  <ChevronDown className="h-3.5 w-3.5 rotate-180" /> Collapse
                                 </Button>
+
                               </div>
                             </div>
                             )}

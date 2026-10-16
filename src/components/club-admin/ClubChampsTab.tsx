@@ -9074,7 +9074,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/40">
                 <div>
                   <div className="text-sm font-semibold">Tournament Structure <span className="text-destructive">*</span></div>
-                  <div className="text-[11px] text-muted-foreground">Add a league by clicking or dragging a format from the palette. Each league has its own format, category (Men’s / Ladies’ / Mixed / Open), pools and planned player count — so one tournament can run a Ladies’ league next to a Men’s and a Mixed league. Singles vs doubles is applied to every league in the event.</div>
+                  <div className="text-[11px] text-muted-foreground"><strong className="text-foreground">Tip — example of structure:</strong> If Men’s Singles Group A and Group B will never play against each other during the tournament, create two separate categories: Men’s Singles A and Men’s Singles B.</div>
                 </div>
                 {/* Playoffs are owned by each league card below. These are
                     bulk shortcuts that write the per-league settings — not a
@@ -9151,7 +9151,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
                                   onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
                                 >
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">League {gn}</span>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Category {gn}</span>
                                   {collapsed && groupLabels[key] && (
                                     <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
                                   )}
@@ -10300,7 +10300,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     {/* Drop zone / empty state */}
                     <div className="rounded-lg border-2 border-dashed border-border/70 py-6 flex flex-col items-center justify-center text-muted-foreground hover:border-amber-500/50 hover:text-amber-600 transition-colors text-center px-3">
                       <Trophy className="w-6 h-6 mb-1 opacity-60" />
-                      <div className="text-xs font-medium">Drop a format here to add {numGroups > 0 ? `League ${numGroups + 1}` : "League 1"}</div>
+                      <div className="text-xs font-medium">Drop a format here to add {numGroups > 0 ? `Category ${numGroups + 1}` : "Category 1"}</div>
                       <div className="text-[10px] text-muted-foreground/80 mt-0.5">or click a format on the right</div>
                     </div>
 

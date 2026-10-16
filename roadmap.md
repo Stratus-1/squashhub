@@ -47,3 +47,7 @@
 - [ ] Ladies fixed-date schedule issue — awaiting correct screenshot.
 - [ ] Bar-orders activation (Uitsig) needs separate approval.
 
+
+## Swiss next-round fixtures (Uitsig)
+- [x] Upcoming Fixtures list shows results-decided next-round Swiss games in the normal row format and date order (display only).
+- [ ] Make those games part of the generated draw (real fixtures) — scope/approval needed: touches live Uitsig fixtures.

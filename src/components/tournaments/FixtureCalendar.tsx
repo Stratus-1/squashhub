@@ -1,3 +1,4 @@
+import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, GripVertical } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -63,13 +64,13 @@ function EventBlock({ e, top, height, left, width, compact, onOpen, preview }: {
     <Button variant="outline" onClick={() => e.id.startsWith("allocation:") && preview?.canDrop(e.id) ? preview.drop(e.id) : onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st}
       onDragOver={(event) => { if (preview?.canDrop(e.id)) event.preventDefault(); }} onDrop={(event) => { if (preview?.canDrop(e.id)) { event.preventDefault(); preview.drop(e.id); } }}
       aria-label={`${e.time?.slice(0, 5) ?? ""} ${e.court ?? ""} ${e.title} ${badge}${e.score ? ` ${e.score}` : ""}${e.currentGame ? ` Game ${e.currentGame.number} ${e.currentGame.a}–${e.currentGame.b}` : ""}`}
-      className={cn("absolute block h-auto overflow-y-auto whitespace-normal rounded-md px-1.5 py-1 text-left text-[11px] leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      className={cn("absolute block h-auto overflow-hidden whitespace-normal rounded-md px-1 py-0.5 text-left leading-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         e.kind === "proposed" ? "border border-dashed border-muted-foreground/60 bg-muted/40" : cn("border shadow-sm", STATE_STYLE[st]))}
-      style={{ top, height, left, width }}>
+      style={{ top, height, left, width, fontSize: `${Math.max(6, Math.min(11, height / 4.6))}px` }}>
       <div className="flex items-center gap-1">
         {preview?.eligible(e.id) && <span role="button" tabIndex={0} draggable aria-label={`Move match ${e.title}`} title="Drag to preview or select with Enter" className="cursor-grab p-1" onClick={(event) => { event.stopPropagation(); preview.start(e.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); preview.start(e.id); } }} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData("text/plain", e.id); preview.start(e.id); }}><GripVertical className="h-3 w-3" /></span>}
-        {e.court && <span className="rounded bg-muted px-1 text-[10px] font-semibold text-muted-foreground">{compact ? e.court.replace(/court\s*/i, "C") : e.court}</span>}
-        <span className={cn("ml-auto inline-flex items-center gap-1 rounded px-1 text-[10px] font-bold", st === "live" ? "bg-destructive text-destructive-foreground" : "bg-muted text-foreground")}>
+        {e.court && <span className="rounded bg-muted px-1 text-[0.9em] font-semibold text-muted-foreground">{compact ? e.court.replace(/court\s*/i, "C") : e.court}</span>}
+        <span className={cn("ml-auto inline-flex items-center gap-1 rounded px-1 text-[0.9em] font-bold", st === "live" ? "bg-destructive text-destructive-foreground" : "bg-muted text-foreground")}>
           {st === "live" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current motion-safe:animate-pulse" />}{badge}
         </span>
       </div>
@@ -182,8 +183,8 @@ export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [],
           </div>
         );
       })() : (
-        <div className="overflow-x-auto rounded-md border border-border">
-          <div style={{ minWidth: view === "day" ? 320 : 1180 }}>
+        <TournamentInteractiveViewer title="Fixture calendar" wheelZoom="direct" defaultFit="width" maxZoom={4} inlineHeight={Math.min(760, gridH + 90)} className="rounded-md border border-border">
+          <div style={{ width: view === "day" ? 640 : 1180 }}>
             {/* header */}
             <div className="sticky top-0 z-10 flex border-b border-border bg-muted">
               <div className="w-16 shrink-0" />
@@ -227,7 +228,7 @@ export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [],
               })}
             </div>
           </div>
-        </div>
+        </TournamentInteractiveViewer>
       )}
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto" data-testid="cal-detail">

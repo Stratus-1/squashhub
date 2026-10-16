@@ -531,9 +531,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   }).map((u) => {
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
     const catName = u.key.split("::")[0].trim().toLowerCase();
-    const categoryType = a.categoryTypes?.[u.key.split("::")[0]]
+    const rawType = a.categoryTypes?.[u.key.split("::")[0]]
       ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim().toLowerCase() === catName)?.[1]
       ?? null;
+    const categoryType = ((rawType as string) === "men" ? "mens" : rawType) as typeof rawType;
     return { ...u, categoryType, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
@@ -1380,7 +1381,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         drawNotify: a.drawNotify === "auto" ? "auto" : a.drawNotify !== false,
         ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
-        categoryTypes: units.map((u) => u.categoryType ?? "open"),
+        categoryTypes: units.map((u) => { const t = String(u.categoryType ?? "open").toLowerCase(); return t === "men" ? "mens" : (["mens", "ladies", "mixed", "open"].includes(t) ? t : "open"); }),
         divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
       });
       const prev = loadHandover(clubId, tid);

@@ -1341,6 +1341,9 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         matches: laterMatches.map(toProgressionMatch),
       }) : null;
       const laterLabel = laterMatches[0]?.stage_id ? stageLabelById.get(laterMatches[0].stage_id) ?? "Stage 2" : "Stage 2";
+      // Round-robin follow-up stages render in the Uitsig pool-matrix format, not the Swiss grid.
+      const laterIsRR = laterMatches.length > 0 && (laterMatches[0]?.stage_id ? stageKindById.get(laterMatches[0].stage_id) : null) === "pools";
+      const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
       return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;

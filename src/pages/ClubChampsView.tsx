@@ -1341,9 +1341,30 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         matches: laterMatches.map(toProgressionMatch),
       }) : null;
       const laterLabel = laterMatches[0]?.stage_id ? stageLabelById.get(laterMatches[0].stage_id) ?? "Stage 2" : "Stage 2";
+      // Round-robin follow-up stages render in the Uitsig pool-matrix format, not the Swiss grid.
+      const laterIsRR = laterMatches.length > 0 && (laterMatches[0]?.stage_id ? stageKindById.get(laterMatches[0].stage_id) : null) === "pools";
+      const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterIsRR ? (
+          <div className="mt-6 space-y-4" data-testid={`stage2-progression-${gn}`}>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>
+              <span className="text-muted-foreground">Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings.</span>
+            </div>
+            {laterPools.map((pn) => {
+              const pm = laterMatches.filter((m: any) => (resolvePoolNumber(m, gn) ?? 1) === pn);
+              const ids = [...new Set(pm.flatMap((m: any) => [m.player_a_member_id ?? m.bye_member_id, m.is_bye ? null : m.player_b_member_id]).filter(Boolean))] as string[];
+              const rankOrder = model.rows.map((r: any) => r.id).filter((id: string) => ids.includes(id));
+              const view = buildRoundRobinView({
+                players: ids.map((id) => ({ id, name: names[id] ?? "Unknown" })),
+                rankOrder,
+                matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
+              });
+              return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}${laterPools.length > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar />;
+            })}
+          </div>
+        ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

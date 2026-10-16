@@ -62,7 +62,7 @@ function scheduleOf(p: PlannedPlayoff): PlannedStage["schedule"] | null {
  * Build the predefined play-off stages that follow `main`. `forceConfirm` keeps owner confirmation for
  * tournaments whose setup never chose a trigger (historical "Decide later").
  */
-export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null } = {}): ChainResult {
+export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean } = {}): ChainResult {
   const notes: string[] = [];
   if (!planned.length) return { stages: [], reason: null, notes };
   if (planned.length > 3) return { stages: [], reason: "More than three play-off stages can't be mapped automatically.", notes };

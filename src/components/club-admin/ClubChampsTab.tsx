@@ -9356,13 +9356,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground"
+                                size="sm"
+                                className="h-7 shrink-0 gap-1 whitespace-nowrap px-2 text-[11px] text-muted-foreground"
                                 onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: !(m[key] ?? true) }))}
-                                title={collapsed ? "Expand league" : "Collapse league"}
+                                title={collapsed ? "Expand this category" : "Collapse this category"}
                               >
-                                <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} />
+                                {collapsed ? "Expand" : "Collapse"}
+                                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !collapsed && "rotate-180")} />
                               </Button>
+
                               <Button
                                 type="button"
                                 variant="outline"
@@ -10488,11 +10490,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-[11px]"
+                                  className="h-7 gap-1 whitespace-nowrap text-[11px]"
                                   onClick={() => setCollapsedLeagues((m) => ({ ...m, [key]: true }))}
                                 >
-                                  <Check className="h-3.5 w-3.5 mr-1" /> Done
+                                  <ChevronDown className="h-3.5 w-3.5 rotate-180" /> Collapse
                                 </Button>
+
                               </div>
                             </div>
                             )}

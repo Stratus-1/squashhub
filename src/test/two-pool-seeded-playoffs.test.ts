@@ -9,3 +9,13 @@ describe("two pools + seeded play-offs start automatically", () => {
     expect(r.stages).toHaveLength(3);
   });
 });
+describe("swiss + auto play-offs start automatically", () => {
+  it("QF/SF/Final after Swiss builds a real automatic chain seeded 1v8", () => {
+    const plan = { pairing: "seeded", mode: "scheduled", date: "2026-11-14", from: "10:00", to: "14:00", deadline: null, courtIds: [20], trigger: "auto" } as any;
+    const main = { id: "m", order: 0, kind: "swiss", swissRounds: 5 } as any;
+    const r = buildPlayoffChain(main, "v", [{ name: "Quarterfinal", plan }, { name: "Semifinal", plan: { ...plan, pairing: "later" } }, { name: "Final", plan: { ...plan, pairing: "later" } }]);
+    expect(r.reason).toBeNull();
+    expect(r.stages[0].generation).toBe("automatic");
+    expect(r.stages[0].mapping!.matches.length).toBe(4);
+  });
+});

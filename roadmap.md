@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Category league allocation override (preview only)
-- [ ] Add and persist “Admin can override” beside category league choices, preserving automatic placement and entry eligibility.
-- [ ] Align manual allocation and the one-page structure advisory; preserve generated games and existing admin authorization.
+- [x] Add and persist “Admin can override” beside category league choices, preserving automatic placement and entry eligibility.
+- [x] Align manual allocation and the one-page structure advisory; preserve generated games and existing admin authorization.
 - [ ] Run focused regression tests and verify the preview; no live-data changes or publication.
 
 ## Uitsig Men’s A category persistence

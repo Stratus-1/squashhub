@@ -1,11 +1,30 @@
 import { describe, expect, it } from "vitest";
 import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
-import { originalStructureFromAnswers, answersFromOriginalStructure } from "@/lib/smart-builder/original-structure";
+import { originalStructureFromAnswers, answersFromOriginalStructure, structurePoolGroups } from "@/lib/smart-builder/original-structure";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
 
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it("shows Men's A as two pools without merging or renumbering its live units", () => {
+    const a = base();
+    a.categories = ["Mens A", "Mens B", "Ladies A"];
+    a.subcats = { "Mens A": ["1", "2"] };
+    a.unitEntries = { "Mens A::1": "4", "Mens A::2": "4", "Mens B": "24", "Ladies A": "9" };
+    a.stagePlans = Object.fromEntries(Object.keys(a.unitEntries).map((key) => [key, [{ id: key, kind: "round_robin", pools: 1 }]]));
+    a.createdTournamentId = "existing";
+    a.picks = { player: ["Mens A::2"] };
+    const raw = originalStructureFromAnswers(a);
+    expect(raw._pool_groups).toEqual([{ parent: "Mens A", label: "Men's A", slots: [1, 2] }]);
+    expect(raw.num_groups).toBe(4);
+    expect(raw.group_labels).toEqual({ "1": "1", "2": "2", "3": "Mens B", "4": "Ladies A" });
+    const restored = answersFromOriginalStructure(a, JSON.parse(JSON.stringify(raw)));
+    expect(structurePoolGroups(restored)).toEqual(raw._pool_groups);
+    expect(originalStructureFromAnswers(restored)._unit_keys).toEqual(raw._unit_keys);
+    expect(restored.picks).toEqual(a.picks);
+    expect(restored.categories).toEqual(a.categories);
+    expect(raw.swiss_pools).toEqual({ "1": 1, "2": 1, "3": 1, "4": 1 });
+  });
   it("keeps manual allocation override separate from combined source mode on save and reload", () => {
     const a = base();
     a.elig.Men = { mode: "leagues", leagueIds: ["league-1", "league-2"], placement: "auto", adminOverride: true };

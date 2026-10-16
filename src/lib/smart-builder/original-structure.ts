@@ -6,10 +6,23 @@ import { newStageId, type StageKind } from "./stage-plan";
 export type OriginalStructure = Record<string, any>;
 const originalFormat = (kind: StageKind | null) => kind === "round_robin" || kind === "pools" ? "single_round_robin" : kind ?? "single_round_robin";
 
+export interface StructurePoolGroup { parent: string; label: string; slots: number[] }
+/** Display numbered round-robin children as pools without merging positional draw IDs. */
+export function structurePoolGroups(a: StepAnswers): StructurePoolGroup[] {
+  const keys = structureUnits(a);
+  return Object.entries(a.subcats).flatMap(([parent, children]) => {
+    if (children.length < 2 || children.some((child) => !/^\d+$/.test(child))) return [];
+    const slots = children.map((child) => keys.indexOf(`${parent}::${child}`) + 1);
+    if (slots.some((slot) => slot < 1) || slots.some((slot, i) => i > 0 && slot !== slots[0] + i)) return [];
+    if (children.some((child) => !["round_robin", "pools"].includes(rowStages(a, `${parent}::${child}`)[0]?.kind ?? ""))) return [];
+    return [{ parent, label: parent.replace(/^Mens\b/, "Men's"), slots }];
+  });
+}
+
 export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure {
   const keys = structureUnits(a).filter((key) => key.trim());
   const saved = a.originalStructure ?? {};
-  const out: OriginalStructure = { ...saved, _unit_keys: keys, num_groups: keys.length };
+  const out: OriginalStructure = { ...saved, _unit_keys: keys, _pool_groups: structurePoolGroups(a), _identity_locked: !!a.createdTournamentId, num_groups: keys.length };
   const maps = ["group_labels", "expected_players", "league_formats", "swiss_pools", "swiss_rounds", "league_genders", "league_match_types", "league_scoring_modes", "league_points_per_game", "league_best_of", "league_play_all_games", "league_win_conditions", "group_durations", "group_break_minutes", "league_doubles_serving_methods", "league_playoffs", "league_sources", "league_source_modes"];
   for (const map of maps) out[map] = { ...(saved[map] ?? {}) };
   keys.forEach((key, i) => {

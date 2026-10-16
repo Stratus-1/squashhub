@@ -1313,22 +1313,37 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const gEntries = (entries as any[]).filter((e: any) => e.group_number === gn).sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
       const names: Record<string, string> = {};
       rows.forEach((r: any) => { names[r.club_member_id] = r.name; });
+      const toProgressionMatch = (m: any) => ({
+        id: m.id, round: Number(m.round_number),
+        a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null,
+        winner: m.winner_member_id, isBye: !!m.is_bye, status: m.status, score: m.score,
+        date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by,
+        placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
+      });
+      // Multi-stage tournaments: later-stage games (e.g. the Stage 2 round robin) restart at round 1
+      // and must not mix into the Swiss log — each stage gets its own progression log.
+      const gMatches = (matches as any[]).filter((m: any) => m.group_number === gn && (m.round_number ?? 0) > 0);
+      const isLaterStage = (m: any) => m.stage_id && stageKindById.has(m.stage_id) && stageKindById.get(m.stage_id) !== "swiss";
+      const swissMatches = gMatches.filter((m: any) => !isLaterStage(m));
+      const laterMatches = gMatches.filter(isLaterStage);
+      const seedOrder = [...new Set([...gEntries.map((e: any) => e.club_member_id), ...rows.map((r: any) => r.club_member_id)])].filter(Boolean);
       const model = buildSwissProgression({
-        seedOrder: [...new Set([...gEntries.map((e: any) => e.club_member_id), ...rows.map((r: any) => r.club_member_id)])].filter(Boolean),
+        seedOrder,
         names,
         totalRounds: swissSt.rounds,
         tieBreaks: swissSt.tieBreaks,
-        matches: (matches as any[]).filter((m: any) => m.group_number === gn && (m.round_number ?? 0) > 0).map((m: any) => ({
-          id: m.id, round: Number(m.round_number),
-          a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null,
-          winner: m.winner_member_id, isBye: !!m.is_bye, status: m.status, score: m.score,
-          date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by,
-          placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
-        })),
+        matches: swissMatches.map(toProgressionMatch),
       });
+      const laterModel = laterMatches.length ? buildSwissProgression({
+        seedOrder,
+        names,
+        totalRounds: null,
+        matches: laterMatches.map(toProgressionMatch),
+      }) : null;
+      const laterLabel = laterMatches[0]?.stage_id ? stageLabelById.get(laterMatches[0].stage_id) ?? "Stage 2" : "Stage 2";
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} /></div></SwissPilotBoundary>;
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view

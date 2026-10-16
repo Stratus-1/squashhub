@@ -6,6 +6,15 @@ import { rowStages } from "@/lib/smart-builder/structure-rows";
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it("preserves category locks through the real structure save adapter", () => {
+    const a = base();
+    const raw = originalStructureFromAnswers(a);
+    raw.category_locks = { Men: true };
+    const restored = answersFromOriginalStructure(a, raw);
+    expect(originalStructureFromAnswers(JSON.parse(JSON.stringify(restored))).category_locks).toEqual({ Men: true });
+    expect(restored.stages).toEqual(a.stages);
+    expect(restored.picks).toEqual(a.picks);
+  });
   it("shows Men's A as two pools without merging or renumbering its live units", () => {
     const a = base();
     a.categories = ["Mens A", "Mens B", "Ladies A"];

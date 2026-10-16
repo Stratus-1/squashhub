@@ -1,4 +1,6 @@
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
+import { categoryLockKey, setCategoryLocked, type CategoryLocks } from "@/lib/smart-builder/category-locks";
+import { Lock as CategoryLockIcon, LockOpen as CategoryUnlockIcon } from "lucide-react";
 import { CategorySeedingSelect } from "./CategorySeedingSelect";
 import { PlacementExplanation } from "./CategorySeedingButtons";
 import { monradNote, monradPlan } from "@/lib/smart-builder/monrad";
@@ -9024,6 +9026,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   const originalKeysRef = useRef<string[]>(structureOnly?.initial._unit_keys ?? []);
   const originalLoadedRef = useRef(false);
+  const [categoryLocks, setCategoryLocks] = useState<CategoryLocks>(structureOnly?.initial.category_locks ?? {});
   useEffect(() => {
     if (!structureOnly || originalLoadedRef.current) return;
     originalLoadedRef.current = true;
@@ -9079,10 +9082,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // This is a mount-only local snapshot, never a hosted tournament load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structureOnly]);
-  const saveOriginalStructure = () => {
+  const saveOriginalStructure = (locks = categoryLocks, validateSlots?: number[]) => {
     if (!structureOnly) return;
     const finalMonradRounds = { ...monradRounds };
     for (let i = 1; i <= numGroups; i++) {
+      if (validateSlots && !validateSlots.includes(i)) continue;
       const key = String(i);
       if (!Number.isInteger(expectedPlayers[key]) || expectedPlayers[key] < 1) {
         toast.error(`Add expected ${leagueMatchTypes[key] === "doubles" ? "pairs" : "players"} for Category ${i} (a whole number greater than zero).`);
@@ -9106,6 +9110,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     originalBaselineRef.current = originalChangeKey;
     structureOnly.onDirtyChange?.(false);
     structureOnly.onSave({ ...structureOnly.initial, _unit_keys: originalKeysRef.current, num_groups: numGroups,
+      category_locks: locks,
       group_labels: groupLabels,
       expected_players: expectedPlayers,
       league_formats: leagueFormats,
@@ -9146,6 +9151,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       affects_ranking_points: affectsRankingPoints, ranking_scope: rankingScopeOverride, ranking_weight: rankingWeight, ladder_affects: ladderAffects,
       partner_mode: partnerMode, rotation_max_matches: rotationMaxMatches, rotation_avoid_pairs: rotationAvoidPairs, rotation_strength_mode: rotationStrengthMode,
     });
+    return true;
   };
 
   const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
@@ -9276,7 +9282,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         const meta = FORMAT_META[fmt];
                         const isSwiss = fmt === "swiss";
                         const collapsed = collapsedLeagues[key] ?? true;
-                        const poolGroup = structureOnly?.initial._pool_groups?.find((group: { slots: number[] }) => group.slots.includes(gn)) as { label: string; slots: number[] } | undefined;
+                        const poolGroup = structureOnly?.initial._pool_groups?.find((group: { slots: number[] }) => group.slots.includes(gn)) as { parent: string; label: string; slots: number[] } | undefined;
+                        const lockKey = categoryLockKey(originalKeysRef.current[gn - 1] ?? key, poolGroup?.parent);
+                        const categoryLocked = !!structureOnly && categoryLocks[lockKey] === true;
                         const poolIndex = poolGroup ? poolGroup.slots.indexOf(gn) + 1 : 0;
                         const identityLocked = !!structureOnly?.initial._identity_locked;
                         const displayCategory = gn - (structureOnly?.initial._pool_groups ?? []).reduce((n: number, group: { slots: number[] }) => n + group.slots.filter((slot) => slot < gn && slot !== group.slots[0]).length, 0);
@@ -9284,6 +9292,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                           <div key={gn} className={poolGroup ? "border-l-2 border-border pl-3" : ""} data-testid={poolGroup ? `structure-pool-${gn}` : undefined}>
                             {poolGroup && poolIndex === 1 && <header className="flex flex-wrap items-center gap-3 border-b border-border py-3" data-testid="structure-parent-category"><span className="text-xs font-semibold">Category {displayCategory}</span><h3 className="text-sm font-semibold">{poolGroup.label}</h3><Badge variant="secondary">{poolGroup.slots.length} pools</Badge><span className="text-xs text-muted-foreground">{poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0)} players</span></header>}
                           <div className={poolGroup ? "relative border-b border-border bg-background p-3" : "relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm"}>
+                            <fieldset disabled={categoryLocked} className="min-w-0 border-0 p-0" aria-label={`${poolGroup?.label ?? groupLabels[key] ?? `Category ${gn}`} settings`}>
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
                             <div className={cn("flex flex-wrap items-start justify-between gap-2", !collapsed && "mb-2")}>
                               <div className="flex-1 min-w-fit">
@@ -10553,6 +10562,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               </div>
                             </div>
                             )}
+                            </fieldset>
+                            {structureOnly && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+                              <span role="status" className="flex items-center gap-1 text-xs text-muted-foreground">{categoryLocked ? <><CategoryLockIcon className="h-3.5 w-3.5" />Locked</> : <><CategoryUnlockIcon className="h-3.5 w-3.5" />Editing</>}</span>
+                              <Button type="button" size="sm" variant={categoryLocked ? "outline" : "default"} className="h-8 gap-1.5 text-xs" aria-label={`${categoryLocked ? "Edit / unlock" : "Done & lock"} ${poolGroup?.label ?? groupLabels[key] ?? `Category ${gn}`}`} onClick={() => {
+                                const locks = setCategoryLocked(categoryLocks, lockKey, !categoryLocked);
+                                if (!saveOriginalStructure(locks, categoryLocked ? [] : poolGroup?.slots ?? [gn])) return;
+                                setCategoryLocks(locks);
+                                if (!categoryLocked) setCollapsedLeagues((m) => ({ ...m, ...Object.fromEntries((poolGroup?.slots ?? [gn]).map((slot) => [String(slot), true])) }));
+                                else setCollapsedLeagues((m) => ({ ...m, [key]: false }));
+                              }}>{categoryLocked ? <><CategoryUnlockIcon className="h-3.5 w-3.5" />Edit / unlock</> : <><CategoryLockIcon className="h-3.5 w-3.5" />Done & lock</>}</Button>
+                            </div>}
                           </div>
                           </div>
                         );
@@ -10789,7 +10809,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       )}
 
   </>;
-  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={saveOriginalStructure}>Save Structure</Button></div></div>;
+  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={() => saveOriginalStructure()}>Save Structure</Button></div></div>;
 
   // ── LIST VIEW ──
   if (!showWizard) {

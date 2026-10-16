@@ -1,38 +1,44 @@
 import { describe, it } from "vitest";
-import { writeFileSync } from "node:fs";
-import { jsPDF } from "jspdf";
+import { writeFileSync, readFileSync } from "node:fs";
 import { buildBarPoster } from "@/lib/bar/bar-poster";
-import clubLogoDataUrl from "@/assets/club-logo.png?inline";
-import brandLogoDataUrl from "@/assets/shub-logo-white.png?inline";
 
 const QR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8//8/AwMDEwMDAwMDAwAkBgMB/DXemwAAAABJRU5ErkJggg==";
+const dataUrl = (p: string) => `data:image/png;base64,${readFileSync(p).toString("base64")}`;
+const BRAND = dataUrl("src/assets/shub-logo-white.png");
+const CLUB = dataUrl("src/assets/club-logo.png");
 
 describe("temp poster render", () => {
-  it("reports what the inlined imports look like", () => {
-    console.log("BRAND:", typeof brandLogoDataUrl, "len", String(brandLogoDataUrl).length, "prefix", String(brandLogoDataUrl).slice(0, 40));
-    console.log("CLUB:", typeof clubLogoDataUrl, "len", String(clubLogoDataUrl).length, "prefix", String(clubLogoDataUrl).slice(0, 40));
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    try {
-      doc.addImage(String(brandLogoDataUrl), "PNG", 20, 20, 50, 13);
-      console.log("addImage OK");
-    } catch (e) {
-      console.log("addImage FAILED:", (e as Error).message);
-    }
-    writeFileSync("/tmp/browser/probe.pdf", Buffer.from(doc.output("arraybuffer")));
-
-    const withLogo = buildBarPoster({
-      clubName: "Uitsig Squash Club",
+  it("writes preview PDFs", () => {
+    const base = {
       url: "https://uit.squashhub.co.za/s/47iik6nb",
       qrDataUrl: QR,
-      logoDataUrl: clubLogoDataUrl,
+      logoDataUrl: CLUB,
       logoWidth: 512,
       logoHeight: 512,
-      venue: "bar",
+      brandLogoDataUrl: BRAND,
+      venue: "bar" as const,
       accountEnabled: true,
       cardOnlineEnabled: true,
       swipeEnabled: true,
       cashEnabled: true,
-    });
+    };
+    const withLogo = buildBarPoster({ ...base, clubName: "Uitsig Squash Club" });
     writeFileSync("/tmp/browser/poster-club-logo.pdf", Buffer.from(withLogo.output("arraybuffer")));
+
+    const longName = buildBarPoster({
+      ...base,
+      clubName: "A long squash club name for poster layout verification",
+      venue: "bar-shop",
+    });
+    writeFileSync("/tmp/browser/poster-long-name.pdf", Buffer.from(longName.output("arraybuffer")));
+
+    const noClubLogo = buildBarPoster({
+      ...base,
+      clubName: "Riverside Squash Club",
+      logoDataUrl: null,
+      logoWidth: undefined,
+      logoHeight: undefined,
+    });
+    writeFileSync("/tmp/browser/poster-no-club-logo.pdf", Buffer.from(noClubLogo.output("arraybuffer")));
   });
 });

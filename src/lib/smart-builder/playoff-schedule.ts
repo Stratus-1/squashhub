@@ -65,6 +65,27 @@ export async function schedulePlannedPlayoffGames(champId: string): Promise<Sche
   return report;
 }
 
+const roundKey = (name: string) => { const n = String(name).toLowerCase().replace(/[^a-z]/g, ""); return n.includes("quarter") ? "qf" : n.includes("semi") ? "sf" : n === "final" || n.endsWith("final") ? "final" : n; };
+const fullSession = (s: PlannedStage) => !!(s.schedule?.rule === "fixed" && s.schedule.date && s.schedule.timeFrom && s.schedule.timeTo && (s.schedule.courtIds ?? []).length);
+
+/** Pure: play-off sessions to fill, each listing the (draw group, stage id) pairs whose games go into it. */
+export function resolvePlayoffSessions(spec: TournamentSpec): Array<PlannedStage & { keys: Array<{ group: number; stageId: string }> }> {
+  const byRound = new Map<string, PlannedStage>();
+  for (const d of spec.divisions) for (const s of d.stages) if (s.order > 0 && fullSession(s) && !byRound.has(roundKey(s.name))) byRound.set(roundKey(s.name), s);
+  const out = new Map<string, PlannedStage & { keys: Array<{ group: number; stageId: string }> }>();
+  for (const d of spec.divisions) for (const s of d.stages) {
+    if (s.order <= 0 || s.schedule?.rule !== "fixed") continue;
+    const src = fullSession(s) ? s : byRound.get(roundKey(s.name));
+    if (!src) continue;
+    const sk = JSON.stringify([src.schedule.date, src.schedule.timeFrom, src.schedule.timeTo, src.schedule.courtIds]);
+    const e = out.get(sk) ?? { ...src, keys: [] };
+    const k = { group: Number(divisionGroup(spec, d)), stageId: s.id };
+    if (!e.keys.some((x) => x.group === k.group && x.stageId === k.stageId)) e.keys.push(k);
+    out.set(sk, e);
+  }
+  return [...out.values()];
+}
+
 async function scheduleSessionPlayoffs(champId: string): Promise<ScheduleReport> {
   await assertNotDiamondTournament(champId);
   const report: ScheduleReport = { booked: 0, unplaced: [] };
@@ -74,16 +95,17 @@ async function scheduleSessionPlayoffs(champId: string): Promise<ScheduleReport>
   const { data: t } = await fromExt("tournaments").select("builder_spec").eq("id", champId).maybeSingle();
   const spec = (t as any)?.builder_spec as TournamentSpec | null;
   if (!spec?.divisions?.length) return report;
-  // One entry per stage (stage ids repeat across draws) — all draws' games are slotted together.
-  const sessions = new Map<string, PlannedStage>();
-  for (const d of spec.divisions) for (const s of d.stages) if (s.order > 0 && s.schedule?.rule === "fixed" && s.schedule.date && s.schedule.timeFrom && s.schedule.timeTo && (s.schedule.courtIds ?? []).length && !sessions.has(s.id)) sessions.set(s.id, s);
-  if (!sessions.size) return report;
+  // Each draw's play-off stage takes its own planned session; when that stage has no full session
+  // (e.g. the men's semi-final saved as a different stage id than the shared semi-final row), it uses the
+  // session of the same round (Quarterfinal / Semifinal / Final) set on Stages & scheduling.
+  const sessionList = resolvePlayoffSessions(spec);
+  if (!sessionList.length) return report;
   const divs = await loadSlotDivisions(champId, spec);
   const groupOf = (id: string) => { const d = spec.divisions.find((x) => x.divisionId === id); return d ? divisionGroup(spec, d) : 99; };
-  const { data: rows } = await fromExt("club_champs_matches").select("id, stage_key, group_number, court_id, booking_id, status, player_a_member_id, player_b_member_id, bracket_position").eq("champ_id", champId).in("stage_key", [...sessions.keys()]);
-  for (const s of sessions.values()) {
+  const { data: rows } = await fromExt("club_champs_matches").select("id, stage_key, group_number, court_id, booking_id, status, player_a_member_id, player_b_member_id, bracket_position").eq("champ_id", champId).in("stage_key", [...new Set(sessionList.flatMap((x) => x.keys.map((k) => k.stageId)))]);
+  for (const s of sessionList) {
     // Games already given a court/booking (incl. organiser overrides) are never moved.
-    const open = ((rows ?? []) as any[]).filter((m) => m.stage_key === s.id && !m.court_id && !m.booking_id && m.player_a_member_id && m.player_b_member_id && !["completed", "forfeited", "walkover", "cancelled"].includes(m.status));
+    const open = ((rows ?? []) as any[]).filter((m) => s.keys.some((k) => k.stageId === m.stage_key && Number(k.group) === Number(m.group_number)) && !m.court_id && !m.booking_id && m.player_a_member_id && m.player_b_member_id && !["completed", "forfeited", "walkover", "cancelled"].includes(m.status));
     if (!open.length) continue;
     const plan = playoffSlotOrder(divs, s.schedule.slotOrder);
     if (plan.warnings.length) report.unplaced.push({ stage: s.name, reason: `Court order kept in draw order — ${plan.warnings.join("; ")}.` });

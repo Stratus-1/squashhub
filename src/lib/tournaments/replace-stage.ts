@@ -12,9 +12,24 @@ export type ReplacementChoice =
 
 const KO_NAME: Record<number, string> = { 2: "Final", 4: "Semi-finals & final", 8: "Quarterfinals, semi-finals & final", 16: "Last 16 to final" };
 
-/** Builds the new stage, keeping the old stage's id, order, discipline and schedule. */
-export function buildReplacementStage(old: PlannedStage, choice: ReplacementChoice, entrants: number): PlannedStage {
-  const base = { id: old.id, order: old.order, discipline: old.discipline, schedule: old.schedule, generation: old.generation ?? "owner_approval" } as const;
+/**
+ * The old stage's schedule, minus any day on or before `afterDate` (the last day of the stage it
+ * follows). A later stage may never be dated before the earlier stage is finished; when no valid day
+ * is left the games stay undated until the organiser picks play-off days.
+ */
+export function laterStageSchedule(old: PlannedStage["schedule"], afterDate?: string | null): PlannedStage["schedule"] {
+  if (!afterDate || !old) return old;
+  const cut = String(afterDate).slice(0, 10);
+  const ok = (d?: string | null) => !!d && String(d).slice(0, 10) > cut;
+  const roundDates = (old.roundDates ?? []).filter(ok);
+  const date = ok(old.date) ? old.date : roundDates[0] ?? null;
+  if (!date && !roundDates.length && old.rule === "fixed") return { rule: null };
+  return { ...old, date, ...(old.roundDates ? { roundDates } : {}) };
+}
+
+/** Builds the new stage, keeping the old stage's id, order and discipline; dates never precede `afterDate`. */
+export function buildReplacementStage(old: PlannedStage, choice: ReplacementChoice, entrants: number, afterDate?: string | null): PlannedStage {
+  const base = { id: old.id, order: old.order, discipline: old.discipline, schedule: laterStageSchedule(old.schedule, afterDate), generation: old.generation ?? "owner_approval" } as const;
   if (choice.kind === "knockout") {
     const q = choice.qualifiers;
     if (q < 2 || (q & (q - 1)) !== 0) throw new Error("Choose 2, 4, 8 or 16 qualifiers.");

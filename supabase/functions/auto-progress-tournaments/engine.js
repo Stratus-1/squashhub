@@ -981,12 +981,20 @@ function knockoutFirstRound(tid, d, st, seeded) {
     const pairs = st.paced.pairs ?? proposePairings(field, st.paced.count, st.paced.pairing).pairs.map(([a, b]) => [a.id, b.id]);
     return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, pacedRound: true, slot: i + 1, a, b }));
   }
-  const size = st.drawSize ?? nextPow2(seeded.length);
+  if (st.bottomBracket && st.drawSize) {
+    const n = st.drawSize;
+    if (seeded.filter(Boolean).length < n * 2)
+      throw new IntegrityError("top_n", `${st.name}: the bottom bracket needs ${n * 2} players.`);
+    return [0, 1].flatMap((bi) => bracketRows(tid, d, st, seeded.slice(bi * n, bi * n + n), n, bi + 1, bi * (n / 2)));
+  }
+  return bracketRows(tid, d, st, seeded, st.drawSize ?? nextPow2(seeded.length));
+}
+function bracketRows(tid, d, st, seeded, size, koPool, slotOffset = 0) {
   const order = bracketOrder(size);
   const at = (seed) => seeded[seed - 1] ?? null;
   const rows = [];
   for (let i = 0;i < order.length; i += 2) {
-    rows.push({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, slot: i / 2 + 1, a: at(order[i]), b: at(order[i + 1]) });
+    rows.push({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, ...koPool ? { koPool } : {}, slot: slotOffset + i / 2 + 1, a: at(order[i]), b: at(order[i + 1]) });
   }
   assertKnockoutShape(rows);
   return rows;
@@ -1040,7 +1048,12 @@ function confirmPlayoffs(tid, d, preview, opts) {
   return rows;
 }
 var unitPlayers = (u) => u.split("+");
-function stageTable(stageId, rows, seedOrder) {
+function stageTable(stageId, rows, seedOrder, swiss) {
+  if (swiss) {
+    const games = rows.filter((x) => x.stageId === stageId);
+    const ids = [...new Set([...seedOrder, ...games.flatMap((g) => [g.a, g.b]).filter(Boolean)])].filter((id) => games.some((g) => g.a === id || g.b === id));
+    return swissTable(ids, games.map((g) => ({ a: g.a, b: g.b, winner: g.a && !g.b ? g.a : g.winner ?? null, round: g.round ?? null })), swiss.tieBreaks ?? null).map((r) => ({ id: r.id, wins: r.wins }));
+  }
   const t = new Map;
   for (const f of rows.filter((x) => x.stageId === stageId)) {
     for (const u of [f.a, f.b])
@@ -1159,7 +1172,7 @@ function nextStageFixtures(tid, d, stageId, rows, opts) {
     throw new IntegrityError("needs_confirmation", "Owner must confirm before the next stage is created.");
   const seedOrder = d.entrants.map((e) => e.id);
   const earlier = d.stages.filter((s) => s.order < stage.order).map((s) => s.id);
-  const prevTable = stageTable(prev.id, div, seedOrder).map((x) => x.id);
+  const prevTable = stageTable(prev.id, div, seedOrder, prev.kind === "swiss" ? { tieBreaks: prev.tieBreaks } : undefined).map((x) => x.id);
   let ranked = prevTable;
   if (p.standings === "carry") {
     const pts = playerPoints(earlier, div);
@@ -6553,6 +6566,10 @@ function buildSwissProgression(input) {
   });
   const finalTable = swissTable(ids, gamesUpTo(totalRounds), tieBreaks);
   const cur = new Map(finalTable.map((t) => [t.id, t]));
+  const configuredRounds = Math.min(input.totalRounds ?? totalRounds, totalRounds);
+  const swissRounds = rounds.filter((rd) => rd.round <= configuredRounds);
+  const swissStageComplete = swissRounds.length > 0 && swissRounds.every((rd) => rd.complete);
+  const swissFinal = new Map(swissTable(ids, gamesUpTo(configuredRounds), tieBreaks).map((t) => [t.id, t.position]));
   const rows = ids.map((id, i) => ({
     id,
     name: names[id] ?? "Unknown player",
@@ -6570,9 +6587,10 @@ function buildSwissProgression(input) {
       return f.state === "awaiting_opponent" ? `v ${UNRESOLVED}` : `v ${opp}`;
     }),
     wins: cur.get(id)?.wins ?? 0,
-    current: cur.get(id)?.position ?? i + 1
+    current: cur.get(id)?.position ?? i + 1,
+    swissFinalPosition: swissStageComplete ? swissFinal.get(id) ?? null : null
   })).sort((x, y) => x.current - y.current);
-  return { format: input.format ?? "results_based", totalRounds, rounds, rows };
+  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows };
 }
 function gamesWonSummary(score) {
   if (!score)
@@ -6690,9 +6708,12 @@ function buildProposedSwissGrid(model, opts = {}) {
       next[rd.bye - 1] = cur[rd.bye - 1];
     occ.push(next);
   }
+  const savedGrid = new Map(buildSwissGrid(model).map((r) => [r.round, r]));
   return { issues: [], rounds: template.map((rd) => {
     if (rd.round === 1 && savedFirst?.created)
-      return savedFirst;
+      return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
+    const saved = (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
+    const savedIds = new Set(saved.flatMap((b) => b.rows.map((r) => r.id)).filter((x) => !!x));
     const into = occ[rd.round - 1];
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
@@ -6700,21 +6721,31 @@ function buildProposedSwissGrid(model, opts = {}) {
       const id = !bye && pos != null ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true } : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
-    const blocks = rd.pairs.map((p, pi) => {
+    const covered = (...ps) => ps.some((p) => {
+      const id = p != null ? into[p - 1] : null;
+      return !!id && savedIds.has(id);
+    });
+    const proposedBlocks = rd.pairs.flatMap((p, pi) => {
+      if (saved.length && covered(p.a, p.b))
+        return [];
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
       const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
       const slot = appliedBy ? { kind: "play_by", date: appliedBy } : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
       const withWhen = (when) => [{ ...pending(p.a), when }, { ...pending(p.b), when }];
       if (slot?.kind === "planned")
-        return { matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null };
+        return [{ matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null }];
       if (slot?.kind === "play_by")
-        return { matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date };
+        return [{ matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date }];
       if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason)))
-        return { matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null };
-      return { matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null };
+        return [{ matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null }];
+      return [{ matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null }];
     });
-    if (rd.bye != null)
-      blocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    if (rd.bye != null && !(saved.length && covered(rd.bye)))
+      proposedBlocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    const allSaved = saved.length > 0 && model.rows.every((r) => savedIds.has(r.id));
+    if (allSaved)
+      return { round: rd.round, created: true, blocks: saved };
+    const blocks = [...saved, ...proposedBlocks].sort((x, y) => (x.rows[0].pos ?? 999) - (y.rows[0].pos ?? 999));
     return { round: rd.round, created: false, blocks, schedule };
   }) };
 }

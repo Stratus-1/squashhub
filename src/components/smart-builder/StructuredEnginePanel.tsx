@@ -263,7 +263,11 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
             <Button disabled={!!busy || !regen} onClick={() => {
               const r = regen!; setRegen(null);
               run("regen", async () => {
-                const next = buildReplacementStage(r.stage, r.choice === "knockout" ? { kind: "knockout", qualifiers: r.qualifiers, bottomBracket: !!r.bottom && r.qualifiers * 2 <= r.players } : { kind: "pools", pools: r.pools }, r.players);
+                const dv = spec.divisions.find((x) => x.divisionId === r.div);
+                const gi = dv ? spec.divisions.indexOf(dv) + 1 : 0;
+                const prevSt = dv?.stages.find((x) => x.order === r.stage.order - 1);
+                const prevDates = matches.filter((m) => m.group_number === gi && m.stage_key === prevSt?.id && m.scheduled_date).map((m) => String(m.scheduled_date).slice(0, 10)).sort();
+                const next = buildReplacementStage(r.stage, r.choice === "knockout" ? { kind: "knockout", qualifiers: r.qualifiers, bottomBracket: !!r.bottom && r.qualifiers * 2 <= r.players } : { kind: "pools", pools: r.pools }, r.players, prevDates[prevDates.length - 1] ?? null);
                 const res = await replaceUnplayedStage(champId, r.div, next);
                 if (r.prevDone) {
                   await atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, r.div, next.id, { ownerConfirmed: true }));

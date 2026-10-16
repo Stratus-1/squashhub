@@ -301,13 +301,14 @@ export default function ClubAdmin() {
             <AlertDescription className="text-xs text-muted-foreground">
               Member messaging is simply on or off. A WhatsApp goes out when a reply is expected
               (tournament launches, invites, RSVPs) and an SMS when it is a one-way notice (next
-              round starting, make your booking, well done on your win). The sections below only
-              hold sender details and what each channel costs.
+              round starting, make your booking, well done on your win). The sections below hold
+              sender details, what each channel costs, and a switch to turn SMS off on its own if
+              you only want WhatsApp.
             </AlertDescription>
           </Alert>
           <MessagingCard clubId={club.id} />
           <WhatsAppBillingCard clubId={club.id} hideToggle />
-          <SmsMessagingCard clubId={club.id} hideToggle />
+          <SmsMessagingCard clubId={club.id} />
         </div>
       );
 

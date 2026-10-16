@@ -6,6 +6,18 @@ import { rowStages } from "@/lib/smart-builder/structure-rows";
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it.each([4, 5])("preserves chosen Monrad %i rounds rather than replacing with a recommendation", (rounds) => {
+    const a = base(), raw = originalStructureFromAnswers(a);
+    raw.league_formats["1"] = "monrad";
+    raw.expected_players["1"] = 12;
+    raw.monrad_rounds = { "1": rounds };
+    const b = answersFromOriginalStructure(a, raw);
+    expect(rowStages(b, "Men")[0].rounds).toBe(rounds);
+    expect(originalStructureFromAnswers(JSON.parse(JSON.stringify(b))).monrad_rounds["1"]).toBe(rounds);
+    expect(b.stages).toEqual(a.stages);
+    expect(b.days).toEqual(a.days);
+    expect(rowStages(b, "Men")[1]).toEqual(rowStages(a, "Men")[1]);
+  });
   it("keeps planned playoffs and follow-up format independent and local after reload", () => {
     const a = base();
     const raw = originalStructureFromAnswers(a);

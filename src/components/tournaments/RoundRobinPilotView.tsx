@@ -42,7 +42,7 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
           <FixtureCalendar events={calEvents} />
         </div>
       ) : (
-      <TournamentInteractiveViewer title={`${title} — ${matrixOnly ? "Rankings & results" : "pool matrix & order of play"}`} inlineHeight={matrixOnly ? 240 : 460} defaultFit="none">
+      <TournamentInteractiveViewer title={`${title} — ${matrixOnly ? "Rankings & results" : "pool matrix & order of play"}`} inlineHeight={matrixOnly ? 240 : 460} defaultFit="none" wheelZoom="direct">
         <div className="riverside-round-visuals space-y-4 bg-background p-3 text-xs text-foreground">
           <table className="border-collapse" data-testid="rr-matrix">
             <thead>

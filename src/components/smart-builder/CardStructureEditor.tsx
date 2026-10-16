@@ -135,7 +135,7 @@ export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: 
       </div>}
     </article>;
   }
-  if (clubId) return <ClubChampsTab clubId={clubId} structureOnly={{ initial: originalStructureFromAnswers(answers), onDirtyChange, onSave: (raw) => { onSave(answersFromOriginalStructure(answers, raw)); onDirtyChange?.(false); } }} />;
+  if (clubId) return <ClubChampsTab clubId={clubId} structureOnly={{ initial: originalStructureFromAnswers(answers), onDirtyChange, onLocksChange: (locks) => onSave({ ...answers, originalStructure: { ...answers.originalStructure, category_locks: locks } }), onSave: (raw) => { onSave(answersFromOriginalStructure(answers, raw)); onDirtyChange?.(false); } }} />;
   return <div className="space-y-3 text-xs" data-testid="card-structure-editor">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">Tournament structure</h3><Button size="sm" variant="outline" className="h-7 text-xs" aria-pressed={advice} onClick={() => setAdvice(!advice)}>Help me choose</Button></div>
     <details open className="border-y border-border py-3"><summary className="mb-2 cursor-pointer font-semibold">Default match rules</summary><RuleFields value={draft.scoring ?? defaults} label="Default" onChange={(p) => update((a) => ({ ...a, scoring: { ...(a.scoring ?? defaults), ...p } }))} />{!draft.scoring && <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={() => update((a) => ({ ...a, scoring: { ...defaults } }))}>Use PAR 11 · Best of 5 · Win by 2</Button>}</details>

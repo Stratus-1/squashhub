@@ -1371,6 +1371,17 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const koCode = (l?: string | null) => { const n = String(l ?? "").toLowerCase().replace(/[^a-z]/g, ""); return n.startsWith("quarterfinal") ? 1 : n.startsWith("semifinal") ? 2 : n === "final" ? 3 : null; };
       const koLabels = [...new Set(laterMatches.map((m: any) => koCode(m.stage_label)).filter((x: any) => x != null))].sort() as number[];
       const koRound = (m: any) => { const c = koCode(m.stage_label); return c != null && koLabels.length ? koLabels.indexOf(c) + 1 : m.round_number ?? 1; };
+      // "Bottom half too": the first play-off round has twice the games of one bracket (e.g. 8 quarterfinals).
+      // Each round's games are then split top/bottom by draw order, so each half ends in its own final winner.
+      const koFirstCode = Math.min(...laterMatches.map((m: any) => koCode(m.stage_label) ?? 99));
+      const koFirstCount = laterMatches.filter((m: any) => koCode(m.stage_label) === koFirstCode).length;
+      const koSplit = laterIsKO && koFirstCode <= 3 && koFirstCount > 2 ** (3 - koFirstCode);
+      const koHalf = (m: any): { bracket: number | null; slot: number | null } => {
+        if (!koSplit) return { bracket: m.pool_number ?? null, slot: m.bracket_position ?? null };
+        const same = laterMatches.filter((x: any) => koCode(x.stage_label) === koCode(m.stage_label)).sort((x: any, y: any) => (x.bracket_position ?? 0) - (y.bracket_position ?? 0));
+        const i = same.findIndex((x: any) => x.id === m.id), half = Math.max(1, Math.ceil(same.length / 2));
+        return { bracket: i < half ? 1 : 2, slot: i < half ? i + 1 : i - half + 1 };
+      };
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
@@ -1398,7 +1409,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · ${laterLabel} — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
               <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} names={names}
                 seedOf={(id) => { const i = model.rows.findIndex((r: any) => r.id === id); return i < 0 ? null : i + 1; }}
-                matches={laterMatches.map((m: any) => ({ id: m.id, round: koRound(m), slot: m.bracket_position ?? null, bracket: m.pool_number ?? null, a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
+                matches={laterMatches.map((m: any) => ({ id: m.id, round: koRound(m), ...koHalf(m), a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
             </TournamentInteractiveViewer>
           </div>
         ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;

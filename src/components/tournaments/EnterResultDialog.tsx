@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fromExt } from "@/lib/supabase-ext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { rpcExt } from "@/lib/supabase-ext";
@@ -57,9 +58,25 @@ export function EnterResultDialog({
   onSaved,
 }: Props) {
   const qc = useQueryClient();
-  const bo = bestOf && bestOf > 0 ? bestOf : 5;
-  const target = pointsTarget && pointsTarget > 0 ? pointsTarget : 11;
-  const isBells = scoringMode === "time_capped_points";
+  // The category's own scoring from the tournament structure wins over the tournament-wide default.
+  const champId = (match as any)?.champ_id as string | undefined;
+  const group = (match as any)?.group_number != null ? String((match as any).group_number) : null;
+  const { data: perCat } = useQuery({
+    queryKey: ["champ-category-scoring", champId],
+    enabled: open && !!champId,
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("league_points_per_game, league_best_of, league_scoring_modes").eq("id", champId!).maybeSingle();
+      return (data ?? null) as any;
+    },
+  });
+  const catBo = group ? Number(perCat?.league_best_of?.[group]) || null : null;
+  const catPts = group ? Number(perCat?.league_points_per_game?.[group]) || null : null;
+  const catMode = group ? perCat?.league_scoring_modes?.[group] ?? null : null;
+  const effBo = catBo ?? bestOf;
+  const effPts = catPts ?? pointsTarget;
+  const bo = effBo && effBo > 0 ? effBo : 5;
+  const target = effPts && effPts > 0 ? effPts : 11;
+  const isBells = (catMode ?? scoringMode) === "time_capped_points";
   const [winner, setWinner] = useState<Side>("a");
   const [games, setGames] = useState<GameScore[]>(() => defaultGameScores("a", gamesToWin(bo), 0, target));
   const [bellsA, setBellsA] = useState<string>("");

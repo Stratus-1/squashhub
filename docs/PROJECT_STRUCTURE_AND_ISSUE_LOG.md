@@ -3257,3 +3257,6 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Fix: rebuilt + redeployed the bundle (`bun scripts/build-auto-progress.ts`) — rebuild it whenever `src/lib/tournaments/` changes. `buildReplacementStage` now drops dates on/before the previous stage's last day (`laterStageSchedule`), leaving games undated until play-off days are chosen. Knockout draw seed labels derive from the draw position. Test: `src/test/replace-stage-dates.test.ts`.
 
 - 2026-10-16: Play-off chain stages (kind "mapped") rendered as a round-robin grid in Progression & Log; ClubChampsView now draws them as the knockout bracket (QF/SF/Final by stage label), numbered by final Swiss position. Stages & scheduling now syncs play-off stages from structure Planned playoffs.
+
+## 2026-10-16 Uitsig categories renumbered by setup re-save
+- Combining Mens A 1/2 into one category in setup answers, then saving, renumbered live categories 8→7 (labels, scoring, league links, registrations division_choices shifted). Restored from tournament_snapshots backup. Fix: persistStepTournament refuses to change category count once games exist (assertDivisionCountLocked).

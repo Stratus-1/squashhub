@@ -55,6 +55,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
                 <tr className="text-left text-muted-foreground">
                   <th className="px-2 py-1">Pos</th><th className="px-2">Move</th><th className="px-2">Player</th><th className="px-2">Seed</th><th className="px-2">Wins</th>
                   {roundNums.map((r) => <th key={r} className="px-2 whitespace-nowrap">Round {r}</th>)}
+                  <th className="px-2 whitespace-nowrap">Final standing</th>
                 </tr>
               </thead>
               <tbody>
@@ -72,6 +73,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
                           {c}{row.positions[i] != null ? <span className="text-muted-foreground"> · {row.positions[i]}</span> : null}
                         </td>
                       ))}
+                      <td data-testid={`swiss-final-standing-${row.id}`} className={allComplete ? "px-2 whitespace-nowrap bg-success/10 font-semibold" : "px-2 whitespace-nowrap text-muted-foreground"}>{allComplete ? row.current : "—"}</td>
                     </tr>
                   );
                 })}

@@ -3247,3 +3247,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ### 16 Oct 2026 — Swiss Positional Preview showed rounds 2+ as "projected"
 - Cause: buildProposedSwissGrid copied only saved Round 1; later rounds always used template projections.
 - Fix: saved/decided games in any round are shown factually (players, W/L, score, time/court; block.saved=true); a fully saved round is marked created ("Real games · results as played"); partially saved rounds keep proposed slots only for undecided players. Tests: src/test/swiss-proposed-grid.test.ts.
+
+### 16 Oct 2026 — Changing a later stage after the draw (assasasa RR -> knockout)
+- Cause: Edit setup only saves wizard answers; the engine spec is append-only, so a generated Stage 2 could not change.
+- Fix: server function replace_unplayed_structured_stage (manager-only, last stage only, refuses played/started/booked games, audited) + "Regenerate Stage 2" on Run stages (StructuredEnginePanel). assasasa: 30 unplayed RR games replaced by 4 quarterfinals from final Swiss standings. Open: Edit setup still does not push stage-type changes to the engine.

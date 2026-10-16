@@ -14,7 +14,8 @@ import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import {
   atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
-import { progressionOf } from "@/lib/tournaments/contract";
+import { progressionOf, type PlannedStage } from "@/lib/tournaments/contract";
+import { buildReplacementStage, replaceUnplayedStage } from "@/lib/tournaments/replace-stage";
 import { stageTable } from "@/lib/tournaments/engine-service";
 import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
 import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
@@ -39,6 +40,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
     try { await assertNotDiamondTournament(champId); await fn(); toast.success(ok); refresh(); } catch (e: any) { toast.error(e.message); } finally { setBusy(null); }
   };
   const [pairing, setPairing] = useState<{ div: string; stage: string; players: string[]; pairs: string[][]; pick: string | null } | null>(null);
+  const [regen, setRegen] = useState<{ div: string; stage: PlannedStage; players: number; prevDone: boolean; games: number; choice: "knockout" | "pools"; qualifiers: number; pools: number } | null>(null);
   const startStage = (div: string, stage: string, pairs?: string[][]) => run(`st${stage}`, () =>
     atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, div, stage, { ownerConfirmed: true, pairs })).then(() => schedulePlannedPlayoffGames(champId)), "Next stage created");
   const unitName = (u: string | null) => (u ? u.split("+").map(nameOf).join(" & ") : "TBD");
@@ -186,6 +188,81 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
           </div>
         );
       }))}
+      {matches.length > 0 && spec.divisions.map((d, di) => {
+        // Regenerate the LAST later stage while none of its games are played (server re-checks everything).
+        const last = [...d.stages].sort((a, b) => b.order - a.order)[0];
+        if (!last || last.order === 0) return null;
+        const gi = di + 1;
+        const mine = matches.filter((m) => m.group_number === gi && m.stage_key === last.id);
+        const played = mine.some((m) => m.winner_member_id || ["completed", "confirmed", "in_progress", "walkover", "forfeit"].includes(String(m.status ?? "").toLowerCase()));
+        if (played) return null;
+        const prev = d.stages.find((x) => x.order === last.order - 1);
+        const prevRows = matches.filter((m) => m.group_number === gi && m.stage_key === prev?.id);
+        const players = new Set(prevRows.flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean)).size;
+        const prevDone = prevRows.length > 0 && prevRows.every((m) => m.winner_member_id || ["completed", "walkover", "bye"].includes(String(m.status ?? "").toLowerCase()));
+        return (
+          <div key={`rs-${d.divisionId}`} className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2" data-testid="regenerate-stage">
+            <span className="text-muted-foreground">{d.label} · {last.name}{mine.length ? ` · ${mine.length} unplayed game(s)` : ""}</span>
+            <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setRegen({ div: d.divisionId, stage: last, players, prevDone, games: mine.length, choice: last.kind === "knockout" ? "pools" : "knockout", qualifiers: players >= 8 ? 8 : 4, pools: 2 })}>
+              Regenerate {last.order === 1 ? "Stage 2" : "this stage"}
+            </Button>
+          </div>
+        );
+      })}
+      <Dialog open={!!regen} onOpenChange={(o) => !o && setRegen(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Regenerate {regen?.stage.name}</DialogTitle></DialogHeader>
+          {regen && (
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                {regen.games ? `The ${regen.games} unplayed game(s) of this stage will be removed. ` : ""}Earlier stages and all results stay exactly as they are. Nothing is sent to players.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant={regen.choice === "knockout" ? "default" : "outline"} onClick={() => setRegen({ ...regen, choice: "knockout" })}>Knockout play-offs</Button>
+                <Button size="sm" variant={regen.choice === "pools" ? "default" : "outline"} onClick={() => setRegen({ ...regen, choice: "pools" })}>Round robin</Button>
+              </div>
+              {regen.choice === "knockout" ? (
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">How many qualify from the final standings?</div>
+                  <div className="flex gap-2">
+                    {[2, 4, 8, 16].filter((q) => q <= regen.players).map((q) => (
+                      <Button key={q} size="sm" variant={regen.qualifiers === q ? "default" : "outline"} onClick={() => setRegen({ ...regen, qualifiers: q })}>
+                        {q === 2 ? "Top 2 · Final" : q === 4 ? "Top 4 · Semis" : q === 8 ? "Top 8 · Quarters" : "Top 16"}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Seeded from the final standings: 1 v {regen.qualifiers}, 2 v {regen.qualifiers - 1} … winners go through to the next round.</div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Number of pools</div>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4].filter((p) => p * 2 <= regen.players).map((p) => (
+                      <Button key={p} size="sm" variant={regen.pools === p ? "default" : "outline"} onClick={() => setRegen({ ...regen, pools: p })}>{p}</Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">{regen.prevDone ? "The previous stage is finished, so the new games are created straight away." : "The new games are created once the previous stage is finished."}</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRegen(null)}>Cancel</Button>
+            <Button disabled={!!busy || !regen} onClick={() => {
+              const r = regen!; setRegen(null);
+              run("regen", async () => {
+                const next = buildReplacementStage(r.stage, r.choice === "knockout" ? { kind: "knockout", qualifiers: r.qualifiers } : { kind: "pools", pools: r.pools }, r.players);
+                const res = await replaceUnplayedStage(champId, r.div, next);
+                if (r.prevDone) {
+                  await atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, r.div, next.id, { ownerConfirmed: true }));
+                  await schedulePlannedPlayoffGames(champId);
+                }
+                toast.message(`Removed ${res.removed_games} unplayed game(s).`);
+              }, r.prevDone ? "Stage regenerated" : "Stage changed");
+            }}>Regenerate</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!pairing} onOpenChange={(o) => !o && setPairing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Set the doubles pairs</DialogTitle></DialogHeader>

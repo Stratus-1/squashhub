@@ -63,3 +63,5 @@
 - [x] Swiss grid: Final standing card on the right after the last round (Projected until the last round completes, then Locked); Stage 2 round robin renders in the Uitsig pool-matrix format per pool, seeded from Swiss standings (16 Oct)
 
 - [x] Swiss Positional Preview: show saved/decided games in rounds 2+ as real (players, results, scores), not projected
+- [ ] Editing a later stage after the draw must save (assasasa Stage 2 Pools->Knockout change was lost)
+- [x] "Regenerate Stage 2" button: remove unplayed later-stage games and rebuild from current structure + final standings

@@ -49,3 +49,37 @@ describe("Riverside optional classic standings", () => {
     expect(cal.textContent).toContain("Proposed slot");
   });
 });
+
+describe("Final standing column", () => {
+  const fullModel = () => buildSwissProgression({ seedOrder: ["p1","p2","p3","p4"], names: {p1:"Ann",p2:"Ben",p3:"Cid",p4:"Dee"}, totalRounds: 2, matches: [
+    {id:"m1",round:1,a:"p1",b:"p2",winner:"p1",status:"completed",score:"3-0"},
+    {id:"m2",round:1,a:"p3",b:"p4",winner:"p3",status:"completed",score:"3-0"},
+    {id:"m3",round:2,a:"p1",b:"p3",winner:"p1",status:"completed",score:"3-1"},
+    {id:"m4",round:2,a:"p2",b:"p4",winner:"p2",status:"completed",score:"3-1"},
+  ]});
+  it("shows dashes until every round is complete, then locked final positions", () => {
+    const partial = makeModel(); // only round 1 of 3 played
+    const { unmount } = render(<SwissCurrentPositionsTable model={partial} />);
+    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("Final standing");
+    expect(screen.getByTestId("swiss-final-standing-p1").textContent).toBe("—");
+    unmount();
+    render(<SwissCurrentPositionsTable model={fullModel()} />);
+    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("Final standings");
+    expect(screen.getByTestId("swiss-final-standing-p1").textContent).toBe("1");
+    expect(screen.getByTestId("swiss-final-standing-p4").textContent).toBe("4");
+  });
+});
+
+describe("Final standing with a follow-up stage", () => {
+  it("locks once the Swiss rounds are done, even while later stage games are unplayed", () => {
+    const m = buildSwissProgression({ seedOrder: ["p1","p2","p3","p4"], names: {p1:"Ann",p2:"Ben",p3:"Cid",p4:"Dee"}, totalRounds: 2, matches: [
+      {id:"m1",round:1,a:"p1",b:"p2",winner:"p1",status:"completed",score:"3-0"},
+      {id:"m2",round:1,a:"p3",b:"p4",winner:"p3",status:"completed",score:"3-0"},
+      {id:"m3",round:2,a:"p1",b:"p3",winner:"p1",status:"completed",score:"3-1"},
+      {id:"m4",round:2,a:"p2",b:"p4",winner:"p2",status:"completed",score:"3-1"},
+      {id:"m5",round:3,a:"p1",b:"p4",winner:null,status:"scheduled"}, // follow-up stage, unplayed
+    ]});
+    render(<SwissCurrentPositionsTable model={m} />);
+    expect(screen.getByTestId("swiss-final-standing-p1").textContent).toBe("1");
+  });
+});

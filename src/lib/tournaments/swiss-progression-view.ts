@@ -42,9 +42,15 @@ export interface ProgressionRow {
   /** Per round: "W v Name", "L v Name", "Bye", "v Name" (not played yet) or "TBD". */
   cells: string[];
   wins: number; current: number;
+  /** Position from the Swiss stage's own rounds only (1..configuredRounds); null when those rounds aren't all complete. */
+  swissFinalPosition?: number | null;
 }
 export interface SwissProgressionModel {
   format: SwissFormatKind; totalRounds: number; rounds: ProgressionRound[]; rows: ProgressionRow[];
+  /** Configured Swiss round count (excludes later follow-up stage games that share the round axis). */
+  configuredRounds: number;
+  /** True when every Swiss-stage round (1..configuredRounds) is complete. */
+  swissStageComplete: boolean;
 }
 
 const UNRESOLVED = "To be decided";
@@ -89,6 +95,11 @@ export function buildSwissProgression(input: {
   });
   const finalTable = swissTable(ids, gamesUpTo(totalRounds), tieBreaks);
   const cur = new Map(finalTable.map((t) => [t.id, t]));
+  // Swiss-stage-only final standing: configured rounds, ignoring follow-up stage games that share the round axis.
+  const configuredRounds = Math.min(input.totalRounds ?? totalRounds, totalRounds);
+  const swissRounds = rounds.filter((rd) => rd.round <= configuredRounds);
+  const swissStageComplete = swissRounds.length > 0 && swissRounds.every((rd) => rd.complete);
+  const swissFinal = new Map(swissTable(ids, gamesUpTo(configuredRounds), tieBreaks).map((t) => [t.id, t.position]));
 
   const rows: ProgressionRow[] = ids.map((id, i) => ({
     id, name: names[id] ?? "Unknown player", seed: i + 1,
@@ -102,9 +113,10 @@ export function buildSwissProgression(input: {
       return f.state === "awaiting_opponent" ? `v ${UNRESOLVED}` : `v ${opp}`;
     }),
     wins: cur.get(id)?.wins ?? 0, current: cur.get(id)?.position ?? i + 1,
+    swissFinalPosition: swissStageComplete ? swissFinal.get(id) ?? null : null,
   })).sort((x, y) => x.current - y.current);
 
-  return { format: input.format ?? "results_based", totalRounds, rounds, rows };
+  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows };
 }
 
 /** Movement between the two latest rounds with results: positive = moved up. */

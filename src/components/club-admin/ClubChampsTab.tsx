@@ -101,6 +101,7 @@ import {
   poolNoun,
   poolSelectorLabel,
   poolOptions,
+  poolOptionsFor,
   sectionsFromPools,
   validateDivisions,
   type DivisionSource,
@@ -9420,7 +9421,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     format that uses pools. */}
                                 {formatUsesPools(fmt) && (() => {
                                   const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
-                                  const pools = poolsForDivision(gn);
+                                  const rawPools = poolsForDivision(gn);
+                                  const pools = fmt === "cross_league" ? Math.max(2, rawPools) : rawPools;
                                   const suggested = suggestSectionCount(entrants);
                                   const perPool = pools > 0 ? Math.ceil(entrants / pools) : 0;
                                   return (
@@ -9429,7 +9431,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         label={fmt === "knockout" ? "Knockout structure" : "Pools"}
                                         value={String(pools)}
                                         color="violet"
-                                        options={poolOptions(pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
+                                        options={poolOptionsFor(fmt, pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
                                         onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
                                       />
                                       <p className="text-[11px] text-muted-foreground">

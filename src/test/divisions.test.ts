@@ -8,6 +8,7 @@ import {
   formatUsesPools,
   poolLabel,
   poolOptions,
+  poolOptionsFor,
   isEligibleForDivision,
   planAllLeaguesExpansion,
   describeDivisionSource,
@@ -276,10 +277,19 @@ describe("single pool selector", () => {
   it("only offers a pool selector for formats that use pools", () => {
     expect(formatUsesPools("knockout")).toBe(true);
     expect(formatUsesPools("single_round_robin")).toBe(true);
-    expect(formatUsesPools("swiss")).toBe(true);
+    expect(formatUsesPools("swiss")).toBe(false);
+    expect(formatUsesPools("monrad")).toBe(false);
     expect(formatUsesPools("cross_league")).toBe(true);
     expect(formatUsesPools("groups_playoffs" as any)).toBe(false);
     expect(formatUsesPools(null)).toBe(false);
+  });
+
+  it("offers per-format pool choices", () => {
+    expect(poolOptionsFor("knockout", 1)).toEqual([1, 2, 3, 4, 5, 6, 8]);
+    expect(poolOptionsFor("single_round_robin", 2)).toEqual([1, 2, 3, 4, 5, 6, 8]);
+    expect(poolOptionsFor("cross_league", 2)).toEqual([2, 4, 6]);
+    expect(poolOptionsFor("cross_league", 1)).toEqual([2, 4, 6]);
+    expect(poolOptionsFor("cross_league", 6)).toEqual([2, 4, 6]);
   });
 
   it("labels 1 as a draw and 2+ as pools", () => {

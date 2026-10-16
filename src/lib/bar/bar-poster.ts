@@ -25,6 +25,8 @@ const NAVY: [number, number, number] = [30, 58, 95];
 const AMBER: [number, number, number] = [217, 154, 38];
 const INK: [number, number, number] = [33, 37, 41];
 const MUTED: [number, number, number] = [100, 108, 118];
+/** SquashHub brand mark (white lettering + icon) as shipped in src/assets. */
+const BRAND_LOGO_PX = { w: 1920, h: 496 };
 
 export function barPosterPaymentMethods(o: Pick<BarPosterOptions, "accountEnabled" | "cardOnlineEnabled" | "swipeEnabled" | "cashEnabled">): string[] {
   return [

@@ -255,7 +255,7 @@ interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */
   clubId: string;
   /** Reuse only the structure screen; all saving is delegated to a local draft callback. */
-  structureOnly?: { initial: OriginalStructure; onSave: (value: OriginalStructure) => void; onDirtyChange?: (dirty: boolean) => void; onLocksChange?: (locks: CategoryLocks) => void };
+  structureOnly?: { initial: OriginalStructure; onSave: (value: OriginalStructure) => void; onDirtyChange?: (dirty: boolean) => void };
   /**
    * Owning body of the events managed here. Omitted at club level (the club's own
    * organisation is used). Set for association / federation tournament planning.
@@ -9082,10 +9082,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // This is a mount-only local snapshot, never a hosted tournament load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structureOnly]);
-  const saveOriginalStructure = (locks = categoryLocks) => {
+  const saveOriginalStructure = (locks = categoryLocks, validateSlots?: number[]) => {
     if (!structureOnly) return;
     const finalMonradRounds = { ...monradRounds };
     for (let i = 1; i <= numGroups; i++) {
+      if (validateSlots && !validateSlots.includes(i)) continue;
       const key = String(i);
       if (!Number.isInteger(expectedPlayers[key]) || expectedPlayers[key] < 1) {
         toast.error(`Add expected ${leagueMatchTypes[key] === "doubles" ? "pairs" : "players"} for Category ${i} (a whole number greater than zero).`);
@@ -10566,9 +10567,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                               <span role="status" className="flex items-center gap-1 text-xs text-muted-foreground">{categoryLocked ? <><CategoryLockIcon className="h-3.5 w-3.5" />Locked</> : <><CategoryUnlockIcon className="h-3.5 w-3.5" />Editing</>}</span>
                               <Button type="button" size="sm" variant={categoryLocked ? "outline" : "default"} className="h-8 gap-1.5 text-xs" aria-label={`${categoryLocked ? "Edit / unlock" : "Done & lock"} ${poolGroup?.label ?? groupLabels[key] ?? `Category ${gn}`}`} onClick={() => {
                                 const locks = setCategoryLocked(categoryLocks, lockKey, !categoryLocked);
-                                if (!categoryLocked && !saveOriginalStructure(locks)) return;
+                                if (!saveOriginalStructure(locks, categoryLocked ? [] : poolGroup?.slots ?? [gn])) return;
                                 setCategoryLocks(locks);
-                                if (categoryLocked) structureOnly.onLocksChange?.(locks);
                                 if (!categoryLocked) setCollapsedLeagues((m) => ({ ...m, ...Object.fromEntries((poolGroup?.slots ?? [gn]).map((slot) => [String(slot), true])) }));
                                 else setCollapsedLeagues((m) => ({ ...m, [key]: false }));
                               }}>{categoryLocked ? <><CategoryUnlockIcon className="h-3.5 w-3.5" />Edit / unlock</> : <><CategoryLockIcon className="h-3.5 w-3.5" />Done & lock</>}</Button>

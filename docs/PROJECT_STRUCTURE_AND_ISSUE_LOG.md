@@ -3166,3 +3166,6 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ### 2026-10-15 — Approved Riverside live structure planning tests
 - Removed the hostname restriction from the replacement card/review gate only. Riverside new drafts now qualify on production, club subdomains and preview; other clubs and existing tournaments remain excluded. The create/handover block remains unchanged; no backend data, fixtures, bookings, results, payments or messages changed.
 - Extended regression tests to production and Riverside club hosts, existing tournament exclusions and Uitsig exclusions. Publication requested only after focused checks and security review.
+
+### 2026-10-16 — Structure category label and example
+- Renamed structure card badges and the add-format prompt from League to Category; added the owner's separate Men's Singles A/B category example above the cards. Presentation only; no saved settings or live records changed.

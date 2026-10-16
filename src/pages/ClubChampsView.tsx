@@ -1276,6 +1276,24 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             });
             return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar />;
           })}
+          {(() => {
+            // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
+            const ko = (matches as any[]).filter((m: any) => m.group_number === gn && m.stage === "ko");
+            if (!ko.length) return null;
+            const koNames: Record<string, string> = {};
+            for (let pn = 1; pn <= Math.max(1, pc); pn++) for (const r of getGroupStandings(gn, pc > 1 ? pn : null) as any[]) if (r.club_member_id) koNames[r.club_member_id] = r.name;
+            ko.forEach((m: any) => { if (m.player_a_member_id && m.player_a?.name) koNames[m.player_a_member_id] ??= m.player_a.name; if (m.player_b_member_id && m.player_b?.name) koNames[m.player_b_member_id] ??= m.player_b.name; });
+            const order = [...new Set(ko.map((m: any) => m.stage_label ?? "Play-offs"))];
+            return (
+              <div className="mt-6 space-y-2" data-testid={`pool-playoffs-${gn}`}>
+                <div className="text-xs text-muted-foreground">Play-offs — from the final pool standings. Winners move on until the final.</div>
+                <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · Play-offs — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
+                  <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · Play-offs`} names={koNames} seedOf={() => null}
+                    matches={ko.map((m: any) => ({ id: m.id, round: m.stage_label ? order.indexOf(m.stage_label) + 1 : (m.round_number ?? 1), slot: m.bracket_position ?? null, bracket: null, a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
+                </TournamentInteractiveViewer>
+              </div>
+            );
+          })()}
         </div>
       </SwissPilotBoundary>
     );

@@ -9,7 +9,7 @@
 import { inferCategory, isPlayerEligibleForCategory, type CompetitionCategory } from "@/lib/leagues/category";
 
 export interface PlacementUnit { key: string; base: string; categoryType?: CompetitionCategory | null }
-export interface PlacementElig { mode: string; leagueIds: string[] }
+export interface PlacementElig { mode: string; leagueIds: string[]; alsoEveryone?: boolean }
 
 export function placeByLeague(args: {
   memberId: string;
@@ -27,8 +27,18 @@ export function placeByLeague(args: {
     return cat === "mens" && (singleGender?.toLowerCase().startsWith("f") ?? false) ? units[0].key : "";
   }
   const mine = new Set(leaguesByMember.get(memberId) ?? []);
-  if (mine.size === 0) return "";
   const gender = genderByMember.get(memberId) ?? null;
+  const catOf0 = (u: PlacementUnit) => u.categoryType ?? inferCategory(u.base);
+  // No league match: place into the one category of the player's own gender that is
+  // open to anyone (not limited to specific leagues), e.g. a lady into Ladies.
+  const openGenderFit = (): string => {
+    const g = String(gender ?? "").toLowerCase();
+    const want = /^(f|female|ladies|lady|women|woman)$/.test(g) ? "ladies" : /^(m|male|men|man|mens)$/.test(g) ? "mens" : null;
+    if (!want) return "";
+    const open = units.filter((u) => { const e = eligOf(u.key); return catOf0(u) === want && (e.mode !== "leagues" || e.alsoEveryone || e.leagueIds.length === 0); });
+    return open.length === 1 ? open[0].key : "";
+  };
+  if (mine.size === 0) return openGenderFit();
   const leagueHits = units.filter((u) => {
     const e = eligOf(u.key);
     return e.mode === "leagues" && e.leagueIds.some((id) => mine.has(id));
@@ -45,5 +55,6 @@ export function placeByLeague(args: {
   // (ladies enter men's leagues at several clubs). Men never fall back into ladies.
   const female = gender?.toLowerCase().startsWith("f") ?? false;
   const fallback = female ? leagueHits.filter((u) => catOf(u) === "mens") : [];
-  return fallback.length === 1 ? fallback[0].key : "";
+  if (fallback.length === 1) return fallback[0].key;
+  return leagueHits.length === 0 ? openGenderFit() : "";
 }

@@ -1720,6 +1720,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     toast.success("Division duplicated — rename it and pick who plays in it");
   };
 
+  // Follow-up stage = the SAME category again (same players/rules) with a new
+  // format, running after this one. Reuses divisionFollows/divisionSeedSource
+  // (the single ordering authority) and moves planned playoffs to the last stage.
+  const hasFollowerStage = (gn: number) =>
+    Array.from({ length: numGroups || 0 }, (_, i) => i + 1).some((n) => n !== gn && followsDivision(divisionFollows, n) === gn);
+  const addFollowUpStageAt = (gn: number, format: string) => {
+    const fromKey = String(gn);
+    const existing = Array.from({ length: numGroups || 0 }, (_, i) => i + 1)
+      .find((n) => n !== gn && followsDivision(divisionFollows, n) === gn);
+    const fmt: PerLeagueFormat = format === "round_robin" ? "single_round_robin" : (format as PerLeagueFormat);
+    const to = existing ? String(existing) : String((numGroups || 0) + 1);
+    if (!existing) {
+      if (structureOnly) originalKeysRef.current = [...originalKeysRef.current, ""];
+      const copy = <T,>(setter: (fn: (m: Record<string, T>) => Record<string, T>) => void) =>
+        setter((m) => (m[fromKey] === undefined ? m : { ...m, [to]: m[fromKey] }));
+      setNumGroups((n) => (n || 0) + 1);
+      setUsePerLeagueFormats(true);
+      [setLeagueSections, setSwissPools, setGroupDurations, setGroupBreakMinutes, setDivisionPairing, setExpectedPlayers,
+        setLeagueGenders, setLeagueMatchTypes, setLeagueScoringModes, setLeaguePointsPerGame, setLeagueBestOf,
+        setLeagueWinConditions, setLeagueSources].forEach((s) => copy(s as any));
+      setLeaguePlannedPlayoffRounds((m) => ({ ...m, [to]: m[fromKey] ?? [], [fromKey]: [] }));
+      setGroupLabels((m) => ({ ...m, [to]: `${(m[fromKey] || `Category ${gn}`).trim()} · Stage 2` }));
+      setDivisionFollows((m) => ({ ...m, [to]: gn }));
+      setDivisionSeedSource((m) => ({ ...m, [to]: "previous" }));
+      setLeagueSeedingPlans((m) => ({ ...m, [to]: "previous_stage" }));
+      setCollapsedLeagues((m) => ({ ...m, [to]: false }));
+      toast.success("Stage 2 added as a new category with the same players");
+    }
+    setLeagueFormats((m) => ({ ...m, [to]: fmt }));
+    if (fmt === "monrad") setMonradRounds((m) => { const n = { ...m }; delete n[to]; return n; });
+  };
+
   const removeLeagueAt = (gn: number) => {
     if (structureOnly) originalKeysRef.current = originalKeysRef.current.filter((_, i) => i !== gn - 1);
 
@@ -10341,7 +10373,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 <div className="grid gap-3">
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Planned playoffs</div>
-                                  <div className="flex flex-wrap gap-3">
+                                  {hasFollowerStage(gn) && <p className="text-[11px] text-muted-foreground">A later stage follows — plan playoffs on the last stage.</p>}
+                                  <div className={cn("flex flex-wrap gap-3", hasFollowerStage(gn) && "pointer-events-none opacity-40")} aria-disabled={hasFollowerStage(gn)}>
                                     {[
                                       { v: "qf", l: "Quarterfinal" },
                                       { v: "sf", l: "Semifinal" },
@@ -10385,7 +10418,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           className="h-3 w-3 accent-fuchsia-500"
                                           name={`follow-up-${key}`}
                                           checked={(leagueFollowUpFormats[key] ?? "") === o.v}
-                                          onChange={() => setLeagueFollowUpFormats((m) => ({ ...m, [key]: o.v }))}
+                                          onChange={() => { setLeagueFollowUpFormats((m) => ({ ...m, [key]: o.v })); if (o.v) addFollowUpStageAt(gn, o.v); }}
                                         />
                                         {o.l}
                                       </label>

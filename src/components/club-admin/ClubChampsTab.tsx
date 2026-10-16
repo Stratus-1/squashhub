@@ -9115,7 +9115,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 {/* Playoffs are owned by each league card below. These are
                     bulk shortcuts that write the per-league settings — not a
                     second source of truth. */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className={cn("flex items-center gap-2 shrink-0", structureOnly && "hidden")}>
                   <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                     Playoffs: {(() => {
                       const on = Array.from({ length: numGroups || 0 }, (_, i) => playoffsForLeague(i + 1)).filter(Boolean).length;

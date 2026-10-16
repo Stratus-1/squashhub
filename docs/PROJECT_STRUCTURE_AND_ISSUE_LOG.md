@@ -3279,3 +3279,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ## 2026-10-16 Locked category viewing
 - Moved locked-category Expand / Collapse controls outside disabled settings fieldsets. Double-clicking the category/pool heading toggles its view without unlocking; single-click opening remains unchanged for unlocked categories.
 - Authenticated preview verified both Men's A pools using Expand, bottom Collapse, and two heading double-clicks; player inputs stayed disabled and Locked status remained. Seventeen focused regression tests passed; preview build OK. No publication; tournament writes blocked during checks.
+
+## 2026-10-16 Format information visuals
+- Single round-robin palette passed an invalid learning key, yielding an empty information dialog; normalized both legacy round-robin choices to the existing learning key.
+- Added read-only progression-style teaching views: round-robin opponent matrix with selectable round and adjacent games; Swiss side-by-side round tables with positions, fictional names and results. No dates or court assignments, no real players or live engine changes.
+- Eight existing focused tests passed. Authenticated preview verified both information buttons, Round 2 selection and closing, with tournament writes blocked; screenshots inspected and preview build OK. Not published.

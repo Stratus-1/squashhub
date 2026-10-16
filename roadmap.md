@@ -1,5 +1,9 @@
 # Roadmap
 
+## Format information examples
+- [x] Fix round robin information opening and add simplified round robin grid / Swiss round visuals with fictional names and games, no courts.
+- [x] Eight focused tests and authenticated preview checks passed for both information buttons, round selection and closing; no tournament writes or publication.
+
 ## Category setup safety locks
 - [x] Keep Expand / Collapse usable while category settings remain locked; authenticated both-pool preview check passed with writes blocked.
 - [x] Double-click category/pool headings to open and close locked settings without unlocking; both pools verified, 17 regression tests passed, preview build OK.

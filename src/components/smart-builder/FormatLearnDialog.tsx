@@ -8,33 +8,8 @@ import { Info } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { FormatProgressExample, exampleName } from "./FormatProgressExample";
 import { LEARN_EXAMPLES, LEARN_FORMAT_LABEL, type LearnFormat, type LearnStanding } from "@/lib/smart-builder/format-learn";
-
-/** Ladder-style standings — mirrors the Player Ladder page: position circle,
- *  initials avatar, name and win–loss record. Used for the Swiss preview so
- *  organisers see the ranking the way players will. */
-function LadderStandings({ title, note, rows }: { title: string; note?: string; rows: LearnStanding[] }) {
-  const initials = (name: string) => name.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-  return (
-    <div className="space-y-1">
-      <div className="text-xs font-semibold">{title}</div>
-      {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
-      <ul className="space-y-1.5">
-        {rows.map((r, i) => (
-          <li key={r.name} className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-2.5 py-1.5">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">{i + 1}</span>
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{initials(r.name)}</span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-semibold leading-tight">{r.name}</span>
-              <span className="block text-[10px] text-muted-foreground">{r.won}W-{r.lost}L</span>
-            </span>
-            <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{r.points} pt{r.points === 1 ? "" : "s"}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 function StandingsTable({ title, note, rows }: { title: string; note?: string; rows: LearnStanding[] }) {
   return (
@@ -57,7 +32,7 @@ function StandingsTable({ title, note, rows }: { title: string; note?: string; r
             {rows.map((r, i) => (
               <tr key={r.name} className="border-b border-border/50 last:border-0">
                 <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
-                <td className="px-2 py-1 font-medium">{r.name}</td>
+                <td className="px-2 py-1 font-medium">{exampleName(r.name)}</td>
                 <td className="px-2 py-1 text-center">{r.played}</td>
                 <td className="px-2 py-1 text-center">{r.won}</td>
                 <td className="px-2 py-1 text-center">{r.lost}</td>
@@ -77,7 +52,7 @@ export function FormatLearnDialog({ format, open, onOpenChange }: { format: Lear
   const active = ex?.rounds.find((r) => r.key === roundKey) ?? ex?.rounds[0];
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setRoundKey(null); }}>
-      <DialogContent className="max-h-[85dvh] w-[min(92vw,640px)] overflow-y-auto" data-testid="format-learn-dialog">
+      <DialogContent className="max-h-[85dvh] w-[min(94vw,980px)] max-w-[980px] overflow-y-auto" data-testid="format-learn-dialog">
         {ex && (
           <>
             <DialogHeader>
@@ -98,7 +73,7 @@ export function FormatLearnDialog({ format, open, onOpenChange }: { format: Lear
                   {ex.howItWorks.map((line) => <li key={line}>{line}</li>)}
                 </ul>
               </section>
-              <section aria-label="Example rounds">
+              {(ex.format === "round_robin" || ex.format === "swiss") && active ? <FormatProgressExample example={ex} active={active} onRound={setRoundKey} /> : <section aria-label="Example rounds">
                 <h4 className="mb-2 font-semibold">Fictional walkthrough</h4>
                 <div className="mb-2 flex flex-wrap gap-1" role="tablist" aria-label="Choose a round">
                   {ex.rounds.map((r) => (
@@ -121,13 +96,10 @@ export function FormatLearnDialog({ format, open, onOpenChange }: { format: Lear
                     </ul>
                   </div>
                 )}
-              </section>
+              </section>}
               {ex.standings && (
                 <section className="space-y-3" aria-label="Example standings">
-                  {ex.standings.map((s) =>
-                    ex.format === "swiss"
-                      ? <LadderStandings key={s.title} {...s} />
-                      : <StandingsTable key={s.title} {...s} />)}
+                  {ex.standings.filter((_, index) => ex.format !== "swiss" || index === ex.rounds.findIndex((round) => round.key === active?.key)).map((s) => <StandingsTable key={s.title} {...s} />)}
                 </section>
               )}
               {ex.positions && (

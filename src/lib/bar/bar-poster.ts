@@ -5,6 +5,7 @@
  */
 import { jsPDF } from "jspdf";
 import { fitBox, type LoadedImage } from "@/lib/club-qr-poster";
+import squashHubLogoDataUrl from "@/assets/shub-logo-white.png?inline";
 
 export interface BarPosterOptions {
   clubName: string;

@@ -5,6 +5,10 @@
 - [ ] Align manual allocation and the one-page structure advisory; preserve generated games and existing admin authorization.
 - [ ] Run focused regression tests and verify the preview; no live-data changes or publication.
 
+## Uitsig Men’s A category persistence
+- [ ] Show one Men’s A category with two pools, preserving all eight live draw identities and other category names/settings.
+- [ ] Verify saved/reopened structure; never renumber live fixtures or modify results/bookings.
+
 ## Member credit allowances
 - [x] Clarification: blank override inherits, explicit R0 allowed, Use club default action; My Account credit-limit notice beside balance.
 - [x] Inspect/reuse shared financial eligibility, recurring coverage and scoped finance permissions.

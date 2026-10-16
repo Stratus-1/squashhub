@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Printer } from "lucide-react";
+import { Loader2, Printer, Share2 } from "lucide-react";
+import { buildInvoicePdf } from "@/lib/invoice-pdf";
+import { loadImageAsDataUrlWithSize } from "@/lib/club-qr-poster";
+import { openWhatsApp } from "@/lib/whatsapp";
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface Props {
   invoiceId: string | null;
@@ -23,7 +28,7 @@ export function InvoicePreviewDialog({ invoiceId, onClose }: Props) {
           invoice_number, invoice_due_date, invoice_send_date,
           invoice_issued_at, invoice_email_sent_at,
           club_members!inner (
-            id, name, email, club_id,
+            id, name, email, phone, club_id,
             clubs:club_id ( name, logo_url, address, email, phone )
           )
         `)
@@ -66,6 +71,61 @@ export function InvoicePreviewDialog({ invoiceId, onClose }: Props) {
       </style></head><body>${node.innerHTML}</body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 250);
+  };
+
+  const [sharing, setSharing] = useState(false);
+
+  const handleWhatsAppShare = async () => {
+    if (!inv) return;
+    setSharing(true);
+    try {
+      let logo: { dataUrl: string; width: number; height: number } | null = null;
+      if (club?.logo_url) {
+        try {
+          logo = await loadImageAsDataUrlWithSize(club.logo_url);
+        } catch {
+          /* A missing club logo must not block sharing. */
+        }
+      }
+      const doc = buildInvoicePdf({
+        invoiceNumber: inv.invoice_number || "",
+        feeLabel: inv.fee_label,
+        amount: inv.amount,
+        seasonYear: inv.season_year,
+        issueDate: inv.invoice_send_date,
+        dueDate: inv.invoice_due_date,
+        memberName: cm?.name,
+        memberEmail: cm?.email,
+        clubName: club?.name,
+        clubAddress: club?.address,
+        clubEmail: club?.email,
+        clubPhone: club?.phone,
+        logoDataUrl: logo?.dataUrl ?? null,
+        logoWidth: logo?.width,
+        logoHeight: logo?.height,
+        bank: secrets,
+      });
+      const filename = `invoice-${(inv.invoice_number || "club").replace(/[^a-z0-9]+/gi, "-")}.pdf`;
+      const blob = doc.output("blob");
+      const file = new File([blob], filename, { type: "application/pdf" });
+      const nav = navigator as any;
+      if (nav.canShare?.({ files: [file] })) {
+        await nav.share({
+          files: [file],
+          title: `Invoice ${inv.invoice_number || ""}`.trim(),
+          text: `Invoice ${inv.invoice_number || ""} for ${fmtAmt(inv.amount)} — ${club?.name || ""}`,
+        });
+      } else {
+        doc.save(filename);
+        toast.message("Invoice PDF downloaded — attach it in WhatsApp.");
+        const msg = `Invoice ${inv.invoice_number || ""} for ${fmtAmt(inv.amount)} (${club?.name || ""}). Due ${fmtDate(inv.invoice_due_date)}. The PDF has been downloaded — please attach it here.`;
+        openWhatsApp(cm?.phone, msg);
+      }
+    } catch (e: any) {
+      if (e?.name !== "AbortError") toast.error(e?.message || "Could not share invoice");
+    } finally {
+      setSharing(false);
+    }
   };
 
   const inv = data?.inv;
@@ -156,6 +216,9 @@ export function InvoicePreviewDialog({ invoiceId, onClose }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={handleWhatsAppShare} disabled={!inv || sharing} className="gap-1.5">
+            {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />} WhatsApp
+          </Button>
           <Button onClick={handlePrint} disabled={!inv} className="gap-1.5">
             <Printer className="w-4 h-4" /> Print / Save PDF
           </Button>

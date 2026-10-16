@@ -11,7 +11,7 @@ import { addCardDivision, addCardSubdivision, cardStructureIssues, patchCardStag
 import { DIVISION_PRESETS, STRUCTURE_ELIGIBILITY_LABELS, applyStructurePreset, duplicateStructureRow, renameStructureKey, rowStages, structureEligibility, structureEligibilityAdvisory, structureUnits } from "@/lib/smart-builder/structure-rows";
 import { FORMAT_HELP, baseFormatOf, formatHelpHidden, type BaseFormat } from "@/lib/smart-builder/format-help";
 import { stageMatches } from "@/lib/smart-builder/structure-capacity";
-import { monradNote } from "@/lib/smart-builder/monrad";
+import { monradPlan } from "@/lib/smart-builder/monrad";
 import { evaluateStructures } from "@/lib/smart-builder/structure-guide";
 import { categoryEstimate } from "@/lib/smart-builder/expected-entries";
 import { RRTopologyEditor } from "./RRTopologyEditor";

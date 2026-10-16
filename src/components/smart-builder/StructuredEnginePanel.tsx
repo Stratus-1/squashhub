@@ -40,7 +40,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
     try { await assertNotDiamondTournament(champId); await fn(); toast.success(ok); refresh(); } catch (e: any) { toast.error(e.message); } finally { setBusy(null); }
   };
   const [pairing, setPairing] = useState<{ div: string; stage: string; players: string[]; pairs: string[][]; pick: string | null } | null>(null);
-  const [regen, setRegen] = useState<{ div: string; stage: PlannedStage; players: number; prevDone: boolean; games: number; choice: "knockout" | "pools"; qualifiers: number; pools: number } | null>(null);
+  const [regen, setRegen] = useState<{ div: string; stage: PlannedStage; players: number; prevDone: boolean; games: number; choice: "knockout" | "pools"; qualifiers: number; pools: number; bottom?: boolean } | null>(null);
   const startStage = (div: string, stage: string, pairs?: string[][]) => run(`st${stage}`, () =>
     atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, div, stage, { ownerConfirmed: true, pairs })).then(() => schedulePlannedPlayoffGames(champId)), "Next stage created");
   const unitName = (u: string | null) => (u ? u.split("+").map(nameOf).join(" & ") : "TBD");
@@ -232,6 +232,18 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
                     ))}
                   </div>
                   <div className="text-xs text-muted-foreground">Seeded from the final standings: 1 v {regen.qualifiers}, 2 v {regen.qualifiers - 1} … winners go through to the next round.</div>
+                  {regen.qualifiers >= 2 && regen.qualifiers * 2 <= regen.players && (
+                    <div className="space-y-1 pt-2">
+                      <div className="text-xs text-muted-foreground">Bottom half too?</div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant={!regen.bottom ? "default" : "outline"} onClick={() => setRegen({ ...regen, bottom: false })}>Top only</Button>
+                        <Button size="sm" variant={regen.bottom ? "default" : "outline"} onClick={() => setRegen({ ...regen, bottom: true })}>Top & bottom</Button>
+                      </div>
+                      {regen.bottom && <div className="text-xs text-muted-foreground">
+                        Players {regen.qualifiers + 1}–{regen.qualifiers * 2} play their own bracket: {regen.qualifiers + 1} v {regen.qualifiers * 2}, {regen.qualifiers + 2} v {regen.qualifiers * 2 - 1} … with its own final. The two brackets never meet.
+                      </div>}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -251,7 +263,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
             <Button disabled={!!busy || !regen} onClick={() => {
               const r = regen!; setRegen(null);
               run("regen", async () => {
-                const next = buildReplacementStage(r.stage, r.choice === "knockout" ? { kind: "knockout", qualifiers: r.qualifiers } : { kind: "pools", pools: r.pools }, r.players);
+                const next = buildReplacementStage(r.stage, r.choice === "knockout" ? { kind: "knockout", qualifiers: r.qualifiers, bottomBracket: !!r.bottom && r.qualifiers * 2 <= r.players } : { kind: "pools", pools: r.pools }, r.players);
                 const res = await replaceUnplayedStage(champId, r.div, next);
                 if (r.prevDone) {
                   await atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, r.div, next.id, { ownerConfirmed: true }));

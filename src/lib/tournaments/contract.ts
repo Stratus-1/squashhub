@@ -86,6 +86,8 @@ export interface PlannedStage {
   legs?: 1 | 2;
   /** knockout: also play a 3rd/4th place match between the losing semi-finalists */
   thirdPlace?: boolean;
+  /** knockout: the next group down plays its own bracket (e.g. 5v8, 6v7 → bottom final). Stored as koPool 2. */
+  bottomBracket?: boolean;
   /** singles / doubles for this stage (default = division unit) */
   discipline?: "singles" | "doubles";
   /** later stages: explicit progression rule (default for knockout = qualifiers) */

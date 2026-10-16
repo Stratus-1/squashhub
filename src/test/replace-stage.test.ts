@@ -23,3 +23,14 @@ describe("replace an unplayed later stage", () => {
     expect(buildReplacementStage(rr, { kind: "pools", pools: 3 }, 12)).toMatchObject({ kind: "pools", pools: 3, poolSize: 4 });
   });
 });
+
+describe("top and bottom brackets", () => {
+  it("top 4 + bottom: 8 continue, bottom flag set", () => {
+    const ko = buildReplacementStage(rr, { kind: "knockout", qualifiers: 4, bottomBracket: true }, 12);
+    expect(ko).toMatchObject({ drawSize: 4, bottomBracket: true });
+    expect(ko.progression).toMatchObject({ top: 8 });
+  });
+  it("refuses a bottom bracket without enough players", () => {
+    expect(() => buildReplacementStage(rr, { kind: "knockout", qualifiers: 8, bottomBracket: true }, 12)).toThrow();
+  });
+});

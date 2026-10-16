@@ -19,6 +19,7 @@ import { stageTable } from "@/lib/tournaments/engine-service";
 import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
 import { generateNextSwissRound } from "@/lib/tournaments/swiss-generate";
 import { swissRoundGate } from "@/lib/tournaments/swiss-round-gate";
+import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */
@@ -94,6 +95,31 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
                 )}
             </div>
             <span className="text-xs text-muted-foreground">{gate.message}</span>
+            {gate.state === "finished" && (() => {
+              // Final Swiss ranking: same table the next stage is seeded from (wins, then Buchholz, then seed).
+              // Player list comes from the games themselves (the panel's spec carries no entrants).
+              const seedOrder = [...new Set(mineRows.flatMap((r) => [r.a, r.b]).filter(Boolean))] as string[];
+              const table = swissTable(
+                seedOrder,
+                mineRows.map((r) => ({ a: r.a, b: r.b, winner: r.winner, round: r.round })),
+              );
+              return (
+                <table className="mt-1 w-full text-xs" data-testid="swiss-final-standings">
+                  <thead><tr className="text-left text-muted-foreground"><th className="py-0.5 pr-2">#</th><th className="pr-2">Player</th><th className="pr-2">Won</th><th className="pr-2">Lost</th><th className="pr-2">Buchholz</th></tr></thead>
+                  <tbody>
+                    {table.map((r) => (
+                      <tr key={r.id} className="border-t border-border">
+                        <td className="py-0.5 pr-2 font-medium">{r.position}</td>
+                        <td className="pr-2">{nameOf(r.id)}</td>
+                        <td className="pr-2">{r.wins}</td>
+                        <td className="pr-2">{r.losses}</td>
+                        <td className="pr-2">{r.buchholz}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
         );
       }))}

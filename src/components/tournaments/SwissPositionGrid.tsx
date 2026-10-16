@@ -98,6 +98,35 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
           )}
         </table>
       ); })}
+      {model.rows.length ? (
+        <table data-testid="swiss-final-standing-card" className="round-panel min-w-[220px] self-start overflow-hidden rounded-md border border-border border-collapse">
+          <thead>
+            <tr className="round-header bg-muted text-left">
+              <th colSpan={3} className="border-t-4 px-2.5 py-1.5 font-semibold" style={{ borderTopColor: "hsl(var(--success))" }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">Final standing</span>
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `hsl(var(${model.swissStageComplete ? "--success" : "--muted-foreground"}) / 0.15)`, color: "hsl(var(--foreground))" }}>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `hsl(var(${model.swissStageComplete ? "--success" : "--muted-foreground"}))` }} />{model.swissStageComplete ? "Locked" : "Projected"}
+                  </span>
+                </div>
+                <div className="text-[11px] font-normal text-muted-foreground">{model.swissStageComplete ? "All rounds complete — these positions seed the next stage" : `Current positions · locks when Round ${model.totalRounds ?? "?"} completes`}</div>
+              </th>
+            </tr>
+            <tr className="text-left text-[11px] text-muted-foreground">
+              <th className="px-2 py-1 w-8">Pos</th><th className="px-2">Player</th><th className="px-2">Wins</th>
+            </tr>
+          </thead>
+          <tbody>
+            {model.rows.map((r) => (
+              <tr key={r.id} className={cn("border-t border-border", model.swissStageComplete && "bg-success/10")}>
+                <td className="px-2 py-1 tabular-nums font-semibold">{model.swissStageComplete ? (r.swissFinalPosition ?? r.current) : r.current}</td>
+                <td className="px-2 whitespace-nowrap">{r.name}</td>
+                <td className="px-2 tabular-nums">{r.wins}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
       </div>
     </div>
   );

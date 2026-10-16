@@ -34,6 +34,11 @@
 - [x] Implement and verify the actual Visual Builder: toolbox, placement, connections, inspector, validation and canonical save/reload (Riverside synthetic preview only).
 - [x] Add an X to dismiss format-help toast messages.
 - [x] Keep subdivisions and pools editable after draft save/reload; default to Group 1/2 and Pool A/B.
+- [x] Progressive reveal in structure cards (each row opens after the previous choice), auto-collapse after the last choice, labelled Collapse/Expand control; Riverside preview desktop and 390px verified.
+- [x] Who may enter: "Both" preselects Everyone + Players I pick, league placement buttons removed for specific-league members, Stage 2 followers inherit Stage 1 instead of being listed.
+- [x] Pick players: follower Stage 2 columns hidden from board columns and move/add menus; filled from Stage 1 results.
+- [x] Scheduling: court time per match prefilled from the structure page's planned match time, GoBook block-booking name shown only for GoBook clubs, back-to-back avoidance tick box added (on by default) and saved with the tournament.
+- [x] Published to squashhub.lovable.app (16 Oct) after a clean security scan — no new open findings.
 
 ## Pending (standing)
 - [ ] Structure-builder rollout paused — owner requested a new direction; shared tournament views remain enabled.

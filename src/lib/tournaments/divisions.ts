@@ -469,7 +469,7 @@ export function poolNoun(format: string | null | undefined, plural = true): stri
 
 /** Organiser-facing label for a pool/section count, per format. */
 export function poolLabelFor(n: number, format: string | null | undefined): string {
-  if (n <= 1) return "1 draw";
+  if (n <= 1) return String(format || "") === "knockout" ? "1 section" : "No pools";
   return `${n} ${poolNoun(format)}`;
 }
 

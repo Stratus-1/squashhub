@@ -9399,7 +9399,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                             ? "Each pool plays every other pool."
                                             : pools > 1
                                               ? "Players are split into pools; each pool plays its own draw."
-                                              : "One draw — everyone in this division plays in the same group."}
+                                              : "No pools — everyone in this division plays in the same group."}
                                         {fmt === "knockout" && entrants > 0 && pools !== suggested ? ` Suggested: ${suggested}.` : ""}
                                       </p>
                                       {fmt === "knockout" && (

@@ -397,7 +397,7 @@ export interface EditImpact {
 
 const structuralKey = (d: SpecDivision) => JSON.stringify({
   unit: d.unit, seeding: d.seeding, entrants: d.entrants.map((e) => e.id),
-  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, discipline: s.discipline, progression: s.progression, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify, legs: s.legs, tieBreaks: s.tieBreaks, thirdPlace: s.thirdPlace })),
+  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, discipline: s.discipline, progression: s.progression, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify, legs: s.legs, tieBreaks: s.tieBreaks, thirdPlace: s.thirdPlace, bottomBracket: s.bottomBracket })),
 });
 const scheduleKey = (d: SpecDivision) => JSON.stringify(d.stages.map((s) => [s.id, s.schedule]));
 

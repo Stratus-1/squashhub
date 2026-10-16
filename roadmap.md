@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Bar collection-ready alerts (preview only)
-- [ ] Strengthen existing member ready popup, ping and supported vibration; preserve partial fulfilment, dedupe and payments.
-- [ ] Run synthetic alert tests and browser checks; no real orders, live writes or publication.
+- [x] Strengthen existing member ready popup, retain ping and add supported vibration; preserve partial fulfilment, dedupe and payments.
+- [x] Seven focused tests, synthetic browser popup/View order/X checks and background-worker simulation passed; preview build OK, no real orders, live writes or publication.
 - [ ] Physical-phone/background alert delivery needs an approved device test after publication.
 
 ## Riverside replacement Tournament Structure pilot (live planning tests approved)

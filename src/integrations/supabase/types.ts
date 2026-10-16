@@ -17443,6 +17443,33 @@ export type Database = {
           },
         ]
       }
+      tournament_snapshots: {
+        Row: {
+          club_id: string
+          created_at: string
+          data: Json
+          id: string
+          label: string
+          tournament_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          data: Json
+          id?: string
+          label: string
+          tournament_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          label?: string
+          tournament_id?: string
+        }
+        Relationships: []
+      }
       tournament_stages: {
         Row: {
           config: Json
@@ -22323,6 +22350,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      take_tournament_snapshot: {
+        Args: { _label: string; _tid: string }
+        Returns: string
       }
       tournament_bookable_court_ids: {
         Args: { _champ: string; _round_label?: string; _stage?: string }

@@ -114,6 +114,7 @@ import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsU
 import { parentProgressionGroups, parentProgressionEnabled, parentFixtureLanes } from "@/lib/tournaments/parent-progression";
 import { ParentCategoryProgression, type ParentFixtureDisplay } from "@/components/tournaments/ParentCategoryProgression";
 import { rrWhen } from "@/lib/tournaments/round-robin-view";
+import { useProjectedChampFixtures } from "@/hooks/use-projected-champ-fixtures";
 
 export interface InlineStandingsData {
   champ: any;
@@ -154,6 +155,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     enabled: !!champId && !inlineStandings,
   });
   const champ = inlineStandings?.champ ?? fetchedChamp;
+  const { data: projectedFixtures = [] } = useProjectedChampFixtures(champ);
 
   const { data: fetchedEntries = [] } = useQuery({
     queryKey: ["club-champ-entries", champId],
@@ -3981,7 +3983,25 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               ) : (<>{standingsTable}{renderRoundRobinPilot(gn)}</>)}
             </div>
           ),
-          upcoming: listNode(split.upcoming, groupMatches.length ? "No games left to play in this category." : "No fixtures for this category yet.", "upcoming"),
+          upcoming: (() => {
+            const proj = projectedFixtures.filter((f) => f.group === gn);
+            const base = listNode(split.upcoming, groupMatches.length ? (proj.length ? "" : "No games left to play in this category.") : (proj.length ? "" : "No fixtures for this category yet."), "upcoming");
+            if (!proj.length) return base;
+            const byRound = [...new Set(proj.map((f) => f.round))].sort((a, b) => a - b);
+            return <div className="space-y-5">{split.upcoming.length > 0 && base}{byRound.map((rd) => (
+              <section key={`proj-${rd}`} className="space-y-1.5" aria-label={`Round ${rd} confirmed pairings`} data-testid="projected-round-fixtures">
+                <div className="flex items-center justify-between border-b pb-1">
+                  <h4 className="text-sm font-semibold">Round {rd}</h4>
+                  <span className="text-xs text-muted-foreground">Pairings set by results · {proj.filter((f) => f.round === rd).length} to play</span>
+                </div>
+                {proj.filter((f) => f.round === rd).map((f) => (
+                  <div key={f.key} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-2 text-sm">
+                    <span className="font-medium">{f.title}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{f.date} {f.time} · {f.courtName}</span>
+                  </div>
+                ))}
+              </section>))}</div>;
+          })(),
           results: pilotSwissModels[gn] ? (
             <div className="space-y-4">
               <SwissPilotBoundary fallback={null}>
@@ -3993,7 +4013,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               {listNode(split.results, "No results yet.", "results")}
             </div>
           ) : listNode(split.results, "No results yet.", "results"),
-          upcomingCount: split.upcoming.length,
+          upcomingCount: split.upcoming.length + projectedFixtures.filter((f) => f.group === gn).length,
           resultsCount: split.results.length,
         });
         return;

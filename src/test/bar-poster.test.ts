@@ -28,4 +28,18 @@ describe("bar/shop poster payment wording", () => {
     expect(doc.internal.pageSize.getWidth()).toBeCloseTo(210, 0);
     expect(doc.output("blob").size).toBeGreaterThan(1000);
   });
+  it("embeds the SquashHub brand mark when one is supplied", () => {
+    const base = {
+      clubName: "Riverside Squash Club",
+      url: "https://riv.squashhub.co.za/s/abcdefgh",
+      qrDataUrl: QR,
+      venue: "bar" as const,
+      accountEnabled: true, cardOnlineEnabled: true, swipeEnabled: true, cashEnabled: true,
+    };
+    const withBrand = buildBarPoster({ ...base, brandLogoDataUrl: BRAND });
+    const withoutBrand = buildBarPoster(base);
+    expect(withBrand.getNumberOfPages()).toBe(1);
+    expect(withoutBrand.getNumberOfPages()).toBe(1);
+    expect(withBrand.output("blob").size).toBeGreaterThan(withoutBrand.output("blob").size);
+  });
 });

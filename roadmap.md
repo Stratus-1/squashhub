@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Riverside replacement Tournament Structure pilot (live planning tests approved)
+- [ ] Add editable recommended Monrad round count and verify chosen rounds save/reload without generating fixtures.
 - [x] Separate local Planned playoffs from Follow-up stages; save/reload verified, no executable stages changed.
 - [x] Add per-category seeding and same-category follow-up stage settings, including Use previous stage rankings; saved independent choices verified in Riverside preview.
 - [x] Preserve existing When this stage runs controls and results-based seeding; no duplicate ordering mechanism or Stage 1 selector on an existing follower.

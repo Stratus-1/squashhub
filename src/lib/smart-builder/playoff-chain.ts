@@ -16,7 +16,8 @@ import type { PlannedStage } from "@/lib/tournaments/contract";
 import type { MappedMatch, MappedUnit, StageMapping } from "@/lib/tournaments/mapping";
 import type { PlannedPlayoff } from "@/lib/tournaments/engine-service";
 
-export type PlannedEntry = { name: string; plan: PlannedPlayoff };
+/** `stageKey`: the saved key of a "set up later" stage — kept so stage keys stay unique per round across categories. */
+export type PlannedEntry = { name: string; plan: PlannedPlayoff; stageKey?: string };
 export interface ChainResult { stages: PlannedStage[]; reason: string | null; notes: string[] }
 
 const L = (p: number) => String.fromCharCode(65 + p);
@@ -78,7 +79,7 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
       if (n < 2) return { stages: [], reason: `${prev.name} is already the final.`, notes };
       const auto = !opts.forceConfirm && e.plan.trigger === "auto";
       const st: PlannedStage = {
-        id: `${version}-po${offset + i + 1}`, order: main.order + i + 1, kind: "mapped", name: e.name, discipline: main.discipline, schedule,
+        id: e.stageKey ?? `${version}-po${offset + i + 1}`, order: main.order + i + 1, kind: "mapped", name: e.name, discipline: main.discipline, schedule,
         mapping: mappingOf("stage_winners", prev.id, 1, n, Array.from({ length: n / 2 }, (_, k) => [[0, 2 * k + 1], [0, 2 * k + 2]] as [[number, number], [number, number]])),
         progression: { mode: "all_continue", standings: "reset" } as any, generation: auto ? "automatic" : "owner_approval", waitForOrganiser: !auto,
       };

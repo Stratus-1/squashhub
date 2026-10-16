@@ -3,10 +3,16 @@ import { poolLabel, poolLabelFor, poolNoun, poolSelectorLabel } from "@/lib/tour
 
 describe("knockout uses sections, other formats use pools", () => {
   it("labels knockout counts as sections", () => {
-    expect(poolLabelFor(1, "knockout")).toBe("1 draw");
+    expect(poolLabelFor(1, "knockout")).toBe("1 section");
     expect(poolLabelFor(2, "knockout")).toBe("2 sections");
     expect(poolLabelFor(4, "knockout")).toBe("4 sections");
     expect(poolLabelFor(8, "knockout")).toBe("8 sections");
+  });
+
+  it("labels a single pool as No pools for non-knockout formats", () => {
+    for (const fmt of ["single_round_robin", "double_round_robin", "swiss", "cross_league", "monrad"]) {
+      expect(poolLabelFor(1, fmt)).toBe("No pools");
+    }
   });
 
   it("keeps pool wording for non-knockout formats", () => {

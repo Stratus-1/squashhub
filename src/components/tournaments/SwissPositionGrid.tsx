@@ -105,8 +105,8 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
 
 /** Current live score-based standings (Pos/Player/Wins/R1..Rn results). Shown on the Results tab for Riverside Swiss pilot categories. */
 export function SwissCurrentPositionsTable({ model }: { model: SwissProgressionModel }) {
-  // Final standing locks when the Swiss stage's own rounds (1..totalRounds) are complete — later follow-up stage games don't block it.
-  const allComplete = model.rounds.some((r) => r.round <= model.totalRounds) && model.rounds.filter((r) => r.round <= model.totalRounds).every((r) => r.complete);
+  // Final standing locks when the Swiss stage's own rounds are complete — later follow-up stage games don't block it.
+  const allComplete = model.swissStageComplete;
   return (
     <div className="overflow-x-auto bg-background text-xs text-foreground">
      <table className="border-collapse min-w-[300px] self-start" data-testid="swiss-current-positions">
@@ -117,7 +117,7 @@ export function SwissCurrentPositionsTable({ model }: { model: SwissProgressionM
         <tbody>{model.rows.map((row) => <tr key={row.id} className="border-t border-border">
           <td className="px-2 py-1 tabular-nums">{row.current}</td><td className="px-2 whitespace-nowrap">{row.name}</td><td className="px-2">{row.wins}</td>
           {row.cells.map((cell, i) => <td key={i} className="px-2 whitespace-nowrap">{cell}</td>)}
-          <td data-testid={`swiss-final-standing-${row.id}`} className={cn("px-2 tabular-nums whitespace-nowrap", allComplete ? "bg-success/10 font-semibold text-foreground" : "text-muted-foreground")}>{allComplete ? row.current : "—"}</td>
+          <td data-testid={`swiss-final-standing-${row.id}`} className={cn("px-2 tabular-nums whitespace-nowrap", allComplete ? "bg-success/10 font-semibold text-foreground" : "text-muted-foreground")}>{row.swissFinalPosition ?? "—"}</td>
         </tr>)}</tbody>
       </table>
     </div>

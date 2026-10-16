@@ -9276,8 +9276,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         const meta = FORMAT_META[fmt];
                         const isSwiss = fmt === "swiss";
                         const collapsed = collapsedLeagues[key] ?? true;
+                        const poolGroup = structureOnly?.initial._pool_groups?.find((group: { slots: number[] }) => group.slots.includes(gn)) as { label: string; slots: number[] } | undefined;
+                        const poolIndex = poolGroup ? poolGroup.slots.indexOf(gn) + 1 : 0;
+                        const identityLocked = !!structureOnly?.initial._identity_locked;
+                        const displayCategory = gn - (structureOnly?.initial._pool_groups ?? []).reduce((n: number, group: { slots: number[] }) => n + group.slots.filter((slot) => slot < gn && slot !== group.slots[0]).length, 0);
                         return (
-                          <div key={gn} className="relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm">
+                          <div key={gn} className={poolGroup ? "border-l-2 border-border pl-3" : ""} data-testid={poolGroup ? `structure-pool-${gn}` : undefined}>
+                            {poolGroup && poolIndex === 1 && <header className="flex flex-wrap items-center gap-3 border-b border-border py-3" data-testid="structure-parent-category"><span className="text-xs font-semibold">Category {displayCategory}</span><h3 className="text-sm font-semibold">{poolGroup.label}</h3><Badge variant="secondary">{poolGroup.slots.length} pools</Badge><span className="text-xs text-muted-foreground">{poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0)} players</span></header>}
+                          <div className={poolGroup ? "relative border-b border-border bg-background p-3" : "relative rounded-lg border-2 border-amber-500/40 bg-card p-3 shadow-sm"}>
                             <div className="absolute -left-[3px] top-3 bottom-3 w-1 bg-amber-500 rounded-full" />
                             <div className={cn("flex flex-wrap items-start justify-between gap-2", !collapsed && "mb-2")}>
                               <div className="flex-1 min-w-fit">
@@ -9286,8 +9292,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", collapsed && "cursor-pointer")}
                                   onClick={collapsed ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
                                 >
-                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Category {gn}</span>
-                                  {collapsed && groupLabels[key] && (
+                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">{poolGroup ? `${poolGroup.label} · Pool ${poolIndex}` : `Category ${displayCategory}`}</span>
+                                  {collapsed && !poolGroup && groupLabels[key] && (
                                     <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
                                   )}
                                   <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
@@ -9314,22 +9320,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   )}
                                   {collapsed && (
                                     <span className="inline-flex items-center rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">
-                                      {formatUsesPools(fmt) ? poolLabelFor(poolsForDivision(gn), fmt) : "Single draw"}
+                                      {poolGroup ? `Pool ${poolIndex} of ${poolGroup.slots.length}` : formatUsesPools(fmt) ? poolLabelFor(poolsForDivision(gn), fmt) : "Single draw"}
                                       {expectedPlayers[key] ? ` · ${expectedPlayers[key]} ${isDoubles ? "pairs" : "players"}` : ""}
                                     </span>
                                   )}
                                 </div>
                                 {!collapsed && (
                                 <div className="flex items-end gap-2">
-                                  <Input
+                                  {poolGroup ? <span className="flex-1 py-1 text-sm font-semibold">{poolGroup.label} · Pool {poolIndex}</span> : <Input
                                     value={groupLabels[key] || ""}
                                     placeholder={`League ${gn}`}
+                                    disabled={identityLocked}
                                     onChange={(e) => setGroupLabels((m) => ({ ...m, [key]: e.target.value }))}
                                     className="h-8 text-sm font-semibold flex-1 min-w-0"
-                                  />
+                                  />}
                                   {/* Read-only summary — the pool count is set
                                       by the single Pools selector below. */}
-                                  {formatUsesPools(fmt) && (
+                                  {formatUsesPools(fmt) && !poolGroup && (
                                     <div className="shrink-0 pb-1.5" title={`Set the ${poolNoun(fmt, false)} count with the ${poolSelectorLabel(fmt)} selector below`}>
                                       <Label className="text-[9px] uppercase tracking-wider text-teal-600 dark:text-teal-400">{poolSelectorLabel(fmt)}</Label>
                                       <div className="text-xs font-semibold text-teal-700 dark:text-teal-400 mt-1 whitespace-nowrap">
@@ -9397,6 +9404,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 text-[11px]"
+                                disabled={identityLocked || !!poolGroup}
                                 onClick={() => duplicateLeagueAt(gn)}
                                 title="Create another division with exactly these settings"
                               >
@@ -9409,6 +9417,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                disabled={identityLocked || !!poolGroup}
                                 onClick={() => removeLeagueAt(gn)}
                                 title="Remove league"
                               >
@@ -9626,7 +9635,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 {/* THE pool selector for this division — the
                                     only editable pool control, shared by every
                                     format that uses pools. */}
-                                {formatUsesPools(fmt) && (() => {
+                                {poolGroup && <p className="text-xs text-muted-foreground">{poolGroup.label} · {poolGroup.slots.length} pools · Pool {poolIndex}</p>}
+                                {formatUsesPools(fmt) && !poolGroup && (() => {
                                   const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                   const rawPools = poolsForDivision(gn);
                                   const pools = fmt === "cross_league" ? Math.max(2, rawPools) : rawPools;
@@ -10544,6 +10554,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             </div>
                             )}
                           </div>
+                          </div>
                         );
                       })
                     ) : null}
@@ -10641,7 +10652,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             {(() => {
               const issues = validateDivisions({
                 divisionCount: numGroups,
-                sources: leagueSources,
+                // In Step-by-Step, leagues feed explicitly configured categories.
+                // Manual allocation is chosen beside the category league picker.
+                sources: structureOnly ? {} : leagueSources,
                 pools: swissPools,
                 formatFor: (gn) => formatForLeague(gn),
               });

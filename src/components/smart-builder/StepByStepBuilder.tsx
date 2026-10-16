@@ -36,6 +36,8 @@ import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
+import { adminCanOverride, adminPlacementAllowed } from "@/lib/smart-builder/admin-allocation";
+import { Switch } from "@/components/ui/switch";
 import { matchEntries, parseEntryCsv } from "@/lib/smart-builder/pick-import";
 import { inferCategory } from "@/lib/leagues/category";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
@@ -242,7 +244,7 @@ type Disc = "singles" | "doubles";
 type Source = "select" | "self" | "both" | null;
 /** alsoPick: with "leagues", the organiser may additionally hand-pick players outside those leagues.
  *  alsoEveryone: with "leagues"/"manual", everyone may also self-enter; league members are auto-categorised, the organiser may override. */
-type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose"; alsoPick?: boolean; alsoEveryone?: boolean };
+type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose"; alsoPick?: boolean; alsoEveryone?: boolean; adminOverride?: boolean };
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
@@ -740,6 +742,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     // The legacy women's-in-men's-leagues fallback must never bypass explicit Men only in the row pilot.
     return (rowStructure || cardStructure) && key && !fits(id, key) ? "" : key;
   };
+  const manualFits = (id: string, key: string) => fits(id, key) || adminPlacementAllowed(eligOf(key), leaguesByMember.get(id) ?? [], isPlayerEligibleForCategory(genderByMember.get(id), units.find((u) => u.key === key)?.categoryType));
   const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
   /** Import an entry-form CSV: tick matched members and place them per entered event; never creates people. */
@@ -753,7 +756,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       if (!(id in next)) { next[id] = []; added++; }
       for (const ev of mt.row.events) {
         const cands = units.filter((u) => (u.categoryType ?? inferCategory(u.base)) === ev || (!u.categoryType && !inferCategory(u.base) && units.length === 1));
-        const ok = cands.filter((u) => fits(id, u.key));
+        const ok = cands.filter((u) => manualFits(id, u.key));
         if (cands.length && !ok.length) { problems.push(`${memberName(id)}: not eligible for ${ev === "ladies" ? "Ladies" : ev === "mens" ? "Mens" : ev} (check gender/league)`); continue; }
         const auto = autoPlace(id);
         const key = ok.length === 1 ? ok[0].key : ok.find((u) => u.key === auto)?.key;
@@ -1686,6 +1689,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             const on = e.leagueIds.includes(l.id);
                             return <button key={l.id} type="button" aria-pressed={on} onClick={() => setElig(u.key, { leagueIds: on ? e.leagueIds.filter((x) => x !== l.id) : [...e.leagueIds, l.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{l.name}</button>;
                           })}</div>)}
+                      {e.mode === "leagues" && (
+                        <div className="flex items-center gap-2 border-t border-border pt-2">
+                          <Switch id={`admin-override-${u.key}`} aria-label={`Admin can override for ${u.label}`} checked={adminCanOverride(e)} onCheckedChange={(adminOverride) => setElig(u.key, { adminOverride })} />
+                          <Label htmlFor={`admin-override-${u.key}`} className="text-xs">Admin can override</Label>
+                        </div>
+                      )}
                       {e.mode === "everyone" && selfEntry && (
                         <div className="space-y-1">
                           <div className="text-xs text-muted-foreground">Players who may enter:</div>
@@ -1828,13 +1837,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const toggleLock = (id: string) => { const n = new Set(lockedSet); if (n.has(id)) n.delete(id); else n.add(id); setA({ ...a, lockedIds: [...n] }); };
                     const move = (id: string, from: string, to: string, beforeId?: string) => {
                       if (from === to) { const l = orderFor(to).filter((x) => x !== id); const i = beforeId ? l.indexOf(beforeId) : -1; l.splice(i < 0 ? l.length : i, 0, id); withOrder(a.picks, to, l); return; }
+                      if (to && !manualFits(id, to)) { toast.error(`Check category eligibility or enable Admin can override for ${unitLabel(to)} to place players outside its leagues.`); return; }
                       let p = from && placesFor(id).includes(from) ? togglePlace(a.picks, id, from, false) : a.picks;
                       if (!to) { setA({ ...a, picks: p }); return; }
                       if (!placesOf(p, id).includes(to)) p = addPlace(p, id, to, singleEvent);
                       const l = orderFor(to).filter((x) => x !== id); const i = beforeId ? l.indexOf(beforeId) : -1; l.splice(i < 0 ? l.length : i, 0, id);
                       withOrder(p, to, l);
                     };
-                    const addTo = (id: string, to: string) => withOrder(addPlace(a.picks, id, to, singleEvent), to, [...orderFor(to).filter((x) => x !== id), id]);
+                    const addTo = (id: string, to: string) => {
+                      if (!manualFits(id, to)) { toast.error(`Check category eligibility or enable Admin can override for ${unitLabel(to)} to place players outside its leagues.`); return; }
+                      withOrder(addPlace(a.picks, id, to, singleEvent), to, [...orderFor(to).filter((x) => x !== id), id]);
+                    };
                     const nudge = (k: string, id: string, d: number) => { const l = orderFor(k); const i = l.indexOf(id); const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; withOrder(a.picks, k, l); };
                     const onDrop = (e: React.DragEvent, to: string, beforeId?: string) => { e.preventDefault(); e.stopPropagation(); const [id, from] = e.dataTransfer.getData("text/plain").split("|"); if (id) move(id, from ?? "", to, beforeId); };
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
@@ -1851,7 +1864,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             <ol className={cn("min-h-[4rem] space-y-1 p-1", !boardFull && "max-h-[32rem] overflow-auto")}>
                               {c.ids.map((id, i) => {
                                 const mine = placesFor(id); const hit = q && memberName(id).toLowerCase().includes(q);
-                                const why = c.key ? blockedReason(fits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
+                                const why = c.key ? blockedReason(manualFits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
                                 return (
                                   <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
                                     className={cn("cursor-grab rounded border px-1 py-1 text-xs", lockedSet.has(id) ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary/40" : hit ? "bg-background border-primary ring-1 ring-primary" : "bg-background border-border")} data-testid={`pick-row-${id}`} data-locked={lockedSet.has(id)}>
@@ -1873,7 +1886,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
                                           <DropdownMenuLabel>Move to</DropdownMenuLabel>
-                                          {pickUnits.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <DropdownMenuItem key={u.key} onSelect={() => move(id, c.key, u.key)}>{u.label}</DropdownMenuItem>)}
+                                          {pickUnits.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <DropdownMenuItem key={u.key} disabled={!manualFits(id, u.key)} onSelect={() => move(id, c.key, u.key)}>{u.label}</DropdownMenuItem>)}
                                           {c.key && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => move(id, c.key, "")}>Remove from {c.label}</DropdownMenuItem></>}
                                         </DropdownMenuContent>
                                       </DropdownMenu>
@@ -1883,7 +1896,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
                                           <DropdownMenuLabel>Add to</DropdownMenuLabel>
-                                          {pickUnits.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
+                                          {pickUnits.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(manualFits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} disabled={!manualFits(id, u.key)} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
                                       <Button type="button" size="sm" variant="ghost" aria-pressed={lockedSet.has(id)} aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Locked — click to unlock this player only" : "Unlocked — click to lock this player's ladder-refresh position"} className={cn("h-auto min-h-0 shrink-0 gap-1 rounded px-1 py-0.5 text-[10px]", lockedSet.has(id) ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <><Lock className="h-3.5 w-3.5" /><span>Locked</span></> : <LockOpen className="h-3.5 w-3.5" />}</Button>
@@ -1907,7 +1920,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                   className="mt-auto line-clamp-3 break-words border-t border-border bg-muted/40 px-2 py-1 text-[9px] leading-snug text-muted-foreground"
                                   title={leagueScoped ? `Leagues feeding this group: ${who}` : who}
                                 >
-                                  {leagueScoped ? `Leagues: ${who}` : who}
+                                  {leagueScoped ? `Leagues: ${who}${adminCanOverride(e) ? " · Admin can override" : ""}` : who}
                                 </div>
                               );
                             })()}
@@ -1940,7 +1953,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 const placedUnpaired = unpairedIn(u.key);
                 // Players not yet placed in a group can be paired straight into this doubles group.
                 const unplaced = pickIds.filter((id) => placesFor(id).length === 0);
-                const candidates = [...placedUnpaired, ...unplaced.filter((id) => fits(id, u.key))];
+                const candidates = [...placedUnpaired, ...unplaced.filter((id) => manualFits(id, u.key))];
                 const sel = (pairDraft[u.key] ?? []).filter((id) => candidates.includes(id));
                 const toggle = (id: string) => setPairDraft({ ...pairDraft, [u.key]: sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id].slice(-2) });
                 const createPair = () => {

@@ -1,5 +1,14 @@
 # Roadmap
 
+## Category league allocation override (preview only)
+- [x] Add and persist “Admin can override” beside category league choices, preserving automatic placement and entry eligibility.
+- [x] Align manual allocation and the one-page structure advisory; preserve generated games and existing admin authorization.
+- [x] 38 focused tests passed; override toggle persisted in a Riverside preview draft. Outside-league permission/gender limits tested; full outsider menu interaction remains unverified.
+
+## Uitsig Men’s A category persistence
+- [x] Show one Men’s A category with two pools, preserving all eight live draw identities and other category names/settings.
+- [x] Actual Uitsig saved answers reopened in authenticated preview: Men’s A, 2 pools, 8 players, two 4-player rows; round-trip regression passed without merging IDs. No setup saved or publication performed.
+
 ## Member credit allowances
 - [x] Clarification: blank override inherits, explicit R0 allowed, Use club default action; My Account credit-limit notice beside balance.
 - [x] Inspect/reuse shared financial eligibility, recurring coverage and scoped finance permissions.

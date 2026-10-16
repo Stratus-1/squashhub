@@ -1163,6 +1163,13 @@
       "when": 1792158388832,
       "tag": "0165_service_role_auto_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1792158447635,
+      "tag": "0166_auto_progress_on_result",
+      "breakpoints": true
     }
   ]
 }

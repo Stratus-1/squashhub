@@ -28,7 +28,10 @@ Deno.serve(async (req) => {
   };
   const commit = async (tid: string, ops: unknown[]) => { const { data, error } = await sb.rpc("structured_commit", { p_tid: tid, p_ops: ops }); if (error) throw new Error(error.message); return data; };
 
+  let only: string | null = null;
+  try { const b = await req.json(); if (typeof b?.tid === "string" && /^[0-9a-f-]{36}$/i.test(b.tid)) only = b.tid; } catch { /* empty body = all */ }
   let q = sb.from("tournaments").select("id, club_id, name, status").eq("builder_architecture", "structured").not("status", "in", "(completed,cancelled,archived,draft)");
+  if (only) q = q.eq("id", only);
   if (!ROLLOUT_CLUBS.includes("*")) q = q.in("club_id", ROLLOUT_CLUBS);
   const { data: ts, error } = await q;
   if (error) return json({ error: error.message }, 500);

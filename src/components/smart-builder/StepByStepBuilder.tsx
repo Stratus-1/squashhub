@@ -1096,12 +1096,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     // Structure review step removed: it only re-displayed the saved structure.
     // Seeding is chosen per category on the structure page, so the separate
     // Seeding step is no longer part of this pilot's flow.
-    steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact).filter((k) => k !== "Entries"));
+    steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact).filter((k) => k !== "Entries" && k !== "Playoffs"));
+    // Playoffs are planned per category on the structure page, so the separate Playoffs step is dropped too.
   }
   const cur = steps[Math.min(step, steps.length - 1)];
   const isStruct = cur === "Structure" && !cardStructure;
   // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
-  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && (MERGED_STRUCTURE_STEPS.includes(t) || t === "Seeding") ? "Structure" : cardStructure && t === "Entries" ? "Eligibility" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
+  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && (MERGED_STRUCTURE_STEPS.includes(t) || t === "Seeding" || t === "Playoffs") ? "Structure" : cardStructure && t === "Entries" ? "Eligibility" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
 
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;

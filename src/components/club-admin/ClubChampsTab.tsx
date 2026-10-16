@@ -1,5 +1,7 @@
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
 import { monradNote, monradPlan } from "@/lib/smart-builder/monrad";
+import { FormatLearnButton, FormatLearnDialog } from "@/components/smart-builder/FormatLearnDialog";
+import type { LearnFormat } from "@/lib/smart-builder/format-learn";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 import "../smart-builder/tournament-admin.css";
 import { RankingScope } from "@/lib/rankings/provisional";
@@ -1521,6 +1523,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   };
 
   // ---- Visual "Tournament Structure Builder" helpers ---------------------
+  const [learnFormat, setLearnFormat] = useState<LearnFormat | null>(null);
   const FORMAT_META: Record<PerLeagueFormat, { label: string; short: string; desc: string }> = {
     monrad: { label: "Monrad", short: "Monrad", desc: "Positional draw: winners and losers continue to decide every finishing place." },
     single_round_robin: { label: "Round robin", short: "Round robin", desc: "Everyone in this league plays everyone else. Tick “double” to play home & away." },
@@ -10295,25 +10298,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     {(["single_round_robin", "knockout", "swiss", "cross_league", ...(structureOnly ? ["monrad" as const] : [])] as PerLeagueFormat[]).map((fmt) => {
                       const meta = FORMAT_META[fmt];
                       return (
-                        <Button
-                          variant="outline"
-                          key={fmt}
-                          type="button"
-                          draggable
-                          onDragStart={(e) => { e.dataTransfer.setData("application/x-champ-format", fmt); e.dataTransfer.effectAllowed = "copy"; }}
-                          onClick={() => addLeagueOfFormat(fmt)}
-                          className="h-auto block w-full whitespace-normal text-left rounded-lg border border-border bg-card p-2.5 transition-all cursor-grab active:cursor-grabbing group"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                              <Plus className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="text-xs font-semibold">{meta.label}</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
-                        </Button>
+                        <div key={fmt} className="relative">
+                          <Button
+                            variant="outline"
+                            type="button"
+                            draggable
+                            onDragStart={(e) => { e.dataTransfer.setData("application/x-champ-format", fmt); e.dataTransfer.effectAllowed = "copy"; }}
+                            onClick={() => addLeagueOfFormat(fmt)}
+                            className="h-auto block w-full whitespace-normal text-left rounded-lg border border-border bg-card p-2.5 transition-all cursor-grab active:cursor-grabbing group"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                                <Plus className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="text-xs font-semibold">{meta.label}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground leading-tight">{meta.desc}</p>
+                          </Button>
+                          <span className="absolute right-1 top-1">
+                            <FormatLearnButton format={fmt === "double_round_robin" ? "round_robin" : fmt as LearnFormat} onOpen={setLearnFormat} />
+                          </span>
+                        </div>
                       );
                     })}
+                    <FormatLearnDialog format={learnFormat} open={learnFormat !== null} onOpenChange={(v) => { if (!v) setLearnFormat(null); }} />
                     <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
 
                   </div>

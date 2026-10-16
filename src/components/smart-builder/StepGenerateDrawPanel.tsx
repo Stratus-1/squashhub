@@ -177,7 +177,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const sc = ans?.scoringOverrides?.[uKey] ?? ans?.scoringOverrides?.[uKey.split("::")[0]] ?? ans?.scoring
         ?? (plan?.divisions ?? []).find((dv: any) => dv?.label === label)?.scoring;
       const scoringText = sc ? `${sc.mode === "time_capped_points" ? "Time-capped points" : `PAR ${sc.pointsPerGame ?? 11}`} · ${sc.playAllGames ? `Play all ${sc.bestOf} games` : `Best of ${sc.bestOf}`}` : null;
-      list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto", scoringText,
+      list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto", scoringText, bottomHalf: !!ans?.originalStructure?.league_playoff_bottom_half?.[String(g)],
         poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); const q = poolQualificationOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(q.perPool) || null, runnersUp: Number(q.runnersUp) || 0 } : null; })() });
     }
     const ids = [...new Set(((regs ?? []) as any[]).flatMap((r) => [r.club_member_id, r.partner_member_id, ...Object.values(r.division_partners ?? {})]).filter(Boolean))];

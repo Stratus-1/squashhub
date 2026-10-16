@@ -152,7 +152,7 @@ export async function promoteAutoDeferred(db: Db, tid: string, exec: Exec = (fn)
       if (!later.every((x) => x.plan && (x.plan as any).trigger === "auto")) continue;
       const main = [...d.stages].sort((a, b) => b.order - a.order)[0];
       const version = String(later[0].stageKey).replace(/-po\d+$/, "");
-      const chain = buildPlayoffChain(main as any, version, later.map((x) => ({ name: x.name, plan: x.plan as any, stageKey: x.stageKey })));
+      const chain = buildPlayoffChain(main as any, version, later.map((x) => ({ name: x.name, plan: x.plan as any, stageKey: x.stageKey })), { bottomHalf: !!(d as any).playoffBottomHalf });
       if (chain.reason || !chain.stages.length || chain.stages.some((c) => d.stages.some((y) => y.id === c.id))) continue;
       spec = { ...spec, divisions: spec.divisions.map((x) => x !== d ? x : { ...x, stages: [...x.stages, ...chain.stages], deferredStages: [] }) };
       n++;

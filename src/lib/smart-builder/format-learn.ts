@@ -138,7 +138,9 @@ function knockoutExample(): LearnExample {
   const players = names("K", 8);
   const order = seededOrder(8).map((s) => players[s - 1]);
   const qf: LearnGame[] = [];
-  for (let i = 0; i < order.length; i += 2) qf.push(game(order[i], order[i + 1], i === 2));
+  // Seeds hold through the bracket so the semifinals read 1 v 4 and 2 v 3,
+  // matching the "best players meet late" explanation.
+  for (let i = 0; i < order.length; i += 2) qf.push(game(order[i], order[i + 1]));
   const sf = [game(qf[0].winner, qf[1].winner), game(qf[2].winner, qf[3].winner, true)];
   const final = [game(sf[0].winner, sf[1].winner)];
   const third = [game(sf[0].winner === sf[0].a ? sf[0].b : sf[0].a, sf[1].winner === sf[1].a ? sf[1].b : sf[1].a)];

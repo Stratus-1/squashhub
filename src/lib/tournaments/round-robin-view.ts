@@ -22,7 +22,7 @@ export interface RRCell { matchId: string; round: number | null; result: "W" | "
 export interface RRRoundMatch { id: string; a: string | null; b: string | null; aName: string; bName: string; posA: number | null; posB: number | null; winner: string | null; score: string | null; status: RRStatus; when: string; date?: string | null; time?: string | null; court?: string | null; playBy?: string | null }
 export interface RRRound { round: number | null; label: string; matches: RRRoundMatch[]; sittingOut: string[]; status: "complete" | "in_progress" | "not_started" }
 export interface RRTotals { played: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number; pointsKnown: boolean; gamesFor: number; gamesAgainst: number }
-export interface RRPoolView { players: RRPlayer[]; matrix: Record<string, Record<string, RRCell | null>>; totals: Record<string, RRTotals>; rank: Record<string, number>; rounds: RRRound[]; issues: string[] }
+export interface RRPoolView { players: RRPlayer[]; matrix: Record<string, Record<string, RRCell | null>>; totals: Record<string, RRTotals>; rank: Record<string, number>; complete: boolean; rounds: RRRound[]; issues: string[] }
 
 const isPlayed = (m: RRMatchInput) => m.status === "completed";
 
@@ -85,9 +85,10 @@ export function rrWhen(m: Pick<RRMatchInput, "date" | "time" | "court" | "playBy
   return "Not scheduled";
 }
 
-export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMatchInput[]; rankOrder?: string[] }): RRPoolView {
+export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMatchInput[]; rankOrder?: string[]; seedOrder?: string[] }): RRPoolView {
   const issues: string[] = [];
-  const order = input.rankOrder?.length ? input.rankOrder : input.players.map((p) => p.id);
+  // Rows stay in fixed draw order (seedOrder) so games never jump boxes; rank is shown separately.
+  const order = input.seedOrder?.length ? input.seedOrder : input.rankOrder?.length ? input.rankOrder : input.players.map((p) => p.id);
   const players = [...input.players].sort((x, y) => {
     const ix = order.indexOf(x.id), iy = order.indexOf(y.id);
     return (ix < 0 ? 1e9 : ix) - (iy < 0 ? 1e9 : iy);
@@ -150,6 +151,24 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
       status: live.length && done === live.length ? "complete" : done ? "in_progress" : "not_started",
     };
   });
-  const rank = Object.fromEntries(players.map((p, i) => [p.id, i + 1]));
-  return { players, matrix, totals, rank, rounds, issues };
+  let rankIds = players.map((p) => p.id);
+  if (input.seedOrder?.length) {
+    if (input.rankOrder?.length) rankIds = [...rankIds].sort((x, y) => { const ix = input.rankOrder!.indexOf(x), iy = input.rankOrder!.indexOf(y); return (ix < 0 ? 1e9 : ix) - (iy < 0 ? 1e9 : iy); });
+    else rankIds = [...rankIds].sort((x, y) => { const a = totals[x], b = totals[y];
+      return (b.wins - a.wins) || ((b.gamesFor - b.gamesAgainst) - (a.gamesFor - a.gamesAgainst)) || (b.gamesFor - a.gamesFor) || ((b.pointsFor - b.pointsAgainst) - (a.pointsFor - a.pointsAgainst)) || (order.indexOf(x) - order.indexOf(y)); });
+  }
+  const rank = Object.fromEntries(rankIds.map((id, i) => [id, i + 1]));
+  const live = input.matches.filter((m) => !m.isBye && m.a && m.b && !isVoidResult({ score: m.score }));
+  const complete = live.length > 0 && live.every((m) => isPlayed(m));
+  return { players, matrix, totals, rank, complete, rounds, issues };
+}
+
+/** Fixed draw order from Round 1 pairings (circle method: 1vN, 2vN-1 …), independent of results. */
+export function rrSeedOrder(matches: { round: number | null; a: string | null; b: string | null; isBye?: boolean }[], fallback: string[]): string[] {
+  const r1 = matches.filter((m) => (m.round ?? 1) === Math.min(...matches.map((x) => x.round ?? 1)));
+  const tops = r1.map((m) => m.a).filter(Boolean) as string[];
+  const bottoms = r1.filter((m) => !m.isBye).map((m) => m.b).filter(Boolean).reverse() as string[];
+  const out: string[] = [];
+  for (const id of [...tops, ...bottoms, ...fallback]) if (!out.includes(id)) out.push(id);
+  return out;
 }

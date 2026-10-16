@@ -25,7 +25,7 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
     <div className="space-y-2" data-testid="rr-pilot">
       {!matrixOnly && <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
-        <span className="text-muted-foreground">Same saved matches as the standings table; order follows official standings. No results can be entered here.</span>
+        <span className="text-muted-foreground">Same saved matches as the standings table; rows stay in draw order; Rank updates after each result. No results can be entered here.</span>
       </div>}
       {view.issues.length > 0 && <p className="text-xs text-destructive">{view.issues.join(" ")}</p>}
       {(!matrixOnly || withCalendar) && (
@@ -71,11 +71,19 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
                   <td className="border border-border px-2 text-center tabular-nums">{totals[p.id].losses}</td>
                   <td className="border border-border px-2 text-center tabular-nums">{totals[p.id].gamesFor}</td><td className="border border-border px-2 text-center tabular-nums">{totals[p.id].gamesAgainst}</td><td className="border border-border px-2 text-center tabular-nums">{(g => g > 0 ? `+${g}` : `${g}`)(totals[p.id].gamesFor - totals[p.id].gamesAgainst)}</td>
                   <td data-testid={`rr-points-${p.id}`} title={totals[p.id].pointsKnown ? "Recorded rally points for / against" : "Incomplete recorded rally-point detail"} className="border border-border px-2 text-center tabular-nums whitespace-nowrap">{totals[p.id].pointsKnown ? `${totals[p.id].pointsFor}/${totals[p.id].pointsAgainst}` : "—"}</td>
-                  <td className="border border-border px-2 text-center tabular-nums font-semibold">{i + 1}</td>
+                  <td data-testid={`rr-rank-${p.id}`} className="border border-border px-2 text-center tabular-nums font-semibold">{view.rank[p.id] ?? i + 1}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {view.complete && <div className="space-y-1" data-testid="rr-final-standing">
+            <h4 className="font-semibold">Final standing</h4>
+            <table className="border-collapse"><tbody>
+              {[...players].sort((a, b) => (view.rank[a.id] ?? 0) - (view.rank[b.id] ?? 0)).map((p) => (
+                <tr key={p.id}><td className="border border-border px-2 py-1 tabular-nums font-semibold text-success">{view.rank[p.id]}</td><td className="border border-border px-2 py-1 whitespace-nowrap">{p.name}</td><td className="border border-border px-2 py-1 tabular-nums">{totals[p.id].wins}W {totals[p.id].losses}L</td></tr>
+              ))}
+            </tbody></table>
+          </div>}
           {!matrixOnly && <div className="space-y-2" data-testid="rr-order-of-play">
             <h4 className="font-semibold">Order of play</h4>
             {rounds.map((rd, ri) => (

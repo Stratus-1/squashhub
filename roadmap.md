@@ -1,5 +1,13 @@
 # Roadmap
 
+## Member credit allowances
+- [x] Clarification: blank override inherits, explicit R0 allowed, Use club default action; My Account credit-limit notice beside balance.
+- [x] Inspect/reuse shared financial eligibility, recurring coverage and scoped finance permissions.
+- [x] Add R0 club default, nullable member overrides and audited server-only edits; no ledger adjustments.
+- [x] Add Member Billing Settings, Edit Member financial section, member statements and read-only My Account controls.
+- [x] 64 focused tests and 29 isolated PostgreSQL checks passed; authenticated Riverside R0 no-op save/reload verified, build OK; no publication or live allowance/ledger changes.
+- [ ] Real selected-member Edit Member/My Account browser verification blocked: preview Riverside member picker has no matching members and active account resolves as Unknown member; no alternate account selected or synthetic live data created.
+
 ## Bar collection-ready alerts (preview only)
 - [x] Strengthen existing member ready popup, retain ping and add supported vibration; preserve partial fulfilment, dedupe and payments.
 - [x] Seven focused tests, synthetic browser popup/View order/X checks and background-worker simulation passed; preview build OK, no real orders, live writes or publication.

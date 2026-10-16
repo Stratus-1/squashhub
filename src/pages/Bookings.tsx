@@ -1283,7 +1283,9 @@ export default function Bookings() {
         }
 
       } catch (e) {
-        console.error("[booking-balance] check failed, allowing booking:", e);
+        console.error("[booking-balance] check failed:", e);
+        toast.error("Could not check your available balance. Please try again.");
+        return;
       }
     }
 

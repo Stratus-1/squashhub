@@ -39,6 +39,7 @@ import { SharedAccessCard } from "@/components/SharedAccessCard";
 import { MyFamilyCard } from "@/components/family/MyFamilyCard";
 import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { FamilyInviteCard } from "@/components/family/FamilyInviteCard";
+import { MemberCreditControl } from "@/components/club-admin/MemberCreditControl";
 
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
 import { recurringGatewayFor } from "@/lib/recurring-payments";
@@ -858,6 +859,8 @@ export default function MyAccount() {
             </Button>
           </div>
 
+          {clubId && clubMemberId && <MemberCreditControl clubId={clubId} memberId={clubMemberId} readOnly />}
+
           {bookingGate && !bookingGate.allowed && bookingGate.shortfall > 0 && (
             <div className="mt-3 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-2">
               <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -876,7 +879,7 @@ export default function MyAccount() {
 
           {bookingGate && bookingGate.allowed && creditBalance < 0 && bookingGate.requiredBuffer > 0 && (
             <p className="mt-2 text-[10px] text-muted-foreground">
-              Your balance is within your payment arrangement — you can still book a court.
+              Your balance is within your approved credit or payment arrangement — you can still book a court.
             </p>
           )}
 

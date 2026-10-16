@@ -49,7 +49,8 @@ export function KnockoutBracketView({ title, matches, names, seedOf }: { title: 
                             <div aria-hidden className="absolute border-l-2 border-muted-foreground/40" style={{ left: -GAP / 2, top: `calc(50% - ${Math.pow(2, ci - 2) * unit}px)`, height: Math.pow(2, ci - 1) * unit }} />
                           </> : null}
                           {ci < rounds.length - 1 ? <div aria-hidden className="absolute border-t-2 border-muted-foreground/40" style={{ left: "100%", top: "50%", width: GAP / 2 }} /> : null}
-                          <Box m={m} names={names} seedOf={seedOf} showSeed={ci === 0} />
+                          <Box m={m} names={names} seedOf={seedOf} showSeed={ci === 0}
+                            feed={ci > 0 ? [rounds[ci - 1][2 * i]?.winner ?? null, rounds[ci - 1][2 * i + 1]?.winner ?? null] : undefined} />
                         </div>
                       );
                     })}
@@ -77,7 +78,8 @@ export function KnockoutBracketView({ title, matches, names, seedOf }: { title: 
   );
 }
 
-function Box({ m, names, seedOf, showSeed }: { m: BracketMatch | null; names: Record<string, string>; seedOf: (id: string) => number | null; showSeed: boolean }) {
+/** `feed`: winners of the two feeder games, shown in a future box until its game is created. */
+function Box({ m, names, seedOf, showSeed, feed }: { m: BracketMatch | null; names: Record<string, string>; seedOf: (id: string) => number | null; showSeed: boolean; feed?: [string | null, string | null] }) {
   const line = (id: string | null) => {
     const won = !!m?.winner && m.winner === id;
     const s = id && showSeed ? seedOf(id) : null;
@@ -90,9 +92,9 @@ function Box({ m, names, seedOf, showSeed }: { m: BracketMatch | null; names: Re
   };
   return (
     <div className={cn("rounded border bg-card", m ? "border-border" : "border-dashed border-border")}>
-      {line(m?.a ?? null)}
+      {line(m?.a ?? (m ? null : feed?.[0] ?? null))}
       <div className="border-t border-border" />
-      {line(m?.b ?? null)}
+      {line(m?.b ?? (m ? null : feed?.[1] ?? null))}
       {m?.score ? <div className="border-t border-border px-2 py-0.5 text-[10px] text-muted-foreground">{m.score}</div> : null}
       {m && (m.date || m.time || m.court) ? <div className="border-t border-border px-2 py-0.5 text-[10px] text-muted-foreground">{[m.date, m.time?.slice(0, 5), m.court].filter(Boolean).join(" · ")}</div> : null}
     </div>

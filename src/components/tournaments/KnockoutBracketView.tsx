@@ -91,7 +91,8 @@ function Box({ m, names, seedOf, showSeed }: { m: BracketMatch | null; names: Re
       {line(m?.a ?? null)}
       <div className="border-t border-border" />
       {line(m?.b ?? null)}
-      {m && (m.score || m.date) ? <div className="border-t border-border px-2 py-0.5 text-[10px] text-muted-foreground">{m.score ? m.score : `${m.date ?? ""} ${m.time?.slice(0, 5) ?? ""}${m.court ? ` · ${m.court}` : ""}`}</div> : null}
+      {m?.score ? <div className="border-t border-border px-2 py-0.5 text-[10px] text-muted-foreground">{m.score}</div> : null}
+      {m && (m.date || m.time || m.court) ? <div className="border-t border-border px-2 py-0.5 text-[10px] text-muted-foreground">{[m.date, m.time?.slice(0, 5), m.court].filter(Boolean).join(" · ")}</div> : null}
     </div>
   );
 }

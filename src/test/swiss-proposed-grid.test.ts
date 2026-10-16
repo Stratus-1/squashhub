@@ -108,3 +108,24 @@ describe("Read-only projection from confirmed results (Mens A first result)", ()
     expect(build("p1").g.rounds[0].blocks.find((b: any) => b.matchId === "m0")!.score).toBe("3–1");
   });
 });
+
+describe("saved later-round games are real, not projected", () => {
+  it("round 2 saved results show players, W/L and score without the projected tag", async () => {
+    const { buildSwissProgression, buildProposedSwissGrid } = await import("@/lib/tournaments/swiss-progression-view");
+    const ids = Array.from({ length: 8 }, (_, i) => `p${i + 1}`);
+    const names = Object.fromEntries(ids.map((id) => [id, id.toUpperCase()]));
+    const r1 = [[1, 8], [2, 7], [3, 6], [4, 5]].map(([a, b], i) => ({ id: `r1-${i}`, round: 1, a: `p${a}`, b: `p${b}`, winner: `p${a}`, status: "completed", score: "3-0" }));
+    const r2 = [{ id: "r2-0", round: 2, a: "p1", b: "p2", winner: "p2", status: "completed", score: "3-1" }];
+    const model = buildSwissProgression({ seedOrder: ids, names, totalRounds: 3, matches: [...r1, ...r2] });
+    const grid = buildProposedSwissGrid(model);
+    const round2 = grid.rounds.find((r) => r.round === 2)!;
+    const real = round2.blocks.find((b) => b.matchId === "r2-0")!;
+    expect(real.saved).toBe(true);
+    expect(real.rows.map((r) => r.result).sort()).toEqual(["L", "W"]);
+    expect(real.rows.some((r) => r.projected)).toBe(false);
+    expect(real.score).toBe("3–1");
+    // the two players of the saved game appear only once in that round
+    const appearances = round2.blocks.flatMap((b) => b.rows.map((r) => r.id)).filter((id) => id === "p1" || id === "p2");
+    expect(appearances).toHaveLength(2);
+  });
+});

@@ -48,12 +48,15 @@ export function syncPlayoffStages<T extends PlayoffStageLike>(stages: T[], plann
       result.push(shared ? shared : template ? { ...template, unit: "" } : make(name, ""));
       continue;
     }
-    need.forEach((u, i) => {
+    let reused = false;
+    for (const u of need) {
       const own = existing.find((s) => s.unit === u);
-      if (own) result.push(own);
-      else if (template) result.push({ ...template, unit: u, ...(i === 0 && !existing.some((s) => s.id === template.id && s.unit === u) && !result.some((r) => r.id === template.id) ? {} : { id: Math.random().toString(36).slice(2) }) });
-      else result.push(make(name, u));
-    });
+      if (own) { result.push(own); continue; }
+      if (!template) { result.push(make(name, u)); continue; }
+      const canReuse = !reused && !template.unit;
+      reused ||= canReuse;
+      result.push({ ...template, unit: u, ...(canReuse ? {} : { id: Math.random().toString(36).slice(2) }) });
+    }
   }
   return [...others, ...result];
 }

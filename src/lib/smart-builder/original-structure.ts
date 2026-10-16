@@ -22,7 +22,7 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
     out.swiss_pools[id] = s.pools ?? 1;
     out.swiss_rounds[id] = s.rounds ?? 5;
     if (s.kind === "monrad" && s.rounds != null) out.monrad_rounds = { ...(out.monrad_rounds ?? {}), [id]: s.rounds };
-    out.league_genders[id] = a.categoryTypes?.[cat] ?? "open";
+    out.league_genders[id] = ((a.categoryTypes?.[cat] as string) === "mens" ? "men" : a.categoryTypes?.[cat] ?? "open") as any;
     out.league_match_types[id] = a.disc[key] ?? a.disc[cat] ?? "singles";
     out.league_scoring_modes[id] = sc?.mode ?? "standard";
     out.league_points_per_game[id] = sc?.pointsPerGame ?? 11;
@@ -63,7 +63,7 @@ export function answersFromOriginalStructure(a: StepAnswers, raw: OriginalStruct
     }
     activeKeys.push(key);
     const cat = key.split("::")[0];
-    next.categoryTypes = { ...next.categoryTypes, [cat]: raw.league_genders?.[id] ?? "open" };
+    next.categoryTypes = { ...next.categoryTypes, [cat]: (raw.league_genders?.[id] === "men" ? "mens" : raw.league_genders?.[id] ?? "open") as any };
     next.disc[key] = raw.league_match_types?.[id] ?? "singles";
     next.unitEntries[key] = String(raw.expected_players?.[id] || "");
     const fmt = raw.league_formats?.[id] ?? "single_round_robin";

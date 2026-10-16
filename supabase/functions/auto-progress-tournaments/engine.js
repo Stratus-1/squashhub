@@ -6014,7 +6014,7 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
         return { stages: [], reason: `${prev2.name} is already the final.`, notes };
       const auto = !opts.forceConfirm && e.plan.trigger === "auto";
       const st = {
-        id: `${version}-po${offset + i + 1}`,
+        id: e.stageKey ?? `${version}-po${offset + i + 1}`,
         order: main.order + i + 1,
         kind: "mapped",
         name: e.name,
@@ -6254,7 +6254,7 @@ async function promoteAutoDeferred(db, tid, exec = (fn) => fn(db)) {
         continue;
       const main = [...d.stages].sort((a, b) => b.order - a.order)[0];
       const version = String(later[0].stageKey).replace(/-po\d+$/, "");
-      const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan })));
+      const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan, stageKey: x.stageKey })));
       if (chain.reason || !chain.stages.length || chain.stages.some((c) => d.stages.some((y) => y.id === c.id)))
         continue;
       spec = { ...spec, divisions: spec.divisions.map((x) => x !== d ? x : { ...x, stages: [...x.stages, ...chain.stages], deferredStages: [] }) };

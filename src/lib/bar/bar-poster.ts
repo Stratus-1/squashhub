@@ -85,13 +85,20 @@ export function buildBarPoster(o: BarPosterOptions): jsPDF {
     } catch { /* A missing logo must not prevent printing. */ }
     textX += 40;
   }
+  // SquashHub brand mark in the top-right corner of the navy header.
+  const brand = fitBox(BRAND_LOGO_PX.w, BRAND_LOGO_PX.h, 46, 11);
+  const brandX = W - M - brand.w;
+  try {
+    doc.addImage(squashHubLogoDataUrl, "PNG", brandX, (48 - brand.h) / 2, brand.w, brand.h);
+  } catch { /* A missing brand mark must not prevent printing. */ }
+  const nameMaxW = Math.max(40, brandX - 6 - textX);
   doc.setFont("helvetica", "bold");
   let nameSize = 22;
   doc.setFontSize(nameSize);
-  while (doc.splitTextToSize(o.clubName, W - textX - M).length > 2 && nameSize > 10) {
+  while (doc.splitTextToSize(o.clubName, nameMaxW).length > 2 && nameSize > 10) {
     doc.setFontSize(--nameSize);
   }
-  const nameLines = doc.splitTextToSize(o.clubName, W - textX - M);
+  const nameLines = doc.splitTextToSize(o.clubName, nameMaxW);
   doc.setTextColor(255, 255, 255);
   doc.text(nameLines, textX, nameLines.length > 1 ? 17 : 23);
   doc.setFontSize(12);

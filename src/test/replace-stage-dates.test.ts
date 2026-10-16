@@ -9,6 +9,7 @@ describe("play-off stage dates never precede the stage before", () => {
   });
   it("leaves the games undated when no valid day is left", () => {
     const s = laterStageSchedule({ rule: "fixed", date: "2026-10-29", roundDates: ["2026-10-29", "2026-10-30", "2026-10-31"] } as any, "2026-10-31");
-    expect(s.rule).toBeNull();
+    expect(s.rule).toBe("fixed");
+    expect(s.date).toBeNull();
   });
 });

@@ -480,12 +480,13 @@ export async function scheduleTimedRounds(champId: string, opts: { dryRun?: bool
   const ctx = await loadTimedContext(champId);
   if (!ctx || !ctx.days.length) return null;
   const [{ data: rows }, steps] = await Promise.all([
-    fromExt("club_champs_matches").select("id, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId),
+    fromExt("club_champs_matches").select("id, stage, round_number, group_number, bracket_position, status, winner_member_id, booking_id, court_id, scheduled_date, scheduled_time, stage_label, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId),
     loadPlanSteps(champId),
   ]);
   const movable = (m: any) => !m.winner_member_id && !m.booking_id && !TERMINAL.includes(String(m.status ?? "").toLowerCase()) && m.player_a_member_id && m.player_b_member_id;
   const all = (rows ?? []) as any[];
-  let own = all.filter((m) => movable(m) && !findStep(steps, String(m.stage_label ?? "")));
+  // Knockout play-off games are placed by scheduleWeekendPlayoffs (after the stage before them), never here.
+  let own = all.filter((m) => movable(m) && m.stage !== "ko" && !findStep(steps, String(m.stage_label ?? "")));
   // Rounds scheduled through Stages & scheduling own their games; play-by rounds keep player booking.
   if (!ctx.fixedStages && ctx.scheduledRounds.length) own = own.filter((m) => ctx.scheduledRounds.includes(Number(m.round_number) || 1));
   if (!own.length) return { label: "Round robin", scheduled: 0, overflow: [], required: 0, available: 0, issues: [] as string[], notes: [] as string[] };

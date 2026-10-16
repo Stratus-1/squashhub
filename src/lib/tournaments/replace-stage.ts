@@ -23,13 +23,13 @@ export function laterStageSchedule(old: PlannedStage["schedule"], afterDate?: st
   const ok = (d?: string | null) => !!d && String(d).slice(0, 10) > cut;
   const roundDates = (old.roundDates ?? []).filter(ok);
   const date = ok(old.date) ? old.date : roundDates[0] ?? null;
-  if (!date && !roundDates.length && old.rule === "fixed") return { rule: null };
+  if (!date && !roundDates.length && old.rule === "fixed") return { rule: "fixed", date: null }; // timed by the weekend play-off scheduler
   return { ...old, date, ...(old.roundDates ? { roundDates } : {}) };
 }
 
 /** Builds the new stage, keeping the old stage's id, order and discipline; dates never precede `afterDate`. */
 export function buildReplacementStage(old: PlannedStage, choice: ReplacementChoice, entrants: number, afterDate?: string | null): PlannedStage {
-  const base = { id: old.id, order: old.order, discipline: old.discipline, schedule: laterStageSchedule(old.schedule, afterDate), generation: old.generation ?? "owner_approval" } as const;
+  const base = { id: old.id, order: old.order, discipline: old.discipline, schedule: laterStageSchedule(old.schedule, afterDate), generation: "automatic" } as const; // play-offs start as soon as the stage before is finished
   if (choice.kind === "knockout") {
     const q = choice.qualifiers;
     if (q < 2 || (q & (q - 1)) !== 0) throw new Error("Choose 2, 4, 8 or 16 qualifiers.");

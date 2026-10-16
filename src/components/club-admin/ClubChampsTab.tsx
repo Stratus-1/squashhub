@@ -9326,28 +9326,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                             visible and every team reads as selected; the
                                             moment a child is unticked the source becomes an
                                             explicit id list. */}
-                                        {(leagueSourceScopes.length > 0) && (
+                                        {(structureSourceScopes.length > 0) && (
                                           <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Leagues</span>
+                                             <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Leagues</span>
                                             <select
                                               className="h-7 rounded-md border border-border bg-background px-2 text-[11px]"
                                               value={leagueSourceScope}
                                               onChange={(e) => setLeagueSourceScope(e.target.value)}
                                               aria-label="Filter leagues by internal or regional association"
                                             >
-                                              <option value="all">Internal + regional</option>
-                                              <option value="internal">Internal leagues</option>
-                                              {leagueSourceScopes.map((s) => (
-                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                              <option value="all">{scopeIsWide ? "All regional leagues" : "Internal + regional"}</option>
+                                              {!scopeIsWide && <option value="internal">Internal leagues</option>}
+                                              {structureSourceScopes.map((s) => (
+                                                 <option key={s.id} value={s.id}>{s.name}</option>
                                               ))}
                                             </select>
                                           </div>
                                         )}
                                         <LeagueSourceTree
-                                          groups={scopedLeagueTree}
+                                          groups={structureLeagueTree}
                                           selected={
                                             src.mode === "all"
-                                              ? allTreeLeagueIds(leagueTree)
+                                              ? allTreeLeagueIds(structureLeagueTree)
                                               : src.leagueIds
                                           }
                                           onChange={(ids) =>

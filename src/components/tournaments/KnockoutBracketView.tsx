@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { bracketOrder } from "@/lib/tournaments/contract";
 
 export interface BracketMatch {
   id: string; round: number; slot: number | null; bracket: number | null;

@@ -10568,7 +10568,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 const locks = setCategoryLocked(categoryLocks, lockKey, !categoryLocked);
                                 if (!categoryLocked && !saveOriginalStructure(locks)) return;
                                 setCategoryLocks(locks);
-                                structureOnly.onLocksChange?.(locks);
+                                if (categoryLocked) structureOnly.onLocksChange?.(locks);
                                 if (!categoryLocked) setCollapsedLeagues((m) => ({ ...m, ...Object.fromEntries((poolGroup?.slots ?? [gn]).map((slot) => [String(slot), true])) }));
                                 else setCollapsedLeagues((m) => ({ ...m, [key]: false }));
                               }}>{categoryLocked ? <><CategoryUnlockIcon className="h-3.5 w-3.5" />Edit / unlock</> : <><CategoryLockIcon className="h-3.5 w-3.5" />Done & lock</>}</Button>
@@ -10809,7 +10809,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       )}
 
   </>;
-  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={saveOriginalStructure}>Save Structure</Button></div></div>;
+  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={() => saveOriginalStructure()}>Save Structure</Button></div></div>;
 
   // ── LIST VIEW ──
   if (!showWizard) {

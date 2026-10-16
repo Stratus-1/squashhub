@@ -8928,7 +8928,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const originalChangeKey = JSON.stringify({ numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!structureOnly || !originalLoadedRef.current) return;
+    if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
     if (originalBaselineRef.current === null) { originalBaselineRef.current = originalChangeKey; return; }
     structureOnly.onDirtyChange?.(originalBaselineRef.current !== originalChangeKey);
   }, [originalChangeKey, structureOnly]);
@@ -9346,6 +9346,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                    const nv = v as PerLeagueFormat;
                                    setLeagueFormats((m) => ({ ...m, [key]: nv }));
                                    setUsePerLeagueFormats(true);
+                                   if (nv === "monrad") setSwissPools((m) => ({ ...m, [key]: 1 }));
                                    if (nv === "swiss") {
                                      setSwissPools((m) => ({ ...m, [key]: m[key] || 1 }));
                                      setSwissRounds((m) => ({ ...m, [key]: m[key] || 5 }));

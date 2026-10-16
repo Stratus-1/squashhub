@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Riverside replacement Tournament Structure pilot (live planning tests approved)
-- [ ] Reuse original alternate-builder structure choices and conditional rules in Riverside with square coloured buttons, blank rows and Monrad; verify save/reload without publication.
+- [x] Reuse the actual original alternate-builder structure subtree in Riverside, square coloured choices/blank rows/Monrad, local save/review/reopen verified; no publication or live data writes.
 - [x] Enable Riverside-only new drafts on published hosts for approved publication; 28 focused tests and preview build passed, creation block preserved.
 - [x] Retire old Riverside row/canvas and stage-planner entry points even if old flags are cached; preserve saved answers and other clubs.
 - [x] Build approved Riverside preview card-based replacement: merge seven structure steps, separate subdivisions/pools, include Monrad, preserve scheduling.

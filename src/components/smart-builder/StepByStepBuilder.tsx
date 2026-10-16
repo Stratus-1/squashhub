@@ -680,7 +680,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (parent && units.some((u) => u.key === parent)) return eligOf(parent);
     return a.elig[k] ?? ((rowStructure || cardStructure) && k.includes("::") ? a.elig[k.split("::")[0]] : undefined) ?? defaultElig;
   };
-  const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
+  const setElig = (k: string, p: Partial<Elig>) => {
+    const next = { ...eligOf(k), ...p };
+    // Members of chosen leagues are always placed in this group automatically.
+    if (next.mode === "leagues") next.placement = "auto";
+    setA({ ...a, elig: { ...a.elig, [k]: next } });
+  };
   const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
   // Eligibility = gender category +, when the event is scoped to leagues, actual
   // league registration. A 7th-league player can never tick the 6th-league event.

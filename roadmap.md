@@ -59,3 +59,4 @@
 - [ ] Browser check of Generate draw + Start Stage 2 on "assasasa" by Willem.
 - [x] Edit setup of a created Riverside tournament opens the new card-structure screens (not the old 21-step flow).
 - [x] Final Swiss standings table shown on Run stages once the last Swiss round is complete (wins, Buchholz, seed); verified on "assasasa".
+- [ ] Stage 2 (round robin) gets its own progression log below the Swiss progression log once it starts (Willem, 16 Oct)

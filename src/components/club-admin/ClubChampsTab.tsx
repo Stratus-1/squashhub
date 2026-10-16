@@ -1270,6 +1270,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const sectionsForLeague = (gn: number) =>
     effectivePools({ gn, pools: swissPools, legacySections: leagueSections });
   const poolsForDivision = sectionsForLeague;
+  /**
+   * Swiss rounds recommendation: about one round per doubling of the field,
+   * plus one for a clearer final order, never more than players − 1.
+   */
+  const swissSuggestionFor = (perPool: number) =>
+    perPool >= 2 ? Math.max(1, Math.min(perPool - 1, Math.ceil(Math.log2(perPool)) + 1)) : 5;
+  const swissSuggestedRounds = (gn: number) => {
+    const key = String(gn);
+    const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
+    const pools = poolsForDivision(gn);
+    return swissSuggestionFor(pools > 0 ? Math.ceil(entrants / pools) : entrants);
+  };
+  /**
+   * The rounds a Swiss category will actually run: the organiser's saved
+   * choice, otherwise the recommendation the field already shows (Riverside
+   * structure screen only — the wizard still asks for an explicit number).
+   * Planning-only: nothing here generates or mutates fixtures.
+   */
+  const swissRoundsFor = (gn: number, fmt?: PerLeagueFormat | "") => {
+    const stored = Number(swissRounds[String(gn)]) || 0;
+    if (stored > 0) return stored;
+    if (!structureOnly) return 0;
+    return (fmt ?? formatForLeague(gn)) === "swiss" ? swissSuggestedRounds(gn) : 0;
+  };
   // Knockout divisions size their pools for the bracket (8 + 6) instead of
   // equal headcount (7 + 7). Every other format keeps balanced pools.
   const isKnockoutDivision = (gn: number) => formatForLeague(gn) === "knockout";
@@ -5840,7 +5864,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         // Pools are the division's independent sub-draws; knockout divisions
         // fall back to their legacy section count.
         pools: poolsForDivision(gn),
-        rounds: Number(swissRounds[key]) || 0,
+        rounds: swissRoundsFor(gn, fmt),
         entities: roster || Math.max(0, Number(expectedPlayers[key]) || 0),
         playoffs: playoffsForLeague(gn),
       };
@@ -9039,6 +9063,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       }
       finalMonradRounds[key] = rounds;
     }
+    // Swiss rounds left blank keep the recommendation the field already shows.
+    const finalSwissRounds = { ...swissRounds };
+    for (let i = 1; i <= numGroups; i++) {
+      const swKey = String(i);
+      if (formatForLeague(i) !== "swiss") continue;
+      if (!Number(finalSwissRounds[swKey])) finalSwissRounds[swKey] = swissSuggestedRounds(i);
+    }
     originalBaselineRef.current = originalChangeKey;
     structureOnly.onDirtyChange?.(false);
     structureOnly.onSave({ ...structureOnly.initial, _unit_keys: originalKeysRef.current, num_groups: numGroups,
@@ -9046,7 +9077,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       expected_players: expectedPlayers,
       league_formats: leagueFormats,
       swiss_pools: swissPools,
-      swiss_rounds: swissRounds,
+      swiss_rounds: finalSwissRounds,
       monrad_rounds: finalMonradRounds,
       league_genders: leagueGenders,
       league_match_types: leagueMatchTypes,
@@ -9295,11 +9326,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           else next[key] = n;
                                           return next;
                                         });
-                                        // Auto-derive Swiss rounds (treat pool as round-robin: rounds = perPool - 1)
+                                        // Swiss rounds default to the recommendation for this field size.
                                         if (isSwiss && Number.isFinite(n) && n >= 2) {
                                           const pools = poolsForDivision(gn);
-                                          const perPool = Math.max(2, Math.ceil(n / pools));
-                                          setSwissRounds((m) => ({ ...m, [key]: Math.max(1, perPool - 1) }));
+                                          setSwissRounds((m) => ({ ...m, [key]: swissSuggestionFor(Math.max(2, Math.ceil(n / pools))) }));
                                         }
                                       }}
                                       className="h-8 text-xs mt-0.5 px-1.5"
@@ -9648,9 +9678,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                    (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                  const pools = poolsForDivision(gn);
                                  const perPool = pools > 0 ? Math.ceil(entrants / pools) : entrants;
-                                // Swiss needs about log2(players) rounds to find a winner; +1 for a clear order. Never more than players − 1.
-                                const suggested = perPool >= 2 ? Math.max(1, Math.min(perPool - 1, Math.ceil(Math.log2(perPool)) + 1)) : 5;
-                                 const rounds = Number(swissRounds[key]) || 0;
+                                const suggested = swissSuggestionFor(perPool);
+                                 const rounds = swissRoundsFor(gn, "swiss");
                                  const pairing = swissPairingModes[key] === "random" ? "random" : "seeded";
                                  return (
                                    <div className="rounded-md border border-teal-500/40 bg-teal-500/5 p-2 space-y-2">

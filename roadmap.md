@@ -28,6 +28,7 @@
 - [ ] Full downstream scheduling submission and live creation require later pilot review; Monrad generation remains unavailable.
 - [x] Restore Riverside's standard tournament setup by disabling only the consolidated structure and stage-planner switches; retain saved data.
 - [x] Simplify row-based structure step: main categories + subcategories only — next-stage and playoff columns removed (15 Oct).
+- [x] Swiss rounds field now defaults to the recommendation (number pre-filled, recommendation still shown beside it); 31 focused tests and Riverside preview save check passed; no fixture generation, nothing published.
 - [x] Reduce text size / vertical density in the structure editor.
 - [x] Implement and verify the actual Visual Builder: toolbox, placement, connections, inspector, validation and canonical save/reload (Riverside synthetic preview only).
 - [x] Add an X to dismiss format-help toast messages.

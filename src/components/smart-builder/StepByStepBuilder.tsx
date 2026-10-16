@@ -674,6 +674,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (!m || !cats.includes(m[1].trim())) return null;
     return [m[1].trim(), ...rest].join("::");
   };
+  /** Places players can be picked into — follow-up stages are filled from their first stage's results. */
+  const pickUnits = units.filter((u) => { const p = stageParentKey(u.key); return !(p && units.some((x) => x.key === p)); });
   const defaultElig: Elig = a.source === "both" ? { mode: "manual", leagueIds: [], placement: "choose", alsoEveryone: true } : DEFAULT_ELIG;
   const eligOf = (k: string): Elig => {
     const parent = stageParentKey(k);
@@ -1617,7 +1619,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 </div>
               )}
               <div className="space-y-3">
-                {units.filter((u) => { const p = stageParentKey(u.key); return !(p && units.some((x) => x.key === p)); }).map((u) => {
+                {pickUnits.map((u) => {
                   const e = eligOf(u.key);
                   return (
                     <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
@@ -1798,7 +1800,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const nudge = (k: string, id: string, d: number) => { const l = orderFor(k); const i = l.indexOf(id); const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; withOrder(a.picks, k, l); };
                     const onDrop = (e: React.DragEvent, to: string, beforeId?: string) => { e.preventDefault(); e.stopPropagation(); const [id, from] = e.dataTransfer.getData("text/plain").split("|"); if (id) move(id, from ?? "", to, beforeId); };
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
-                    const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...units.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
+                    const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...pickUnits.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
                     const board = (
                       <div className={cn("grid gap-2 pb-2", boardFull ? "player-board-full" : "sm:grid-cols-2 lg:grid-cols-3")} data-testid="pick-board" style={boardFull ? { zoom: boardZoom / 100, "--player-board-zoom": boardZoom / 100 } as CSSProperties : undefined}>
                         {cols.map((c) => (
@@ -1833,7 +1835,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
                                           <DropdownMenuLabel>Move to</DropdownMenuLabel>
-                                          {units.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <DropdownMenuItem key={u.key} onSelect={() => move(id, c.key, u.key)}>{u.label}</DropdownMenuItem>)}
+                                          {pickUnits.filter((u) => u.key !== c.key && !mine.includes(u.key)).map((u) => <DropdownMenuItem key={u.key} onSelect={() => move(id, c.key, u.key)}>{u.label}</DropdownMenuItem>)}
                                           {c.key && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => move(id, c.key, "")}>Remove from {c.label}</DropdownMenuItem></>}
                                         </DropdownMenuContent>
                                       </DropdownMenu>
@@ -1843,7 +1845,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
                                           <DropdownMenuLabel>Add to</DropdownMenuLabel>
-                                          {units.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
+                                          {pickUnits.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(fits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
                                       <Button type="button" size="sm" variant="ghost" aria-pressed={lockedSet.has(id)} aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Locked — click to unlock this player only" : "Unlocked — click to lock this player's ladder-refresh position"} className={cn("h-auto min-h-0 shrink-0 gap-1 rounded px-1 py-0.5 text-[10px]", lockedSet.has(id) ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <><Lock className="h-3.5 w-3.5" /><span>Locked</span></> : <LockOpen className="h-3.5 w-3.5" />}</Button>

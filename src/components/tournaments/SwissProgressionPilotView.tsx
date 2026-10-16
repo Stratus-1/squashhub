@@ -14,6 +14,7 @@ const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_oppone
 export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false }: { appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string }) {
   const [mode, setMode] = useState<"grid" | "classic" | "calendar">("grid");
   const roundNums = model.rounds.map((r) => r.round);
+  const allComplete = model.rounds.length > 0 && model.rounds.every((r) => r.complete);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
   const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots, appliedPlayBy });
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));

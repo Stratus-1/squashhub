@@ -9381,9 +9381,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 category, entity type and scoring all per league. */}
                             {!collapsed && (
                             <div className="space-y-2">
-                              {/* Who may play in THIS division. Real club league ids —
-                                  the population also seeds the draw. */}
-                              {(() => {
+                              {/* Who may play is settled on the Who may enter step, so this
+                                  screen no longer asks each category for source leagues. */}
+                              {!structureOnly && (() => {
                                 const src = sourceForLeague(gn);
                                 const setSrc = (next: DivisionSource) => setSourceForLeague(gn, next);
                                 const toggle = (id: string) => {
@@ -13852,7 +13852,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     </div>
                     <p className="text-[11px] text-muted-foreground mb-2">
                       These players accepted the invitation but do not play in any of the leagues chosen under
-                      “Primarily players from” in Structure. Pick a league for each of them.
+                      {structureOnly ? "Who may enter" : "“Primarily players from” in Structure"}. Pick a league for each of them.
                     </p>
                     <div className="space-y-1">
                       {unassignedEntrantIds.map((id) => {

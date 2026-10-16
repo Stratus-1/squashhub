@@ -21835,6 +21835,15 @@ export type Database = {
         Args: { _association_id: string; _discipline?: string; _name: string }
         Returns: undefined
       }
+      replace_unplayed_structured_stage: {
+        Args: {
+          p_division_key: string
+          p_new_stage: Json
+          p_stage_key: string
+          p_tid: string
+        }
+        Returns: Json
+      }
       request_account_delegation: {
         Args: {
           _delegate_cell: string

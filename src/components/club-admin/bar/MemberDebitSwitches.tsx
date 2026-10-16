@@ -24,10 +24,19 @@ export function MemberDebitSwitches({ clubId }: { clubId: string }) {
       return Number(data?.amount ?? 0);
     },
   });
-  const tip =
-    creditDefault && creditDefault > 0
-      ? `If switched off, members may still go up to R${creditDefault.toFixed(0)} into debit — the club default "Credit allowed" set under member billing (individual member overrides apply).`
-      : `If switched off, no credit is allowed: the club default "Credit allowed" under member billing is R0. Set it there to let members go into debit up to that amount.`;
+  const { data: clubName } = useQuery({
+    queryKey: ["member-debit-club-name", clubId],
+    queryFn: async () => {
+      const { data } = await db.from("clubs").select("name").eq("id", clubId).maybeSingle();
+      return data?.name as string | undefined;
+    },
+  });
+  const amount = creditDefault ?? 0;
+  const tip = creditDefault === undefined
+    ? "Shows this club's default Credit allowed (member billing settings)."
+    : amount > 0
+      ? `Default Credit allowed for ${clubName ?? "your"} members is R${amount.toFixed(0)} (set under member billing settings). With this switch off, members may still go up to R${amount.toFixed(0)} into debit; an individual member's own Credit allowed takes priority.`
+      : `Default Credit allowed for ${clubName ?? "your"} members is R0 (set under member billing settings), so with this switch off no credit is allowed unless a member has an individual Credit allowed set.`;
   return (
     <div className="mt-2 rounded-md border p-2 space-y-2">
       <div>

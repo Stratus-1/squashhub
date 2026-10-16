@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
-import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
+import { SwissCurrentPositionsTable, SwissPositionGrid } from "@/components/tournaments/SwissPositionGrid";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 

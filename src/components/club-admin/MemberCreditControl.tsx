@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMemberCredit, useSaveMemberCredit } from "@/hooks/use-member-credit";
+import { MinBookingBalanceNote } from "./CreditBookingCrossRef";
 
 export function MemberCreditControl({ clubId, memberId, readOnly = false }: {
   clubId: string; memberId?: string | null; readOnly?: boolean;
@@ -49,6 +50,7 @@ export function MemberCreditControl({ clubId, memberId, readOnly = false }: {
         </div>
       </>}
       {!memberId && !canEdit && <p className="text-sm tabular-nums">R{Number(data.default_amount).toFixed(2)}</p>}
+      {!memberId && <MinBookingBalanceNote clubId={clubId} />}
     </section>
   );
 }

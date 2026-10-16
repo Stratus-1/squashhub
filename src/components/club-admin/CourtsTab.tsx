@@ -28,6 +28,7 @@ import {
 import { GoBookApiCard } from "./GoBookApiCard";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
+import { DefaultCreditNote, MIN_BOOKING_BALANCE_KEY } from "./CreditBookingCrossRef";
 import { PeakNoShowPanel } from "./PeakNoShowPanel";
 import { PeakHoursCard, PeakPenaltyCard, BookingHoursSummary } from "./PeakRulesCards";
 import type { PeakOverrides } from "@/lib/peak-hours";
@@ -90,6 +91,7 @@ function DeleteConfirmDialog({
 
 export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
+  const queryClient = useQueryClient();
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
   const { symbol: currencySymbol } = useClubCurrency();
@@ -375,6 +377,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           onSave={async () => {
             try {
               await updateClub.mutateAsync({ id: club.id, min_booking_balance: balanceForm.min_booking_balance } as any);
+              void queryClient.invalidateQueries({ queryKey: [MIN_BOOKING_BALANCE_KEY] });
               toast.success("Minimum balance saved");
               balanceLock.done();
             } catch (err: any) {
@@ -423,6 +426,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
               </p>
             </>
           )}
+          <DefaultCreditNote clubId={club.id} />
         </EditLock>
         </Card>
 

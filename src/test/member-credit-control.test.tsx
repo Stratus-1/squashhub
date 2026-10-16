@@ -7,6 +7,7 @@ vi.mock("@/hooks/use-member-credit", () => ({
   useMemberCredit: () => ({ data: mocks.data, isLoading: false }),
   useSaveMemberCredit: () => ({ mutateAsync: mocks.save, isPending: false }),
 }));
+vi.mock("@/components/club-admin/CreditBookingCrossRef", () => ({ MinBookingBalanceNote: () => null }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 describe("member credit settings", () => {

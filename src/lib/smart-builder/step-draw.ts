@@ -782,7 +782,7 @@ export function previewTimedGames(name: string, divs: DrawDivision[], poolMode: 
  * Stage progress creates them once the first stage is finished (all Swiss rounds played). Divisions whose first
  * stage already has later stages (planned play-offs) are left unchanged and reported.
  */
-export function attachFollowUpStages(spec: TournamentSpec, divs: DrawDivision[], followers: Record<number, number>, version: string): { spec: TournamentSpec; skipped: string[] } {
+export function attachFollowUpStages(spec: TournamentSpec, divs: DrawDivision[], followers: Record<number, number>, version: string, tournamentEnd: string | null = null): { spec: TournamentSpec; skipped: string[] } {
   const skipped: string[] = [];
   const divisions = spec.divisions.map((sd) => {
     const fs = Object.entries(followers).filter(([, lead]) => lead === sd.groupNumber).map(([g]) => divs.find((d) => d.group === Number(g))).filter(Boolean) as DrawDivision[];
@@ -803,6 +803,12 @@ export function attachFollowUpStages(spec: TournamentSpec, divs: DrawDivision[],
       generation: "owner_approval", qualify: null,
       schedule: stageSchedule(f.format.schedule, undefined),
     };
+    // No Stage 2 dates in setup: it must be played by the tournament's end date (organiser can change it).
+    const sc = stage2.schedule;
+    if (!(sc.rule === "fixed" ? sc.date : sc.deadline)) {
+      if (!tournamentEnd) { skipped.push(f.label); return sd; }
+      stage2.schedule = { rule: "play_by", deadline: tournamentEnd };
+    }
     return { ...sd, stages: [...sd.stages, stage2], deferredStages: [] } as any;
   });
   return { spec: { ...spec, divisions }, skipped };

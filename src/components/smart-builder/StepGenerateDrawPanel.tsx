@@ -580,7 +580,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const n = divs.length;
       const drift = seeded.some((d) => unitsFor((fresh ?? []) as RegLite[], d.group, n, d.doubles).units.length !== d.units.length);
       if (drift) { toast.error("Entries changed since this preview — the preview has been refreshed. Check it and generate again."); await load(); return; }
-      const staged = attachFollowUpStages(finalDrawSpec(meta.name, seeded, version, poolMode), divs, followers, version);
+      const staged = attachFollowUpStages(finalDrawSpec(meta.name, seeded, version, poolMode), divs, followers, version, meta.end);
       if (staged.skipped.length) toast.error(`Not linked as a later stage (set it up after Stage 1 finishes): ${staged.skipped.join(", ")}`);
       const spec = staged.spec;
       { // Tie-break rules from the setup (device answers, else the plan saved on the tournament).

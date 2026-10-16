@@ -603,7 +603,10 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
       if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null };
       const roundDates = timeline.map((t) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
-      return { tieBreaks: st.tieBreaks, rounds: timeline.length, schedule: { ...(st.schedule ?? {}), roundDates } };
+      // The stage's own configured Swiss round count wins when set — the timeline can span later
+      // follow-up stages too, and those must not inflate the Swiss round count (final standing locks after the Swiss rounds).
+      const swissRoundCount = Number(st.swissRounds);
+      return { tieBreaks: st.tieBreaks, rounds: Number.isFinite(swissRoundCount) && swissRoundCount > 0 ? swissRoundCount : timeline.length, schedule: { ...(st.schedule ?? {}), roundDates } };
     }
     if (!isSwissForLeague(gn)) return null;
     const r = Number(((champ as any)?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);

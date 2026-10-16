@@ -16,12 +16,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = Deno.env.get("SUPABASE_URL")!;
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const auth = req.headers.get("Authorization") ?? "";
-  const token = auth.replace(/^Bearer\s+/i, "");
-  if (token !== key && token !== anon) return json({ error: "Not allowed" }, 401);
-
   const sb = createClient(url, key, { auth: { persistSession: false } });
+  const { data: sec } = await sb.from("app_settings").select("value").eq("key", "auto_progress_internal_secret").maybeSingle();
+  const given = req.headers.get("x-internal-secret") ?? "";
+  if (!sec?.value || given !== String(sec.value)) return json({ error: "Not allowed" }, 401);
   (globalThis as any).__shServerClient = sb;
   const db = {
     async insert(table: string, rows: any[]) { const { data, error } = await sb.from(table).insert(rows).select("*"); if (error) throw new Error(`${table}: ${error.message}`); return data ?? []; },

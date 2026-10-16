@@ -1053,12 +1053,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   if (cardStructure) {
     const compact = mergeCardStructureSteps(steps, "Structure");
     compact.splice(compact.indexOf("Structure") + 1, 0, "StructureReview");
-    steps.splice(0, steps.length, ...compact);
+    // Seeding is chosen per category on the structure page, so the separate
+    // Seeding step is no longer part of this pilot's flow.
+    steps.splice(0, steps.length, ...compact.filter((k) => k !== "Seeding"));
   }
   const cur = steps[Math.min(step, steps.length - 1)];
   const isStruct = cur === "Structure" && !cardStructure;
   // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
-  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && MERGED_STRUCTURE_STEPS.includes(t) ? "Structure" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
+  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && (MERGED_STRUCTURE_STEPS.includes(t) || t === "Seeding") ? "Structure" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
 
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;
@@ -2565,8 +2567,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 {formatExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{formatDetail(formatFor(u.key))}</span></li>)}</ul>}
               </SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Seeding (provisional)" onEdit={() => go("Seeding")}>
-                <div>{a.seeding ? SEED_LABEL[a.seeding] : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {seedExceptions.length ? "tournament default" : "all groups"}</span>}</div>
-                {seedExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{seedFor(u.key) ? SEED_LABEL[seedFor(u.key)!] : "Not chosen"}</span></li>)}</ul>}
+                <div>{cardStructure ? "Set per category" : (a.seeding ? SEED_LABEL[a.seeding] : "Not chosen")}{units.length > 0 && <span className="text-muted-foreground"> · {cardStructure ? "from Tournament structure" : seedExceptions.length ? "tournament default" : "all groups"}</span>}</div>
+                {(cardStructure || seedExceptions.length > 0) && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{seedFor(u.key) ? SEED_LABEL[seedFor(u.key)!] : "Not chosen"}</span></li>)}</ul>}
                 <span className="text-xs text-muted-foreground">No seeds are generated or locked now.</span>
               </SummaryRow>
               <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label={isChamps ? "Final Format Review (future checkpoint)" : "Confirm final format (future checkpoint)"} onEdit={() => go("Format")}>

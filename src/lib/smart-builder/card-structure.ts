@@ -15,6 +15,14 @@ export function mergeCardStructureSteps<T extends string>(steps: T[], structure:
   return [...steps.slice(0, at), structure, ...steps.slice(at).filter((s) => !MERGED_STRUCTURE_STEPS.includes(s))];
 }
 
+/**
+ * The card-structure screen sets seeding per category, so this pilot's flow has
+ * no separate Seeding step. Other flows keep theirs untouched.
+ */
+export function dropCardStructureSeedingStep<T extends string>(steps: T[]): T[] {
+  return steps.filter((s) => (s as string) !== "Seeding");
+}
+
 export function cardStructureIssues(a: StepAnswers): string[] {
   const errors = [...structureRowIssues(a)];
   if (!a.scoring) errors.push("Choose the default match rules.");

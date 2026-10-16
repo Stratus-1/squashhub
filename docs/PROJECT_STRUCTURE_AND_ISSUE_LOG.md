@@ -3260,3 +3260,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ## 2026-10-16 Uitsig categories renumbered by setup re-save
 - Combining Mens A 1/2 into one category in setup answers, then saving, renumbered live categories 8→7 (labels, scoring, league links, registrations division_choices shifted). Restored from tournament_snapshots backup. Fix: persistStepTournament refuses to change category count once games exist (assertDivisionCountLocked).
+
+## 2026-10-16 Category league allocation override
+- One-page Structure displayed a legacy multi-source “Combined competition” advisory although its source controls were hidden. Multiple league teams may feed an explicitly configured category without merging live divisions.
+- Added opt-in “Admin can override” beside each category's league selections. Move/add/drop/import and pairing candidates honour the manual league exception; automatic league placement and self-entry remain unchanged. Previously placed players are never removed. Combined source intent stays independent; one-page Structure retains pool warnings but omits the unrelated multi-source advisory.
+- Preview only; no live tournament, fixture, result, booking, permission or deployment changes.

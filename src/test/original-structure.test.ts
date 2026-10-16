@@ -6,6 +6,24 @@ import { rowStages } from "@/lib/smart-builder/structure-rows";
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it("keeps manual allocation override separate from combined source mode on save and reload", () => {
+    const a = base();
+    a.elig.Men = { mode: "leagues", leagueIds: ["league-1", "league-2"], placement: "auto", adminOverride: true };
+    const raw = originalStructureFromAnswers(a);
+    expect(raw.league_source_modes["1"]).toBe("selected");
+    const restored = answersFromOriginalStructure(JSON.parse(JSON.stringify(a)), raw);
+    expect(restored.elig.Men.adminOverride).toBe(true);
+    expect(restored.elig.Men.leagueIds).toEqual(["league-1", "league-2"]);
+    expect(restored.picks).toEqual(a.picks);
+    expect(restored.stages).toEqual(a.stages);
+  });
+  it("preserves deliberately combined sources independently of manual override", () => {
+    const a = base();
+    a.elig.Men = { mode: "leagues", leagueIds: ["league-1", "league-2"], placement: "auto", adminOverride: false };
+    a.originalStructure = { league_source_modes: { "1": "combined" } };
+    expect(originalStructureFromAnswers(a).league_source_modes["1"]).toBe("combined");
+    expect(a.elig.Men.adminOverride).toBe(false);
+  });
   it.each([4, 5])("preserves chosen Monrad %i rounds rather than replacing with a recommendation", (rounds) => {
     const a = base(), raw = originalStructureFromAnswers(a);
     raw.league_formats["1"] = "monrad";

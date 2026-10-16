@@ -37,8 +37,12 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
     out.league_seeding_plans = { ...(out.league_seeding_plans ?? {}), [id]: saved.league_seeding_plans?.[id] ?? a.seedingOverrides?.[key] ?? a.seedingOverrides?.[cat] ?? a.seeding ?? "later" };
     const po = a.playoffOverrides[key];
     if (po) out.league_playoffs[id] = po.choice === "playoffs";
-    const elig = a.elig?.[key];
-    if (elig?.mode === "leagues") { out.league_sources[id] = elig.leagueIds; out.league_source_modes[id] = "selected"; }
+    const elig = a.elig?.[key] ?? a.elig?.[cat];
+    if (elig?.mode === "leagues") {
+      out.league_sources[id] = elig.leagueIds;
+      // Combining source leagues and permitting manual allocation are independent choices.
+      out.league_source_modes[id] = saved.league_source_modes?.[id] === "combined" ? "combined" : "selected";
+    }
   });
   return out;
 }

@@ -10641,7 +10641,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             {(() => {
               const issues = validateDivisions({
                 divisionCount: numGroups,
-                sources: leagueSources,
+                // In Step-by-Step, leagues feed explicitly configured categories.
+                // Manual allocation is chosen beside the category league picker.
+                sources: structureOnly ? {} : leagueSources,
                 pools: swissPools,
                 formatFor: (gn) => formatForLeague(gn),
               });

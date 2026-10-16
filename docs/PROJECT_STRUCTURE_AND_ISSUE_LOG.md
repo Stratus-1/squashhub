@@ -3275,3 +3275,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Added Done & lock and Edit / unlock below structure categories. Locking saves current draft settings and collapses the category; its fieldset disables settings, duplicate and remove controls. Numbered pools share their parent's lock. Unlock preserves unsaved sibling edits and existing live-identity restrictions.
 - Lock metadata remains in originalStructure within the existing saved answers flow; no new permissions, schema, fixtures or results logic. Each category can be completed independently even when another category's expected count is blank.
 - 32 focused tests passed and preview build OK. Authenticated Uitsig preview tested changing a local count, locking both pools, disabled controls, reload and unlock. All writes blocked; reload used an isolated saved-answer response. Actual hosted persistence not exercised. No publication or live-data writes.
+
+## 2026-10-16 Locked category viewing
+- Moved locked-category Expand / Collapse controls outside disabled settings fieldsets. Double-clicking the category/pool heading toggles its view without unlocking; single-click opening remains unchanged for unlocked categories.
+- Authenticated preview verified both Men's A pools using Expand, bottom Collapse, and two heading double-clicks; player inputs stayed disabled and Locked status remained. Seventeen focused regression tests passed; preview build OK. No publication; tournament writes blocked during checks.

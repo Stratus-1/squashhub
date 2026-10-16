@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Category setup safety locks
-- [ ] Keep Expand / Collapse usable while category settings remain locked; verify both pools without live writes.
-- [ ] Double-click category/pool headings to open and close locked settings without unlocking.
+- [x] Keep Expand / Collapse usable while category settings remain locked; authenticated both-pool preview check passed with writes blocked.
+- [x] Double-click category/pool headings to open and close locked settings without unlocking; both pools verified, 17 regression tests passed, preview build OK.
 - [x] Add persistent Done & lock / Edit unlock controls for category settings and both pools under a grouped category.
 - [x] 32 focused tests passed; authenticated preview verified saved edits, both-pool lock, disabled controls and explicit unlock. Reload tested against an isolated saved-answer response with writes blocked; hosted persistence not exercised. No publication.
 

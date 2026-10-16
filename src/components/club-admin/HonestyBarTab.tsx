@@ -234,12 +234,6 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-            <Button size="sm" variant="outline" onClick={() => setMenuQrOpen(true)}>
-              <QrCode className="w-3.5 h-3.5 mr-1" /> Menu QR
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => openQrLabels()}>
-              <QrCode className="w-3.5 h-3.5 mr-1" /> Product QR labels
-            </Button>
             <Switch
               checked={enabled}
               onCheckedChange={toggleBarEnabled}

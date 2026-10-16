@@ -1184,6 +1184,13 @@
       "when": 1792170243327,
       "tag": "0168_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1792183592379,
+      "tag": "0169_tournament_snapshots",
+      "breakpoints": true
     }
   ]
 }

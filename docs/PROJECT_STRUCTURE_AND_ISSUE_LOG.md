@@ -3169,3 +3169,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ### 2026-10-16 — Structure category label and example
 - Renamed structure card badges and the add-format prompt from League to Category; added the owner's separate Men's Singles A/B category example above the cards. Presentation only; no saved settings or live records changed.
+
+### 2026-10-16 — Planned match time 40-minute option
+- Added 40 min to the structure card Planned match time choices (20/30/40/45/60) so a match can be planned between the 30- and 45-minute slots; the value still feeds the capacity calculator unchanged.
+- Verification: authenticated Riverside structure screen shows all five options and selecting 40 min keeps it pressed; presentation only, no saved settings, fixtures, bookings or live records changed and no publication.

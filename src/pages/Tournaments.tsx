@@ -460,7 +460,7 @@ export default function Tournaments() {
   });
   // Pilot: counts/options derive ONLY from the selected tournament (no cross-tournament leakage).
   const scopedUpcoming = (fixturesPilot && champFilter !== "all" ? upcomingMatches.filter((m: any) => m.champ_id === champFilter) : upcomingMatches)
-    .filter((m: any) => !isProvisionalSwissSlot(m, champById.get(m.champ_id)));
+    .filter((m: any) => m.projected || !isProvisionalSwissSlot(m, champById.get(m.champ_id)));
   const pilotFixtures = useMemo<ClubFixture[]>(() => !fixturesPilot ? [] : (allMatches as any[])
     .filter((m: any) => activeChampIds.has(m.champ_id) && (m.stage ?? "group") !== "placeholder" && !isProvisionalSwissSlot(m, champById.get(m.champ_id)))
     .map((m: any) => {

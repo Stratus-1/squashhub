@@ -232,7 +232,6 @@ function LegacySetupDialog({ champId, spec, status, exec, nameOf, onClose, onDon
   const [kind, setKind] = useState<"mapped" | "knockout">("mapped");
   const [discipline, setDiscipline] = useState<"singles" | "doubles">("singles");
   const plan = (d.deferredStages ?? []).find((x) => x.stageKey === status.stageKey)?.plan ?? null;
-  const [top, setTop] = useState(0);
   // Pre-fill from the builder's plan: same_position = A1 v B1, crossover (default for two pools) = A1 v B2.
   // Games in this round follow the play-off depth: Quarterfinal (+SF+Final) = 4, Semifinal = 2, Final = 1.
   const later = d.deferredStages ?? [];
@@ -246,7 +245,10 @@ function LegacySetupDialog({ champId, spec, status, exec, nameOf, onClose, onDon
     const bottom = Array.from({ length: per / 2 || 1 }, (_, i) => i % 2 === 0 ? `R1: B${i + 1} v A${per - i}` : `R1: A${i + 1} v B${per - i}`);
     return (per === 1 ? ["R1: A1 v B1"] : [...top, ...bottom]).join("\n");
   })();
-  const [text, setText] = useState(swissSrc ? "" : pools >= 2 ? twoPoolText : "R1: A1 v A4\nR1: A2 v A3");
+  // Swiss source with a planned play-off depth: Quarterfinal → top 8, Semifinal → top 4, Final → top 2 (1 v 8, 4 v 5, 2 v 7, 3 v 6).
+  const swissTop = swissSrc && plan && ["seeded", "crossover", "same_position"].includes(String(plan.pairing)) ? games * 2 : 0;
+  const [top, setTop] = useState(swissTop);
+  const [text, setText] = useState(swissSrc ? (swissTop ? seededBracketText(swissTop) : "") : pools >= 2 ? twoPoolText : "R1: A1 v A4\nR1: A2 v A3");
   // Final Swiss standings in the canonical order (match wins → Buchholz → Sonneborn-Berger → seed), read-only.
   const { data: swissOrder } = useQuery({
     queryKey: ["setup-swiss-order", champId, status.divisionKey, src.id],
@@ -355,7 +357,7 @@ function LegacySetupDialog({ champId, spec, status, exec, nameOf, onClose, onDon
             : <span className="font-medium">{(scoring as { issue: string }).issue}</span>}
           <p className="text-muted-foreground mt-0.5">To change the scoring format, edit this category in Tournament Setup (Edit tournament setup, top of this page).</p>
         </div>
-        {plan && <p className="rounded border bg-muted/40 p-2 text-xs">From your setup: {plan.pairing === "crossover" ? "crossover pairing (winner of one group v runner-up of the other)" : plan.pairing === "same_position" ? "same-position pairing" : "pairing not chosen"}{plan.mode === "scheduled" && plan.date ? ` · scheduled ${plan.date}${plan.from ? ` ${plan.from}–${plan.to ?? ""}` : ""}` : plan.deadline ? ` · play by ${plan.deadline}` : ""}{plan.courtIds?.length ? ` · ${plan.courtIds.length} court${plan.courtIds.length > 1 ? "s" : ""} chosen` : ""}. Check it, then generate.</p>}
+        {plan && <p className="rounded border bg-muted/40 p-2 text-xs">From your setup: {plan.pairing === "crossover" ? "crossover pairing (winner of one group v runner-up of the other)" : plan.pairing === "same_position" ? "same-position pairing" : plan.pairing === "seeded" ? `seeded pairing (highest v lowest${swissTop ? `, top ${swissTop}` : ""})` : "pairing not chosen"}{plan.mode === "scheduled" && plan.date ? ` · scheduled ${plan.date}${plan.from ? ` ${plan.from}–${plan.to ?? ""}` : ""}` : plan.deadline ? ` · play by ${plan.deadline}` : ""}{plan.courtIds?.length ? ` · ${plan.courtIds.length} court${plan.courtIds.length > 1 ? "s" : ""} chosen` : ""}. Check it, then generate.</p>}
         <label className="block">Date (optional)<Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         {check && <div className="rounded border p-2 space-y-0.5">{row("Structure", check.structure)}{row("Engine support", check.engine)}{row("Schedule", check.schedule)}{row("Scoring", check.scoring)}</div>}
         <DialogFooter>

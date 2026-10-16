@@ -3225,3 +3225,5 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - ClubAdmin.tsx messaging tab: alert text updated; WhatsAppBillingCard and SmsMessagingCard both render with hideToggle (details only: sender, cost, usage).
 - Guard: src/test/messaging-channel-selection.test.ts (3 tests) asserts both switches exist, the combined-set mutation is gone, and both detail cards keep hideToggle.
 - Live: sms_enabled=true set for Uitsig on explicit request (read-back verified, WhatsApp unchanged); signed-in preview shows both switches On; build OK. Not published.
+
+- 2026-10-16: Follow-up "Stage 2" categories are attached to their first stage as an all-continue, owner-approved stage (attachFollowUpStages in step-draw.ts) instead of a separate waiting division; Stage progress offers Start after the last Swiss round.

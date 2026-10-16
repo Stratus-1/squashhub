@@ -2405,6 +2405,32 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   }, [availableLeagues, leagueResolution, sourceSeason]);
 
   /**
+   * Internal vs regional source filter for the "Players from" tree. Club-owned
+   * leagues (no association) are "Internal leagues"; each linked association
+   * (e.g. NSA) is its own regional scope. Ticking a league level always selects
+   * EVERY team in it — including a second club team in the same league.
+   */
+  const [leagueSourceScope, setLeagueSourceScope] = useState<string>("all");
+  const leagueSourceScopes = useMemo(() => {
+    const names = new Map<string, string>();
+    (availableLeagues as any[]).forEach((l) => {
+      if (l.association_id) names.set(l.association_id as string, (l.league_associations?.name as string) || "Regional league");
+    });
+    return Array.from(names.entries()).map(([id, name]) => ({ id, name }));
+  }, [availableLeagues]);
+  const scopedLeagueTree = useMemo(() => {
+    if (leagueSourceScope === "all") return leagueTree;
+    const keep = new Set(
+      (availableLeagues as any[])
+        .filter((l) => (leagueSourceScope === "internal" ? !l.association_id : l.association_id === leagueSourceScope))
+        .map((l) => l.id as string),
+    );
+    return leagueTree
+      .map((g) => ({ ...g, children: g.children.filter((c) => keep.has(c.id)) }))
+      .filter((g) => g.children.length > 0);
+  }, [leagueTree, leagueSourceScope, availableLeagues]);
+
+  /**
    * Region / federation league teams. A regional tournament invites league
    * players from EVERY club in the region, so the audience picker must not be
    * limited to the host club's own teams. Counts and ids only — the RPC applies
@@ -9278,8 +9304,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                             visible and every team reads as selected; the
                                             moment a child is unticked the source becomes an
                                             explicit id list. */}
+                                        {(leagueSourceScopes.length > 0) && (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Leagues</span>
+                                            <select
+                                              className="h-7 rounded-md border border-border bg-background px-2 text-[11px]"
+                                              value={leagueSourceScope}
+                                              onChange={(e) => setLeagueSourceScope(e.target.value)}
+                                              aria-label="Filter leagues by internal or regional association"
+                                            >
+                                              <option value="all">Internal + regional</option>
+                                              <option value="internal">Internal leagues</option>
+                                              {leagueSourceScopes.map((s) => (
+                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                        )}
                                         <LeagueSourceTree
-                                          groups={leagueTree}
+                                          groups={scopedLeagueTree}
                                           selected={
                                             src.mode === "all"
                                               ? allTreeLeagueIds(leagueTree)

@@ -97,8 +97,10 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
             <span className="text-xs text-muted-foreground">{gate.message}</span>
             {gate.state === "finished" && (() => {
               // Final Swiss ranking: same table the next stage is seeded from (wins, then Buchholz, then seed).
+              // Player list comes from the games themselves (the panel's spec carries no entrants).
+              const seedOrder = [...new Set(mineRows.flatMap((r) => [r.a, r.b]).filter(Boolean))] as string[];
               const table = swissTable(
-                d.entrants.map((e) => e.id),
+                seedOrder,
                 mineRows.map((r) => ({ a: r.a, b: r.b, winner: r.winner, round: r.round })),
               );
               return (

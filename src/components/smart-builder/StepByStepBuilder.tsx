@@ -1096,7 +1096,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     // Structure review step removed: it only re-displayed the saved structure.
     // Seeding is chosen per category on the structure page, so the separate
     // Seeding step is no longer part of this pilot's flow.
-    steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact).filter((k) => k !== "Entries"));
+    steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact).filter((k) => k !== "Entries" && k !== "Playoffs"));
+    // Playoffs are planned per category on the structure page, so the separate Playoffs step is dropped too.
   }
   const cur = steps[Math.min(step, steps.length - 1)];
   const isStruct = cur === "Structure" && !cardStructure;

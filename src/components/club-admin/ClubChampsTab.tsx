@@ -1501,6 +1501,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Per-league playoffs: which leagues run their own knockout / finals stage.
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
   const [leaguePlannedPlayoffRounds, setLeaguePlannedPlayoffRounds] = useState<Record<string, string[]>>({});
+  const [leaguePlayoffBottomHalf, setLeaguePlayoffBottomHalf] = useState<Record<string, boolean>>({});
   const [leagueFollowUpFormats, setLeagueFollowUpFormats] = useState<Record<string, string>>({});
   const [leagueSeedingPlans, setLeagueSeedingPlans] = useState<Record<string, string>>({});
   // Per-category pool placement (snake vs strength band); blank inherits the tournament-wide poolAllocation.
@@ -9046,6 +9047,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueServingMethods(v.league_doubles_serving_methods ?? {});
     setLeaguePlayoffs(v.league_playoffs ?? {});
     setLeaguePlannedPlayoffRounds(v.league_planned_playoff_rounds ?? {});
+    setLeaguePlayoffBottomHalf(v.league_playoff_bottom_half ?? {});
     setLeagueFollowUpFormats(v.league_follow_up_formats ?? {});
     setLeagueSeedingPlans(v.league_seeding_plans ?? {});
     setLeaguePoolPlacement(v.league_pool_placement ?? {});
@@ -9121,6 +9123,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_doubles_serving_methods: leagueServingMethods,
       league_playoffs: leaguePlayoffs,
       league_planned_playoff_rounds: leaguePlannedPlayoffRounds,
+      league_playoff_bottom_half: leaguePlayoffBottomHalf,
       league_follow_up_formats: leagueFollowUpFormats,
       league_seeding_plans: leagueSeedingPlans,
       league_pool_placement: leaguePoolPlacement,
@@ -9144,7 +9147,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
   };
 
-  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10475,6 +10478,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       );
                                     })}
                                   </div>
+                                  {(() => {
+                                    const cur = leaguePlannedPlayoffRounds[key] ?? [];
+                                    const n = cur.includes("qf") ? 8 : cur.includes("sf") ? 4 : 0;
+                                    if (!n || hasFollowerStage(gn)) return null;
+                                    return (
+                                      <label className="flex items-start gap-1.5 text-[11px] cursor-pointer pt-1">
+                                        <input type="checkbox" className="mt-0.5 h-3.5 w-3.5 accent-fuchsia-500" checked={!!leaguePlayoffBottomHalf[key]}
+                                          onChange={() => setLeaguePlayoffBottomHalf((m) => ({ ...m, [key]: !m[key] }))} />
+                                        <span>Bottom half too — players {n + 1}–{n * 2} play their own {n === 8 ? "quarterfinals, semifinals" : "semifinals"} and final ({n + 1} v {n * 2}, {n + 2} v {n * 2 - 1} …). Needs at least {n * 2} players.</span>
+                                      </label>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

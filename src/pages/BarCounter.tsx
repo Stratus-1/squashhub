@@ -469,8 +469,8 @@ export default function BarCounter() {
               variant="ghost"
               className="h-6 px-2 text-xs"
               onClick={() => {
-                setWhoName(operator ?? "");
-                setWhoOpen(true);
+                setSwitchPin("");
+                setSwitchOpen(true);
               }}
             >
               Switch

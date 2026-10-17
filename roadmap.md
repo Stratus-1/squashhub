@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Bar closed-tab history
-- [ ] Include Shop, Bar and Both filters, with matching item totals.
-- [ ] Add Closed tabs with custom dates and all six preset periods; read-only, club-scoped history with totals and serving names.
-- [ ] Run date-range tests and verify authenticated Riverside history; no publication or live-data changes.
+- [x] Include Shop, Bar and Both filters, with matching item totals; mixed/legacy cases tested.
+- [x] Add Closed tabs with custom dates and all six preset periods; read-only, club-scoped history with totals and serving names.
+- [x] Twelve focused tests passed; authenticated Riverside history, all six presets, custom calendar selection, expanded item amounts and 390px layout verified; build OK. No publication or live-data changes.
 
 ## Tournament organiser and SportyHQ provision
 - [x] Add optional organiser choice to Type and Basics, suggesting an unambiguous dedicated tournament role or explicit champs-permitted member; all active non-visitor club members can be chosen without gaining permissions.

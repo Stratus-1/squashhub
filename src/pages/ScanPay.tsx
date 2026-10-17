@@ -1,5 +1,6 @@
 import { spiritMixers, withSpiritMixers } from "@/lib/bar-spirit-menu";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
+import { showKeepOpenHint } from "@/lib/bar/collection-alert";
 /**
  * Public Scan-to-Pay page — `/s/:code`
  *
@@ -32,6 +33,7 @@ import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
+const KEEP_OPEN_HINT_KEY = "sh.scanpay.keep-open-hint";
 const PENDING_SALE_KEY = "sh.scanpay.pendingSale";
 
 interface ScanItem {

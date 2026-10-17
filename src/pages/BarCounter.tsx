@@ -883,6 +883,32 @@ export default function BarCounter() {
                 )}
               </div>
             )}
+            {activeTab.status === "open" && activeTab.total <= 0 && (
+              <Button
+                variant="ghost" className="w-full h-10 gap-2 text-muted-foreground"
+                disabled={busy}
+                onClick={async () => {
+                  if (!window.confirm(`Close ${activeTab.guest_name}'s tab with no charge? Nothing was bought on it.`)) return;
+                  setBusy(true);
+                  try {
+                    const { error } = await (supabase as any).rpc("bar_counter_close_empty_tab", {
+                      _tab_id: activeTab.tab_id, _token: token, _club_id: clubId,
+                    });
+                    if (error) throw error;
+                    toast.success("Tab closed — no charge");
+                    setActiveTabId(null);
+                    await refetch();
+                    invalidate();
+                  } catch (e: any) {
+                    toast.error(e?.message ?? "Could not close the tab");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                <XCircle className="w-4 h-4" /> Close tab — no charge
+              </Button>
+            )}
             {board.online_enabled !== false && !onlineAvailable && (
               <p className="text-[11px] text-muted-foreground text-center">
                 Online card payment isn't available at the bar yet for {board.payment_gateway ? board.payment_gateway.toUpperCase() : "this club's payment gateway"}.

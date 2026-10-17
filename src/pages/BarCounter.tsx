@@ -222,6 +222,28 @@ export default function BarCounter() {
     }
   }
 
+  function confirmWho() {
+    const name = whoName.trim();
+    if (!name) {
+      toast.error("Please enter the name of the person serving");
+      return;
+    }
+    if (code) localStorage.setItem(operatorKey(code), name);
+    setOperator(name);
+    setWhoOpen(false);
+    toast.success(`Counter open — hi ${name}`);
+  }
+
+  // A device that resumes a stored session without a recorded operator still
+  // asks who is serving, so the badge never shows a stale name.
+  useEffect(() => {
+    if (token && !operator && !whoOpen) {
+      setWhoName("");
+      setWhoOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   async function openTab() {
     if (!newName.trim()) return;
     setBusy(true);
@@ -437,6 +459,17 @@ export default function BarCounter() {
                 <UserCheck className="w-3.5 h-3.5" /> {operator}
               </Badge>
             )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs"
+              onClick={() => {
+                setWhoName(operator ?? "");
+                setWhoOpen(true);
+              }}
+            >
+              Switch
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
             {board.tabs.length} open tab{board.tabs.length === 1 ? "" : "s"} ·{" "}

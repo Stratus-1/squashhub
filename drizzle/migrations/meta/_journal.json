@@ -1226,6 +1226,13 @@
       "when": 1792274615975,
       "tag": "0174_bar_counter_close_empty_tab",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1792277086013,
+      "tag": "0175_bar_tab_operator_name",
+      "breakpoints": true
     }
   ]
 }

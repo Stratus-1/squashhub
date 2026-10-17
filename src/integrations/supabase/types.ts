@@ -1002,6 +1002,7 @@ export type Database = {
           guest_phone: string | null
           id: string
           opened_at: string
+          operator_name: string | null
           payment_confirmed_at: string | null
           payment_confirmed_by_device: string | null
           payment_confirmed_by_user: string | null
@@ -1019,6 +1020,7 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           opened_at?: string
+          operator_name?: string | null
           payment_confirmed_at?: string | null
           payment_confirmed_by_device?: string | null
           payment_confirmed_by_user?: string | null
@@ -1036,6 +1038,7 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           opened_at?: string
+          operator_name?: string | null
           payment_confirmed_at?: string | null
           payment_confirmed_by_device?: string | null
           payment_confirmed_by_user?: string | null
@@ -19542,15 +19545,26 @@ export type Database = {
         }[]
       }
       bar_costing_enabled: { Args: { _club: string }; Returns: boolean }
-      bar_counter_add_to_tab: {
-        Args: {
-          _club_id?: string
-          _lines: Json
-          _tab_id: string
-          _token?: string
-        }
-        Returns: Json
-      }
+      bar_counter_add_to_tab:
+        | {
+            Args: {
+              _club_id?: string
+              _lines: Json
+              _tab_id: string
+              _token?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _club_id?: string
+              _lines: Json
+              _operator?: string
+              _tab_id: string
+              _token?: string
+            }
+            Returns: Json
+          }
       bar_counter_approve_online: {
         Args: {
           _club_id?: string
@@ -19599,6 +19613,16 @@ export type Database = {
               _club_id?: string
               _guest_name: string
               _guest_phone?: string
+              _token?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _club_id?: string
+              _guest_name: string
+              _guest_phone?: string
+              _operator?: string
               _token?: string
             }
             Returns: Json

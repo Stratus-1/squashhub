@@ -1212,6 +1212,13 @@
       "when": 1792272394275,
       "tag": "0172_bar_counter_approve_online",
       "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1792273111769,
+      "tag": "0173_bar_counter_settle_online_as_cash_or_card",
+      "breakpoints": true
     }
   ]
 }

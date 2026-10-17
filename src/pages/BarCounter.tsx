@@ -9,7 +9,7 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
  * an account charge themselves: the member enters their own six-digit Bar PIN.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -27,7 +27,7 @@ import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
@@ -88,6 +88,8 @@ export default function BarCounter() {
   const [identifying, setIdentifying] = useState(false);
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
+  const [menuQrOpen, setMenuQrOpen] = useState(false);
+  const navigate = useNavigate();
   const [scanOpen, setScanOpen] = useState(false);
   const [scannedItem, setScannedItem] = useState<CounterItem | null>(null);
   const [scanQty, setScanQty] = useState(1);
@@ -434,9 +436,19 @@ export default function BarCounter() {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {board.venue_code && (
+            <Button size="icon" variant="ghost" onClick={() => setMenuQrOpen(true)} aria-label="Show menu QR code" title="Menu QR code">
+              <QrCode className="w-4 h-4" />
+            </Button>
+          )}
           <Button size="icon" variant="ghost" onClick={() => refetch()} aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </Button>
+          {!code && (
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => navigate(-1)}>
+              <LogOut className="w-4 h-4" /> Close counter
+            </Button>
+          )}
           {operator && (
             <Button
               size="sm"
@@ -705,6 +717,27 @@ export default function BarCounter() {
                     Cancel card payment
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Customer rather paying at the bar? Take the payment here — the online attempt is replaced and their phone shows the tab as paid.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {board.cash_enabled && (
+                    <Button
+                      size="sm" variant="outline" className="h-9 shrink-0 gap-1.5" disabled={busy}
+                      onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} cash received instead of the online payment?`)) settle("cash"); }}
+                    >
+                      <Banknote className="w-4 h-4" /> Paid cash
+                    </Button>
+                  )}
+                  {board.card_enabled && (
+                    <Button
+                      size="sm" variant="outline" className="h-9 shrink-0 gap-1.5" disabled={busy}
+                      onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} card machine payment received instead of the online payment? Only confirm if the machine showed APPROVED.`)) settle("terminal"); }}
+                    >
+                      <CreditCard className="w-4 h-4" /> Swipe at bar
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
             {activeTab.status === "closing" && (activeTab.settled_method === "terminal" || activeTab.settled_method === "cash") && (
@@ -917,9 +950,33 @@ export default function BarCounter() {
               onVerified={chargeMemberAccount}
             />
           )}
-
         </div>
       )}
+
+      <Dialog open={menuQrOpen} onOpenChange={setMenuQrOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Menu QR code</DialogTitle>
+            <DialogDescription className="text-xs">
+              Customers scan this to open the {board.club_name} menu on their phone, order and pay. Show it on screen or print it for the counter.
+            </DialogDescription>
+          </DialogHeader>
+          {board.venue_code && (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="rounded-lg bg-background p-3 border">
+                <QRCodeSVG value={`${window.location.origin}/s/${board.venue_code}`} size={220} />
+              </div>
+              <Button
+                variant="outline" size="sm"
+                onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/s/${board.venue_code}`); toast.success("Link copied"); }}
+              >
+                Copy link
+              </Button>
+            </div>
+          )}
+          <Button className="w-full" onClick={() => setMenuQrOpen(false)}>Done</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

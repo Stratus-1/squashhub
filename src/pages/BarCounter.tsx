@@ -40,6 +40,7 @@ interface CounterTab {
   status: string;
   settled_method?: string | null;
   opened_at: string;
+  operator?: string | null;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
@@ -255,7 +256,7 @@ export default function BarCounter() {
     try {
       const { data, error } = await supabase.rpc("bar_counter_open_tab", {
         _guest_name: newName.trim(), _token: token, _club_id: clubId,
-        _guest_phone: newPhone.trim() || null,
+        _guest_phone: newPhone.trim() || null, _operator: operator,
       } as any);
       if (error) throw error;
       setNewName("");
@@ -277,7 +278,7 @@ export default function BarCounter() {
       .map(([bar_item_id, quantity]) => ({ bar_item_id, quantity }));
     if (!lines.length) return true;
     const { error } = await supabase.rpc("bar_counter_add_to_tab", {
-      _tab_id: tabId, _lines: lines, _token: token, _club_id: clubId,
+       _tab_id: tabId, _lines: lines, _token: token, _club_id: clubId, _operator: operator,
     } as any);
     if (error) {
       showBarChargeError(error, "Could not add the basket to the tab");
@@ -606,6 +607,7 @@ export default function BarCounter() {
                     <div className="text-[11px] text-muted-foreground">
                       open {formatDistanceToNowStrict(new Date(t.opened_at))} · {t.lines.length} item
                       {t.lines.length === 1 ? "" : "s"}
+                      {t.operator ? ` · ${t.operator}` : ""}
                       {t.status === "closing" && (t.settled_method === "terminal" ? " · awaiting card swipe" : t.settled_method === "cash" ? " · awaiting cash" : " · online payment pending")}
                     </div>
                   </div>

@@ -2531,6 +2531,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               ? "Players arrange their own games — no fixed court times"
               : `${(champ.play_days as number[])?.map((d: number) => DAY_NAMES[d]).join(", ")} · ${champ.start_time?.slice(0, 5)} – ${champ.end_time?.slice(0, 5)}`}
           </p>
+          {organiserMeta?.name && (
+            <p className="text-sm text-muted-foreground mt-1" data-testid="tournament-organiser-line">
+              Organiser: {organiserMeta.name}
+              {organiserMember?.phone && <> · <a href={`tel:${organiserMember.phone}`} className="hover:text-foreground underline-offset-2 hover:underline">{organiserMember.phone}</a></>}
+            </p>
+          )}
         </div>
 
         {canManage && (

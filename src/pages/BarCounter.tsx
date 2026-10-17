@@ -646,26 +646,65 @@ export default function BarCounter() {
           <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
             {activeTab.status === "closing" && activeTab.settled_method === "online" && (
-              <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
-                <p className="flex-1 text-xs">Waiting for an online card payment. If the customer stopped or it got stuck, cancel it and choose another way to pay.</p>
-                <Button
-                  size="sm" variant="outline" className="h-9 shrink-0" disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      const result = await cancelTabCardPayment(activeTab.tab_id, (activeTab as any).token);
-                      toast.success(cancelTabCardMessage[result]);
-                      await refetch();
-                      invalidate();
-                    } catch (e: any) {
-                      toast.error(e?.message ?? "Could not cancel the card payment");
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Cancel card payment
-                </Button>
+              <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
+                <p className="text-xs">Waiting for an online card payment. If the customer shows you the payment went through, approve it here. If they stopped or it got stuck, cancel it and choose another way to pay.</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm" className="h-9 shrink-0" disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        // Ask the card provider first — if it already confirms the
+                        // payment, no manual approval is needed.
+                        const { data: res } = await supabase.functions.invoke("bar-card-verify", {
+                          body: { tab_id: activeTab.tab_id, tab_token: (activeTab as any).token },
+                        });
+                        if ((res as any)?.status === "paid") {
+                          toast.success("Payment confirmed by the card provider — tab settled");
+                          await refetch();
+                          invalidate();
+                          return;
+                        }
+                        const reason = window.prompt(
+                          `The card provider has not confirmed this payment yet. Only approve if the customer showed you proof of payment for ${money(activeTab.total)}. Note for the record (optional):`,
+                          "Customer showed payment confirmation",
+                        );
+                        if (reason === null) return;
+                        const { data, error } = await (supabase as any).rpc("bar_counter_approve_online", {
+                          _tab_id: activeTab.tab_id, _token: token, _club_id: clubId, _reason: reason || null,
+                        });
+                        if (error) throw error;
+                        toast.success((data as any)?.already ? "Already settled — no second payment recorded" : "Payment approved — tab settled");
+                        await refetch();
+                        invalidate();
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Could not approve the payment");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Approve payment received
+                  </Button>
+                  <Button
+                    size="sm" variant="outline" className="h-9 shrink-0" disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const result = await cancelTabCardPayment(activeTab.tab_id, (activeTab as any).token);
+                        toast.success(cancelTabCardMessage[result]);
+                        await refetch();
+                        invalidate();
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Could not cancel the card payment");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Cancel card payment
+                  </Button>
+                </div>
               </div>
             )}
             {activeTab.status === "closing" && (activeTab.settled_method === "terminal" || activeTab.settled_method === "cash") && (

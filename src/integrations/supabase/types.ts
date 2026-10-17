@@ -19551,6 +19551,15 @@ export type Database = {
         }
         Returns: Json
       }
+      bar_counter_approve_online: {
+        Args: {
+          _club_id?: string
+          _reason?: string
+          _tab_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
       bar_counter_board: {
         Args: { _club_id?: string; _token?: string }
         Returns: Json

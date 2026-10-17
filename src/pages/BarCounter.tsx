@@ -40,6 +40,7 @@ interface CounterTab {
   status: string;
   settled_method?: string | null;
   opened_at: string;
+  operator?: string | null;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
@@ -606,6 +607,7 @@ export default function BarCounter() {
                     <div className="text-[11px] text-muted-foreground">
                       open {formatDistanceToNowStrict(new Date(t.opened_at))} · {t.lines.length} item
                       {t.lines.length === 1 ? "" : "s"}
+                      {t.operator ? ` · ${t.operator}` : ""}
                       {t.status === "closing" && (t.settled_method === "terminal" ? " · awaiting card swipe" : t.settled_method === "cash" ? " · awaiting cash" : " · online payment pending")}
                     </div>
                   </div>

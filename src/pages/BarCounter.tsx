@@ -72,8 +72,8 @@ export default function BarCounter() {
 
   const [token, setToken] = useState<string | null>(() => (code ? localStorage.getItem(tokenKey(code)) : null));
   const [operator, setOperator] = useState<string | null>(() => (code ? localStorage.getItem(operatorKey(code)) : null));
-  const [whoOpen, setWhoOpen] = useState(false);
-  const [whoName, setWhoName] = useState("");
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [switchPin, setSwitchPin] = useState("");
   const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);

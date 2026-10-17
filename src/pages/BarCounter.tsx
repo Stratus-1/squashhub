@@ -506,6 +506,9 @@ export default function BarCounter() {
                 }
                 setOperator(null);
                 setToken(null);
+                setPin("");
+                setActiveTabId(null);
+                setCart({});
               }}
             >
               End shift

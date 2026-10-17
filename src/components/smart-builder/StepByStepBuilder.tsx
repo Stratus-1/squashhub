@@ -79,6 +79,8 @@ import { LIFECYCLE, clubAllowsTournamentLadder, loadHandover, loadLifecycle, per
 import { StageCardShell, StageScheduleOverview } from "./StageScheduleOverview";
 import { courtOverlaps, stageStatus, type StageStatus } from "@/lib/smart-builder/schedule-view";
 import { RoundSchedulingEditor } from "./RoundSchedulingEditor";
+import { TournamentOrganiserField } from "./TournamentOrganiserField";
+import type { TournamentOrganiser } from "@/lib/smart-builder/tournament-organiser";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -137,6 +139,8 @@ const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => 
   return `${playoffText(p)}${k === "pools" || k === "cross" ? ` · ${styleText(p)}` : ""} · ${qualifierText(p)}${p.style !== "placement" ? ` · ${pairingText(p)}` : ""}`;
 };
 export type StepAnswers = {
+  /** Optional contact designation only; never grants tournament permissions. null = explicitly cleared. */
+  organiser?: TournamentOrganiser | null;
   planId?: string;
   /** Local snapshot from the original alternate-builder screen; no live application. */
   originalStructure?: import("@/lib/smart-builder/original-structure").OriginalStructure;
@@ -1413,6 +1417,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       });
       // Persist synchronously: the builder unmounts on handover, so the save effect may never run.
       const nextA = { ...a, createdTournamentId: tid };
+      const currentLifecycle = await loadLifecycle(tid);
+      await saveLifecycle(tid, { ...(currentLifecycle ?? { stage: "invite", completed: ["planning"] }), answers: JSON.parse(JSON.stringify(nextA)) });
       localStorage.setItem(tournamentKey(tid), JSON.stringify(nextA));
       if (!tournamentId) { clearDraft(clubId); setKey(tournamentKey(tid)); }
       setA(nextA);
@@ -1476,6 +1482,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "Type" && (
             <>
               <Q t="What type of tournament is this?" h="Pick the one that sounds most like your event." />
+              <TournamentOrganiserField clubId={clubId} value={a.organiser} existing={!!a.createdTournamentId || !!tournamentId} onChange={(organiser) => setA((prev) => ({ ...prev, organiser }))} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Choice active={a.kind === "once_off"} onClick={() => setA({ ...a, kind: "once_off" })} title="Once-off / weekend tournament" desc="Played over one day or a few days in a row." />
                 <Choice active={a.kind === "period"} onClick={() => setA({ ...a, kind: "period" })} title="Over a period / Club Champs" desc="Games spread over weeks, e.g. club championships." />
@@ -2444,6 +2451,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             <>
               <Q t={isChamps ? "Club Championships basics" : "Tournament basics"} h="The tournament's name and who it belongs to — not how it is played." />
               <div className="space-y-1"><Label htmlFor="sbs-name">Tournament name</Label><Input id="sbs-name" value={a.name ?? ""} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder={isChamps ? "e.g. Riverside Club Championships 2026" : "e.g. Riverside Spring Open"} /></div>
+              <TournamentOrganiserField clubId={clubId} value={a.organiser} existing={!!a.createdTournamentId || !!tournamentId} onChange={(organiser) => setA((prev) => ({ ...prev, organiser }))} />
               <div className="space-y-1">
                 <Label>Event level</Label>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -2635,6 +2643,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
               {handoverPanel("top")}
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Tournament" onEdit={() => go("Basics")}>{a.name || "Unnamed"} · {ownerText}{isChamps && ` · ${periodText}`}</SummaryRow>
+              <SummaryRow icon={<Users className="h-4 w-4" />} label="Organiser" onEdit={() => go("Basics")}>{a.organiser?.name ?? "No organiser selected"}</SummaryRow>
               {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("Guide")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">about {a.unitEntries?.[u.key] || "?"}</span></li>)}</ul>
               </SummaryRow> : <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${a.entries} (estimate)`}</SummaryRow>}

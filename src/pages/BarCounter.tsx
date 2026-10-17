@@ -717,6 +717,27 @@ export default function BarCounter() {
                     Cancel card payment
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Customer rather paying at the bar? Take the payment here — the online attempt is replaced and their phone shows the tab as paid.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {board.cash_enabled && (
+                    <Button
+                      size="sm" variant="outline" className="h-9 shrink-0 gap-1.5" disabled={busy}
+                      onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} cash received instead of the online payment?`)) settle("cash"); }}
+                    >
+                      <Banknote className="w-4 h-4" /> Paid cash
+                    </Button>
+                  )}
+                  {board.card_enabled && (
+                    <Button
+                      size="sm" variant="outline" className="h-9 shrink-0 gap-1.5" disabled={busy}
+                      onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} card machine payment received instead of the online payment? Only confirm if the machine showed APPROVED.`)) settle("terminal"); }}
+                    >
+                      <CreditCard className="w-4 h-4" /> Swipe at bar
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
             {activeTab.status === "closing" && (activeTab.settled_method === "terminal" || activeTab.settled_method === "cash") && (

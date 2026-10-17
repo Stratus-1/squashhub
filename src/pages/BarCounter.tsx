@@ -88,6 +88,8 @@ export default function BarCounter() {
   const [identifying, setIdentifying] = useState(false);
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
+  const [menuQrOpen, setMenuQrOpen] = useState(false);
+  const navigate = useNavigate();
   const [scanOpen, setScanOpen] = useState(false);
   const [scannedItem, setScannedItem] = useState<CounterItem | null>(null);
   const [scanQty, setScanQty] = useState(1);

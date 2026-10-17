@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
-import { COLLECTION_VIBRATION, showCollectionAlert } from "@/lib/bar/collection-alert";
+import { COLLECTION_VIBRATION, showCollectionAlert, showKeepOpenHint } from "@/lib/bar/collection-alert";
 
-vi.mock("sonner", () => ({ toast: vi.fn() }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { info: vi.fn(), success: vi.fn(), error: vi.fn() }),
+}));
 
 describe("collection ready alert presentation", () => {
   beforeEach(() => {
@@ -33,5 +35,26 @@ describe("collection ready alert presentation", () => {
     Object.defineProperty(navigator, "vibrate", { value: () => { throw new Error("Blocked"); }, configurable: true });
     expect(() => showCollectionAlert({ id: "two", message: "Ready" }, vi.fn())).not.toThrow();
     expect(toast).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("keep-the-link-open hint", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("tells a collect customer the ready alert arrives on this page", () => {
+    showKeepOpenHint("collect");
+    const options = vi.mocked(toast.info).mock.calls[0]?.[1];
+    expect(options).toMatchObject({ id: "bar-keep-open", closeButton: true,
+      description: "We'll alert you here the moment your order is ready to collect." });
+    expect(vi.mocked(toast.info).mock.calls[0]?.[0]).toBe("Keep this page open");
+  });
+
+  it("promises delivery progress instead of a collection alert for delivered orders", () => {
+    showKeepOpenHint("deliver");
+    const options = vi.mocked(toast.info).mock.calls[0]?.[1];
+    expect(options).toMatchObject({ id: "bar-keep-open", closeButton: true,
+      description: "We'll update you here as each item is delivered." });
   });
 });

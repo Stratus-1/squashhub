@@ -68,6 +68,8 @@ UI gates improve navigation but do not replace RLS or server-side authorization.
 
 `courts`, `bookings`, recurring bookings, booking invites, visitors, reflow logs, light sessions, access events, router configurations, and access provisioning logs connect scheduling to physical facilities.
 
+Family booking authority is checked by `can_book_linked_member`: direct ownership or the authenticated actor's verified shared email plus an owned membership in the same club. Eligibility and the booking trigger share this check, independently of fee delegation and family billing groups. The booking records the authenticated actor in `user_id` and the selected playing member in `club_member_id`; approved credit and recurring coverage belong to that selected member. Adjacent booking merges require matching member IDs as well as opponent details. No client profile selection grants authority.
+
 ### Matches, ladders, and rankings
 
 Matches, challenges, ladder history, ranking ledgers, pending ranking points, streaks, badges, and correction/dispute records form the player competition history.

@@ -2,8 +2,9 @@
 
 ## Family court-booking regression
 - [x] Confirm current eligibility RPC and booking trigger reject email-linked family profiles; hosted definitions match QA evidence.
-- [ ] Approve and implement coordinated server-side family booking authorization; keep fee-only delegations unchanged.
-- [ ] Verify parent/child attribution, balance enforcement, unrelated-member and alternative-owner rejection with isolated tests and authenticated Riverside flow; no real hardware or publication.
+- [x] Approved and applied server-side verified shared-login booking authority, preserving fee-only delegation scope, child financial eligibility and authenticated booker ownership; prevent adjacent sibling booking merges.
+- [x] 39 focused tests passed, including 12 disposable PostgreSQL authorization/insert checks and 3 actual booking-hook attribution/merge checks; preview build OK. No live data, hardware or publication.
+- [ ] Authenticated family UI path: UNVERIFIED. Needs owner-selected ordinary parent account and explicit permission for one Riverside test booking; monitoring finding remains unresolved until this check passes. Guest booking unchanged; signed-out eligibility rejection tested locally, hosted guest mutation not exercised.
 
 ## Format information examples
 - [x] Fix round robin information opening and add simplified round robin grid / Swiss round visuals with fictional names and games, no courts.

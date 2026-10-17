@@ -19820,6 +19820,10 @@ export type Database = {
         Args: { _fixture_id: string; _user_id: string }
         Returns: boolean
       }
+      can_book_linked_member: {
+        Args: { _club_id: string; _club_member_id: string }
+        Returns: boolean
+      }
       can_browse_invite_directory: {
         Args: { _club_id: string; _tournament_id: string; _uid: string }
         Returns: boolean

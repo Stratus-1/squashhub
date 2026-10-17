@@ -1,5 +1,10 @@
 # Roadmap
 
+## Family court-booking regression
+- [x] Confirm current eligibility RPC and booking trigger reject email-linked family profiles; hosted definitions match QA evidence.
+- [ ] Approve and implement coordinated server-side family booking authorization; keep fee-only delegations unchanged.
+- [ ] Verify parent/child attribution, balance enforcement, unrelated-member and alternative-owner rejection with isolated tests and authenticated Riverside flow; no real hardware or publication.
+
 ## Format information examples
 - [x] Fix round robin information opening and add simplified round robin grid / Swiss round visuals with fictional names and games, no courts.
 - [x] Eight focused tests and authenticated preview checks passed for both information buttons, round selection and closing; no tournament writes or publication.

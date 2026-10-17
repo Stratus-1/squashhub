@@ -12,7 +12,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (table: str
     then: (resolve: any) => Promise.resolve({ data: table === "club_members" ? [{ id: "committee", name: "Committee member", club_id: "riverside" }] : [], error: null }).then(resolve),
   };
   return chain;
-} } }));
+}, rpc: vi.fn() } }));
 
 describe("organiser persistence and permission separation", () => {
   beforeEach(() => { state.life = null; state.updates = []; });

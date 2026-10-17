@@ -32,6 +32,7 @@ export function toStepTemplate(a: StepAnswers): StepTemplate {
   const c = clone(a) as Partial<StepAnswers> & Record<string, unknown>;
   delete c.planId;
   delete c.createdTournamentId;
+  delete c.organiser;
   delete c.pairs;
   c.name = "";
   c.periodStart = "";
@@ -57,6 +58,7 @@ export function toStepTemplate(a: StepAnswers): StepTemplate {
 export function fromStepTemplate(t: StepTemplate): Partial<StepAnswers> {
   const c = clone(t.answers) as Partial<StepAnswers>;
   delete c.createdTournamentId;
+  delete c.organiser;
   // Older saved definitions may contain event-specific registration dates.
   c.entriesOpen = "";
   c.entriesClose = "";

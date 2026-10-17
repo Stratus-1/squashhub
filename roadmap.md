@@ -1,10 +1,11 @@
 # Roadmap
 
 ## Tournament organiser and SportyHQ provision
-- [ ] Add optional organiser choice to the first tournament setup step, defaulting to the club tournament lead or permitted organiser when unambiguous; allow admin/committee organisers without granting permissions.
-- [ ] Preserve organiser selection per tournament and across reopening; record Kaylee Hunt as the requested Uitsig Club Champs organiser without changing live data implicitly.
-- [ ] Assess supported SportyHQ account connection and draw/fixture/result exchange before collecting credentials or implementing synchronisation.
-- [ ] Verify organiser defaults, explicit clearing, club scoping and persistence; document any integration blockers. No publication.
+- [x] Add optional organiser choice to Type and Basics, suggesting an unambiguous dedicated tournament role or explicit champs-permitted member; all active non-visitor club members can be chosen without gaining permissions.
+- [x] Store choice in canonical setup answers, save synchronously at handover, strip from templates. Kaylee Hunt assigned only to Uitsig Club Champs 2026 organiser metadata after plan approval; readback confirmed.
+- [x] Research official SportyHQ API and connector availability; public docs require requested API access and do not confirm password authentication or draw/result write endpoints.
+- [x] Signed-in Riverside draft selector, selection/reload and clearing/reload verified with tournament writes blocked; 19 organiser/persistence/landing tests passed, preview build OK. Existing handover suite has stale scheduling expectations under consolidated structure and remains failing before submission, unrelated to organiser selection.
+- [ ] SportyHQ private account connection/import/export: blocked on official API documentation, authentication contract and permitted tournament operations. No passwords collected or publication.
 
 ## Family court-booking regression
 - [x] Confirm current eligibility RPC and booking trigger reject email-linked family profiles; hosted definitions match QA evidence.

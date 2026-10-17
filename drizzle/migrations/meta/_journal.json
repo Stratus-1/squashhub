@@ -1219,6 +1219,13 @@
       "when": 1792273111769,
       "tag": "0173_bar_counter_settle_online_as_cash_or_card",
       "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1792274615975,
+      "tag": "0174_bar_counter_close_empty_tab",
+      "breakpoints": true
     }
   ]
 }

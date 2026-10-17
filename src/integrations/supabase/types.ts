@@ -19564,6 +19564,10 @@ export type Database = {
         Args: { _club_id?: string; _token?: string }
         Returns: Json
       }
+      bar_counter_close_empty_tab: {
+        Args: { _club_id?: string; _tab_id: string; _token?: string }
+        Returns: Json
+      }
       bar_counter_context: {
         Args: { _club_id: string; _token: string }
         Returns: string

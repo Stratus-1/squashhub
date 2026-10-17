@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { showCollectionAlert } from "@/lib/bar/collection-alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,28 @@ export function GuestOrderProgress({ tab }: { tab: { tab_id: string; token: stri
       return (data ?? []) as BarOrder[];
     },
   });
+
+  // Guests have no member account, so the counter's "Ready — notify" can't
+  // reach them through the notification system. Instead this page polls and
+  // pops a persistent alert (with vibration where supported) the moment an
+  // item is marked ready for collection.
+  const alertedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const o of orders) {
+      if (o.fulfilment !== "collect") continue;
+      for (const l of o.lines) {
+        const ready = (l as any).ready_notified_at && l.delivered_qty < l.quantity;
+        if (ready && !alertedRef.current.has(l.id)) {
+          alertedRef.current.add(l.id);
+          showCollectionAlert(
+            { id: l.id, message: `${l.quantity}× ${l.item_name} — order #${o.order_number}` },
+            () => window.scrollTo({ top: 0, behavior: "smooth" }),
+          );
+        }
+      }
+    }
+  }, [orders]);
+
   if (orders.length === 0) return null;
   return (
     <div className="space-y-1.5">

@@ -66,7 +66,7 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
     const r = data as any;
     if (r?.already) toast.info("Already notified — use Resend if they need a reminder.");
     else if (r?.notified) toast.success(`${line.item_name}: member notified it's ready`);
-    else if (r?.reason === "no_member_account") toast.info(`${line.item_name} marked ready — this customer has no member account to notify. Call them.`);
+    else if (r?.reason === "no_member_account") toast.info(`${line.item_name} marked ready — the customer's phone page will pop an alert while it's open. Otherwise call them.`);
     else if (r?.reason === "all_delivered") toast.info("Already delivered.");
     qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
   };

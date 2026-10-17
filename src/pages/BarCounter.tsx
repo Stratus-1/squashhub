@@ -72,8 +72,8 @@ export default function BarCounter() {
 
   const [token, setToken] = useState<string | null>(() => (code ? localStorage.getItem(tokenKey(code)) : null));
   const [operator, setOperator] = useState<string | null>(() => (code ? localStorage.getItem(operatorKey(code)) : null));
-  const [whoOpen, setWhoOpen] = useState(false);
-  const [whoName, setWhoName] = useState("");
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [switchPin, setSwitchPin] = useState("");
   const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -201,45 +201,50 @@ export default function BarCounter() {
   const money = (n: number) => `R${Number(n || 0).toFixed(2)}`;
   const invalidate = () => qc.invalidateQueries({ queryKey: ["bar-counter-board"] });
 
-  async function unlock() {
-    if (!code) return;
+  // Each staff member has their own PIN (allocated by the club). The PIN
+  // identifies the person — the backend returns their name as `label` — so
+  // unlocking and switching server are the same action. Several people can be
+  // signed in on one device over a shift; they all see the same orders.
+  async function unlockWithPin(rawPin: string) {
+    if (!code) return false;
     setUnlocking(true);
     try {
-      const { data, error } = await supabase.rpc("bar_counter_unlock", { _code: code, _pin: pin } as any);
+      const { data, error } = await supabase.rpc("bar_counter_unlock", { _code: code, _pin: rawPin } as any);
       if (error) throw error;
       const t = (data as any)?.token as string;
       const who = ((data as any)?.label as string) ?? null;
       localStorage.setItem(tokenKey(code), t);
+      if (who) localStorage.setItem(operatorKey(code), who);
       setToken(t);
+      setOperator(who);
       setPin("");
-      // Ask who is actually serving — the device label is only the default.
-      setWhoName(who ?? "");
-      setWhoOpen(true);
+      return true;
     } catch (e: any) {
       toast.error(e.message ?? "Could not unlock this device");
+      return false;
     } finally {
       setUnlocking(false);
     }
   }
 
-  function confirmWho() {
-    const name = whoName.trim();
-    if (!name) {
-      toast.error("Please enter the name of the person serving");
-      return;
-    }
-    if (code) localStorage.setItem(operatorKey(code), name);
-    setOperator(name);
-    setWhoOpen(false);
-    toast.success(`Counter open — hi ${name}`);
+  async function unlock() {
+    await unlockWithPin(pin);
   }
 
-  // A device that resumes a stored session without a recorded operator still
-  // asks who is serving, so the badge never shows a stale name.
+  async function switchServer() {
+    const ok = await unlockWithPin(switchPin);
+    if (ok) {
+      setSwitchPin("");
+      setSwitchOpen(false);
+      toast.success("Server switched");
+    }
+  }
+
+  // A device that resumes a stored session without a recorded operator asks
+  // for a staff PIN again, so the badge never shows a stale name.
   useEffect(() => {
-    if (token && !operator && !whoOpen) {
-      setWhoName("");
-      setWhoOpen(true);
+    if (token && !operator && code && !switchOpen) {
+      setSwitchOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -464,8 +469,8 @@ export default function BarCounter() {
               variant="ghost"
               className="h-6 px-2 text-xs"
               onClick={() => {
-                setWhoName(operator ?? "");
-                setWhoOpen(true);
+                setSwitchPin("");
+                setSwitchOpen(true);
               }}
             >
               Switch
@@ -994,25 +999,26 @@ export default function BarCounter() {
         </div>
       )}
 
-      <Dialog open={whoOpen} onOpenChange={(o) => { if (o) setWhoOpen(true); }}>
+      <Dialog open={switchOpen} onOpenChange={(o) => { if (o) setSwitchOpen(true); else setSwitchOpen(false); }}>
         <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>Who is serving?</DialogTitle>
+            <DialogTitle>{operator ? "Switch server" : "Who is serving?"}</DialogTitle>
             <DialogDescription>
-              Enter the name of the person opening the bar counter. It shows at the top of the screen so everyone can see who is operating the bar.
+              Enter your own counter PIN. Your name shows at the top of the screen so everyone can see who is operating the bar. Both of you see the same orders.
             </DialogDescription>
           </DialogHeader>
           <Input
+            inputMode="numeric"
             autoFocus
-            value={whoName}
-            maxLength={60}
-            onChange={(e) => setWhoName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && confirmWho()}
-            placeholder="e.g. Sannie"
-            className="h-12 text-center text-lg"
+            value={switchPin}
+            maxLength={8}
+            onChange={(e) => setSwitchPin(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && switchServer()}
+            placeholder="••••"
+            className="h-14 text-center text-2xl tracking-[0.4em]"
           />
-          <Button className="w-full h-12" disabled={!whoName.trim()} onClick={confirmWho}>
-            Start serving
+          <Button className="w-full h-12" disabled={switchPin.length < 4 || unlocking} onClick={switchServer}>
+            {unlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start serving"}
           </Button>
         </DialogContent>
       </Dialog>

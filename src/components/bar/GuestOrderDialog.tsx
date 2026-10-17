@@ -71,14 +71,33 @@ export function GuestOrderDialog({ tab, lines, open, onOpenChange, onPlaced }: {
 
 /** Customer: progress of their orders on this tab. */
 export function GuestOrderProgress({ tab }: { tab: { tab_id: string; token: string } }) {
-  const { data: orders = [] } = useQuery({
+  const { data: orders = [], refetch } = useQuery({
     queryKey: ["bar-guest-orders", tab.tab_id],
-    refetchInterval: 15000,
+    // Keep checking even when the phone tab is in the background so the
+    // ready alert arrives without the customer refreshing the page.
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
+    staleTime: 0,
     queryFn: async () => {
       const { data } = await (supabase as any).rpc("bar_guest_orders", { _tab_id: tab.tab_id, _token: tab.token });
       return (data ?? []) as BarOrder[];
     },
   });
+
+  // Phones freeze timers when the screen locks; check immediately on return.
+  useEffect(() => {
+    const kick = () => { if (document.visibilityState === "visible") void refetch(); };
+    document.addEventListener("visibilitychange", kick);
+    window.addEventListener("pageshow", kick);
+    window.addEventListener("focus", kick);
+    return () => {
+      document.removeEventListener("visibilitychange", kick);
+      window.removeEventListener("pageshow", kick);
+      window.removeEventListener("focus", kick);
+    };
+  }, [refetch]);
 
   // Guests have no member account, so the counter's "Ready — notify" can't
   // reach them through the notification system. Instead this page polls and

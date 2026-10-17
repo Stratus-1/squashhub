@@ -23,6 +23,7 @@ import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { StockLevelsTab } from "./bar/StockLevelsTab";
 import { CostingTab } from "./bar/CostingTab";
 import { OpenTabsTab } from "./bar/OpenTabsTab";
+import { ClosedTabsTab } from "./bar/ClosedTabsTab";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
@@ -206,6 +207,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     { id: "costing", label: "Costing & margins", description: "Optional average-cost tracking with cost of sales, gross profit and margin.", complete: false },
     { id: "member-sales", label: "Member sales", description: "Purchases charged to a member's account tab — and a way to add a charge on a member's behalf.", complete: enabled },
     { id: "card-sales", label: "Card sales", description: "Visitor, walk-in and scan-to-pay sales paid by card instead of a member account.", complete: enabled },
+    { id: "closed-tabs", label: "Closed tabs", description: "", complete: enabled },
     { id: "open-tabs", label: "Open tabs", description: "See which guest tabs are still open or unpaid, who is serving them, and what is outstanding.", complete: enabled },
   ];
 
@@ -361,6 +363,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
       {step === "costing" && <CostingTab clubId={clubId} />}
 
       {step === "open-tabs" && <OpenTabsTab clubId={clubId} />}
+      {step === "closed-tabs" && <ClosedTabsTab clubId={clubId} />}
 
       {step === "member-sales" && (
         <div className="space-y-4">

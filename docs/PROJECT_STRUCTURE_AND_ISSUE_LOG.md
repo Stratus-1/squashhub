@@ -1,3 +1,6 @@
+### 2026-10-17 — Bar closed-tab history
+- Added a separate Closed tabs view with six presets and custom calendar dates using Johannesburg closure dates and an exclusive end boundary. Paginated settled/closed tabs show saved serving names, payment methods, totals and expandable items; open-tab/payment flows unchanged. No migration, live-data writes or publication.
+
 ### 2026-10-16 — Required expected players in Riverside structure
 - Local Save Structure now rejects missing, zero and fractional category estimates; required player/pair inputs include a short tooltip explaining adjustment when entries are finalised. No registration, generation, live records or publication changed.
 

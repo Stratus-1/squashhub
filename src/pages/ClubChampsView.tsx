@@ -190,6 +190,17 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   });
   const arch = inlineStandings?.arch ?? fetchedArch;
   const isStructured = arch?.builder_architecture === "structured";
+  // Organiser contact shown under the tournament name — display only.
+  const organiserMeta = (arch?.beta_lifecycle as any)?.answers?.organiser as { memberId?: string; name?: string } | null | undefined;
+  const { data: organiserMember } = useQuery({
+    queryKey: ["champ-organiser-contact", champId, organiserMeta?.memberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members").select("id,name,phone").eq("id", organiserMeta!.memberId!).maybeSingle();
+      if (error) throw error;
+      return data as { id: string; name: string; phone: string | null } | null;
+    },
+    enabled: !!champId && !!organiserMeta?.memberId && !inlineStandings,
+  });
   // Stage lookup (id → kind/order) so multi-stage tournaments can split the Swiss log from later-stage logs.
   const { data: stageRows = [] } = useQuery({
     queryKey: ["club-champ-stages", champId],

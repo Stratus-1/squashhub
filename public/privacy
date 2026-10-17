@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en-ZA">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Privacy Policy | SquashHub</title>
+    <meta name="description" content="Privacy Policy for SquashHub, operated by Stratus Software Solutions (Pty) Ltd.">
+    <link rel="canonical" href="https://www.squashhub.co.za/privacy">
+    <style>
+      body { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 4rem; font: 16px/1.6 system-ui, sans-serif; color: #172033; }
+      h1 { line-height: 1.2; } h2 { margin-top: 2rem; } a { color: #155e9b; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Privacy Policy</h1>
+      <p><strong>Last updated: 17 March 2026</strong></p>
+      <p>This Privacy Policy explains how we collect, use, share, and protect personal information when you use SquashHub (the “Service”), operated by <strong>Stratus Software Solutions (Pty) Ltd</strong> (Reg. No. 2026/386351/07) (“Stratus”, “we”, “us”, or “our”). We process personal information in accordance with the Protection of Personal Information Act 4 of 2013 (POPIA).</p>
+      <h2>1. Responsible party</h2>
+      <p>Stratus Software Solutions (Pty) Ltd is the responsible party for processing personal information through the Service. Club administrators act as operators processing member data on behalf of their clubs within the platform.</p>
+      <h2>2. Information we collect</h2>
+      <ul><li>Account and profile details such as name, email address, phone number, avatar, availability, and privacy settings.</li><li>Bookings, opponents, match statistics, ladder rankings, event RSVPs, and related participation information.</li><li>In-app notification and push-notification data, basic device diagnostics, and optional court check-in location data.</li><li>Data from optional integrations, such as Strava, when you connect them.</li></ul>
+      <h2>3. How we use information</h2>
+      <p>We use information to provide club booking, ladder, event, and member-management features; send service messages; maintain security; prevent abuse; troubleshoot; and improve the Service and club operations.</p>
+      <h2>4. Sharing and international transfers</h2>
+      <p>We use trusted hosting, database, notification, and other service providers and share only the information needed to operate the Service with appropriate safeguards. Some providers may process information outside South Africa; where applicable, we protect those transfers consistently with POPIA.</p>
+      <h2>5. Retention and security</h2>
+      <p>We retain information for as long as needed to provide the Service, meet club record-keeping needs, and comply with legal obligations. We implement reasonable technical and organisational measures against loss, misuse, and unauthorised access.</p>
+      <h2>6. Your rights and account deletion</h2>
+      <p>Subject to POPIA and applicable exceptions, you may request access, correction, deletion, portability, or restriction of your personal information, object to certain processing, or withdraw consent. To request this or delete your account, contact <a href="mailto:support@squashhub.co.za">support@squashhub.co.za</a> or use the in-app Support page. Data required for legal obligations or anonymised historical records may be retained.</p>
+      <h2>7. Children</h2>
+      <p>The Service is not directed at children under 18. A parent or legal guardian must provide consent and manage an account used by a minor.</p>
+      <h2>8. Changes</h2>
+      <p>We may update this policy from time to time and will take reasonable steps to notify users of material changes in-app.</p>
+      <p><a href="https://www.squashhub.co.za/">Return to SquashHub</a></p>
+    </main>
+  </body>
+</html>

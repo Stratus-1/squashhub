@@ -425,12 +425,18 @@ export default function BarCounter() {
       <SEO title="Bar counter" description="Open tabs at the bar counter" path="/bar/counter" noIndex />
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-base font-semibold leading-tight">
-            {board.club_name} · Bar counter
-          </h1>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-base font-semibold leading-tight">
+              {board.club_name} · Bar counter
+            </h1>
+            {operator && (
+              <Badge variant="secondary" className="gap-1 whitespace-nowrap">
+                <UserCheck className="w-3.5 h-3.5" /> {operator}
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
-            {operator ? <span className="font-medium text-foreground">Serving: {operator} · </span> : null}
             {board.tabs.length} open tab{board.tabs.length === 1 ? "" : "s"} ·{" "}
             {money(board.tabs.reduce((s, t) => s + Number(t.total || 0), 0))} outstanding
           </p>

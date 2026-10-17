@@ -72,6 +72,8 @@ export default function BarCounter() {
 
   const [token, setToken] = useState<string | null>(() => (code ? localStorage.getItem(tokenKey(code)) : null));
   const [operator, setOperator] = useState<string | null>(() => (code ? localStorage.getItem(operatorKey(code)) : null));
+  const [whoOpen, setWhoOpen] = useState(false);
+  const [whoName, setWhoName] = useState("");
   const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -208,11 +210,11 @@ export default function BarCounter() {
       const t = (data as any)?.token as string;
       const who = ((data as any)?.label as string) ?? null;
       localStorage.setItem(tokenKey(code), t);
-      if (who) localStorage.setItem(operatorKey(code), who);
-      setOperator(who);
       setToken(t);
       setPin("");
-      toast.success(who ? `Counter unlocked — hi ${who}` : "Counter unlocked");
+      // Ask who is actually serving — the device label is only the default.
+      setWhoName(who ?? "");
+      setWhoOpen(true);
     } catch (e: any) {
       toast.error(e.message ?? "Could not unlock this device");
     } finally {

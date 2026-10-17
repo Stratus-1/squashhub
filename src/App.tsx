@@ -525,6 +525,8 @@ function AppRoutes() {
         <Route path="/events/:id" element={<CapabilityRoute capability="events"><EventDetail /></CapabilityRoute>} />
         <Route path="/tournaments" element={<CapabilityRoute capability="tournaments"><Tournaments /></CapabilityRoute>} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+
         <Route path="/lights" element={<LightsIntegration />} />
 
         <Route path="/sla" element={<Sla />} />

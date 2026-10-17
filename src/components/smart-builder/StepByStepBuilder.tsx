@@ -1417,11 +1417,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       });
       // Persist synchronously: the builder unmounts on handover, so the save effect may never run.
       const nextA = { ...a, createdTournamentId: tid };
-      const currentLifecycle = await loadLifecycle(tid);
-      await saveLifecycle(tid, { ...(currentLifecycle ?? { stage: "invite", completed: ["planning"] }), answers: JSON.parse(JSON.stringify(nextA)) });
       localStorage.setItem(tournamentKey(tid), JSON.stringify(nextA));
       if (!tournamentId) { clearDraft(clubId); setKey(tournamentKey(tid)); }
       setA(nextA);
+      const currentLifecycle = await loadLifecycle(tid);
+      await saveLifecycle(tid, { ...(currentLifecycle ?? { stage: "invite", completed: ["planning"] }), answers: JSON.parse(JSON.stringify(nextA)) });
       if (!stay) onCompleted?.(tid);
     } catch (e: any) {
       setCompleteErr(e?.message || "Something went wrong — nothing was changed.");

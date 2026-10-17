@@ -994,6 +994,29 @@ export default function BarCounter() {
         </div>
       )}
 
+      <Dialog open={whoOpen} onOpenChange={(o) => { if (o) setWhoOpen(true); }}>
+        <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Who is serving?</DialogTitle>
+            <DialogDescription>
+              Enter the name of the person opening the bar counter. It shows at the top of the screen so everyone can see who is operating the bar.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={whoName}
+            maxLength={60}
+            onChange={(e) => setWhoName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && confirmWho()}
+            placeholder="e.g. Sannie"
+            className="h-12 text-center text-lg"
+          />
+          <Button className="w-full h-12" disabled={!whoName.trim()} onClick={confirmWho}>
+            Start serving
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={menuQrOpen} onOpenChange={setMenuQrOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

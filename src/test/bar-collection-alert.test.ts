@@ -45,15 +45,15 @@ describe("keep-the-link-open hint", () => {
 
   it("tells a collect customer the ready alert arrives on this page", () => {
     showKeepOpenHint("collect");
-    const options = vi.mocked(toast).mock.calls[0]?.[1];
+    const options = vi.mocked(toast.info).mock.calls[0]?.[1];
     expect(options).toMatchObject({ id: "bar-keep-open", closeButton: true,
       description: "We'll alert you here the moment your order is ready to collect." });
-    expect(vi.mocked(toast).mock.calls[0]?.[0]).toBe("Keep this page open");
+    expect(vi.mocked(toast.info).mock.calls[0]?.[0]).toBe("Keep this page open");
   });
 
   it("promises delivery progress instead of a collection alert for delivered orders", () => {
     showKeepOpenHint("deliver");
-    const options = vi.mocked(toast).mock.calls[0]?.[1];
+    const options = vi.mocked(toast.info).mock.calls[0]?.[1];
     expect(options).toMatchObject({ id: "bar-keep-open", closeButton: true,
       description: "We'll update you here as each item is delivered." });
   });

@@ -4,7 +4,7 @@
 - [x] Add optional organiser choice to Type and Basics, suggesting an unambiguous dedicated tournament role or explicit champs-permitted member; all active non-visitor club members can be chosen without gaining permissions.
 - [x] Store choice in canonical setup answers, save synchronously at handover, strip from templates. Kaylee Hunt assigned only to Uitsig Club Champs 2026 organiser metadata after plan approval; readback confirmed.
 - [x] Research official SportyHQ API and connector availability; public docs require requested API access and do not confirm password authentication or draw/result write endpoints.
-- [x] Signed-in Riverside draft selector, selection/reload and clearing/reload verified with tournament writes blocked; focused organiser/landing tests run and preview build checked. Existing handover suite has stale scheduling expectations under consolidated structure and remains failing, unrelated to organiser selection.
+- [x] Signed-in Riverside draft selector, selection/reload and clearing/reload verified with tournament writes blocked; 19 organiser/persistence/landing tests passed, preview build OK. Existing handover suite has stale scheduling expectations under consolidated structure and remains failing before submission, unrelated to organiser selection.
 - [ ] SportyHQ private account connection/import/export: blocked on official API documentation, authentication contract and permitted tournament operations. No passwords collected or publication.
 
 ## Family court-booking regression

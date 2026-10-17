@@ -72,6 +72,8 @@ export default function BarCounter() {
 
   const [token, setToken] = useState<string | null>(() => (code ? localStorage.getItem(tokenKey(code)) : null));
   const [operator, setOperator] = useState<string | null>(() => (code ? localStorage.getItem(operatorKey(code)) : null));
+  const [whoOpen, setWhoOpen] = useState(false);
+  const [whoName, setWhoName] = useState("");
   const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -208,17 +210,39 @@ export default function BarCounter() {
       const t = (data as any)?.token as string;
       const who = ((data as any)?.label as string) ?? null;
       localStorage.setItem(tokenKey(code), t);
-      if (who) localStorage.setItem(operatorKey(code), who);
-      setOperator(who);
       setToken(t);
       setPin("");
-      toast.success(who ? `Counter unlocked — hi ${who}` : "Counter unlocked");
+      // Ask who is actually serving — the device label is only the default.
+      setWhoName(who ?? "");
+      setWhoOpen(true);
     } catch (e: any) {
       toast.error(e.message ?? "Could not unlock this device");
     } finally {
       setUnlocking(false);
     }
   }
+
+  function confirmWho() {
+    const name = whoName.trim();
+    if (!name) {
+      toast.error("Please enter the name of the person serving");
+      return;
+    }
+    if (code) localStorage.setItem(operatorKey(code), name);
+    setOperator(name);
+    setWhoOpen(false);
+    toast.success(`Counter open — hi ${name}`);
+  }
+
+  // A device that resumes a stored session without a recorded operator still
+  // asks who is serving, so the badge never shows a stale name.
+  useEffect(() => {
+    if (token && !operator && !whoOpen) {
+      setWhoName("");
+      setWhoOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   async function openTab() {
     if (!newName.trim()) return;
@@ -435,6 +459,17 @@ export default function BarCounter() {
                 <UserCheck className="w-3.5 h-3.5" /> {operator}
               </Badge>
             )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs"
+              onClick={() => {
+                setWhoName(operator ?? "");
+                setWhoOpen(true);
+              }}
+            >
+              Switch
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
             {board.tabs.length} open tab{board.tabs.length === 1 ? "" : "s"} ·{" "}
@@ -958,6 +993,29 @@ export default function BarCounter() {
           )}
         </div>
       )}
+
+      <Dialog open={whoOpen} onOpenChange={(o) => { if (o) setWhoOpen(true); }}>
+        <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Who is serving?</DialogTitle>
+            <DialogDescription>
+              Enter the name of the person opening the bar counter. It shows at the top of the screen so everyone can see who is operating the bar.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={whoName}
+            maxLength={60}
+            onChange={(e) => setWhoName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && confirmWho()}
+            placeholder="e.g. Sannie"
+            className="h-12 text-center text-lg"
+          />
+          <Button className="w-full h-12" disabled={!whoName.trim()} onClick={confirmWho}>
+            Start serving
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={menuQrOpen} onOpenChange={setMenuQrOpen}>
         <DialogContent className="max-w-sm">

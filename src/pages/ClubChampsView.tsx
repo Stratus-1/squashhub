@@ -190,6 +190,17 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   });
   const arch = inlineStandings?.arch ?? fetchedArch;
   const isStructured = arch?.builder_architecture === "structured";
+  // Organiser contact shown under the tournament name — display only.
+  const organiserMeta = (arch?.beta_lifecycle as any)?.answers?.organiser as { memberId?: string; name?: string } | null | undefined;
+  const { data: organiserMember } = useQuery({
+    queryKey: ["champ-organiser-contact", champId, organiserMeta?.memberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members").select("id,name,phone").eq("id", organiserMeta!.memberId!).maybeSingle();
+      if (error) throw error;
+      return data as { id: string; name: string; phone: string | null } | null;
+    },
+    enabled: !!champId && !!organiserMeta?.memberId && !inlineStandings,
+  });
   // Stage lookup (id → kind/order) so multi-stage tournaments can split the Swiss log from later-stage logs.
   const { data: stageRows = [] } = useQuery({
     queryKey: ["club-champ-stages", champId],
@@ -2520,6 +2531,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               ? "Players arrange their own games — no fixed court times"
               : `${(champ.play_days as number[])?.map((d: number) => DAY_NAMES[d]).join(", ")} · ${champ.start_time?.slice(0, 5)} – ${champ.end_time?.slice(0, 5)}`}
           </p>
+          {organiserMeta?.name && (
+            <p className="text-sm text-muted-foreground mt-1" data-testid="tournament-organiser-line">
+              Organiser: {organiserMeta.name}
+              {organiserMember?.phone && <> · <a href={`tel:${organiserMember.phone}`} className="hover:text-foreground underline-offset-2 hover:underline">{organiserMember.phone}</a></>}
+            </p>
+          )}
         </div>
 
         {canManage && (

@@ -341,19 +341,20 @@ export function useCreateBooking() {
     }) => {
       if (!user) throw new Error("Must be logged in");
 
-      // Auto-merge: only merge an adjacent booking when it's the SAME opponent
-      // and same friendly flag (otherwise we'd overwrite the original opponent name).
+      // Shared logins must never extend another family member's booking.
+      // Opponent and friendly flags also need to match.
       if (source !== "gobook") {
         const { data: adjacent } = await supabase
           .from("bookings")
-          .select("id, start_time, end_time, opponent_id, opponent_member_id, guest_name, is_friendly, challenge_id")
+          .select("id, club_member_id, start_time, end_time, opponent_id, opponent_member_id, guest_name, is_friendly, challenge_id")
           .eq("court_id", courtId)
           .eq("date", date)
           .eq("user_id", user.id)
           .eq("status", "active") as any;
 
         const sameOpponent = (b: any) =>
-          (b.opponent_id ?? null) === (opponentId ?? null)
+          (b.club_member_id ?? null) === (clubMemberId ?? null)
+          && (b.opponent_id ?? null) === (opponentId ?? null)
           && (b.opponent_member_id ?? null) === (opponentMemberId ?? null)
           && (b.guest_name ?? null) === (guestName ?? null)
           && !!b.is_friendly === !!isFriendly

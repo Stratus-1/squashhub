@@ -1,5 +1,9 @@
 # Roadmap
 
+## Bar closed-tab history
+- [ ] Add Closed tabs with custom dates and all six preset periods; read-only, club-scoped history with totals and serving names.
+- [ ] Run date-range tests and verify authenticated Riverside history; no publication or live-data changes.
+
 ## Tournament organiser and SportyHQ provision
 - [x] Add optional organiser choice to Type and Basics, suggesting an unambiguous dedicated tournament role or explicit champs-permitted member; all active non-visitor club members can be chosen without gaining permissions.
 - [x] Store choice in canonical setup answers, save synchronously at handover, strip from templates. Kaylee Hunt assigned only to Uitsig Club Champs 2026 organiser metadata after plan approval; readback confirmed.

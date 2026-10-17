@@ -1,5 +1,11 @@
 # Roadmap
 
+## Tournament organiser and SportyHQ provision
+- [ ] Add optional organiser choice to the first tournament setup step, defaulting to the club tournament lead or permitted organiser when unambiguous; allow admin/committee organisers without granting permissions.
+- [ ] Preserve organiser selection per tournament and across reopening; record Kaylee Hunt as the requested Uitsig Club Champs organiser without changing live data implicitly.
+- [ ] Assess supported SportyHQ account connection and draw/fixture/result exchange before collecting credentials or implementing synchronisation.
+- [ ] Verify organiser defaults, explicit clearing, club scoping and persistence; document any integration blockers. No publication.
+
 ## Family court-booking regression
 - [x] Confirm current eligibility RPC and booking trigger reject email-linked family profiles; hosted definitions match QA evidence.
 - [x] Approved and applied server-side verified shared-login booking authority, preserving fee-only delegation scope, child financial eligibility and authenticated booker ownership; prevent adjacent sibling booking merges.

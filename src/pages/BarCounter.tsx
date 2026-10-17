@@ -950,9 +950,33 @@ export default function BarCounter() {
               onVerified={chargeMemberAccount}
             />
           )}
-
         </div>
       )}
+
+      <Dialog open={menuQrOpen} onOpenChange={setMenuQrOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Menu QR code</DialogTitle>
+            <DialogDescription className="text-xs">
+              Customers scan this to open the {board.club_name} menu on their phone, order and pay. Show it on screen or print it for the counter.
+            </DialogDescription>
+          </DialogHeader>
+          {board.venue_code && (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="rounded-lg bg-background p-3 border">
+                <QRCodeSVG value={`${window.location.origin}/s/${board.venue_code}`} size={220} />
+              </div>
+              <Button
+                variant="outline" size="sm"
+                onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/s/${board.venue_code}`); toast.success("Link copied"); }}
+              >
+                Copy link
+              </Button>
+            </div>
+          )}
+          <Button className="w-full" onClick={() => setMenuQrOpen(false)}>Done</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

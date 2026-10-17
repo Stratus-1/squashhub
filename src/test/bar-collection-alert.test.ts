@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { COLLECTION_VIBRATION, showCollectionAlert, showKeepOpenHint } from "@/lib/bar/collection-alert";
 
-vi.mock("sonner", () => ({ toast: vi.fn() }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { info: vi.fn(), success: vi.fn(), error: vi.fn() }),
+}));
 
 describe("collection ready alert presentation", () => {
   beforeEach(() => {

@@ -27,7 +27,7 @@ import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";

@@ -1198,6 +1198,13 @@
       "when": 1792184303740,
       "tag": "0170_beta_feature_card_structure",
       "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1792229704530,
+      "tag": "0171_family_booking_verified_login_authority",
+      "breakpoints": true
     }
   ]
 }

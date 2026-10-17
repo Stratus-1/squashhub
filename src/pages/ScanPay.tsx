@@ -1315,6 +1315,12 @@ export default function ScanPay() {
           applyTabPayload(data);
           queryClient.invalidateQueries({ queryKey: ["bar-guest-orders", t.tab_id] });
           toast.success(`Order #${o.order_number} placed — the bar has it.`);
+          // Progress alerts only arrive while this page stays open — nudge once per tab.
+          const hintKey = `${KEEP_OPEN_HINT_KEY}.${t.tab_id}`;
+          if (localStorage.getItem(hintKey) !== "1") {
+            localStorage.setItem(hintKey, "1");
+            showKeepOpenHint(o.fulfilment);
+          }
         }}
       />
 

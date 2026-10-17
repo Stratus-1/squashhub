@@ -999,25 +999,26 @@ export default function BarCounter() {
         </div>
       )}
 
-      <Dialog open={whoOpen} onOpenChange={(o) => { if (o) setWhoOpen(true); }}>
+      <Dialog open={switchOpen} onOpenChange={(o) => { if (o) setSwitchOpen(true); else setSwitchOpen(false); }}>
         <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>Who is serving?</DialogTitle>
+            <DialogTitle>{operator ? "Switch server" : "Who is serving?"}</DialogTitle>
             <DialogDescription>
-              Enter the name of the person opening the bar counter. It shows at the top of the screen so everyone can see who is operating the bar.
+              Enter your own counter PIN. Your name shows at the top of the screen so everyone can see who is operating the bar. Both of you see the same orders.
             </DialogDescription>
           </DialogHeader>
           <Input
+            inputMode="numeric"
             autoFocus
-            value={whoName}
-            maxLength={60}
-            onChange={(e) => setWhoName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && confirmWho()}
-            placeholder="e.g. Sannie"
-            className="h-12 text-center text-lg"
+            value={switchPin}
+            maxLength={8}
+            onChange={(e) => setSwitchPin(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && switchServer()}
+            placeholder="••••"
+            className="h-14 text-center text-2xl tracking-[0.4em]"
           />
-          <Button className="w-full h-12" disabled={!whoName.trim()} onClick={confirmWho}>
-            Start serving
+          <Button className="w-full h-12" disabled={switchPin.length < 4 || unlocking} onClick={switchServer}>
+            {unlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start serving"}
           </Button>
         </DialogContent>
       </Dialog>

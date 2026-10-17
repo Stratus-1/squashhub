@@ -5,6 +5,7 @@ import { CalendarIcon, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useClubCurrency } from '@/hooks/use-currency';
 import { barHistoryRange, type HistoryPeriod } from '@/lib/bar/history-range';
+import { filterHistoryTabs, type HistoryVenue } from '@/lib/bar/history-filter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
@@ -19,7 +20,7 @@ const periods: { value: HistoryPeriod; label: string }[] = [
 type ClosedTab = {
   id: string; guest_name: string; operator_name: string | null; opened_at: string;
   closed_at: string | null; settled_method: string | null; status: string;
-  bar_visitor_sales: { id: string; quantity: number; total: number; bar_items: { name: string } | null }[];
+  bar_visitor_sales: { id: string; quantity: number; total: number; bar_items: { name: string; division: string | null } | null }[];
 };
 const when = (date: string) => new Date(date).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 const methods: Record<string, string> = { cash: 'Cash', terminal: 'Swipe at bar', online: 'Online card', member_account: 'Member account' };
@@ -32,6 +33,7 @@ function HistoryDatePicker({ label, date, onChange }: { label: string; date: Dat
 export function ClosedTabsTab({ clubId }: { clubId: string }) {
   const { format: money } = useClubCurrency();
   const [period, setPeriod] = useState<HistoryPeriod>('24-hours');
+  const [venue, setVenue] = useState<HistoryVenue>('both');
   const [from, setFrom] = useState<Date | undefined>(new Date());
   const [to, setTo] = useState<Date | undefined>(new Date());
   const [now, setNow] = useState(() => new Date());
@@ -39,24 +41,32 @@ export function ClosedTabsTab({ clubId }: { clubId: string }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const range = barHistoryRange(period, now, from && format(from, 'yyyy-MM-dd'), to && format(to, 'yyyy-MM-dd'));
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['bar-closed-tabs', clubId, range?.from, range?.to, page], enabled: !!clubId && !!range,
+    queryKey: ['bar-closed-tabs', clubId, range?.from, range?.to], enabled: !!clubId && !!range,
     queryFn: async () => {
-      if (!range) return { tabs: [], count: 0 };
-      const { data, count, error } = await supabase.from('bar_guest_tabs')
-        .select('id,guest_name,operator_name,opened_at,closed_at,settled_method,status,bar_visitor_sales(id,quantity,total,bar_items(name))', { count: 'exact' })
+      if (!range) return [] as ClosedTab[];
+      const rows: ClosedTab[] = [];
+      for (let offset = 0; ; offset += 250) {
+      const { data, error } = await supabase.from('bar_guest_tabs')
+        .select('id,guest_name,operator_name,opened_at,closed_at,settled_method,status,bar_visitor_sales(id,quantity,total,bar_items(name,division))')
         .eq('club_id', clubId).in('status', ['settled', 'closed']).gte('closed_at', range.from).lt('closed_at', range.to)
-        .order('closed_at', { ascending: false }).order('id').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+        .order('closed_at', { ascending: false }).order('id').range(offset, offset + 249);
       if (error) throw error;
-      return { tabs: (data ?? []) as unknown as ClosedTab[], count: count ?? 0 };
+      rows.push(...((data ?? []) as unknown as ClosedTab[]));
+      if ((data?.length ?? 0) < 250) break;
+      }
+      return rows;
     },
   });
-  const tabs = data?.tabs ?? [], count = data?.count ?? 0;
+  const filtered = filterHistoryTabs(data ?? [], venue);
+  const count = filtered.length;
+  const tabs = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3"><h4 className="font-medium">Closed tabs</h4><Button variant="outline" size="sm" disabled={isFetching} onClick={() => { setNow(new Date()); void refetch(); }}><RefreshCw className={`mr-1 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />Refresh</Button></div>
     <div className="flex flex-wrap items-end gap-3"><div className="w-full sm:w-52"><Select value={period} onValueChange={value => { setPeriod(value as HistoryPeriod); setNow(new Date()); setPage(0); setExpanded(null); }}><SelectTrigger aria-label="Closed tab period"><SelectValue /></SelectTrigger><SelectContent>{periods.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent></Select></div>
+      <div className="flex gap-1" role="group" aria-label="Shop or Bar">{(['both', 'bar', 'shop'] as const).map(value => <Button key={value} variant={venue === value ? 'default' : 'outline'} size="sm" aria-pressed={venue === value} onClick={() => { setVenue(value); setPage(0); setExpanded(null); }}>{value === 'both' ? 'Both' : value === 'bar' ? 'Bar' : 'Shop'}</Button>)}</div>
       {period === 'custom' && <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2"><HistoryDatePicker label="From date" date={from} onChange={date => { setFrom(date); setPage(0); }} /><HistoryDatePicker label="To date" date={to} onChange={date => { setTo(date); setPage(0); }} /></div>}
     </div>
-    <p className="text-xs text-muted-foreground">Closed date · Johannesburg time{period === 'week' ? ' · Past 7 days' : ''}</p>
+    <p className="text-xs text-muted-foreground">Closed date · Johannesburg time{period === 'week' ? ' · Past 7 days' : ''}{venue !== 'both' ? ` · ${venue === 'bar' ? 'Bar' : 'Shop'} items and amounts` : ''}</p>
     {!range ? <p role="alert" className="text-sm text-destructive">Choose a start and end date, with the end on or after the start.</p>
       : error ? <div role="alert" className="text-sm text-destructive">Could not load closed tabs. <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button></div>
       : isLoading ? <p className="text-sm text-muted-foreground">Loading closed tabs…</p>

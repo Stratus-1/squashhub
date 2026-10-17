@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Bar closed-tab history
+- [ ] Include Shop, Bar and Both filters, with matching item totals.
 - [ ] Add Closed tabs with custom dates and all six preset periods; read-only, club-scoped history with totals and serving names.
 - [ ] Run date-range tests and verify authenticated Riverside history; no publication or live-data changes.
 

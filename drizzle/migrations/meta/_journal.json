@@ -1205,6 +1205,13 @@
       "when": 1792229704530,
       "tag": "0171_family_booking_verified_login_authority",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1792272394275,
+      "tag": "0172_bar_counter_approve_online",
+      "breakpoints": true
     }
   ]
 }

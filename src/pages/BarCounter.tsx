@@ -839,9 +839,18 @@ export default function BarCounter() {
               </div>
             )}
             <Button className="w-full h-12 gap-2" disabled={cartTotal <= 0 || busy} onClick={addRound}>
-              <Receipt className="w-4 h-4" />
-              Add {money(cartTotal)} to {activeTab.guest_name}'s tab
+              <Receipt className="w-4 h-4 shrink-0" />
+              <span className="truncate">
+                Add {money(cartTotal)} to {activeTab.guest_name}'s tab
+                {activeTab.total > 0 && (
+                  <span className="font-normal opacity-80">
+                    {" "}· existing {money(activeTab.total)}
+                    {cartTotal > 0 ? ` → ${money(activeTab.total + cartTotal)}` : ""}
+                  </span>
+                )}
+              </span>
             </Button>
+
             {activeTab.status !== "closing" && (board.cash_enabled || board.card_enabled) && (
             <div className={`grid gap-2 ${board.cash_enabled && board.card_enabled ? "grid-cols-2" : "grid-cols-1"}`}>
               {board.cash_enabled && (

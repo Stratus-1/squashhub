@@ -436,9 +436,19 @@ export default function BarCounter() {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {board.venue_code && (
+            <Button size="icon" variant="ghost" onClick={() => setMenuQrOpen(true)} aria-label="Show menu QR code" title="Menu QR code">
+              <QrCode className="w-4 h-4" />
+            </Button>
+          )}
           <Button size="icon" variant="ghost" onClick={() => refetch()} aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </Button>
+          {!code && (
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => navigate(-1)}>
+              <LogOut className="w-4 h-4" /> Close counter
+            </Button>
+          )}
           {operator && (
             <Button
               size="sm"

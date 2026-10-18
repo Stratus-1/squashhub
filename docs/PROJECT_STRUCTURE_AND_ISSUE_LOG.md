@@ -3317,3 +3317,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Scoped adjacent-booking auto-merge to `club_member_id`, preventing one shared-login sibling from extending another's booking. Offline submissions reach the same server trigger without any authorization bypass.
 - 39 focused tests passed, including 12 disposable PostgreSQL checks (authenticated-role insert/readback, forged-owner denial, unrelated/fee-delegate/cross-club/missing-session/unverified-email denial, R300/R20/R280.01 and recurring coverage) and 3 booking-hook attribution/merge regressions. Preview build OK.
 - Authenticated path: UNVERIFIED through the real family UI/session. Local authenticated-role SQL checks are not an authenticated HTTP/UI walkthrough. Needs owner-selected ordinary parent account and explicitly approved Riverside test booking; monitoring finding remains unresolved. Guest eligibility denial verified locally; hosted guest mutation and native flows unverified. Migration changes shared hosted rules; no existing records, bookings, ledger entries, messages, hardware or publication changed.
+
+## 2026-10-18 — Cross-device bar tabs and payment receipts needed manual refresh
+- Customer open tabs were restored once but never polled; only customer-initiated counter payments had a timer. Counter boards waited 20 seconds and suspended polling in the background.
+- Shared five-second read-only refresh now covers counter boards/orders and customer tabs, with focus, mobile resume and reconnect checks. Confirmed settlement shows a receipt and payment-received alert. Existing PIN/token authority and server settlement logic are unchanged.
+- Verification pending; no live orders, payments, hardware or publication authorised.

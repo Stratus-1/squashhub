@@ -8,7 +8,8 @@ import { showKeepOpenHint } from "@/lib/bar/collection-alert";
  * (whole menu). Works fully unauthenticated: guests build a cart and pay by
  * card, members can charge the whole cart to their club account instead.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useBarAutoRefresh } from "@/hooks/use-bar-auto-refresh";
 import { useNavigate, useParams } from "react-router-dom";
 import { GuestOrderDialog, GuestOrderProgress } from "@/components/bar/GuestOrderDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -308,11 +309,33 @@ export default function ScanPay() {
   /* ---------------- Open evening tab (visitors & members) ---------------- */
 
   const tabKey = `sh.scanpay.tab.${code}`;
+  const confirmedTab = useRef<string | null>(null);
+  const showTabPaid = (payload: any, fallback: { total: number; label: string; reference?: string }) => {
+    if (confirmedTab.current === payload.tab_id) return;
+    confirmedTab.current = payload.tab_id;
+    const method = payload.settled_method;
+    const amount = Number(payload.total ?? fallback.total);
+    setDone({ total: amount, itemName: fallback.label, onAccount: method === "member_account",
+      counterConfirmed: method === "cash" || method === "terminal" ? method : undefined,
+      cardPaid: method === "online", reference: fallback.reference });
+    setCart({});
+    setCheckingOut(false);
+    toast.success(method === "member_account" ? "Charged to your member account" : "Thank you — payment received", {
+      description: formatMoney(amount, currency), closeButton: true, duration: 8000,
+    });
+    try { navigator.vibrate?.([200, 100, 200]); } catch { /* Optional phone feedback. */ }
+  };
 
   const applyTabPayload = (payload: any) => {
     if (!payload?.found) {
       localStorage.removeItem(tabKey);
       setTab(null);
+      return null;
+    }
+    if (payload.status === "settled") {
+      localStorage.removeItem(tabKey);
+      setTab(null);
+      showTabPaid(payload, { total: tab?.total ?? 0, label: `Bar tab · ${payload.guest_name || tab?.guest_name || ""}` });
       return null;
     }
     const stored = JSON.parse(localStorage.getItem(tabKey) || "{}");
@@ -346,7 +369,7 @@ export default function ScanPay() {
       });
       const payload = data as any;
       // Keep a tab that is awaiting payment so its card payment can still be cancelled.
-      if (!payload?.found || payload.status === "settled") {
+      if (!payload?.found) {
         localStorage.removeItem(tabKey);
         return;
       }
@@ -366,18 +389,26 @@ export default function ScanPay() {
   };
   const clearCounterPay = () => { localStorage.removeItem(counterKey); setCounterPay(null); };
 
+  // Staff may settle any open/online tab directly on another device.
+  useBarAutoRefresh(!!tab && !counterPay, async () => {
+    if (!tab) return;
+    const { data: payload, error } = await (supabase as any).rpc("get_bar_guest_tab", { _tab_id: tab.tab_id, _token: tab.token });
+    if (error) throw error;
+    applyTabPayload(payload);
+  });
+
   // Refresh the counter payment status until staff confirm, decline or the customer cancels.
-  useEffect(() => {
+  useBarAutoRefresh(!!counterPay, async () => {
     if (!counterPay) return;
-    let stop = false;
-    const check = async () => {
-      const { data } = await (supabase as any).rpc("get_bar_guest_tab", { _tab_id: counterPay.tab_id, _token: counterPay.token });
-      if (stop) return;
+      const { data, error } = await (supabase as any).rpc("get_bar_guest_tab", { _tab_id: counterPay.tab_id, _token: counterPay.token });
+      if (error) throw error;
       const p = data as any;
       if (!p?.found) { clearCounterPay(); return; }
       if (p.status === "settled") {
         clearCounterPay();
-        setDone({ total: Number(p.total || counterPay.total), itemName: counterPay.label, onAccount: false, counterConfirmed: counterPay.method, reference: counterPay.reference });
+        localStorage.removeItem(tabKey);
+        setTab(null);
+        showTabPaid(p, { total: counterPay.total, label: counterPay.label, reference: counterPay.reference });
       } else if (p.status === "open") {
         clearCounterPay();
         if (counterPay.fromTab) {
@@ -388,12 +419,7 @@ export default function ScanPay() {
           toast.info("Payment was not completed at the counter. Nothing was charged.");
         }
       }
-    };
-    check();
-    const id = window.setInterval(check, 8000);
-    return () => { stop = true; window.clearInterval(id); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [counterPay?.tab_id]);
+  });
 
   const cancelCounterPay = async () => {
     if (!counterPay) return;

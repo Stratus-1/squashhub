@@ -1,5 +1,9 @@
 # Roadmap
 
+## Automatic counter and customer updates
+- [ ] Refresh counter tabs/orders and customer payment status automatically, including return-to-page and reconnect.
+- [ ] Show confirmed payment receipt without manual refresh; verify using isolated orders, no live payment changes.
+
 ## Pending counter payment actions
 - [x] Migration 0177 restores payment method in the counter board response without changing personal PIN authority or settlement logic.
 - [x] Twelve focused tests passed; synthetic named-PIN cash/terminal and online-replacement dispatch verified. Read-only hosted Riverside board returns the field; no pending Riverside tabs existed for real UI settlement, and no payments were changed.

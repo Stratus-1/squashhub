@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useBarAutoRefresh } from "@/hooks/use-bar-auto-refresh";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,17 +24,16 @@ function ago(iso: string) {
   return m < 1 ? "just now" : m < 60 ? `${m} min ago` : `${Math.floor(m / 60)}h ${m % 60}m ago`;
 }
 
-/** Counter Mode → Orders: club-wide list, item-level delivery. Polls every 10s. */
+/** Counter Mode → Orders: club-wide list, item-level delivery with automatic refresh. */
 export function BarCounterOrders({ token, clubId }: { token: string | null; clubId: string | null }) {
   const qc = useQueryClient();
   const [view, setView] = useState<"open" | "done">("open");
   const [busy, setBusy] = useState<string | null>(null);
   const key = ["bar-counter-orders", token, clubId, view];
 
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: orders = [], isLoading, refetch } = useQuery({
     queryKey: key,
     enabled: !!token || !!clubId,
-    refetchInterval: 10000,
     refetchOnReconnect: true,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("bar_counter_orders", {
@@ -43,6 +43,7 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
       return (data ?? []) as BarOrder[];
     },
   });
+  useBarAutoRefresh(!!token || !!clubId, refetch);
 
   const setDelivered = async (line: BarOrderLine, qty: number) => {
     setBusy(line.id);

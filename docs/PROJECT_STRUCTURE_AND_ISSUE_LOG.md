@@ -1,3 +1,7 @@
+## 2026-10-18 — Grouped income statement
+- Primary income, Bar and Shop now have separate two-column sections above general expenses. Each division deducts selected trading costs and description-labelled allocated direct costs before gross profit; those accounts are excluded from general expenses. CSV and print follow the same projection; existing Cost of sales — Bar / Shop GL choices remain unchanged.
+- Focused grouping and division suites: 16 checks passed; no ledger, stock, permission or historical sale changes.
+
 ## 2026-10-18 — All-club costing option availability
 - Confirmed item cost fields and the income-statement Purchases / Cost of sales selector use shared components without Nelspruit-only or pilot gates. Recent frontend changes remain unpublished; no historical accounting corrections applied to other clubs.
 - Authenticated Riverside statement basis switching verified read-only; direct Uitsig preview navigation returned to the current CSIR home and did not verify Uitsig's statement.

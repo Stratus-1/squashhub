@@ -1,5 +1,9 @@
 # Roadmap
 
+## Grouped income statement
+- [x] Show primary income, Bar and Shop gross profit with item/amount lines; trading and allocated direct costs excluded from general expenses, CSV/print consistent. Existing Bar/Shop direct-cost GL categories retained; no ledger writes.
+- [x] Sixteen focused checks passed; authenticated Riverside purchases/COS switching verified read-only with grouped sections. No publication.
+
 ## All-club item and statement availability
 - [x] Confirmed basis selector and item cost fields are shared, with no club/pilot restriction; Riverside authenticated Purchases → Cost of sales switch verified read-only. Uitsig direct preview link returned to CSIR home, so Uitsig UI is not verified. Previous frontend changes remain unpublished; no club settings, journals or stock changed.
 

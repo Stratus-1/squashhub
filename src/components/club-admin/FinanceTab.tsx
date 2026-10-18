@@ -1415,7 +1415,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               )}
               {txRecurring && <p className="w-full text-[11px] text-muted-foreground">Next on {nextDueDate(txDate, txFrequency)} — it waits for finance to approve (date and amount can be changed then).</p>}
             </div>
-            <Button className="w-full" onClick={handleRecordTransaction} disabled={txSubmitting}>
+            </div>
+            <Button className="w-full shrink-0" onClick={handleRecordTransaction} disabled={txSubmitting}>
               {txSubmitting ? "Recording..." : "Record Transaction"}
             </Button>
           </div>

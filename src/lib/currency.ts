@@ -38,7 +38,8 @@ export function formatMoney(
 ): string {
   const n = Number(amount ?? 0);
   const symbol = club?.currency_symbol || getCurrencyOption(club?.currency_code).symbol;
-  const decimals = opts.decimals ?? (Number.isInteger(n) ? 0 : 2);
+  // Two decimals everywhere in finance (explicit opts.decimals still wins).
+  const decimals = opts.decimals ?? 2;
   const formatted = n.toLocaleString(undefined, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,

@@ -1,3 +1,9 @@
+### 2026-10-18 — Pending counter tabs lost payment actions
+- Symptom: closing tabs lacked cash/card confirmation and pending-online approval/cancellation actions.
+- Finding: deployed bar_counter_board dropped settled_method when adding operator_name; frontend conditions require that field and have no alternate source.
+- Fix: additive migration 0177 restores the field in the existing board definition only; personal-PIN authority, club scope, operator identity and settlement functions remain unchanged.
+- Guard: synthetic named-PIN tests exercise cash/terminal confirmation and online replacement dispatch with the exact payment method and session. No real payments, tabs, stock or hardware modified; shared backend correction needs no frontend publication.
+
 ### 2026-10-18 — Marnus Kamfer tournament rescheduling self-conflict
 - Symptom: Uitsig rescheduling reported "This court is already booked on 2026-10-20 from 20:20 to 21:00"; ticket screenshot and linked match confirmed this was his own booking.
 - Finding: the RPC inserted a fresh UUID before ON CONFLICT resolved the stable booking, so the BEFORE INSERT overlap trigger rejected retries. Restoring old holds before moving the booking could also clash with it.

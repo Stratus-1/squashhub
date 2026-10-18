@@ -36,6 +36,32 @@ beforeEach(() => {
 });
 
 describe("counter personal PIN boundary", () => {
+  async function openPendingTab(method: "online" | "cash" | "terminal") {
+    const pendingBoard = { ...board, tabs: [{ tab_id: "pending-tab", token: "customer-token", guest_name: "Test customer", status: "closing", settled_method: method, opened_at: "2026-10-18T10:00:00Z", total: 214, lines: [] }] };
+    mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "bar_counter_unlock" ? { token: "verified-session", label: "Test server" } : name === "bar_counter_board" ? pendingBoard : {}, error: null }));
+    mount("/s/river-menu/counter");
+    fireEvent.change(screen.getByLabelText("Staff counter PIN"), { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock counter" }));
+    fireEvent.click(await screen.findByText("Test customer"));
+  }
+
+  it.each(["cash", "terminal"] as const)("confirms a pending %s tab using its returned payment method and verified session", async (method) => {
+    await openPendingTab(method);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_counter_settle_tab")).toBe(false);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: method === "cash" ? "Confirm cash received" : "Confirm card payment received" }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_settle_tab", { _tab_id: "pending-tab", _method: method, _token: "verified-session", _club_id: null }));
+    confirm.mockRestore();
+  });
+
+  it.each(["cash", "terminal"] as const)("replaces a pending online attempt with counter %s payment", async (method) => {
+    await openPendingTab("online");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: method === "cash" ? "Paid cash" : "Swipe at bar" }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_settle_tab", { _tab_id: "pending-tab", _method: method, _token: "verified-session", _club_id: null }));
+    confirm.mockRestore();
+  });
+
   it("signed-in entry resolves its club menu without using club-only board authority", async () => {
     mount("/bar/counter");
     await screen.findByRole("textbox", { name: "Staff counter PIN" }).catch(() => screen.findByLabelText("Staff counter PIN"));

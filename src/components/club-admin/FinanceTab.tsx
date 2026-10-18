@@ -1173,14 +1173,14 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
       {/* Enter Transaction Dialog */}
       <Dialog open={txOpen} onOpenChange={setTxOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md max-h-[92dvh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Enter Transaction</DialogTitle>
             <DialogDescription>
               Record a payment. The system automatically posts the correct double entry based on your selections. Card payments incur a 3.5% gateway fee.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
+          <div className="space-y-4 mt-2 flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
             {/* Income or Expense */}
             <div>
               <Label className="text-xs">Transaction Type</Label>

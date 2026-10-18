@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] Verify all championship games remain visible when they share a grid row
 - [ ] Awaiting Willem's go-ahead: publish the champs-slots fixes (grid display + 35-min reschedule slots + freed old slot)
 - [ ] Pending rollouts awaiting Willem's word: recurring transactions, average-cost fill-in, two-decimal money display, cost-per-tot hint on purchase lines, WhatsApp/SMS switches, Enter Transaction date fix, dialog size fix
 

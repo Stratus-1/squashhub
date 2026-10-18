@@ -1,3 +1,7 @@
+## 2026-10-18 — Championship names hidden by overlapping grid rows
+- Confirmed that first-overlap selection could hide a later 35-minute game on a 45-minute row. The grid now renders every overlapping booking as a separately selectable entry, sorted by start time; names appear once and continuation entries retain occupancy.
+- Presentation only: no booking, payment, fixture, permission or live-data changes; publication awaits explicit approval.
+
 ## 2026-10-18 — Grouped income statement
 - Primary income, Bar and Shop now have separate two-column sections above general expenses. Each division deducts selected trading costs and description-labelled allocated direct costs before gross profit; those accounts are excluded from general expenses. CSV and print follow the same projection; existing Cost of sales — Bar / Shop GL choices remain unchanged.
 - Focused grouping and division suites: 16 checks passed; no ledger, stock, permission or historical sale changes.

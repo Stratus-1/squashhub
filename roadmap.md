@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Order first, settle later
-- [ ] Replace immediate member-account checkout with Place order, automatically creating/reusing the member tab and sending the selected items to staff before separate settlement.
-- [ ] Test unpaid order submission, retry keys and failure cart preservation; do not publish or create real sales.
+- [x] Replaced immediate member-account checkout with Place order, automatically creating/reusing the member tab and sending items through the existing unpaid order flow before ScanPay settlement. Existing club order-process settings remain required.
+- [x] 18 focused tests passed, including unpaid RPC sequencing and failed-order basket preservation; preview build OK. No publication or live sales.
 
 ## Direct member-account orders on counter
 - [x] Added atomic own-member account checkout with linked counter fulfilment orders and retry-safe charging. Orders remains accessible without guest-order opt-in; account-charged orders have no payment-confirmation actions.

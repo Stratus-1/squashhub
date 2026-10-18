@@ -1,3 +1,6 @@
+### 2026-10-18 — Order first, member-account settlement later
+- Replaced immediate HonestyBar member-account checkout with Place order. The selected items go to a reused/automatically opened shared member tab via the existing unpaid order RPC, then ScanPay provides separate settlement. Retry keys remain stable for an unchanged basket; failed ordering retains items. Existing order-process permission/settings are unchanged. 18 focused checks passed; real member UI submission remains unavailable in the selected Riverside identity; no live sales or publication.
+
 ### 2026-10-18 — Direct member-account purchases missing from counter
 - HonestyBar inserted account sale entries without fulfilment orders. Added an authenticated club/member-scoped atomic, retry-safe checkout that creates linked order lines through existing sale triggers. Counter Orders shows account-charged purchases independently of guest-order opt-in; fulfilment/ready notifications do not settle or charge them again. No historical sales converted or real test sales submitted.
 

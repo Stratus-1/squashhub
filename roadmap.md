@@ -1,5 +1,9 @@
 # Roadmap
 
+## Bundle cost display and zero sales costs
+- [x] Add calculated current and average bundle costs from recipe quantities/options, with explicit missing-cost states; no historical sales recalculation.
+- [x] 37 focused checks passed; authenticated Riverside list/editor verified, changing bucket quantity 4→8 recalculated R59.36→R118.72 and was cancelled without saving. Preview build OK. Current item prices exist but Riverside/Uitsig stock averages remain unset; report uses historical snapshots, not today's prices. No live stock/ledger writes or publication.
+
 ## Cost of sales account categories
 - [x] Add Bar/Shop cost-of-sales category choices for named custom accounts, retaining Expense posting and existing transactions; remove the mistaken standalone choices from account creation/manual expense selection.
 - [x] 23 focused checks passed; authenticated Riverside Salaries dialog verified both category choices and cancelled without saving. Preview build OK. Full saved-account-to-statement UI flow remains unverified because live financial writes were not requested; no publication.

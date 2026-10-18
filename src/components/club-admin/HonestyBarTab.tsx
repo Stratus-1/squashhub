@@ -22,7 +22,7 @@ import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { StockLevelsTab } from "./bar/StockLevelsTab";
 import { CostingTab } from "./bar/CostingTab";
-import { perContainer } from "@/lib/bar-costing";
+import { bundleCosts, perContainer } from "@/lib/bar-costing";
 import { OpenTabsTab } from "./bar/OpenTabsTab";
 import { ClosedTabsTab } from "./bar/ClosedTabsTab";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
@@ -674,6 +674,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
     allComponents.filter(c => c.special_item_id === specialId)
       .map(c => componentHint(c.component_item_id, c.quantity).replace(/^Uses /, "").replace(/ —.*$/, ""))
       .filter(Boolean).join(" + ") || "No components yet";
+  const draftBundleCosts = bundleCosts(components.map(component => ({ component_item_id: component.component_item_id, quantity: Number(component.quantity) })), allItems);
 
   const itemForm = (
     <div className="space-y-3">
@@ -855,6 +856,12 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
 
       {form.item_kind === "special" && (
         <div className="space-y-2 rounded-md border p-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><Label htmlFor="bundle-current-cost" className="text-xs">Calculated bundle cost (R)</Label>
+              <Input id="bundle-current-cost" readOnly value={draftBundleCosts.current?.toFixed(2) ?? ""} placeholder="Component cost missing" className="bg-muted tabular-nums" /></div>
+            <div><Label htmlFor="bundle-average-cost" className="text-xs">Average bundle cost (R)</Label>
+              <Input id="bundle-average-cost" readOnly value={draftBundleCosts.average?.toFixed(2) ?? ""} placeholder="Component average missing" className="bg-muted tabular-nums" /></div>
+          </div>
           <p className="text-xs font-medium">Components (stock is deducted from these when the special is sold)</p>
           <p className="text-[11px] text-muted-foreground">The special holds no stock of its own. For spirits pick the tot option (e.g. "Klipdrift · Single") and enter the number of tots; for mixers pick the glass/serving option or a can.</p>
           {components.map((c, idx) => (
@@ -1003,11 +1010,17 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
           <p className="text-[11px] text-muted-foreground">No stock of their own — each sale uses the recipe below</p>
         </div>
         {specials.length === 0 && <p className="text-xs text-muted-foreground">No specials yet — use "Add Special / Bundle" above.</p>}
-        {specials.map(s => (
+        {specials.map(s => {
+          const cost = bundleCosts(allComponents.filter(component => component.special_item_id === s.id), allItems);
+          return (
           <div key={s.id} className="flex items-start sm:items-center gap-2 rounded-md border p-2">
             <div className="flex-1 min-w-0">
               <div className={`text-sm font-medium ${!s.active ? "line-through text-muted-foreground" : ""}`}>{s.name}{s.archived_at ? " (archived)" : ""} · {money(s.price)}</div>
               <div className="text-[11px] text-muted-foreground">{recipeSummary(s.id)}</div>
+              <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                <span>{cost.current === null ? "Cost: component price missing" : `Cost ${money(cost.current)}`}</span>
+                <span>{cost.average === null ? "Average: component average missing" : `Average ${money(cost.average)}`}</span>
+              </div>
               <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                 <span className="text-[10px] text-muted-foreground">{s.active ? "Active" : "Inactive"} · {validitySummary(s as unknown as InventoryItem)}</span>
                 {s.stock_qty > 0
@@ -1022,7 +1035,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
               </div>
             )}
           </div>
-        ))}
+        ); })}
       </div>
 
       {divisions.map(div => {

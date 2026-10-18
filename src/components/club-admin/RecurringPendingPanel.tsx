@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Repeat } from "lucide-react";
-import { useClubCurrency } from "@/hooks/use-club-currency";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { FREQUENCY_LABEL, type RecurringFrequency } from "@/lib/finance/recurring";
 
 type Row = { id: string; direction: string; amount: number; description: string; frequency: RecurringFrequency; next_due: string; method: string };

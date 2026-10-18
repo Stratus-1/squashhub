@@ -16,6 +16,8 @@ import { postJournal } from "@/lib/post-journal";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote, Landmark } from "lucide-react";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { RecurringPendingPanel } from "./RecurringPendingPanel";
+import { nextDueDate, FREQUENCY_LABEL, type RecurringFrequency } from "@/lib/finance/recurring";
 import { useState, useRef, useEffect, type ReactNode, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
@@ -163,6 +165,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [txMethod, setTxMethod] = useState<"bank" | "cash" | "card">("bank");
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
+  const [txRecurring, setTxRecurring] = useState(false);
+  const [txFrequency, setTxFrequency] = useState<RecurringFrequency>("monthly");
   const [ledgerReconOpen, setLedgerReconOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
@@ -465,7 +469,16 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         ]);
       }
 
-      toast.success("Transaction recorded");
+      if (txRecurring) {
+        const { error: recErr } = await (supabase as any).from("club_recurring_transactions").insert({
+          club_id: clubId, direction: txDirection, account: effectiveTxAccount, custom_account_id: customId,
+          method: txMethod, amount, description: desc, member_id: memberId, frequency: txFrequency,
+          next_due: nextDueDate(txDate, txFrequency), gateway_fee_rate: txMethod === "card" ? GATEWAY_FEE_RATE : 0,
+        });
+        if (recErr) toast.error(`Recorded, but repeat could not be saved: ${recErr.message}`);
+        else toast.success(`Recorded. Next ${FREQUENCY_LABEL[txFrequency].toLowerCase()} occurrence on ${nextDueDate(txDate, txFrequency)} will wait for finance approval.`);
+      } else toast.success("Transaction recorded");
+      setTxRecurring(false);
       setTxOpen(false);
       setTxDescription("");
       setTxAmount("");
@@ -781,6 +794,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 </Button>
               </div>
             </div>
+            <RecurringPendingPanel clubId={clubId} />
 
 
 
@@ -1378,6 +1392,21 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               </div>
             </div>
 
+            <div className="flex flex-wrap items-center gap-3 border rounded-md p-2">
+              <label className="flex items-center gap-2 text-xs font-medium">
+                <input type="checkbox" checked={txRecurring} onChange={e => setTxRecurring(e.target.checked)} />
+                Make this a recurring transaction
+              </label>
+              {txRecurring && (
+                <Select value={txFrequency} onValueChange={v => setTxFrequency(v as RecurringFrequency)}>
+                  <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(FREQUENCY_LABEL) as RecurringFrequency[]).map(f => <SelectItem key={f} value={f}>{FREQUENCY_LABEL[f]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              {txRecurring && <p className="w-full text-[11px] text-muted-foreground">Next on {nextDueDate(txDate, txFrequency)} — it waits for finance to approve (date and amount can be changed then).</p>}
+            </div>
             <Button className="w-full" onClick={handleRecordTransaction} disabled={txSubmitting}>
               {txSubmitting ? "Recording..." : "Record Transaction"}
             </Button>

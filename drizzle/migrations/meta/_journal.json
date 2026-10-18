@@ -1317,6 +1317,13 @@
       "when": 1792333650481,
       "tag": "0187_sale_costs_cost_price_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1792333705152,
+      "tag": "0188_seed_average_cost_from_cost_price",
+      "breakpoints": true
     }
   ]
 }

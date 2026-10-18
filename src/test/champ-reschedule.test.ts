@@ -129,7 +129,7 @@ suite("tournament linked booking reschedule", () => {
     await sql.unsafe(`RESET ROLE; UPDATE clubs SET min_booking_balance=NULL WHERE id='${club}'; SET ROLE authenticated`);
   });
   it("keeps genuine court clashes rejected with the ownership fix installed", async () => {
-    await sql.unsafe(`RESET ROLE; INSERT INTO bookings(club_id,court_id,date,start_time,end_time,status) VALUES('${club}',36,'2026-10-19','19:30','20:15','active'); SET ROLE authenticated`);
+    await sql.unsafe(`RESET ROLE; SELECT set_config('request.jwt.claim.sub','',false); INSERT INTO bookings(club_id,court_id,date,start_time,end_time,status) VALUES('${club}',36,'2026-10-19','19:30','20:15','active'); SELECT set_config('request.jwt.claim.sub','${player}',false); SET ROLE authenticated`);
     await expect(schedule('2026-10-19','19:30',36)).rejects.toMatchObject({code:'23505'});
   });
   it("does not authorize a different club's booking using the tournament id", async () => {

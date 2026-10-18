@@ -21,7 +21,8 @@ import { useIsSuperAdmin } from "@/hooks/use-club";
 import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { openMemberCounterTab } from "@/lib/bar/member-tab-handoff";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -62,6 +63,7 @@ interface BarTabEntry {
 }
 
 export default function HonestyBar() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();
@@ -211,7 +213,8 @@ export default function HonestyBar() {
       const entries = Object.entries(cart)
         .filter(([, qty]) => qty > 0)
         .map(([itemId, qty]) => {
-          const item = items.find(i => i.id === itemId)!;
+          const item = items.find(i => i.id === itemId);
+          if (!item) throw new Error("An item is no longer available. Please check your tab.");
           return {
             club_id: clubId,
             club_member_id: memberId,
@@ -238,6 +241,21 @@ export default function HonestyBar() {
     Object.entries(cart)
       .filter(([, qty]) => qty > 0)
       .map(([itemId, qty]) => ({ bar_item_id: itemId, quantity: qty }));
+
+  const openSharedTab = async () => {
+    if (!clubId || !memberId || submitting) return;
+    setSubmitting(true);
+    try {
+      const destination = await openMemberCounterTab(clubId, memberId, cart);
+      setCart({});
+      if (tabKey) saveOpenTab(tabKey, {});
+      navigate(destination);
+    } catch (err: any) {
+      toast.error(err.message || "Could not open your tab");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   /** Send the order to the counter to pay on the card machine; staff confirm it once the card is approved. */
   const swipeAtClub = async () => {
@@ -381,6 +399,10 @@ export default function HonestyBar() {
         >
           <QrCode className="w-4 h-4" />
           Show / share Menu QR code
+        </Button>
+
+        <Button className="w-full h-11 gap-2" onClick={openSharedTab} disabled={submitting || !memberId || !venueCode}>
+          <Receipt className="w-4 h-4" /> Open my tab at the bar
         </Button>
 
         {canSeeVisitors && <CounterModeCard clubId={clubId} />}
@@ -659,7 +681,7 @@ export default function HonestyBar() {
         open={visitorSaleOpen}
         onOpenChange={setVisitorSaleOpen}
         items={items}
-        clubId={clubId!}
+        clubId={clubId}
         loggedByMemberId={memberId}
       />
 
@@ -667,7 +689,7 @@ export default function HonestyBar() {
         open={counterSaleOpen}
         onOpenChange={setCounterSaleOpen}
         items={items as any}
-        clubId={clubId!}
+        clubId={clubId}
       />
 
       <BarMenuQrDialog

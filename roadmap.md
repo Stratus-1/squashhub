@@ -1,5 +1,10 @@
 # Roadmap
 
+## Self-opened member counter tabs
+- [x] Open my tab at the bar creates/reuses the authenticated member's shared tab and continues in the existing ScanPay flow; counter labels it In-app · Self-opened. Existing payments and personal staff PINs preserved.
+- [x] 35 focused checks passed, including eight disposable PostgreSQL ownership/club/retry checks; hosted definition verified and build OK. Synthetic named-PIN counter discovered the in-app tab without reload; customer tab displayed correctly. No real tabs, sales or publication.
+- [ ] Full authenticated member-click-to-hosted-counter check blocked: Riverside's selected member/menu context leaves the new member button disabled in preview; no alternate member account or live test tab selected. Server rules and handoff tested independently.
+
 ## Tournament rescheduling ownership error
 - [x] Reproduced Marnus's new error with the actual booking ownership trigger, including restoration of an ownerless reserved slot.
 - [x] Applied migration 0178 with fixture-bound authority and unchanged ownerless-hold restoration; 24 focused checks passed, hosted definition verified and Marnus's booking unchanged. Actual member UI mutation unverified to avoid moving live games; no frontend publication required.

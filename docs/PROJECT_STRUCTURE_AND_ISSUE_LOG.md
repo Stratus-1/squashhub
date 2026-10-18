@@ -1,3 +1,8 @@
+### 2026-10-18 — Member self-opened tabs missing from counter
+- HonestyBar's Open tab was a device-local basket, not a shared tab, so no counter refresh could discover it.
+- Added authenticated own-member open/reuse RPC with club/member validation and a member-row lock; in-app origin appears as In-app · Self-opened on the counter. Open my tab at the bar opens a shared tab immediately and continues in the existing ScanPay tab flow; draft quantities are carried without sales, ledger or stock writes until submitted. Existing staff PINs and payment/account approval are unchanged.
+- Verification recorded in roadmap; no real sales/payments or publication.
+
 ### 2026-10-18 — Pending counter tabs lost payment actions
 - Symptom: closing tabs lacked cash/card confirmation and pending-online approval/cancellation actions.
 - Finding: deployed bar_counter_board dropped settled_method when adding operator_name; frontend conditions require that field and have no alternate source.

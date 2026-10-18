@@ -1,5 +1,9 @@
 # Roadmap
 
+## Tournament rescheduling ownership error
+- [x] Reproduced Marnus's new error with the actual booking ownership trigger, including restoration of an ownerless reserved slot.
+- [x] Applied migration 0178 with fixture-bound authority and unchanged ownerless-hold restoration; 24 focused checks passed, hosted definition verified and Marnus's booking unchanged. Actual member UI mutation unverified to avoid moving live games; no frontend publication required.
+
 ## Counter exit control
 - [x] Show Exit counter mode on board and PIN screen; clear local serving session without closing bar/tabs. Fifteen focused tests and isolated browser exit→menu→PIN reentry passed; build OK, not published.
 

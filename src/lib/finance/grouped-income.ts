@@ -1,11 +1,23 @@
 import { divisionMargins, type DivisionLedgerLine, type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "./division-margin";
 
-export interface StatementLine extends DivisionLedgerLine { description?: string | null }
+export interface StatementLine extends DivisionLedgerLine { description?: string | null; custom_account_id?: string | null }
 export interface StatementAccount { label: string; category: string }
+export interface StatementCustomAccount { id: string; name: string; category: string; reporting_category?: string | null; base_account?: string | null }
 export interface StatementRow { label: string; amount: number }
 
 /** Trading costs belong above gross income, never again below it. */
-export function groupedIncome(lines: StatementLine[], accounts: Record<string, StatementAccount>, hasShop: boolean, basis: TradingCostBasis, costs: SaleCostSummary[] = [], purchases: StockPurchaseReference[] = []) {
+export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Record<string, StatementAccount>, hasShop: boolean, basis: TradingCostBasis, costs: SaleCostSummary[] = [], purchases: StockPurchaseReference[] = [], customAccounts: StatementCustomAccount[] = []) {
+  const accounts = { ...standardAccounts };
+  const lines = sourceLines.map(line => {
+    const custom = customAccounts.find(account => account.id === line.custom_account_id);
+    if (!custom) return line;
+    const allocation = custom.reporting_category ?? (custom.base_account === "bar_cost_of_sales" || custom.base_account === "shop_cost_of_sales" ? custom.base_account : null);
+    if (allocation) return { ...line, account: allocation, description: custom.name };
+    if (["bar_income", "shop_income", "bar_expense", "shop_expense"].includes(line.account)) return line;
+    const key = `custom:${custom.id}`;
+    accounts[key] = { label: custom.name, category: custom.category };
+    return { ...line, account: key };
+  });
   const tradingAccounts = new Set(["bar_income", "shop_income", "bar_expense", "shop_expense", "bar_cost_of_sales", "shop_cost_of_sales"]);
   const primary: StatementRow[] = [], expenses: StatementRow[] = [];
   for (const [account, meta] of Object.entries(accounts)) {

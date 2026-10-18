@@ -1303,6 +1303,13 @@
       "when": 1792331321732,
       "tag": "0185_stock_purchase_latest_cost_price",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1792332946547,
+      "tag": "0186_custom_account_cost_of_sales_categories",
+      "breakpoints": true
     }
   ]
 }

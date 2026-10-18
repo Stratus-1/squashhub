@@ -10,11 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ListTree, Plus, Pencil, Trash2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useClubGLAccounts, useClubGLAccountMutations, type ClubGLAccount, type GLCategory } from "@/hooks/use-club-gl-accounts";
+import { useClubGLAccounts, useClubGLAccountMutations, ACCOUNT_CATEGORY_CHOICES, categoryLabel, accountCategoryPatch, type AccountCategoryChoice, type ClubGLAccount, type GLCategory } from "@/hooks/use-club-gl-accounts";
 
 type AccountMeta = { label: string; type: "BS" | "IS"; category: GLCategory; normal: "Dr" | "Cr" };
 
-const CATEGORIES: GLCategory[] = ["Asset", "Liability", "Income", "Expense"];
+const CATEGORIES = ACCOUNT_CATEGORY_CHOICES;
 
 const categoryColor: Record<string, string> = {
   Asset: "text-blue-600",
@@ -39,7 +39,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
   const [editing, setEditing] = useState<null | Partial<ClubGLAccount>>(null);
   const [busy, setBusy] = useState(false);
 
-  const standardKeys = Object.keys(accounts);
+  const standardKeys = Object.keys(accounts).filter(key => key !== "bar_cost_of_sales" && key !== "shop_cost_of_sales");
   const rollupOptions = (category: GLCategory) =>
     standardKeys.filter((k) => accounts[k].category === category);
 
@@ -55,6 +55,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
         await mutations.update(editing.id, {
           name,
           category: editing.category as GLCategory,
+          reporting_category: editing.reporting_category ?? null,
           base_account: editing.base_account ?? null,
           description: editing.description ?? null,
           is_active: editing.is_active !== false,
@@ -65,6 +66,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
         await mutations.create({
           name,
           category: editing.category as GLCategory,
+          reporting_category: editing.reporting_category ?? null,
           base_account: editing.base_account ?? null,
           description: editing.description ?? null,
         });
@@ -110,10 +112,10 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
 
       {CATEGORIES.map((category) => {
         const std = standardKeys.filter((a) => accounts[a].category === category);
-        const custom = customAccounts.filter((a) => a.category === category);
+        const custom = customAccounts.filter((a) => (a.reporting_category ?? a.category) === category);
         return (
           <div key={category}>
-            <h4 className={cn("text-xs font-bold uppercase tracking-wider mb-2", categoryColor[category])}>{category}</h4>
+            <h4 className={cn("text-xs font-bold uppercase tracking-wider mb-2", categoryColor[category] ?? "text-destructive")}>{categoryLabel(category)}</h4>
             <div className="border rounded-lg overflow-hidden mb-3">
               <div className="grid grid-cols-[1fr_60px_70px_90px_64px] gap-1 px-3 py-1.5 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <span>Account</span>
@@ -199,20 +201,20 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
               <div>
                 <Label className="text-xs">Category</Label>
                 <Select
-                  value={editing?.category || "Expense"}
+                  value={editing?.reporting_category ?? editing?.category ?? "Expense"}
                   onValueChange={(v) => setEditing((s) => ({
                     ...(s || {}),
-                    category: v as GLCategory,
+                    ...accountCategoryPatch(v as AccountCategoryChoice),
                     base_account: null,
                   }))}
                 >
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Account category" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{categoryLabel(c)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              {!editing?.reporting_category && <div>
                 <Label className="text-xs">Reports under</Label>
                 <Select
                   value={editing?.base_account || "__none__"}
@@ -229,7 +231,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
                 <p className="text-[10px] text-muted-foreground mt-1">
                   Standalone accounts report as their own line; otherwise the balance is grouped under the selected standard account.
                 </p>
-              </div>
+              </div>}
             </div>
             <div>
               <Label className="text-xs">Notes (optional)</Label>
@@ -264,11 +266,11 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
   );
 }
 
-function meta_hint(category: GLCategory, customCount: number, loading: boolean) {
+function meta_hint(category: AccountCategoryChoice, customCount: number, loading: boolean) {
   if (loading || customCount > 0) return null;
   return (
     <p className="text-[10px] text-muted-foreground -mt-2 mb-3">
-      No club-specific {category.toLowerCase()} accounts yet.
+      No club-specific {categoryLabel(category).toLowerCase()} accounts yet.
     </p>
   );
 }

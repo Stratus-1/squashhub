@@ -3367,6 +3367,10 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Shared five-second read-only refresh now covers counter boards/orders and customer tabs, with focus, mobile resume and reconnect checks. Confirmed settlement shows a receipt and payment-received alert. Existing PIN/token authority and server settlement logic are unchanged.
 - Verification: 21 focused tests passed (refresh lifecycle, reconnect, confirmed terminal/cash/online receipts, failure handling and PIN boundaries); isolated browser counter new-tab and customer card-receipt checks passed without reload or page errors. Preview build OK. No live orders, payments, hardware or publication; actual live settlement and physical-phone resume remain unverified.
 
+## 2026-10-18 — Cost of sales must be an account category
+- Added nullable reporting classifications to custom accounts, exposed as Cost of sales — Bar / Shop in Category; named accounts retain normal Expense posting. Income statements resolve custom IDs and list account names under the respective gross-profit section, not general expenses. Legacy direct-cost roll-ups remain readable; no historical journals or accounts reclassified.
+- Verification: 23 focused checks passed; eight optional PostgreSQL cost-report checks skipped. Authenticated Riverside Salaries dialog supports both categories and was cancelled without saving; preview build OK. Full saved-account-to-statement UI flow remains unverified because live financial writes were not requested. No publication, journal writes or existing-account reclassification.
+
 ## 2026-10-18 — Exit counter hidden after personal-PIN redirect
 - Exit was guarded by `!code`, but every serving route now requires a QR code. Exit counter mode is available on the board and PIN screen, clears the local serving session/cache and returns to the customer menu. End shift still stays on the PIN screen. Neither action closes the bar or settles tabs.
 - Verification: 15 focused tests passed; isolated browser exit→customer menu→PIN reentry verified, with cleared local identity and no page errors. Preview build OK; no live changes or publication.

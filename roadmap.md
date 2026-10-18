@@ -1,5 +1,9 @@
 # Roadmap
 
+## Tournament rescheduling ownership error
+- [ ] Reproduce Marnus's new error with the actual booking ownership trigger, including restoration of an ownerless reserved slot.
+- [ ] Apply a fixture-bound correction, retaining member ownership, balances and genuine clash checks; verify without moving live games.
+
 ## Counter exit control
 - [x] Show Exit counter mode on board and PIN screen; clear local serving session without closing bar/tabs. Fifteen focused tests and isolated browser exit→menu→PIN reentry passed; build OK, not published.
 

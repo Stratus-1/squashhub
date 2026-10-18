@@ -1,7 +1,7 @@
 # SquashHub AI Development Guide
 
 - Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
-- Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/AGENTS.md` (Help Center feed).
+- Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/functions/AGENTS.md` (device age gate, arrears plans), `supabase/AGENTS.md` (Help Center feed).
 - Step-by-Step Beta rules: see `src/components/smart-builder/AGENTS.md`.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
 - Commands: `npm run dev|test|lint|build|cap:sync`; review native sync.
@@ -41,8 +41,6 @@
 
 ## Done checklist
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
-- Access devices may carry an optional `club_devices.min_age` (NULL = unrestricted); device-control enforces it server-side on unlock via `_shared/member-age.ts` (DOB, then SA ID), unknown age is a separate denial from underage, and denials log to access_events; why: one reusable age gate, never a club-specific hard-code.
-- Outstanding-balance plans (`mandate_arrears_plans`) are separate from fee mandates: they finance only `member_outstanding_breakdown().uncovered`, snapshot `covered_fee_ids`, and may share one combined debit, but each component is settled/tracked separately and the plan part drops off when done; why: no double-financing of membership.
 - Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 - Court grids share P/peak logic; why: one rule set.
 

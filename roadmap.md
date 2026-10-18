@@ -1,5 +1,9 @@
 # Roadmap
 
+## Pending counter payment actions
+- [ ] Restore payment method in the counter board response without changing personal PIN authority or settlement logic.
+- [ ] Check online/cash/terminal action dispatch with synthetic tabs and verify hosted response; resolve the QA finding.
+
 ## Tournament booking self-conflict
 - [x] Correct rescheduling upsert identity and restore old reserved slots only after the linked booking moves; preserve permissions and real-clash checks.
 - [x] Seven disposable PostgreSQL checks passed; migration 0176 applied to the shared backend without moving live fixtures. Actual member UI mutation not performed to avoid changing live games; no frontend publication required.

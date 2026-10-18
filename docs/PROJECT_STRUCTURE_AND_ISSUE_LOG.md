@@ -1,3 +1,7 @@
+### 2026-10-18 — Separate shop trading accounts
+- Added Shop Sales / Shop Purchases standard accounts and prospective club-scoped member/visitor routing, preserving payment gates and receipt references. New purchase invoices post balanced division expense/payment or payable journals alongside unchanged stock costing.
+- Income statement/CSV show independent purchase-based Bar/Shop margins; paginated journal reads avoid partial totals. No historical reclassification or reposting because bank/manual entries may already cover them.
+
 ### 2026-10-18 — Member self-opened tabs missing from counter
 - HonestyBar's Open tab was a device-local basket, not a shared tab, so no counter refresh could discover it.
 - Added authenticated own-member open/reuse RPC with club/member validation and a member-row lock; in-app origin appears as In-app · Self-opened on the counter. Open my tab at the bar opens a shared tab immediately and continues in the existing ScanPay tab flow; draft quantities are carried without sales, ledger or stock writes until submitted. Existing staff PINs and payment/account approval are unchanged.

@@ -11,6 +11,8 @@ import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOf
 import { cn } from "@/lib/utils";
 import { useClubCurrency } from "@/hooks/use-currency";
 
+import { divisionMargins } from "@/lib/finance/division-margin";
+
 interface AccountMeta {
   label: string;
   category: "Income" | "Expense" | "Asset" | "Liability";
@@ -68,16 +70,31 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     queryFn: async () => {
       const fromIso = new Date(from + "T00:00:00").toISOString();
       const toIso = new Date(to + "T23:59:59.999").toISOString();
+      const allEntries: { account: string; debit: number; credit: number; created_at: string }[] = [];
+      for (let offset = 0; ; offset += 1000) {
       const { data, error } = await fromExt("club_journal_entries")
         .select("account, debit, credit, created_at")
         .eq("club_id", clubId)
         .gte("created_at", fromIso)
-        .lte("created_at", toIso);
+        .lte("created_at", toIso).order("id").range(offset, offset + 999);
       if (error) throw error;
-      return data || [];
+      allEntries.push(...(data || []));
+      if ((data || []).length < 1000) break;
+      }
+      return allEntries;
     },
     enabled: !!clubId && !!from && !!to,
   });
+
+  const { data: hasShop = false } = useQuery({
+    queryKey: ["income-statement-shop", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_items").select("id").eq("club_id", clubId).eq("division", "shop").limit(1);
+      if (error) throw error;
+      return Boolean(data?.length);
+    }, enabled: !!clubId,
+  });
+  const margins = divisionMargins(entries || [], hasShop);
 
   const { incomeRows, expenseRows, totalIncome, totalExpense, netProfit } = useMemo(() => {
     const tally: Record<string, { debit: number; credit: number }> = {};
@@ -124,6 +141,8 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     lines.push(`Total Expenses,${totalExpense.toFixed(2)}`);
     lines.push("");
     lines.push(`Net Profit / (Loss),${netProfit.toFixed(2)}`);
+    lines.push("", "DIVISION MARGINS (SALES LESS PURCHASES)", "Division,Sales,Purchases,Profit,Margin (%)");
+    margins.forEach(row => lines.push(`${row.division},${row.sales.toFixed(2)},${row.purchases.toFixed(2)},${row.profit.toFixed(2)},${row.margin?.toFixed(1) ?? ""}`));
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -181,6 +200,19 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="space-y-4">
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full text-xs">
+              <caption className="text-left px-3 py-2 font-semibold">Division margins — sales less purchases</caption>
+              <thead className="bg-muted"><tr>{["Division", "Sales", "Purchases", "Profit / (loss)", "Margin"].map(label => <th key={label} className="px-3 py-2 text-left whitespace-nowrap">{label}</th>)}</tr></thead>
+              <tbody>{margins.map(row => <tr key={row.division} className="border-t">
+                <th className="px-3 py-2 text-left">{row.division === "shop" ? "Shop" : "Bar"}</th>
+                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.sales)}</td>
+                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.purchases)}</td>
+                <td className={cn("px-3 py-2 tabular-nums whitespace-nowrap", row.profit < 0 && "text-destructive")}>{money(row.profit)}</td>
+                <td className="px-3 py-2 tabular-nums">{row.margin === null ? "—" : `${row.margin.toFixed(1)}%`}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
           {/* INCOME */}
           <div className="border rounded-lg overflow-hidden">
             <div className="px-3 py-2 bg-green-600/10 border-b flex items-center justify-between">

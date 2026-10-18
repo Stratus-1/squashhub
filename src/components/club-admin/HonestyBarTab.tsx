@@ -1163,6 +1163,8 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
       const { error } = await fromExt("bar_stock_purchases").insert(purchases);
       if (error) throw error;
 
+      qc.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
+      qc.invalidateQueries({ queryKey: ["income-statement", clubId] });
       toast.success(`Invoice recorded — ${money(invoiceTotal)} across ${validLines.length} item(s)`);
       setOpen(false);
       setInvoiceNumber("");

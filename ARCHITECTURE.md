@@ -84,6 +84,8 @@ League associations, seasons, rules, teams/pairs, rounds, fixtures, lineups, ava
 
 ### Billing, payments, and bar
 
+Shop trading uses distinct standard income/expense GL accounts. Sale routing preserves existing receivable/payment timing and grouped receipt idempotency; new stock purchase lines post balanced expense/payment or payable entries keyed by purchase ID alongside unchanged inventory movements. Income-statement division margins use sales less purchases, not optional inventory COGS. Historical transactions are not reclassified or reposted automatically because manual/bank entries may already account for them.
+
 Member fees, fee categories, club subscriptions, platform invoices, mandates, payment sessions, collections, payable batches, ledger entries, bar items, stock, tabs, and visitor sales connect club operations to finance.
 
 Member self-opened tabs are shared `bar_guest_tabs` records opened by `open_my_bar_tab` (authenticated, active own membership, club-scoped, serialized and reused while open/closing). `opened_source` marks in-app origin independently of serving identity. HonestyBar hands off to the existing ScanPay tab/order/receipt flow; selected items remain drafts until submitted. Counter polling discovers the shared tab without reload; existing PIN and settlement checks remain authoritative.

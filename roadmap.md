@@ -1,5 +1,8 @@
 # Roadmap
 
+## All-club item and statement availability
+- [x] Confirmed basis selector and item cost fields are shared, with no club/pilot restriction; Riverside authenticated Purchases → Cost of sales switch verified read-only. Uitsig direct preview link returned to CSIR home, so Uitsig UI is not verified. Previous frontend changes remain unpublished; no club settings, journals or stock changed.
+
 ## Item current and average cost prices
 - [x] Explained missing historical snapshots and weighted average; saved average is read-only beside current cost in item add/edit and shown for known stock-item averages in the list.
 - [x] Latest received invoice now updates current cost without altering old snapshots or opt-in averaging. 26 focused checks passed, including three disposable receipt tests; authenticated Riverside add/edit verified without saves. Preview build OK, not published; no historical stock/sale corrections.

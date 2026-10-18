@@ -1736,6 +1736,8 @@ export type Database = {
           bar_item_id: string
           club_id: string
           club_member_id: string
+          counter_operator_id: string | null
+          counter_operator_name: string | null
           created_at: string
           id: string
           logged_by: string | null
@@ -1754,6 +1756,8 @@ export type Database = {
           bar_item_id: string
           club_id: string
           club_member_id: string
+          counter_operator_id?: string | null
+          counter_operator_name?: string | null
           created_at?: string
           id?: string
           logged_by?: string | null
@@ -1772,6 +1776,8 @@ export type Database = {
           bar_item_id?: string
           club_id?: string
           club_member_id?: string
+          counter_operator_id?: string | null
+          counter_operator_name?: string | null
           created_at?: string
           id?: string
           logged_by?: string | null
@@ -1806,6 +1812,13 @@ export type Database = {
             columns: ["club_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_entries_counter_operator_id_fkey"
+            columns: ["counter_operator_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
             referencedColumns: ["id"]
           },
           {
@@ -1883,6 +1896,7 @@ export type Database = {
           bar_item_id: string
           club_id: string
           counter_device_id: string | null
+          counter_operator_name: string | null
           created_at: string
           customer_type: string
           guest_tab_id: string | null
@@ -1905,6 +1919,7 @@ export type Database = {
           bar_item_id: string
           club_id: string
           counter_device_id?: string | null
+          counter_operator_name?: string | null
           created_at?: string
           customer_type?: string
           guest_tab_id?: string | null
@@ -1927,6 +1942,7 @@ export type Database = {
           bar_item_id?: string
           club_id?: string
           counter_device_id?: string | null
+          counter_operator_name?: string | null
           created_at?: string
           customer_type?: string
           guest_tab_id?: string | null

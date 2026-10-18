@@ -1275,6 +1275,13 @@
       "when": 1792328011746,
       "tag": "0181_route_shop_sales_and_purchases",
       "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1792328489163,
+      "tag": "0182_counter_sale_personal_pin_attribution",
+      "breakpoints": true
     }
   ]
 }

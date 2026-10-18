@@ -470,7 +470,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       }
 
       if (txRecurring) {
-        const { error: recErr } = await (supabase as any).from("club_recurring_transactions").insert({
+        const { error: recErr } = await (sbClient as any).from("club_recurring_transactions").insert({
           club_id: clubId, direction: txDirection, account: effectiveTxAccount, custom_account_id: customId,
           method: txMethod, amount, description: desc, member_id: memberId, frequency: txFrequency,
           next_due: nextDueDate(txDate, txFrequency), gateway_fee_rate: txMethod === "card" ? GATEWAY_FEE_RATE : 0,

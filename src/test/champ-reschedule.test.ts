@@ -18,6 +18,12 @@ suite("tournament linked booking reschedule", () => {
     await sql.unsafe(`
       CREATE SCHEMA auth; CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
       CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+      CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_user::text $$;
+      CREATE TYPE app_role AS ENUM ('admin','moderator','user');
+      CREATE FUNCTION has_role(uuid,app_role) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
+      CREATE FUNCTION can_book_linked_member(uuid,uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT coalesce($2=auth.uid(),false) $$;
+      CREATE TABLE clubs(id uuid PRIMARY KEY,min_booking_balance numeric);
+      CREATE FUNCTION member_account_gate(uuid,numeric) RETURNS TABLE(current_owing numeric,allowance numeric) LANGUAGE sql AS $$ SELECT 0::numeric,0::numeric $$;
       CREATE FUNCTION is_member_owner(uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT coalesce($1=auth.uid(),false) $$;
       CREATE FUNCTION is_club_admin_or_permitted(uuid,uuid,text) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
       CREATE FUNCTION tournament_bookable_court_ids(uuid,text,text) RETURNS integer[] LANGUAGE sql AS $$ SELECT ARRAY[35,36] $$;
@@ -25,14 +31,15 @@ suite("tournament linked booking reschedule", () => {
       CREATE FUNCTION tournament_host_club_ids(uuid) RETURNS uuid[] LANGUAGE sql AS $$ SELECT ARRAY['${club}'::uuid] $$;
       CREATE TABLE club_champs(id uuid PRIMARY KEY,club_id uuid,name text);
       CREATE TABLE courts(id integer PRIMARY KEY,club_id uuid);
-      CREATE TABLE club_members(id uuid PRIMARY KEY,user_id uuid);
+      CREATE TABLE club_members(id uuid PRIMARY KEY,user_id uuid,club_id uuid,joined_at timestamptz DEFAULT now());
       CREATE TABLE club_champs_rounds(id uuid,label text);
       CREATE TABLE club_champs_matches(id uuid PRIMARY KEY,champ_id uuid,player_a_member_id uuid,player_b_member_id uuid,partner_a_member_id uuid,partner_b_member_id uuid,is_bye boolean DEFAULT false,status text,stage text,round_id uuid,booking_id uuid,court_id integer,scheduled_date date,scheduled_time time,updated_at timestamptz,play_by date,score text);
       CREATE TABLE bookings(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),club_id uuid,court_id integer,user_id uuid,club_member_id uuid,opponent_id uuid,opponent_member_id uuid,date date,start_time time,end_time time,status text,is_friendly boolean,source text,external_id text,booking_type text,guest_name text,external_booker_name text,ops_note text,UNIQUE(club_id,source,external_id));
       CREATE TABLE notifications(user_id uuid,club_member_id uuid,title text,message text,type text,url text);
       INSERT INTO club_champs VALUES('${club}','${club}','Synthetic Champs');
       INSERT INTO courts VALUES(35,'${club}'),(36,'${club}');
-      INSERT INTO club_members VALUES('${player}','${player}'),('${opponent}','${opponent}');
+      INSERT INTO club_members(id,user_id,club_id) VALUES('${player}','${player}','${club}'),('${opponent}','${opponent}','${club}');
+      INSERT INTO clubs VALUES('${club}',NULL);
       GRANT USAGE ON SCHEMA public,auth TO authenticated;
       GRANT SELECT ON bookings,club_champs_matches TO authenticated;
       SELECT set_config('request.jwt.claim.sub','${player}',false);
@@ -87,5 +94,38 @@ suite("tournament linked booking reschedule", () => {
     await expect(schedule()).rejects.toMatchObject({code:"42501"});
     await sql`SELECT set_config('request.jwt.claim.sub','',false)`;
     await expect(schedule()).rejects.toMatchObject({code:"42501"});
+  });
+  it("reproduces the ownership error when restoring the old reserved slot", async () => {
+    await sql.unsafe('RESET ROLE');
+    const guard = readFileSync('drizzle/migrations/0171_family_booking_verified_login_authority.sql','utf8');
+    await sql.unsafe(guard.slice(guard.indexOf('CREATE OR REPLACE FUNCTION public.enforce_booking_credit_allowance')));
+    await sql.unsafe(`CREATE TRIGGER zz_enforce_booking_credit_allowance BEFORE INSERT OR UPDATE ON bookings FOR EACH ROW EXECUTE FUNCTION enforce_booking_credit_allowance();
+      INSERT INTO bookings(id,club_id,court_id,date,start_time,end_time,status,external_booker_name,ops_note)
+      VALUES('${hold}','${club}',35,'2026-10-20','20:15','21:00','cancelled','Club Championships','Released for tournament match ${match}'); SET ROLE authenticated;`);
+    await expect(schedule('2026-10-19','19:30',36)).rejects.toMatchObject({code:'42501'});
+    await sql.unsafe('RESET ROLE');
+    await sql.unsafe(readFileSync('supabase/tests/champ-booking-ownership-fix.sql','utf8'));
+    await sql.unsafe(readFileSync('supabase/tests/champ-booking-ownership-fix.sql','utf8'));
+    await sql.unsafe('SET ROLE authenticated');
+    expect((await schedule('2026-10-19','19:30',36))[0].result.booking_id).toBe(booking);
+    expect((await sql`SELECT status FROM bookings WHERE id=${hold}`)[0].status).toBe('active');
+  });
+  it("allows the opposing participant to reschedule with player A ownership preserved", async () => {
+    await sql`SELECT set_config('request.jwt.claim.sub',${opponent},false)`;
+    await schedule('2026-10-19','19:30',36);
+    expect((await sql`SELECT user_id,club_member_id FROM bookings WHERE id=${booking}`)[0]).toEqual({user_id:player,club_member_id:player});
+  });
+  it("rejects an unrelated actor even with a forged tournament external id", async () => {
+    await sql.unsafe('RESET ROLE; GRANT INSERT,UPDATE ON bookings TO authenticated; SET ROLE authenticated');
+    await sql`SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false)`;
+    await expect(sql`UPDATE bookings SET user_id=${player} WHERE id=${booking}`).rejects.toMatchObject({code:'42501'});
+  });
+  it("rejects changed ownership on a fixture-bound booking", async () => {
+    await expect(sql`UPDATE bookings SET user_id=${opponent} WHERE id=${booking}`).rejects.toMatchObject({code:'42501'});
+  });
+  it("still enforces the player's balance for tournament bookings", async () => {
+    await sql.unsafe(`RESET ROLE; UPDATE clubs SET min_booking_balance=20 WHERE id='${club}'; SET ROLE authenticated`);
+    await expect(schedule('2026-10-19','19:30',36)).rejects.toMatchObject({code:'P0001'});
+    await sql.unsafe(`RESET ROLE; UPDATE clubs SET min_booking_balance=NULL WHERE id='${club}'; SET ROLE authenticated`);
   });
 });

@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Automatic counter and customer updates
-- [ ] Refresh counter tabs/orders and customer payment status automatically, including return-to-page and reconnect.
+ - [x] Refresh counter tabs/orders and customer payment status automatically, including return-to-page and reconnect.
 - [ ] Show confirmed payment receipt without manual refresh; verify using isolated orders, no live payment changes.
 
 ## Pending counter payment actions

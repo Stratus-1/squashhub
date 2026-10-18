@@ -1,5 +1,8 @@
 # Roadmap
 
+## All-club item and statement availability
+- [ ] Verify shared cost fields and Purchases / Cost of sales choice at Uitsig; distinguish preview availability from unpublished live code without changing club data.
+
 ## Item current and average cost prices
 - [x] Explained missing historical snapshots and weighted average; saved average is read-only beside current cost in item add/edit and shown for known stock-item averages in the list.
 - [x] Latest received invoice now updates current cost without altering old snapshots or opt-in averaging. 26 focused checks passed, including three disposable receipt tests; authenticated Riverside add/edit verified without saves. Preview build OK, not published; no historical stock/sale corrections.

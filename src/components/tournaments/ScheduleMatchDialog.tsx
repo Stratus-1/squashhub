@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { CalendarClock, Loader2 } from "lucide-react";
 import {
   buildSlots,
+  champsSlotStarts,
   isSlotFreeForMatch,
   isChampsReservation,
   type SelfScheduleMatchLike,
@@ -185,9 +186,12 @@ export function ScheduleMatchDialog({
 
   const slotMinutes = Number(club?.booking_slot_minutes) || 60;
   const duration = Math.max(15, durationMinutes || slotMinutes);
+  // Club Champs has its own slots: games book into the match-length grid
+  // (e.g. 35 minutes), not the club's normal booking slots.
+  const stepMinutes = champId && durationMinutes ? duration : slotMinutes;
   const slots = useMemo(
-    () => buildSlots(slotMinutes, club?.booking_open_time, club?.booking_last_slot_time),
-    [slotMinutes, club?.booking_open_time, club?.booking_last_slot_time],
+    () => buildSlots(stepMinutes, club?.booking_open_time, club?.booking_last_slot_time),
+    [stepMinutes, club?.booking_open_time, club?.booking_last_slot_time],
   );
 
   const alreadyScheduled = !!match && fixtureScheduleState(match) === "scheduled";
@@ -205,17 +209,20 @@ export function ScheduleMatchDialog({
 
 
   // Club Championships holds on any tournament court this day: free for Champs players.
+  // The evening's holds merge into one span per court and the Champs' own
+  // match-length slots (e.g. 35 minutes) are offered inside it.
   const champsSlots = useMemo(() => {
     if (!match) return [] as { courtId: number; courtName: string; time: string }[];
     const ids = new Set(courtOptions.map((c) => c.id));
-    const seen = new Set<string>();
-    return (bookings as any[])
-      .filter((b) => isChampsReservation(b) && ids.has(b.court_id))
-      .map((b) => ({ courtId: b.court_id as number, time: String(b.start_time).slice(0, 5) }))
-      .filter((x) => isSlotFreeForMatch(x.time, duration, x.courtId, match, bookings, match?.booking_id ?? null))
-      .filter((x) => { const k = `${x.courtId}|${x.time}`; if (seen.has(k)) return false; seen.add(k); return true; })
-      .map((x) => ({ ...x, courtName: courtOptions.find((c) => c.id === x.courtId)?.name || `Court ${x.courtId}` }))
-      .sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
+    const starts = champsSlotStarts((bookings as any[]).filter((b) => ids.has(b.court_id)), duration);
+    const out: { courtId: number; courtName: string; time: string }[] = [];
+    for (const [court, times] of starts) {
+      for (const time of times) {
+        if (isSlotFreeForMatch(time, duration, court, match, bookings, match?.booking_id ?? null))
+          out.push({ courtId: court, time, courtName: courtOptions.find((c) => c.id === court)?.name || `Court ${court}` });
+      }
+    }
+    return out.sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
   }, [bookings, courtOptions, duration, match]);
 
   // The players' own existing bookings that day. Times overlapping them are

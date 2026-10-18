@@ -1345,6 +1345,13 @@
       "when": 1792334477461,
       "tag": "0191_set_journal_entry_date",
       "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1792341342543,
+      "tag": "0192_champ_move_leaves_old_slot_available",
+      "breakpoints": true
     }
   ]
 }

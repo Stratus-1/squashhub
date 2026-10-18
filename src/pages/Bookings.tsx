@@ -1091,6 +1091,9 @@ export default function Bookings() {
 
   const getBooking = (courtId: number, time: string) => {
     const tMin = timeToMinutes(time);
+    // A booking occupies every grid row it overlaps, not only the row where it
+    // starts — e.g. a 35-min Club Champs game at 19:10 also covers the 18:45
+    // row, so that row must never look free.
     return allCourtBookings.find((b: any) => {
       if (b.court_id !== courtId) return false;
       const start = String(b.start_time || "").slice(0, 5);
@@ -1098,7 +1101,7 @@ export default function Bookings() {
       if (!start || !end) return false;
       const sMin = timeToMinutes(start);
       const eMin = timeToMinutes(end);
-      return tMin >= sMin && tMin < eMin;
+      return sMin < tMin + slotMinutes && eMin > tMin;
     });
   };
 

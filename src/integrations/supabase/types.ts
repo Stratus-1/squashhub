@@ -6411,6 +6411,65 @@ export type Database = {
           },
         ]
       }
+      club_recurring_transactions: {
+        Row: {
+          account: string
+          active: boolean
+          amount: number
+          club_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          direction: string
+          frequency: string
+          id: string
+          member_id: string | null
+          method: string
+          next_due: string
+          updated_at: string
+        }
+        Insert: {
+          account: string
+          active?: boolean
+          amount: number
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          direction: string
+          frequency: string
+          id?: string
+          member_id?: string | null
+          method: string
+          next_due: string
+          updated_at?: string
+        }
+        Update: {
+          account?: string
+          active?: boolean
+          amount?: number
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          direction?: string
+          frequency?: string
+          id?: string
+          member_id?: string | null
+          method?: string
+          next_due?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_recurring_transactions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_router_alert_settings: {
         Row: {
           club_id: string

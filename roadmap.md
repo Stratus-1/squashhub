@@ -2,7 +2,7 @@
 
 ## Automatic counter and customer updates
  - [x] Refresh counter tabs/orders and customer payment status automatically, including return-to-page and reconnect.
-- [ ] Show confirmed payment receipt without manual refresh; verify using isolated orders, no live payment changes.
+- [x] Twenty-one focused tests passed; isolated named-PIN browser checks show new tabs and customer card receipts without reload. Preview build OK; no live payments or publication. Physical phone/live settlement remains unverified.
 
 ## Pending counter payment actions
 - [x] Migration 0177 restores payment method in the counter board response without changing personal PIN authority or settlement logic.

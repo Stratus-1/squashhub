@@ -53,8 +53,8 @@ suite("tournament linked booking reschedule", () => {
     await sql.unsafe(`RESET ROLE; TRUNCATE bookings,club_champs_matches,notifications;
       INSERT INTO club_champs_matches(id,champ_id,player_a_member_id,player_b_member_id,status,booking_id,court_id,scheduled_date,scheduled_time,play_by)
       VALUES('${match}','${club}','${player}','${opponent}','scheduled','${booking}',35,'2026-10-20','20:20','2026-10-22');
-      INSERT INTO bookings(id,club_id,court_id,club_member_id,opponent_member_id,date,start_time,end_time,status,source,external_id)
-      VALUES('${booking}','${club}',35,'${player}','${opponent}','2026-10-20','20:20','21:00','active','club_event','champ:${club}:match:${match}');
+      INSERT INTO bookings(id,club_id,court_id,user_id,club_member_id,opponent_member_id,date,start_time,end_time,status,source,external_id)
+      VALUES('${booking}','${club}',35,'${player}','${player}','${opponent}','2026-10-20','20:20','21:00','active','club_event','champ:${club}:match:${match}');
       SELECT set_config('request.jwt.claim.sub','${player}',false); SET ROLE authenticated;`);
   });
   it("reproduces the reported own-booking conflict before the fix", async () => {

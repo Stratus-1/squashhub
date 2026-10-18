@@ -1,0 +1,3 @@
+ALTER TABLE public.club_gl_accounts ADD COLUMN reporting_category text;
+ALTER TABLE public.club_gl_accounts ADD CONSTRAINT club_gl_accounts_reporting_category_check CHECK (reporting_category IS NULL OR (category = 'Expense' AND reporting_category IN ('bar_cost_of_sales', 'shop_cost_of_sales')));
+COMMENT ON COLUMN public.club_gl_accounts.reporting_category IS 'Optional income statement category for named custom expense accounts; Bar/Shop cost of sales allocations are report classifications, not additional ledger transactions.';

@@ -1289,6 +1289,13 @@
       "when": 1792328845203,
       "tag": "0183_income_statement_division_cost_basis",
       "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1792330079552,
+      "tag": "0184_member_account_counter_orders",
+      "breakpoints": true
     }
   ]
 }

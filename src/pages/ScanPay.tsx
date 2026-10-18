@@ -31,6 +31,7 @@ import type { BarDivision } from "@/lib/bar-categories";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
+import { takeMemberTabDraft } from "@/lib/bar/member-tab-handoff";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -97,7 +98,7 @@ export default function ScanPay() {
   const { code = "" } = useParams();
   const navigate = useNavigate();
 
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<Record<string, number>>(() => takeMemberTabDraft(code, new URLSearchParams(window.location.search).get("member_tab")));
   const [visitorName, setVisitorName] = useState("");
   const [visitorPhone, setVisitorPhone] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);

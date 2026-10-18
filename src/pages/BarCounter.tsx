@@ -42,6 +42,7 @@ interface CounterTab {
   settled_method?: string | null;
   opened_at: string;
   operator?: string | null;
+  opened_source?: string;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
@@ -647,6 +648,7 @@ export default function BarCounter() {
                 >
                   <div className="min-w-0">
                     <div className="font-semibold truncate">{t.guest_name}</div>
+                    {t.opened_source === "in_app" && <Badge variant="outline" className="text-[11px]">In-app · Self-opened</Badge>}
                     {(t as any).phone && (
                       <div className="text-[11px] text-muted-foreground">{(t as any).phone}</div>
                     )}

@@ -1,5 +1,9 @@
 # Roadmap
 
+## Separate shop accounting
+- [ ] Separate shop sales/purchases GL postings and income-statement margins from bar figures for clubs with shops.
+- [ ] Check existing shop accounts/history, preserve balanced entries and payment recognition, and test division routing and margins.
+
 ## Self-opened member counter tabs
 - [x] Open my tab at the bar creates/reuses the authenticated member's shared tab and continues in the existing ScanPay flow; counter labels it In-app · Self-opened. Existing payments and personal staff PINs preserved.
 - [x] 35 focused checks passed, including eight disposable PostgreSQL ownership/club/retry checks; hosted definition verified and build OK. Synthetic named-PIN counter discovered the in-app tab without reload; customer tab displayed correctly. No real tabs, sales or publication.

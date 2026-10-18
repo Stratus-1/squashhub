@@ -1,9 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { openMemberCounterTab, takeMemberTabDraft } from "@/lib/bar/member-tab-handoff";
+import { openMemberCounterTab, placeMemberCounterOrder, takeMemberTabDraft } from "@/lib/bar/member-tab-handoff";
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: mocks }));
 beforeEach(() => { localStorage.clear(); sessionStorage.clear(); vi.clearAllMocks(); });
 describe("member self-opened shared tab", () => {
+  it("sends items as an unpaid order before member account settlement", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { tab_id: "tab1", token: "private-token", code: "menu" }, error: null }).mockResolvedValueOnce({ data: { id: "order1" }, error: null });
+    expect(await placeMemberCounterOrder("club1", "member1", { beer: 2 }, "retry-key")).toBe("/s/menu?member_tab=tab1");
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "open_my_bar_tab", { _club_id: "club1", _club_member_id: "member1" });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "bar_submit_guest_order", { _tab_id: "tab1", _token: "private-token", _lines: [{ bar_item_id: "beer", quantity: 2 }], _fulfilment: "collect", _location: "", _note: "", _idempotency_key: "retry-key" });
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+  });
+  it("preserves selected items and does not navigate on rejected ordering", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { tab_id: "tab1", token: "private-token", code: "menu" }, error: null }).mockResolvedValueOnce({ data: null, error: new Error("Bar closed") });
+    const cart = { beer: 2 };
+    await expect(placeMemberCounterOrder("club1", "member1", cart, "same-retry-key")).rejects.toThrow("Bar closed");
+    expect(cart).toEqual({ beer: 2 });
+    expect(localStorage.length).toBe(0);
+  });
   it("opens an empty shared tab immediately for the selected club and member without charging", async () => {
     mocks.rpc.mockResolvedValue({ data: { tab_id: "tab1", token: "private-token", code: "menu" }, error: null });
     expect(await openMemberCounterTab("club1", "member1", {})).toBe("/s/menu?member_tab=tab1");

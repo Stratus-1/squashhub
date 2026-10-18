@@ -1,5 +1,9 @@
 # Roadmap
 
+## Order first, settle later
+- [ ] Replace immediate member-account checkout with Place order, automatically creating/reusing the member tab and sending the selected items to staff before separate settlement.
+- [ ] Test unpaid order submission, retry keys and failure cart preservation; do not publish or create real sales.
+
 ## Direct member-account orders on counter
 - [x] Added atomic own-member account checkout with linked counter fulfilment orders and retry-safe charging. Orders remains accessible without guest-order opt-in; account-charged orders have no payment-confirmation actions.
 - [x] 25 focused checks passed, including nine disposable PostgreSQL ownership/atomicity/retry checks; synthetic named-PIN counter discovered the order without reload, with guest orders disabled. Hosted grants verified, preview build OK; no live test sales or publication.

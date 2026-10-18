@@ -22,7 +22,7 @@ import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { Link, useNavigate } from "react-router-dom";
-import { openMemberCounterTab } from "@/lib/bar/member-tab-handoff";
+import { openMemberCounterTab, placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -200,7 +200,7 @@ export default function HonestyBar() {
   }, [items]);
 
 
-  /** Settlement: post the final open tab to the member account (the only path that journals). */
+  /** Send an unpaid order first; settlement stays on the shared tab. */
   const submitCart = async () => {
     if (cartCount === 0 || submitting) return;
     if (!memberId || !clubId) {
@@ -222,19 +222,15 @@ export default function HonestyBar() {
       if (accountRequest.current?.signature !== signature) {
         accountRequest.current = { signature, id: crypto.randomUUID() };
       }
-      const { error } = await supabase.rpc("submit_my_bar_account_order", {
-        _club_id: clubId,
-        _club_member_id: memberId,
-        _lines: lines,
-        _request_id: accountRequest.current.id,
-      });
-      if (error) throw error;
-      toast.success(`${money(cartTotal)} posted to your member account`);
+      const destination = await placeMemberCounterOrder(clubId, memberId, cart, accountRequest.current.id);
+      toast.success("Order sent to the bar");
       accountRequest.current = null;
       setCart({});
+      if (tabKey) saveOpenTab(tabKey, {});
       qc.invalidateQueries({ queryKey: ["my-bar-tab"] });
       qc.invalidateQueries({ queryKey: ["bar-account-charge-preview"] });
       qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
+      navigate(destination);
     } catch (err: any) {
       showBarChargeError(err, "Failed to log items");
     } finally {
@@ -590,25 +586,9 @@ export default function HonestyBar() {
                       </div>
                     ))}
                   </div>
-                  <AccountChargeWarning show={accountPreview.blocked} />
-                  <p className="text-xs font-medium pt-1">Settle tab — choose how to pay</p>
-                  {accountTabEnabled && (
-                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || accountPreview.blocked}>
-                      <ShoppingCart className="w-4 h-4" /> Add {money(cartTotal)} to my member account
+                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode}>
+                      <ShoppingCart className="w-4 h-4" /> Place order · {money(cartTotal)}
                     </Button>
-                  )}
-                  <div className="grid grid-cols-2 gap-2">
-                    {payOnlineEnabled && (
-                      <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5 whitespace-normal" onClick={payOnline} disabled={submitting}>
-                        <CreditCard className="w-3.5 h-3.5 shrink-0" /> Pay now by card
-                      </Button>
-                    )}
-                    {cardSwipeEnabled && (
-                      <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5 whitespace-normal" onClick={swipeAtClub} disabled={submitting}>
-                        <Receipt className="w-3.5 h-3.5 shrink-0" /> I swiped at the card machine
-                      </Button>
-                    )}
-                  </div>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>
                     Clear tab
                   </Button>

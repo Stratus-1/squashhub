@@ -1294,7 +1294,8 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                   const selectedItem = items.find(i => i.id === line.bar_item_id);
                   const lineTotal = (parseInt(line.quantity) || 0) * (parseFloat(line.unit_cost) || 0);
                   return (
-                    <div key={idx} className="grid grid-cols-[1fr_80px_100px_60px_30px] gap-2 items-end">
+                    <div key={idx} className="space-y-1">
+                    <div className="grid grid-cols-[1fr_80px_100px_60px_30px] gap-2 items-end">
                       <div>
                         {idx === 0 && <Label className="text-[10px] text-muted-foreground">Item</Label>}
                         <StockItemPicker
@@ -1336,6 +1337,20 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                           </Button>
                         )}
                       </div>
+                    </div>
+                    {(() => {
+                      const y = selectedItem?.unit_yield || 1;
+                      const c = parseFloat(line.unit_cost) || 0;
+                      if (y <= 1 || (selectedItem as { stock_measure?: string } | undefined)?.stock_measure === "volume" || c <= 0) return null;
+                      const unit = selectedItem?.unit_label || "tot";
+                      const per = c / y;
+                      return (
+                        <p className="text-[11px] text-muted-foreground -mt-1">
+                          Cost per {unit}: {money(c)} ÷ {y} = <span className="font-medium text-foreground">{money(per)}</span>
+                          {" · "}double {money(per * 2)}
+                        </p>
+                      );
+                    })()}
                     </div>
                   );
                 })}

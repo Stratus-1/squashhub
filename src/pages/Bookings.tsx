@@ -2207,7 +2207,7 @@ export default function Bookings() {
             const isHour = time.endsWith(":00");
             // For 40-min clubs, slots don't align to the hour, so label every
             // row and skip the hourly separator rule to avoid drift.
-            const showTimeLabel = slotMinutes === 40 || slotMinutes === 45 ? true : isHour;
+            const showTimeLabel = slotMinutes === 40 || slotMinutes === 45 || !dynamicTimeSlots.includes(time) ? true : isHour;
             const showHourSeparator = slotMinutes !== 40 && isHour && idx !== 0;
             return (
               <div

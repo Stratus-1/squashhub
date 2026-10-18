@@ -2227,7 +2227,11 @@ export default function Bookings() {
                 {courts.map((courtId) => {
                   const cellMinutes = gridLayout.cell(courtId, time);
                   if (cellMinutes == null) return <div key={courtId} className="min-w-0" aria-hidden="true" />;
-                  const rowBookings = bookingsForGridRow(allCourtBookings, courtId, time, cellMinutes);
+                  const isChampCell = cellMinutes !== slotMinutes;
+                  const isHoldRow = (x: any) => !x.is_champ && /^\s*club\s+championship/i.test(String(x.external_booker_name || x.guest_name || ""));
+                  let rowBookings = bookingsForGridRow(allCourtBookings, courtId, time, cellMinutes);
+                  // In a championship cell a game takes precedence over the evening's hold rows.
+                  if (isChampCell && rowBookings.some((x: any) => !isHoldRow(x))) rowBookings = rowBookings.filter((x: any) => !isHoldRow(x));
                   return (
                     <div key={courtId} className="min-w-0 space-y-0.5">
                     {(rowBookings.length ? rowBookings : [undefined]).map((booking) => {
@@ -2295,7 +2299,7 @@ export default function Bookings() {
                   // A booking that started on an earlier row (e.g. a 35-min champs
                   // game at 19:10 seen from the 19:30 row) is a continuation — mark
                   // it as taken without repeating the players' names.
-                  const isContinuation = !!booking
+                  const isContinuation = !!booking && !(isChampCell && isHoldRow(booking))
                     && timeToMinutes(String((booking as any).start_time || "").slice(0, 5)) < timeToMinutes(time);
                   const isPeak = isPeakSlot(selectedDate, time, myClub);
 

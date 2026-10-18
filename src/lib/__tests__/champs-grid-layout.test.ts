@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { champsGridLayout } from "../booking-grid";
 
 const normal = ["17:15", "18:00", "18:45", "19:30", "20:15", "21:00"];
-const spans = [{ court_id: 27, start_time: "18:00", end_time: "20:55" }];
+const spans = [{ court_id: 27, start_time: "18:00", end_time: "19:30" }, { court_id: 27, start_time: "20:15", end_time: "21:00" }];
 
 describe("champsGridLayout", () => {
   const g = champsGridLayout(normal, 45, spans, 35);

@@ -30,7 +30,7 @@ function hhmm(m: number): string {
  */
 export function champsGridLayout(
   normalTimes: readonly string[], normalMinutes: number,
-  spans: readonly GridSpan[], champMinutes: number,
+  spans: readonly GridSpan[], champMinutes: number, mergeGapMinutes = 60,
 ): { rows: string[]; cell: (courtId: number, time: string) => number | null } {
   const byCourt = new Map<number, { s: number; e: number }[]>();
   if (champMinutes >= 15) {
@@ -49,7 +49,7 @@ export function champsGridLayout(
     const m: { s: number; e: number }[] = [];
     for (const sp of list) {
       const last = m[m.length - 1];
-      if (last && sp.s <= last.e) last.e = Math.max(last.e, sp.e); else m.push({ ...sp });
+      if (last && sp.s <= last.e + mergeGapMinutes) last.e = Math.max(last.e, sp.e); else m.push({ ...sp });
     }
     merged.set(court, m);
     const cells = new Map<string, number>();

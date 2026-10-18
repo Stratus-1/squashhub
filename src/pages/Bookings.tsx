@@ -2359,6 +2359,11 @@ export default function Bookings() {
                         >
                           {isPeak && <PeakTimeIndicator />}
                           {booking ? (
+                            isContinuation ? (
+                              <div className="px-1.5 w-full min-w-0 text-center leading-tight">
+                                <p className="text-[9px] text-muted-foreground/60 truncate">▲ continued</p>
+                              </div>
+                            ) : (
                             <div className="px-1.5 w-full min-w-0 text-center leading-tight">
                               <p className={cn(
                                 "font-semibold text-[11px] truncate",
@@ -2376,6 +2381,7 @@ export default function Bookings() {
                                 <p className="text-[9px] text-muted-foreground truncate">{champContext}</p>
                               ) : null}
                             </div>
+                            )
                           ) : isPastSlot ? (
                             <span className="text-muted-foreground/20 text-[10px]">—</span>
                           ) : (

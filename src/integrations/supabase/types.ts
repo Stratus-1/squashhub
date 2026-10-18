@@ -19703,6 +19703,10 @@ export type Database = {
         Args: { _tab_id: string; _token: string }
         Returns: Json
       }
+      bar_item_income_account: {
+        Args: { _club: string; _item: string }
+        Returns: Database["public"]["Enums"]["gl_account"]
+      }
       bar_item_on_menu: {
         Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
         Returns: boolean

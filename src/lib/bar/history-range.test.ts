@@ -3,6 +3,7 @@ import { barHistoryRange } from './history-range';
 describe('closed tab date periods', () => {
   const now = new Date('2026-10-17T23:03:00Z');
   it('last 24 hours', () => expect(barHistoryRange('24-hours', now)).toEqual({ from: '2026-10-16T23:03:00.000Z', to: now.toISOString() }));
+  it('last day is yesterday in Johannesburg, not a rolling 24 hours', () => expect(barHistoryRange('last-day', now)).toEqual({ from: '2026-10-16T22:00:00.000Z', to: '2026-10-17T22:00:00.000Z' }));
   it('last week is the preceding seven days', () => expect(barHistoryRange('week', now)?.from).toBe('2026-10-10T23:03:00.000Z'));
   it('month so far starts at Johannesburg midnight', () => expect(barHistoryRange('month', now)).toEqual({ from: '2026-09-30T22:00:00.000Z', to: now.toISOString() }));
   it('last month is the full calendar month', () => expect(barHistoryRange('last-month', now)).toEqual({ from: '2026-08-31T22:00:00.000Z', to: '2026-09-30T22:00:00.000Z' }));

@@ -1419,7 +1419,6 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
             <Button className="w-full shrink-0" onClick={handleRecordTransaction} disabled={txSubmitting}>
               {txSubmitting ? "Recording..." : "Record Transaction"}
             </Button>
-          </div>
         </DialogContent>
       </Dialog>
 

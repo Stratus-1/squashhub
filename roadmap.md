@@ -1,5 +1,9 @@
 # Roadmap
 
+## Counter transaction serving identity
+- [ ] Link each counter-created Bar/Shop sale to its server-verified personal-PIN operator; retain per-entry attribution through handovers and account charges.
+- [ ] Display serving identities on open tabs and sales drill-through; test scope, revoked sessions and spoofed names without real sales or publication.
+
 ## Separate shop accounting
 - [x] Added standard Shop Sales / Shop Purchases accounts and prospective member/visitor sale routing; new purchase invoices post balanced division expense/payment or payable entries. Income statement and CSV show separate purchase-based Bar/Shop margins.
 - [x] Confirmed shop items at Riverside and Uitsig; 36 focused tests passed including eight disposable PostgreSQL posting checks. Hosted routing verified; authenticated Riverside income statement displays both divisions, build OK. Historical transactions left unchanged to avoid duplicating manual/bank expenses; no live test sale/purchase or frontend publication.

@@ -4,6 +4,8 @@ Last verified against the repository on 2026-08-25.
 
 ## System purpose
 
+Booking-grid presentation uses `src/lib/booking-grid.ts` to retain every court-row overlap, ordered by start time. Separate selectable entries show names on their starting row and continuation markers on later rows; booking times, ownership, billing and availability enforcement are unchanged.
+
 Stock product current cost and weighted average are distinct: purchase receipts maintain the latest per-container cost, while the existing opt-in stock engine calculates the average per smallest stock unit. Item editing displays that saved average read-only after container conversion; historical sale snapshots remain immutable.
 
 SquashHub is a multi-tenant platform for squash clubs and the wider squash ecosystem. It combines club SaaS, member self-service, bookings, competitions, league/federation operations, payments, communications, access automation, live scoring, PWA delivery, and native mobile capabilities in one codebase.

@@ -21,6 +21,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Booking grid presentation retains every overlap as a separate selectable entry via `src/lib/booking-grid.ts`; why: shorter championship games can share a normal grid row without losing names or occupancy.
 - Tournament administration hierarchy uses explicit local roots and light-only semantic surfaces, including notification portals; why: public/member pages and existing dark mode must remain unchanged.
 - Draw notification dialogs keep the header and actions outside one viewport-bounded scrolling body; why: expanded personalized previews must not hide send/cancel controls or scroll the underlying page.
 - Scope Club Admin steps/contrast locally (portals too); why: shared member/association UI must stay unchanged.

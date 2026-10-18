@@ -1,3 +1,4 @@
+import { bookingsForGridRow } from "@/lib/booking-grid";
 import { isPeakSlot as isPeakSlotShared } from "@/lib/peak-hours";
 import { PeakTimeIndicator } from "@/components/PeakTimeIndicator";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1088,22 +1089,6 @@ export default function Bookings() {
     },
     enabled: !!user && !!bookingDialog?.time,
   });
-
-  const getBooking = (courtId: number, time: string) => {
-    const tMin = timeToMinutes(time);
-    // A booking occupies every grid row it overlaps, not only the row where it
-    // starts — e.g. a 35-min Club Champs game at 19:10 also covers the 18:45
-    // row, so that row must never look free.
-    return allCourtBookings.find((b: any) => {
-      if (b.court_id !== courtId) return false;
-      const start = String(b.start_time || "").slice(0, 5);
-      const end = String(b.end_time || "").slice(0, 5);
-      if (!start || !end) return false;
-      const sMin = timeToMinutes(start);
-      const eMin = timeToMinutes(end);
-      return sMin < tMin + slotMinutes && eMin > tMin;
-    });
-  };
 
   // Count bookings per court for stats
   const courtBookingCounts = courts.reduce((acc: Record<number, number>, courtId: number) => {
@@ -2220,7 +2205,10 @@ export default function Bookings() {
                   {showTimeLabel ? formatTimeDisplay(time) : ""}
                 </div>
                 {courts.map((courtId) => {
-                  const booking = getBooking(courtId, time);
+                  const rowBookings = bookingsForGridRow(allCourtBookings, courtId, time, slotMinutes);
+                  return (
+                    <div key={courtId} className="min-w-0 space-y-0.5">
+                    {(rowBookings.length ? rowBookings : [undefined]).map((booking) => {
                   // Event bookings are club bookings with a guest_name acting as event title.
                   // League fixture bookings also use guest_name as the title (e.g. "Round 1 - Baobabs vs Cobras").
                   const rawGuestName = (booking as any)?.guest_name ? String((booking as any).guest_name) : "";
@@ -2290,7 +2278,7 @@ export default function Bookings() {
                   const isPeak = isPeakSlot(selectedDate, time, myClub);
 
                   return (
-                    <Tooltip>
+                    <Tooltip key={booking?.id ?? "available"}>
                       <TooltipTrigger asChild>
                         <motion.div
                           whileTap={isPastSlot && !booking ? undefined : { scale: 0.97 }}
@@ -2416,6 +2404,9 @@ export default function Bookings() {
                         </TooltipContent>
                       )}
                     </Tooltip>
+                  );
+                    })}
+                    </div>
                   );
                 })}
               </div>

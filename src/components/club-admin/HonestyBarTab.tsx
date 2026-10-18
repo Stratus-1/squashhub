@@ -1072,7 +1072,8 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
                           {(kind !== "stock" || item.sellable !== false)
                             ? <span className="text-xs text-muted-foreground">{money(item.price)}</span>
                             : <span className="text-xs text-muted-foreground">Sold via options only</span>}
-                          {item.cost_price > 0 && <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>}
+                          {item.cost_price > 0 ? <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>
+                            : kind === "stock" && <span className="text-xs font-medium text-destructive">⚠ Enter a cost price</span>}
                           {kind === "stock" && (item.avg_unit_cost != null
                             ? <span className="text-xs text-muted-foreground">(average {money(perContainer(item.avg_unit_cost, item.unit_yield || 1) ?? 0)})</span>
                             : <span className="text-xs text-muted-foreground">{costingOn ? "(average not set yet)" : "(no average — costing off)"}</span>)}

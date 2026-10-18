@@ -1,5 +1,9 @@
 # Roadmap
 
+## Counter mode lockout regression
+- [ ] Make signed-in and QR counter entry require an allocated personal PIN session, with a serving name; revoked sessions must return to PIN entry without exposing cached tabs.
+- [ ] Run focused regression tests and Riverside read-only entry checks; no live lockouts, sales, PIN changes or publication.
+
 ## Sales statistics and drill-through
 - [x] Replace Closed tabs with summary-first Sales statistics including open and closed sales, preserving Shop / Bar / Both and date filters.
 - [x] Add Last day / Last seven days and drill-through from total to status totals, tabs and item details; 17 focused tests and authenticated Riverside read-only summary → open tab → item checks passed, 384px no-overflow verified, preview build OK. No writes or publication.

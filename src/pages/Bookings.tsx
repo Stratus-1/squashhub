@@ -2232,6 +2232,7 @@ export default function Bookings() {
                   let rowBookings = bookingsForGridRow(allCourtBookings, courtId, time, cellMinutes);
                   // In a championship cell a game takes precedence over the evening's hold rows.
                   if (isChampCell && rowBookings.some((x: any) => !isHoldRow(x))) rowBookings = rowBookings.filter((x: any) => !isHoldRow(x));
+                  else if (isChampCell && rowBookings.length > 1) rowBookings = rowBookings.slice(0, 1);
                   return (
                     <div key={courtId} className="min-w-0 space-y-0.5">
                     {(rowBookings.length ? rowBookings : [undefined]).map((booking) => {

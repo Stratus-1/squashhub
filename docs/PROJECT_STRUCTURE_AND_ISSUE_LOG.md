@@ -1,3 +1,7 @@
+## 2026-10-18 — Capitalised stock purchases missing from income statement
+- Nelspruit's R2,705.76 purchase expense was correctly reclassified into stock, but Purchases-basis reporting only read expense balances and consequently showed zero.
+- Report-only reconciliation now includes invoice-linked stock debits and explicit expense-to-stock transfers, excluding stocktakes. Bar/Shop trading rows remain visible at zero and Cost of sales switches to historical sold-item snapshots; bank, stock and journals are unchanged.
+
 ### 2026-10-18 — Order first, member-account settlement later
 - Replaced immediate HonestyBar member-account checkout with Place order. The selected items go to a reused/automatically opened shared member tab via the existing unpaid order RPC, then ScanPay provides separate settlement. Retry keys remain stable for an unchanged basket; failed ordering retains items. Existing order-process permission/settings are unchanged. 18 focused checks passed; real member UI submission remains unavailable in the selected Riverside identity; no live sales or publication.
 

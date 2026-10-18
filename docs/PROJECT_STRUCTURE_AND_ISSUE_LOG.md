@@ -1,3 +1,7 @@
+## 2026-10-18 — All-club costing option availability
+- Confirmed item cost fields and the income-statement Purchases / Cost of sales selector use shared components without Nelspruit-only or pilot gates. Recent frontend changes remain unpublished; no historical accounting corrections applied to other clubs.
+- Authenticated Riverside statement basis switching verified read-only; direct Uitsig preview navigation returned to the current CSIR home and did not verify Uitsig's statement.
+
 ## 2026-10-18 — Item latest and average cost visibility
 - Item add/edit now shows saved average cost read-only beside current cost in the same purchase units; unknown averages remain blank rather than showing an invented zero. The item list shows known averages too.
 - Purchase receipt now maintains current cost from the new invoice while retaining existing opt-in weighted-average stock application and immutable historical sale snapshots. No historical costs, stock, or invoices backfilled.

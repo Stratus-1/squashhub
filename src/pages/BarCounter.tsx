@@ -1,7 +1,7 @@
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 /**
  * Bar Counter mode — `/s/:code/counter` (device unlocked with a staff PIN, no login)
- * or `/bar/counter` for signed-in staff with Bar permission.
+ * or `/bar/counter`, which resolves the club menu and enters the same PIN flow.
  *
  * One screen for the person behind the counter: see every open tab with its
  * running total, open new tabs, add rounds and settle by cash, card machine or
@@ -105,8 +105,27 @@ export default function BarCounter() {
 
 
   const clubId: string | null = code ? null : (contextClub?.id ?? (myClub as any)?.club?.id ?? null);
-  const enabled = Boolean(token || clubId);
+  // A SquashHub login is not a serving identity. All entry points must use
+  // the personal-PIN session; never fall back to the club-only admin RPC path.
+  const enabled = Boolean(code && token);
   const [pane, setPane] = useState<"tabs" | "orders">("tabs");
+
+  const { data: entryCode, isLoading: entryLoading, error: entryError } = useQuery({
+    queryKey: ["bar-counter-entry-code", clubId],
+    enabled: !code && !!clubId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("qr_short_codes")
+        .select("code").eq("club_id", clubId).eq("active", true)
+        .is("bar_item_id", null).order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (error) throw error;
+      if (!data?.code) throw new Error("Set up the club menu QR code before opening counter mode.");
+      return data.code;
+    },
+  });
+
+  useEffect(() => {
+    if (!code && entryCode) navigate(`/s/${encodeURIComponent(entryCode)}/counter`, { replace: true });
+  }, [code, entryCode, navigate]);
 
 
   const { data: board, isLoading, error: boardError, refetch } = useQuery({
@@ -134,7 +153,8 @@ export default function BarCounter() {
     enabled: !!board?.club_id,
     refetchInterval: 60000,
     queryFn: async () => {
-      const { data } = await (supabase as any).rpc("bar_order_process_status", { _club_id: board!.club_id });
+      if (!board) return false;
+      const { data } = await (supabase as any).rpc("bar_order_process_status", { _club_id: board.club_id });
       return data === true;
     },
   });
@@ -173,8 +193,9 @@ export default function BarCounter() {
       setActiveTabId(null);
       setCart({});
       toast.error("This device was signed out — enter the counter PIN to unlock it again.");
+      qc.removeQueries({ queryKey: ["bar-counter-board", token, clubId], exact: true });
     }
-  }, [boardError, code, token]);
+  }, [boardError, code, token, qc, clubId]);
 
   useEffect(() => {
     if (!activeTabId) setCart({});
@@ -214,6 +235,7 @@ export default function BarCounter() {
       if (error) throw error;
       const t = (data as any)?.token as string;
       const who = ((data as any)?.label as string) ?? null;
+      if (!t || !who?.trim()) throw new Error("This PIN has no serving name. Ask a club admin to check your staff PIN.");
       localStorage.setItem(tokenKey(code), t);
       if (who) localStorage.setItem(operatorKey(code), who);
       setToken(t);
@@ -392,7 +414,15 @@ export default function BarCounter() {
 
 
   // ---- Locked device ----------------------------------------------------
-  if (code && !token) {
+  if (!code) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center p-4 text-sm text-muted-foreground">
+        {entryError ? (entryError as Error).message : entryLoading || entryCode ? "Opening staff PIN screen…" : "Select a club to use counter mode."}
+      </div>
+    );
+  }
+
+  if (!token || !operator || boardError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <SEO title="Bar counter" description="Staff counter mode" path="/bar/counter" noIndex />
@@ -404,6 +434,8 @@ export default function BarCounter() {
           </div>
           <Input
             inputMode="numeric"
+            type="password"
+            aria-label="Staff counter PIN"
             autoFocus
             value={pin}
             maxLength={8}
@@ -1049,6 +1081,8 @@ export default function BarCounter() {
           </DialogHeader>
           <Input
             inputMode="numeric"
+            type="password"
+            aria-label="Switch staff counter PIN"
             autoFocus
             value={switchPin}
             maxLength={8}

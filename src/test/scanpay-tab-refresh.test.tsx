@@ -51,13 +51,12 @@ describe("customer tab cross-device updates", () => {
     expect(mocks.rpc.mock.calls.every(([name]) => ["resolve_qr_short_code", "bar_order_process_status", "get_bar_guest_tab"].includes(name))).toBe(true);
   });
 
-  it("updates open-tab totals on the five-second timer without marking paid", async () => {
+  it("updates open-tab totals on resume without marking paid", async () => {
     await mount();
-    vi.useFakeTimers();
-    // Resume after timers are mocked so a freshly scheduled timer is controlled.
     payload = { ...payload, total: 300 };
     await act(async () => { window.dispatchEvent(new Event("focus")); });
-    expect(screen.getByText(/R.?300[.,]00/)).toBeInTheDocument();
+    expect(mocks.rpc.mock.results.length).toBeGreaterThan(3);
+    expect(screen.getByText(/R.?300[.,]00/, { selector: "span" })).toBeInTheDocument();
     expect(mocks.success).not.toHaveBeenCalled();
     expect(localStorage.getItem("sh.scanpay.tab.test-menu")).not.toBeNull();
   });

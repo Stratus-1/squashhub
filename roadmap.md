@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Income statement stock purchase visibility
-- [ ] Include stock-capitalised purchases in Purchases-basis reporting without treating stocktakes as purchases or changing the ledger.
-- [ ] Verify Purchases / Cost of sales switching and the Nelspruit R2,705.76 correction; no publication or live writes.
+- [x] Include stock-capitalised purchases in Purchases-basis reporting without treating stocktakes as purchases or changing the ledger.
+- [x] 13 focused checks passed; authenticated Riverside/Nelspruit basis switching verified. Nelspruit shows R2,705.76 purchases and R1,746.24 gross profit; COS remains provisional because historical sale costs are missing. No publication or live writes.
 
 ## Order first, settle later
 - [x] Replaced immediate member-account checkout with Place order, automatically creating/reusing the member tab and sending items through the existing unpaid order flow before ScanPay settlement. Existing club order-process settings remain required.

@@ -144,7 +144,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     lines.push(`Trading-cost basis,${basisLabel}`);
     if (missingCosts) lines.push(`Provisional costs,${missingCosts} sale lines have no recorded cost`);
     lines.push("");
-    const csvRow = (label: string, amount: number) => lines.push(`"${label.replaceAll('"', '""')}",${amount.toFixed(2)}`);
+    const csvRow = (label: string, amount: number) => lines.push(`"${label.replace(/"/g, '""')}",${amount.toFixed(2)}`);
     lines.push(`Item,Amount (${currencyCode})`, "PRIMARY INCOME");
     report.primary.forEach(row => csvRow(row.label, row.amount));
     csvRow("Primary gross income", report.primaryTotal);

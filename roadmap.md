@@ -1,5 +1,9 @@
 # Roadmap
 
+## Cost of sales account categories
+- [x] Add Bar/Shop cost-of-sales category choices for named custom accounts, retaining Expense posting and existing transactions; remove the mistaken standalone choices from account creation/manual expense selection.
+- [ ] Verify category choices and named-account reporting regressions without live account/transaction writes; no publication.
+
 ## Grouped income statement
 - [x] Show primary income, Bar and Shop gross profit with item/amount lines; trading and allocated direct costs excluded from general expenses, CSV/print consistent. Existing Bar/Shop direct-cost GL categories retained; no ledger writes.
 - [x] Sixteen focused checks passed; authenticated Riverside purchases/COS switching verified read-only with grouped sections. No publication.

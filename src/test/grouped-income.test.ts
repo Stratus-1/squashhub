@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { groupedIncome } from "@/lib/finance/grouped-income";
+import { accountCategoryPatch } from "@/hooks/use-club-gl-accounts";
 const accounts = Object.fromEntries([
   ["membership_income", "Member fees", "Income"], ["bar_income", "Bar", "Income"], ["shop_income", "Shop", "Income"],
   ["bar_expense", "Purchases", "Expense"], ["shop_expense", "Purchases", "Expense"], ["bar_cost_of_sales", "Bar direct costs", "Expense"], ["shop_cost_of_sales", "Shop direct costs", "Expense"], ["rent", "Rent", "Expense"],
@@ -10,6 +11,42 @@ const lines = [
   { account: "bar_cost_of_sales", debit: 100, credit: 0, description: "Barman salary" }, { account: "shop_cost_of_sales", debit: 80, credit: 0, description: "Shop wages" }, { account: "rent", debit: 50, credit: 0 },
 ];
 describe("grouped income statement", () => {
+  it("stores Cost of sales Bar as an expense classification on a named account", () => {
+    expect(accountCategoryPatch("bar_cost_of_sales")).toEqual({ category: "Expense", reporting_category: "bar_cost_of_sales" });
+    expect(accountCategoryPatch("Expense")).toEqual({ category: "Expense", reporting_category: null });
+  });
+  it("stores Cost of sales Shop as an expense classification on a named account", () => {
+    expect(accountCategoryPatch("shop_cost_of_sales")).toEqual({ category: "Expense", reporting_category: "shop_cost_of_sales" });
+  });
+  it.each(["purchases", "cost_of_sales"] as const)("deducts named salaries from Bar gross profit once on %s basis", basis => {
+    const source = [...lines, { account: "general_expense", debit: 75, credit: 0, custom_account_id: "salary", description: "October" }];
+    const before = JSON.stringify(source);
+    const report = groupedIncome(source, accounts, true, basis, [], [], [{ id: "salary", name: "Salaries", category: "Expense", reporting_category: "bar_cost_of_sales" }]);
+    expect(report.divisions[0].directCosts).toBe(175);
+    expect(report.divisions[0].profit).toBe(basis === "purchases" ? 225 : 825);
+    expect(report.divisions[0].allocated).toContainEqual({ label: "Salaries", amount: 75 });
+    expect(report.generalExpenses).toBe(50);
+    expect(JSON.stringify(source)).toBe(before);
+  });
+  it("deducts Shop wages and reversals from Shop only, even without shop items", () => {
+    const report = groupedIncome([
+      { account: "general_expense", debit: 80, credit: 0, custom_account_id: "wages" },
+      { account: "general_expense", debit: 0, credit: 10, custom_account_id: "wages" },
+    ], accounts, false, "purchases", [], [], [{ id: "wages", name: "Wages", category: "Expense", reporting_category: "shop_cost_of_sales" }]);
+    expect(report.divisions.map(row => row.profit)).toEqual([0, -70]);
+    expect(report.generalExpenses).toBe(0);
+    expect(report.netProfit).toBe(-70);
+  });
+  it("keeps unallocated custom expenses in general expenses without double counting", () => {
+    const report = groupedIncome([{ account: "rent", debit: 90, credit: 0, custom_account_id: "office" }], accounts, false, "purchases", [], [], [{ id: "office", name: "Office rent", category: "Expense" }]);
+    expect(report.expenses).toEqual([{ label: "Office rent", amount: 90 }]);
+    expect(report.generalExpenses).toBe(90);
+  });
+  it("retains historical custom direct-cost roll-ups without duplicating them", () => {
+    const report = groupedIncome([{ account: "bar_cost_of_sales", debit: 50, credit: 0, custom_account_id: "legacy" }], accounts, false, "purchases", [], [], [{ id: "legacy", name: "Legacy wages", category: "Expense", base_account: "bar_cost_of_sales" }]);
+    expect(report.divisions[0].directCosts).toBe(50);
+    expect(report.generalExpenses).toBe(0);
+  });
   it("keeps fee income separate from trading sales", () => {
     const report = groupedIncome(lines, accounts, true, "purchases");
     expect(report.primaryTotal).toBe(9000);

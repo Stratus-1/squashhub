@@ -30,7 +30,7 @@ suite('personal PIN sale attribution',()=>{
  const open=async(token=ta)=>String((await sql`SELECT bar_counter_open_tab('Guest',${token},NULL,NULL,'Forged name')->>'tab_id' AS id`)[0].id);
  it('opening ignores forged names and stores the PIN owner',async()=>{const id=await open();expect((await sql`SELECT operator_name,counter_device_id FROM bar_guest_tabs WHERE id=${id}`)[0]).toEqual({operator_name:'Server A',counter_device_id:a});});
  it('two servers retain separate sale identities on one tab',async()=>{
-  const id=await open(); const lines=JSON.stringify([{bar_item_id:item,quantity:1}]);
+  const id=await open(); const lines=sql.json([{bar_item_id:item,quantity:1}]);
   await sql`SELECT bar_counter_add_to_tab(${id},${lines}::jsonb,${ta},NULL,'Spoof')`;
   await sql`SELECT bar_counter_add_to_tab(${id},${lines}::jsonb,${tb},NULL,'Spoof')`;
   expect(await sql`SELECT counter_device_id,counter_operator_name,total::float FROM bar_visitor_sales ORDER BY counter_operator_name`).toEqual([{counter_device_id:a,counter_operator_name:'Server A',total:22},{counter_device_id:b,counter_operator_name:'Server B',total:22}]);
@@ -39,6 +39,6 @@ suite('personal PIN sale attribution',()=>{
  it('rejects revoked sessions',async()=>{await sql`UPDATE bar_counter_sessions SET revoked_at=now() WHERE token=${ta}`;await expect(open()).rejects.toThrow('personal PIN');});
  it('rejects expired sessions',async()=>{await sql`UPDATE bar_counter_sessions SET expires_at=now()-interval '1 second' WHERE token=${ta}`;await expect(open()).rejects.toThrow('personal PIN');});
  it('rejects disabled named credentials',async()=>{await sql`UPDATE bar_counter_devices SET active=false WHERE id=${a}`;await expect(open()).rejects.toThrow('personal PIN');});
- it('rejects a tab from a different club',async()=>{const [{id}]=await sql`INSERT INTO bar_guest_tabs(club_id,guest_name) VALUES(${other},'Other') RETURNING id`;await expect(sql`SELECT bar_counter_add_to_tab(${id},${JSON.stringify([{bar_item_id:item,quantity:1}])}::jsonb,${ta})`).rejects.toThrow('Tab not found');});
- it('does not assign previous customer entries to the next server',async()=>{const id=await open();await sql`INSERT INTO bar_visitor_sales(guest_tab_id,total) VALUES(${id},10)`;await sql`SELECT bar_counter_add_to_tab(${id},${JSON.stringify([{bar_item_id:item,quantity:1}])}::jsonb,${ta})`;expect((await sql`SELECT counter_device_id FROM bar_visitor_sales WHERE total=10`)[0].counter_device_id).toBeNull();});
+ it('rejects a tab from a different club',async()=>{const [{id}]=await sql`INSERT INTO bar_guest_tabs(club_id,guest_name) VALUES(${other},'Other') RETURNING id`;await expect(sql`SELECT bar_counter_add_to_tab(${id},${sql.json([{bar_item_id:item,quantity:1}])}::jsonb,${ta})`).rejects.toThrow('Tab not found');});
+ it('does not assign previous customer entries to the next server',async()=>{const id=await open();await sql`INSERT INTO bar_visitor_sales(guest_tab_id,total) VALUES(${id},10)`;await sql`SELECT bar_counter_add_to_tab(${id},${sql.json([{bar_item_id:item,quantity:1}])}::jsonb,${ta})`;expect((await sql`SELECT counter_device_id FROM bar_visitor_sales WHERE total=10`)[0].counter_device_id).toBeNull();});
 });

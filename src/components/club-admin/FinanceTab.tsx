@@ -458,15 +458,23 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         { account: creditAccount, credit: amount, description: desc, member_id: memberId, custom_account_id: txDirection === "income" ? customId : null },
       ];
 
-      await postJournal(clubId, lines, { description: desc });
+      const refs: string[] = [await postJournal(clubId, lines, { description: desc })];
 
       // Auto-charge 3.5% gateway fee for card payments
       if (txMethod === "card" && amount > 0) {
         const gatewayFee = Math.round(amount * GATEWAY_FEE_RATE * 100) / 100;
-        await postJournal(clubId, [
+        refs.push(await postJournal(clubId, [
           { account: "gateway_fees", debit: gatewayFee, description: `Gateway fee (${gatewayPctLabel}) on card payment: ${desc}` },
           { account: "bank_current", credit: gatewayFee, description: `Gateway fee (${gatewayPctLabel}) on card payment: ${desc}` },
-        ]);
+        ]));
+      }
+
+      // Apply the chosen transaction date (post_journal always stamps today).
+      if (txDate && txDate !== format(new Date(), "yyyy-MM-dd")) {
+        for (const ref of refs) {
+          const { error: dErr } = await (sbClient as any).rpc("set_journal_entry_date", { _club_id: clubId, _ref: ref, _date: txDate });
+          if (dErr) toast.error(`Recorded, but date could not be set: ${dErr.message}`);
+        }
       }
 
       if (txRecurring) {

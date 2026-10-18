@@ -25,6 +25,7 @@ export function salesStatistics(lines: SalesLine[], venue: HistoryVenue) {
         const group = groups.get(line.groupId) ?? { id: line.groupId, name: line.name, operator: line.operator, total: 0, lines: [] };
         group.total += line.total;
         group.lines.push(line);
+        group.operator = [...new Set(group.lines.map(entry => entry.operator).filter((name): name is string => !!name))].join(', ') || null;
         groups.set(line.groupId, group);
       }
       return { ...bucket, total: selected.reduce((sum, line) => sum + line.total, 0), groups: [...groups.values()] };

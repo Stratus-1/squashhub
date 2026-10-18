@@ -15,11 +15,11 @@ suite('personal PIN sale attribution',()=>{
    CREATE TABLE bar_guest_tabs(id uuid DEFAULT gen_random_uuid(),club_id uuid,guest_name text,guest_phone text,counter_device_id uuid,operator_name text,status text DEFAULT 'open',token uuid DEFAULT gen_random_uuid());
    CREATE TABLE bar_items(id uuid,club_id uuid,price numeric,active boolean DEFAULT true);
    CREATE TABLE bar_visitor_sales(id uuid DEFAULT gen_random_uuid(),club_id uuid,bar_item_id uuid,quantity int,unit_price numeric,total numeric,payment_method text,visitor_name text,note text,payment_status text,guest_tab_id uuid,counter_device_id uuid);
-   CREATE TABLE bar_tab_entries(id uuid DEFAULT gen_random_uuid());
+   CREATE TABLE bar_tab_entries(id uuid DEFAULT gen_random_uuid(),logged_by uuid,source text,verification_method text,verified_at timestamptz);
    CREATE FUNCTION bar_counter_context(uuid,uuid) RETURNS uuid LANGUAGE sql AS $$ SELECT coalesce((SELECT club_id FROM bar_counter_sessions WHERE token=$1 AND revoked_at IS NULL AND expires_at>now()),$2) $$;
    CREATE FUNCTION get_bar_guest_tab(uuid,uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
    CREATE FUNCTION bar_open_tabs(uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '[]'::jsonb $$;
-   CREATE FUNCTION bar_qr_charge_guest_tab_member(uuid,uuid,uuid,text) RETURNS jsonb LANGUAGE plpgsql AS $$ DECLARE v_sale bar_visitor_sales; BEGIN /* logged_by, source, verification_method, verified_at */ RETURN '{}'::jsonb; END $$;`);
+   CREATE FUNCTION bar_qr_charge_guest_tab_member(uuid,uuid,uuid,text) RETURNS jsonb LANGUAGE plpgsql AS $$ DECLARE v_sale bar_visitor_sales; BEGIN FOR v_sale IN SELECT * FROM bar_visitor_sales WHERE guest_tab_id=$1 LOOP INSERT INTO bar_tab_entries(logged_by, source, verification_method, verified_at) VALUES($3, 'qr', 'otp', now()); END LOOP; RETURN '{}'::jsonb; END $$;`);
   await sql.unsafe(readFileSync('drizzle/migrations/0182_counter_sale_personal_pin_attribution.sql','utf8'));
   await sql`INSERT INTO bar_counter_devices VALUES(${a},${club},'Server A',true),(${b},${club},'Server B',true)`;
   await sql`INSERT INTO bar_counter_sessions(device_id,club_id,token) VALUES(${a},${club},${ta}),(${b},${club},${tb})`;
@@ -36,6 +36,7 @@ suite('personal PIN sale attribution',()=>{
   expect(await sql`SELECT counter_device_id,counter_operator_name,total::float FROM bar_visitor_sales ORDER BY counter_operator_name`).toEqual([{counter_device_id:a,counter_operator_name:'Server A',total:22},{counter_device_id:b,counter_operator_name:'Server B',total:22}]);
  });
  it('rejects club-only admin fallback without personal PIN',async()=>{await expect(sql`SELECT bar_counter_open_tab('Guest',NULL,${club})`).rejects.toThrow('personal PIN');});
+ it('member conversion copies each original counter operator',async()=>{const id=await open();await sql`SELECT bar_counter_add_to_tab(${id},${sql.json([{bar_item_id:item,quantity:1}])}::jsonb,${ta})`;await sql`SELECT bar_qr_charge_guest_tab_member(${id},NULL,${b},'test')`;expect((await sql`SELECT counter_operator_id,counter_operator_name FROM bar_tab_entries ORDER BY verified_at DESC LIMIT 1`)[0]).toEqual({counter_operator_id:a,counter_operator_name:'Server A'});});
  it('rejects revoked sessions',async()=>{await sql`UPDATE bar_counter_sessions SET revoked_at=now() WHERE token=${ta}`;await expect(open()).rejects.toThrow('personal PIN');});
  it('rejects expired sessions',async()=>{await sql`UPDATE bar_counter_sessions SET expires_at=now()-interval '1 second' WHERE token=${ta}`;await expect(open()).rejects.toThrow('personal PIN');});
  it('rejects disabled named credentials',async()=>{await sql`UPDATE bar_counter_devices SET active=false WHERE id=${a}`;await expect(open()).rejects.toThrow('personal PIN');});

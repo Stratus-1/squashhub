@@ -1,4 +1,3 @@
-### 2026-10-18 — Separate shop trading accounts
 ### 2026-10-18 — Counter serving identity missing on sale entries
 - Counter writes trusted a client name and later additions stamped device identity onto older sales. Now new counter sales derive the allocated named PIN identity from the validated session, preserve each entry through handovers and member-account conversion, and expose the serving name in open tabs and sales drill-through. No historical name guessing or payment changes.
 

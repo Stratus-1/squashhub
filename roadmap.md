@@ -1,5 +1,9 @@
 # Roadmap
 
+## Self-opened member counter tabs
+- [ ] Connect member Open tab to the shared tab lifecycle, immediately visible on the counter as In-app · Self-opened; preserve payments and personal staff PINs.
+- [ ] Test member/club isolation, duplicate/retry safety and automatic counter visibility; no real sales or publication.
+
 ## Tournament rescheduling ownership error
 - [x] Reproduced Marnus's new error with the actual booking ownership trigger, including restoration of an ownerless reserved slot.
 - [x] Applied migration 0178 with fixture-bound authority and unchanged ownerless-hold restoration; 24 focused checks passed, hosted definition verified and Marnus's booking unchanged. Actual member UI mutation unverified to avoid moving live games; no frontend publication required.

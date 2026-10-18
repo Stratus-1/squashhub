@@ -22753,6 +22753,8 @@ export type Database = {
         | "bar_stock_loss"
         | "bar_stock_gain"
         | "bar_stock_on_hand"
+        | "shop_income"
+        | "shop_expense"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -22934,6 +22936,8 @@ export const Constants = {
         "bar_stock_loss",
         "bar_stock_gain",
         "bar_stock_on_hand",
+        "shop_income",
+        "shop_expense",
       ],
       integration_provider: [
         "strava",

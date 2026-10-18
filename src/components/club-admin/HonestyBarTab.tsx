@@ -118,6 +118,21 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
+  const { data: costingSettings } = useQuery({
+    queryKey: ["bar-costing-settings-list", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_bar_settings")
+        .select("costing_enabled")
+        .eq("club_id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { costing_enabled: boolean | null } | null;
+    },
+    enabled: !!clubId,
+  });
+  const costingOn = !!costingSettings?.costing_enabled;
+
+
   const { data: madeToOrderSold = [] } = useQuery({
     queryKey: ["bar-made-to-order-sold", clubId],
     queryFn: async () => {

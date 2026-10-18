@@ -20980,6 +20980,14 @@ export type Database = {
         Args: { p_token: string }
         Returns: boolean
       }
+      income_statement_sale_costs: {
+        Args: { _club: string; _from: string; _to: string }
+        Returns: {
+          cogs: number
+          division: string
+          uncosted_lines: number
+        }[]
+      }
       invite_change_payment_method: {
         Args: { p_token: string; p_verify: string }
         Returns: Json
@@ -22775,6 +22783,8 @@ export type Database = {
         | "bar_stock_on_hand"
         | "shop_income"
         | "shop_expense"
+        | "bar_cost_of_sales"
+        | "shop_cost_of_sales"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -22958,6 +22968,8 @@ export const Constants = {
         "bar_stock_on_hand",
         "shop_income",
         "shop_expense",
+        "bar_cost_of_sales",
+        "shop_cost_of_sales",
       ],
       integration_provider: [
         "strava",

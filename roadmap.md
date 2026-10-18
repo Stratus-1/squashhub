@@ -1,5 +1,10 @@
 # Roadmap
 
+## Income statement trading-cost basis
+- [ ] Add Purchases / Cost of sales reporting using historical average-cost sale snapshots, with independent Bar/Shop gross profit and allocated direct costs.
+- [ ] Add Cost of sales — Bar / Shop expense accounts to journal entry choices; preserve balanced postings and avoid double-counting purchases or direct costs.
+- [ ] Test calculations and verify income-statement basis switching without real financial writes or publication.
+
 ## Counter transaction serving identity
 - [x] Applied 0182: counter-opened tabs and new Bar/Shop sale lines derive the named PIN credential from the valid session, ignoring client names. Member-account conversion retains each original credential/name; handovers never overwrite previous lines.
 - [x] Open tabs and sales drill-through show per-entry operators; multi-server summaries include all recorded names. 26 focused checks passed; hosted member-copy/display definitions verified and synthetic Riverside admin view showed both operators. Build OK. Jan's older two sales have no recorded credential and were not guessed/backfilled; self-service entries without a serving operator remain explicitly unrecorded. No real sale/payment, hardware operation or publication; live staff-PIN transaction remains unverified.

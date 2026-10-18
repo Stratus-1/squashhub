@@ -1,3 +1,6 @@
+### 2026-10-18 — Income statement Bar/Shop cost basis
+- Added Purchases / Cost of sales report basis and two division direct-cost expense accounts, including custom-account roll-up choices for allocated salaries. COGS reads historical sale cost snapshots under club finance authority; report substitution excludes purchases on COGS basis and counts allocated costs once. Missing costs are flagged; historical journals remain unchanged.
+
 ### 2026-10-18 — Counter serving identity missing on sale entries
 - Counter writes trusted a client name and later additions stamped device identity onto older sales. Now new counter sales derive the allocated named PIN identity from the validated session, preserve each entry through handovers and member-account conversion, and expose the serving name in open tabs and sales drill-through. No historical name guessing or payment changes.
 

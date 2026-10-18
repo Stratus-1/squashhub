@@ -2,7 +2,7 @@
 
 ## Cost of sales account categories
 - [x] Add Bar/Shop cost-of-sales category choices for named custom accounts, retaining Expense posting and existing transactions; remove the mistaken standalone choices from account creation/manual expense selection.
-- [ ] Verify category choices and named-account reporting regressions without live account/transaction writes; no publication.
+- [x] 23 focused checks passed; authenticated Riverside Salaries dialog verified both category choices and cancelled without saving. Preview build OK. Full saved-account-to-statement UI flow remains unverified because live financial writes were not requested; no publication.
 
 ## Grouped income statement
 - [x] Show primary income, Bar and Shop gross profit with item/amount lines; trading and allocated direct costs excluded from general expenses, CSV/print consistent. Existing Bar/Shop direct-cost GL categories retained; no ledger writes.

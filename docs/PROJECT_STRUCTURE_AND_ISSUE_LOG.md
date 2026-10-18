@@ -3369,7 +3369,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ## 2026-10-18 — Cost of sales must be an account category
 - Added nullable reporting classifications to custom accounts, exposed as Cost of sales — Bar / Shop in Category; named accounts retain normal Expense posting. Income statements resolve custom IDs and list account names under the respective gross-profit section, not general expenses. Legacy direct-cost roll-ups remain readable; no historical journals or accounts reclassified.
-- Focused category/allocation regression checks and read-only authenticated account dialog verification cover this change. Publication and live account saves are not part of this correction.
+- Verification: 23 focused checks passed; eight optional PostgreSQL cost-report checks skipped. Authenticated Riverside Salaries dialog supports both categories and was cancelled without saving; preview build OK. Full saved-account-to-statement UI flow remains unverified because live financial writes were not requested. No publication, journal writes or existing-account reclassification.
 
 ## 2026-10-18 — Exit counter hidden after personal-PIN redirect
 - Exit was guarded by `!code`, but every serving route now requires a QR code. Exit counter mode is available on the board and PIN screen, clears the local serving session/cache and returns to the customer menu. End shift still stays on the PIN screen. Neither action closes the bar or settles tabs.

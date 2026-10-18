@@ -22354,6 +22354,10 @@ export type Database = {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean
       }
+      set_journal_entry_date: {
+        Args: { _club_id: string; _date: string; _ref: string }
+        Returns: undefined
+      }
       set_member_credit_allowed: {
         Args: { _amount: number; _club_id: string; _club_member_id?: string }
         Returns: Json

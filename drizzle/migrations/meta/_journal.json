@@ -1338,6 +1338,13 @@
       "when": 1792334085056,
       "tag": "0190_approve_recurring_transaction",
       "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1792334477461,
+      "tag": "0191_set_journal_entry_date",
+      "breakpoints": true
     }
   ]
 }

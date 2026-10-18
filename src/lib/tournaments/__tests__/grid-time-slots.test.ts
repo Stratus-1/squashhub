@@ -9,7 +9,7 @@ describe("gridTimeSlots snaps game starts to the club booking grid", () => {
     expect(gridTimeSlots("18:10", "21:00", 35, 45)).toEqual(["18:45", "19:30", "20:15"]);
   });
   it("drops a last slot where the match would run past the window end", () => {
-    expect(gridTimeSlots("18:00", "20:00", 35, 45)).toEqual(["18:00", "18:45", "19:30"]);
+    expect(gridTimeSlots("18:00", "20:00", 35, 45)).toEqual(["18:00", "18:45"]);
   });
   it("falls back to plain timeSlots when the grid fits nothing", () => {
     expect(gridTimeSlots("18:00", "18:40", 35, 45)).toEqual(timeSlots("18:00", "18:40", 35, 0));

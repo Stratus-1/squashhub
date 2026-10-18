@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Income statement trading-cost basis
-- [ ] Add Purchases / Cost of sales reporting using historical average-cost sale snapshots, with independent Bar/Shop gross profit and allocated direct costs.
-- [ ] Add Cost of sales — Bar / Shop expense accounts to journal entry choices; preserve balanced postings and avoid double-counting purchases or direct costs.
-- [ ] Test calculations and verify income-statement basis switching without real financial writes or publication.
+- [x] Added Purchases / Cost of sales reporting using historical average-cost sale snapshots, with independent Bar/Shop gross profit and allocated direct costs. Cost-of-sales basis replaces purchase expenses in the report only; missing costs are visibly provisional.
+- [x] Applied 0183 with Cost of sales — Bar / Shop expense accounts and a finance-authorized club-scoped cost report; existing custom-account roll-ups allow salary allocation. No ledger reposting or historical transaction changes.
+- [x] 27 focused checks passed, including eight disposable PostgreSQL checks; authenticated Riverside basis switching and both expense account options verified without submitting transactions. Preview build OK, not published. Riverside has 69 sale lines without recorded cost, so cost-based results are explicitly provisional.
 
 ## Counter transaction serving identity
 - [x] Applied 0182: counter-opened tabs and new Bar/Shop sale lines derive the named PIN credential from the valid session, ignoring client names. Member-account conversion retains each original credential/name; handovers never overwrite previous lines.

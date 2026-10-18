@@ -1233,6 +1233,13 @@
       "when": 1792277086013,
       "tag": "0175_bar_tab_operator_name",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1792323524212,
+      "tag": "0176_champ_reschedule_stable_booking_identity",
+      "breakpoints": true
     }
   ]
 }

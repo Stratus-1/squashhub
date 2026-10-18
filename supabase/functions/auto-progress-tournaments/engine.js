@@ -7007,17 +7007,6 @@ function timeSlots(from, to, matchMinutes, breakMinutes = 0) {
     out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
   return out;
 }
-function gridTimeSlots(from, to, matchMinutes, slotMinutes, breakMinutes = 0) {
-  if (!from || !to || !(matchMinutes > 0) || !(slotMinutes > 0))
-    return timeSlots(from, to, matchMinutes, breakMinutes);
-  const start = mins(from.slice(0, 5));
-  const end = mins(to.slice(0, 5));
-  const first = Math.ceil(start / slotMinutes) * slotMinutes;
-  const out = [];
-  for (let t = first;t + matchMinutes <= end; t += slotMinutes)
-    out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
-  return out.length ? out : timeSlots(from, to, matchMinutes, breakMinutes);
-}
 function slotOnlyDraw(categoryKey, entrants, rounds) {
   return generateCategoryDraw({ categoryKey, label: categoryKey, rounds, entrants: Array.from({ length: entrants }, (_, i) => ({ id: `${categoryKey}#${i + 1}`, name: `Position ${i + 1}` })) });
 }
@@ -7306,7 +7295,7 @@ function projectCourtFixtures(i) {
       roundWindows,
       roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStage(champ, arch, Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x, k) => k === 0 ? null : x)])),
       courts: courtsAll,
-      times: gridTimeSlots(a.start_time, a.end_time, dur, Number(i.slotMinutes) || 0, Number(a.default_break_minutes) || 0),
+      times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0),
       matchMinutes: dur,
       restMinutes: Number(plan?.scheduling?.rest ?? a.default_break_minutes) || 0,
       busy
@@ -7404,18 +7393,17 @@ function projectCourtFixtures(i) {
 // src/lib/tournaments/decided-swiss.ts
 async function loadProjectedFixtures(champ) {
   const sb = supabase;
-  const [courts, arch, entries, matches, rounds, club] = await Promise.all([
+  const [courts, arch, entries, matches, rounds] = await Promise.all([
     sb.from("courts").select("id, name, active").eq("club_id", champ.club_id).order("id"),
     sb.from("tournaments").select("builder_architecture,builder_spec,beta_lifecycle,start_time,end_time,match_duration_minutes,default_break_minutes,court_ids").eq("id", champ.id).maybeSingle(),
     sb.from("club_champs_entries").select("*, club_members:club_member_id(id, name)").eq("champ_id", champ.id),
     sb.from("club_champs_matches").select("*, player_a:player_a_member_id(name), player_b:player_b_member_id(name)").eq("champ_id", champ.id),
-    sb.from("club_champs_rounds").select("*").eq("champ_id", champ.id),
-    sb.from("clubs").select("booking_slot_minutes").eq("id", champ.club_id).maybeSingle()
+    sb.from("club_champs_rounds").select("*").eq("champ_id", champ.id)
   ]);
   const active = (courts.data ?? []).filter((c3) => c3.active !== false);
   const name = (id) => active.find((c3) => Number(c3.id) === id)?.name ?? `Court ${c.id}`;
   try {
-    return projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active, slotMinutes: Number(club.data?.booking_slot_minutes) || 0 }).map((f) => ({ ...f, courtName: name(f.courtId) })).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    return projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active }).map((f) => ({ ...f, courtName: name(f.courtId) })).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   } catch {
     return [];
   }

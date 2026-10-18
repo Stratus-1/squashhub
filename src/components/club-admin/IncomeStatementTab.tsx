@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
@@ -12,7 +12,9 @@ import { cn } from "@/lib/utils";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
 
-import { divisionMargins, type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "@/lib/finance/division-margin";
+import { type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "@/lib/finance/division-margin";
+
+import { groupedIncome } from "@/lib/finance/grouped-income";
 
 interface AccountMeta {
   label: string;
@@ -72,10 +74,10 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     queryFn: async () => {
       const fromIso = new Date(from + "T00:00:00+02:00").toISOString();
       const toIso = new Date(to + "T23:59:59.999+02:00").toISOString();
-      const allEntries: { account: string; debit: number; credit: number; created_at: string; journal_ref: string }[] = [];
+      const allEntries: { account: string; debit: number; credit: number; created_at: string; journal_ref: string; description: string | null }[] = [];
       for (let offset = 0; ; offset += 1000) {
       const { data, error } = await fromExt("club_journal_entries")
-        .select("account, debit, credit, created_at, journal_ref")
+        .select("account, debit, credit, created_at, journal_ref, description")
         .eq("club_id", clubId)
         .gte("created_at", fromIso)
         .lte("created_at", toIso).order("id").range(offset, offset + 999);
@@ -126,44 +128,13 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       return data ?? [];
     },
   });
-  const margins = divisionMargins(entries || [], hasShop, basis, saleCosts, stockPurchases);
+  const report = groupedIncome(entries || [], accounts, hasShop, basis, saleCosts, stockPurchases);
+  const margins = report.divisions;
+  const { netProfit } = report;
   const missingCosts = basis === "cost_of_sales" ? margins.reduce((sum, row) => sum + row.uncostedLines, 0) : 0;
   const reportLoading = isLoading || purchasesLoading || (basis === "cost_of_sales" && costsLoading);
   const reportError = ledgerError || purchasesError || (basis === "cost_of_sales" && costsError);
   const basisLabel = basis === "purchases" ? "Purchases" : "Cost of sales";
-
-  const { incomeRows, expenseRows, totalIncome, totalExpense, netProfit } = useMemo(() => {
-    const tally: Record<string, { debit: number; credit: number }> = {};
-    for (const e of (entries || []) as any[]) {
-      if (!tally[e.account]) tally[e.account] = { debit: 0, credit: 0 };
-      tally[e.account].debit += Number(e.debit || 0);
-      tally[e.account].credit += Number(e.credit || 0);
-    }
-    const incomeRows: { account: string; label: string; amount: number }[] = [];
-    const expenseRows: { account: string; label: string; amount: number }[] = [];
-    for (const [account, meta] of Object.entries(accounts)) {
-      // Income statement only shows Income & Expense accounts (P&L).
-      // Skip balance sheet accounts (Assets like Bank/Debtors, Liabilities like Creditors).
-      if (meta.category !== "Income" && meta.category !== "Expense") continue;
-      // The alternate report replaces purchase expenses; it never reposts the ledger.
-      if (account === "bar_expense" || account === "shop_expense") continue;
-      const t = tally[account] || { debit: 0, credit: 0 };
-      // Income: credit - debit. Expense: debit - credit.
-      const amt = meta.category === "Income" ? t.credit - t.debit : t.debit - t.credit;
-      if (Math.abs(amt) < 0.005) continue;
-      const row = { account, label: meta.label, amount: amt };
-      if (meta.category === "Income") incomeRows.push(row);
-      else expenseRows.push(row);
-    }
-    for (const row of margins) {
-      expenseRows.push({ account: `${row.division}_trading_cost`, label: `${row.division === "shop" ? "Shop" : "Bar"} ${basis === "purchases" ? "Stock Purchases" : "Cost of Sales — Items"}`, amount: row.tradingCost });
-    }
-    incomeRows.sort((a, b) => b.amount - a.amount);
-    expenseRows.sort((a, b) => b.amount - a.amount);
-    const totalIncome = incomeRows.reduce((s, r) => s + r.amount, 0);
-    const totalExpense = expenseRows.reduce((s, r) => s + r.amount, 0);
-    return { incomeRows, expenseRows, totalIncome, totalExpense, netProfit: totalIncome - totalExpense };
-  }, [entries, accounts, basis, saleCosts, hasShop, stockPurchases]);
 
   const exportCsv = () => {
     const lines: string[] = [];
@@ -173,19 +144,23 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     lines.push(`Trading-cost basis,${basisLabel}`);
     if (missingCosts) lines.push(`Provisional costs,${missingCosts} sale lines have no recorded cost`);
     lines.push("");
-    lines.push("INCOME");
-    lines.push(`Account,Amount (${currencyCode})`);
-    incomeRows.forEach(r => lines.push(`"${r.label}",${r.amount.toFixed(2)}`));
-    lines.push(`Total Income,${totalIncome.toFixed(2)}`);
+    const csvRow = (label: string, amount: number) => lines.push(`"${label.replaceAll('"', '""')}",${amount.toFixed(2)}`);
+    lines.push(`Item,Amount (${currencyCode})`, "PRIMARY INCOME");
+    report.primary.forEach(row => csvRow(row.label, row.amount));
+    csvRow("Primary gross income", report.primaryTotal);
+    for (const row of margins) {
+      lines.push("", row.division === "shop" ? "SHOP" : "BAR");
+      csvRow("Sales", row.sales);
+      csvRow(`Less: ${basis === "purchases" ? "Stock purchases" : "Cost of sales — Items"}`, -row.tradingCost);
+      row.allocated.forEach(cost => csvRow(`Less: ${cost.label}`, -cost.amount));
+      csvRow("Gross profit / (loss)", row.profit);
+    }
     lines.push("");
-    lines.push("EXPENSES");
-    lines.push(`Account,Amount (${currencyCode})`);
-    expenseRows.forEach(r => lines.push(`"${r.label}",${r.amount.toFixed(2)}`));
-    lines.push(`Total Expenses,${totalExpense.toFixed(2)}`);
-    lines.push("");
-    lines.push(`Net Profit / (Loss),${netProfit.toFixed(2)}`);
-    lines.push("", `DIVISION GROSS PROFIT (${basisLabel.toUpperCase()} BASIS)`, `Division,Sales,${basisLabel},Allocated direct costs,Gross profit,Margin (%)`);
-    margins.forEach(row => lines.push(`${row.division},${row.sales.toFixed(2)},${row.tradingCost.toFixed(2)},${row.directCosts.toFixed(2)},${row.profit.toFixed(2)},${row.margin?.toFixed(1) ?? ""}`));
+    csvRow("Total gross income", report.grossIncome);
+    lines.push("", "GENERAL EXPENSES");
+    report.expenses.forEach(row => csvRow(row.label, row.amount));
+    csvRow("Total general expenses", report.generalExpenses);
+    csvRow("Net profit / (loss)", netProfit);
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -252,63 +227,39 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       ) : (
         <div className="space-y-4">
           {missingCosts > 0 && <p role="status" className="text-xs text-destructive">Provisional: {missingCosts} sale lines have no recorded item cost. Gross profit and net profit may be overstated.</p>}
-          <div className="overflow-x-auto border rounded-lg">
+          <section className="border rounded-lg overflow-hidden" aria-label="Primary income">
+            <h4 className="px-3 py-2 bg-muted border-b text-xs font-bold">Primary income</h4>
             <table className="w-full text-xs">
-              <caption className="text-left px-3 py-2 font-semibold">Division gross profit — {basisLabel.toLowerCase()} basis</caption>
-              <thead className="bg-muted"><tr>{["Division", "Sales", basisLabel, "Allocated direct costs", "Gross profit / (loss)", "Margin"].map(label => <th key={label} className="px-3 py-2 text-left whitespace-nowrap">{label}</th>)}</tr></thead>
-              <tbody>{margins.map(row => <tr key={row.division} className="border-t">
-                <th className="px-3 py-2 text-left">{row.division === "shop" ? "Shop" : "Bar"}</th>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.sales)}</td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.tradingCost)}</td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.directCosts)}</td>
-                <td className={cn("px-3 py-2 tabular-nums whitespace-nowrap", row.profit < 0 && "text-destructive")}>{money(row.profit)}</td>
-                <td className="px-3 py-2 tabular-nums">{row.margin === null ? "—" : `${row.margin.toFixed(1)}%`}</td>
-              </tr>)}</tbody>
+              <thead><tr className="border-b"><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-right">Amount ({currencySymbol})</th></tr></thead>
+              <tbody>
+                {report.primary.map(row => <tr key={row.label} className="border-b"><td className="px-3 py-2">{row.label}</td><td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(row.amount)}</td></tr>)}
+                <tr className="bg-muted/40 font-bold"><th className="px-3 py-2 text-left">Primary gross income</th><td className="px-3 py-2 text-right tabular-nums">{money(report.primaryTotal)}</td></tr>
+              </tbody>
             </table>
-          </div>
-          {/* INCOME */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="px-3 py-2 bg-green-600/10 border-b flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-green-700 dark:text-green-400">Income</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount ({currencySymbol})</span>
-            </div>
-            {incomeRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground p-3">No income in this period.</p>
-            ) : (
-              incomeRows.map(r => (
-                <div key={r.account} className="grid grid-cols-[1fr_140px] px-3 py-2 text-xs items-center border-b last:border-b-0">
-                  <span className="font-medium">{r.label}</span>
-                  <span className="text-right tabular-nums text-green-600 font-medium">{money(r.amount)}</span>
-                </div>
-              ))
-            )}
-            <div className="grid grid-cols-[1fr_140px] px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
-              <span>Total Income</span>
-              <span className="text-right tabular-nums text-green-700">{money(totalIncome)}</span>
-            </div>
-          </div>
-
-          {/* EXPENSES */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="px-3 py-2 bg-destructive/10 border-b flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-destructive">Expenses</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Amount ({currencySymbol})</span>
-            </div>
-            {expenseRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground p-3">No expenses in this period.</p>
-            ) : (
-              expenseRows.map(r => (
-                <div key={r.account} className="grid grid-cols-[1fr_140px] px-3 py-2 text-xs items-center border-b last:border-b-0">
-                  <span className="font-medium">{r.label}</span>
-                  <span className="text-right tabular-nums text-destructive font-medium">{money(r.amount)}</span>
-                </div>
-              ))
-            )}
-            <div className="grid grid-cols-[1fr_140px] px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
-              <span>Total Expenses</span>
-              <span className="text-right tabular-nums text-destructive">{money(totalExpense)}</span>
-            </div>
-          </div>
+          </section>
+          {margins.map(row => <section key={row.division} className="border rounded-lg overflow-hidden" aria-label={row.division === "shop" ? "Shop gross profit" : "Bar gross profit"}>
+            <h4 className="px-3 py-2 bg-muted border-b text-xs font-bold">{row.division === "shop" ? "Shop" : "Bar"}</h4>
+            <table className="w-full text-xs">
+              <thead><tr className="border-b"><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-right">Amount ({currencySymbol})</th></tr></thead>
+              <tbody>
+                <tr className="border-b"><td className="px-3 py-2">Sales</td><td className="px-3 py-2 text-right tabular-nums">{money(row.sales)}</td></tr>
+                <tr className="border-b"><td className="px-3 py-2">Less: {basis === "purchases" ? "Stock purchases" : "Cost of sales — Items"}</td><td className="px-3 py-2 text-right tabular-nums">{money(-row.tradingCost)}</td></tr>
+                {row.allocated.map(cost => <tr key={cost.label} className="border-b"><td className="px-3 py-2 break-words">Less: {cost.label}</td><td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(-cost.amount)}</td></tr>)}
+                <tr className="bg-muted/40 font-bold"><th className="px-3 py-2 text-left">Gross profit / (loss){row.margin === null ? "" : ` · ${row.margin.toFixed(1)}%`}</th><td className={cn("px-3 py-2 text-right tabular-nums whitespace-nowrap", row.profit < 0 && "text-destructive")}>{money(row.profit)}</td></tr>
+              </tbody>
+            </table>
+          </section>)}
+          <div className="flex items-center justify-between gap-3 border-y py-3 font-bold text-sm"><span>Total gross income</span><span className="tabular-nums whitespace-nowrap">{money(report.grossIncome)}</span></div>
+          <section className="border rounded-lg overflow-hidden" aria-label="General expenses">
+            <h4 className="px-3 py-2 bg-muted border-b text-xs font-bold">General expenses</h4>
+            <table className="w-full text-xs">
+              <thead><tr className="border-b"><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-right">Amount ({currencySymbol})</th></tr></thead>
+              <tbody>
+                {report.expenses.map(row => <tr key={row.label} className="border-b"><td className="px-3 py-2">{row.label}</td><td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(row.amount)}</td></tr>)}
+                <tr className="bg-muted/40 font-bold"><th className="px-3 py-2 text-left">Total general expenses</th><td className="px-3 py-2 text-right tabular-nums">{money(report.generalExpenses)}</td></tr>
+              </tbody>
+            </table>
+          </section>
 
           {/* NET PROFIT */}
           <div className={cn(

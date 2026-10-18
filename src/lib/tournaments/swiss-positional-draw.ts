@@ -265,23 +265,6 @@ export function timeSlots(from: string | null | undefined, to: string | null | u
   return out;
 }
 
-/**
- * Start times aligned to the club's booking grid: the first start is the first
- * grid boundary at or after `from`, then every `slotMinutes`. A match must fit
- * before `to`. Falls back to `timeSlots` when no grid time works, so a club
- * without a sensible grid still gets its games scheduled.
- */
-export function gridTimeSlots(from: string | null | undefined, to: string | null | undefined, matchMinutes: number, slotMinutes: number, breakMinutes = 0): string[] {
-  if (!from || !to || !(matchMinutes > 0) || !(slotMinutes > 0)) return timeSlots(from, to, matchMinutes, breakMinutes);
-  const start = mins(from.slice(0, 5));
-  const end = mins(to.slice(0, 5));
-  const first = Math.ceil(start / slotMinutes) * slotMinutes;
-  const out: string[] = [];
-  for (let t = first; t + matchMinutes <= end; t += slotMinutes)
-    out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
-  return out.length ? out : timeSlots(from, to, matchMinutes, breakMinutes);
-}
-
 /** Slot-only draw (players unknown) for scheduling previews of a category. */
 export function slotOnlyDraw(categoryKey: string, entrants: number, rounds: number): CategoryDraw {
   return generateCategoryDraw({ categoryKey, label: categoryKey, rounds, entrants: Array.from({ length: entrants }, (_, i) => ({ id: `${categoryKey}#${i + 1}`, name: `Position ${i + 1}` })) });

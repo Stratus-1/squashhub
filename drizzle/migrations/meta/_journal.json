@@ -1296,6 +1296,13 @@
       "when": 1792330079552,
       "tag": "0184_member_account_counter_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1792331321732,
+      "tag": "0185_stock_purchase_latest_cost_price",
+      "breakpoints": true
     }
   ]
 }

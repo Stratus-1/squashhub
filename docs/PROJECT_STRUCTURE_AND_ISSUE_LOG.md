@@ -1,3 +1,7 @@
+## 2026-10-18 — Item latest and average cost visibility
+- Item add/edit now shows saved average cost read-only beside current cost in the same purchase units; unknown averages remain blank rather than showing an invented zero. The item list shows known averages too.
+- Purchase receipt now maintains current cost from the new invoice while retaining existing opt-in weighted-average stock application and immutable historical sale snapshots. No historical costs, stock, or invoices backfilled.
+
 ## 2026-10-18 — Capitalised stock purchases missing from income statement
 - Nelspruit's R2,705.76 purchase expense was correctly reclassified into stock, but Purchases-basis reporting only read expense balances and consequently showed zero.
 - Report-only reconciliation now includes invoice-linked stock debits and explicit expense-to-stock transfers, excluding stocktakes. Bar/Shop trading rows remain visible at zero and Cost of sales switches to historical sold-item snapshots; bank, stock and journals are unchanged.

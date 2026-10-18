@@ -2282,6 +2282,11 @@ export default function Bookings() {
                   const slotDateTime = new Date(`${dateStr}T${time}:00`);
                   const slotEndDateTime = new Date(slotDateTime.getTime() + slotMinutes * 60000);
                   const isPastSlot = slotEndDateTime <= new Date();
+                  // A booking that started on an earlier row (e.g. a 35-min champs
+                  // game at 19:10 seen from the 19:30 row) is a continuation — mark
+                  // it as taken without repeating the players' names.
+                  const isContinuation = !!booking
+                    && timeToMinutes(String((booking as any).start_time || "").slice(0, 5)) < timeToMinutes(time);
                   const isPeak = isPeakSlot(selectedDate, time, myClub);
 
                   return (

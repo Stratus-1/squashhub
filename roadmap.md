@@ -1,7 +1,10 @@
 # Roadmap
 
+## Counter exit control
+- [ ] Show Exit counter mode on the named-PIN board and PIN screen; clear local serving session without closing the bar or tabs.
+
 ## Automatic counter and customer updates
- - [x] Refresh counter tabs/orders and customer payment status automatically, including return-to-page and reconnect.
+- [x] Refresh counter tabs/orders and customer payment status automatically, including return-to-page and reconnect.
 - [x] Twenty-one focused tests passed; isolated named-PIN browser checks show new tabs and customer card receipts without reload. Preview build OK; no live payments or publication. Physical phone/live settlement remains unverified.
 
 ## Pending counter payment actions

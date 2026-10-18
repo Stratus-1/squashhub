@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "@/lib/finance/division-margin";
 
 import { groupedIncome } from "@/lib/finance/grouped-income";
+import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
 
 interface AccountMeta {
   label: string;
@@ -31,6 +32,7 @@ interface Props {
 type Preset = "this_month" | "last_month" | "qtd" | "ytd" | "last_12" | "custom";
 
 export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
+  const { data: customAccounts = [], isLoading: accountsLoading, isError: accountsError } = useClubGLAccounts(clubId);
   const [preset, setPreset] = useState<Preset>("ytd");
   const [basis, setBasis] = useState<TradingCostBasis>("purchases");
   const { format: money, symbol: currencySymbol, code: currencyCode } = useClubCurrency();
@@ -74,10 +76,10 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     queryFn: async () => {
       const fromIso = new Date(from + "T00:00:00+02:00").toISOString();
       const toIso = new Date(to + "T23:59:59.999+02:00").toISOString();
-      const allEntries: { account: string; debit: number; credit: number; created_at: string; journal_ref: string; description: string | null }[] = [];
+      const allEntries: { account: string; debit: number; credit: number; created_at: string; journal_ref: string; description: string | null; custom_account_id: string | null }[] = [];
       for (let offset = 0; ; offset += 1000) {
       const { data, error } = await fromExt("club_journal_entries")
-        .select("account, debit, credit, created_at, journal_ref, description")
+        .select("account, debit, credit, created_at, journal_ref, description, custom_account_id")
         .eq("club_id", clubId)
         .gte("created_at", fromIso)
         .lte("created_at", toIso).order("id").range(offset, offset + 999);
@@ -128,12 +130,12 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       return data ?? [];
     },
   });
-  const report = groupedIncome(entries || [], accounts, hasShop, basis, saleCosts, stockPurchases);
+  const report = groupedIncome(entries || [], accounts, hasShop, basis, saleCosts, stockPurchases, customAccounts);
   const margins = report.divisions;
   const { netProfit } = report;
   const missingCosts = basis === "cost_of_sales" ? margins.reduce((sum, row) => sum + row.uncostedLines, 0) : 0;
-  const reportLoading = isLoading || purchasesLoading || (basis === "cost_of_sales" && costsLoading);
-  const reportError = ledgerError || purchasesError || (basis === "cost_of_sales" && costsError);
+  const reportLoading = accountsLoading || isLoading || purchasesLoading || (basis === "cost_of_sales" && costsLoading);
+  const reportError = accountsError || ledgerError || purchasesError || (basis === "cost_of_sales" && costsError);
   const basisLabel = basis === "purchases" ? "Purchases" : "Cost of sales";
 
   const exportCsv = () => {

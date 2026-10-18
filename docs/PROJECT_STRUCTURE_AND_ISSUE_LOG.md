@@ -1,3 +1,6 @@
+### 2026-10-18 — Counter serving identity missing on sale entries
+- Counter writes trusted a client name and later additions stamped device identity onto older sales. Now new counter sales derive the allocated named PIN identity from the validated session, preserve each entry through handovers and member-account conversion, and expose the serving name in open tabs and sales drill-through. No historical name guessing or payment changes.
+
 ### 2026-10-18 — Separate shop trading accounts
 - Added Shop Sales / Shop Purchases standard accounts and prospective club-scoped member/visitor routing, preserving payment gates and receipt references. New purchase invoices post balanced division expense/payment or payable journals alongside unchanged stock costing.
 - Income statement/CSV show independent purchase-based Bar/Shop margins; paginated journal reads avoid partial totals. No historical reclassification or reposting because bank/manual entries may already cover them.

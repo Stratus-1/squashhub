@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 
-type TabLine = { name: string | null; quantity: number; total: number };
+type TabLine = { name: string | null; quantity: number; total: number; operator?: string | null; operator_id?: string | null };
 type OpenTab = {
   tab_id: string;
   guest_name: string;
@@ -98,7 +98,7 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
                       <p className="text-xs text-muted-foreground">
                         Opened {fmtWhen(t.opened_at)}
                         {t.guest_phone ? ` · ${t.guest_phone}` : ""}
-                        {t.operator ? ` · served by ${t.operator}` : " · operator unknown"}
+                        {t.operator ? ` · served by ${t.operator}` : " · no counter operator recorded"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -112,7 +112,7 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
                         <p className="text-xs text-muted-foreground">Nothing charged yet.</p>
                       ) : t.lines.map((l, i) => (
                         <div key={i} className="flex justify-between text-xs">
-                          <span>{l.quantity} × {l.name ?? "Item"}</span>
+                          <span>{l.quantity} × {l.name ?? "Item"}<span className="block text-muted-foreground">{l.operator ? `Served by ${l.operator}` : "No counter operator recorded"}</span></span>
                           <span>{money(l.total)}</span>
                         </div>
                       ))}

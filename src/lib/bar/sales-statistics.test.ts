@@ -12,6 +12,11 @@ it('total includes open, closed, member and direct sales once', () => {
   expect(stats.total).toBe(200);
   expect(stats.buckets.map(b => b.total)).toEqual([140, 20, 20, 20]);
 });
+it('a shared tab retains each operator instead of attributing all sales to one server', () => {
+  const stats = salesStatistics([{ ...lines[0], operator: 'Server A' }, { ...lines[1], operator: 'Server B' }], 'both');
+  expect(stats.buckets[0].groups[0].operator).toBe('Server A, Server B');
+  expect(stats.buckets[0].groups[0].lines.map(line => line.operator)).toEqual(['Server A', 'Server B']);
+});
 it('drill-through reconciles groups and item amounts with total', () => {
   const stats = salesStatistics(lines, 'both');
   expect(stats.buckets[0].groups).toHaveLength(1);

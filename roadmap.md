@@ -1,5 +1,9 @@
 # Roadmap
 
+## Counter transaction serving identity
+- [x] Applied 0182: counter-opened tabs and new Bar/Shop sale lines derive the named PIN credential from the valid session, ignoring client names. Member-account conversion retains each original credential/name; handovers never overwrite previous lines.
+- [x] Open tabs and sales drill-through show per-entry operators; multi-server summaries include all recorded names. 26 focused checks passed; hosted member-copy/display definitions verified and synthetic Riverside admin view showed both operators. Build OK. Jan's older two sales have no recorded credential and were not guessed/backfilled; self-service entries without a serving operator remain explicitly unrecorded. No real sale/payment, hardware operation or publication; live staff-PIN transaction remains unverified.
+
 ## Separate shop accounting
 - [x] Added standard Shop Sales / Shop Purchases accounts and prospective member/visitor sale routing; new purchase invoices post balanced division expense/payment or payable entries. Income statement and CSV show separate purchase-based Bar/Shop margins.
 - [x] Confirmed shop items at Riverside and Uitsig; 36 focused tests passed including eight disposable PostgreSQL posting checks. Hosted routing verified; authenticated Riverside income statement displays both divisions, build OK. Historical transactions left unchanged to avoid duplicating manual/bank expenses; no live test sale/purchase or frontend publication.

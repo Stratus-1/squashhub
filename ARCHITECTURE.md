@@ -84,6 +84,8 @@ League associations, seasons, rules, teams/pairs, rounds, fixtures, lineups, ava
 
 ### Billing, payments, and bar
 
+Counter sale attribution resolves the allocated named PIN credential from its valid server-side session; visitor entries keep that credential ID and a name snapshot, copied unchanged into member-account entries. Handovers affect new lines only, not earlier customer or staff sales; client-provided operator names are not authority.
+
 Shop trading uses distinct standard income/expense GL accounts. Sale routing preserves existing receivable/payment timing and grouped receipt idempotency; new stock purchase lines post balanced expense/payment or payable entries keyed by purchase ID alongside unchanged inventory movements. Income-statement division margins use sales less purchases, not optional inventory COGS. Historical transactions are not reclassified or reposted automatically because manual/bank entries may already account for them.
 
 Member fees, fee categories, club subscriptions, platform invoices, mandates, payment sessions, collections, payable batches, ledger entries, bar items, stock, tabs, and visitor sales connect club operations to finance.

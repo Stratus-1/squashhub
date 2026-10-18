@@ -1247,6 +1247,13 @@
       "when": 1792323862491,
       "tag": "0177_bar_counter_restore_pending_payment_method",
       "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1792325065488,
+      "tag": "0178_champ_booking_fixture_ownership_and_hold_restore",
+      "breakpoints": true
     }
   ]
 }

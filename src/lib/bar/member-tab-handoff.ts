@@ -22,6 +22,10 @@ export function takeMemberTabDraft(code: string, tabId: string | null): Record<s
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return Object.fromEntries(Object.entries(parsed).filter(([, qty]) => typeof qty === "number" && Number.isInteger(qty) && qty > 0 && qty <= 50));
+    const cart: Record<string, number> = {};
+    for (const [id, qty] of Object.entries(parsed)) {
+      if (typeof qty === "number" && Number.isInteger(qty) && qty > 0 && qty <= 50) cart[id] = qty;
+    }
+    return cart;
   } catch { return {}; }
 }

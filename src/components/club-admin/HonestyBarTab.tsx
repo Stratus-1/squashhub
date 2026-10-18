@@ -1337,6 +1337,20 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                         )}
                       </div>
                     </div>
+                    {(() => {
+                      const y = selectedItem?.unit_yield || 1;
+                      const c = parseFloat(line.unit_cost) || 0;
+                      if (y <= 1 || selectedItem?.stock_measure === "volume" || c <= 0) return null;
+                      const unit = selectedItem?.unit_label || "tot";
+                      const per = c / y;
+                      return (
+                        <p className="text-[11px] text-muted-foreground -mt-1">
+                          Cost per {unit}: {money(c)} ÷ {y} = <span className="font-medium text-foreground">{money(per)}</span>
+                          {" · "}double {money(per * 2)}
+                        </p>
+                      );
+                    })()}
+                    </div>
                   );
                 })}
               </div>

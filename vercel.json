@@ -1,6 +1,10 @@
 {
   "headers": [
     {
+      "source": "/privacy",
+      "headers": [{ "key": "Content-Type", "value": "text/html; charset=utf-8" }]
+    },
+    {
       "source": "/(.*)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noai, noimageai" }]
     },

@@ -1,0 +1,44 @@
+import { beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest';
+import postgres from 'postgres';
+import { readFileSync } from 'node:fs';
+const port=process.env.COUNTER_ATTRIBUTION_TEST_PORT;
+const suite=port ? describe : describe.skip;
+const club='11111111-1111-1111-1111-111111111111', other='22222222-2222-2222-2222-222222222222';
+const a='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', b='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const ta='aaaaaaaa-1111-1111-1111-111111111111',tb='bbbbbbbb-1111-1111-1111-111111111111';
+const item='cccccccc-1111-1111-1111-111111111111';
+suite('personal PIN sale attribution',()=>{
+ const sql=postgres({host:'127.0.0.1',port:Number(port),database:'counter_attribution_test',username:'lovable',max:1});
+ beforeAll(async()=>{
+  await sql.unsafe(`CREATE TABLE bar_counter_devices(id uuid PRIMARY KEY,club_id uuid,label text,active boolean DEFAULT true);
+   CREATE TABLE bar_counter_sessions(device_id uuid,club_id uuid,token uuid,revoked_at timestamptz,expires_at timestamptz DEFAULT now()+interval '1 day');
+   CREATE TABLE bar_guest_tabs(id uuid DEFAULT gen_random_uuid(),club_id uuid,guest_name text,guest_phone text,counter_device_id uuid,operator_name text,status text DEFAULT 'open',token uuid DEFAULT gen_random_uuid());
+   CREATE TABLE bar_items(id uuid,club_id uuid,price numeric,active boolean DEFAULT true);
+   CREATE TABLE bar_visitor_sales(id uuid DEFAULT gen_random_uuid(),club_id uuid,bar_item_id uuid,quantity int,unit_price numeric,total numeric,payment_method text,visitor_name text,note text,payment_status text,guest_tab_id uuid,counter_device_id uuid);
+   CREATE TABLE bar_tab_entries(id uuid DEFAULT gen_random_uuid());
+   CREATE FUNCTION bar_counter_context(uuid,uuid) RETURNS uuid LANGUAGE sql AS $$ SELECT coalesce((SELECT club_id FROM bar_counter_sessions WHERE token=$1 AND revoked_at IS NULL AND expires_at>now()),$2) $$;
+   CREATE FUNCTION get_bar_guest_tab(uuid,uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+   CREATE FUNCTION bar_open_tabs(uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '[]'::jsonb $$;
+   CREATE FUNCTION bar_qr_charge_guest_tab_member(uuid,uuid,uuid,text) RETURNS jsonb LANGUAGE plpgsql AS $$ DECLARE v_sale bar_visitor_sales; BEGIN /* logged_by, source, verification_method, verified_at */ RETURN '{}'::jsonb; END $$;`);
+  await sql.unsafe(readFileSync('drizzle/migrations/0182_counter_sale_personal_pin_attribution.sql','utf8'));
+  await sql`INSERT INTO bar_counter_devices VALUES(${a},${club},'Server A',true),(${b},${club},'Server B',true)`;
+  await sql`INSERT INTO bar_counter_sessions(device_id,club_id,token) VALUES(${a},${club},${ta}),(${b},${club},${tb})`;
+  await sql`INSERT INTO bar_items VALUES(${item},${club},22,true)`;
+ });
+ beforeEach(async()=>{await sql.unsafe('TRUNCATE bar_guest_tabs,bar_visitor_sales'); await sql.unsafe("UPDATE bar_counter_sessions SET revoked_at=NULL,expires_at=now()+interval '1 day'; UPDATE bar_counter_devices SET active=true");});
+ afterAll(async()=>{await sql.end();});
+ const open=async(token=ta)=>String((await sql`SELECT bar_counter_open_tab('Guest',${token},NULL,NULL,'Forged name')->>'tab_id' AS id`)[0].id);
+ it('opening ignores forged names and stores the PIN owner',async()=>{const id=await open();expect((await sql`SELECT operator_name,counter_device_id FROM bar_guest_tabs WHERE id=${id}`)[0]).toEqual({operator_name:'Server A',counter_device_id:a});});
+ it('two servers retain separate sale identities on one tab',async()=>{
+  const id=await open(); const lines=JSON.stringify([{bar_item_id:item,quantity:1}]);
+  await sql`SELECT bar_counter_add_to_tab(${id},${lines}::jsonb,${ta},NULL,'Spoof')`;
+  await sql`SELECT bar_counter_add_to_tab(${id},${lines}::jsonb,${tb},NULL,'Spoof')`;
+  expect(await sql`SELECT counter_device_id,counter_operator_name,total::float FROM bar_visitor_sales ORDER BY counter_operator_name`).toEqual([{counter_device_id:a,counter_operator_name:'Server A',total:22},{counter_device_id:b,counter_operator_name:'Server B',total:22}]);
+ });
+ it('rejects club-only admin fallback without personal PIN',async()=>{await expect(sql`SELECT bar_counter_open_tab('Guest',NULL,${club})`).rejects.toThrow('personal PIN');});
+ it('rejects revoked sessions',async()=>{await sql`UPDATE bar_counter_sessions SET revoked_at=now() WHERE token=${ta}`;await expect(open()).rejects.toThrow('personal PIN');});
+ it('rejects expired sessions',async()=>{await sql`UPDATE bar_counter_sessions SET expires_at=now()-interval '1 second' WHERE token=${ta}`;await expect(open()).rejects.toThrow('personal PIN');});
+ it('rejects disabled named credentials',async()=>{await sql`UPDATE bar_counter_devices SET active=false WHERE id=${a}`;await expect(open()).rejects.toThrow('personal PIN');});
+ it('rejects a tab from a different club',async()=>{const [{id}]=await sql`INSERT INTO bar_guest_tabs(club_id,guest_name) VALUES(${other},'Other') RETURNING id`;await expect(sql`SELECT bar_counter_add_to_tab(${id},${JSON.stringify([{bar_item_id:item,quantity:1}])}::jsonb,${ta})`).rejects.toThrow('Tab not found');});
+ it('does not assign previous customer entries to the next server',async()=>{const id=await open();await sql`INSERT INTO bar_visitor_sales(guest_tab_id,total) VALUES(${id},10)`;await sql`SELECT bar_counter_add_to_tab(${id},${JSON.stringify([{bar_item_id:item,quantity:1}])}::jsonb,${ta})`;expect((await sql`SELECT counter_device_id FROM bar_visitor_sales WHERE total=10`)[0].counter_device_id).toBeNull();});
+});

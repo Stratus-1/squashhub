@@ -118,20 +118,6 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
-  const { data: costingSettings } = useQuery({
-    queryKey: ["bar-costing-settings-list", clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("club_bar_settings")
-        .select("costing_enabled")
-        .eq("club_id", clubId)
-        .maybeSingle();
-      if (error) throw error;
-      return data as { costing_enabled: boolean | null } | null;
-    },
-    enabled: !!clubId,
-  });
-  const costingOn = !!costingSettings?.costing_enabled;
-
 
   const { data: madeToOrderSold = [] } = useQuery({
     queryKey: ["bar-made-to-order-sold", clubId],
@@ -489,6 +475,19 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
   const [catManagerOpen, setCatManagerOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const { data: customCategories = [] } = useBarCategories(clubId);
+  const { data: costingSettings } = useQuery({
+    queryKey: ["bar-costing-settings-list", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_bar_settings")
+        .select("costing_enabled")
+        .eq("club_id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { costing_enabled: boolean | null } | null;
+    },
+    enabled: !!clubId,
+  });
+  const costingOn = !!costingSettings?.costing_enabled;
   const { divisions } = useBarDivisions(clubId);
   const [form, setForm] = useState(emptyForm());
   const [components, setComponents] = useState<ComponentLine[]>([]);

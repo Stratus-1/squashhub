@@ -104,8 +104,8 @@ suite("tournament linked booking reschedule", () => {
       VALUES('${hold}','${club}',35,'2026-10-20','20:15','21:00','cancelled','Club Championships','Released for tournament match ${match}'); SET ROLE authenticated;`);
     await expect(schedule('2026-10-19','19:30',36)).rejects.toMatchObject({code:'42501'});
     await sql.unsafe('RESET ROLE');
-    await sql.unsafe(readFileSync('supabase/tests/champ-booking-ownership-fix.sql','utf8'));
-    await sql.unsafe(readFileSync('supabase/tests/champ-booking-ownership-fix.sql','utf8'));
+    await sql.unsafe(readFileSync('drizzle/migrations/0178_champ_booking_fixture_ownership_and_hold_restore.sql','utf8'));
+    await sql.unsafe(readFileSync('drizzle/migrations/0178_champ_booking_fixture_ownership_and_hold_restore.sql','utf8'));
     await sql.unsafe('SET ROLE authenticated');
     expect((await schedule('2026-10-19','19:30',36))[0].result.booking_id).toBe(booking);
     expect((await sql`SELECT status FROM bookings WHERE id=${hold}`)[0].status).toBe('active');
@@ -127,5 +127,21 @@ suite("tournament linked booking reschedule", () => {
     await sql.unsafe(`RESET ROLE; UPDATE clubs SET min_booking_balance=20 WHERE id='${club}'; SET ROLE authenticated`);
     await expect(schedule('2026-10-19','19:30',36)).rejects.toMatchObject({code:'P0001'});
     await sql.unsafe(`RESET ROLE; UPDATE clubs SET min_booking_balance=NULL WHERE id='${club}'; SET ROLE authenticated`);
+  });
+  it("keeps genuine court clashes rejected with the ownership fix installed", async () => {
+    await sql.unsafe(`RESET ROLE; INSERT INTO bookings(club_id,court_id,date,start_time,end_time,status) VALUES('${club}',36,'2026-10-19','19:30','20:15','active'); SET ROLE authenticated`);
+    await expect(schedule('2026-10-19','19:30',36)).rejects.toMatchObject({code:'23505'});
+  });
+  it("does not authorize a different club's booking using the tournament id", async () => {
+    await sql.unsafe(`RESET ROLE; INSERT INTO courts VALUES(37,'22222222-2222-2222-2222-222222222222'); SET ROLE authenticated`);
+    await expect(sql`UPDATE bookings SET court_id=37,club_id='22222222-2222-2222-2222-222222222222' WHERE id=${booking}`).rejects.toMatchObject({code:'42501'});
+  });
+  it("reschedules with distinct authentication and member ids", async () => {
+    const user = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+    await sql.unsafe(`RESET ROLE; UPDATE club_members SET user_id='${user}' WHERE id='${player}';
+      CREATE OR REPLACE FUNCTION is_member_owner(uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$ SELECT EXISTS(SELECT 1 FROM public.club_members WHERE id=$1 AND user_id=auth.uid()) $$;
+      SELECT set_config('request.jwt.claim.sub','${user}',false); SET ROLE authenticated`);
+    await schedule('2026-10-19','19:30',36);
+    expect((await sql`SELECT user_id,club_member_id FROM bookings WHERE id=${booking}`)[0]).toEqual({user_id:user,club_member_id:player});
   });
 });

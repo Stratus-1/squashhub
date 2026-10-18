@@ -665,6 +665,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-18 · Marnus follow-up: rescheduling ownership mismatch
+- **Symptom:** after the self-conflict correction, moving Marnus's match failed with Booking member ownership mismatch.
+- **Finding:** the real ownership trigger rejects reactivating the old ownerless Club Championships hold; it also rejects player B moving the player-A-owned fixture. Previous isolated tests did not install that trigger.
+- **Fix:** migration 0178 adds exact club/fixture/participant-validated tournament authority while preserving player A ownership and financial checks. Restoring an unchanged, ownerless hold requires proof it was released for that now-moved fixture. No client flags, broad club_event exemptions or overlap bypasses.
+- **Guard:** tests install actual ownership and overlap triggers, reproduce the error, and cover restored holds, opposing participants, distinct auth/member identities, balance denial, forged owners, club mismatch and real clashes. Hosted readback confirms application; Marnus's fixture remains unchanged. No frontend publication or hardware operation; actual member UI mutation remains unverified to avoid moving live games.
+
 ### 2026-10-15 · Bar/shop scan-to-pay PDF poster
 - **Symptom:** Admin needed a visible poster action in QR setup and printed instructions reflecting cash/swipe and other enabled methods.
 - **Finding:** A PDF was hidden inside Menu QR; its verbose layout could extend into the footer, and online wording did not check supported gateway availability.

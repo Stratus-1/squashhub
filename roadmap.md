@@ -1,5 +1,12 @@
 # Roadmap
 
+## Item current and average cost prices
+- [ ] Explain historical missing sale costs and weighted-average calculation; display saved average beside current cost in item add/edit.
+- [ ] Verify latest invoice cost updates, run costing tests and inspect item edit in preview without stock/sale writes.
+
+## Counter Order action
+- [ ] Add counter-mode Order submission, preserving named PIN attribution and separate payment; requested before the costing follow-up.
+
 ## Income statement stock purchase visibility
 - [x] Include stock-capitalised purchases in Purchases-basis reporting without treating stocktakes as purchases or changing the ledger.
 - [x] 13 focused checks passed; authenticated Riverside/Nelspruit basis switching verified. Nelspruit shows R2,705.76 purchases and R1,746.24 gross profit; COS remains provisional because historical sale costs are missing. No publication or live writes.

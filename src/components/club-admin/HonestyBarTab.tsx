@@ -22,6 +22,7 @@ import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { StockLevelsTab } from "./bar/StockLevelsTab";
 import { CostingTab } from "./bar/CostingTab";
+import { perContainer } from "@/lib/bar-costing";
 import { OpenTabsTab } from "./bar/OpenTabsTab";
 import { ClosedTabsTab } from "./bar/ClosedTabsTab";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
@@ -64,6 +65,7 @@ interface BarItem {
   stock_qty: number;
   low_stock_threshold: number;
   cost_price: number;
+  avg_unit_cost?: number | null;
   barcode?: string | null;
   item_kind?: "stock" | "option" | "special" | "made_to_order" | null;
   stock_parent_id?: string | null;
@@ -781,6 +783,12 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
             <Input type="number" min={0} step={0.01} value={form.cost_price} onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))} placeholder="0.00" />
           </div>
           <div>
+            <Label className="text-xs" htmlFor="item-average-cost">Average cost price per {yieldN > 1 ? form.stock_unit_label : "unit"} (R)</Label>
+            <Input id="item-average-cost" readOnly aria-readonly="true"
+              value={perContainer(editItem?.avg_unit_cost, editItem?.unit_yield || 1)?.toFixed(2) ?? ""}
+              placeholder="Not recorded" className="bg-muted tabular-nums" />
+          </div>
+          <div>
             <Label className="text-xs">Product barcode (optional)</Label>
             <div className="flex gap-1.5">
               <Input value={form.barcode} onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))} inputMode="numeric" className="flex-1" />
@@ -1038,6 +1046,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
                             ? <span className="text-xs text-muted-foreground">{money(item.price)}</span>
                             : <span className="text-xs text-muted-foreground">Sold via options only</span>}
                           {item.cost_price > 0 && <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>}
+                          {kind === "stock" && item.avg_unit_cost != null && <span className="text-xs text-muted-foreground">(average {money(perContainer(item.avg_unit_cost, item.unit_yield || 1) ?? 0)})</span>}
                           {kindBadge(item)}
                           {kind === "made_to_order" ? (
                             <>

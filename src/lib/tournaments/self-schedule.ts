@@ -95,6 +95,41 @@ export function buildSlots(stepMinutes: number, openTime?: string | null, lastSl
   return out;
 }
 
+/**
+ * Club Champs has its own slots: games book into the match-length grid
+ * (e.g. 35 minutes) inside the evening's reserved "Club Championships" holds,
+ * not the club's normal booking slots. Contiguous holds per court merge into
+ * one span; starts are every `durationMinutes` from the span start, and a
+ * start is only offered when the whole match fits inside the span.
+ */
+export function champsSlotStarts(reservations: BookingLike[], durationMinutes: number): Map<number, string[]> {
+  const dur = Math.max(15, durationMinutes);
+  const byCourt = new Map<number, { s: number; e: number }[]>();
+  for (const b of reservations) {
+    if (!isChampsReservation(b) || b.court_id == null || !b.start_time) continue;
+    const s = timeToMinutes(String(b.start_time).slice(0, 5));
+    const e = b.end_time ? timeToMinutes(String(b.end_time).slice(0, 5)) : s + dur;
+    if (!(e > s)) continue;
+    const list = byCourt.get(Number(b.court_id)) ?? [];
+    list.push({ s, e });
+    byCourt.set(Number(b.court_id), list);
+  }
+  const out = new Map<number, string[]>();
+  for (const [courtId, spans] of byCourt) {
+    spans.sort((x, y) => x.s - y.s);
+    const merged: { s: number; e: number }[] = [];
+    for (const sp of spans) {
+      const last = merged[merged.length - 1];
+      if (last && sp.s <= last.e) last.e = Math.max(last.e, sp.e);
+      else merged.push({ ...sp });
+    }
+    const times: string[] = [];
+    for (const sp of merged) for (let t = sp.s; t + dur <= sp.e; t += dur) times.push(minutesToTime(t));
+    out.set(courtId, times);
+  }
+  return out;
+}
+
 export interface BookingLike {
   id?: string;
   court_id?: number | null;

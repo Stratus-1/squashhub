@@ -53,9 +53,9 @@ suite("tournament linked booking reschedule", () => {
   it("reproduces the reported own-booking conflict before the fix", async () => {
     await expect(schedule()).rejects.toMatchObject({code:"23P01"});
     await sql.unsafe("RESET ROLE");
-    await sql.unsafe(readFileSync("supabase/tests/champ-reschedule-fix.sql","utf8"));
+    await sql.unsafe(readFileSync("drizzle/migrations/0176_champ_reschedule_stable_booking_identity.sql","utf8"));
     // Forward migration is idempotent.
-    await sql.unsafe(readFileSync("supabase/tests/champ-reschedule-fix.sql","utf8"));
+    await sql.unsafe(readFileSync("drizzle/migrations/0176_champ_reschedule_stable_booking_identity.sql","utf8"));
   });
   it("retries the same 20 Oct 20:20 slot without a duplicate or self-conflict", async () => {
     expect((await schedule())[0].result.booking_id).toBe(booking);

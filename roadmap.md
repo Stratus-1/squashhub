@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Tournament booking self-conflict
-- [ ] Correct rescheduling upsert identity and restore old reserved slots only after the linked booking moves; preserve permissions and real-clash checks.
-- [ ] Reproduce and verify in disposable PostgreSQL with synthetic bookings; apply the targeted backend correction without moving live fixtures.
+- [x] Correct rescheduling upsert identity and restore old reserved slots only after the linked booking moves; preserve permissions and real-clash checks.
+- [x] Seven disposable PostgreSQL checks passed; migration 0176 applied to the shared backend without moving live fixtures. Actual member UI mutation not performed to avoid changing live games; no frontend publication required.
 
 ## Counter mode lockout regression
 - [x] Make signed-in and QR counter entry require an allocated personal PIN session, with a serving name; revoked sessions return to PIN entry without exposing cached tabs.

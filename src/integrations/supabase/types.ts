@@ -1002,6 +1002,7 @@ export type Database = {
           guest_phone: string | null
           id: string
           opened_at: string
+          opened_source: string
           operator_name: string | null
           payment_confirmed_at: string | null
           payment_confirmed_by_device: string | null
@@ -1020,6 +1021,7 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           opened_at?: string
+          opened_source?: string
           operator_name?: string | null
           payment_confirmed_at?: string | null
           payment_confirmed_by_device?: string | null
@@ -1038,6 +1040,7 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           opened_at?: string
+          opened_source?: string
           operator_name?: string | null
           payment_confirmed_at?: string | null
           payment_confirmed_by_device?: string | null
@@ -21647,6 +21650,10 @@ export type Database = {
             Args: { _code: string; _guest_name: string; _guest_phone?: string }
             Returns: Json
           }
+      open_my_bar_tab: {
+        Args: { _club_id: string; _club_member_id: string }
+        Returns: Json
+      }
       org_descendants: {
         Args: { _org_id: string }
         Returns: {

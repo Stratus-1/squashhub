@@ -1254,6 +1254,13 @@
       "when": 1792325065488,
       "tag": "0178_champ_booking_fixture_ownership_and_hold_restore",
       "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1792327455693,
+      "tag": "0179_bar_member_self_opened_tabs",
+      "breakpoints": true
     }
   ]
 }

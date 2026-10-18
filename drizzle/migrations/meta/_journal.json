@@ -1282,6 +1282,13 @@
       "when": 1792328489163,
       "tag": "0182_counter_sale_personal_pin_attribution",
       "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1792328845203,
+      "tag": "0183_income_statement_division_cost_basis",
+      "breakpoints": true
     }
   ]
 }

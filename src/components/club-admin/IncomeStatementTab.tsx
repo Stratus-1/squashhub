@@ -10,8 +10,9 @@ import { FileText, Download } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { supabase } from "@/integrations/supabase/client";
 
-import { divisionMargins } from "@/lib/finance/division-margin";
+import { divisionMargins, type TradingCostBasis, type SaleCostSummary } from "@/lib/finance/division-margin";
 
 interface AccountMeta {
   label: string;
@@ -29,6 +30,7 @@ type Preset = "this_month" | "last_month" | "qtd" | "ytd" | "last_12" | "custom"
 
 export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
   const [preset, setPreset] = useState<Preset>("ytd");
+  const [basis, setBasis] = useState<TradingCostBasis>("purchases");
   const { format: money, symbol: currencySymbol, code: currencyCode } = useClubCurrency();
   const today = new Date();
   const [from, setFrom] = useState<string>(format(startOfYear(today), "yyyy-MM-dd"));
@@ -65,11 +67,11 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     }
   };
 
-  const { data: entries, isLoading } = useQuery({
+  const { data: entries, isLoading, isError: ledgerError } = useQuery({
     queryKey: ["income-statement", clubId, from, to],
     queryFn: async () => {
-      const fromIso = new Date(from + "T00:00:00").toISOString();
-      const toIso = new Date(to + "T23:59:59.999").toISOString();
+      const fromIso = new Date(from + "T00:00:00+02:00").toISOString();
+      const toIso = new Date(to + "T23:59:59.999+02:00").toISOString();
       const allEntries: { account: string; debit: number; credit: number; created_at: string }[] = [];
       for (let offset = 0; ; offset += 1000) {
       const { data, error } = await fromExt("club_journal_entries")
@@ -94,7 +96,24 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       return Boolean(data?.length);
     }, enabled: !!clubId,
   });
-  const margins = divisionMargins(entries || [], hasShop);
+  const { data: saleCosts = [], isLoading: costsLoading, isError: costsError } = useQuery({
+    queryKey: ["income-statement-sale-costs", clubId, from, to],
+    enabled: Boolean(clubId && from && to && basis === "cost_of_sales"),
+    queryFn: async (): Promise<SaleCostSummary[]> => {
+      const end = new Date(to + "T00:00:00+02:00");
+      end.setUTCDate(end.getUTCDate() + 1);
+      const { data, error } = await supabase.rpc("income_statement_sale_costs", {
+        _club: clubId, _from: new Date(from + "T00:00:00+02:00").toISOString(), _to: end.toISOString(),
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const margins = divisionMargins(entries || [], hasShop, basis, saleCosts);
+  const missingCosts = basis === "cost_of_sales" ? margins.reduce((sum, row) => sum + row.uncostedLines, 0) : 0;
+  const reportLoading = isLoading || (basis === "cost_of_sales" && costsLoading);
+  const reportError = ledgerError || (basis === "cost_of_sales" && costsError);
+  const basisLabel = basis === "purchases" ? "Purchases" : "Cost of sales";
 
   const { incomeRows, expenseRows, totalIncome, totalExpense, netProfit } = useMemo(() => {
     const tally: Record<string, { debit: number; credit: number }> = {};
@@ -109,6 +128,8 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       // Income statement only shows Income & Expense accounts (P&L).
       // Skip balance sheet accounts (Assets like Bank/Debtors, Liabilities like Creditors).
       if (meta.category !== "Income" && meta.category !== "Expense") continue;
+      // The alternate report replaces purchase expenses; it never reposts the ledger.
+      if (basis === "cost_of_sales" && (account === "bar_expense" || account === "shop_expense")) continue;
       const t = tally[account] || { debit: 0, credit: 0 };
       // Income: credit - debit. Expense: debit - credit.
       const amt = meta.category === "Income" ? t.credit - t.debit : t.debit - t.credit;
@@ -117,18 +138,25 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       if (meta.category === "Income") incomeRows.push(row);
       else expenseRows.push(row);
     }
+    if (basis === "cost_of_sales") {
+      for (const row of margins) {
+        if (Math.abs(row.cogs) >= 0.005) expenseRows.push({ account: `${row.division}_item_cogs`, label: `${row.division === "shop" ? "Shop" : "Bar"} sold-item costs`, amount: row.cogs });
+      }
+    }
     incomeRows.sort((a, b) => b.amount - a.amount);
     expenseRows.sort((a, b) => b.amount - a.amount);
     const totalIncome = incomeRows.reduce((s, r) => s + r.amount, 0);
     const totalExpense = expenseRows.reduce((s, r) => s + r.amount, 0);
     return { incomeRows, expenseRows, totalIncome, totalExpense, netProfit: totalIncome - totalExpense };
-  }, [entries, accounts]);
+  }, [entries, accounts, basis, saleCosts, hasShop]);
 
   const exportCsv = () => {
     const lines: string[] = [];
     lines.push(`Income Statement`);
     if (clubName) lines.push(`Club,${clubName}`);
     lines.push(`Period,${from} to ${to}`);
+    lines.push(`Trading-cost basis,${basisLabel}`);
+    if (missingCosts) lines.push(`Provisional costs,${missingCosts} sale lines have no recorded cost`);
     lines.push("");
     lines.push("INCOME");
     lines.push(`Account,Amount (${currencyCode})`);
@@ -141,8 +169,8 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     lines.push(`Total Expenses,${totalExpense.toFixed(2)}`);
     lines.push("");
     lines.push(`Net Profit / (Loss),${netProfit.toFixed(2)}`);
-    lines.push("", "DIVISION MARGINS (SALES LESS PURCHASES)", "Division,Sales,Purchases,Profit,Margin (%)");
-    margins.forEach(row => lines.push(`${row.division},${row.sales.toFixed(2)},${row.purchases.toFixed(2)},${row.profit.toFixed(2)},${row.margin?.toFixed(1) ?? ""}`));
+    lines.push("", `DIVISION GROSS PROFIT (${basisLabel.toUpperCase()} BASIS)`, `Division,Sales,${basisLabel},Allocated direct costs,Gross profit,Margin (%)`);
+    margins.forEach(row => lines.push(`${row.division},${row.sales.toFixed(2)},${row.tradingCost.toFixed(2)},${row.directCosts.toFixed(2)},${row.profit.toFixed(2)},${row.margin?.toFixed(1) ?? ""}`));
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -162,6 +190,13 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
           <h3 className="font-semibold text-sm">Income Statement</h3>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Select value={basis} onValueChange={value => setBasis(value as TradingCostBasis)}>
+            <SelectTrigger aria-label="Trading-cost basis" className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="purchases">Purchases basis</SelectItem>
+              <SelectItem value="cost_of_sales">Cost of sales basis</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={preset} onValueChange={v => applyPreset(v as Preset)}>
             <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -181,10 +216,10 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
             <Label className="text-[10px] text-muted-foreground">To</Label>
             <Input type="date" value={to} onChange={e => { setTo(e.target.value); setPreset("custom"); }} className="h-8 text-xs w-[140px]" />
           </div>
-          <Button size="sm" variant="outline" onClick={exportCsv} className="gap-1.5 h-8">
+          <Button size="sm" variant="outline" onClick={exportCsv} disabled={reportLoading || reportError} className="gap-1.5 h-8">
             <Download className="w-3.5 h-3.5" /> CSV
           </Button>
-          <Button size="sm" variant="outline" onClick={printPdf} className="gap-1.5 h-8">
+          <Button size="sm" variant="outline" onClick={printPdf} disabled={reportLoading || reportError} className="gap-1.5 h-8">
             <FileText className="w-3.5 h-3.5" /> Print / PDF
           </Button>
         </div>
@@ -194,20 +229,23 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
         <h2 className="text-lg font-bold">{clubName || "Club"}</h2>
         <p className="text-sm font-semibold">Income Statement</p>
         <p className="text-xs text-muted-foreground">For the period {format(new Date(from), "dd MMM yyyy")} to {format(new Date(to), "dd MMM yyyy")}</p>
+        <p className="text-xs text-muted-foreground">{basisLabel} basis</p>
       </div>
 
-      {isLoading ? (
+      {reportError ? <p role="alert" className="text-sm text-destructive">Could not load the statement. Please try again.</p> : reportLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="space-y-4">
+          {missingCosts > 0 && <p role="status" className="text-xs text-destructive">Provisional: {missingCosts} sale lines have no recorded item cost. Gross profit and net profit may be overstated.</p>}
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-xs">
-              <caption className="text-left px-3 py-2 font-semibold">Division margins — sales less purchases</caption>
-              <thead className="bg-muted"><tr>{["Division", "Sales", "Purchases", "Profit / (loss)", "Margin"].map(label => <th key={label} className="px-3 py-2 text-left whitespace-nowrap">{label}</th>)}</tr></thead>
+              <caption className="text-left px-3 py-2 font-semibold">Division gross profit — {basisLabel.toLowerCase()} basis</caption>
+              <thead className="bg-muted"><tr>{["Division", "Sales", basisLabel, "Allocated direct costs", "Gross profit / (loss)", "Margin"].map(label => <th key={label} className="px-3 py-2 text-left whitespace-nowrap">{label}</th>)}</tr></thead>
               <tbody>{margins.map(row => <tr key={row.division} className="border-t">
                 <th className="px-3 py-2 text-left">{row.division === "shop" ? "Shop" : "Bar"}</th>
                 <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.sales)}</td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.purchases)}</td>
+                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.tradingCost)}</td>
+                <td className="px-3 py-2 tabular-nums whitespace-nowrap">{money(row.directCosts)}</td>
                 <td className={cn("px-3 py-2 tabular-nums whitespace-nowrap", row.profit < 0 && "text-destructive")}>{money(row.profit)}</td>
                 <td className="px-3 py-2 tabular-nums">{row.margin === null ? "—" : `${row.margin.toFixed(1)}%`}</td>
               </tr>)}</tbody>

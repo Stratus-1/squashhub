@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Item current and average cost prices
-- [ ] Explain historical missing sale costs and weighted-average calculation; display saved average beside current cost in item add/edit.
-- [ ] Verify latest invoice cost updates, run costing tests and inspect item edit in preview without stock/sale writes.
+- [x] Explained missing historical snapshots and weighted average; saved average is read-only beside current cost in item add/edit and shown for known stock-item averages in the list.
+- [x] Latest received invoice now updates current cost without altering old snapshots or opt-in averaging. 26 focused checks passed, including three disposable receipt tests; authenticated Riverside add/edit verified without saves. Preview build OK, not published; no historical stock/sale corrections.
 
 ## Counter Order action
 - [ ] Add counter-mode Order submission, preserving named PIN attribution and separate payment; requested before the costing follow-up.

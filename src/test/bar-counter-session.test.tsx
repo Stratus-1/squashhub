@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import BarCounter from "@/pages/BarCounter";
@@ -36,6 +36,20 @@ beforeEach(() => {
 });
 
 describe("counter personal PIN boundary", () => {
+  it("automatically discovers customer-created tabs using only its verified PIN session", async () => {
+    localStorage.setItem("sh.barcounter.token.river-menu", "verified-session");
+    localStorage.setItem("sh.barcounter.operator.river-menu", "Test server");
+    let current = board;
+    mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "bar_counter_board" ? current : false, error: null }));
+    mount("/s/river-menu/counter");
+    await screen.findByText("Test server");
+    await act(async () => {});
+    current = { ...board, tabs: [{ tab_id: "new-tab", token: "customer-token", guest_name: "New customer", status: "open", opened_at: "2026-10-18T11:00:00Z", total: 100, lines: [] }] } as typeof board;
+    await act(async () => { window.dispatchEvent(new Event("online")); });
+    await screen.findByText("New customer");
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_board").every(([, args]) => args._token === "verified-session" && args._club_id === null)).toBe(true);
+  });
+
   async function openPendingTab(method: "online" | "cash" | "terminal") {
     const pendingBoard = { ...board, tabs: [{ tab_id: "pending-tab", token: "customer-token", guest_name: "Test customer", status: "closing", settled_method: method, opened_at: "2026-10-18T10:00:00Z", total: 214, lines: [] }] };
     mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "bar_counter_unlock" ? { token: "verified-session", label: "Test server" } : name === "bar_counter_board" ? pendingBoard : {}, error: null }));

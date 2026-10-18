@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub } from "@/hooks/use-club";
+import { useBarAutoRefresh } from "@/hooks/use-bar-auto-refresh";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,6 @@ export default function BarCounter() {
   const { data: board, isLoading, error: boardError, refetch } = useQuery({
     queryKey: ["bar-counter-board", token, clubId],
     enabled,
-    refetchInterval: 20000,
     retry: (failureCount, err: any) => {
       // Never retry an auth/session failure — fall back to the PIN screen instead.
       if (/unlock|revok|token|permission/i.test(String(err?.message ?? ""))) return false;
@@ -147,6 +147,7 @@ export default function BarCounter() {
     },
   });
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
+  useBarAutoRefresh(enabled && !!operator && !boardError, refetch);
   // Signed-in staff can also see their club's edited category and division labels.
   const { data: orderProcess = false } = useQuery({
     queryKey: ["bar-order-process", board?.club_id],

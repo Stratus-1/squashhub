@@ -18,7 +18,7 @@ export async function loadProjectedFixtures(champ: any): Promise<ProjectedChampF
     sb.from("club_champs_rounds").select("*").eq("champ_id", champ.id),
   ]);
   const active = ((courts.data ?? []) as any[]).filter((c) => c.active !== false);
-  const name = (id: number) => active.find((c) => Number(c.id) === id)?.name ?? `Court ${c.id}`;
+  const name = (id: number) => active.find((c) => Number(c.id) === id)?.name ?? `Court ${id}`;
   try {
     return projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active })
       .map((f) => ({ ...f, courtName: name(f.courtId) }))

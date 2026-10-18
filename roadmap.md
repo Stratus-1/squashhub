@@ -1,5 +1,9 @@
 # Roadmap
 
+## Tournament booking self-conflict
+- [x] Correct rescheduling upsert identity and restore old reserved slots only after the linked booking moves; preserve permissions and real-clash checks.
+- [x] Seven disposable PostgreSQL checks passed; migration 0176 applied to the shared backend without moving live fixtures. Actual member UI mutation not performed to avoid changing live games; no frontend publication required.
+
 ## Counter mode lockout regression
 - [x] Make signed-in and QR counter entry require an allocated personal PIN session, with a serving name; revoked sessions return to PIN entry without exposing cached tabs.
 - [x] Five focused regression tests passed (entry, named PIN response, End shift, revoked cache); authenticated Riverside Open counter mode → PIN screen → reload verified with no board fetch. Preview build OK; no live lockouts, sales, PIN changes or publication. Real staff PIN/revocation cycle remains untested to avoid changing live sessions.

@@ -1,3 +1,9 @@
+### 2026-10-18 — Marnus Kamfer tournament rescheduling self-conflict
+- Symptom: Uitsig rescheduling reported "This court is already booked on 2026-10-20 from 20:20 to 21:00"; ticket screenshot and linked match confirmed this was his own booking.
+- Finding: the RPC inserted a fresh UUID before ON CONFLICT resolved the stable booking, so the BEFORE INSERT overlap trigger rejected retries. Restoring old holds before moving the booking could also clash with it.
+- Fix: forward migration 0176 retains deployed authentication, authorization, courts and real clash checks; locks the fixture, resolves the stable UUID before upsert, and restores reservations after moving the booking. No overlap-trigger bypass or permission changes.
+- Guard: seven disposable PostgreSQL tests reproduce the failure and verify retry, move/readback, retained deadline, old-hold restoration, real court/player clashes and unauthorized/signed-out denial. Tests execute the applied migration. No live fixtures, bookings, results, ledger, notifications or hardware changed; no frontend publication required. Actual member UI mutation not performed to avoid moving live games.
+
 ### 2026-10-18 — Signed-in counter bypassed personal PIN after lockout
 - The admin Open counter mode button entered `/bar/counter`, where a club-only authorized board request bypassed personal-PIN sessions and showed no serving name. The signed-in entry now resolves the active club menu code and enters the same personal-PIN flow as the QR link; counter board requests never fall back to club-only authority.
 - Missing serving names require PIN entry; revoked-session errors hide cached tabs immediately and discard their board cache. Existing backend PIN/session verification and admin permissions are unchanged. No live lockouts, PIN changes, sales, hardware actions or publication.

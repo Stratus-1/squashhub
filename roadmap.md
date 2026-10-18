@@ -1,5 +1,9 @@
 # Roadmap
 
+## Sales statistics and drill-through
+- [ ] Replace Closed tabs with summary-first Sales statistics including open and closed sales, preserving Shop / Bar / Both and date filters.
+- [ ] Add Last day / Last seven days and drill-through from total to status totals, tabs and item details; verify totals and Riverside read-only UI.
+
 ## Bar closed-tab history
 - [x] Include Shop, Bar and Both filters, with matching item totals; mixed/legacy cases tested.
 - [x] Add Closed tabs with custom dates and all six preset periods; read-only, club-scoped history with totals and serving names.

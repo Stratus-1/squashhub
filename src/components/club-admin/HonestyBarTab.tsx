@@ -1061,7 +1061,9 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
                             ? <span className="text-xs text-muted-foreground">{money(item.price)}</span>
                             : <span className="text-xs text-muted-foreground">Sold via options only</span>}
                           {item.cost_price > 0 && <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>}
-                          {kind === "stock" && item.avg_unit_cost != null && <span className="text-xs text-muted-foreground">(average {money(perContainer(item.avg_unit_cost, item.unit_yield || 1) ?? 0)})</span>}
+                          {kind === "stock" && costingOn && (item.avg_unit_cost != null
+                            ? <span className="text-xs text-muted-foreground">(average {money(perContainer(item.avg_unit_cost, item.unit_yield || 1) ?? 0)})</span>
+                            : <span className="text-xs text-muted-foreground">(average not set yet)</span>)}
                           {kindBadge(item)}
                           {kind === "made_to_order" ? (
                             <>

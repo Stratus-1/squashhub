@@ -1,4 +1,4 @@
-import { bookingsForGridRow } from "@/lib/booking-grid";
+import { bookingsForGridRow, champsGridLayout } from "@/lib/booking-grid";
 import { isPeakSlot as isPeakSlotShared } from "@/lib/peak-hours";
 import { PeakTimeIndicator } from "@/components/PeakTimeIndicator";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -978,6 +978,26 @@ export default function Bookings() {
 
     return Array.from(merged.values());
   }, [bookings, champsBookings]);
+
+  // Championship evenings: on the reserved courts only, rows follow the
+  // tournament's own match length (e.g. 35 min); other courts/times keep the
+  // club's normal slots. Presentation only.
+  const gridLayout = useMemo(() => {
+    const isHold = (b: any) => /^\s*club\s+championship/i.test(String(b.external_booker_name || b.guest_name || ""));
+    const champs = (allCourtBookings as any[]).filter((b) => b.is_champ);
+    const lengths = new Map<number, number>();
+    for (const b of champs) {
+      const m = timeToMinutes(String(b.end_time).slice(0, 5)) - timeToMinutes(String(b.start_time).slice(0, 5));
+      if (m > 0) lengths.set(m, (lengths.get(m) ?? 0) + 1);
+    }
+    const champMinutes = [...lengths.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+    const spans = champMinutes && champMinutes !== slotMinutes
+      ? (allCourtBookings as any[]).filter((b) => b.is_champ || isHold(b)).map((b) => ({
+          court_id: Number(b.court_id), start_time: String(b.start_time), end_time: String(b.end_time || b.start_time),
+        }))
+      : [];
+    return champsGridLayout(dynamicTimeSlots, slotMinutes, spans, champMinutes);
+  }, [allCourtBookings, dynamicTimeSlots, slotMinutes]);
 
   const createBooking = useCreateBooking();
   const accessGate = useMemberAccessGate();
@@ -2183,7 +2203,7 @@ export default function Bookings() {
           transition={{ duration: 0.3 }}
         >
           <div className="px-4" style={{ minWidth: courtGridMinWidth }}>
-          {dynamicTimeSlots.map((time, idx) => {
+          {gridLayout.rows.map((time, idx) => {
             const isHour = time.endsWith(":00");
             // For 40-min clubs, slots don't align to the hour, so label every
             // row and skip the hourly separator rule to avoid drift.
@@ -2205,7 +2225,9 @@ export default function Bookings() {
                   {showTimeLabel ? formatTimeDisplay(time) : ""}
                 </div>
                 {courts.map((courtId) => {
-                  const rowBookings = bookingsForGridRow(allCourtBookings, courtId, time, slotMinutes);
+                  const cellMinutes = gridLayout.cell(courtId, time);
+                  if (cellMinutes == null) return <div key={courtId} className="min-w-0" aria-hidden="true" />;
+                  const rowBookings = bookingsForGridRow(allCourtBookings, courtId, time, cellMinutes);
                   return (
                     <div key={courtId} className="min-w-0 space-y-0.5">
                     {(rowBookings.length ? rowBookings : [undefined]).map((booking) => {
@@ -2268,7 +2290,7 @@ export default function Bookings() {
                   // currently-running slot (e.g. 08:00 at 08:05) is still bookable for
                   // walk-ups who didn't pre-book.
                   const slotDateTime = new Date(`${dateStr}T${time}:00`);
-                  const slotEndDateTime = new Date(slotDateTime.getTime() + slotMinutes * 60000);
+                  const slotEndDateTime = new Date(slotDateTime.getTime() + cellMinutes * 60000);
                   const isPastSlot = slotEndDateTime <= new Date();
                   // A booking that started on an earlier row (e.g. a 35-min champs
                   // game at 19:10 seen from the 19:30 row) is a continuation — mark

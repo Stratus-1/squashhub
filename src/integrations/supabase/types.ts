@@ -1291,6 +1291,7 @@ export type Database = {
           delivered_qty: number
           id: string
           item_name: string
+          member_tab_entry_id: string | null
           order_id: string
           quantity: number
           ready_notified_at: string | null
@@ -1305,6 +1306,7 @@ export type Database = {
           delivered_qty?: number
           id?: string
           item_name: string
+          member_tab_entry_id?: string | null
           order_id: string
           quantity: number
           ready_notified_at?: string | null
@@ -1319,6 +1321,7 @@ export type Database = {
           delivered_qty?: number
           id?: string
           item_name?: string
+          member_tab_entry_id?: string | null
           order_id?: string
           quantity?: number
           ready_notified_at?: string | null
@@ -1360,7 +1363,9 @@ export type Database = {
       }
       bar_orders: {
         Row: {
+          account_charged: boolean
           club_id: string
+          club_member_id: string | null
           completed_at: string | null
           created_at: string
           customer_name: string
@@ -1374,7 +1379,9 @@ export type Database = {
           status: string
         }
         Insert: {
+          account_charged?: boolean
           club_id: string
+          club_member_id?: string | null
           completed_at?: string | null
           created_at?: string
           customer_name: string
@@ -1388,7 +1395,9 @@ export type Database = {
           status?: string
         }
         Update: {
+          account_charged?: boolean
           club_id?: string
+          club_member_id?: string | null
           completed_at?: string | null
           created_at?: string
           customer_name?: string
@@ -22343,6 +22352,15 @@ export type Database = {
         Returns: Json
       }
       structured_commit: { Args: { p_ops: Json; p_tid: string }; Returns: Json }
+      submit_my_bar_account_order: {
+        Args: {
+          _club_id: string
+          _club_member_id: string
+          _lines: Json
+          _request_id: string
+        }
+        Returns: Json
+      }
       submit_platform_invoice_eft_proof: {
         Args: { _invoice_id: string; _path: string }
         Returns: undefined

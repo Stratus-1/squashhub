@@ -1,5 +1,10 @@
 # Roadmap
 
+## Direct member-account orders on counter
+- [x] Added atomic own-member account checkout with linked counter fulfilment orders and retry-safe charging. Orders remains accessible without guest-order opt-in; account-charged orders have no payment-confirmation actions.
+- [x] 25 focused checks passed, including nine disposable PostgreSQL ownership/atomicity/retry checks; synthetic named-PIN counter discovered the order without reload, with guest orders disabled. Hosted grants verified, preview build OK; no live test sales or publication.
+- [ ] Real member-submit-to-counter flow remains unverified: selected Riverside preview identity has no active member checkout context. No ordinary member account or live sale selected; isolated order creation and counter refresh verified separately.
+
 ## Income statement trading-cost basis
 - [x] Added Purchases / Cost of sales reporting using historical average-cost sale snapshots, with independent Bar/Shop gross profit and allocated direct costs. Cost-of-sales basis replaces purchase expenses in the report only; missing costs are visibly provisional.
 - [x] Applied 0183 with Cost of sales — Bar / Shop expense accounts and a finance-authorized club-scoped cost report; existing custom-account roll-ups allow salary allocation. No ledger reposting or historical transaction changes.

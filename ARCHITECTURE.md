@@ -92,6 +92,8 @@ Member fees, fee categories, club subscriptions, platform invoices, mandates, pa
 
 Member self-opened tabs are shared `bar_guest_tabs` records opened by `open_my_bar_tab` (authenticated, active own membership, club-scoped, serialized and reused while open/closing). `opened_source` marks in-app origin independently of serving identity. HonestyBar hands off to the existing ScanPay tab/order/receipt flow; selected items remain drafts until submitted. Counter polling discovers the shared tab without reload; existing PIN and settlement checks remain authoritative.
 
+Direct member-account checkout uses `submit_my_bar_account_order` to create existing `bar_tab_entries` and linked `bar_orders`/`bar_order_lines` atomically. Active own membership, item club scope and server prices are enforced; existing inventory, account-limit and ledger triggers remain authoritative. A member/request idempotency key prevents repeat charging. These collect-at-bar orders have no unpaid guest tab, expose `account_charged`, and remain visible in Counter Orders even without guest-order opt-in. Delivery and ready notifications are independent of charging; notifications resolve the order member within the counter club. No historical sales are converted.
+
 ### Communications and engagement
 
 Campaigns, recipients, templates, email outbox/state, suppression, notifications, push subscriptions, WhatsApp interactions, feed posts, comments, reactions, outreach prospects, links, and event tracking support engagement and growth.

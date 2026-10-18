@@ -1,5 +1,9 @@
 # Roadmap
 
+## Pending counter payment actions
+- [x] Migration 0177 restores payment method in the counter board response without changing personal PIN authority or settlement logic.
+- [x] Twelve focused tests passed; synthetic named-PIN cash/terminal and online-replacement dispatch verified. Read-only hosted Riverside board returns the field; no pending Riverside tabs existed for real UI settlement, and no payments were changed.
+
 ## Tournament booking self-conflict
 - [x] Correct rescheduling upsert identity and restore old reserved slots only after the linked booking moves; preserve permissions and real-clash checks.
 - [x] Seven disposable PostgreSQL checks passed; migration 0176 applied to the shared backend without moving live fixtures. Actual member UI mutation not performed to avoid changing live games; no frontend publication required.

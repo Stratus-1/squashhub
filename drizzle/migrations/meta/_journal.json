@@ -1240,6 +1240,13 @@
       "when": 1792323524212,
       "tag": "0176_champ_reschedule_stable_booking_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1792323862491,
+      "tag": "0177_bar_counter_restore_pending_payment_method",
+      "breakpoints": true
     }
   ]
 }

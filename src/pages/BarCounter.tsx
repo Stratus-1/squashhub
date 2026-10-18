@@ -193,7 +193,6 @@ export default function BarCounter() {
       setActiveTabId(null);
       setCart({});
       toast.error("This device was signed out — enter the counter PIN to unlock it again.");
-    }
       qc.removeQueries({ queryKey: ["bar-counter-board", token, clubId], exact: true });
     }
   }, [boardError, code, token, qc, clubId]);

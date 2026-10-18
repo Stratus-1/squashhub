@@ -1,5 +1,9 @@
 # Roadmap
 
+## Direct member-account orders on counter
+- [ ] Automatically show direct in-app member-account purchases on the counter for fulfilment, without a separate open-tab step or duplicate account charges.
+- [ ] Verify club/member authority, single charging and counter visibility with focused tests; no live test sales or publication.
+
 ## Income statement trading-cost basis
 - [x] Added Purchases / Cost of sales reporting using historical average-cost sale snapshots, with independent Bar/Shop gross profit and allocated direct costs. Cost-of-sales basis replaces purchase expenses in the report only; missing costs are visibly provisional.
 - [x] Applied 0183 with Cost of sales — Bar / Shop expense accounts and a finance-authorized club-scoped cost report; existing custom-account roll-ups allow salary allocation. No ledger reposting or historical transaction changes.

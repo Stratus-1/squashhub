@@ -29,4 +29,24 @@ describe("separate shop and bar purchase-based margins", () => {
  it("reports missing snapshots without inventing average costs", () => {
    expect(divisionMargins(entries, false, "cost_of_sales", [{division: "bar", cogs: 40, uncosted_lines: 2}])[0]).toMatchObject({cogs: 40, uncostedLines: 2});
  });
+ it("Nelspruit capitalised invoice still reports R2705.76 purchases without changing stock or bank", () => {
+   const rows = divisionMargins([
+     {account: "bar_expense", debit: 2705.76, credit: 0, journal_ref: "invoice"},
+     {account: "bank_current", debit: 0, credit: 2705.76, journal_ref: "invoice"},
+     {account: "bar_expense", debit: 0, credit: 2705.76, journal_ref: "correction"},
+     {account: "bar_stock_on_hand", debit: 2705.76, credit: 0, journal_ref: "correction"},
+   ]);
+   expect(rows[0]).toMatchObject({purchases: 2705.76, tradingCost: 2705.76, profit: -2705.76});
+ });
+ it("invoice-linked stock purchases stay separate by division", () => {
+   const rows = divisionMargins([{account: "bar_stock_on_hand", debit: 200, credit: 0, journal_ref: "shop-invoice"}], false, "purchases", [], [{id: "shop-invoice", division: "shop"}]);
+   expect(rows[0].purchases).toBe(0);
+   expect(rows[1].purchases).toBe(200);
+ });
+ it("stocktake gains are not purchases", () => {
+   expect(divisionMargins([{account: "bar_stock_on_hand", debit: 500, credit: 0, journal_ref: "stocktake"}])[0].purchases).toBe(0);
+ });
+ it("capitalised purchases are replaced, not added, on COS basis", () => {
+   expect(divisionMargins([{account: "bar_stock_on_hand", debit: 600, credit: 0, journal_ref: "invoice"}], false, "cost_of_sales", [{division: "bar", cogs: 250, uncosted_lines: 0}], [{id: "invoice", division: "bar"}])[0]).toMatchObject({purchases: 600, tradingCost: 250, profit: -250});
+ });
 });

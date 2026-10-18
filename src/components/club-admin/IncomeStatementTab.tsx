@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
 
-import { divisionMargins, type TradingCostBasis, type SaleCostSummary } from "@/lib/finance/division-margin";
+import { divisionMargins, type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "@/lib/finance/division-margin";
 
 interface AccountMeta {
   label: string;
@@ -72,10 +72,10 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     queryFn: async () => {
       const fromIso = new Date(from + "T00:00:00+02:00").toISOString();
       const toIso = new Date(to + "T23:59:59.999+02:00").toISOString();
-      const allEntries: { account: string; debit: number; credit: number; created_at: string }[] = [];
+      const allEntries: { account: string; debit: number; credit: number; created_at: string; journal_ref: string }[] = [];
       for (let offset = 0; ; offset += 1000) {
       const { data, error } = await fromExt("club_journal_entries")
-        .select("account, debit, credit, created_at")
+        .select("account, debit, credit, created_at, journal_ref")
         .eq("club_id", clubId)
         .gte("created_at", fromIso)
         .lte("created_at", toIso).order("id").range(offset, offset + 999);
@@ -86,6 +86,23 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       return allEntries;
     },
     enabled: !!clubId && !!from && !!to,
+  });
+
+  const { data: stockPurchases = [], isLoading: purchasesLoading, isError: purchasesError } = useQuery({
+    queryKey: ["income-statement-stock-purchases", clubId],
+    enabled: Boolean(clubId),
+    queryFn: async (): Promise<StockPurchaseReference[]> => {
+      const rows: StockPurchaseReference[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await supabase.from("bar_stock_purchases")
+          .select("id, bar_items!bar_stock_purchases_bar_item_id_fkey(division)")
+          .eq("club_id", clubId).order("id").range(offset, offset + 999);
+        if (error) throw error;
+        for (const row of data ?? []) rows.push({ id: row.id, division: row.bar_items?.division ?? "bar" });
+        if ((data ?? []).length < 1000) break;
+      }
+      return rows;
+    },
   });
 
   const { data: hasShop = false } = useQuery({
@@ -109,10 +126,10 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       return data ?? [];
     },
   });
-  const margins = divisionMargins(entries || [], hasShop, basis, saleCosts);
+  const margins = divisionMargins(entries || [], hasShop, basis, saleCosts, stockPurchases);
   const missingCosts = basis === "cost_of_sales" ? margins.reduce((sum, row) => sum + row.uncostedLines, 0) : 0;
-  const reportLoading = isLoading || (basis === "cost_of_sales" && costsLoading);
-  const reportError = ledgerError || (basis === "cost_of_sales" && costsError);
+  const reportLoading = isLoading || purchasesLoading || (basis === "cost_of_sales" && costsLoading);
+  const reportError = ledgerError || purchasesError || (basis === "cost_of_sales" && costsError);
   const basisLabel = basis === "purchases" ? "Purchases" : "Cost of sales";
 
   const { incomeRows, expenseRows, totalIncome, totalExpense, netProfit } = useMemo(() => {
@@ -129,7 +146,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       // Skip balance sheet accounts (Assets like Bank/Debtors, Liabilities like Creditors).
       if (meta.category !== "Income" && meta.category !== "Expense") continue;
       // The alternate report replaces purchase expenses; it never reposts the ledger.
-      if (basis === "cost_of_sales" && (account === "bar_expense" || account === "shop_expense")) continue;
+      if (account === "bar_expense" || account === "shop_expense") continue;
       const t = tally[account] || { debit: 0, credit: 0 };
       // Income: credit - debit. Expense: debit - credit.
       const amt = meta.category === "Income" ? t.credit - t.debit : t.debit - t.credit;
@@ -138,17 +155,15 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
       if (meta.category === "Income") incomeRows.push(row);
       else expenseRows.push(row);
     }
-    if (basis === "cost_of_sales") {
-      for (const row of margins) {
-        if (Math.abs(row.cogs) >= 0.005) expenseRows.push({ account: `${row.division}_item_cogs`, label: `${row.division === "shop" ? "Shop" : "Bar"} sold-item costs`, amount: row.cogs });
-      }
+    for (const row of margins) {
+      expenseRows.push({ account: `${row.division}_trading_cost`, label: `${row.division === "shop" ? "Shop" : "Bar"} ${basis === "purchases" ? "Stock Purchases" : "Cost of Sales — Items"}`, amount: row.tradingCost });
     }
     incomeRows.sort((a, b) => b.amount - a.amount);
     expenseRows.sort((a, b) => b.amount - a.amount);
     const totalIncome = incomeRows.reduce((s, r) => s + r.amount, 0);
     const totalExpense = expenseRows.reduce((s, r) => s + r.amount, 0);
     return { incomeRows, expenseRows, totalIncome, totalExpense, netProfit: totalIncome - totalExpense };
-  }, [entries, accounts, basis, saleCosts, hasShop]);
+  }, [entries, accounts, basis, saleCosts, hasShop, stockPurchases]);
 
   const exportCsv = () => {
     const lines: string[] = [];

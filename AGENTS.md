@@ -12,6 +12,7 @@
 - External auth failure requires re-authentication; why: no bypass.
 
 <!-- LOVABLE:BEGIN -->
+- Bar/shop GL routing follows club-scoped item division and preserves receipt idempotency; new purchases have one balanced journal per line, and division margins use sales less purchases rather than optional COGS; why: separate trading without double-counting costs or rewriting history.
 - Scope member-home and club bottom-nav presentation locally; deduplicate only mobile shortcuts, preserving desktop/association access and domain hooks.
 - Generate draw leaves player ordering and scheduling in setup; only format confirmation, read-only scoring and necessary pool allocation appear here; why: avoid conflicting copies.
 - Bar menus share spirit-category mixer inclusion in `src/lib/bar-spirit-menu.ts`, preserving original IDs and independent basket lines; why: display changes must not create combo sales or alter stock definitions.

@@ -1,5 +1,9 @@
 # Roadmap
 
+## Separate shop accounting
+- [x] Added standard Shop Sales / Shop Purchases accounts and prospective member/visitor sale routing; new purchase invoices post balanced division expense/payment or payable entries. Income statement and CSV show separate purchase-based Bar/Shop margins.
+- [x] Confirmed shop items at Riverside and Uitsig; 36 focused tests passed including eight disposable PostgreSQL posting checks. Hosted routing verified; authenticated Riverside income statement displays both divisions, build OK. Historical transactions left unchanged to avoid duplicating manual/bank expenses; no live test sale/purchase or frontend publication.
+
 ## Self-opened member counter tabs
 - [x] Open my tab at the bar creates/reuses the authenticated member's shared tab and continues in the existing ScanPay flow; counter labels it In-app · Self-opened. Existing payments and personal staff PINs preserved.
 - [x] 35 focused checks passed, including eight disposable PostgreSQL ownership/club/retry checks; hosted definition verified and build OK. Synthetic named-PIN counter discovered the in-app tab without reload; customer tab displayed correctly. No real tabs, sales or publication.

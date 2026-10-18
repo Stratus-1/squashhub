@@ -8,7 +8,7 @@
  * already have saved fixtures are skipped (the saved fixture is shown instead).
  */
 import { stageSchedules } from "@/lib/tournaments/round-scheduling";
-import { scheduleDraws, slotOnlyDraw, gridTimeSlots, fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
+import { scheduleDraws, slotOnlyDraw, timeSlots, fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { appliedRoundPlayBy } from "@/lib/tournaments/stage-schedule";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
@@ -25,9 +25,6 @@ export interface ProjectionInput {
   champ: any; arch: any; entries: any[]; matches: any[]; rounds: any[];
   courts: Array<{ id: number | string; name?: string | null }>;
   groupLabel?: (gn: number) => string;
-  /** Club booking grid (clubs.booking_slot_minutes). When set, game start
-   *  times snap to grid boundaries so bookings line up with the court grid. */
-  slotMinutes?: number;
 }
 
 function swissStage(champ: any, arch: any, gn: number): { rounds: number | null; tieBreaks?: string[]; schedule?: any } | null {
@@ -70,7 +67,7 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
     slots = scheduleDraws(draws, {
       roundWindows,
       roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStage(champ, arch, Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x: any, k: number) => (k === 0 ? null : x))])),
-      courts: courtsAll, times: gridTimeSlots(a.start_time, a.end_time, dur, Number(i.slotMinutes) || 0, Number(a.default_break_minutes) || 0), matchMinutes: dur,
+      courts: courtsAll, times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0), matchMinutes: dur,
       restMinutes: Number(plan?.scheduling?.rest ?? a.default_break_minutes) || 0, busy,
     } as any);
   } catch { return []; }

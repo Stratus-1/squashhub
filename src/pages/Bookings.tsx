@@ -882,7 +882,7 @@ export default function Bookings() {
             (supabase as any).from("club_champs_rounds").select("*").eq("champ_id", champ.id),
           ]);
           const fx = projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: activeCourts,
-            groupLabel: (gn) => getGroupLabel(champ, gn), slotMinutes: Number((myClub as any)?.booking_slot_minutes) || 0 });
+            groupLabel: (gn) => getGroupLabel(champ, gn) });
           out.push(...fx.map((f) => ({ ...f, champName: champ.name })));
         } catch { /* projection is optional display */ }
       }

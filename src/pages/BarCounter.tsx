@@ -565,17 +565,17 @@ export default function BarCounter() {
         </div>
       </div>
 
-      {orderProcess && (
+      {(
         <div className="px-4 pt-3 max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-1">
             <Button size="sm" variant={pane === "tabs" ? "default" : "outline"} onClick={() => setPane("tabs")}>Tabs</Button>
             <Button size="sm" variant={pane === "orders" ? "default" : "outline"} onClick={() => setPane("orders")}>Orders</Button>
           </div>
-          <BarOpenAndAlerts token={token} clubId={clubId} operator={operator} onShowOrders={() => setPane("orders")} />
+          {orderProcess && <BarOpenAndAlerts token={token} clubId={clubId} operator={operator} onShowOrders={() => setPane("orders")} />}
         </div>
       )}
 
-      {orderProcess && pane === "orders" ? (
+      {pane === "orders" ? (
         <div className="p-4 max-w-7xl mx-auto">
           <BarCounterOrders token={token} clubId={clubId} />
         </div>

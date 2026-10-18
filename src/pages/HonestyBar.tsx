@@ -2,7 +2,7 @@ import { spiritMixers, withSpiritMixers } from "@/lib/bar-spirit-menu";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
 import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
@@ -88,6 +88,7 @@ export default function HonestyBar() {
     if (tabKey && loadedKey === tabKey) saveOpenTab(tabKey, cart);
   }, [cart, tabKey, loadedKey]);
   const [submitting, setSubmitting] = useState(false);
+  const accountRequest = useRef<{ signature: string; id: string } | null>(null);
   const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
   const [counterSaleOpen, setCounterSaleOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("shop");
@@ -210,26 +211,30 @@ export default function HonestyBar() {
     try {
 
 
-      const entries = Object.entries(cart)
+      const lines = Object.entries(cart)
         .filter(([, qty]) => qty > 0)
         .map(([itemId, qty]) => {
           const item = items.find(i => i.id === itemId);
           if (!item) throw new Error("An item is no longer available. Please check your tab.");
-          return {
-            club_id: clubId,
-            club_member_id: memberId,
-            bar_item_id: itemId,
-            quantity: qty,
-            unit_price: item.price,
-            total: item.price * qty,
-          };
+          return { bar_item_id: itemId, quantity: qty };
         });
-      const { error } = await fromExt("bar_tab_entries").insert(entries);
+      const signature = JSON.stringify([clubId, memberId, lines]);
+      if (accountRequest.current?.signature !== signature) {
+        accountRequest.current = { signature, id: crypto.randomUUID() };
+      }
+      const { error } = await supabase.rpc("submit_my_bar_account_order", {
+        _club_id: clubId,
+        _club_member_id: memberId,
+        _lines: lines,
+        _request_id: accountRequest.current.id,
+      });
       if (error) throw error;
       toast.success(`${money(cartTotal)} posted to your member account`);
+      accountRequest.current = null;
       setCart({});
       qc.invalidateQueries({ queryKey: ["my-bar-tab"] });
       qc.invalidateQueries({ queryKey: ["bar-account-charge-preview"] });
+      qc.invalidateQueries({ queryKey: ["bar-counter-orders"] });
     } catch (err: any) {
       showBarChargeError(err, "Failed to log items");
     } finally {

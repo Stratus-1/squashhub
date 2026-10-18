@@ -16,6 +16,7 @@ export type BarOrder = {
   id: string; order_number: number; customer_name: string; fulfilment: "collect" | "deliver";
   location: string | null; note: string | null; status: string; created_at: string;
   completed_at: string | null; tab_status: string | null; member_linked?: boolean;
+  account_charged?: boolean;
   tab_id?: string | null; tab_settled_method?: string | null; tab_total?: number; payment_confirmed_at?: string | null; lines: BarOrderLine[];
 };
 
@@ -102,7 +103,8 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
   };
 
   const payLabel = (o: BarOrder) =>
-    o.tab_status === "settled" ? `Paid${o.tab_settled_method === "terminal" ? " — card machine" : o.tab_settled_method === "cash" ? " — cash" : o.tab_settled_method === "online" ? " — online" : ""}`
+    o.account_charged ? "Charged to member account"
+    : o.tab_status === "settled" ? `Paid${o.tab_settled_method === "terminal" ? " — card machine" : o.tab_settled_method === "cash" ? " — cash" : o.tab_settled_method === "online" ? " — online" : ""}`
     : o.tab_status === "closing" ? (o.tab_settled_method === "terminal" ? "Awaiting card swipe" : o.tab_settled_method === "cash" ? "Awaiting cash" : "Online payment pending")
     : "On tab · unpaid";
 
@@ -144,7 +146,7 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
                 </span>
               </div>
             </div>
-            {o.tab_status === "closing" && (o.tab_settled_method === "terminal" || o.tab_settled_method === "cash") && (
+            {!o.account_charged && o.tab_status === "closing" && (o.tab_settled_method === "terminal" || o.tab_settled_method === "cash") && (
               <div className="rounded-md border-2 border-amber-500/70 bg-amber-500/10 p-2 space-y-2" aria-live="polite">
                 <p className="text-xs font-semibold">
                   {o.tab_settled_method === "terminal" ? "Awaiting card machine payment" : "Awaiting cash payment"} · R{Number(o.tab_total ?? 0).toFixed(2)} — not paid yet
@@ -173,7 +175,7 @@ export function BarCounterOrders({ token, clubId }: { token: string | null; club
                       </span>
                       {o.fulfilment === "collect" && notified && !done && (
                         <p className="text-[10px] text-primary">
-                          Ready for collection · notified {time(l.ready_notified_at!)}
+                          Ready for collection · notified {time(l.ready_notified_at ?? o.created_at)}
                           {(l.ready_notify_count ?? 0) > 1 ? ` (sent ${l.ready_notify_count}×)` : ""}
                         </p>
                       )}

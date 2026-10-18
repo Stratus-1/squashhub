@@ -1,3 +1,6 @@
+### 2026-10-18 — Direct member-account purchases missing from counter
+- HonestyBar inserted account sale entries without fulfilment orders. Added an authenticated club/member-scoped atomic, retry-safe checkout that creates linked order lines through existing sale triggers. Counter Orders shows account-charged purchases independently of guest-order opt-in; fulfilment/ready notifications do not settle or charge them again. No historical sales converted or real test sales submitted.
+
 ### 2026-10-18 — Income statement Bar/Shop cost basis
 - Added Purchases / Cost of sales report basis and two division direct-cost expense accounts, including custom-account roll-up choices for allocated salaries. COGS reads historical sale cost snapshots under club finance authority; report substitution excludes purchases on COGS basis and counts allocated costs once. Missing costs are flagged; historical journals remain unchanged.
 

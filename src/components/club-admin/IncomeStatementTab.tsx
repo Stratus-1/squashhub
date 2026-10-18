@@ -228,7 +228,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="space-y-4">
-          {missingCosts > 0 && <p role="status" className="text-xs text-destructive">Provisional: {missingCosts} sale lines have no recorded item cost. Gross profit and net profit may be overstated.</p>}
+          {missingCosts > 0 && <p role="status" className="text-xs text-destructive">Provisional: {missingCosts} sale lines have no average cost and no cost price. Enter a cost price on those items (Bar → Items, marked “Enter a cost price”). Gross profit may be overstated.</p>}
           <section className="border rounded-lg overflow-hidden" aria-label="Primary income">
             <h4 className="px-3 py-2 bg-muted border-b text-xs font-bold">Primary income</h4>
             <table className="w-full text-xs">

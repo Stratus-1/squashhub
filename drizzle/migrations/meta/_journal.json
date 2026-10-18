@@ -1310,6 +1310,13 @@
       "when": 1792332946547,
       "tag": "0186_custom_account_cost_of_sales_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1792333650481,
+      "tag": "0187_sale_costs_cost_price_fallback",
+      "breakpoints": true
     }
   ]
 }

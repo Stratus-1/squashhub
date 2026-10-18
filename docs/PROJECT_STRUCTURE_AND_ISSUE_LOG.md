@@ -3326,4 +3326,4 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ## 2026-10-18 — Exit counter hidden after personal-PIN redirect
 - Exit was guarded by `!code`, but every serving route now requires a QR code. Exit counter mode is available on the board and PIN screen, clears the local serving session/cache and returns to the customer menu. End shift still stays on the PIN screen. Neither action closes the bar or settles tabs.
-- Verification pending; no live changes or publication.
+- Verification: 15 focused tests passed; isolated browser exit→customer menu→PIN reentry verified, with cleared local identity and no page errors. Preview build OK; no live changes or publication.

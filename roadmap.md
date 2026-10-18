@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Counter exit control
-- [ ] Show Exit counter mode on the named-PIN board and PIN screen; clear local serving session without closing the bar or tabs.
+- [x] Show Exit counter mode on board and PIN screen; clear local serving session without closing bar/tabs. Fifteen focused tests and isolated browser exit→menu→PIN reentry passed; build OK, not published.
 
 ## Automatic counter and customer updates
 - [x] Refresh counter tabs/orders and customer payment status automatically, including return-to-page and reconnect.

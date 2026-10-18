@@ -1324,6 +1324,20 @@
       "when": 1792333705152,
       "tag": "0188_seed_average_cost_from_cost_price",
       "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1792334033791,
+      "tag": "0189_club_recurring_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 190,
+      "version": "7",
+      "when": 1792334085056,
+      "tag": "0190_approve_recurring_transaction",
+      "breakpoints": true
     }
   ]
 }

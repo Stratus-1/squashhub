@@ -6411,6 +6411,71 @@ export type Database = {
           },
         ]
       }
+      club_recurring_transactions: {
+        Row: {
+          account: string
+          active: boolean
+          amount: number
+          club_id: string
+          created_at: string
+          created_by: string | null
+          custom_account_id: string | null
+          description: string
+          direction: string
+          frequency: string
+          gateway_fee_rate: number
+          id: string
+          member_id: string | null
+          method: string
+          next_due: string
+          updated_at: string
+        }
+        Insert: {
+          account: string
+          active?: boolean
+          amount: number
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          custom_account_id?: string | null
+          description: string
+          direction: string
+          frequency: string
+          gateway_fee_rate?: number
+          id?: string
+          member_id?: string | null
+          method: string
+          next_due: string
+          updated_at?: string
+        }
+        Update: {
+          account?: string
+          active?: boolean
+          amount?: number
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          custom_account_id?: string | null
+          description?: string
+          direction?: string
+          frequency?: string
+          gateway_fee_rate?: number
+          id?: string
+          member_id?: string | null
+          method?: string
+          next_due?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_recurring_transactions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_router_alert_settings: {
         Row: {
           club_id: string
@@ -20392,6 +20457,16 @@ export type Database = {
         Returns: string
       }
       current_verified_email: { Args: never; Returns: string }
+      decide_recurring_transaction: {
+        Args: {
+          _amount?: number
+          _approve: boolean
+          _date?: string
+          _expected_due: string
+          _id: string
+        }
+        Returns: string
+      }
       default_member_number_prefix: {
         Args: { _name: string; _subdomain: string }
         Returns: string
@@ -21908,6 +21983,7 @@ export type Database = {
         Args: { _mandate_id: string }
         Returns: Json
       }
+      recurring_next_due: { Args: { _d: string; _f: string }; Returns: string }
       refresh_member_stats_cache: {
         Args: { _member_id: string }
         Returns: string

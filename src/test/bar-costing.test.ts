@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyMovement, grossProfit, perContainer, perServing, purchaseCostPerUnit, specialCogs, weightedAverage } from "@/lib/bar-costing";
+import { applyMovement, bundleCosts, grossProfit, perContainer, perServing, purchaseCostPerUnit, specialCogs, weightedAverage, type RecipeCostItem } from "@/lib/bar-costing";
 
 describe("weighted-average costing", () => {
   it("matches the spec example: 10 @ R15 + 20 @ R18 = R17", () => {
@@ -43,6 +43,25 @@ describe("weighted-average costing", () => {
 });
 
 describe("spirits, mixers and specials", () => {
+  const item = (id: string, patch: Partial<RecipeCostItem> = {}): RecipeCostItem => ({ id, name: id, price: 20, category: "bar", stock_qty: 10, item_kind: "stock", unit_yield: 1, ...patch });
+  it("calculates a bundle from latest component prices and averages separately", () => {
+    const items = [item("beer", { cost_price: 10, avg_unit_cost: 9 }), item("snack", { cost_price: 6, avg_unit_cost: 5 })];
+    const recipe = [{ component_item_id: "beer", quantity: 2 }, { component_item_id: "snack", quantity: 1 }];
+    expect(bundleCosts(recipe, items)).toEqual({ current: 26, average: 23 });
+    expect(bundleCosts(recipe, items.map(i => i.id === "beer" ? { ...i, cost_price: 12 } : i)).current).toBe(30);
+  });
+  it("uses option consumption for spirits and bulk mixers, not a full bottle", () => {
+    const items = [item("bottle", { unit_yield: 30, cost_price: 300, avg_unit_cost: 11 }), item("double", { item_kind: "option", stock_parent_id: "bottle", consume_units: 2 }), item("mixer", { unit_yield: 1000, cost_price: 15, avg_unit_cost: 0.015 }), item("glass", { item_kind: "option", stock_parent_id: "mixer", consume_units: 250 })];
+    expect(bundleCosts([{ component_item_id: "double", quantity: 2 }, { component_item_id: "glass", quantity: 2 }], items)).toEqual({ current: 47.5, average: 51.5 });
+  });
+  it("does not replace missing averages with current prices or show an incomplete bundle as zero", () => {
+    expect(bundleCosts([{ component_item_id: "beer", quantity: 2 }], [item("beer", { cost_price: 10 })])).toEqual({ current: 20, average: null });
+    expect(bundleCosts([{ component_item_id: "absent", quantity: 1 }], [])).toEqual({ current: null, average: null });
+    expect(bundleCosts([], [])).toEqual({ current: null, average: null });
+  });
+  it("keeps genuine zero averages and flags default missing current prices", () => {
+    expect(bundleCosts([{ component_item_id: "beer", quantity: 1 }], [item("beer", { cost_price: 0, avg_unit_cost: 0 })])).toEqual({ current: null, average: 0 });
+  });
   it("bottle cost → per-tot cost with configurable yield, exact open bottle", () => {
     // 10 bottles @ R300 then 20 @ R360, 30 tots/bottle
     let avg = weightedAverage(0, null, 300, purchaseCostPerUnit(3000, 300)!);

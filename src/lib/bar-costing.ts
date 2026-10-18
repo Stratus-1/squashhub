@@ -8,7 +8,32 @@
  * average and never change it. Historic movements are never rewritten.
  */
 
+import { unitsPerSale, type InventoryItem } from "./bar-inventory";
+
 export type MovementReason = "purchase" | "sale" | "special_sale" | "stocktake" | "manual" | "cost_adjustment" | string;
+
+export interface RecipeCostItem extends InventoryItem { cost_price?: number | null; avg_unit_cost?: number | null }
+/** Display-only recipe valuation. Missing costs are not zero; never changes sale snapshots. */
+export function bundleCosts(recipe: { component_item_id: string; quantity: number }[], items: RecipeCostItem[]) {
+  const byId = new Map(items.map(item => [item.id, item]));
+  let current = 0, average = 0;
+  let currentMissing = recipe.length === 0, averageMissing = recipe.length === 0;
+  for (const component of recipe) {
+    const item = byId.get(component.component_item_id);
+    const root = item?.stock_parent_id ? byId.get(item.stock_parent_id) : item;
+    if (!item || !root || !(component.quantity > 0) || item.item_kind === "special") {
+      currentMissing = averageMissing = true;
+      continue;
+    }
+    const units = component.quantity * unitsPerSale(item);
+    const yieldPer = Math.max(1, root.unit_yield || 1);
+    if (root.cost_price == null || !Number.isFinite(root.cost_price) || root.cost_price <= 0) currentMissing = true;
+    else current += units * root.cost_price / yieldPer;
+    if (root.avg_unit_cost == null || !Number.isFinite(root.avg_unit_cost) || root.avg_unit_cost < 0) averageMissing = true;
+    else average += units * root.avg_unit_cost;
+  }
+  return { current: currentMissing ? null : round4(current), average: averageMissing ? null : round4(average) };
+}
 
 /** Weighted average per smallest unit after receiving stock. Never divides by zero. */
 export function weightedAverage(

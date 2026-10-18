@@ -10,17 +10,18 @@ export type ProjectedChampFixture = ProjectedCourtFixture & { courtName: string 
 
 export async function loadProjectedFixtures(champ: any): Promise<ProjectedChampFixture[]> {
   const sb = supabase as any;
-  const [courts, arch, entries, matches, rounds] = await Promise.all([
+  const [courts, arch, entries, matches, rounds, club] = await Promise.all([
     sb.from("courts").select("id, name, active").eq("club_id", champ.club_id).order("id"),
     sb.from("tournaments").select("builder_architecture,builder_spec,beta_lifecycle,start_time,end_time,match_duration_minutes,default_break_minutes,court_ids").eq("id", champ.id).maybeSingle(),
     sb.from("club_champs_entries").select("*, club_members:club_member_id(id, name)").eq("champ_id", champ.id),
     sb.from("club_champs_matches").select("*, player_a:player_a_member_id(name), player_b:player_b_member_id(name)").eq("champ_id", champ.id),
     sb.from("club_champs_rounds").select("*").eq("champ_id", champ.id),
+    sb.from("clubs").select("booking_slot_minutes").eq("id", champ.club_id).maybeSingle(),
   ]);
   const active = ((courts.data ?? []) as any[]).filter((c) => c.active !== false);
-  const name = (id: number) => active.find((c) => Number(c.id) === id)?.name ?? `Court ${id}`;
+  const name = (id: number) => active.find((c) => Number(c.id) === id)?.name ?? `Court ${c.id}`;
   try {
-    return projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active })
+    return projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active, slotMinutes: Number(club.data?.booking_slot_minutes) || 0 })
       .map((f) => ({ ...f, courtName: name(f.courtId) }))
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   } catch { return []; }

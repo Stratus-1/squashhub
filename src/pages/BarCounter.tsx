@@ -411,6 +411,28 @@ export default function BarCounter() {
     invalidate();
   }
 
+  function endShift() {
+    if (code) {
+      localStorage.removeItem(tokenKey(code));
+      localStorage.removeItem(operatorKey(code));
+    }
+    qc.removeQueries({ queryKey: ["bar-counter-board", token, clubId], exact: true });
+    qc.removeQueries({ queryKey: ["bar-counter-orders", token, clubId] });
+    setOperator(null);
+    setToken(null);
+    setPin("");
+    setSwitchPin("");
+    setSwitchOpen(false);
+    setActiveTabId(null);
+    setCart({});
+    setSettled(null);
+  }
+
+  function exitCounter() {
+    endShift();
+    navigate(code ? `/s/${encodeURIComponent(code)}` : "/", { replace: true });
+  }
+
 
 
 
@@ -447,6 +469,9 @@ export default function BarCounter() {
           />
           <Button className="w-full h-12" disabled={pin.length < 4 || unlocking} onClick={unlock}>
             {unlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Unlock counter"}
+          </Button>
+          <Button variant="outline" className="w-full gap-1.5" onClick={exitCounter}>
+            <LogOut className="w-4 h-4" /> Exit counter mode
           </Button>
           <p className="text-[11px] text-muted-foreground">
             This device stays unlocked for 30 days. A club admin can revoke it at any time.
@@ -487,7 +512,7 @@ export default function BarCounter() {
     <div className="min-h-screen bg-background pb-80">
       <SEO title="Bar counter" description="Open tabs at the bar counter" path="/bar/counter" noIndex />
 
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex flex-wrap gap-2 items-center justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-base font-semibold leading-tight">
@@ -524,26 +549,14 @@ export default function BarCounter() {
           <Button size="icon" variant="ghost" onClick={() => refetch()} aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </Button>
-          {!code && (
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => navigate(-1)}>
-              <LogOut className="w-4 h-4" /> Close counter
-            </Button>
-          )}
+          <Button size="sm" variant="outline" className="gap-1" onClick={exitCounter}>
+            <LogOut className="w-4 h-4" /> Exit counter mode
+          </Button>
           {operator && (
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                if (code) {
-                  localStorage.removeItem(tokenKey(code));
-                  localStorage.removeItem(operatorKey(code));
-                }
-                setOperator(null);
-                setToken(null);
-                setPin("");
-                setActiveTabId(null);
-                setCart({});
-              }}
+              onClick={endShift}
             >
               End shift
             </Button>

@@ -21,7 +21,7 @@ vi.mock("@/lib/bar-categories", () => ({
 const board = { club_id: "riverside", club_name: "Test club", items: [], tabs: [], cash_enabled: true, card_enabled: true };
 function mount(path: string, client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}>
-    <Routes><Route path="/bar/counter" element={<BarCounter />} /><Route path="/s/:code/counter" element={<BarCounter />} /></Routes>
+    <Routes><Route path="/bar/counter" element={<BarCounter />} /><Route path="/s/:code/counter" element={<BarCounter />} /><Route path="/s/:code" element={<div>Customer menu</div>} /></Routes>
   </MemoryRouter></QueryClientProvider>);
   return client;
 }
@@ -36,6 +36,25 @@ beforeEach(() => {
 });
 
 describe("counter personal PIN boundary", () => {
+  it("exits QR counter mode and clears serving identity without changing tabs or bar opening", async () => {
+    localStorage.setItem("sh.barcounter.token.river-menu", "verified-session");
+    localStorage.setItem("sh.barcounter.operator.river-menu", "Test server");
+    mount("/s/river-menu/counter");
+    await screen.findByText("Test server");
+    fireEvent.click(screen.getByRole("button", { name: "Exit counter mode" }));
+    await screen.findByText("Customer menu");
+    expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBeNull();
+    expect(localStorage.getItem("sh.barcounter.operator.river-menu")).toBeNull();
+    expect(mocks.rpc.mock.calls.every(([name]) => ["bar_counter_board", "bar_order_process_status"].includes(name))).toBe(true);
+  });
+
+  it("can leave the PIN screen without entering a PIN", async () => {
+    mount("/s/river-menu/counter");
+    fireEvent.click(screen.getByRole("button", { name: "Exit counter mode" }));
+    await screen.findByText("Customer menu");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("automatically discovers customer-created tabs using only its verified PIN session", async () => {
     localStorage.setItem("sh.barcounter.token.river-menu", "verified-session");
     localStorage.setItem("sh.barcounter.operator.river-menu", "Test server");

@@ -15,7 +15,8 @@ BEGIN
     RAISE EXCEPTION 'Reservation restoration block not found';
   END IF;
   d := replace(d, restore_block, '');
-  d := replace(d, 'WHERE id = p_match_id;', 'WHERE id = p_match_id FOR UPDATE;');
+  d := replace(d, 'SELECT * INTO _m FROM public.club_champs_matches WHERE id = p_match_id;',
+    'SELECT * INTO _m FROM public.club_champs_matches WHERE id = p_match_id FOR UPDATE;');
   d := replace(d, old_insert,
     E'  -- Resolve the stable booking identity before INSERT triggers run.\n  SELECT b.id INTO _booking_id FROM public.bookings b\n   WHERE b.club_id = _venue_club AND b.source = ''club_event''\n     AND b.external_id = _booking_external_id;\n\n  INSERT INTO public.bookings (\n    id, club_id, court_id, user_id, club_member_id, opponent_member_id,');
   d := replace(d, E'    _venue_club, p_court_id, _booker_user, _booker_member, _m.player_b_member_id,',

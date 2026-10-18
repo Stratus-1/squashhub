@@ -18,7 +18,7 @@ suite("tournament linked booking reschedule", () => {
     await sql.unsafe(`
       CREATE SCHEMA auth; CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
       CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
-      CREATE FUNCTION is_member_owner(uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT $1=auth.uid() $$;
+      CREATE FUNCTION is_member_owner(uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT coalesce($1=auth.uid(),false) $$;
       CREATE FUNCTION is_club_admin_or_permitted(uuid,uuid,text) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
       CREATE FUNCTION tournament_bookable_court_ids(uuid,text,text) RETURNS integer[] LANGUAGE sql AS $$ SELECT ARRAY[35,36] $$;
       CREATE FUNCTION tournament_event_kind(uuid) RETURNS text LANGUAGE sql AS $$ SELECT 'club'::text $$;

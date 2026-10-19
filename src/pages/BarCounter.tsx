@@ -291,6 +291,7 @@ export default function BarCounter() {
       const { data, error } = await supabase.rpc("bar_counter_open_tab", {
         _guest_name: newName.trim(), _token: token, _club_id: clubId,
         _guest_phone: newPhone.trim() || null, _operator: operator,
+        _club_member_id: null,
       } as any);
       if (error) throw error;
       setNewName("");
@@ -312,7 +313,7 @@ export default function BarCounter() {
     try {
       const { data, error } = await (supabase as any).rpc("bar_counter_open_tab", {
         _guest_name: "", _token: token, _club_id: clubId,
-        _operator: operator, _club_member_id: memberId,
+        _guest_phone: null, _operator: operator, _club_member_id: memberId,
       });
       if (error) throw error;
       setMemberQuery("");

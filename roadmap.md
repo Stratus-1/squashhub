@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Photo-reported visitor-tab RPC ambiguity: send all six arguments explicitly; focused counter regression verified. No backend or sales changes; not published.
+
 ## Open
 - [x] Final Swiss pairing pattern approved by Willem (19 Oct 2026): even halves stay equal (24 = 12/12), uneven halves put the extra player in the top group (18 = 10/8); rounds 3-5 use gaps 1v6, 1v7, 1v5 with nearest-player swaps so no two positions meet twice from round 2 on; repairs stay within halves. Rounds 1-2 and saved/played games untouched. All Swiss tests pass; not published.
 - [x] Shared Swiss generation/projection no-repeat formula for ALL clubs from round 3; rounds 1–2 and saved games preserved. 290 tests passed; Uitsig screen checked read-only. Unpublished.

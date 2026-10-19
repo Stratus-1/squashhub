@@ -5,8 +5,9 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
  *
  * One screen for the person behind the counter: see every open tab with its
  * running total, open new tabs, add rounds and settle by cash, card machine or
- * — for members — straight onto the member's account. Staff can never approve
- * an account charge themselves: the member enters their own six-digit Bar PIN.
+ * — for members — straight onto the member's account. Tabs opened for a member
+ * from the counter (member search) charge without a code: the unlocked staff
+ * PIN session is the authority. Other tabs still need the member's own code.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";

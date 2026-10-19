@@ -755,6 +755,7 @@ function proposePairings(field, count, strategy) {
 
 // src/lib/tournaments/swiss-no-repeat.ts
 var opponentKey = (a, b) => JSON.stringify([a, b].sort());
+var SWISS_NO_REPEAT_FROM_ROUND = 3;
 function strictSwissPlan(input) {
   const { occupants, round, history } = input;
   const raw = slotTemplate(occupants.length, round);
@@ -7278,8 +7279,8 @@ function buildProposedSwissGrid(model, opts = {}) {
     if (opts.noRepeats !== false) {
       const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, round: r.round })));
       const locked = (model.rounds.find((r) => r.round === rd.round)?.fixtures ?? []).flatMap((f) => f.a && (f.b || f.state === "bye") ? [{ a: f.a, b: f.b }] : []);
-      const strict = rd.round >= 3 ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
-      if (rd.round < 3 && locked.length) {
+      const strict = rd.round >= SWISS_NO_REPEAT_FROM_ROUND ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
+      if (rd.round < SWISS_NO_REPEAT_FROM_ROUND && locked.length) {
         const pos = new Map(cur.map((id, index) => [id, index + 1]));
         const actual = locked.flatMap((f) => {
           const a = pos.get(f.a), b = f.b ? pos.get(f.b) : undefined;
@@ -7288,9 +7289,9 @@ function buildProposedSwissGrid(model, opts = {}) {
         const used = actual.flatMap((p) => [p.a, p.b]);
         const savedBye = locked.find((f) => !f.b);
         const byeSlot = savedBye ? pos.get(savedBye.a) ?? null : null;
-        if (used.length + Number(byeSlot != null) === n && new Set(used).size === used.length) {
-          strict.pairs = actual;
-          strict.bye = byeSlot;
+        if (new Set(used).size === used.length) {
+          strict.pairs = [...actual, ...rd.pairs.filter((p) => !used.includes(p.a) && !used.includes(p.b) && p.a !== byeSlot && p.b !== byeSlot)].sort((a, b) => a.a - b.a);
+          strict.bye = byeSlot ?? (rd.bye != null && !used.includes(rd.bye) ? rd.bye : null);
         }
       }
       if (strict.issue)
@@ -7481,7 +7482,7 @@ function projectCourtFixtures(i) {
         const s = gSlots[b.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
         if (s?.kind !== "planned")
           continue;
-        if (noRepeats && matches.some((m) => Number(m.court_id) === Number(s.courtId) && m.scheduled_date === s.date && String(m.scheduled_time).slice(0, 5) === s.time))
+        if (matches.some((m) => Number(m.court_id) === Number(s.courtId) && m.scheduled_date === s.date && String(m.scheduled_time).slice(0, 5) === s.time))
           continue;
         out.push({
           key: `proj:${champ.id}:${gn}:${rd.round}:${x.pos}v${y.pos}`,

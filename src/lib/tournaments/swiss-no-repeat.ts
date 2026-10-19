@@ -30,7 +30,7 @@ export function strictSwissPlan(input: {
   const { occupants, round, history } = input;
   const raw = preferredSwissTemplate(occupants.length, round);
   const wide = occupants.length % 4 === 0 && round >= 3 && round <= 4;
-  const preferred = wide ? raw.pairs : input.preferred ?? raw.pairs;
+  const preferred = occupants.length % 4 === 0 && round >= 3 ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id)) return { pairs: preferred, bye, ready: false };
   const ids = occupants.filter((id): id is string => !!id);

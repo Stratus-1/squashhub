@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import {
   daySlotBoard,
   isSlotFreeForMatch,
   isChampsReservation,
+  timeToMinutes,
+  minutesToTime,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
 import { matchParticipantIds, bookingConflictsWithParticipants, scheduledFixtureBlockers } from "@/lib/tournaments/self-schedule";

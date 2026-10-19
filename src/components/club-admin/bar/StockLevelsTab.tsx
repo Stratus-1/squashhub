@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -62,6 +63,19 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const { data: barSettings } = useQuery({
+    queryKey: ["bar-costing-settings", clubId],
+    queryFn: async () => (await (supabase as any).from("club_bar_settings").select("*").eq("club_id", clubId).maybeSingle()).data,
+  });
+
+  const toggleNegative = async (on: boolean) => {
+    const { error } = await (supabase as any).from("club_bar_settings")
+      .upsert({ club_id: clubId, costing_enabled: !!barSettings?.costing_enabled, allow_negative_stock: on });
+    if (error) return toast.error(error.message);
+    toast.success(on ? "Selling below zero allowed" : "Sales now blocked when stock runs out");
+    qc.invalidateQueries({ queryKey: ["bar-costing-settings", clubId] });
+  };
 
   const { data: levels = [], isLoading } = useQuery({
     queryKey: ["bar-stock-levels", clubId, date],
@@ -298,6 +312,21 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
+      <Card className="p-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-sm">Allow selling below zero</h3>
+          <p className="text-xs text-muted-foreground">
+            On: sales carry on when stock runs out and the stock count goes negative (e.g. −3) so you can see what's missing.
+            Off: a sale that needs more than is in stock is blocked.
+          </p>
+        </div>
+        <Switch
+          checked={barSettings?.allow_negative_stock ?? true}
+          onCheckedChange={toggleNegative}
+          aria-label="Allow selling below zero"
+        />
+      </Card>
+
       <Card className="p-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="font-semibold text-sm flex items-center gap-2">

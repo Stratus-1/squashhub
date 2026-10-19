@@ -1387,6 +1387,13 @@
       "when": 1792400532566,
       "tag": "0197_my_bar_purchases_allow_club_admin_view",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1792400658062,
+      "tag": "0198_bar_item_negative_stock_override",
+      "breakpoints": true
     }
   ]
 }

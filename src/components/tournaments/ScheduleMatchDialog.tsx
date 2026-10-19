@@ -11,6 +11,7 @@ import { CalendarClock, Loader2 } from "lucide-react";
 import {
   buildSlots,
   champsSlotStarts,
+  daySlotBoard,
   isSlotFreeForMatch,
   isChampsReservation,
   type SelfScheduleMatchLike,
@@ -170,6 +171,9 @@ export function ScheduleMatchDialog({
       return [...((data || []) as any[]), ...scheduledFixtureBlockers(fixtures, dur, match?.id ?? null)];
     },
     enabled: !!bookingClubId && !!date && open,
+    // Keep the board fresh while the dialog is open — slots taken elsewhere
+    // (e.g. a GoBook booking) show as taken within half a minute.
+    refetchInterval: 30000,
   });
 
   // Upcoming "Club Championships" holds at the venue. While any exist, players

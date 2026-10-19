@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
     for (const b of bookings || []) {
       if (!(await capOn((b as any).club_id, "bookings"))) continue;
       // Tournament fixture bookings never get the court booking reminder (owner decision).
-      if (String((b as any).external_id || "").startsWith("champ:")) continue;
+      if (/^(champ|sbs):/.test(String((b as any).external_id || ""))) continue;
       const club = clubMsgMemo.get(String((b as any).club_id)) || {};
       if (club.booking_reminder_enabled === false && (b as any).reminder_hours == null) continue;
 

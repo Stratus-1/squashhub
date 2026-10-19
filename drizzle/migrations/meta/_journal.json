@@ -1359,6 +1359,13 @@
       "when": 1792393630340,
       "tag": "0193_protect_scheduled_championship_slots",
       "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1792399528458,
+      "tag": "0194_fix_bar_counter_search_member_number_column",
+      "breakpoints": true
     }
   ]
 }

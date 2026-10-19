@@ -505,10 +505,28 @@ export function ScheduleMatchDialog({
           {playerClashes.length > 0 && (
             <div className="rounded-md border border-border bg-muted/40 p-2 text-[11px]" data-testid="player-clash-note" role="note">
               <p className="font-semibold">A player in this match already has a booking this day</p>
-              <ul className="mt-1 space-y-0.5">
-                {playerClashes.map((c) => <li key={c.id} className="tabular-nums">{c.time} · {c.court}</li>)}
+              <ul className="mt-1 space-y-1">
+                {playerClashes.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-2">
+                    <span className="tabular-nums">{c.time} · {c.court}{c.source === "gobook" ? " · GoBook" : ""}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={saving}
+                      className="h-6 px-1.5 text-[10px]"
+                      onClick={() => linkBooking(c.id)}
+                    >
+                      Use for this fixture
+                    </Button>
+                  </li>
+                ))}
               </ul>
-              <p className="mt-1 text-muted-foreground">Times that overlap these are not offered. To use one of them for this match, cancel that booking first, then come back here.</p>
+              <p className="mt-1 text-muted-foreground">
+                Times that overlap these are not offered as free slots. "Use for this fixture" makes the fixture show
+                that booking's court and time — the booking stays your own paid booking and is never cancelled if the
+                fixture is moved or cleared.
+              </p>
             </div>
           )}
 

@@ -11,6 +11,7 @@ import { CalendarClock, Loader2 } from "lucide-react";
 import {
   buildSlots,
   champsSlotStarts,
+  daySlotBoard,
   isSlotFreeForMatch,
   isChampsReservation,
   type SelfScheduleMatchLike,
@@ -170,6 +171,9 @@ export function ScheduleMatchDialog({
       return [...((data || []) as any[]), ...scheduledFixtureBlockers(fixtures, dur, match?.id ?? null)];
     },
     enabled: !!bookingClubId && !!date && open,
+    // Keep the board fresh while the dialog is open — slots taken elsewhere
+    // (e.g. a GoBook booking) show as taken within half a minute.
+    refetchInterval: 30000,
   });
 
   // Upcoming "Club Championships" holds at the venue. While any exist, players
@@ -237,6 +241,22 @@ export function ScheduleMatchDialog({
     }
     return out.sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
   }, [bookings, courtOptions, duration, match]);
+
+  // Full-day board for Champs-only mode: every normal club slot on every
+  // tournament court, marked free-Champs / reserved / taken / open. Open slots
+  // are normal paid club bookings (e.g. via GoBook) and are not bookable here.
+  const dayBoard = useMemo(() => {
+    if (!champsOnly || !match) return [] as { courtId: number; courtName: string; slots: { time: string; status: string }[] }[];
+    const normalSlots = buildSlots(slotMinutes, club?.booking_open_time, club?.booking_last_slot_time);
+    return courtOptions.map((c) => ({
+      courtId: c.id,
+      courtName: c.name,
+      slots: daySlotBoard(normalSlots, slotMinutes, c.id, bookings as any[], {
+        champsFree: new Set(champsSlots.filter((s) => s.courtId === c.id).map((s) => s.time)),
+        ignoreBookingId: match?.booking_id ?? null,
+      }),
+    }));
+  }, [champsOnly, match, slotMinutes, club?.booking_open_time, club?.booking_last_slot_time, courtOptions, bookings, champsSlots]);
 
   // The players' own existing bookings that day. Times overlapping them are
   // hidden (the server refuses them too), so say why instead of silently
@@ -412,6 +432,48 @@ export function ScheduleMatchDialog({
             <p className="text-xs text-muted-foreground">
               {isFetching ? "Checking availability…" : "All Club Champs slots on this day are taken — try the other day."}
             </p>
+          )}
+          {champsOnly && dayBoard.length > 0 && (
+            <div className="space-y-1.5 rounded-md border border-border p-2" data-testid="champs-day-board">
+              <Label className="text-xs font-semibold">All slots this day</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Free Champs slots are highlighted — tap one to book. "Open" slots are normal paid bookings through the club's usual booking system and can't be booked here.
+              </p>
+              {dayBoard.map((court) => (
+                <div key={court.courtId} className="space-y-1">
+                  <p className="text-[11px] font-medium text-muted-foreground">{court.courtName}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {court.slots.map((s) =>
+                      s.status === "champs-free" ? (
+                        <Button
+                          key={s.time}
+                          type="button"
+                          size="sm"
+                          disabled={saving}
+                          className="h-6 px-1.5 text-[10px]"
+                          onClick={() => confirm(s.time, court.courtId)}
+                        >
+                          {s.time} Free
+                        </Button>
+                      ) : (
+                        <span
+                          key={s.time}
+                          className={
+                            s.status === "taken"
+                              ? "inline-flex h-6 items-center rounded-md bg-muted px-1.5 text-[10px] text-muted-foreground line-through"
+                              : s.status === "champs"
+                                ? "inline-flex h-6 items-center rounded-md border border-primary/40 px-1.5 text-[10px] text-muted-foreground"
+                                : "inline-flex h-6 items-center rounded-md border border-border px-1.5 text-[10px] text-muted-foreground"
+                          }
+                        >
+                          {s.time} {s.status === "taken" ? "Taken" : s.status === "champs" ? "Champs" : "Open"}
+                        </span>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
           {champsOnly && (
             <p className="text-[11px] text-muted-foreground">

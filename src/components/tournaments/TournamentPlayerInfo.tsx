@@ -26,11 +26,14 @@ export function TournamentPlayerInfoNotice({ tournamentId }: { tournamentId?: st
   const { data } = useInfo(tournamentId);
   if (!data?.trim()) return null;
   return (
-    <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-sm flex gap-2" data-testid="tournament-player-info">
-      <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-      <div>
-        <p className="font-semibold">Additional information</p>
-        <p className="whitespace-pre-wrap text-muted-foreground">{data}</p>
+    <div
+      className="rounded-lg border-2 border-success/60 bg-success/10 p-4 flex gap-3"
+      data-testid="tournament-player-info"
+    >
+      <Info className="h-6 w-6 mt-1 shrink-0 text-success" />
+      <div className="space-y-1">
+        <p className="text-base font-bold text-success-foreground">Additional information</p>
+        <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{data}</p>
       </div>
     </div>
   );

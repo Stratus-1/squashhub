@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Open
-- [ ] Trace and restore Gerhard's original booking slot instead of cancelling; preserve Nico/Johann's original schedule.
+- [ ] Remove Gerhard's conflicting booking while retaining his fixture; restore Nico/Johann's original scheduled slot.
 - [ ] Protect scheduled championship allocations from overlapping player bookings; verify targeted regressions.
 
 ## Done

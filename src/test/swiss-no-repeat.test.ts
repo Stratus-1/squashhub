@@ -4,6 +4,23 @@ import { fixedPositionRound } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 
 describe("Shared Swiss no-repeat formula", () => {
+  it.each([18, 24])("%i players with changing positions have no repeat in five rounds", (n) => {
+    const d = { divisionId: "d", entrants: Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}` })) } as any;
+    const rows: any[] = [];
+    const seen = new Set<string>();
+    for (let round = 1; round <= 5; round++) {
+      const pairs = fixedPositionRound(d, rows, round);
+      expect(pairs).not.toBeNull();
+      if (!pairs) return;
+      pairs.forEach(([a, b], i) => {
+        if (!b) return;
+        expect(seen.has(opponentKey(a, b))).toBe(false);
+        seen.add(opponentKey(a, b));
+        rows.push({ a, b, round, winner: (round + i) % 2 ? a : b, status: "completed" });
+      });
+    }
+    expect(seen.size).toBe(n / 2 * 5);
+  });
   it("24 players play five rounds without repeated opponents, preserving rounds 1 and 2", () => {
     const d = { divisionId: "d", entrants: Array.from({ length: 24 }, (_, i) => ({ id: `p${i + 1}` })) } as any;
     const rows: any[] = [];

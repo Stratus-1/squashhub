@@ -111,17 +111,15 @@ export default function HonestyBar() {
     enabled: !!clubId,
   });
 
+  // Full history: account charges plus cash/card/online purchases.
   const { data: myTab = [] } = useQuery({
-    queryKey: ["my-bar-tab", clubId, memberId],
+    queryKey: ["my-bar-purchases", clubId, memberId],
     queryFn: async () => {
-      const { data, error } = await fromExt("bar_tab_entries")
-        .select("*, bar_items:bar_item_id(name, category)")
-        .eq("club_id", clubId)
-        .eq("club_member_id", memberId)
-        .order("created_at", { ascending: false })
-        .limit(50);
+      const { data, error } = await (supabase as any).rpc("my_bar_purchases", {
+        _club_id: clubId, _club_member_id: memberId,
+      });
       if (error) throw error;
-      return data as BarTabEntry[];
+      return (data as { id: string; created_at: string; item_name: string; quantity: number; total: number; method: string }[]) ?? [];
     },
     enabled: !!clubId && !!memberId,
   });

@@ -3,6 +3,7 @@
 ## Open
 - [ ] Remove Gerhard's conflicting booking while retaining his fixture; restore Nico/Johann's original scheduled slot.
 - [ ] Protect scheduled championship allocations from overlapping player bookings; verify targeted regressions.
+- [ ] Verify admins cannot bypass occupied-slot protection either.
 
 ## Done
 - [x] Published 18 Oct 2026: champs-slot fixes (grid display, 35-min reschedule slots, freed old slot), reserved-court 35-min time column, recurring transactions, average-cost fill-in, two-decimal money display, cost-per-tot hint on purchase lines, WhatsApp/SMS switches, Enter Transaction date fix, dialog size fix

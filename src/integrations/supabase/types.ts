@@ -1106,6 +1106,7 @@ export type Database = {
       bar_items: {
         Row: {
           active: boolean
+          allow_negative_stock: boolean | null
           archived_at: string | null
           avg_unit_cost: number | null
           barcode: string | null
@@ -1141,6 +1142,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          allow_negative_stock?: boolean | null
           archived_at?: string | null
           avg_unit_cost?: number | null
           barcode?: string | null
@@ -1176,6 +1178,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          allow_negative_stock?: boolean | null
           archived_at?: string | null
           avg_unit_cost?: number | null
           barcode?: string | null

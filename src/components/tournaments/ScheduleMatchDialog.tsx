@@ -15,7 +15,7 @@ import {
   isChampsReservation,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
-import { matchParticipantIds, bookingConflictsWithParticipants } from "@/lib/tournaments/self-schedule";
+import { matchParticipantIds, bookingConflictsWithParticipants, scheduledFixtureBlockers } from "@/lib/tournaments/self-schedule";
 import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
 
 

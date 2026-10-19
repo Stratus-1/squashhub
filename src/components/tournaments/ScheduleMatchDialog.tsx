@@ -171,7 +171,7 @@ export function ScheduleMatchDialog({
     queryKey: ["court-bookings-self-schedule", bookingClubId, date, match?.id, durationMinutes],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
-        .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
+        .select("id, court_id, start_time, end_time, status, source, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
         .eq("club_id", bookingClubId!)
         .eq("date", date)
         .eq("status", "active");
@@ -280,9 +280,11 @@ export function ScheduleMatchDialog({
 
   // The players' own existing bookings that day. Times overlapping them are
   // hidden (the server refuses them too), so say why instead of silently
-  // leaving a gap — e.g. a player's earlier GoBook booking at 18:00.
+  // leaving a gap — e.g. a player's earlier GoBook booking at 18:00. Each can
+  // be explicitly linked to the fixture instead: the booking stays the
+  // player's own paid booking, the fixture just displays its court and time.
   const playerClashes = useMemo(() => {
-    if (!match) return [] as { id: string; time: string; court: string }[];
+    if (!match) return [] as { id: string; time: string; court: string; source: string }[];
     const ids = matchParticipantIds(match);
     return (bookings as any[])
       .filter((b) => b.id !== match.booking_id && bookingConflictsWithParticipants(b, ids))
@@ -290,11 +292,15 @@ export function ScheduleMatchDialog({
         id: String(b.id),
         time: `${String(b.start_time).slice(0, 5)}–${String(b.end_time).slice(0, 5)}`,
         court: courts.find((c) => c.id === b.court_id)?.name || `Court ${b.court_id}`,
+        source: String(b.source ?? ""),
       }))
       .sort((x, y) => x.time.localeCompare(y.time));
   }, [bookings, match, courts]);
 
   const selectedCourtId = courtId;
+  // When the fixture is linked to the player's own paid booking (e.g. GoBook),
+  // clearing only unlinks it — the booking itself is never cancelled.
+  const linkedIsPersonal = !!(bookings as any[]).find((b) => b.id === match?.booking_id && b.source && b.source !== "club_event");
   const confirm = async (time: string, courtOverride?: number) => {
     const courtId = courtOverride ?? selectedCourtId;
     if (!match || !courtId) return;
@@ -387,7 +393,7 @@ export function ScheduleMatchDialog({
       toast.success(
         result?.alreadyBooked
           ? `You already have this slot in GoBook at ${start}.`
-          : `Booked via GoBook at ${start} — your own paid booking, separate from this fixture.`,
+          : `Booked via GoBook at ${start} — your own paid booking. To play this fixture in it, tap "Use for this fixture" next to your booking below.`,
       );
       // Mirror the new GoBook booking into the club calendar so the board
       // shows it as taken straight away.
@@ -401,6 +407,34 @@ export function ScheduleMatchDialog({
       toast.error(e?.message || "GoBook rejected the booking");
     } finally {
       setGobookBooking(null);
+    }
+  };
+
+  /**
+   * Explicitly link one of the player's own bookings (e.g. a paid GoBook
+   * booking) to this fixture. The fixture displays the booking's court and
+   * time and follows it if it moves; the booking stays the player's own paid
+   * booking and is never cancelled by clearing or moving the fixture.
+   */
+  const linkBooking = async (bookingId: string) => {
+    if (!match) return;
+    setSaving(true);
+    try {
+      const { error } = await rpcExt("link_booking_to_champ_match", {
+        p_match_id: match.id,
+        p_booking_id: bookingId,
+      });
+      if (error) {
+        toast.error(error.message || "Could not link that booking to the fixture.");
+        return;
+      }
+      toast.success(
+        "Fixture linked — it now shows your booking's court and time. The booking stays your own paid booking.",
+      );
+      invalidateAll();
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -428,7 +462,7 @@ export function ScheduleMatchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <CalendarClock className="w-4 h-4" />{" "}
@@ -442,7 +476,7 @@ export function ScheduleMatchDialog({
         </DialogHeader>
 
 
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto pr-1">
           <div className="space-y-1">
             <Label className="text-xs">Date</Label>
             {champsOnly ? (
@@ -474,10 +508,28 @@ export function ScheduleMatchDialog({
           {playerClashes.length > 0 && (
             <div className="rounded-md border border-border bg-muted/40 p-2 text-[11px]" data-testid="player-clash-note" role="note">
               <p className="font-semibold">A player in this match already has a booking this day</p>
-              <ul className="mt-1 space-y-0.5">
-                {playerClashes.map((c) => <li key={c.id} className="tabular-nums">{c.time} · {c.court}</li>)}
+              <ul className="mt-1 space-y-1">
+                {playerClashes.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-2">
+                    <span className="tabular-nums">{c.time} · {c.court}{c.source === "gobook" ? " · GoBook" : ""}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={saving}
+                      className="h-6 px-1.5 text-[10px]"
+                      onClick={() => linkBooking(c.id)}
+                    >
+                      Use for this fixture
+                    </Button>
+                  </li>
+                ))}
               </ul>
-              <p className="mt-1 text-muted-foreground">Times that overlap these are not offered. To use one of them for this match, cancel that booking first, then come back here.</p>
+              <p className="mt-1 text-muted-foreground">
+                Times that overlap these are not offered as free slots. "Use for this fixture" makes the fixture show
+                that booking's court and time — the booking stays your own paid booking and is never cancelled if the
+                fixture is moved or cleared.
+              </p>
             </div>
           )}
 
@@ -645,7 +697,9 @@ export function ScheduleMatchDialog({
                 disabled={saving}
                 className="h-7 text-xs text-destructive hover:text-destructive"
                 onClick={clearSlot}
-                title="Remove the court and time — the fixture and any result are kept"
+                title={linkedIsPersonal
+                  ? "Remove the court and time — your paid booking stays active and is simply unlinked"
+                  : "Remove the court and time — the fixture and any result are kept"}
               >
                 Clear court & time
               </Button>

@@ -216,7 +216,7 @@ export function useMyClub() {
   const { club: contextClub, subdomain } = useClubContext();
   const activeClubId = contextClub?.id;
 
-  return useQuery({
+  const result = useQuery({
     queryKey: ["my-club", user?.id, activeClubId ?? subdomain ?? null],
     queryFn: async () => {
       let query = fromExt("club_members")
@@ -231,17 +231,36 @@ export function useMyClub() {
       const { data, error } = await query.limit(1).maybeSingle();
       if (error) throw error;
       if (!data) {
-        // If a tenant context is active but the user has no membership there,
-        // surface the tenant club so the UI still renders in the correct context.
-        if (contextClub) {
-          return { membership: null as any, club: contextClub as unknown as Club };
-        }
-        return null;
+        // No membership in the tenant club: the club itself is supplied live
+        // from the tenant context below (never a snapshot cached here).
+        return activeClubId ? { membership: null as any, club: null as unknown as Club } : null;
       }
       return { membership: { club_id: data.club_id, role: data.role }, club: data.clubs as Club };
     },
     enabled: !!user && (!subdomain || !!activeClubId),
   });
+
+  // The tenant club arrives in two parts (public row, then signed-in booking
+  // settings such as slot length). Merge it at render time so a snapshot taken
+  // before the second part loaded can never leave pages on default settings.
+  const data = mergeTenantClub(result.data, contextClub);
+  return { ...result, data } as typeof result;
+}
+
+/** Fill the membership club with the live tenant club's settings (same club only). */
+export function mergeTenantClub<T extends { membership: any; club: Club } | null | undefined>(
+  data: T,
+  contextClub: any,
+): T {
+  if (!data || !contextClub) return data;
+  const club: any = data.club;
+  if (!club) return { ...data, club: contextClub } as T;
+  if (club.id !== contextClub.id) return data;
+  const merged: any = { ...club };
+  for (const [k, v] of Object.entries(contextClub)) {
+    if (merged[k] === undefined || merged[k] === null) merged[k] = v;
+  }
+  return { ...data, club: merged } as T;
 }
 
 /** Resolve the current user's platform role without treating the initial query as "not admin". */

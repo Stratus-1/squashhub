@@ -21755,6 +21755,10 @@ export type Database = {
           status: string
         }[]
       }
+      my_bar_purchases: {
+        Args: { _club_id: string; _club_member_id: string }
+        Returns: Json
+      }
       new_invite_token: { Args: never; Returns: string }
       new_model_cap: {
         Args: { _capability: string; _club_id: string; _user_id: string }

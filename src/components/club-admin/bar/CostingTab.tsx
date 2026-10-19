@@ -100,20 +100,6 @@ export function CostingTab({ clubId }: { clubId: string }) {
         <Switch checked={enabled} onCheckedChange={toggle} aria-label="Stock costing" />
       </Card>
 
-      <Card className="p-4 flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-sm">Allow selling below zero</h3>
-          <p className="text-xs text-muted-foreground">
-            On: sales carry on when stock runs out and the stock count goes negative (e.g. −3) so you can see what's missing.
-            Off: a sale that needs more than is in stock is blocked.
-          </p>
-        </div>
-        <Switch
-          checked={settings?.allow_negative_stock ?? true}
-          onCheckedChange={toggleNegative}
-          aria-label="Allow selling below zero"
-        />
-      </Card>
 
 
       {enabled && (

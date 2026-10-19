@@ -1401,6 +1401,13 @@
       "when": 1792400684804,
       "tag": "0199_bar_negative_stock_override_root_item",
       "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1792402601687,
+      "tag": "0200_bar_purchases_payment_group",
+      "breakpoints": true
     }
   ]
 }

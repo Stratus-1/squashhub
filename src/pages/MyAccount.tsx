@@ -268,7 +268,7 @@ export default function MyAccount() {
   // Running balance is computed chronologically (oldest → newest), then the list is
   // reversed for display so the newest transaction appears first.
   // Balance: debits − credits. Positive = member owes, negative = member in credit.
-  type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
+  type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string; paidLabel?: string };
   const statementLinesChrono: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 

@@ -476,7 +476,7 @@ export function ScheduleMatchDialog({
         </DialogHeader>
 
 
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto pr-1">
           <div className="space-y-1">
             <Label className="text-xs">Date</Label>
             {champsOnly ? (

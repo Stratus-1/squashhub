@@ -147,14 +147,27 @@ export function ScheduleMatchDialog({
   }, [courtOptions, courtId, courts]);
 
   const { data: bookings = [], isFetching, refetch: refetchBookings } = useQuery({
-    queryKey: ["court-bookings-self-schedule", bookingClubId, date],
+    queryKey: ["court-bookings-self-schedule", bookingClubId, date, match?.id, durationMinutes],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
         .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
         .eq("club_id", bookingClubId!)
         .eq("date", date)
         .eq("status", "active");
-      return (data || []) as any[];
+      // Scheduled games without a booking row still hold their court.
+      const { data: champs } = await fromExt("club_champs").select("id").eq("club_id", bookingClubId!);
+      const champIds = ((champs || []) as any[]).map((c) => c.id);
+      let fixtures: any[] = [];
+      if (champIds.length) {
+        const { data: fx } = await fromExt("club_champs_matches")
+          .select("id, court_id, scheduled_time, booking_id, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id")
+          .in("champ_id", champIds)
+          .eq("scheduled_date", date)
+          .not("court_id", "is", null);
+        fixtures = (fx || []) as any[];
+      }
+      const dur = Math.max(15, durationMinutes || Number(club?.booking_slot_minutes) || 45);
+      return [...((data || []) as any[]), ...scheduledFixtureBlockers(fixtures, dur, match?.id ?? null)];
     },
     enabled: !!bookingClubId && !!date && open,
   });

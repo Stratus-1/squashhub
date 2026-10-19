@@ -48,16 +48,16 @@ describe("champsSlotStarts — the Champs' own match-length slots inside reserve
 });
 
 describe("daySlotBoard — the full-day view inside the fixture booking window", () => {
-  const grid = ["17:00", "17:45", "18:00", "18:45", "19:30"];
+  const grid = ["17:00", "18:00", "18:45", "19:30"];
   it("marks a free Champs slot, a Champs hold, a taken slot and an open slot", () => {
     const bookings = [
-      hold(27, "18:00", "19:30"), // Champs hold covering 18:00 and 18:45 grid slots
+      hold(27, "18:00", "18:45"), // free Champs slot
+      hold(27, "18:45", "19:30"), // Champs hold still open, shown as reserved
       { court_id: 27, start_time: "17:00", end_time: "17:45", status: "active", club_member_id: "m9" }, // taken
     ];
     const board = daySlotBoard(grid, 45, 27, bookings, { champsFree: new Set(["18:00"]) });
     expect(board).toEqual([
       { time: "17:00", status: "taken" },
-      { time: "17:45", status: "open" },
       { time: "18:00", status: "champs-free" },
       { time: "18:45", status: "champs" },
       { time: "19:30", status: "open" },

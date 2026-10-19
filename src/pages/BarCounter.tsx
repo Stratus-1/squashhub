@@ -282,6 +282,10 @@ export default function BarCounter() {
 
   async function openTab() {
     if (!newName.trim()) return;
+    if (!newPhone.trim()) {
+      toast.error("Enter the visitor's cell number");
+      return;
+    }
     setBusy(true);
     try {
       const { data, error } = await supabase.rpc("bar_counter_open_tab", {
@@ -744,14 +748,14 @@ export default function BarCounter() {
                   className="h-11"
                 />
                 <Input
-                  placeholder="Cell number (optional)"
+                  placeholder="Cell number (required)"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && openTab()}
                   inputMode="tel"
                   className="h-11 sm:max-w-[180px]"
                 />
-                <Button className="h-11 gap-1" disabled={!newName.trim() || busy} onClick={openTab}>
+                <Button className="h-11 gap-1" disabled={!newName.trim() || !newPhone.trim() || busy} onClick={openTab}>
                   <Plus className="w-4 h-4" /> Tab
                 </Button>
               </div>

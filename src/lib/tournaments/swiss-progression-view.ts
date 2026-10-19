@@ -8,7 +8,7 @@
 import { swissTable, type SwissGame } from "@/lib/tournaments/swiss-standings";
 import { fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { categoryTemplate, planCategory, validateTemplate } from "@/lib/tournaments/swiss-positional";
-import { strictSwissPlan, SWISS_NO_REPEAT_FROM_ROUND } from "./swiss-no-repeat";
+import { strictSwissPlan, preferredSwissTemplate, SWISS_NO_REPEAT_FROM_ROUND } from "./swiss-no-repeat";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -211,7 +211,8 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
   const n = model.rows.length;
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
-  const template = categoryTemplate(n, model.totalRounds);
+  const template = opts.noRepeats === false ? categoryTemplate(n, model.totalRounds)
+    : Array.from({ length: model.totalRounds }, (_, i) => preferredSwissTemplate(n, i + 1));
   const rawTemplate = categoryTemplate(n, model.totalRounds); // slot keys for the proposed schedule
   const issues = validateTemplate(n, template);
   if (issues.length) return { rounds: [], issues };

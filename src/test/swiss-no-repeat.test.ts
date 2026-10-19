@@ -1,9 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { strictSwissPlan, opponentKey } from "@/lib/tournaments/swiss-no-repeat";
+import { strictSwissPlan, opponentKey, preferredSwissTemplate } from "@/lib/tournaments/swiss-no-repeat";
 import { fixedPositionRound } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 
 describe("Shared Swiss no-repeat formula", () => {
+  it("24-player round three has the approved six-position gap in each half", () => {
+    expect(preferredSwissTemplate(24, 3).pairs.map(p => [p.a, p.b])).toEqual([
+      [1, 7], [2, 8], [3, 9], [4, 10], [5, 11], [6, 12],
+      [13, 19], [14, 20], [15, 21], [16, 22], [17, 23], [18, 24],
+    ]);
+  });
+  it("round four keeps the top six apart and both halves separate", () => {
+    const plan = strictSwissPlan({ occupants: Array.from({ length: 24 }, (_, i) => `p${i + 1}`), round: 4, history: [] });
+    expect(plan.ready).toBe(true);
+    expect(plan.pairs.map(p => [p.a, p.b])).toEqual([
+      [1, 8], [2, 9], [3, 10], [4, 11], [5, 12], [6, 7],
+      [13, 20], [14, 21], [15, 22], [16, 23], [17, 24], [18, 19],
+    ]);
+  });
+  it("rematch repair stays inside each half and separates its top six in round three", () => {
+    const plan = strictSwissPlan({ occupants: Array.from({ length: 24 }, (_, i) => `p${i + 1}`), round: 3,
+      history: [{ a: "p1", b: "p7", round: 2 }] });
+    expect(plan.ready).toBe(true);
+    expect(plan.pairs.some(p => p.a === 1 && p.b === 7)).toBe(false);
+    expect(plan.pairs.every(p => Math.floor((p.a - 1) / 12) === Math.floor((p.b - 1) / 12)
+      && Math.floor((p.a - 1) / 6) !== Math.floor((p.b - 1) / 6))).toBe(true);
+    expect(new Set(plan.pairs.flatMap(p => [p.a, p.b])).size).toBe(24);
+  });
   it.each([18, 24])("%i players with changing positions have no repeat in five rounds", (n) => {
     const d = { divisionId: "d", entrants: Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}` })) } as any;
     const rows: any[] = [];

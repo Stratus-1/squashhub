@@ -8,7 +8,7 @@
 import { swissTable, type SwissGame } from "@/lib/tournaments/swiss-standings";
 import { fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { categoryTemplate, planCategory, validateTemplate } from "@/lib/tournaments/swiss-positional";
-import { strictSwissPlan, preferredSwissTemplate, SWISS_NO_REPEAT_FROM_ROUND } from "./swiss-no-repeat";
+import { strictSwissPlan, preferredSwissTemplate, swissStrictFromRound } from "./swiss-no-repeat";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -250,8 +250,8 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
     if (opts.noRepeats !== false) {
       const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, round: r.round })));
       const locked = (model.rounds.find((r) => r.round === rd.round)?.fixtures ?? []).flatMap((f) => f.a && (f.b || f.state === "bye") ? [{ a: f.a, b: f.b }] : []);
-      const strict = rd.round >= SWISS_NO_REPEAT_FROM_ROUND ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
-      if (rd.round < SWISS_NO_REPEAT_FROM_ROUND && locked.length) {
+      const strict = rd.round >= swissStrictFromRound(cur.length) ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
+      if (rd.round < swissStrictFromRound(cur.length) && locked.length) {
         const pos = new Map(cur.map((id, index) => [id, index + 1]));
         const actual = locked.flatMap((f) => {
           const a = pos.get(f.a), b = f.b ? pos.get(f.b) : undefined;
@@ -293,7 +293,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule: ProposedRoundSchedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos: number | null, bye = false): GridRow => {
-      const id = !bye && pos != null && (opts.noRepeats === false || rd.round < 3 || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
+      const id = !bye && pos != null && (opts.noRepeats === false || rd.round < swissStrictFromRound(into.length) || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
         : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };

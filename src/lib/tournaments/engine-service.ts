@@ -6,7 +6,7 @@ import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, t
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
 import { proposePairings } from "./paced-knockout";
-import { strictSwissPlan, SWISS_NO_REPEAT_FROM_ROUND } from "./swiss-no-repeat";
+import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -249,7 +249,7 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
     // Accept rounds drawn by the raw template (older draws) or the bye-fair template (no repeat byes).
     const candidates = [asPlan(raw.pairs, raw.bye), byeFairPlan(state, r)];
     // Adjusted saved rounds remain authoritative: replay their actual occupants, never redraw history.
-    if (noRepeats && r >= SWISS_NO_REPEAT_FROM_ROUND) {
+    if (noRepeats && r >= swissStrictFromRound(n)) {
       const pos = new Map(occ.map((id, i) => [id, i + 1]));
       const pairs = saved.flatMap((f) => {
         const a = f.a ? pos.get(f.a) : undefined, b = f.b ? pos.get(f.b) : undefined;
@@ -279,7 +279,7 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
   // Next round: positional template with bye fairness (nobody gets a second bye).
   const plan = byeFairPlan(state, nextRound);
   const occ = state.occupants;
-  if (noRepeats && nextRound >= SWISS_NO_REPEAT_FROM_ROUND) {
+  if (noRepeats && nextRound >= swissStrictFromRound(n)) {
     const strict = strictSwissPlan({ occupants: occ, round: nextRound, preferred: plan.pairs, bye: plan.bye,
       history: mine.map((f) => ({ a: f.a, b: f.b, round: f.round ?? 1 })) });
     if (!strict.ready) throw new IntegrityError("swiss_repeat", strict.issue ?? "Swiss pairing is not ready.");

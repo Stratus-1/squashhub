@@ -192,7 +192,7 @@ export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureR
  * Next Swiss round from the latest final results. Only ever Round N+1 after Round N is fully final
  * (shared `swissRoundGate`); never skips, never exceeds the configured count. Mirrored server-side.
  */
-export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[], noRepeats = false): EngineFixture[] {
+export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[], noRepeats = true): EngineFixture[] {
   const st = d.stages.find((s) => s.id === stageId);
   if (!st || st.kind !== "swiss") throw new IntegrityError("stage_kind", "Only Swiss stages pair by results.");
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === stageId);
@@ -235,7 +235,7 @@ function byeFairPlan(state: CategoryState, r: number): { pairs: Array<{ a: numbe
   return { pairs: pairs.sort((x, y) => x.a - y.a), bye };
 }
 
-export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRound: number, noRepeats = false): Array<[string, string | null]> | null {
+export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRound: number, noRepeats = true): Array<[string, string | null]> | null {
   const seeds = d.entrants.map((e) => e.id);
   const n = seeds.length;
   if (n < MIN_ENTRANTS || n > MAX_ENTRANTS) return null;

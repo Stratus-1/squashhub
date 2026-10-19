@@ -13,7 +13,6 @@ export const TOURNAMENT_VIEW_FEATURES = {
   tournament_stage_planner: "Stage planner in Planned format (pilot)",
   tournament_structure_step: "One Tournament structure step (pilot)",
   tournament_card_structure: "New one-page structure builder",
-  tournament_swiss_no_repeats: "Swiss no-repeat opponents (Riverside pilot)",
 } as const;
 export type TournamentViewFeature = keyof typeof TOURNAMENT_VIEW_FEATURES;
 

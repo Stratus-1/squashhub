@@ -1,6 +1,5 @@
 import { swissRound, IntegrityError } from "./contract";
 import { slotTemplate } from "./swiss-positional";
-import { supabase } from "@/integrations/supabase/client";
 
 export const opponentKey = (a: string, b: string) => JSON.stringify([a, b].sort());
 /** First round where no-repeat repair applies; rounds before it keep the fixed template. Applies to every club. */

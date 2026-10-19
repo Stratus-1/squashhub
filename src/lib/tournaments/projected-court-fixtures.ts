@@ -12,7 +12,6 @@ import { scheduleDraws, slotOnlyDraw, timeSlots, fixtureKey, type FixtureSchedul
 import { appliedRoundPlayBy } from "@/lib/tournaments/stage-schedule";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
-import { swissNoRepeatEnabled } from "./swiss-no-repeat";
 
 export interface ProjectedCourtFixture {
   key: string; champId: string; group: number; round: number;
@@ -46,7 +45,7 @@ function swissStage(champ: any, arch: any, gn: number): { rounds: number | null;
 
 export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[] {
   const { champ, arch, entries, matches, rounds, courts } = i;
-  const noRepeats = swissNoRepeatEnabled(champ?.club_id, !!i.noRepeats);
+  const noRepeats = i.noRepeats !== false;
   if (!champ?.id) return [];
   const types = (champ?.league_match_types as Record<string, string>) || {};
   const doubles = (gn: number) => String(types[String(gn)] || "").toLowerCase() === "doubles" || entries.some((e) => e.group_number === gn && !!e.partner_member_id);

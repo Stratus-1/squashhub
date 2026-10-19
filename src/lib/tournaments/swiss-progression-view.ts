@@ -246,7 +246,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
       }
       const h = cur[rd.bye - 1]; if (h) byeHolders.add(h);
     }
-    if (opts.noRepeats) {
+    if (opts.noRepeats !== false) {
       const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, round: r.round })));
       const locked = (model.rounds.find((r) => r.round === rd.round)?.fixtures ?? []).flatMap((f) => f.a && (f.b || f.state === "bye") ? [{ a: f.a, b: f.b }] : []);
       const strict = rd.round >= 3 ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
@@ -291,7 +291,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule: ProposedRoundSchedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos: number | null, bye = false): GridRow => {
-      const id = !bye && pos != null && (!opts.noRepeats || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
+      const id = !bye && pos != null && (opts.noRepeats === false || rd.round < 3 || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
         : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };

@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] Agree revised even-field Swiss round 3–4 pairing pattern: keep upper/lower halves separate after round 1 and delay strongest-player meetings; preserve rounds 1–2 and no-repeat rule. Await exact pairing pattern before implementation; uneven fields deferred.
 - [x] Shared Swiss generation/projection no-repeat formula for ALL clubs from round 3; rounds 1–2 and saved games preserved. 290 tests passed; Uitsig screen checked read-only. Unpublished.
 - [x] Explained standard Swiss score-group pairing versus fixed-position crossover.
 - [ ] Database-level Swiss rematch guard and service rollout await release approval; no live deployment in this step.

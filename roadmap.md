@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Open
-- [ ] Prevent repeated actual opponents in projected/results-decided Swiss rounds; preserve existing games and obtain approval for structural changes.
+- [ ] Prevent repeated actual opponents in Riverside Swiss rounds from round 3 onward; preserve rounds 1 and 2 exactly and all saved games. Do not change Uitsig or publish.
+- [ ] Explain Swiss pairing rules and later-round top/bottom crossover using the configured positional schedule.
 - [ ] SportyHQ integration blocked on official API documentation.
 
 ## Done

@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     const dayAfter = isoDateInTz(addDays(now, 2), timeZone);
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
-      .select("id,club_id,user_id,opponent_id,club_member_id,opponent_member_id,date,start_time,end_time,court_id,status,notify_channels,reminder_hours")
+      .select("id,club_id,user_id,opponent_id,club_member_id,opponent_member_id,date,start_time,end_time,court_id,status,notify_channels,reminder_hours,external_id")
       .eq("status", "active")
       .in("date", [today, tomorrow, dayAfter])
       .limit(500);
@@ -200,6 +200,8 @@ Deno.serve(async (req) => {
 
     for (const b of bookings || []) {
       if (!(await capOn((b as any).club_id, "bookings"))) continue;
+      // Tournament fixture bookings never get the court booking reminder (owner decision).
+      if (/^(champ|sbs):/.test(String((b as any).external_id || ""))) continue;
       const club = clubMsgMemo.get(String((b as any).club_id)) || {};
       if (club.booking_reminder_enabled === false && (b as any).reminder_hours == null) continue;
 

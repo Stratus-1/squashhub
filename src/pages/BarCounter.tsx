@@ -771,6 +771,7 @@ export default function BarCounter() {
                 >
                   <div className="min-w-0">
                     <div className="font-semibold truncate">{t.guest_name}</div>
+                    {t.club_member_id && <Badge variant="outline" className="text-[11px]">Member</Badge>}
                     {t.opened_source === "in_app" && <Badge variant="outline" className="text-[11px]">In-app · Self-opened</Badge>}
                     {(t as any).phone && (
                       <div className="text-[11px] text-muted-foreground">{(t as any).phone}</div>
@@ -1061,7 +1062,13 @@ export default function BarCounter() {
                   <Button
                     variant="secondary" className="h-11 gap-2"
                     disabled={busy || activeTab.total <= 0}
-                    onClick={() => { setMemberNumber(""); setMemberOpen(true); }}
+                    onClick={() => {
+                      if (activeTab.club_member_id) {
+                        if (window.confirm(`Charge ${money(activeTab.total)} to ${activeTab.guest_name}'s member account?`)) chargeLinkedMember();
+                      } else {
+                        setMemberNumber(""); setMemberOpen(true);
+                      }
+                    }}
                   >
                     <UserCheck className="w-4 h-4" /> Member account
                   </Button>

@@ -48,4 +48,3 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- Automatic notifications pass one BEFORE INSERT gate on `notifications` (`gate_auto_notifications`): tournament match messages come only from the draw-notice setting, booking made/cancelled notices follow `clubs.booking_confirm_enabled` and never fire for tournament (`champ:`/`sbs:`) bookings, and the reminders function skips those bookings; why: owner wants one simple switch per area.

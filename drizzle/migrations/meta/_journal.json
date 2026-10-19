@@ -1415,6 +1415,13 @@
       "when": 1792403116450,
       "tag": "0201_bar_group_tab_settlement_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1792427563046,
+      "tag": "0202_event_rsvp_per_week",
+      "breakpoints": true
     }
   ]
 }

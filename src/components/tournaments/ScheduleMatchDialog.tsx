@@ -390,7 +390,7 @@ export function ScheduleMatchDialog({
       toast.success(
         result?.alreadyBooked
           ? `You already have this slot in GoBook at ${start}.`
-          : `Booked via GoBook at ${start} — your own paid booking, separate from this fixture.`,
+          : `Booked via GoBook at ${start} — your own paid booking. To play this fixture in it, tap "Use for this fixture" next to your booking below.`,
       );
       // Mirror the new GoBook booking into the club calendar so the board
       // shows it as taken straight away.
@@ -404,6 +404,34 @@ export function ScheduleMatchDialog({
       toast.error(e?.message || "GoBook rejected the booking");
     } finally {
       setGobookBooking(null);
+    }
+  };
+
+  /**
+   * Explicitly link one of the player's own bookings (e.g. a paid GoBook
+   * booking) to this fixture. The fixture displays the booking's court and
+   * time and follows it if it moves; the booking stays the player's own paid
+   * booking and is never cancelled by clearing or moving the fixture.
+   */
+  const linkBooking = async (bookingId: string) => {
+    if (!match) return;
+    setSaving(true);
+    try {
+      const { error } = await rpcExt("link_booking_to_champ_match", {
+        p_match_id: match.id,
+        p_booking_id: bookingId,
+      });
+      if (error) {
+        toast.error(error.message || "Could not link that booking to the fixture.");
+        return;
+      }
+      toast.success(
+        "Fixture linked — it now shows your booking's court and time. The booking stays your own paid booking.",
+      );
+      invalidateAll();
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
     }
   };
 

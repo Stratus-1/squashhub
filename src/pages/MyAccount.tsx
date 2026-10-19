@@ -191,6 +191,23 @@ export default function MyAccount() {
     enabled: !!clubMemberId && !!clubId,
   });
 
+  // Bar purchases paid directly (card / cash / online). These never touch the
+  // member's account balance, so they are not GL entries — but the member (and
+  // an admin viewing the account) must still see the full record of what was
+  // bought and how it was paid. Shown as informational statement lines.
+  const { data: directPurchases } = useQuery({
+    queryKey: ["my-bar-purchases", clubId, clubMemberId],
+    enabled: !!clubId && !!clubMemberId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("my_bar_purchases", {
+        _club_id: clubId,
+        _club_member_id: clubMemberId,
+      });
+      if (error) throw error;
+      return ((data as any[]) ?? []).filter((p: any) => p.method !== "account");
+    },
+  });
+
   // Fees raised against OTHER members that this member is the recorded payer
   // for (family package). They stay booked on the other member's account for
   // accounting, but the payer must see and be able to settle them here.

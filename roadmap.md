@@ -1,11 +1,10 @@
 # Roadmap
 
 ## Open
-- [ ] Uitsig booking grid must always use the saved 45-minute slots (no 30-minute fallback, no duplicated times).
-- [ ] Correct normal-grid settings fallback after approval: authenticated Uitsig reproduction confirmed membership club response omits booking_slot_minutes/open time while separate tenant settings response contains 45/05:15; grid falls back to 30-minute normal rows and duplicates Austyn's label. Investigation only; no bookings changed.
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done
+- [x] Uitsig grid always uses saved 45-minute slots: club settings now merged live (no 30-minute fallback); Wed 21 Oct verified 05:15–21:45 in 45-min rows, no duplicates. Tournament setup re-checked: every duration is 45. Not published.
 - [x] Uitsig Club Champs setup, all eight category durations, planning guide and both scheduling copies set to 45 minutes; other tournaments unchanged.
 - [x] Six approved 21/22 Oct fixtures rescheduled through protected authenticated RPCs; saved booking intervals verified at exactly 45 minutes, same dates/courts. Built-in in-app schedule notifications applied.
 - [x] Grid prefers configured duration; signed-in Uitsig Wednesday preview verified normal 45-minute rows and relocated games. Fixture slot generation now supports 45 minutes; 28 focused tests passed. Frontend changes not published.

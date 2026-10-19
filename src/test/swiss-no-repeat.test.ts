@@ -5,12 +5,12 @@ import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments
 
 describe("Shared Swiss no-repeat formula", () => {
   it("24-player round three uses 1v6 in each half", () => {
-    expect(preferredSwissTemplate(24, 3).pairs.map(p => [p.a, p.b])).toEqual([[1,6],[2,7],[3,8],[4,9],[5,10],[11,12],[13,18],[14,19],[15,20],[16,21],[17,22],[23,24]]);
+    expect(preferredSwissTemplate(24, 3).pairs.map(p => [p.a, p.b])).toEqual([[1,6],[2,7],[3,8],[4,10],[5,9],[11,12],[13,18],[14,19],[15,20],[16,22],[17,21],[23,24]]);
   });
   it("round four uses 1v7 and keeps halves separate", () => {
     const plan = strictSwissPlan({ occupants: Array.from({ length: 24 }, (_, i) => `p${i + 1}`), round: 4, history: [] });
     expect(plan.ready).toBe(true);
-    expect(plan.pairs.map(p => [p.a, p.b])).toEqual([[1,7],[2,8],[3,9],[4,10],[5,11],[6,12],[13,19],[14,20],[15,21],[16,22],[17,23],[18,24]]);
+    expect(plan.pairs.map(p => [p.a, p.b])).toEqual([[1,7],[2,8],[3,9],[4,11],[5,10],[6,12],[13,19],[14,20],[15,21],[16,23],[17,22],[18,24]]);
   });
   it("rematch repair stays inside each half in round three", () => {
     const plan = strictSwissPlan({ occupants: Array.from({ length: 24 }, (_, i) => `p${i + 1}`), round: 3,
@@ -119,7 +119,7 @@ describe("uneven Swiss halves", () => {
     expect(swissHalves(18)).toEqual([10, 8]);
     expect(swissHalves(24)).toEqual([12, 12]);
     const pairs = preferredSwissTemplate(18, 3).pairs.map(p => [p.a, p.b]);
-    expect(pairs).toEqual([[1,5],[2,6],[3,7],[4,8],[9,10],[11,14],[12,15],[13,16],[17,18]]);
+    expect(pairs).toEqual([[1,5],[2,6],[3,7],[4,8],[9,10],[11,14],[12,15],[13,17],[16,18]]);
   });
 });
 
@@ -129,6 +129,8 @@ describe("24-player round gaps", () => {
     expect(r(3).slice(0, 2)).toEqual(["1-6", "2-7"]);
     expect(r(4).slice(0, 2)).toEqual(["1-7", "2-8"]);
     expect(r(5).slice(0, 2)).toEqual(["1-5", "2-6"]);
-    expect(r(3).filter(x => r(5).includes(x))).toEqual([]);
+    const r2 = Array.from({ length: 6 }, (_, i) => `${i + 1}-${12 - i}`);
+    const all = [...r2, ...[3, 4, 5].flatMap(r)];
+    expect(new Set(all).size).toBe(all.length);
   });
 });

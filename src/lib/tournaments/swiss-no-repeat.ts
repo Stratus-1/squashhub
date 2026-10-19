@@ -27,17 +27,31 @@ export function swissRoundGap(size: number, round: number): number | null {
   return gap != null && gap >= 1 ? gap : null;
 }
 
-function gapPairs(size: number, gap: number, offset: number, round: number) {
-  const free = new Set(Array.from({ length: size }, (_, i) => i + 1));
-  const pairs: Array<{ round: number; a: number; b: number }> = [];
-  for (let i = 1; i <= size; i++) {
-    if (!free.has(i)) continue;
-    free.delete(i);
-    let j = free.has(i + gap) ? i + gap : [...free].sort((x, y) => Math.abs(x - i - gap) - Math.abs(y - i - gap) || x - y)[0];
-    free.delete(j);
-    pairs.push({ round, a: offset + i, b: offset + j });
+/** Positional pairs for one half: closest to the round gap, never repeating an earlier round's positions (R2 = 1vN mirror). */
+function halfRoundPairs(size: number, round: number): Array<[number, number]> {
+  const used = new Set(Array.from({ length: size / 2 }, (_, i) => `${i + 1}-${size - i}`));
+  let result: Array<[number, number]> = [];
+  for (let r = 3; r <= round; r++) {
+    const gap = swissRoundGap(size, r) ?? 1;
+    const bt = (free: number[]): Array<[number, number]> | null => {
+      if (!free.length) return [];
+      const i = free[0];
+      const options = free.slice(1).sort((x, y) => Math.abs(x - i - gap) - Math.abs(y - i - gap) || x - y);
+      for (const j of options) {
+        if (used.has(`${i}-${j}`)) continue;
+        const rest = bt(free.filter((x) => x !== i && x !== j));
+        if (rest) return [[i, j], ...rest];
+      }
+      return null;
+    };
+    result = bt(Array.from({ length: size }, (_, i) => i + 1)) ?? [];
+    result.forEach(([x, y]) => used.add(`${x}-${y}`));
   }
-  return pairs;
+  return result;
+}
+
+function gapPairs(size: number, _gap: number, offset: number, round: number) {
+  return halfRoundPairs(size, round).map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
 }
 
 /** Halves play within themselves from round three, with a different position gap each round. */

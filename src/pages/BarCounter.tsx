@@ -1038,7 +1038,7 @@ export default function BarCounter() {
                 disabled={busy || activeTab.total <= 0}
                 onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} cash received?`)) settle("cash"); }}
               >
-                <Banknote className="w-4 h-4" /> Paid cash
+                <Banknote className="w-4 h-4" /> Paid cash at counter
               </Button>
               )}
               {board.card_enabled && (
@@ -1047,7 +1047,7 @@ export default function BarCounter() {
                 disabled={busy || activeTab.total <= 0}
                 onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} card machine payment received? Only confirm if the machine showed APPROVED.`)) settle("terminal"); }}
               >
-                <CreditCard className="w-4 h-4" /> Card payment received
+                <CreditCard className="w-4 h-4" /> Swipe at card machine at counter
               </Button>
               )}
             </div>
@@ -1060,7 +1060,7 @@ export default function BarCounter() {
                     disabled={busy || activeTab.total <= 0}
                     onClick={async () => { if (await flushCart(activeTab.tab_id)) setOnlineOpen(true); }}
                   >
-                    <Smartphone className="w-4 h-4" /> Pay online
+                    <Smartphone className="w-4 h-4" /> Pay with card online
                   </Button>
                 )}
                 {board.account_enabled !== false && (

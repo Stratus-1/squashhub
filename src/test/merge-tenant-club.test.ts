@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: () => null, from: () => null } }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({}) }));
 vi.mock("@/contexts/ClubContext", () => ({ useClubContext: () => ({}) }));
 

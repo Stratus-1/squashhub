@@ -19674,6 +19674,10 @@ export type Database = {
         Args: { _club_id?: string; _token?: string }
         Returns: Json
       }
+      bar_counter_charge_member_account: {
+        Args: { _club_id?: string; _tab_id: string; _token?: string }
+        Returns: Json
+      }
       bar_counter_close_empty_tab: {
         Args: { _club_id?: string; _tab_id: string; _token?: string }
         Returns: Json
@@ -19723,6 +19727,17 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              _club_id?: string
+              _club_member_id?: string
+              _guest_name: string
+              _guest_phone?: string
+              _operator?: string
+              _token?: string
+            }
+            Returns: Json
+          }
       bar_counter_operators: { Args: { _club_id: string }; Returns: Json }
       bar_counter_orders: {
         Args: { _club_id?: string; _status?: string; _token?: string }
@@ -19742,6 +19757,10 @@ export type Database = {
         Returns: Json
       }
       bar_counter_revoke_devices: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_search_members: {
+        Args: { _club_id?: string; _query: string; _token?: string }
+        Returns: Json
+      }
       bar_counter_set_delivered: {
         Args: {
           _club_id?: string

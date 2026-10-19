@@ -111,17 +111,15 @@ export default function HonestyBar() {
     enabled: !!clubId,
   });
 
+  // Full history: account charges plus cash/card/online purchases.
   const { data: myTab = [] } = useQuery({
-    queryKey: ["my-bar-tab", clubId, memberId],
+    queryKey: ["my-bar-purchases", clubId, memberId],
     queryFn: async () => {
-      const { data, error } = await fromExt("bar_tab_entries")
-        .select("*, bar_items:bar_item_id(name, category)")
-        .eq("club_id", clubId)
-        .eq("club_member_id", memberId)
-        .order("created_at", { ascending: false })
-        .limit(50);
+      const { data, error } = await (supabase as any).rpc("my_bar_purchases", {
+        _club_id: clubId, _club_member_id: memberId,
+      });
       if (error) throw error;
-      return data as BarTabEntry[];
+      return (data as { id: string; created_at: string; item_name: string; quantity: number; total: number; method: string }[]) ?? [];
     },
     enabled: !!clubId && !!memberId,
   });
@@ -596,16 +594,16 @@ export default function HonestyBar() {
               )}
             </Card>
 
-            <h3 className="text-xs font-semibold text-muted-foreground pt-2">Posted to my member account</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground pt-2">My purchases</h3>
             {myTab.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nothing posted to your account yet.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">No purchases yet.</p>
             ) : (
               <div className="space-y-1.5">
-                {myTab.slice(0, 50).map(entry => (
+                {myTab.slice(0, 100).map(entry => (
                   <Card key={entry.id} className="p-2.5 flex items-center justify-between">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
-                        {entry.quantity}× {(entry.bar_items as any)?.name || "Item"}
+                        {entry.quantity}× {entry.item_name || "Item"}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {format(new Date(entry.created_at), "dd MMM yyyy, HH:mm")}
@@ -613,7 +611,18 @@ export default function HonestyBar() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-sm font-medium">{money(entry.total)}</span>
-                      <Badge variant="secondary" className="text-[10px]">On account</Badge>
+                      <Badge
+                        variant="secondary"
+                        className={`text-[10px] capitalize ${
+                          entry.method === "cash" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" :
+                          entry.method === "card" ? "bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300" :
+                          entry.method === "online" ? "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300" :
+                          entry.method === "account" ? "" :
+                          "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                        }`}
+                      >
+                        {entry.method === "account" ? "On account" : entry.method}
+                      </Badge>
                     </div>
                   </Card>
                 ))}

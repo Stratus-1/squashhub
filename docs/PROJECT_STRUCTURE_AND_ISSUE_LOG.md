@@ -3407,3 +3407,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - **Change:** Opening a tab in counter mode now offers Member / Visitor. Member = search by name or number (bar_counter_search_members), tab linked to club_member_id (bar_counter_open_tab _club_member_id, opened_source='counter_member'). Visitor = name + phone as before.
 - **Charge:** Member-linked tabs settle to the member account with one staff confirm (bar_counter_charge_member_account, verification_method='counter_pin') — no one-time code; the unlocked staff PIN session is the authority. Other tabs still use the member's own code (bar_qr_charge_guest_tab_member). Cash/card/online unchanged. Board now returns club_member_id; tab list shows a Member badge.
 - **Verified:** build OK; member-counter-tab tests pass. Not published.
+
+## 2026-10-19 — Member sees full bar/shop purchase history
+- **Change:** The member's bar page history (was "Posted to my member account", bar_tab_entries only) is now "My purchases": a new my_bar_purchases RPC (auth-checked to the member's own club_members row) unions account charges with paid cash/card/online sales linked via the guest tab's club_member_id, operator_member_id or logged_by. Each row shows items, date, amount and a payment-method badge (On account / cash / card / online).
+- **Verified:** build OK. Not published.

@@ -120,3 +120,12 @@ describe("Shared Swiss no-repeat formula", () => {
     expect(plan.issue).toMatch(/no pairing without repeat/);
   });
 });
+describe("uneven Swiss halves", () => {
+  it("18 players split 10 top / 8 bottom from round 3", async () => {
+    const { swissHalves, preferredSwissTemplate } = await import("@/lib/tournaments/swiss-no-repeat");
+    expect(swissHalves(18)).toEqual([10, 8]);
+    expect(swissHalves(24)).toEqual([12, 12]);
+    const pairs = preferredSwissTemplate(18, 3).pairs.map(p => [p.a, p.b]);
+    expect(pairs).toEqual([[1,6],[2,7],[3,8],[4,9],[5,10],[11,15],[12,16],[13,17],[14,18]]);
+  });
+});

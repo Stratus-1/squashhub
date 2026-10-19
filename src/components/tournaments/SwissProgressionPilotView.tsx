@@ -11,7 +11,7 @@ import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, mo
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false, stageNoun = "Swiss", formatNote, noRepeats = true }: { noRepeats?: boolean; appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; /** Wording for non-Swiss stages (e.g. "Round robin") so later-stage logs don't read as Swiss. */ stageNoun?: string; formatNote?: string }) {
+export function SwissProgressionPilotView({ title, model, positionalPreview = false, classicStandings, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false, stageNoun = "Swiss", formatNote, noRepeats = true, infoTournamentId }: { infoTournamentId?: string | null; noRepeats?: boolean; appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; /** Wording for non-Swiss stages (e.g. "Round robin") so later-stage logs don't read as Swiss. */ stageNoun?: string; formatNote?: string }) {
   const [mode, setMode] = useState<"grid" | "classic" | "calendar">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   // Final standing locks when the Swiss stage's own rounds are complete — later follow-up stage games don't block it.
@@ -21,6 +21,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
+      {infoTournamentId && <TournamentPlayerInfoNotice tournamentId={infoTournamentId} />}
       <div role="tablist" aria-label="Swiss view" className={cn("grid border border-border", hideCalendar ? "grid-cols-2" : "grid-cols-3")}>
         {([["grid", positionalPreview ? "Positional Preview" : "Grid"], ["classic", "Log View"], ...(hideCalendar ? [] : [["calendar", "Calendar View"]])] as ["grid" | "classic" | "calendar", string][]).map(([k, label]) => (
           <button key={k} type="button" role="tab" id={`swiss-tab-${k}`} aria-selected={mode === k} aria-controls="swiss-tabpanel" onClick={() => setMode(k)}

@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] Correct normal-grid settings fallback after approval: authenticated Uitsig reproduction confirmed membership club response omits booking_slot_minutes/open time while separate tenant settings response contains 45/05:15; grid falls back to 30-minute normal rows and duplicates Austyn's label. Investigation only; no bookings changed.
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done

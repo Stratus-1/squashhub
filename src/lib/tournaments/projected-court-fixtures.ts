@@ -105,7 +105,7 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id)) continue;
         const s = gSlots[b.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
         if (s?.kind !== "planned") continue;
-        if (noRepeats && matches.some((m) => Number(m.court_id) === Number(s.courtId) && m.scheduled_date === s.date && String(m.scheduled_time).slice(0, 5) === s.time)) continue;
+        if (matches.some((m) => Number(m.court_id) === Number(s.courtId) && m.scheduled_date === s.date && String(m.scheduled_time).slice(0, 5) === s.time)) continue;
         out.push({
           key: `proj:${champ.id}:${gn}:${rd.round}:${x.pos}v${y.pos}`, champId: champ.id, group: gn, round: rd.round,
           date: s.date, time: s.time, courtId: Number(s.courtId), minutes: dur,

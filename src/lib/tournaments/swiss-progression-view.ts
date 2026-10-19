@@ -259,9 +259,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
         const used = actual.flatMap((p) => [p.a, p.b]);
         const savedBye = locked.find((f) => !f.b);
         const byeSlot = savedBye ? pos.get(savedBye.a) ?? null : null;
-        if (used.length + Number(byeSlot != null) === n && new Set(used).size === used.length) {
-          strict.pairs = actual;
-          strict.bye = byeSlot;
+        if (new Set(used).size === used.length) {
+          // Partial saved rounds are authoritative too; do not route their winners through stale template pairs.
+          strict.pairs = [...actual, ...rd.pairs.filter((p) => !used.includes(p.a) && !used.includes(p.b) && p.a !== byeSlot && p.b !== byeSlot)].sort((a, b) => a.a - b.a);
+          strict.bye = byeSlot ?? (rd.bye != null && !used.includes(rd.bye) ? rd.bye : null);
         }
       }
       if (strict.issue) issues.push(strict.issue);

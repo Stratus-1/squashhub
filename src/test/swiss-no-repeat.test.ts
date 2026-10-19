@@ -61,6 +61,17 @@ describe("Shared Swiss no-repeat formula", () => {
     expect(plan.pairs).toContainEqual({ a: 1, b: 8 });
     expect(new Set(plan.pairs.flatMap((p) => [p.a, p.b])).size).toBe(8);
   });
+  it("preserves partial saved round 2 games even when they differ from the template", () => {
+    const ids = Array.from({ length: 8 }, (_, i) => `p${i + 1}`);
+    const matches = [[1, 8], [2, 7], [3, 6], [4, 5]].map(([a, b], i) => ({ id: `r1-${i}`, a: `p${a}`, b: `p${b}`, round: 1, winner: `p${a}`, status: "completed" }));
+    matches.push({ id: "r2-saved", a: "p1", b: "p2", round: 2, winner: "p2", status: "completed" });
+    const model = buildSwissProgression({ seedOrder: ids, names: {}, totalRounds: 3, matches });
+    const snapshot = JSON.stringify(model);
+    const grid = buildProposedSwissGrid(model);
+    expect(grid.rounds[1].blocks.find((b) => b.matchId === "r2-saved")?.saved).toBe(true);
+    expect(grid.rounds[1].blocks.flatMap((b) => b.rows).filter((r) => r.id === "p1" || r.id === "p2")).toHaveLength(2);
+    expect(JSON.stringify(model)).toBe(snapshot);
+  });
   it("stops instead of silently repeating when no legal pairing exists", () => {
     const occupants = Array.from({ length: 8 }, (_, i) => `p${i + 1}`);
     const history = occupants.slice(1).map((b) => ({ a: "p1", b, round: 1 }));

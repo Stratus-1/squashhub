@@ -129,6 +129,23 @@ export function ScheduleMatchDialog({
   // The venue's diary (may differ from the acting admin's club or the owner).
   const bookingClubId = courts.find((c) => c.id === courtId)?.club_id || clubId;
 
+  // GoBook API mode at the venue: "Open" (non-Champs) slots on the day board
+  // become real paid GoBook bookings in the player's own name. They are never
+  // linked to the fixture — the match still needs its own Club Champs slot.
+  const { data: venueGobook } = useQuery({
+    queryKey: ["venue-gobook-mode", bookingClubId],
+    queryFn: async () => {
+      const { data } = await fromExt("clubs")
+        .select("uses_gobook, gobook_api_enabled")
+        .eq("id", bookingClubId!)
+        .maybeSingle();
+      return data as { uses_gobook?: boolean; gobook_api_enabled?: boolean } | null;
+    },
+    enabled: !!bookingClubId && open,
+  });
+  const gobookApiMode = !!venueGobook?.uses_gobook && !!venueGobook?.gobook_api_enabled;
+  const [gobookBooking, setGobookBooking] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (courtOptions.length === 0) return;

@@ -65,12 +65,6 @@ export function CostingTab({ clubId }: { clubId: string }) {
     qc.invalidateQueries({ queryKey: ["bar-costing-settings", clubId] });
   };
 
-  const toggleNegative = async (on: boolean) => {
-    const { error } = await db.from("club_bar_settings").upsert({ club_id: clubId, costing_enabled: enabled, allow_negative_stock: on });
-    if (error) return toast.error(error.message);
-    toast.success(on ? "Selling below zero allowed" : "Sales now blocked when stock runs out");
-    qc.invalidateQueries({ queryKey: ["bar-costing-settings", clubId] });
-  };
 
   const saveCost = async () => {
     if (!edit) return;

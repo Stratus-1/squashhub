@@ -298,6 +298,9 @@ export function ScheduleMatchDialog({
   }, [bookings, match, courts]);
 
   const selectedCourtId = courtId;
+  // When the fixture is linked to the player's own paid booking (e.g. GoBook),
+  // clearing only unlinks it — the booking itself is never cancelled.
+  const linkedIsPersonal = !!(bookings as any[]).find((b) => b.id === match?.booking_id && b.source && b.source !== "club_event");
   const confirm = async (time: string, courtOverride?: number) => {
     const courtId = courtOverride ?? selectedCourtId;
     if (!match || !courtId) return;

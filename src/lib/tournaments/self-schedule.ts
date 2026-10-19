@@ -347,15 +347,15 @@ export function daySlotBoard(
   const champsFree = opts.champsFree ?? new Set<string>();
   return slots.map((time) => {
     if (champsFree.has(time)) return { time, status: "champs-free" };
-    const start = toMinutes(time);
+    const start = timeToMinutes(time);
     const end = start + slotMinutes;
     const overlapsHold = bookings.some(
       (b) =>
-        b.court_number === courtId &&
-        isActive(b) &&
+        b.court_id === courtId &&
+        (b.status || "active") === "active" &&
         isChampsReservation(b) &&
-        toMinutes(b.start_time) < end &&
-        toMinutes(b.end_time) > start,
+        timeToMinutes(String(b.start_time || "00:00")) < end &&
+        timeToMinutes(String(b.end_time || "00:00")) > start,
     );
     if (overlapsHold) return { time, status: "champs" };
     return {

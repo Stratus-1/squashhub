@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Open
-- [ ] None outstanding — all pending changes published 18 Oct 2026
+- [ ] Cancel Gerhard's conflicting booking, retaining his fixture and Nico/Johann's original schedule.
+- [ ] Protect scheduled championship allocations from overlapping player bookings; verify targeted regressions.
 
 ## Done
 - [x] Published 18 Oct 2026: champs-slot fixes (grid display, 35-min reschedule slots, freed old slot), reserved-court 35-min time column, recurring transactions, average-cost fill-in, two-decimal money display, cost-per-tot hint on purchase lines, WhatsApp/SMS switches, Enter Transaction date fix, dialog size fix

@@ -756,6 +756,10 @@ function proposePairings(field, count, strategy) {
 // src/lib/tournaments/swiss-no-repeat.ts
 var opponentKey = (a, b) => JSON.stringify([a, b].sort());
 var SWISS_NO_REPEAT_FROM_ROUND = 3;
+function swissStrictFromRound(n) {
+  const h = swissHalves(n);
+  return h && h[0] !== h[1] ? 2 : SWISS_NO_REPEAT_FROM_ROUND;
+}
 function swissHalves(n) {
   if (n < 4 || n % 2 !== 0)
     return null;
@@ -797,8 +801,12 @@ function gapPairs(size, _gap, offset, round) {
 function preferredSwissTemplate(n, round) {
   const original = slotTemplate(n, round);
   const halves = swissHalves(n);
-  if (!halves || round < 3)
+  if (!halves || round < swissStrictFromRound(n))
     return original;
+  if (round === 2) {
+    const mirror = (offset, size) => Array.from({ length: size / 2 }, (_, i) => ({ round, a: offset + i + 1, b: offset + size - i }));
+    return { ...original, bye: null, pairs: [...mirror(0, halves[0]), ...mirror(halves[0], halves[1])] };
+  }
   const segments = [[0, halves[0]], [halves[0], halves[1]]];
   const pairs = segments.flatMap(([offset, size]) => {
     const gap = swissRoundGap(size, round);
@@ -810,7 +818,7 @@ function strictSwissPlan(input) {
   const { occupants, round, history } = input;
   const raw = preferredSwissTemplate(occupants.length, round);
   const halves = swissHalves(occupants.length);
-  const preferred = halves && round >= 3 ? raw.pairs : input.preferred ?? raw.pairs;
+  const preferred = halves && round >= swissStrictFromRound(occupants.length) ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id))
     return { pairs: preferred, bye, ready: false };
@@ -842,7 +850,7 @@ function strictSwissPlan(input) {
     preferences.set(b, a);
   });
   const legacyPlayed = new Set(history.filter((g) => g.round < round && g.a && g.b).map((g) => String(g.a) < String(g.b) ? `${g.a}|${g.b}` : `${g.b}|${g.a}`));
-  if (halves && round >= 3) {
+  if (halves && round >= swissStrictFromRound(occupants.length)) {
     const top = halves[0];
     for (let i = 0;i < ids.length; i++)
       for (let j = i + 1;j < ids.length; j++) {
@@ -7341,8 +7349,8 @@ function buildProposedSwissGrid(model, opts = {}) {
     if (opts.noRepeats !== false) {
       const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, round: r.round })));
       const locked = (model.rounds.find((r) => r.round === rd.round)?.fixtures ?? []).flatMap((f) => f.a && (f.b || f.state === "bye") ? [{ a: f.a, b: f.b }] : []);
-      const strict = rd.round >= SWISS_NO_REPEAT_FROM_ROUND ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
-      if (rd.round < SWISS_NO_REPEAT_FROM_ROUND && locked.length) {
+      const strict = rd.round >= swissStrictFromRound(cur.length) ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
+      if (rd.round < swissStrictFromRound(cur.length) && locked.length) {
         const pos = new Map(cur.map((id, index) => [id, index + 1]));
         const actual = locked.flatMap((f) => {
           const a = pos.get(f.a), b = f.b ? pos.get(f.b) : undefined;
@@ -7388,7 +7396,7 @@ function buildProposedSwissGrid(model, opts = {}) {
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos, bye = false) => {
-      const id = !bye && pos != null && (opts.noRepeats === false || rd.round < 3 || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
+      const id = !bye && pos != null && (opts.noRepeats === false || rd.round < swissStrictFromRound(into.length) || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true } : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
     const covered = (...ps) => ps.some((p) => {

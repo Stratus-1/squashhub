@@ -4,6 +4,11 @@ import { slotTemplate } from "./swiss-positional";
 export const opponentKey = (a: string, b: string) => JSON.stringify([a, b].sort());
 /** First round where no-repeat repair applies; rounds before it keep the fixed template. Applies to every club. */
 export const SWISS_NO_REPEAT_FROM_ROUND = 3;
+/** Field-aware start: uneven halves (e.g. 18 = 10 + 8) split and play within themselves from round two. */
+export function swissStrictFromRound(n: number): number {
+  const h = swissHalves(n);
+  return h && h[0] !== h[1] ? 2 : SWISS_NO_REPEAT_FROM_ROUND;
+}
 
 export interface SwissSlotPair { a: number; b: number }
 export interface SwissHistoryGame { a: string | null; b: string | null; round: number }
@@ -58,7 +63,11 @@ function gapPairs(size: number, _gap: number, offset: number, round: number) {
 export function preferredSwissTemplate(n: number, round: number) {
   const original = slotTemplate(n, round);
   const halves = swissHalves(n);
-  if (!halves || round < 3) return original;
+  if (!halves || round < swissStrictFromRound(n)) return original;
+  if (round === 2) {
+    const mirror = (offset: number, size: number) => Array.from({ length: size / 2 }, (_, i) => ({ round, a: offset + i + 1, b: offset + size - i }));
+    return { ...original, bye: null, pairs: [...mirror(0, halves[0]), ...mirror(halves[0], halves[1])] };
+  }
   const segments: Array<[number, number]> = [[0, halves[0]], [halves[0], halves[1]]];
   const pairs = segments.flatMap(([offset, size]) => {
     const gap = swissRoundGap(size, round);
@@ -77,7 +86,7 @@ export function strictSwissPlan(input: {
   const raw = preferredSwissTemplate(occupants.length, round);
   const halves = swissHalves(occupants.length);
   
-  const preferred = halves && round >= 3 ? raw.pairs : input.preferred ?? raw.pairs;
+  const preferred = halves && round >= swissStrictFromRound(occupants.length) ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id)) return { pairs: preferred, bye, ready: false };
   const ids = occupants.filter((id): id is string => !!id);
@@ -104,7 +113,7 @@ export function strictSwissPlan(input: {
   const legacyPlayed = new Set(history.filter((g) => g.round < round && g.a && g.b)
     .map((g) => String(g.a) < String(g.b) ? `${g.a}|${g.b}` : `${g.b}|${g.a}`));
   // Restrict new games, never rewrite locked historical games. Uneven halves retain their existing rules.
-  if (halves && round >= 3) {
+  if (halves && round >= swissStrictFromRound(occupants.length)) {
     const top = halves[0];
     for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
       const differentHalf = (i < top) !== (j < top);

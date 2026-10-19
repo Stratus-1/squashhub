@@ -5,8 +5,9 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
  *
  * One screen for the person behind the counter: see every open tab with its
  * running total, open new tabs, add rounds and settle by cash, card machine or
- * — for members — straight onto the member's account. Staff can never approve
- * an account charge themselves: the member enters their own six-digit Bar PIN.
+ * — for members — straight onto the member's account. Tabs opened for a member
+ * from the counter (member search) charge without a code: the unlocked staff
+ * PIN session is the authority. Other tabs still need the member's own code.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -43,6 +44,7 @@ interface CounterTab {
   opened_at: string;
   operator?: string | null;
   opened_source?: string;
+  club_member_id?: string | null;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
@@ -86,6 +88,10 @@ export default function BarCounter() {
   const [itemSearch, setItemSearch] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newTabKind, setNewTabKind] = useState<"member" | "visitor">("member");
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberResults, setMemberResults] = useState<{ id: string; display_name: string; member_number: string | number | null }[]>([]);
+  const [memberSearching, setMemberSearching] = useState(false);
   const [busy, setBusy] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
   const [onlineOpen, setOnlineOpen] = useState(false);
@@ -290,6 +296,74 @@ export default function BarCounter() {
       toast.success("Tab opened");
     } catch (e: any) {
       toast.error(e.message ?? "Could not open the tab");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Member tab: the barman picks the member from a search — no name/phone
+  // typing, and no verification code later when charging the member's account.
+  async function openMemberTab(memberId: string) {
+    setBusy(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_counter_open_tab", {
+        _guest_name: "", _token: token, _club_id: clubId,
+        _operator: operator, _club_member_id: memberId,
+      });
+      if (error) throw error;
+      setMemberQuery("");
+      setMemberResults([]);
+      await refetch();
+      setActiveTabId((data as any)?.tab_id ?? null);
+      toast.success("Member tab opened");
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not open the tab");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Debounced member search while the barman types.
+  useEffect(() => {
+    if (newTabKind !== "member") return;
+    const q = memberQuery.trim();
+    if (q.length < 2) { setMemberResults([]); return; }
+    let cancelled = false;
+    setMemberSearching(true);
+    const t = setTimeout(async () => {
+      const { data, error } = await (supabase as any).rpc("bar_counter_search_members", {
+        _query: q, _token: token, _club_id: clubId,
+      });
+      if (cancelled) return;
+      setMemberSearching(false);
+      if (error) { toast.error(error.message); return; }
+      setMemberResults((data as any[]) ?? []);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberQuery, newTabKind, token, clubId]);
+
+  /** Member-linked tab: charge the account directly — the staff PIN session is the authority, no member code. */
+  async function chargeLinkedMember() {
+    if (!activeTab?.club_member_id) return;
+    setBusy(true);
+    try {
+      if (!(await flushCart(activeTab.tab_id))) return;
+      const { data: res, error } = await (supabase as any).rpc("bar_counter_charge_member_account", {
+        _tab_id: activeTab.tab_id, _token: token, _club_id: clubId,
+      });
+      if (error) throw error;
+      const { data: fresh } = await supabase.rpc("bar_counter_board", {
+        _token: token, _club_id: clubId,
+      } as any);
+      const latest = (fresh as any)?.tabs?.find((t: CounterTab) => t.tab_id === activeTab.tab_id);
+      setSettled({ tab: latest ?? activeTab, method: "member_account", memberName: (res as any)?.member_name ?? activeTab.guest_name });
+      setCart({});
+      await refetch();
+      invalidate();
+      toast.success((res as any)?.already ? "Already charged — no second charge recorded" : "Charged to the member's account");
+    } catch (e: any) {
+      showBarChargeError(e, "Could not charge the member's account");
     } finally {
       setBusy(false);
     }
@@ -613,25 +687,75 @@ export default function BarCounter() {
         </div>
       ) : !activeTab ? (
         <div className="p-4 space-y-4 max-w-7xl mx-auto">
-          <Card className="p-3 flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Name for a new tab"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && openTab()}
-              className="h-11"
-            />
-            <Input
-              placeholder="Cell number (optional)"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && openTab()}
-              inputMode="tel"
-              className="h-11 sm:max-w-[180px]"
-            />
-            <Button className="h-11 gap-1" disabled={!newName.trim() || busy} onClick={openTab}>
-              <Plus className="w-4 h-4" /> Tab
-            </Button>
+          <Card className="p-3 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button" size="sm" className="h-9 gap-1.5"
+                variant={newTabKind === "member" ? "default" : "outline"}
+                onClick={() => setNewTabKind("member")}
+              >
+                <UserCheck className="w-4 h-4" /> Member
+              </Button>
+              <Button
+                type="button" size="sm" className="h-9 gap-1.5"
+                variant={newTabKind === "visitor" ? "default" : "outline"}
+                onClick={() => setNewTabKind("visitor")}
+              >
+                <Plus className="w-4 h-4" /> Visitor
+              </Button>
+            </div>
+            {newTabKind === "member" ? (
+              <div className="space-y-1">
+                <Input
+                  placeholder="Search for member — name or number"
+                  value={memberQuery}
+                  onChange={(e) => setMemberQuery(e.target.value)}
+                  className="h-11"
+                  autoFocus
+                />
+                {memberSearching && <p className="text-[11px] text-muted-foreground px-1">Searching…</p>}
+                {!memberSearching && memberQuery.trim().length >= 2 && memberResults.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground px-1">No active member matches — use Visitor for guests.</p>
+                )}
+                {memberResults.length > 0 && (
+                  <div className="divide-y rounded-md border max-h-56 overflow-y-auto">
+                    {memberResults.map((m) => (
+                      <button
+                        key={m.id} type="button" disabled={busy}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/60 disabled:opacity-50"
+                        onClick={() => openMemberTab(m.id)}
+                      >
+                        <span className="font-medium truncate">{m.display_name}</span>
+                        {m.member_number != null && (
+                          <span className="text-[11px] text-muted-foreground shrink-0">#{m.member_number}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  placeholder="Visitor's name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && openTab()}
+                  className="h-11"
+                />
+                <Input
+                  placeholder="Cell number (optional)"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && openTab()}
+                  inputMode="tel"
+                  className="h-11 sm:max-w-[180px]"
+                />
+                <Button className="h-11 gap-1" disabled={!newName.trim() || busy} onClick={openTab}>
+                  <Plus className="w-4 h-4" /> Tab
+                </Button>
+              </div>
+            )}
           </Card>
 
           {board.tabs.length === 0 ? (
@@ -648,6 +772,7 @@ export default function BarCounter() {
                 >
                   <div className="min-w-0">
                     <div className="font-semibold truncate">{t.guest_name}</div>
+                    {t.club_member_id && <Badge variant="outline" className="text-[11px]">Member</Badge>}
                     {t.opened_source === "in_app" && <Badge variant="outline" className="text-[11px]">In-app · Self-opened</Badge>}
                     {(t as any).phone && (
                       <div className="text-[11px] text-muted-foreground">{(t as any).phone}</div>
@@ -938,7 +1063,13 @@ export default function BarCounter() {
                   <Button
                     variant="secondary" className="h-11 gap-2"
                     disabled={busy || activeTab.total <= 0}
-                    onClick={() => { setMemberNumber(""); setMemberOpen(true); }}
+                    onClick={() => {
+                      if (activeTab.club_member_id) {
+                        if (window.confirm(`Charge ${money(activeTab.total)} to ${activeTab.guest_name}'s member account?`)) chargeLinkedMember();
+                      } else {
+                        setMemberNumber(""); setMemberOpen(true);
+                      }
+                    }}
                   >
                     <UserCheck className="w-4 h-4" /> Member account
                   </Button>

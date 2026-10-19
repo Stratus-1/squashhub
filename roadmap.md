@@ -27,3 +27,4 @@
 - [x] Reschedule dialog offers the champs' own 35-min slots inside the reserved evening; 45-min club slots stay outside champs times
 - [x] Moved champ game leaves its old slot available (hold no longer restored on move) — applied to the backend
 - [x] 118 tournament tests pass, types clean, build OK, server engine rebuilt
+- [x] Counter mode: Member/Visitor tab choice — member search opens a linked tab, account charge without member code (staff PIN is authority); visitor keeps name+phone. NOT published.

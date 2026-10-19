@@ -3402,3 +3402,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Cause: `useMyClub` cached the tenant club snapshot taken before the signed-in booking settings (slot length, open/last time) loaded; users without a membership in that club (e.g. Super Admin) kept the defaults → 30-minute rows mixed with 45-minute championship games.
 - Fix: `mergeTenantClub` merges the live tenant club at render time (same club only). Test: `src/test/merge-tenant-club.test.ts`.
 - 19 Oct 2026 — Thursday 20-minute grid rows: club_champs_matches fixture lookup was not club-scoped, so other clubs' tournaments (20/30-min durations) leaked into Uitsig's grid and fixtures-list slot pickers; fixture labels now filtered by champ.club_id. Also champsSlotStarts now excludes reserved holds already carrying a scheduled game, so occupied Tuesday slots are no longer offered. Tests: champs-slots 7, scheduled-champ-booking 13 pass. Not published.
+
+## 2026-10-19 — Counter mode: member tabs without verification code
+- **Change:** Opening a tab in counter mode now offers Member / Visitor. Member = search by name or number (bar_counter_search_members), tab linked to club_member_id (bar_counter_open_tab _club_member_id, opened_source='counter_member'). Visitor = name + phone as before.
+- **Charge:** Member-linked tabs settle to the member account with one staff confirm (bar_counter_charge_member_account, verification_method='counter_pin') — no one-time code; the unlocked staff PIN session is the authority. Other tabs still use the member's own code (bar_qr_charge_guest_tab_member). Cash/card/online unchanged. Board now returns club_member_id; tab list shows a Member badge.
+- **Verified:** build OK; member-counter-tab tests pass. Not published.

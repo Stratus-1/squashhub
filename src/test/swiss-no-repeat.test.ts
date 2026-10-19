@@ -156,3 +156,14 @@ describe("18-player approved model", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 });
+
+describe("16-player approved model", () => {
+  it("R3 groups of 4, R4 1v3, R5 1v2 with halves of 8 and no repeats", () => {
+    const r = (n: number) => pst18(16, n).pairs.map((p) => `${p.a}-${p.b}`);
+    expect(r(3)).toEqual(["1-4","2-3","5-8","6-7","9-12","10-11","13-16","14-15"]);
+    expect(r(4)).toEqual(["1-3","2-4","5-7","6-8","9-11","10-12","13-15","14-16"]);
+    expect(r(5)).toEqual(["1-2","3-4","5-6","7-8","9-10","11-12","13-14","15-16"]);
+    const all = [1, 2, 3, 4, 5].flatMap(r);
+    expect(new Set(all).size).toBe(40);
+  });
+});

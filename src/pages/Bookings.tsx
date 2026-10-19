@@ -1,4 +1,4 @@
-import { bookingsForGridRow, champsGridLayout } from "@/lib/booking-grid";
+import { bookingsForGridRow, champsGridLayout, championshipGridMinutes } from "@/lib/booking-grid";
 import { isPeakSlot as isPeakSlotShared } from "@/lib/peak-hours";
 import { PeakTimeIndicator } from "@/components/PeakTimeIndicator";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -846,6 +846,7 @@ export default function Bookings() {
           opponent_id: null,
           is_friendly: false,
           is_champ: true,
+          champ_slot_minutes: duration,
           champ_match_id: m.id,
           booking_id: m.booking_id ?? null,
           champ_title: label.title,
@@ -957,6 +958,7 @@ export default function Bookings() {
       merged.set(key, {
         ...b,
         is_champ: true,
+        champ_slot_minutes: matchingTournament.champ_slot_minutes,
         champ_match_id: matchingTournament.champ_match_id,
         booking_id: matchingTournament.booking_id ?? null,
         champ_title: matchingTournament.champ_title,
@@ -985,12 +987,7 @@ export default function Bookings() {
   const gridLayout = useMemo(() => {
     const isHold = (b: any) => /^\s*club\s+championship/i.test(String(b.external_booker_name || b.guest_name || ""));
     const champs = (allCourtBookings as any[]).filter((b) => b.is_champ);
-    const lengths = new Map<number, number>();
-    for (const b of champs) {
-      const m = timeToMinutes(String(b.end_time).slice(0, 5)) - timeToMinutes(String(b.start_time).slice(0, 5));
-      if (m > 0) lengths.set(m, (lengths.get(m) ?? 0) + 1);
-    }
-    const champMinutes = [...lengths.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+    const champMinutes = championshipGridMinutes(champs);
     const spans = champMinutes && champMinutes !== slotMinutes
       ? (allCourtBookings as any[]).filter((b) => b.is_champ || isHold(b)).map((b) => ({
           court_id: Number(b.court_id), start_time: String(b.start_time), end_time: String(b.end_time || b.start_time),

@@ -21,7 +21,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
-- Booking grid rows come from `src/lib/booking-grid.ts`: reserved championship courts use the tournament's match length inside their evening, other courts/times keep club slots, overlaps stay separate entries; why: games show once with names and occupancy.
+- Booking grid uses saved tournament duration, not historical booking lengths, inside reserved evenings; fixture slots preserve that interval, other courts keep club slots, overlaps stay separate; why: setup changes must not retain stale short rows or move bookings.
 - Booking writes enforce scheduled, unlinked championship allocations through `guard_scheduled_championship_booking`, using saved fixture duration without an admin bypass; why: capacity holds must not conceal already assigned games.
 - Tournament administration hierarchy uses explicit local roots and light-only semantic surfaces, including notification portals; why: public/member pages and existing dark mode must remain unchanged.
 - Draw notification dialogs keep the header and actions outside one viewport-bounded scrolling body; why: expanded personalized previews must not hide send/cancel controls or scroll the underlying page.

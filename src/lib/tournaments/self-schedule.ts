@@ -86,7 +86,7 @@ export function minutesToTime(mins: number): string {
 
 /** Club booking grid, mirroring the court-booking page's window rules. */
 export function buildSlots(stepMinutes: number, openTime?: string | null, lastSlotTime?: string | null): string[] {
-  const step = stepMinutes === 60 ? 60 : stepMinutes === 40 ? 40 : 30;
+  const step = stepMinutes === 60 ? 60 : stepMinutes === 45 ? 45 : stepMinutes === 40 ? 40 : stepMinutes >= 15 ? stepMinutes : 30;
   const defaultStart = step === 40 ? 7 * 60 : 5 * 60;
   const start = openTime ? timeToMinutes(String(openTime)) : defaultStart;
   const last = lastSlotTime ? timeToMinutes(String(lastSlotTime)) : 22 * 60 - step;

@@ -1,20 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { buildProposedSwissGrid, buildSwissGrid, buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { categoryTemplate } from "@/lib/tournaments/swiss-positional";
+import { preferredSwissTemplate } from "@/lib/tournaments/swiss-no-repeat";
 
 const modelFor = (n: number, rounds: number) => buildSwissProgression({
   seedOrder: Array.from({ length: n }, (_, i) => `p${i + 1}`), names: {}, totalRounds: rounds, matches: [],
 });
 
 describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
-  it("24 entrants: exact round 2 halves and later slide templates", () => {
+  it("24 entrants: preserved round 2 halves and wider later templates", () => {
     const { rounds, issues } = buildProposedSwissGrid(modelFor(24, 5));
     expect(issues).toEqual([]);
     const pairs = (r: number) => rounds[r - 1].blocks.map((b) => b.rows.map((x) => x.pos));
     expect(pairs(2)).toEqual([[1,12],[2,11],[3,10],[4,9],[5,8],[6,7],[13,24],[14,23],[15,22],[16,21],[17,20],[18,19]]);
-    expect(pairs(3)).toEqual([[1,3],[2,4],[5,7],[6,8],[9,11],[10,12],[13,15],[14,16],[17,19],[18,20],[21,23],[22,24]]);
-    expect(pairs(4)).toEqual([[1,5],[2,6],[3,7],[4,8],[9,13],[10,14],[11,15],[12,16],[17,21],[18,22],[19,23],[20,24]]);
-    expect(pairs(5)).toEqual([[1,9],[2,10],[3,11],[4,12],[5,13],[6,14],[7,15],[8,16],[17,21],[18,22],[19,23],[20,24]]);
+    expect(pairs(3)).toEqual([[1,7],[2,8],[3,9],[4,10],[5,11],[6,12],[13,19],[14,20],[15,21],[16,22],[17,23],[18,24]]);
+    expect(pairs(4)).toEqual([[1,8],[2,9],[3,10],[4,11],[5,12],[6,7],[13,20],[14,21],[15,22],[16,23],[17,24],[18,19]]);
+    expect(pairs(5)).toEqual([[1,7],[2,8],[3,9],[4,10],[5,11],[6,12],[13,19],[14,20],[15,21],[16,22],[17,23],[18,24]]);
   });
   it.each([[24,5],[18,4],[16,4],[10,4],[15,5]])("%i entrants, %i rounds: no missing/duplicate slots, stable maps and valid byes", (n, r) => {
     const model = modelFor(n, r);
@@ -26,7 +27,7 @@ describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
       expect(slots.slice().sort((a,b) => a-b)).toEqual(Array.from({length:n},(_, i) => i+1));
       expect(rd.blocks.filter((b) => b.rows[1].name === "Bye").length).toBe(n % 2);
       // Even fields follow the template exactly; odd fields may move the bye so nobody sits out twice.
-      if (n % 2 === 0) expect(rd.blocks.filter((b) => b.rows[1].pos != null).map((b) => b.rows.map((x) => x.pos))).toEqual(categoryTemplate(n,r)[index].pairs.map((p) => [p.a,p.b]));
+      if (n % 2 === 0) expect(rd.blocks.filter((b) => b.rows[1].pos != null).map((b) => b.rows.map((x) => x.pos))).toEqual(preferredSwissTemplate(n,index + 1).pairs.map((p) => [p.a,p.b]));
     });
   });
   it("9 entrants: the 9th seed does not get the bye again in later rounds", () => {

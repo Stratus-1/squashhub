@@ -96,10 +96,10 @@ describe("Shared Swiss no-repeat formula", () => {
     expect(seen.size).toBe(60);
   });
   it("keeps confirmed games unchanged while repairing unsaved pairings", () => {
-    const occupants = Array.from({ length: 8 }, (_, i) => `p${i + 1}`);
+    const occupants = Array.from({ length: 24 }, (_, i) => `p${i + 1}`);
     const plan = strictSwissPlan({ occupants, round: 3, history: [], locked: [{ a: "p1", b: "p8" }] });
     expect(plan.pairs).toContainEqual({ a: 1, b: 8 });
-    expect(new Set(plan.pairs.flatMap((p) => [p.a, p.b])).size).toBe(8);
+    expect(new Set(plan.pairs.flatMap((p) => [p.a, p.b])).size).toBe(24);
   });
   it("preserves partial saved round 2 games even when they differ from the template", () => {
     const ids = Array.from({ length: 8 }, (_, i) => `p${i + 1}`);

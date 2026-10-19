@@ -12,8 +12,10 @@ export interface StrictSwissPlan { pairs: SwissSlotPair[]; bye: number | null; r
 /** Even halves: keep their strongest quarter apart through rounds three and four. */
 export function preferredSwissTemplate(n: number, round: number) {
   const original = slotTemplate(n, round);
-  if (n % 4 !== 0 || round < 3 || round > 4) return original;
+  if (n % 4 !== 0 || round < 3) return original;
   const half = n / 2, gap = half / 2;
+  if (round > 4) return { ...original, pairs: [0, half].flatMap(offset =>
+    slotTemplate(half, round).pairs.map(p => ({ ...p, a: p.a + offset, b: p.b + offset }))) };
   const pairs = [0, half].flatMap(offset => Array.from({ length: gap }, (_, i) => ({
     round, a: offset + i + 1, b: offset + gap + (i + round - 3) % gap + 1,
   })));

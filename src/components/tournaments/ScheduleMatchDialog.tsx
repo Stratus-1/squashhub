@@ -171,7 +171,7 @@ export function ScheduleMatchDialog({
     queryKey: ["court-bookings-self-schedule", bookingClubId, date, match?.id, durationMinutes],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
-        .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
+        .select("id, court_id, start_time, end_time, status, source, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
         .eq("club_id", bookingClubId!)
         .eq("date", date)
         .eq("status", "active");
@@ -280,9 +280,11 @@ export function ScheduleMatchDialog({
 
   // The players' own existing bookings that day. Times overlapping them are
   // hidden (the server refuses them too), so say why instead of silently
-  // leaving a gap — e.g. a player's earlier GoBook booking at 18:00.
+  // leaving a gap — e.g. a player's earlier GoBook booking at 18:00. Each can
+  // be explicitly linked to the fixture instead: the booking stays the
+  // player's own paid booking, the fixture just displays its court and time.
   const playerClashes = useMemo(() => {
-    if (!match) return [] as { id: string; time: string; court: string }[];
+    if (!match) return [] as { id: string; time: string; court: string; source: string }[];
     const ids = matchParticipantIds(match);
     return (bookings as any[])
       .filter((b) => b.id !== match.booking_id && bookingConflictsWithParticipants(b, ids))
@@ -290,6 +292,7 @@ export function ScheduleMatchDialog({
         id: String(b.id),
         time: `${String(b.start_time).slice(0, 5)}–${String(b.end_time).slice(0, 5)}`,
         court: courts.find((c) => c.id === b.court_id)?.name || `Court ${b.court_id}`,
+        source: String(b.source ?? ""),
       }))
       .sort((x, y) => x.time.localeCompare(y.time));
   }, [bookings, match, courts]);

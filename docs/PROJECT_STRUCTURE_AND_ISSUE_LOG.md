@@ -3427,3 +3427,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ## 2026-10-19 — Uitsig unwanted Swiss Round 6
 - Saved structured stages still contained swissRounds=6 despite approved five-round setup. Corrected only the four Swiss stages in Uitsig Club Champs 2026 (Mens B/C/D, Ladies A) to five and trimmed their unused sixth roundDates element; no fixtures/results/bookings changed, no messages or deployment.
 - Hosted read-back: each Swiss stage has five rounds and five date entries, zero matches beyond Round 5. Signed-in Men’s C UI verified Round 5 and final standings, zero Round 6 headings.
+
+## 2026-10-19 — Swiss grid standings card wording
+- The Swiss progression card was headed "Final standing" while games were still unplayed (badge "Projected", note "Current positions · locks when Round N completes"). The heading now reads "Current standings" until the Swiss stage's own rounds are complete, then "Final standings" beside the existing "Locked" badge. Wording only: positions, ordering, saved games, results and bookings untouched.
+- Verification: src/test/swiss-pilot-standings.test.tsx 11/11 passed — projected card asserts "Current standings" and no "Final standing"; locked card asserts "Final standings". Preview build OK. No live-data change, migration or publication.

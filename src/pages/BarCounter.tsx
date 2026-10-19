@@ -686,25 +686,75 @@ export default function BarCounter() {
         </div>
       ) : !activeTab ? (
         <div className="p-4 space-y-4 max-w-7xl mx-auto">
-          <Card className="p-3 flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Name for a new tab"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && openTab()}
-              className="h-11"
-            />
-            <Input
-              placeholder="Cell number (optional)"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && openTab()}
-              inputMode="tel"
-              className="h-11 sm:max-w-[180px]"
-            />
-            <Button className="h-11 gap-1" disabled={!newName.trim() || busy} onClick={openTab}>
-              <Plus className="w-4 h-4" /> Tab
-            </Button>
+          <Card className="p-3 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button" size="sm" className="h-9 gap-1.5"
+                variant={newTabKind === "member" ? "default" : "outline"}
+                onClick={() => setNewTabKind("member")}
+              >
+                <UserCheck className="w-4 h-4" /> Member
+              </Button>
+              <Button
+                type="button" size="sm" className="h-9 gap-1.5"
+                variant={newTabKind === "visitor" ? "default" : "outline"}
+                onClick={() => setNewTabKind("visitor")}
+              >
+                <Plus className="w-4 h-4" /> Visitor
+              </Button>
+            </div>
+            {newTabKind === "member" ? (
+              <div className="space-y-1">
+                <Input
+                  placeholder="Search for member — name or number"
+                  value={memberQuery}
+                  onChange={(e) => setMemberQuery(e.target.value)}
+                  className="h-11"
+                  autoFocus
+                />
+                {memberSearching && <p className="text-[11px] text-muted-foreground px-1">Searching…</p>}
+                {!memberSearching && memberQuery.trim().length >= 2 && memberResults.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground px-1">No active member matches — use Visitor for guests.</p>
+                )}
+                {memberResults.length > 0 && (
+                  <div className="divide-y rounded-md border max-h-56 overflow-y-auto">
+                    {memberResults.map((m) => (
+                      <button
+                        key={m.id} type="button" disabled={busy}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/60 disabled:opacity-50"
+                        onClick={() => openMemberTab(m.id)}
+                      >
+                        <span className="font-medium truncate">{m.display_name}</span>
+                        {m.member_number != null && (
+                          <span className="text-[11px] text-muted-foreground shrink-0">#{m.member_number}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  placeholder="Visitor's name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && openTab()}
+                  className="h-11"
+                />
+                <Input
+                  placeholder="Cell number (optional)"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && openTab()}
+                  inputMode="tel"
+                  className="h-11 sm:max-w-[180px]"
+                />
+                <Button className="h-11 gap-1" disabled={!newName.trim() || busy} onClick={openTab}>
+                  <Plus className="w-4 h-4" /> Tab
+                </Button>
+              </div>
+            )}
           </Card>
 
           {board.tabs.length === 0 ? (

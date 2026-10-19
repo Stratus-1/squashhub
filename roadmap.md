@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] Inspect and standardize Uitsig Club Champs configured tournament durations to 45 minutes, preserving existing booking times and other tournaments.
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done

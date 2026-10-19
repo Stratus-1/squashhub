@@ -331,3 +331,38 @@ export function scheduledFixtureBlockers(
       };
     });
 }
+
+/** Read-only board of a court's normal grid slots for one day, so players can see
+ *  which slots are free Champs slots, reserved for Champs, already taken, or open
+ *  as a normal (paid) club booking. Only `champs-free` slots are bookable here. */
+export type DaySlotStatus = "champs-free" | "champs" | "taken" | "open";
+
+export function daySlotBoard(
+  slots: string[],
+  slotMinutes: number,
+  courtId: number,
+  bookings: BookingLike[],
+  opts: { champsFree?: ReadonlySet<string>; ignoreBookingId?: string | null } = {},
+): { time: string; status: DaySlotStatus }[] {
+  const champsFree = opts.champsFree ?? new Set<string>();
+  return slots.map((time) => {
+    if (champsFree.has(time)) return { time, status: "champs-free" };
+    const start = toMinutes(time);
+    const end = start + slotMinutes;
+    const overlapsHold = bookings.some(
+      (b) =>
+        b.court_number === courtId &&
+        isActive(b) &&
+        isChampsReservation(b) &&
+        toMinutes(b.start_time) < end &&
+        toMinutes(b.end_time) > start,
+    );
+    if (overlapsHold) return { time, status: "champs" };
+    return {
+      time,
+      status: isSlotFree(time, slotMinutes, courtId, bookings, opts.ignoreBookingId)
+        ? "open"
+        : "taken",
+    };
+  });
+}

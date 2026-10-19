@@ -792,7 +792,7 @@ export default function Bookings() {
     refetchInterval: 30000,
   });
   const { data: champsSaved = [] } = useQuery({
-    queryKey: ["club-champs-bookings", dateStr],
+    queryKey: ["club-champs-bookings", dateStr, myClub?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("club_champs_matches")
@@ -810,7 +810,7 @@ export default function Bookings() {
           partner_a:partner_a_member_id(name, user_id, profiles:user_id(name)),
           partner_b:partner_b_member_id(name, user_id, profiles:user_id(name)),
           group_number,
-          champ:champ_id(name, group_labels, match_duration_minutes, group_durations, rules:tournament_rules(scoring_mode))
+          champ:champ_id(id, name, club_id, group_labels, match_duration_minutes, group_durations, rules:tournament_rules(scoring_mode))
         `)
         .eq("scheduled_date", dateStr)
         .not("court_id", "is", null)
@@ -818,7 +818,11 @@ export default function Bookings() {
 
       if (error) throw error;
 
-      return (data || []).map((m: any) => {
+      // A fixture belongs to its own club's grid only — other clubs' tournaments
+      // scheduled the same date must never leak into this club's courts.
+      const myChampId = myClub?.id;
+      const rows = (data || []).filter((m: any) => !myChampId || m.champ?.club_id === myChampId);
+      return rows.map((m: any) => {
         const tournamentName = m.champ?.name || "Tournament";
         const start = String(m.scheduled_time || "").slice(0, 5);
         const champRules = Array.isArray(m.champ?.rules) ? m.champ?.rules[0] : m.champ?.rules;
@@ -862,7 +866,7 @@ export default function Bookings() {
         };
       });
     },
-    enabled: !!dateStr,
+    enabled: !!dateStr && !!myClub?.id,
   });
   // Next-round Swiss pairings already decided by results, placed in their proposed
   // Club Champs slot. Display only — no fixture or booking is written.

@@ -36,4 +36,13 @@ describe("champsSlotStarts — the Champs' own match-length slots inside reserve
     const holds = [hold(27, "18:00", "18:45"), hold(27, "18:45", "19:30")];
     expect(champsSlotStarts(holds, 45).get(27)).toEqual(["18:00", "18:45"]);
   });
+  it("a reserved slot already carrying a scheduled game is excluded from the free span", () => {
+    const rows = [
+      hold(27, "18:00", "18:45"),
+      { court_id: 27, start_time: "18:45", end_time: "19:30", status: "active", external_booker_name: "Club Championships", club_member_id: "m1", user_id: "u1" },
+      hold(27, "19:30", "20:15"),
+    ];
+    // The occupied 18:45 hold is not a free span: only 18:00 and 19:30 remain.
+    expect(champsSlotStarts(rows, 45).get(27)).toEqual(["18:00", "19:30"]);
+  });
 });

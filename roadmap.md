@@ -1,6 +1,12 @@
 # Roadmap
 
 ## Open
+- [ ] Thursday 22 Oct Uitsig grid shows stale 20-minute championship rows — root cause: projected fixtures from OTHER tournaments (20- and 30-min durations, courts 37–39, 20/24/26) leak into the bookings grid's championship layout. Filter projections to the club's actual reserved tournaments / courts, or exclude non-reserved tournaments from the grid's champ layout.
+- [ ] Fixtures-list "Book a court" picker shows tournament slots for Tuesday that are not actually available; must be consistent with Monday's correct behavior and respect the no-override rule for admins too.
+
+
+
+## Open
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done

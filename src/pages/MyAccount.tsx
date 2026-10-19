@@ -305,6 +305,22 @@ export default function MyAccount() {
 
 
 
+    // Directly-paid bar purchases (card / cash / online): informational only —
+    // zero debit/credit so the running balance is untouched.
+    for (const p of (directPurchases || []) as any[]) {
+      const total = Number(p.total || 0);
+      if (total <= 0) continue;
+      lines.push({
+        id: `barpaid-${p.id}`,
+        date: p.created_at,
+        description: `Bar purchase: ${p.quantity}× ${p.item_name}`,
+        debit: 0,
+        credit: 0,
+        status: "paid",
+        paidLabel: `paid by ${p.method} · ${money(total)}`,
+      });
+    }
+
     // Sort oldest first so the running balance accumulates correctly
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 

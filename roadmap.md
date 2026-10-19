@@ -1,13 +1,12 @@
 # Roadmap
 
 ## Open
-- [ ] Standardize Uitsig Club Champs setup AND current 35-minute championship slots to the courts' 45-minute timetable; preview clashes before moving games, preserve other tournaments.
-- [ ] Restore screenshot grid to normal 45-minute court rows; remove extra 20/35-minute time rows for Uitsig's 45-minute tournament configuration.
-- [ ] Make fixtures-list rescheduling offer 45-minute slots consistently.
-- [ ] Align six approved existing games on 21/22 Oct to the agreed 45-minute starts, retaining dates/courts and rejecting conflicts.
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done
+- [x] Uitsig Club Champs setup, all eight category durations, planning guide and both scheduling copies set to 45 minutes; other tournaments unchanged.
+- [x] Six approved 21/22 Oct fixtures rescheduled through protected authenticated RPCs; saved booking intervals verified at exactly 45 minutes, same dates/courts. Built-in in-app schedule notifications applied.
+- [x] Grid prefers configured duration; signed-in Uitsig Wednesday preview verified normal 45-minute rows and relocated games. Fixture slot generation now supports 45 minutes; 28 focused tests passed. Frontend changes not published.
 - [x] Gerhard/Jason's conflicting booking cancelled with history retained; fixture unscheduled. Nico/Johann restored to Court 1, 20 Oct 18:00; read-back verified.
 - [x] Server rejects bookings over scheduled, unlinked championship games for players and admins; six isolated PostgreSQL regression checks passed. No publication.
 - [x] Published 18 Oct 2026: champs-slot fixes (grid display, 35-min reschedule slots, freed old slot), reserved-court 35-min time column, recurring transactions, average-cost fill-in, two-decimal money display, cost-per-tot hint on purchase lines, WhatsApp/SMS switches, Enter Transaction date fix, dialog size fix

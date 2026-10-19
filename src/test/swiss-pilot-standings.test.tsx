@@ -100,7 +100,9 @@ describe("Grid final-standing card", () => {
       {id:"m4",round:2,a:"p2",b:"p4",winner:"p2",status:"completed",score:"3-1"},
     ]})} />);
     const locked = screen.getByTestId("swiss-final-standing-card");
+    expect(locked.textContent).toContain("Final standings");
     expect(locked.textContent).toContain("Locked");
     expect(locked.textContent).toContain("seed the next stage");
+
   });
 });

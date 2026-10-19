@@ -756,10 +756,25 @@ function proposePairings(field, count, strategy) {
 // src/lib/tournaments/swiss-no-repeat.ts
 var opponentKey = (a, b) => JSON.stringify([a, b].sort());
 var SWISS_NO_REPEAT_FROM_ROUND = 3;
+function preferredSwissTemplate(n, round) {
+  const original = slotTemplate(n, round);
+  if (n % 4 !== 0 || round < 3)
+    return original;
+  const half = n / 2, gap = half / 2;
+  if (round > 4)
+    return { ...original, pairs: [0, half].flatMap((offset) => slotTemplate(half, round).pairs.map((p) => ({ ...p, a: p.a + offset, b: p.b + offset }))) };
+  const pairs = [0, half].flatMap((offset) => Array.from({ length: gap }, (_, i) => ({
+    round,
+    a: offset + i + 1,
+    b: offset + gap + (i + round - 3) % gap + 1
+  })));
+  return { ...original, pairs };
+}
 function strictSwissPlan(input) {
   const { occupants, round, history } = input;
-  const raw = slotTemplate(occupants.length, round);
-  const preferred = input.preferred ?? raw.pairs;
+  const raw = preferredSwissTemplate(occupants.length, round);
+  const wide = occupants.length % 4 === 0 && round >= 3 && round <= 4;
+  const preferred = occupants.length % 4 === 0 && round >= 3 ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id))
     return { pairs: preferred, bye, ready: false };
@@ -791,6 +806,18 @@ function strictSwissPlan(input) {
     preferences.set(b, a);
   });
   const legacyPlayed = new Set(history.filter((g) => g.round < round && g.a && g.b).map((g) => String(g.a) < String(g.b) ? `${g.a}|${g.b}` : `${g.b}|${g.a}`));
+  if (ids.length % 4 === 0 && round >= 3) {
+    const half = ids.length / 2, quarter = half / 2;
+    for (let i = 0;i < ids.length; i++)
+      for (let j = i + 1;j < ids.length; j++) {
+        const differentHalf = Math.floor(i / half) !== Math.floor(j / half);
+        const sameQuarter = wide && Math.floor(i / quarter) === Math.floor(j / quarter);
+        if (differentHalf || sameQuarter) {
+          const a = ids[i], b = ids[j];
+          legacyPlayed.add(a < b ? `${a}|${b}` : `${b}|${a}`);
+        }
+      }
+  }
   for (const candidate of byeCandidates) {
     const field = remaining.filter((id) => candidate == null || id !== ids[candidate - 1]);
     try {
@@ -7237,7 +7264,7 @@ function buildProposedSwissGrid(model, opts = {}) {
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length)
     return { rounds: [], issues: plan.issues };
-  const template = categoryTemplate(n, model.totalRounds);
+  const template = opts.noRepeats === false ? categoryTemplate(n, model.totalRounds) : Array.from({ length: model.totalRounds }, (_, i) => preferredSwissTemplate(n, i + 1));
   const rawTemplate = categoryTemplate(n, model.totalRounds);
   const issues = validateTemplate(n, template);
   if (issues.length)

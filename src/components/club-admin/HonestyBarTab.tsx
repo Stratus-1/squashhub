@@ -83,6 +83,7 @@ interface BarItem {
   valid_days?: number[] | null;
   valid_start_time?: string | null;
   valid_end_time?: string | null;
+  allow_negative_stock?: boolean | null;
 }
 
 interface BarTabEntry {

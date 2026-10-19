@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Open
-- [ ] Prevent repeated actual opponents in Uitsig Club Champs Swiss rounds from round 3 onward; preserve rounds 1 and 2 exactly and all saved games. Read-only impact review before activating; do not publish.
+- [ ] Prevent repeated actual opponents in Swiss rounds for ALL clubs from round 3 onward; preserve rounds 1 and 2 exactly and all saved games. Do not publish.
 - [ ] Explain Swiss pairing rules and later-round top/bottom crossover using the configured positional schedule.
 - [ ] SportyHQ integration blocked on official API documentation.
 

@@ -2,20 +2,9 @@ import { swissRound, IntegrityError } from "./contract";
 import { slotTemplate } from "./swiss-positional";
 import { supabase } from "@/integrations/supabase/client";
 
-export const SWISS_NO_REPEAT_FEATURE = "tournament_swiss_no_repeats";
-export const SWISS_NO_REPEAT_CLUB = "11111111-1111-1111-1111-111111111111";
 export const opponentKey = (a: string, b: string) => JSON.stringify([a, b].sort());
-export const swissNoRepeatEnabled = (clubId: string | null | undefined, enabled: boolean) => clubId === SWISS_NO_REPEAT_CLUB && enabled;
-
-/** Packaging gate only; authority remains with existing protected club roles and DB guards. */
-export async function fetchSwissNoRepeat(clubId: string | null | undefined): Promise<boolean> {
-  if (clubId !== SWISS_NO_REPEAT_CLUB) return false;
-  try {
-    const { data, error } = await (supabase as any).from("club_beta_features").select("club_id")
-      .eq("club_id", clubId).eq("feature", SWISS_NO_REPEAT_FEATURE).maybeSingle();
-    return !error && !!data;
-  } catch { return false; }
-}
+/** First round where no-repeat repair applies; rounds before it keep the fixed template. Applies to every club. */
+export const SWISS_NO_REPEAT_FROM_ROUND = 3;
 
 export interface SwissSlotPair { a: number; b: number }
 export interface SwissHistoryGame { a: string | null; b: string | null; round: number }

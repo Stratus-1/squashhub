@@ -534,6 +534,22 @@ export function ScheduleMatchDialog({
                         >
                           {s.time} Free
                         </Button>
+                      ) : s.status === "open" && gobookApiMode ? (
+                        <Button
+                          key={s.time}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={saving || gobookBooking !== null}
+                          className="h-6 px-1.5 text-[10px]"
+                          onClick={() => bookViaGobook(court.courtId, s.time)}
+                        >
+                          {gobookBooking === `${court.courtId}-${s.time}` ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            `${s.time} Book`
+                          )}
+                        </Button>
                       ) : (
                         <span
                           key={s.time}

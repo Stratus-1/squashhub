@@ -18083,6 +18083,7 @@ export type Database = {
           participating_club_ids: string[]
           partner_mode: string
           play_days: number[]
+          player_info: string | null
           playoff_break_minutes: number
           playoff_date: string | null
           pool_allocation: string
@@ -18200,6 +18201,7 @@ export type Database = {
           participating_club_ids?: string[]
           partner_mode?: string
           play_days?: number[]
+          player_info?: string | null
           playoff_break_minutes?: number
           playoff_date?: string | null
           pool_allocation?: string
@@ -18317,6 +18319,7 @@ export type Database = {
           participating_club_ids?: string[]
           partner_mode?: string
           play_days?: number[]
+          player_info?: string | null
           playoff_break_minutes?: number
           playoff_date?: string | null
           pool_allocation?: string

@@ -80,6 +80,7 @@ import { StageCardShell, StageScheduleOverview } from "./StageScheduleOverview";
 import { courtOverlaps, stageStatus, type StageStatus } from "@/lib/smart-builder/schedule-view";
 import { RoundSchedulingEditor } from "./RoundSchedulingEditor";
 import { TournamentOrganiserField } from "./TournamentOrganiserField";
+import { TournamentPlayerInfoEditor } from "@/components/tournaments/TournamentPlayerInfo";
 import type { TournamentOrganiser } from "@/lib/smart-builder/tournament-organiser";
 
 /**
@@ -2451,6 +2452,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <Q t={isChamps ? "Club Championships basics" : "Tournament basics"} h="The tournament's name and who it belongs to — not how it is played." />
               <div className="space-y-1"><Label htmlFor="sbs-name">Tournament name</Label><Input id="sbs-name" value={a.name ?? ""} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder={isChamps ? "e.g. Riverside Club Championships 2026" : "e.g. Riverside Spring Open"} /></div>
               <TournamentOrganiserField clubId={clubId} value={a.organiser} existing={!!a.createdTournamentId || !!tournamentId} onChange={(organiser) => setA((prev) => ({ ...prev, organiser }))} />
+              <TournamentPlayerInfoEditor tournamentId={a.createdTournamentId ?? tournamentId} />
               <div className="space-y-1">
                 <Label>Event level</Label>
                 <div className="grid gap-3 sm:grid-cols-3">

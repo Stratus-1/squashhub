@@ -99,6 +99,7 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
+import { TournamentPlayerInfoNotice } from "@/components/tournaments/TournamentPlayerInfo";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
@@ -1406,7 +1407,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterIsRR ? (
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterIsRR ? (
           <div className="mt-6 space-y-4" data-testid={`stage2-progression-${gn}`}>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>
@@ -2538,6 +2539,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             </p>
           )}
         </div>
+        <TournamentPlayerInfoNotice tournamentId={champId} />
 
         {canManage && (
           <Card className="print:hidden border-primary/40" data-testid="tournament-admin">

@@ -799,10 +799,20 @@ function gapPairs(size, _gap, offset, round) {
   return halfRoundPairs(size, round).map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
 }
 var SWISS_HALF_MODELS = {
-  12: {
+  "24:12": {
     3: [[1, 6], [2, 5], [3, 4], [7, 12], [8, 11], [9, 10]],
     4: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12]],
     5: [[1, 2], [3, 5], [4, 6], [7, 8], [9, 12], [10, 11]]
+  },
+  "18:10": {
+    3: [[1, 5], [2, 6], [3, 7], [4, 8], [9, 10]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 9], [8, 10]],
+    5: [[1, 2], [3, 4], [5, 8], [6, 10], [7, 9]]
+  },
+  "18:8": {
+    3: [[1, 4], [2, 3], [5, 8], [6, 7]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 8]],
+    5: [[1, 2], [3, 4], [5, 6], [7, 8]]
   }
 };
 function preferredSwissTemplate(n, round) {
@@ -816,7 +826,7 @@ function preferredSwissTemplate(n, round) {
   }
   const segments = [[0, halves[0]], [halves[0], halves[1]]];
   const pairs = segments.flatMap(([offset, size]) => {
-    const model = SWISS_HALF_MODELS[size]?.[round];
+    const model = SWISS_HALF_MODELS[`${n}:${size}`]?.[round];
     if (model)
       return model.map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
     const gap = swissRoundGap(size, round);

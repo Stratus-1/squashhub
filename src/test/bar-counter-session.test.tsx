@@ -50,10 +50,10 @@ describe("counter personal PIN boundary", () => {
     });
     mount("/s/river-menu/counter");
     await screen.findByText("Test server");
-    fireEvent.click(screen.getByRole("button", { name: "Visitor", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Visitor$/ }));
     fireEvent.change(screen.getByPlaceholderText("Visitor's name"), { target: { value: "Test visitor" } });
     fireEvent.change(screen.getByPlaceholderText("Cell number (required)"), { target: { value: "0000000000" } });
-    fireEvent.click(screen.getByRole("button", { name: "Tab", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Tab$/ }));
     await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_open_tab", {
       _guest_name: "Test visitor", _token: "verified-session", _club_id: null,
       _guest_phone: "0000000000", _operator: "Test server", _club_member_id: null,

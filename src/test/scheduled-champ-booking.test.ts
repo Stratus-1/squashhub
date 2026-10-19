@@ -15,6 +15,7 @@ suite("scheduled championship allocations protect court slots", () => {
       CREATE TABLE bookings(id uuid DEFAULT gen_random_uuid(),court_id integer,date date,start_time time,end_time time,status text,source text,external_id text,external_booker_name text,user_id uuid,opponent_id uuid,club_member_id uuid,opponent_member_id uuid);
       INSERT INTO tournaments VALUES('${champ}','{}','{"format_plan":{"scheduling":{"singles":35}}}',30);`);
     await sql.unsafe(readFileSync("drizzle/migrations/0193_protect_scheduled_championship_slots.sql", "utf8"));
+    await sql.unsafe("GRANT USAGE ON SCHEMA public TO authenticated; GRANT INSERT,SELECT ON bookings TO authenticated;");
   });
   afterAll(async () => { await sql.end(); });
   beforeEach(async () => {
@@ -45,5 +46,13 @@ suite("scheduled championship allocations protect court slots", () => {
     await book("19:10", "19:45");
     await expect(sql`UPDATE bookings SET start_time='18:00',end_time='18:35'`).rejects.toMatchObject({ code: "23505" });
     expect((await sql`SELECT start_time FROM bookings`)[0].start_time).toBe("19:10:00");
+  });
+  it("does not bypass occupancy for privileged administrators", async () => {
+    // The database owner is more privileged than an application administrator.
+    expect((await sql`SELECT current_user AS role`)[0].role).toBe("lovable");
+    await expect(book("18:00", "18:35")).rejects.toMatchObject({ code: "23505" });
+    await sql.unsafe("SET ROLE authenticated");
+    try { await expect(book("18:00", "18:35")).rejects.toMatchObject({ code: "23505" }); }
+    finally { await sql.unsafe("RESET ROLE"); }
   });
 });

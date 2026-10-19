@@ -462,6 +462,7 @@ const emptyForm = (division = "bar", category = "") => ({
   item_kind: "stock" as ItemKind, unit_yield: "1", unit_label: "tot", stock_unit_label: "bottle", stock_measure: "count" as "count" | "bottle" | "volume", opening_litres: "0", sellable: true,
   product_group: "", variant_label: "", stock_parent_id: "", consume_units: "1",
   valid_from: "", valid_to: "", valid_days: [] as number[], valid_start_time: "", valid_end_time: "",
+  allow_negative: "default" as "default" | "allow" | "block",
 });
 
 function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels }: { clubId: string; items: BarItem[]; soldCounts: Map<string, number>; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
@@ -546,6 +547,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
       stock_parent_id: item.stock_parent_id || "", consume_units: String(item.consume_units || 1),
       valid_from: item.valid_from || "", valid_to: item.valid_to || "", valid_days: item.valid_days || [],
       valid_start_time: (item.valid_start_time || "").slice(0, 5), valid_end_time: (item.valid_end_time || "").slice(0, 5),
+      allow_negative: item.allow_negative_stock === true ? "allow" : item.allow_negative_stock === false ? "block" : "default",
     });
     setComponents(allComponents.filter(c => c.special_item_id === item.id)
       .map(c => ({ component_item_id: c.component_item_id, quantity: String(c.quantity) })));
@@ -559,6 +561,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
       item_kind: form.item_kind, product_group: form.product_group.trim() || null, variant_label: form.variant_label.trim() || null,
       stock_parent_id: null, consume_units: 1, unit_yield: 1, sellable: true,
       valid_from: null, valid_to: null, valid_days: null, valid_start_time: null, valid_end_time: null,
+      allow_negative_stock: form.allow_negative === "allow" ? true : form.allow_negative === "block" ? false : null,
     };
     if (form.item_kind === "stock") {
       Object.assign(base, {
@@ -770,6 +773,24 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
           )}
         </div>
       )}
+
+      {form.item_kind !== "made_to_order" && (
+        <div>
+          <Label className="text-xs">When stock runs out</Label>
+          <Select value={form.allow_negative} onValueChange={v => setForm(p => ({ ...p, allow_negative: v as "default" | "allow" | "block" }))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Club default (Stock levels page setting)</SelectItem>
+              <SelectItem value="allow">Always allow — this item may sell below zero</SelectItem>
+              <SelectItem value="block">Always block — never sell this item below zero</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Overrides the club-wide "Allow selling below zero" switch for this item only.
+          </p>
+        </div>
+      )}
+
 
       {form.item_kind === "stock" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

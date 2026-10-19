@@ -3384,3 +3384,9 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ## 2026-10-18 — Exit counter hidden after personal-PIN redirect
 - Exit was guarded by `!code`, but every serving route now requires a QR code. Exit counter mode is available on the board and PIN screen, clears the local serving session/cache and returns to the customer menu. End shift still stays on the PIN screen. Neither action closes the bar or settles tabs.
 - Verification: 15 focused tests passed; isolated browser exit→customer menu→PIN reentry verified, with cleared local identity and no page errors. Preview build OK; no live changes or publication.
+
+
+## 2026-10-19 — Scheduled championship slot protection
+- Gerhard/Jason's conflicting Court 1 booking on 20 Oct at 18:00 cancelled on explicit owner instruction; history retained and their fixture unscheduled through the authenticated unschedule RPC. Nico/Johann restored to their original Court 1 18:00 allocation, with guarded concurrent-edit checks and hosted read-back. Other recently changed fixtures untouched.
+- Added server booking-write guard for scheduled championship fixtures without booking rows, using saved group/singles/doubles duration (35 minutes for Uitsig) instead of ignoring these allocations. Applies to INSERT and rescheduling UPDATE, normal bookings and tournament bookings, with no admin bypass. Own fixture identity and ownerless capacity holds remain allowed.
+- Six disposable localhost PostgreSQL tests passed: occupied Court 1, full 35-minute interval, own fixture booking, other court, move rejection, privileged/authenticated rejection. No real test bookings, hardware actions or publication. Picker still reads booking rows only and may offer a slot the server rejects; authenticated UI rejection and concurrent cross-court participant writes remain unverified.

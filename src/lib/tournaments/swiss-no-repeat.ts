@@ -69,6 +69,17 @@ export const SWISS_HALF_MODELS: Record<number, Record<number, Array<[number, num
     4: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12]],
     5: [[1, 2], [3, 5], [4, 6], [7, 8], [9, 12], [10, 11]],
   },
+  // 18-player field = top 10 + bottom 8.
+  10: {
+    3: [[1, 5], [2, 6], [3, 7], [4, 8], [9, 10]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 9], [8, 10]],
+    5: [[1, 2], [3, 4], [5, 8], [6, 10], [7, 9]],
+  },
+  8: {
+    3: [[1, 4], [2, 3], [5, 8], [6, 7]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 8]],
+    5: [[1, 2], [3, 4], [5, 6], [7, 8]],
+  },
 };
 
 /** Halves play within themselves from round three, with a different position gap each round. */

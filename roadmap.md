@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Open
-- [ ] Inspect and standardize Uitsig Club Champs configured tournament durations to 45 minutes, preserving existing booking times and other tournaments.
+- [ ] Standardize Uitsig Club Champs setup AND current 35-minute championship slots to the courts' 45-minute timetable; preview clashes before moving games, preserve other tournaments.
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done

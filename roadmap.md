@@ -41,5 +41,5 @@
 - [x] Uitsig Men's B/C/D + Ladies A = 4 Swiss rounds (setup + running tournament)
 - [x] Structure page Swiss round changes reach the running tournament (block lowering below created rounds)
 - [ ] Clarify repeat-opponent swap rule with Willem (awaiting his choice)
-- [ ] Book a court dialog too tall on smaller screens — make content scroll within the viewport (reported 19 Oct 2026)
+- [x] Book a court dialog too tall on smaller screens — header stays fixed, body scrolls within 90% of the screen height
 - [x] Fixture can be explicitly linked to a player's own paid GoBook booking ("Use for this fixture"); clearing/moving never cancels it (migration 0205)

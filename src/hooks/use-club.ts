@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -243,7 +244,7 @@ export function useMyClub() {
   // The tenant club arrives in two parts (public row, then signed-in booking
   // settings such as slot length). Merge it at render time so a snapshot taken
   // before the second part loaded can never leave pages on default settings.
-  const data = mergeTenantClub(result.data, contextClub);
+  const data = useMemo(() => mergeTenantClub(result.data, contextClub), [result.data, contextClub]);
   return { ...result, data } as typeof result;
 }
 

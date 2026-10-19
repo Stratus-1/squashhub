@@ -300,6 +300,74 @@ export default function BarCounter() {
     }
   }
 
+  // Member tab: the barman picks the member from a search — no name/phone
+  // typing, and no verification code later when charging the member's account.
+  async function openMemberTab(memberId: string) {
+    setBusy(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_counter_open_tab", {
+        _guest_name: "", _token: token, _club_id: clubId,
+        _operator: operator, _club_member_id: memberId,
+      });
+      if (error) throw error;
+      setMemberQuery("");
+      setMemberResults([]);
+      await refetch();
+      setActiveTabId((data as any)?.tab_id ?? null);
+      toast.success("Member tab opened");
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not open the tab");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Debounced member search while the barman types.
+  useEffect(() => {
+    if (newTabKind !== "member") return;
+    const q = memberQuery.trim();
+    if (q.length < 2) { setMemberResults([]); return; }
+    let cancelled = false;
+    setMemberSearching(true);
+    const t = setTimeout(async () => {
+      const { data, error } = await (supabase as any).rpc("bar_counter_search_members", {
+        _query: q, _token: token, _club_id: clubId,
+      });
+      if (cancelled) return;
+      setMemberSearching(false);
+      if (error) { toast.error(error.message); return; }
+      setMemberResults((data as any[]) ?? []);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberQuery, newTabKind, token, clubId]);
+
+  /** Member-linked tab: charge the account directly — the staff PIN session is the authority, no member code. */
+  async function chargeLinkedMember() {
+    if (!activeTab?.club_member_id) return;
+    setBusy(true);
+    try {
+      if (!(await flushCart(activeTab.tab_id))) return;
+      const { data: res, error } = await (supabase as any).rpc("bar_counter_charge_member_account", {
+        _tab_id: activeTab.tab_id, _token: token, _club_id: clubId,
+      });
+      if (error) throw error;
+      const { data: fresh } = await supabase.rpc("bar_counter_board", {
+        _token: token, _club_id: clubId,
+      } as any);
+      const latest = (fresh as any)?.tabs?.find((t: CounterTab) => t.tab_id === activeTab.tab_id);
+      setSettled({ tab: latest ?? activeTab, method: "member_account", memberName: (res as any)?.member_name ?? activeTab.guest_name });
+      setCart({});
+      await refetch();
+      invalidate();
+      toast.success((res as any)?.already ? "Already charged — no second charge recorded" : "Charged to the member's account");
+    } catch (e: any) {
+      showBarChargeError(e, "Could not charge the member's account");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   /** Post whatever is in the basket onto the tab. Returns false if it failed. */
   async function flushCart(tabId: string): Promise<boolean> {
     const lines = Object.entries(cart)

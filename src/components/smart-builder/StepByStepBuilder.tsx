@@ -1482,7 +1482,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "Type" && (
             <>
               <Q t="What type of tournament is this?" h="Pick the one that sounds most like your event." />
-              <TournamentOrganiserField clubId={clubId} value={a.organiser} existing={!!a.createdTournamentId || !!tournamentId} onChange={(organiser) => setA((prev) => ({ ...prev, organiser }))} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Choice active={a.kind === "once_off"} onClick={() => setA({ ...a, kind: "once_off" })} title="Once-off / weekend tournament" desc="Played over one day or a few days in a row." />
                 <Choice active={a.kind === "period"} onClick={() => setA({ ...a, kind: "period" })} title="Over a period / Club Champs" desc="Games spread over weeks, e.g. club championships." />

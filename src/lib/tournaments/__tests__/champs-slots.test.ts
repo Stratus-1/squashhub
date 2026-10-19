@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { champsSlotStarts } from "@/lib/tournaments/self-schedule";
+import { champsSlotStarts, daySlotBoard } from "@/lib/tournaments/self-schedule";
 
 const hold = (court_id: number, start_time: string, end_time: string) => ({
   court_id, start_time, end_time, status: "active", external_booker_name: "Club Championships",

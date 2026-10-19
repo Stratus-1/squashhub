@@ -1034,6 +1034,9 @@ export default function MyAccount() {
                       {line.status === "pending" && (
                         <Badge variant="secondary" className="ml-1.5 text-[8px] bg-amber-500/10 text-amber-600 py-0 px-1">pending</Badge>
                       )}
+                      {line.paidLabel && (
+                        <Badge variant="outline" className="ml-1.5 text-[8px] py-0 px-1 text-green-600 border-green-600/40">{line.paidLabel}</Badge>
+                      )}
                     </p>
                   </div>
                   <span className={cn("text-right tabular-nums", line.debit > 0 && "text-destructive")}>

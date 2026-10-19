@@ -46,3 +46,36 @@ describe("champsSlotStarts — the Champs' own match-length slots inside reserve
     expect(champsSlotStarts(rows, 45).get(27)).toEqual(["18:00", "19:30"]);
   });
 });
+
+describe("daySlotBoard — the full-day view inside the fixture booking window", () => {
+  const grid = ["17:00", "17:45", "18:00", "18:45", "19:30"];
+  it("marks a free Champs slot, a Champs hold, a taken slot and an open slot", () => {
+    const bookings = [
+      hold(27, "18:00", "19:30"), // Champs hold covering 18:00 and 18:45 grid slots
+      { court_id: 27, start_time: "17:00", end_time: "17:45", status: "active", club_member_id: "m9" }, // taken
+    ];
+    const board = daySlotBoard(grid, 45, 27, bookings, { champsFree: new Set(["18:00"]) });
+    expect(board).toEqual([
+      { time: "17:00", status: "taken" },
+      { time: "17:45", status: "open" },
+      { time: "18:00", status: "champs-free" },
+      { time: "18:45", status: "champs" },
+      { time: "19:30", status: "open" },
+    ]);
+  });
+  it("ignores cancelled bookings and other courts", () => {
+    const bookings = [
+      { court_id: 27, start_time: "17:00", end_time: "17:45", status: "cancelled", club_member_id: "m9" },
+      { court_id: 28, start_time: "17:45", end_time: "18:30", status: "active", club_member_id: "m9" },
+    ];
+    const board = daySlotBoard(grid, 45, 27, bookings);
+    expect(board.every((s) => s.status === "open")).toBe(true);
+  });
+  it("keeps the match's own booking free while rescheduling", () => {
+    const bookings = [
+      { id: "b1", court_id: 27, start_time: "17:00", end_time: "17:45", status: "active", club_member_id: "m1" },
+    ];
+    const board = daySlotBoard(grid, 45, 27, bookings, { ignoreBookingId: "b1" });
+    expect(board[0]).toEqual({ time: "17:00", status: "open" });
+  });
+});

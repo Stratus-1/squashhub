@@ -119,7 +119,7 @@ describe("uneven Swiss halves", () => {
     expect(swissHalves(18)).toEqual([10, 8]);
     expect(swissHalves(24)).toEqual([12, 12]);
     const pairs = preferredSwissTemplate(18, 3).pairs.map(p => [p.a, p.b]);
-    expect(pairs).toEqual([[1,5],[2,6],[3,7],[4,8],[9,10],[11,14],[12,15],[13,17],[16,18]]);
+    expect(pairs).toEqual([[1,5],[2,6],[3,7],[4,8],[9,10],[11,14],[12,13],[15,18],[16,17]]);
   });
 });
 
@@ -144,5 +144,15 @@ describe("18-player 10/8 split from round 2", () => {
   it("round 2 pairs within top 10 and bottom 8", () => {
     const pairs = pst18(18, 2).pairs.map((p) => [p.a, p.b]);
     expect(pairs).toEqual([[1,10],[2,9],[3,8],[4,7],[5,6],[11,18],[12,17],[13,16],[14,15]]);
+  });
+});
+
+describe("18-player approved model", () => {
+  it("R4 and R5 follow the saved model with no position repeats", () => {
+    const r = (n: number) => pst18(18, n).pairs.map((p) => `${p.a}-${p.b}`);
+    expect(r(4)).toEqual(["1-3","2-4","5-7","6-9","8-10","11-13","12-14","15-17","16-18"]);
+    expect(r(5)).toEqual(["1-2","3-4","5-8","6-10","7-9","11-12","13-14","15-16","17-18"]);
+    const all = [2, 3, 4, 5].flatMap(r);
+    expect(new Set(all).size).toBe(all.length);
   });
 });

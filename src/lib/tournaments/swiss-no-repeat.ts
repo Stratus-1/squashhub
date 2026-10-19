@@ -60,14 +60,25 @@ function gapPairs(size: number, _gap: number, offset: number, round: number) {
 }
 
 /**
- * Approved fixed models per half size (24-player field = two halves of 12):
+ * Approved fixed models keyed "field:half size" (only these field sizes; others keep the gap rules):
  * R3 groups of 6 folded, R4 sliding by two, R5 neighbours (adjusted so no position pair repeats).
  */
-export const SWISS_HALF_MODELS: Record<number, Record<number, Array<[number, number]>>> = {
-  12: {
+export const SWISS_HALF_MODELS: Record<string, Record<number, Array<[number, number]>>> = {
+  "24:12": {
     3: [[1, 6], [2, 5], [3, 4], [7, 12], [8, 11], [9, 10]],
     4: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12]],
     5: [[1, 2], [3, 5], [4, 6], [7, 8], [9, 12], [10, 11]],
+  },
+  // 18-player field = top 10 + bottom 8.
+  "18:10": {
+    3: [[1, 5], [2, 6], [3, 7], [4, 8], [9, 10]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 9], [8, 10]],
+    5: [[1, 2], [3, 4], [5, 8], [6, 10], [7, 9]],
+  },
+  "18:8": {
+    3: [[1, 4], [2, 3], [5, 8], [6, 7]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 8]],
+    5: [[1, 2], [3, 4], [5, 6], [7, 8]],
   },
 };
 
@@ -82,7 +93,7 @@ export function preferredSwissTemplate(n: number, round: number) {
   }
   const segments: Array<[number, number]> = [[0, halves[0]], [halves[0], halves[1]]];
   const pairs = segments.flatMap(([offset, size]) => {
-    const model = SWISS_HALF_MODELS[size]?.[round];
+    const model = SWISS_HALF_MODELS[`${n}:${size}`]?.[round];
     if (model) return model.map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
     const gap = swissRoundGap(size, round);
     return gap ? gapPairs(size, gap, offset, round)

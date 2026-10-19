@@ -19848,6 +19848,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      bar_post_tab_group_journal: {
+        Args: {
+          _at: string
+          _club_id: string
+          _method: string
+          _tab_id: string
+        }
+        Returns: undefined
+      }
       bar_qr_charge_guest_tab_member: {
         Args: {
           _club_member_id: string

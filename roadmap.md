@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] Prevent repeated actual opponents in projected/results-decided Swiss rounds; preserve existing games and obtain approval for structural changes.
 - [ ] SportyHQ integration blocked on official API documentation.
 
 ## Done

@@ -513,7 +513,10 @@ export function ScheduleMatchDialog({
             <div className="space-y-1.5 rounded-md border border-border p-2" data-testid="champs-day-board">
               <Label className="text-xs font-semibold">All slots this day</Label>
               <p className="text-[11px] text-muted-foreground">
-                Free Champs slots are highlighted — tap one to book. "Open" slots are normal paid bookings through the club's usual booking system and can't be booked here.
+                Free Champs slots are highlighted — tap one to book it for the fixture.
+                {gobookApiMode
+                  ? " \"Open\" slots are normal paid bookings — tap one to book it via GoBook in your own name. It stays your personal booking and does not schedule this fixture."
+                  : " \"Open\" slots are normal paid bookings through the club's usual booking system and can't be booked here."}
               </p>
               {dayBoard.map((court) => (
                 <div key={court.courtId} className="space-y-1">

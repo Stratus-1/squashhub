@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import {
   daySlotBoard,
   isSlotFreeForMatch,
   isChampsReservation,
+  timeToMinutes,
+  minutesToTime,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
 import { matchParticipantIds, bookingConflictsWithParticipants, scheduledFixtureBlockers } from "@/lib/tournaments/self-schedule";
@@ -125,6 +128,23 @@ export function ScheduleMatchDialog({
   }, [allowedKey, courts, champId]);
   // The venue's diary (may differ from the acting admin's club or the owner).
   const bookingClubId = courts.find((c) => c.id === courtId)?.club_id || clubId;
+
+  // GoBook API mode at the venue: "Open" (non-Champs) slots on the day board
+  // become real paid GoBook bookings in the player's own name. They are never
+  // linked to the fixture — the match still needs its own Club Champs slot.
+  const { data: venueGobook } = useQuery({
+    queryKey: ["venue-gobook-mode", bookingClubId],
+    queryFn: async () => {
+      const { data } = await fromExt("clubs")
+        .select("uses_gobook, gobook_api_enabled")
+        .eq("id", bookingClubId!)
+        .maybeSingle();
+      return data as { uses_gobook?: boolean; gobook_api_enabled?: boolean } | null;
+    },
+    enabled: !!bookingClubId && open,
+  });
+  const gobookApiMode = !!venueGobook?.uses_gobook && !!venueGobook?.gobook_api_enabled;
+  const [gobookBooking, setGobookBooking] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -328,6 +348,62 @@ export function ScheduleMatchDialog({
     }
   };
 
+  /**
+   * Book an "Open" (non-Champs) slot as a normal paid GoBook booking in the
+   * player's own name. Deliberately separate from `confirm`: this never
+   * touches the fixture — the match still needs its own Club Champs slot.
+   */
+  const bookViaGobook = async (court: number, time: string) => {
+    if (!bookingClubId) return;
+    const key = `${court}-${time}`;
+    setGobookBooking(key);
+    try {
+      const start = time.slice(0, 5);
+      const end = minutesToTime(timeToMinutes(start) + slotMinutes);
+      const { data, error } = await supabase.functions.invoke("gobook-api", {
+        body: {
+          action: "book",
+          club_id: bookingClubId,
+          court_id: court,
+          booking_date: date,
+          start_time: start,
+          end_time: end,
+          notes: "Booked via SquashHub",
+        },
+      });
+      if (error) {
+        const context = (error as { context?: Response }).context;
+        const details = context ? await context.clone().json().catch(() => null) : null;
+        throw new Error(details?.error || error.message);
+      }
+      const result = data as any;
+      if (result?.error) {
+        throw new Error(
+          result.needsLink
+            ? "Your GoBook account isn't linked yet — ask a club admin to link it under Club Admin → Courts."
+            : result.error,
+        );
+      }
+      toast.success(
+        result?.alreadyBooked
+          ? `You already have this slot in GoBook at ${start}.`
+          : `Booked via GoBook at ${start} — your own paid booking, separate from this fixture.`,
+      );
+      // Mirror the new GoBook booking into the club calendar so the board
+      // shows it as taken straight away.
+      await supabase.functions
+        .invoke("gobook-api", { body: { action: "sync_core_day", club_id: bookingClubId, booking_date: date } })
+        .catch(() => null);
+      qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+    } catch (e: any) {
+      toast.error(e?.message || "GoBook rejected the booking");
+    } finally {
+      setGobookBooking(null);
+    }
+  };
+
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
     qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
@@ -437,7 +513,10 @@ export function ScheduleMatchDialog({
             <div className="space-y-1.5 rounded-md border border-border p-2" data-testid="champs-day-board">
               <Label className="text-xs font-semibold">All slots this day</Label>
               <p className="text-[11px] text-muted-foreground">
-                Free Champs slots are highlighted — tap one to book. "Open" slots are normal paid bookings through the club's usual booking system and can't be booked here.
+                Free Champs slots are highlighted — tap one to book it for the fixture.
+                {gobookApiMode
+                  ? " \"Open\" slots are normal paid bookings — tap one to book it via GoBook in your own name. It stays your personal booking and does not schedule this fixture."
+                  : " \"Open\" slots are normal paid bookings through the club's usual booking system and can't be booked here."}
               </p>
               {dayBoard.map((court) => (
                 <div key={court.courtId} className="space-y-1">
@@ -454,6 +533,22 @@ export function ScheduleMatchDialog({
                           onClick={() => confirm(s.time, court.courtId)}
                         >
                           {s.time} Free
+                        </Button>
+                      ) : s.status === "open" && gobookApiMode ? (
+                        <Button
+                          key={s.time}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={saving || gobookBooking !== null}
+                          className="h-6 px-1.5 text-[10px]"
+                          onClick={() => bookViaGobook(court.courtId, s.time)}
+                        >
+                          {gobookBooking === `${court.courtId}-${s.time}` ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            `${s.time} Book`
+                          )}
                         </Button>
                       ) : (
                         <span

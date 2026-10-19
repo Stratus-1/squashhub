@@ -47,6 +47,8 @@ function harness() {
             if (table === "clubs") return { data: { gobook_service_id: 42 } };
             if (table === "courts") return { data: [{ id: "court", name: "Court 1" }] };
             if (table === "club_members") return { data: [] };
+            // The sync protects fixture-linked bookings: no links in this harness.
+            if (table === "club_champs_matches") return { data: [] };
             if (table !== "bookings") throw new Error(`Unexpected table ${table}`);
             if (upsert) {
               const old = mirrors.find((m) => m.external_id === upsert.external_id);

@@ -43,6 +43,7 @@ interface CounterTab {
   opened_at: string;
   operator?: string | null;
   opened_source?: string;
+  club_member_id?: string | null;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
@@ -86,6 +87,10 @@ export default function BarCounter() {
   const [itemSearch, setItemSearch] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newTabKind, setNewTabKind] = useState<"member" | "visitor">("member");
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberResults, setMemberResults] = useState<{ id: string; display_name: string; member_number: string | number | null }[]>([]);
+  const [memberSearching, setMemberSearching] = useState(false);
   const [busy, setBusy] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
   const [onlineOpen, setOnlineOpen] = useState(false);

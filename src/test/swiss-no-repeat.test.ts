@@ -134,3 +134,15 @@ describe("24-player round gaps", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 });
+
+import { preferredSwissTemplate as pst18, swissStrictFromRound as sfr18 } from "@/lib/tournaments/swiss-no-repeat";
+describe("18-player 10/8 split from round 2", () => {
+  it("starts strict at round 2 only for uneven halves", () => {
+    expect(sfr18(18)).toBe(2);
+    expect(sfr18(24)).toBe(3);
+  });
+  it("round 2 pairs within top 10 and bottom 8", () => {
+    const pairs = pst18(18, 2).pairs.map((p) => [p.a, p.b]);
+    expect(pairs).toEqual([[1,10],[2,9],[3,8],[4,7],[5,6],[11,18],[12,17],[13,16],[14,15]]);
+  });
+});

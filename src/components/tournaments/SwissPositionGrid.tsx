@@ -104,7 +104,7 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
             <tr className="round-header bg-muted text-left">
               <th colSpan={3} className="border-t-4 px-2.5 py-1.5 font-semibold" style={{ borderTopColor: "hsl(var(--success))" }}>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">Final standing</span>
+                  <span className="text-sm">{model.swissStageComplete ? "Final standings" : "Current standings"}</span>
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `hsl(var(${model.swissStageComplete ? "--success" : "--muted-foreground"}) / 0.15)`, color: "hsl(var(--foreground))" }}>
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `hsl(var(${model.swissStageComplete ? "--success" : "--muted-foreground"}))` }} />{model.swissStageComplete ? "Locked" : "Projected"}
                   </span>

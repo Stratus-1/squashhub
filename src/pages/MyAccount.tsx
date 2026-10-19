@@ -191,6 +191,23 @@ export default function MyAccount() {
     enabled: !!clubMemberId && !!clubId,
   });
 
+  // Bar purchases paid directly (card / cash / online). These never touch the
+  // member's account balance, so they are not GL entries — but the member (and
+  // an admin viewing the account) must still see the full record of what was
+  // bought and how it was paid. Shown as informational statement lines.
+  const { data: directPurchases } = useQuery({
+    queryKey: ["my-bar-purchases", clubId, clubMemberId],
+    enabled: !!clubId && !!clubMemberId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("my_bar_purchases", {
+        _club_id: clubId,
+        _club_member_id: clubMemberId,
+      });
+      if (error) throw error;
+      return ((data as any[]) ?? []).filter((p: any) => p.method !== "account");
+    },
+  });
+
   // Fees raised against OTHER members that this member is the recorded payer
   // for (family package). They stay booked on the other member's account for
   // accounting, but the payer must see and be able to settle them here.
@@ -251,7 +268,7 @@ export default function MyAccount() {
   // Running balance is computed chronologically (oldest → newest), then the list is
   // reversed for display so the newest transaction appears first.
   // Balance: debits − credits. Positive = member owes, negative = member in credit.
-  type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
+  type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string; paidLabel?: string };
   const statementLinesChrono: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
@@ -287,6 +304,22 @@ export default function MyAccount() {
     }
 
 
+
+    // Directly-paid bar purchases (card / cash / online): informational only —
+    // zero debit/credit so the running balance is untouched.
+    for (const p of (directPurchases || []) as any[]) {
+      const total = Number(p.total || 0);
+      if (total <= 0) continue;
+      lines.push({
+        id: `barpaid-${p.id}`,
+        date: p.created_at,
+        description: `Bar purchase: ${p.quantity}× ${p.item_name}`,
+        debit: 0,
+        credit: 0,
+        status: "paid",
+        paidLabel: `paid by ${p.method} · ${money(total)}`,
+      });
+    }
 
     // Sort oldest first so the running balance accumulates correctly
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -1000,6 +1033,9 @@ export default function MyAccount() {
                       {new Date(line.date).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" })}
                       {line.status === "pending" && (
                         <Badge variant="secondary" className="ml-1.5 text-[8px] bg-amber-500/10 text-amber-600 py-0 px-1">pending</Badge>
+                      )}
+                      {line.paidLabel && (
+                        <Badge variant="outline" className="ml-1.5 text-[8px] py-0 px-1 text-green-600 border-green-600/40">{line.paidLabel}</Badge>
                       )}
                     </p>
                   </div>

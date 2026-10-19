@@ -305,8 +305,9 @@ export default function MyAccount() {
 
 
 
-    // Directly-paid bar purchases (card / cash / online): informational only —
-    // zero debit/credit so the running balance is untouched.
+    // Directly-paid bar purchases (card / cash / online): shown as a debit for
+    // the item plus a matching credit for the payment, so they net to zero.
+    const methodName: Record<string, string> = { card: "Card", cash: "Cash", online: "Online", eft: "EFT" };
     for (const p of (directPurchases || []) as any[]) {
       const total = Number(p.total || 0);
       if (total <= 0) continue;
@@ -314,10 +315,18 @@ export default function MyAccount() {
         id: `barpaid-${p.id}`,
         date: p.created_at,
         description: `Bar purchase: ${p.quantity}× ${p.item_name}`,
-        debit: 0,
+        debit: total,
         credit: 0,
-        status: "paid",
-        paidLabel: `paid by ${p.method} · ${money(total)}`,
+        status: "confirmed",
+      });
+      lines.push({
+        id: `barpay-${p.id}`,
+        date: new Date(new Date(p.created_at).getTime() + 1).toISOString(),
+        description: `${methodName[p.method] ?? p.method} payment: ${p.item_name}`,
+        debit: 0,
+        credit: total,
+        status: "confirmed",
+        paidLabel: `paid by ${p.method}`,
       });
     }
 

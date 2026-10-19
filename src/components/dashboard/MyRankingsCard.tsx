@@ -131,8 +131,9 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                       ? r.label
                       : RANKING_SCOPE_SHORT_LABELS[scope]}
                   </span>
+                  <span className="min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1">
                   {r ? (
-                    <span className="flex items-baseline gap-3 min-w-0">
+                    <span className="flex items-baseline gap-3 shrink-0">
                       <span className="leading-tight">
                         <span className="text-[9px] uppercase tracking-wider text-muted-foreground mr-1">
                           Rank
@@ -141,7 +142,7 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                           #{r.rank}
                         </span>
                       </span>
-                      <span className="leading-tight">
+                      <span className="leading-tight whitespace-nowrap">
                         <span className="text-[9px] uppercase tracking-wider text-muted-foreground mr-1">
                           Rating
                         </span>
@@ -161,6 +162,7 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                       scopeLabel={RANKING_SCOPE_SHORT_LABELS.club}
                     />
                   )}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Movement delta={delta} />

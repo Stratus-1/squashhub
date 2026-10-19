@@ -10,7 +10,7 @@ function play(n: number, rounds: number) {
   const results: DrawResults = {};
   const rows: any[] = [];
   for (let r = 1; r <= rounds; r++) {
-    const live = fixedPositionRound(div(n), rows, r)!;
+    const live = fixedPositionRound(div(n), rows, r, false)!;
     const grid = resolveCategoryDraw(draw, results).rounds[r - 1];
     expect(live.filter(([, b]) => b).map(([a, b]) => [a, b])).toEqual(grid.fixtures.map((f) => [f.a!.id, f.b!.id]));
     grid.fixtures.forEach((f, i) => {
@@ -24,7 +24,7 @@ function play(n: number, rounds: number) {
   }
 }
 
-describe("live Swiss uses fixed-position maps", () => {
+describe("Original fixed-position maps retained for historical replay", () => {
   for (const [n, r] of [[10, 4], [15, 4], [16, 4], [18, 4], [24, 5]]) it(`${n} players × ${r} rounds matches preview grid`, () => play(n, r));
   it("round 1 is top v bottom", () => expect(fixedPositionRound(div(24), [], 1)![0]).toEqual(["p1", "p24"]));
   it("falls back when earlier rounds were drawn dynamically", () => {

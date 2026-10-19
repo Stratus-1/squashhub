@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { strictSwissPlan, opponentKey } from "@/lib/tournaments/swiss-no-repeat";
 import { fixedPositionRound } from "@/lib/tournaments/engine-service";
+import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 
 describe("Shared Swiss no-repeat formula", () => {
   it("24 players play five rounds without repeated opponents, preserving rounds 1 and 2", () => {
@@ -28,6 +29,31 @@ describe("Shared Swiss no-repeat formula", () => {
     expect(plan.ready).toBe(true);
     expect(plan.pairs.some((p) => p.a === 3 && p.b === 7)).toBe(false);
     expect(new Set(plan.pairs.flatMap((p) => [p.a, p.b])).size).toBe(24);
+  });
+  it("projection and generation agree through five rounds with mixed winners and preserved saved rounds", () => {
+    const ids = Array.from({ length: 24 }, (_, i) => `p${i + 1}`);
+    const d = { divisionId: "d", entrants: ids.map((id) => ({ id })) } as any;
+    const rows: any[] = [];
+    const seen = new Set<string>();
+    for (let round = 1; round <= 5; round++) {
+      const snapshot = JSON.stringify(rows);
+      const model = buildSwissProgression({ seedOrder: ids, names: {}, totalRounds: 5,
+        matches: rows.map((f, i) => ({ id: `m${i}`, a: f.a, b: f.b, round: f.round, winner: f.winner, status: "completed" })) });
+      const grid = buildProposedSwissGrid(model);
+      expect(grid.issues).toEqual([]);
+      const projected = grid.rounds[round - 1].blocks.map((b) => b.rows.map((r) => r.id));
+      const pairs = fixedPositionRound(d, rows, round);
+      expect(pairs).toEqual(projected);
+      expect(JSON.stringify(rows)).toBe(snapshot);
+      if (!pairs) return;
+      pairs.forEach(([a, b], i) => {
+        if (!b) return;
+        expect(seen.has(opponentKey(a, b))).toBe(false);
+        seen.add(opponentKey(a, b));
+        rows.push({ a, b, round, winner: (i + round) % 3 ? a : b, status: "completed" });
+      });
+    }
+    expect(seen.size).toBe(60);
   });
   it("keeps confirmed games unchanged while repairing unsaved pairings", () => {
     const occupants = Array.from({ length: 8 }, (_, i) => `p${i + 1}`);

@@ -8,7 +8,7 @@
 import { swissTable, type SwissGame } from "@/lib/tournaments/swiss-standings";
 import { fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { categoryTemplate, planCategory, validateTemplate } from "@/lib/tournaments/swiss-positional";
-import { strictSwissPlan, preferredSwissTemplate, swissStrictFromRound } from "./swiss-no-repeat";
+import { strictSwissPlan, preferredSwissTemplate, swissStrictFromRound, swissHalves } from "./swiss-no-repeat";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -293,7 +293,8 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule: ProposedRoundSchedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos: number | null, bye = false): GridRow => {
-      const id = !bye && pos != null && (opts.noRepeats === false || rd.round < swissStrictFromRound(into.length) || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
+      // A position whose occupant is already decided by a confirmed result shows that player's name.
+      const id = !bye && pos != null ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
         : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
@@ -311,6 +312,26 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
       return [{ matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null }];
     });
     if (rd.bye != null && !(saved.length && covered(rd.bye))) proposedBlocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    // Positions orphaned because their template partner already has a saved game
+    // must still be shown: pair the leftovers within their half (wide gap: i v i+len/2).
+    if (saved.length) {
+      const shown = new Set<number>();
+      for (const b of proposedBlocks) for (const r of b.rows) if (r.pos != null) shown.add(r.pos);
+      const savedPos = new Set<number>();
+      for (const b of saved) for (const r of b.rows) if (r.pos != null) savedPos.add(r.pos);
+      const left = Array.from({ length: into.length }, (_, i) => i + 1)
+        .filter((p) => !shown.has(p) && !savedPos.has(p) && !covered(p));
+      const halves = swissHalves(into.length);
+      const groups = halves ? [left.filter((p) => p <= halves[0]), left.filter((p) => p > halves[0])] : [left];
+      for (const g of groups) {
+        const h = Math.floor(g.length / 2);
+        for (let i = 0; i < h; i++) {
+          const a = g[i], b = g[i + h];
+          proposedBlocks.push({ matchId: `proposed-${rd.round}-${a}-${b}`, rows: [pending(a), pending(b)], score: null, court: null, playBy: null });
+        }
+        if (g.length % 2) proposedBlocks.push({ matchId: `proposed-${rd.round}-${g[g.length - 1]}-wait`, rows: [pending(g[g.length - 1]), { pos: null, id: null, name: "TBD", when: schedule.label, result: "" }], score: null, court: null, playBy: null });
+      }
+    }
     // Once every player in the round has a saved game, the round is fully factual.
     const allSaved = saved.length > 0 && model.rows.every((r) => savedIds.has(r.id));
     if (allSaved) return { round: rd.round, created: true, blocks: saved };

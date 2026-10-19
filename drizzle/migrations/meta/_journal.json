@@ -1422,6 +1422,13 @@
       "when": 1792427563046,
       "tag": "0202_event_rsvp_per_week",
       "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1792434135130,
+      "tag": "0203_migration",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,9 @@
 # Roadmap
 
 ## Open
-- [ ] Prevent repeated actual opponents in projected/results-decided Swiss rounds; preserve existing games and obtain approval for structural changes.
+- [x] Shared Swiss generation/projection no-repeat formula for ALL clubs from round 3; rounds 1–2 and saved games preserved. 290 tests passed; Uitsig screen checked read-only. Unpublished.
+- [x] Explained standard Swiss score-group pairing versus fixed-position crossover.
+- [ ] Database-level Swiss rematch guard and service rollout await release approval; no live deployment in this step.
 - [ ] SportyHQ integration blocked on official API documentation.
 
 ## Done

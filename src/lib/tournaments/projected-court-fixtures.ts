@@ -25,6 +25,7 @@ export interface ProjectionInput {
   champ: any; arch: any; entries: any[]; matches: any[]; rounds: any[];
   courts: Array<{ id: number | string; name?: string | null }>;
   groupLabel?: (gn: number) => string;
+  noRepeats?: boolean;
 }
 
 function swissStage(champ: any, arch: any, gn: number): { rounds: number | null; tieBreaks?: string[]; schedule?: any } | null {
@@ -44,6 +45,7 @@ function swissStage(champ: any, arch: any, gn: number): { rounds: number | null;
 
 export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[] {
   const { champ, arch, entries, matches, rounds, courts } = i;
+  const noRepeats = i.noRepeats !== false;
   if (!champ?.id) return [];
   const types = (champ?.league_match_types as Record<string, string>) || {};
   const doubles = (gn: number) => String(types[String(gn)] || "").toLowerCase() === "doubles" || entries.some((e) => e.group_number === gn && !!e.partner_member_id);
@@ -91,7 +93,7 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
     const prefix = `${gn}:`;
     const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
-    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy }); } catch { continue; }
+    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats }); } catch { continue; }
     if (grid.issues.length) continue;
     // Per game: skip a pairing once either player already has a saved game in that round.
     const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
@@ -101,8 +103,9 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
         const [x, y] = b.rows;
         if (!x.id || !y.id || x.pos == null || y.pos == null) continue;
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id)) continue;
-        const s = gSlots[fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
+        const s = gSlots[b.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
         if (s?.kind !== "planned") continue;
+        if (matches.some((m) => Number(m.court_id) === Number(s.courtId) && m.scheduled_date === s.date && String(m.scheduled_time).slice(0, 5) === s.time)) continue;
         out.push({
           key: `proj:${champ.id}:${gn}:${rd.round}:${x.pos}v${y.pos}`, champId: champ.id, group: gn, round: rd.round,
           date: s.date, time: s.time, courtId: Number(s.courtId), minutes: dur,

@@ -315,6 +315,7 @@ export function bracketOrder(n: number): number[] {
 export function swissRound(
   players: Array<{ id: string; points: number; seed: number }>,
   played: Set<string>,
+  preferred: ReadonlyMap<string, string> = new Map(),
 ): Array<[string, string | null]> {
   const key = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
   const sorted = [...players].sort((a, b) => b.points - a.points || a.seed - b.seed);
@@ -322,10 +323,11 @@ export function swissRound(
     if (!rest.length) return [];
     const [p, ...others] = rest;
     if (!others.length) return [[p.id, null]];
-    for (let i = 0; i < others.length; i++) {
-      if (played.has(key(p.id, others[i].id))) continue;
-      const tail = solve(others.filter((_, j) => j !== i));
-      if (tail) return [[p.id, others[i].id], ...tail];
+    const candidates = preferred.size ? [...others].sort((a, b) => Number(b.id === preferred.get(p.id)) - Number(a.id === preferred.get(p.id)) || Math.abs(p.seed - a.seed) - Math.abs(p.seed - b.seed)) : others;
+    for (const candidate of candidates) {
+      if (played.has(key(p.id, candidate.id))) continue;
+      const tail = solve(others.filter((other) => other.id !== candidate.id));
+      if (tail) return [[p.id, candidate.id], ...tail];
     }
     return null;
   };

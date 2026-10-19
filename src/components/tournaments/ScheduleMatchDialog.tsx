@@ -697,7 +697,9 @@ export function ScheduleMatchDialog({
                 disabled={saving}
                 className="h-7 text-xs text-destructive hover:text-destructive"
                 onClick={clearSlot}
-                title="Remove the court and time — the fixture and any result are kept"
+                title={linkedIsPersonal
+                  ? "Remove the court and time — your paid booking stays active and is simply unlinked"
+                  : "Remove the court and time — the fixture and any result are kept"}
               >
                 Clear court & time
               </Button>

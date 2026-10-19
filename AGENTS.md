@@ -21,6 +21,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Counter tab-opening requests supply all six named arguments, with an explicit null member ID for visitors; why: older defaulted RPC overloads otherwise make visitor requests ambiguous.
 - Booking grid uses saved tournament duration, not historical booking lengths, inside reserved evenings; fixture slots preserve that interval, other courts keep club slots, overlaps stay separate; why: setup changes must not retain stale short rows or move bookings.
 - Booking writes enforce scheduled, unlinked championship allocations through `guard_scheduled_championship_booking`, using saved fixture duration without an admin bypass; why: capacity holds must not conceal already assigned games.
 - Tournament administration hierarchy uses explicit local roots and light-only semantic surfaces, including notification portals; why: public/member pages and existing dark mode must remain unchanged.

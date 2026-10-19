@@ -1,3 +1,8 @@
+## 2026-10-19 — Visitor counter tab opening selects ambiguous RPC overload
+- Photo shows PostgREST cannot choose between the five- and six-argument `bar_counter_open_tab` functions. Visitor requests omitted `_club_member_id`, allowing both defaulted overloads to match.
+- Visitor requests now explicitly pass a null member ID; member requests explicitly pass a null guest phone, so both use the six-argument member-aware function. Existing personal-PIN authority, club isolation, visitor phone requirement and serving identity remain unchanged.
+- Synthetic counter regression exercises visitor submission and refreshed active-tab readback. No backend, real tabs, sales, stock, payments or hardware modified; not published.
+
 ## 2026-10-18 — Championship names hidden by overlapping grid rows
 - Confirmed that first-overlap selection could hide a later 35-minute game on a 45-minute row. The grid now renders every overlapping booking as a separately selectable entry, sorted by start time; names appear once and continuation entries retain occupancy.
 - Verification: four regression tests passed; signed-in Riverside preview with reversed fictional 18:00/18:35/19:10 games displayed each name once and opened the middle game at 18:35–19:10, without page errors. Preview build OK.

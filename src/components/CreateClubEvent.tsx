@@ -139,6 +139,27 @@ function splitPeakMinutes(club: any, dateStr: string, startT: string, endT: stri
 
 
 
+// Recurring events: a Yes/No answer belongs to one week. Statuses shown on the
+// card come from the next upcoming occurrence, falling back to the series row.
+async function nextInstanceStatuses(eventIds: string[], memberIds?: string[]) {
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+  const { data: inst } = await fromExt("club_event_instances")
+    .select("id, event_id, instance_date")
+    .in("event_id", eventIds).eq("status", "scheduled").gte("instance_date", today)
+    .order("instance_date", { ascending: true });
+  const nextByEvent = new Map<string, string>();
+  for (const i of (inst || []) as any[]) if (!nextByEvent.has(i.event_id)) nextByEvent.set(i.event_id, i.id);
+  const out = new Map<string, { status: string; rsvpId: string }>();
+  const ids = [...nextByEvent.values()];
+  if (!ids.length) return out;
+  let q = fromExt("club_event_instance_rsvps").select("id, instance_id, club_member_id, status").in("instance_id", ids);
+  if (memberIds) q = q.in("club_member_id", memberIds);
+  const { data } = await q;
+  const evByInst = new Map([...nextByEvent].map(([e, i]) => [i, e]));
+  for (const r of (data || []) as any[]) out.set(`${evByInst.get(r.instance_id)}:${r.club_member_id}`, { status: r.status, rsvpId: r.id });
+  return out;
+}
+
 export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const { club } = useClubContext();
@@ -347,6 +368,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .select("event_id, status, club_member_id")
         .in("event_id", eventIds);
       if (error) throw error;
+      const weekly = await nextInstanceStatuses(eventIds);
+      for (const r of (data || []) as any[]) { const w = weekly.get(`${r.event_id}:${r.club_member_id}`); if (w && r.status !== "left") r.status = w.status; }
       const counts: Record<string, { invited: number; confirmed: number; declined: number }> = {};
       const confirmedMemberIds: Record<string, string[]> = {};
       const declinedMemberIds: Record<string, string[]> = {};
@@ -465,12 +488,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .in("club_member_id", linkedMemberIds)
         .in("event_id", eventIds);
       if (error) throw error;
+      const weekly = await nextInstanceStatuses(eventIds, linkedMemberIds);
       // Build map: event_id -> array of RSVPs (one per linked member)
-      const map: Record<string, { id: string; status: string; club_member_id: string; memberName: string }[]> = {};
+      const map: Record<string, { id: string; status: string; instanceRsvpId?: string; club_member_id: string; memberName: string }[]> = {};
       for (const r of data || []) {
         if (!map[r.event_id]) map[r.event_id] = [];
         const member = linkedMembers.find(m => m.id === r.club_member_id);
-        map[r.event_id].push({ id: r.id, status: r.status, club_member_id: r.club_member_id, memberName: member?.name || "Unknown" });
+        const w = r.status !== "left" ? weekly.get(`${r.event_id}:${r.club_member_id}`) : undefined;
+        map[r.event_id].push({ id: r.id, status: w?.status ?? r.status, instanceRsvpId: w?.rsvpId, club_member_id: r.club_member_id, memberName: member?.name || "Unknown" });
       }
       return map;
     },
@@ -978,7 +1003,12 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
 
   const respondMutation = useMutation({
-    mutationFn: async ({ rsvpId, status }: { rsvpId: string; status: string }) => {
+    mutationFn: async ({ rsvpId, instanceRsvpId, status }: { rsvpId: string; instanceRsvpId?: string; status: string }) => {
+      if (instanceRsvpId) {
+        const { error } = await fromExt("club_event_instance_rsvps").update({ status, updated_at: new Date().toISOString() }).eq("id", instanceRsvpId);
+        if (error) throw error;
+        return;
+      }
       const { error } = await fromExt("club_event_rsvps").update({ status, updated_at: new Date().toISOString() }).eq("id", rsvpId);
       if (error) throw error;
     },
@@ -1862,7 +1892,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                             size="sm"
                             variant="default"
                             className="h-6 text-[10px] px-2"
-                            onClick={() => respondMutation.mutate({ rsvpId: r.id, status: "confirmed" })}
+                            onClick={() => respondMutation.mutate({ rsvpId: r.id, instanceRsvpId: r.instanceRsvpId, status: "confirmed" })}
                           >
                             <Check className="w-3 h-3 mr-0.5" /> Confirm
                           </Button>
@@ -1870,7 +1900,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                             size="sm"
                             variant="outline"
                             className="h-6 text-[10px] px-2"
-                            onClick={() => respondMutation.mutate({ rsvpId: r.id, status: "declined" })}
+                            onClick={() => respondMutation.mutate({ rsvpId: r.id, instanceRsvpId: r.instanceRsvpId, status: "declined" })}
                           >
                             <X className="w-3 h-3 mr-0.5" /> Decline
                           </Button>

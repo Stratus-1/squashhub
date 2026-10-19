@@ -8,6 +8,7 @@
 import { swissTable, type SwissGame } from "@/lib/tournaments/swiss-standings";
 import { fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { categoryTemplate, planCategory, validateTemplate } from "@/lib/tournaments/swiss-positional";
+import { strictSwissPlan } from "./swiss-no-repeat";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -138,7 +139,7 @@ export function gamesWonSummary(score: string | null | undefined): string | null
   let a = 0, b = 0; for (const [x, y] of sets) { if (x > y) a++; else if (y > x) b++; }
   return `${Math.max(a, b)}–${Math.min(a, b)}`;
 }
-export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null; saved?: boolean }
+export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null; saved?: boolean; scheduleKey?: string }
 export interface GridRound { round: number; created: boolean; blocks: GridBlock[]; schedule?: ProposedRoundSchedule }
 
 /** Round-level schedule for a PROPOSED round. Never a per-match booking. */
@@ -206,7 +207,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * Occupant-aware bye/rematch adjustments require separately approved engine integration.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
   const n = model.rows.length;
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
@@ -222,6 +223,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
   const findDone = (round: number, x: string, y: string) => model.rounds.find((r) => r.round === round)?.fixtures
     .find((f) => f.state === "completed" && f.winner && ((f.a === x && f.b === y) || (f.a === y && f.b === x)));
   const occ: Array<Array<string | null>> = [seeds];
+  const readyRounds = new Set<number>();
   // Bye fairness (same rule as the live engine): nobody sits out twice. If the bye slot's occupant already had a
   // bye, the bye moves up to the lowest slot whose occupant hasn't had one (or isn't known yet).
   const byeHolders = new Set<string>();
@@ -244,6 +246,17 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
       }
       const h = cur[rd.bye - 1]; if (h) byeHolders.add(h);
     }
+    if (opts.noRepeats) {
+      const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, round: r.round })));
+      const locked = (model.rounds.find((r) => r.round === rd.round)?.fixtures ?? []).flatMap((f) => f.a && (f.b || f.state === "bye") ? [{ a: f.a, b: f.b }] : []);
+      const strict = strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked });
+      if (strict.issue) issues.push(strict.issue);
+      if (strict.ready) {
+        readyRounds.add(rd.round);
+        rd.pairs = strict.pairs.map((p) => ({ ...p, round: rd.round }));
+        rd.bye = strict.bye;
+      } else if (strict.issue) rd.pairs = [];
+    }
     const next: Array<string | null> = Array(n).fill(null);
     for (const p of rd.pairs) {
       const x = cur[p.a - 1], y = cur[p.b - 1];
@@ -254,7 +267,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
     occ.push(next);
   }
   const savedGrid = new Map(buildSwissGrid(model).map((r) => [r.round, r]));
-  return { issues: [], rounds: template.map((rd): GridRound => {
+  return { issues, rounds: template.map((rd): GridRound => {
     if (rd.round === 1 && savedFirst?.created) return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
     // Saved games for this round are shown factually (real players, results, scores) — never as "projected".
     const saved = (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
@@ -264,7 +277,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule: ProposedRoundSchedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos: number | null, bye = false): GridRow => {
-      const id = !bye && pos != null ? into[pos - 1] ?? null : null;
+      const id = !bye && pos != null && (!opts.noRepeats || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true }
         : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
@@ -273,9 +286,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { sch
       if (saved.length && covered(p.a, p.b)) return [];
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
       const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
+      const scheduleKey = fixtureKey(rd.round, k.a, k.b);
       const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
       const withWhen = (when: string) => [{ ...pending(p.a), when }, { ...pending(p.b), when }] as [GridRow, GridRow];
-      if (slot?.kind === "planned") return [{ matchId: id, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null }];
+      if (slot?.kind === "planned") return [{ matchId: id, scheduleKey, rows: withWhen(`Proposed: ${fmtDay(slot.date)} ${slot.time}`), score: null, court: `${slot.courtName} (proposed)`, playBy: null }];
       if (slot?.kind === "play_by") return [{ matchId: id, rows: withWhen(`Play by ${fmtDay(slot.date)}`), score: null, court: null, playBy: slot.date }];
       if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason))) return [{ matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null }];
       return [{ matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null }];

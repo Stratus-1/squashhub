@@ -6,6 +6,7 @@ import { gameSetsOf, rankUnits, tieIsMaterial, tieMessage, DEFAULT_TIE_BREAKS, t
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
 import { proposePairings } from "./paced-knockout";
+import { strictSwissPlan } from "./swiss-no-repeat";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -191,7 +192,7 @@ export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureR
  * Next Swiss round from the latest final results. Only ever Round N+1 after Round N is fully final
  * (shared `swissRoundGate`); never skips, never exceeds the configured count. Mirrored server-side.
  */
-export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[]): EngineFixture[] {
+export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[], noRepeats = false): EngineFixture[] {
   const st = d.stages.find((s) => s.id === stageId);
   if (!st || st.kind !== "swiss") throw new IntegrityError("stage_kind", "Only Swiss stages pair by results.");
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === stageId);
@@ -199,7 +200,7 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
   if (gate.state === "not_started") throw new IntegrityError("prereq", gate.message);
   if (gate.state === "in_progress") throw new IntegrityError("prereq", gate.message);
   if (gate.state === "finished") throw new IntegrityError("swiss_done", gate.message);
-  const fixed = fixedPositionRound(d, mine, gate.nextRound);
+  const fixed = fixedPositionRound(d, mine, gate.nextRound, noRepeats);
   if (fixed) return fixed.map(([a, b], i) => ({
     tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b,
   }));
@@ -234,7 +235,7 @@ function byeFairPlan(state: CategoryState, r: number): { pairs: Array<{ a: numbe
   return { pairs: pairs.sort((x, y) => x.a - y.a), bye };
 }
 
-export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRound: number): Array<[string, string | null]> | null {
+export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRound: number, noRepeats = false): Array<[string, string | null]> | null {
   const seeds = d.entrants.map((e) => e.id);
   const n = seeds.length;
   if (n < MIN_ENTRANTS || n > MAX_ENTRANTS) return null;
@@ -247,6 +248,18 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
     const raw = slotTemplate(n, r);
     // Accept rounds drawn by the raw template (older draws) or the bye-fair template (no repeat byes).
     const candidates = [asPlan(raw.pairs, raw.bye), byeFairPlan(state, r)];
+    // Adjusted saved rounds remain authoritative: replay their actual occupants, never redraw history.
+    if (noRepeats) {
+      const pos = new Map(occ.map((id, i) => [id, i + 1]));
+      const pairs = saved.flatMap((f) => {
+        const a = f.a ? pos.get(f.a) : undefined, b = f.b ? pos.get(f.b) : undefined;
+        return a && b ? [{ a: Math.min(a, b), b: Math.max(a, b) }] : [];
+      });
+      const by = saved.find((f) => f.a && !f.b);
+      const bye = by?.a ? pos.get(by.a) ?? null : null;
+      const slots = pairs.flatMap((p) => [p.a, p.b]).concat(bye == null ? [] : [bye]);
+      if (slots.length === n && new Set(slots).size === n) candidates.unshift({ pairs, bye });
+    }
     const byKey = new Map(saved.filter((f) => f.a && f.b).map((f) => [k(f.a!, f.b!), f]));
     const byeRow = saved.find((f) => f.a && !f.b);
     const tpl = candidates.find((c) => c.pairs.length === byKey.size && c.pairs.every((p) => byKey.has(k(occ[p.a - 1], occ[p.b - 1])))
@@ -266,6 +279,14 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
   // Next round: positional template with bye fairness (nobody gets a second bye).
   const plan = byeFairPlan(state, nextRound);
   const occ = state.occupants;
+  if (noRepeats) {
+    const strict = strictSwissPlan({ occupants: occ, round: nextRound, preferred: plan.pairs, bye: plan.bye,
+      history: mine.map((f) => ({ a: f.a, b: f.b, round: f.round ?? 1 })) });
+    if (!strict.ready) throw new IntegrityError("swiss_repeat", strict.issue ?? "Swiss pairing is not ready.");
+    const pairs: Array<[string, string | null]> = strict.pairs.map((p) => [occ[p.a - 1], occ[p.b - 1]]);
+    if (strict.bye != null) pairs.push([occ[strict.bye - 1], null]);
+    return pairs;
+  }
   const pairs: Array<[string, string | null]> = plan.pairs.map((p) => [occ[p.a - 1], occ[p.b - 1]]);
   if (plan.bye != null) pairs.push([occ[plan.bye - 1], null]);
   return pairs;

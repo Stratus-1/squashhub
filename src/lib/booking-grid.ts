@@ -18,6 +18,17 @@ export function bookingsForGridRow<T extends GridBooking>(
 
 export type GridSpan = { court_id: number; start_time: string; end_time: string };
 
+/** Saved tournament configuration wins over historical booking lengths. */
+export function championshipGridMinutes(bookings: readonly (GridSpan & { champ_slot_minutes?: number })[]): number {
+  const counts = new Map<number, number>();
+  for (const booking of bookings) {
+    const configured = Number(booking.champ_slot_minutes);
+    const duration = configured >= 15 ? configured : minutes(booking.end_time) - minutes(booking.start_time);
+    if (duration >= 15) counts.set(duration, (counts.get(duration) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+}
+
 function hhmm(m: number): string {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }

@@ -59,6 +59,18 @@ function gapPairs(size: number, _gap: number, offset: number, round: number) {
   return halfRoundPairs(size, round).map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
 }
 
+/**
+ * Approved fixed models per half size (24-player field = two halves of 12):
+ * R3 groups of 6 folded, R4 sliding by two, R5 neighbours (adjusted so no position pair repeats).
+ */
+export const SWISS_HALF_MODELS: Record<number, Record<number, Array<[number, number]>>> = {
+  12: {
+    3: [[1, 6], [2, 5], [3, 4], [7, 12], [8, 11], [9, 10]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12]],
+    5: [[1, 2], [3, 5], [4, 6], [7, 8], [9, 12], [10, 11]],
+  },
+};
+
 /** Halves play within themselves from round three, with a different position gap each round. */
 export function preferredSwissTemplate(n: number, round: number) {
   const original = slotTemplate(n, round);
@@ -70,6 +82,8 @@ export function preferredSwissTemplate(n: number, round: number) {
   }
   const segments: Array<[number, number]> = [[0, halves[0]], [halves[0], halves[1]]];
   const pairs = segments.flatMap(([offset, size]) => {
+    const model = SWISS_HALF_MODELS[size]?.[round];
+    if (model) return model.map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
     const gap = swissRoundGap(size, round);
     return gap ? gapPairs(size, gap, offset, round)
       : slotTemplate(size, round).pairs.map(p => ({ ...p, a: p.a + offset, b: p.b + offset }));

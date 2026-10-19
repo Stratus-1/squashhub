@@ -798,6 +798,13 @@ function halfRoundPairs(size, round) {
 function gapPairs(size, _gap, offset, round) {
   return halfRoundPairs(size, round).map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
 }
+var SWISS_HALF_MODELS = {
+  12: {
+    3: [[1, 6], [2, 5], [3, 4], [7, 12], [8, 11], [9, 10]],
+    4: [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12]],
+    5: [[1, 2], [3, 5], [4, 6], [7, 8], [9, 12], [10, 11]]
+  }
+};
 function preferredSwissTemplate(n, round) {
   const original = slotTemplate(n, round);
   const halves = swissHalves(n);
@@ -809,6 +816,9 @@ function preferredSwissTemplate(n, round) {
   }
   const segments = [[0, halves[0]], [halves[0], halves[1]]];
   const pairs = segments.flatMap(([offset, size]) => {
+    const model = SWISS_HALF_MODELS[size]?.[round];
+    if (model)
+      return model.map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
     const gap = swissRoundGap(size, round);
     return gap ? gapPairs(size, gap, offset, round) : slotTemplate(size, round).pairs.map((p) => ({ ...p, a: p.a + offset, b: p.b + offset }));
   });
@@ -7396,7 +7406,7 @@ function buildProposedSwissGrid(model, opts = {}) {
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
     const pending = (pos, bye = false) => {
-      const id = !bye && pos != null && (opts.noRepeats === false || rd.round < swissStrictFromRound(into.length) || readyRounds.has(rd.round)) ? into[pos - 1] ?? null : null;
+      const id = !bye && pos != null ? into[pos - 1] ?? null : null;
       return id ? { pos, id, name: nameOf.get(id) ?? "Unknown player", when: schedule.label, result: "", projected: true } : { pos, id: null, name: bye ? "Bye" : "TBD", when: bye ? null : schedule.label, result: "" };
     };
     const covered = (...ps) => ps.some((p) => {
@@ -7421,6 +7431,30 @@ function buildProposedSwissGrid(model, opts = {}) {
     });
     if (rd.bye != null && !(saved.length && covered(rd.bye)))
       proposedBlocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    if (saved.length) {
+      const shown = new Set;
+      for (const b of proposedBlocks)
+        for (const r of b.rows)
+          if (r.pos != null)
+            shown.add(r.pos);
+      const savedPos = new Set;
+      for (const b of saved)
+        for (const r of b.rows)
+          if (r.pos != null)
+            savedPos.add(r.pos);
+      const left = Array.from({ length: into.length }, (_, i) => i + 1).filter((p) => !shown.has(p) && !savedPos.has(p) && !covered(p));
+      const halves = swissHalves(into.length);
+      const groups = halves ? [left.filter((p) => p <= halves[0]), left.filter((p) => p > halves[0])] : [left];
+      for (const g of groups) {
+        const h = Math.floor(g.length / 2);
+        for (let i = 0;i < h; i++) {
+          const a = g[i], b = g[i + h];
+          proposedBlocks.push({ matchId: `proposed-${rd.round}-${a}-${b}`, rows: [pending(a), pending(b)], score: null, court: null, playBy: null });
+        }
+        if (g.length % 2)
+          proposedBlocks.push({ matchId: `proposed-${rd.round}-${g[g.length - 1]}-wait`, rows: [pending(g[g.length - 1]), { pos: null, id: null, name: "TBD", when: schedule.label, result: "" }], score: null, court: null, playBy: null });
+      }
+    }
     const allSaved = saved.length > 0 && model.rows.every((r) => savedIds.has(r.id));
     if (allSaved)
       return { round: rd.round, created: true, blocks: saved };

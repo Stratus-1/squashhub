@@ -4,13 +4,13 @@ import { fixedPositionRound } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 
 describe("Shared Swiss no-repeat formula", () => {
-  it("24-player round three uses 1v6 in each half", () => {
-    expect(preferredSwissTemplate(24, 3).pairs.map(p => [p.a, p.b])).toEqual([[1,6],[2,7],[3,8],[4,10],[5,9],[11,12],[13,18],[14,19],[15,20],[16,22],[17,21],[23,24]]);
+  it("24-player round three uses groups of 6 in each half", () => {
+    expect(preferredSwissTemplate(24, 3).pairs.map(p => [p.a, p.b])).toEqual([[1,6],[2,5],[3,4],[7,12],[8,11],[9,10],[13,18],[14,17],[15,16],[19,24],[20,23],[21,22]]);
   });
-  it("round four uses 1v7 and keeps halves separate", () => {
+  it("round four uses 1v3 sliding model and keeps halves separate", () => {
     const plan = strictSwissPlan({ occupants: Array.from({ length: 24 }, (_, i) => `p${i + 1}`), round: 4, history: [] });
     expect(plan.ready).toBe(true);
-    expect(plan.pairs.map(p => [p.a, p.b])).toEqual([[1,7],[2,8],[3,9],[4,11],[5,10],[6,12],[13,19],[14,20],[15,21],[16,23],[17,22],[18,24]]);
+    expect(plan.pairs.map(p => [p.a, p.b])).toEqual([[1,3],[2,4],[5,7],[6,8],[9,11],[10,12],[13,15],[14,16],[17,19],[18,20],[21,23],[22,24]]);
   });
   it("rematch repair stays inside each half in round three", () => {
     const plan = strictSwissPlan({ occupants: Array.from({ length: 24 }, (_, i) => `p${i + 1}`), round: 3,
@@ -124,11 +124,11 @@ describe("uneven Swiss halves", () => {
 });
 
 describe("24-player round gaps", () => {
-  it("R3 1v6, R4 1v7, R5 1v5 and no position pair repeats", () => {
+  it("approved model: R3 1v6, R4 1v3, R5 1v2 and no position pair repeats", () => {
     const r = (n: number) => preferredSwissTemplate(24, n).pairs.map(p => `${p.a}-${p.b}`);
-    expect(r(3).slice(0, 2)).toEqual(["1-6", "2-7"]);
-    expect(r(4).slice(0, 2)).toEqual(["1-7", "2-8"]);
-    expect(r(5).slice(0, 2)).toEqual(["1-5", "2-6"]);
+    expect(r(3).slice(0, 3)).toEqual(["1-6", "2-5", "3-4"]);
+    expect(r(4).slice(0, 4)).toEqual(["1-3", "2-4", "5-7", "6-8"]);
+    expect(r(5).slice(0, 6)).toEqual(["1-2", "3-5", "4-6", "7-8", "9-12", "10-11"]);
     const r2 = Array.from({ length: 6 }, (_, i) => `${i + 1}-${12 - i}`);
     const all = [...r2, ...[3, 4, 5].flatMap(r)];
     expect(new Set(all).size).toBe(all.length);

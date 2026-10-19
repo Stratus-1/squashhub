@@ -141,7 +141,7 @@ export function SwissCurrentPositionsTable({ model }: { model: SwissProgressionM
      <table className="border-collapse min-w-[300px] self-start" data-testid="swiss-current-positions">
         <thead>
           <tr className="bg-muted text-left"><th colSpan={4 + model.totalRounds} className="px-2 py-1">{allComplete ? "Final standings · all rounds complete — these positions seed the next stage" : "Current positions · live score-based standings"}</th></tr>
-          <tr className="text-left text-muted-foreground"><th className="px-2">Pos</th><th className="px-2">Player</th><th className="px-2">Wins</th>{model.rounds.map((r) => <th key={r.round} className="px-2 whitespace-nowrap">R{r.round} result</th>)}<th className="px-2 whitespace-nowrap">Final standing</th></tr>
+          <tr className="text-left text-muted-foreground"><th className="px-2">Pos</th><th className="px-2">Player</th><th className="px-2">Wins</th>{model.rounds.map((r) => <th key={r.round} className="px-2 whitespace-nowrap">R{r.round} result</th>)}<th className="px-2 whitespace-nowrap">{allComplete ? "Final standings" : "Current standings"}</th></tr>
         </thead>
         <tbody>{model.rows.map((row) => <tr key={row.id} className="border-t border-border">
           <td className="px-2 py-1 tabular-nums">{row.current}</td><td className="px-2 whitespace-nowrap">{row.name}</td><td className="px-2">{row.wins}</td>

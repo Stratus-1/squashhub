@@ -1373,6 +1373,13 @@
       "when": 1792400366447,
       "tag": "0195_require_phone_for_counter_visitor_tabs",
       "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1792400392159,
+      "tag": "0196_visitor_tab_phone_required_keep_source",
+      "breakpoints": true
     }
   ]
 }

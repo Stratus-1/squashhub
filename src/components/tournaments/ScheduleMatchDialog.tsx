@@ -242,6 +242,22 @@ export function ScheduleMatchDialog({
     return out.sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
   }, [bookings, courtOptions, duration, match]);
 
+  // Full-day board for Champs-only mode: every normal club slot on every
+  // tournament court, marked free-Champs / reserved / taken / open. Open slots
+  // are normal paid club bookings (e.g. via GoBook) and are not bookable here.
+  const dayBoard = useMemo(() => {
+    if (!champsOnly || !match) return [] as { courtId: number; courtName: string; slots: { time: string; status: string }[] }[];
+    const normalSlots = buildSlots(slotMinutes, club?.booking_open_time, club?.booking_last_slot_time);
+    return courtOptions.map((c) => ({
+      courtId: c.id,
+      courtName: c.name,
+      slots: daySlotBoard(normalSlots, slotMinutes, c.id, bookings as any[], {
+        champsFree: new Set(champsSlots.filter((s) => s.courtId === c.id).map((s) => s.time)),
+        ignoreBookingId: match?.booking_id ?? null,
+      }),
+    }));
+  }, [champsOnly, match, slotMinutes, club?.booking_open_time, club?.booking_last_slot_time, courtOptions, bookings, champsSlots]);
+
   // The players' own existing bookings that day. Times overlapping them are
   // hidden (the server refuses them too), so say why instead of silently
   // leaving a gap — e.g. a player's earlier GoBook booking at 18:00.

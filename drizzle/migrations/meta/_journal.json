@@ -1352,6 +1352,13 @@
       "when": 1792341342543,
       "tag": "0192_champ_move_leaves_old_slot_available",
       "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1792393630340,
+      "tag": "0193_protect_scheduled_championship_slots",
+      "breakpoints": true
     }
   ]
 }

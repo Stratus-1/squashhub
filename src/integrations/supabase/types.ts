@@ -20080,6 +20080,10 @@ export type Database = {
         Args: { p_champ: string; p_expected_total_cents: number }
         Returns: number
       }
+      champ_fixture_minutes: {
+        Args: { _champ: string; _doubles?: boolean; _group: number }
+        Returns: number
+      }
       champ_group_label: {
         Args: { p_champ_id: string; p_group: number }
         Returns: string

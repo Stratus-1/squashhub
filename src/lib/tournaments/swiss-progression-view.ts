@@ -205,7 +205,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
 
 /** Proposed slots. Saved completed results whose players match a template pair project names forward (read-only).
  * Saved Round 1 is copied factually, not forced into a template.
- * Occupant-aware bye/rematch adjustments require separately approved engine integration.
+ * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
 export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
   const n = model.rows.length;
@@ -249,7 +249,21 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { noR
     if (opts.noRepeats) {
       const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, round: r.round })));
       const locked = (model.rounds.find((r) => r.round === rd.round)?.fixtures ?? []).flatMap((f) => f.a && (f.b || f.state === "bye") ? [{ a: f.a, b: f.b }] : []);
-      const strict = strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked });
+      const strict = rd.round >= 3 ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
+      if (rd.round < 3 && locked.length) {
+        const pos = new Map(cur.map((id, index) => [id, index + 1]));
+        const actual = locked.flatMap((f) => {
+          const a = pos.get(f.a), b = f.b ? pos.get(f.b) : undefined;
+          return a && b ? [{ a: Math.min(a, b), b: Math.max(a, b), round: rd.round }] : [];
+        });
+        const used = actual.flatMap((p) => [p.a, p.b]);
+        const savedBye = locked.find((f) => !f.b);
+        const byeSlot = savedBye ? pos.get(savedBye.a) ?? null : null;
+        if (used.length + Number(byeSlot != null) === n && new Set(used).size === used.length) {
+          strict.pairs = actual;
+          strict.bye = byeSlot;
+        }
+      }
       if (strict.issue) issues.push(strict.issue);
       if (strict.ready) {
         readyRounds.add(rd.round);
@@ -319,7 +333,7 @@ export function buildSwissCalendar(model: SwissProgressionModel, proposed?: Grid
     for (const b of rd.blocks) {
       const [a, c] = [b.rows[0].pos, b.rows[1].pos];
       if (a == null || c == null) continue;
-      const s = slots?.[fixtureKey(rd.round, a, c)];
+      const s = slots?.[b.scheduleKey ?? fixtureKey(rd.round, a, c)];
       const label = `Position ${a} v Position ${c} (TBD)`;
       if (s?.kind === "planned") out.push({ kind: "proposed", round: rd.round, date: s.date, time: s.time, court: s.courtName, label });
       else if (s?.kind === "play_by") out.push({ kind: "play_by", round: rd.round, date: s.date, time: null, court: null, label });

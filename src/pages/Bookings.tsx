@@ -1,4 +1,5 @@
 import { bookingsForGridRow, champsGridLayout, championshipGridMinutes } from "@/lib/booking-grid";
+import { fetchSwissNoRepeat } from "@/lib/tournaments/swiss-no-repeat";
 import { isPeakSlot as isPeakSlotShared } from "@/lib/peak-hours";
 import { PeakTimeIndicator } from "@/components/PeakTimeIndicator";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -878,6 +879,7 @@ export default function Bookings() {
       const { data: champs } = await (supabase as any).from("club_champs").select("*").eq("club_id", myClub!.id).neq("status", "completed");
       const [{ data: courts }] = await Promise.all([supabase.from("courts").select("id, name, active").eq("club_id", myClub!.id).order("id")]);
       const activeCourts = ((courts ?? []) as any[]).filter((c) => c.active !== false);
+      const noRepeats = await fetchSwissNoRepeat(myClub?.id);
       const out: any[] = [];
       for (const champ of (champs ?? []) as any[]) {
         try {
@@ -888,7 +890,7 @@ export default function Bookings() {
             (supabase as any).from("club_champs_rounds").select("*").eq("champ_id", champ.id),
           ]);
           const fx = projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: activeCourts,
-            groupLabel: (gn) => getGroupLabel(champ, gn) });
+            noRepeats, groupLabel: (gn) => getGroupLabel(champ, gn) });
           out.push(...fx.map((f) => ({ ...f, champName: champ.name })));
         } catch { /* projection is optional display */ }
       }

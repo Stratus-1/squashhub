@@ -279,7 +279,7 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
   // Next round: positional template with bye fairness (nobody gets a second bye).
   const plan = byeFairPlan(state, nextRound);
   const occ = state.occupants;
-  if (noRepeats) {
+  if (noRepeats && nextRound >= 3) {
     const strict = strictSwissPlan({ occupants: occ, round: nextRound, preferred: plan.pairs, bye: plan.bye,
       history: mine.map((f) => ({ a: f.a, b: f.b, round: f.round ?? 1 })) });
     if (!strict.ready) throw new IntegrityError("swiss_repeat", strict.issue ?? "Swiss pairing is not ready.");

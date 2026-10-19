@@ -323,7 +323,7 @@ export function swissRound(
     if (!rest.length) return [];
     const [p, ...others] = rest;
     if (!others.length) return [[p.id, null]];
-    const candidates = [...others].sort((a, b) => Number(b.id === preferred.get(p.id)) - Number(a.id === preferred.get(p.id)) || Math.abs(p.seed - a.seed) - Math.abs(p.seed - b.seed));
+    const candidates = preferred.size ? [...others].sort((a, b) => Number(b.id === preferred.get(p.id)) - Number(a.id === preferred.get(p.id)) || Math.abs(p.seed - a.seed) - Math.abs(p.seed - b.seed)) : others;
     for (const candidate of candidates) {
       if (played.has(key(p.id, candidate.id))) continue;
       const tail = solve(others.filter((other) => other.id !== candidate.id));

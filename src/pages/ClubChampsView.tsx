@@ -1,5 +1,6 @@
 import { stageSchedules } from "@/lib/tournaments/round-scheduling";
 import { isTournamentViewPilotClub } from "@/lib/tournaments/pilot-clubs";
+import { swissNoRepeatEnabled } from "@/lib/tournaments/swiss-no-repeat";
 import { supabase } from "@/integrations/supabase/client";
 import * as React from "react";
 import { KnockoutNextActions } from "@/components/smart-builder/KnockoutNextActions";
@@ -217,6 +218,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   const { data: pilotViewerOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_viewer_shell");
   const { data: pilotPoolMatrixOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_pool_matrix_view");
   const { data: pilotSwissOn = false } = useClubBetaFeature(inlineStandings ? undefined : champ?.club_id, "tournament_swiss_progression_view");
+  const { data: noRepeatFlag = false } = useClubBetaFeature(champ?.club_id, "tournament_swiss_no_repeats");
   // Saved per-category scoring lives on the tournaments row; the club_champs
   // row doesn't carry it, so merge (tournament values win) for scoring labels.
   const champForScoring = useMemo(() => ({ ...(champ as any), ...(arch as any) }), [champ, arch]);
@@ -1406,7 +1408,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterIsRR ? (
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} title={getGroupLabel(champ, gn)} model={model} noRepeats={swissNoRepeatEnabled(champ.club_id, noRepeatFlag)} positionalPreview={riversidePreview} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview ? classic : undefined} />{laterIsRR ? (
           <div className="mt-6 space-y-4" data-testid={`stage2-progression-${gn}`}>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>

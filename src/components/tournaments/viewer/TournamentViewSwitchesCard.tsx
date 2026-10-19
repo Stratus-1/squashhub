@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useHostClubs } from "@/hooks/use-tournaments";
+import { SWISS_NO_REPEAT_CLUB, SWISS_NO_REPEAT_FEATURE } from "@/lib/tournaments/swiss-no-repeat";
 import {
   TOURNAMENT_VIEW_FEATURES, useSetClubBetaFeature, useTournamentViewFeatureRows, type TournamentViewFeature,
 } from "@/hooks/use-club-beta-feature";
@@ -28,7 +29,7 @@ export function TournamentViewSwitchesCard() {
       </select>
       {club && (
         <div className="grid gap-1 sm:grid-cols-2">
-          {(Object.keys(TOURNAMENT_VIEW_FEATURES) as TournamentViewFeature[]).map((f) => (
+          {(Object.keys(TOURNAMENT_VIEW_FEATURES) as TournamentViewFeature[]).filter((f) => f !== SWISS_NO_REPEAT_FEATURE || club === SWISS_NO_REPEAT_CLUB).map((f) => (
             <div key={f} className="flex items-center justify-between gap-2 rounded-md border border-white/10 px-2 py-1">
               <span className="text-xs text-white/80">{TOURNAMENT_VIEW_FEATURES[f]}</span>
               <Button size="sm" variant={on(f) ? "default" : "outline"} className="h-7" disabled={set.isPending} onClick={() => toggle(f)}>{on(f) ? "On" : "Off"}</Button>

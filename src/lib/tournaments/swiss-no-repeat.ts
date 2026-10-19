@@ -20,17 +20,37 @@ export function swissHalves(n: number): [number, number] | null {
   return half % 2 === 0 ? [half, half] : [half + 1, half - 1];
 }
 
-/** Keep each half's strongest quarter apart through rounds three and four. */
+/** Gap per round inside a half of `size`: R3 = half-1, R4 = half, R5 = half-2 (e.g. 12 → 1v6, 1v7, 1v5). */
+export function swissRoundGap(size: number, round: number): number | null {
+  const g = size / 2;
+  const gap = round === 3 ? g - 1 : round === 4 ? g : round === 5 ? g - 2 : null;
+  return gap != null && gap >= 1 ? gap : null;
+}
+
+function gapPairs(size: number, gap: number, offset: number, round: number) {
+  const free = new Set(Array.from({ length: size }, (_, i) => i + 1));
+  const pairs: Array<{ round: number; a: number; b: number }> = [];
+  for (let i = 1; i <= size; i++) {
+    if (!free.has(i)) continue;
+    free.delete(i);
+    let j = free.has(i + gap) ? i + gap : [...free].sort((x, y) => Math.abs(x - i - gap) - Math.abs(y - i - gap) || x - y)[0];
+    free.delete(j);
+    pairs.push({ round, a: offset + i, b: offset + j });
+  }
+  return pairs;
+}
+
+/** Halves play within themselves from round three, with a different position gap each round. */
 export function preferredSwissTemplate(n: number, round: number) {
   const original = slotTemplate(n, round);
   const halves = swissHalves(n);
   if (!halves || round < 3) return original;
   const segments: Array<[number, number]> = [[0, halves[0]], [halves[0], halves[1]]];
-  if (round > 4) return { ...original, bye: null, pairs: segments.flatMap(([offset, size]) =>
-    slotTemplate(size, round).pairs.map(p => ({ ...p, a: p.a + offset, b: p.b + offset }))) };
-  const pairs = segments.flatMap(([offset, size]) => { const gap = size / 2; return Array.from({ length: gap }, (_, i) => ({
-    round, a: offset + i + 1, b: offset + gap + (i + round - 3) % gap + 1,
-  })); });
+  const pairs = segments.flatMap(([offset, size]) => {
+    const gap = swissRoundGap(size, round);
+    return gap ? gapPairs(size, gap, offset, round)
+      : slotTemplate(size, round).pairs.map(p => ({ ...p, a: p.a + offset, b: p.b + offset }));
+  });
   return { ...original, bye: null, pairs };
 }
 
@@ -42,7 +62,7 @@ export function strictSwissPlan(input: {
   const { occupants, round, history } = input;
   const raw = preferredSwissTemplate(occupants.length, round);
   const halves = swissHalves(occupants.length);
-  const wide = !!halves && round >= 3 && round <= 4;
+  
   const preferred = halves && round >= 3 ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id)) return { pairs: preferred, bye, ready: false };
@@ -72,11 +92,9 @@ export function strictSwissPlan(input: {
   // Restrict new games, never rewrite locked historical games. Uneven halves retain their existing rules.
   if (halves && round >= 3) {
     const top = halves[0];
-    const zone = (i: number) => i < top ? (i < top / 2 ? 0 : 1) : (i - top < halves[1] / 2 ? 2 : 3);
     for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
       const differentHalf = (i < top) !== (j < top);
-      const sameQuarter = wide && zone(i) === zone(j);
-      if (differentHalf || sameQuarter) {
+      if (differentHalf) {
         const a = ids[i], b = ids[j];
         legacyPlayed.add(a < b ? `${a}|${b}` : `${b}|${a}`);
       }

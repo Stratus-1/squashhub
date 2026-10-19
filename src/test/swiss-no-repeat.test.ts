@@ -126,6 +126,16 @@ describe("uneven Swiss halves", () => {
     expect(swissHalves(18)).toEqual([10, 8]);
     expect(swissHalves(24)).toEqual([12, 12]);
     const pairs = preferredSwissTemplate(18, 3).pairs.map(p => [p.a, p.b]);
-    expect(pairs).toEqual([[1,6],[2,7],[3,8],[4,9],[5,10],[11,15],[12,16],[13,17],[14,18]]);
+    expect(pairs).toEqual([[1,5],[2,6],[3,7],[4,8],[9,10],[11,14],[12,15],[13,16],[17,18]]);
+  });
+});
+
+describe("24-player round gaps", () => {
+  it("R3 1v6, R4 1v7, R5 1v5 and no position pair repeats", () => {
+    const r = (n: number) => preferredSwissTemplate(24, n).pairs.map(p => `${p.a}-${p.b}`);
+    expect(r(3).slice(0, 2)).toEqual(["1-6", "2-7"]);
+    expect(r(4).slice(0, 2)).toEqual(["1-7", "2-8"]);
+    expect(r(5).slice(0, 2)).toEqual(["1-5", "2-6"]);
+    expect(r(3).filter(x => r(5).includes(x))).toEqual([]);
   });
 });

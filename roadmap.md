@@ -38,5 +38,5 @@
 - [x] Show card/cash/online bar purchases on My Account statement (informational, no balance impact) — verify as Riverside login
 - [x] Uitsig stale Swiss Round 6 removed from four saved structured stages; existing games/results/bookings untouched. Hosted read-back and signed-in Men’s C display verified five rounds; no publication.
 
-- [ ] Uitsig Men's B/C/D + Ladies A = 4 Swiss rounds (setup + running tournament)
-- [ ] Structure page Swiss round changes reach the running tournament (block lowering below created rounds)
+- [x] Uitsig Men's B/C/D + Ladies A = 4 Swiss rounds (setup + running tournament)
+- [x] Structure page Swiss round changes reach the running tournament (block lowering below created rounds)

@@ -298,3 +298,36 @@ export function canMarkChampMatch(
   }
   return { allowed: true };
 }
+
+/**
+ * Scheduled Club Champs games that have no booking row still occupy their
+ * court (often on top of a "Club Championships" hold). Turn them into
+ * booking-like blockers so pickers never offer those slots. The server guard
+ * (no admin bypass) rejects them anyway; this keeps the picker honest.
+ */
+export function scheduledFixtureBlockers(
+  fixtures: Array<SelfScheduleMatchLike & { id: string; court_id?: number | null; scheduled_time?: string | null; booking_id?: string | null; status?: string | null }>,
+  durationMinutes: number,
+  excludeMatchId?: string | null,
+): BookingLike[] {
+  const dur = Math.max(15, durationMinutes);
+  return fixtures
+    .filter((f) => f.id !== excludeMatchId && !f.booking_id && f.court_id != null && f.scheduled_time
+      && !["completed", "cancelled", "forfeited", "walkover"].includes(String(f.status || "")))
+    .map((f) => {
+      const s = timeToMinutes(String(f.scheduled_time).slice(0, 5));
+      const ids = matchParticipantIds(f);
+      return {
+        id: `fixture:${f.id}`,
+        court_id: Number(f.court_id),
+        start_time: minutesToTime(s),
+        end_time: minutesToTime(s + dur),
+        status: "active",
+        user_id: ids[0] ?? null,
+        opponent_id: ids[1] ?? null,
+        club_member_id: ids[2] ?? null,
+        opponent_member_id: ids[3] ?? null,
+        external_booker_name: "Scheduled fixture",
+      };
+    });
+}

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { TournamentPlayerInfoNotice } from "./TournamentPlayerInfo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";

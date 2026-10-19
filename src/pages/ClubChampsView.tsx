@@ -99,6 +99,7 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
+import { TournamentPlayerInfoNotice } from "@/components/tournaments/TournamentPlayerInfo";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
 import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
@@ -2538,6 +2539,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             </p>
           )}
         </div>
+        <TournamentPlayerInfoNotice tournamentId={champId} />
 
         {canManage && (
           <Card className="print:hidden border-primary/40" data-testid="tournament-admin">

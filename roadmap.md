@@ -40,3 +40,4 @@
 
 - [x] Uitsig Men's B/C/D + Ladies A = 4 Swiss rounds (setup + running tournament)
 - [x] Structure page Swiss round changes reach the running tournament (block lowering below created rounds)
+- [ ] Clarify repeat-opponent swap rule with Willem (awaiting his choice)

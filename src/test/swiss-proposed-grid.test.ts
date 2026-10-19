@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { buildProposedSwissGrid, buildSwissGrid, buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
-import { categoryTemplate } from "@/lib/tournaments/swiss-positional";
 import { preferredSwissTemplate } from "@/lib/tournaments/swiss-no-repeat";
 
 const modelFor = (n: number, rounds: number) => buildSwissProgression({

@@ -249,7 +249,7 @@ export function fixedPositionRound(d: SpecDivision, mine: FixtureRow[], nextRoun
     // Accept rounds drawn by the raw template (older draws) or the bye-fair template (no repeat byes).
     const candidates = [asPlan(raw.pairs, raw.bye), byeFairPlan(state, r)];
     // Adjusted saved rounds remain authoritative: replay their actual occupants, never redraw history.
-    if (noRepeats) {
+    if (noRepeats && r >= 3) {
       const pos = new Map(occ.map((id, i) => [id, i + 1]));
       const pairs = saved.flatMap((f) => {
         const a = f.a ? pos.get(f.a) : undefined, b = f.b ? pos.get(f.b) : undefined;

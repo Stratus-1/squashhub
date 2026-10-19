@@ -3,6 +3,30 @@ import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfir
 import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
+import { syncSwissRoundsToSpec } from "@/lib/smart-builder/sync-live-rounds";
+
+/** Copies saved Structure Swiss round counts into a running tournament (never below rounds that already have games). */
+async function pushStructureRoundsLive(clubId: string, tid: string | null | undefined, stagePlans: any) {
+  if (!tid || !stagePlans) return;
+  try {
+    const { data: t } = await fromExt("tournaments").select("builder_spec, builder_architecture, swiss_rounds").eq("id", tid).eq("club_id", clubId).maybeSingle();
+    if (!t?.builder_spec || t.builder_architecture !== "structured") return;
+    const { data: ms } = await fromExt("club_champs_matches").select("group_number, round_number").eq("champ_id", tid);
+    const created: Record<number, number> = {};
+    (ms ?? []).forEach((m: any) => { const g = Number(m.group_number); created[g] = Math.max(created[g] ?? 0, Number(m.round_number) || 0); });
+    const r = syncSwissRoundsToSpec(t.builder_spec, stagePlans, created);
+    r.blocked.forEach((msg) => toast.error(msg));
+    if (!r.changes.length) return;
+    const rounds = { ...(t.swiss_rounds ?? {}) } as Record<string, number>;
+    r.spec.divisions.forEach((d: any) => { const st = d.stages?.[0]; if (st?.kind === "swiss" && st.swissRounds) rounds[String(d.groupNumber)] = st.swissRounds; });
+    const { error } = await fromExt("tournaments").update({ builder_spec: r.spec, swiss_rounds: rounds }).eq("id", tid).eq("club_id", clubId);
+    if (error) throw error;
+    await fromExt("club_champs").update({ swiss_rounds: rounds }).eq("id", tid).eq("club_id", clubId);
+    toast.success(`Running tournament updated: ${r.changes.map((c) => `${c.label} ${c.from ?? "?"} → ${c.to} rounds`).join(", ")}`);
+  } catch (e: any) {
+    toast.error(`Structure saved, but the running tournament wasn't updated: ${e?.message ?? "unknown error"}`);
+  }
+}
 import { milestoneFor, configuredPathText } from "@/lib/tournaments/paced-knockout";
 /** Lenient WhatsApp group invite check: chat.whatsapp.com/<code> or /invite/<code>, with or without https/www, any query string. */
 const normaliseGroupInviteUrl = (raw: string) => {
@@ -1550,7 +1574,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cardStructure && cur === "Structure" && <CardStructureEditor clubId={clubId} answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} />}
+          {cardStructure && cur === "Structure" && <CardStructureEditor clubId={clubId} answers={a} onSave={(next) => { setA(next); void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, (next as any).stagePlans); }} onDirtyChange={setRowStructureDirty} />}
           {cardStructure && cur === "StructureReview" && <CardStructureReview answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} dirty={rowStructureDirty} onEdit={() => go("Structure")} />}
           {isStruct && <>
             <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />

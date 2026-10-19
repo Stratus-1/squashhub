@@ -107,6 +107,9 @@ export function champsSlotStarts(reservations: BookingLike[], durationMinutes: n
   const byCourt = new Map<number, { s: number; e: number }[]>();
   for (const b of reservations) {
     if (!isChampsReservation(b) || b.court_id == null || !b.start_time) continue;
+    // A champs reservation that already carries players' names belongs to a
+    // scheduled game — its slot is taken, not part of the free span.
+    if (bookingParticipantIds(b).length > 0) continue;
     const s = timeToMinutes(String(b.start_time).slice(0, 5));
     const e = b.end_time ? timeToMinutes(String(b.end_time).slice(0, 5)) : s + dur;
     if (!(e > s)) continue;

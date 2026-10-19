@@ -1,8 +1,12 @@
 # Roadmap
 
 ## Open
-- [ ] Thursday 22 Oct Uitsig grid shows stale 20-minute championship rows — root cause: projected fixtures from OTHER tournaments (20- and 30-min durations, courts 37–39, 20/24/26) leak into the bookings grid's championship layout. Filter projections to the club's actual reserved tournaments / courts, or exclude non-reserved tournaments from the grid's champ layout.
-- [ ] Fixtures-list "Book a court" picker shows tournament slots for Tuesday that are not actually available; must be consistent with Monday's correct behavior and respect the no-override rule for admins too.
+- [ ] SportyHQ integration blocked on official API documentation.
+
+## Done
+- [x] Thursday 22 Oct Uitsig 20-minute rows fixed: club_champs_matches fixture query was not club-scoped, so other clubs' 20/30-minute tournaments leaked into Uitsig's grid and slot pickers. Fixture labels now filter to the current club (champ.club_id), query key includes club, query gated on myClub. Tuesday and Thursday grids verified clean 45-minute rows with games/holds correct.
+- [x] Fixtures-list "Book a court" picker no longer offers occupied reserved slots: champsSlotStarts now skips holds already carrying a scheduled game (player rows present); regression test added; 7 slot tests + 13 booking-protection tests pass. No-admin-bypass rule unchanged (server trigger already blocks admins).
+
 
 
 

@@ -4,6 +4,7 @@
 - [ ] Standardize Uitsig Club Champs setup AND current 35-minute championship slots to the courts' 45-minute timetable; preview clashes before moving games, preserve other tournaments.
 - [ ] Restore screenshot grid to normal 45-minute court rows; remove extra 20/35-minute time rows for Uitsig's 45-minute tournament configuration.
 - [ ] Make fixtures-list rescheduling offer 45-minute slots consistently.
+- [ ] Align six approved existing games on 21/22 Oct to the agreed 45-minute starts, retaining dates/courts and rejecting conflicts.
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done

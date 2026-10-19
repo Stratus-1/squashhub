@@ -1117,12 +1117,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           new Set((instances as any[]).map((i: any) => String(i.instance_date))),
         );
 
+        // Legacy event bookings made before bookings were linked to events:
+        // only the club's own event bookings on those courts/times — never members'.
         for (const date of dates) {
-          // Overlap match: a booking counts if it starts before the event ends
-          // and ends after the event starts (handles per-hour split bookings).
           const { data: removed, error: updErr } = await supabase
             .from("bookings")
             .update({ status: "cancelled" })
+            .is("event_id", null)
+            .eq("source", "club_event")
             .in("court_id", courtIds)
             .eq("date", date)
             .eq("status", "active")
@@ -1132,6 +1134,20 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           if (updErr) cancelError = updErr.message;
           cancelledCount += removed?.length || 0;
         }
+      }
+      // Always release this event's own future bookings — an event that no longer
+      // exists must not keep holding courts. Other people's bookings are untouched.
+      {
+        const todayStr = new Date().toLocaleDateString("en-CA");
+        const { data: removed, error: updErr } = await supabase
+          .from("bookings")
+          .update({ status: "cancelled" })
+          .eq("event_id", eventId)
+          .eq("status", "active")
+          .gte("date", todayStr)
+          .select("id");
+        if (updErr) cancelError = updErr.message;
+        cancelledCount += removed?.length || 0;
       }
 
 

@@ -4,6 +4,8 @@ Last verified against the repository on 2026-08-25.
 
 ## System purpose
 
+Swiss positional pairing uses the shared history-aware `swiss-no-repeat` resolver from round 3 in generation and projections for every club. Saved games remain fixed; rounds 1 and 2 retain their original pairing rules. Unsatisfiable draws stop instead of silently repeating opponents.
+
 Booking-grid presentation uses `src/lib/booking-grid.ts` to retain every court-row overlap, ordered by start time. Separate selectable entries show names on their starting row and continuation markers on later rows; booking times, ownership, billing and availability enforcement are unchanged.
 
 Stock product current cost and weighted average are distinct: purchase receipts maintain the latest per-container cost, while the existing opt-in stock engine calculates the average per smallest stock unit. Item editing displays that saved average read-only after container conversion; historical sale snapshots remain immutable.

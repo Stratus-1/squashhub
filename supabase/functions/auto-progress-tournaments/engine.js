@@ -762,21 +762,33 @@ function swissHalves(n) {
   const half = n / 2;
   return half % 2 === 0 ? [half, half] : [half + 1, half - 1];
 }
+function swissRoundGap(size, round) {
+  const g = size / 2;
+  const gap = round === 3 ? g - 1 : round === 4 ? g : round === 5 ? g - 2 : null;
+  return gap != null && gap >= 1 ? gap : null;
+}
+function gapPairs(size, gap, offset, round) {
+  const free = new Set(Array.from({ length: size }, (_, i) => i + 1));
+  const pairs = [];
+  for (let i = 1;i <= size; i++) {
+    if (!free.has(i))
+      continue;
+    free.delete(i);
+    let j = free.has(i + gap) ? i + gap : [...free].sort((x, y) => Math.abs(x - i - gap) - Math.abs(y - i - gap) || x - y)[0];
+    free.delete(j);
+    pairs.push({ round, a: offset + i, b: offset + j });
+  }
+  return pairs;
+}
 function preferredSwissTemplate(n, round) {
   const original = slotTemplate(n, round);
   const halves = swissHalves(n);
   if (!halves || round < 3)
     return original;
   const segments = [[0, halves[0]], [halves[0], halves[1]]];
-  if (round > 4)
-    return { ...original, bye: null, pairs: segments.flatMap(([offset, size]) => slotTemplate(size, round).pairs.map((p) => ({ ...p, a: p.a + offset, b: p.b + offset }))) };
   const pairs = segments.flatMap(([offset, size]) => {
-    const gap = size / 2;
-    return Array.from({ length: gap }, (_, i) => ({
-      round,
-      a: offset + i + 1,
-      b: offset + gap + (i + round - 3) % gap + 1
-    }));
+    const gap = swissRoundGap(size, round);
+    return gap ? gapPairs(size, gap, offset, round) : slotTemplate(size, round).pairs.map((p) => ({ ...p, a: p.a + offset, b: p.b + offset }));
   });
   return { ...original, bye: null, pairs };
 }
@@ -784,7 +796,6 @@ function strictSwissPlan(input) {
   const { occupants, round, history } = input;
   const raw = preferredSwissTemplate(occupants.length, round);
   const halves = swissHalves(occupants.length);
-  const wide = !!halves && round >= 3 && round <= 4;
   const preferred = halves && round >= 3 ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id))
@@ -819,12 +830,10 @@ function strictSwissPlan(input) {
   const legacyPlayed = new Set(history.filter((g) => g.round < round && g.a && g.b).map((g) => String(g.a) < String(g.b) ? `${g.a}|${g.b}` : `${g.b}|${g.a}`));
   if (halves && round >= 3) {
     const top = halves[0];
-    const zone = (i) => i < top ? i < top / 2 ? 0 : 1 : i - top < halves[1] / 2 ? 2 : 3;
     for (let i = 0;i < ids.length; i++)
       for (let j = i + 1;j < ids.length; j++) {
         const differentHalf = i < top !== j < top;
-        const sameQuarter = wide && zone(i) === zone(j);
-        if (differentHalf || sameQuarter) {
+        if (differentHalf) {
           const a = ids[i], b = ids[j];
           legacyPlayed.add(a < b ? `${a}|${b}` : `${b}|${a}`);
         }

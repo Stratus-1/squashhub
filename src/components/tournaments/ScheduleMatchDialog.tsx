@@ -433,6 +433,48 @@ export function ScheduleMatchDialog({
               {isFetching ? "Checking availability…" : "All Club Champs slots on this day are taken — try the other day."}
             </p>
           )}
+          {champsOnly && dayBoard.length > 0 && (
+            <div className="space-y-1.5 rounded-md border border-border p-2" data-testid="champs-day-board">
+              <Label className="text-xs font-semibold">All slots this day</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Free Champs slots are highlighted — tap one to book. "Open" slots are normal paid bookings through the club's usual booking system and can't be booked here.
+              </p>
+              {dayBoard.map((court) => (
+                <div key={court.courtId} className="space-y-1">
+                  <p className="text-[11px] font-medium text-muted-foreground">{court.courtName}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {court.slots.map((s) =>
+                      s.status === "champs-free" ? (
+                        <Button
+                          key={s.time}
+                          type="button"
+                          size="sm"
+                          disabled={saving}
+                          className="h-6 px-1.5 text-[10px]"
+                          onClick={() => confirm(s.time, court.courtId)}
+                        >
+                          {s.time} Free
+                        </Button>
+                      ) : (
+                        <span
+                          key={s.time}
+                          className={
+                            s.status === "taken"
+                              ? "inline-flex h-6 items-center rounded-md bg-muted px-1.5 text-[10px] text-muted-foreground line-through"
+                              : s.status === "champs"
+                                ? "inline-flex h-6 items-center rounded-md border border-primary/40 px-1.5 text-[10px] text-muted-foreground"
+                                : "inline-flex h-6 items-center rounded-md border border-border px-1.5 text-[10px] text-muted-foreground"
+                          }
+                        >
+                          {s.time} {s.status === "taken" ? "Taken" : s.status === "champs" ? "Champs" : "Open"}
+                        </span>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {champsOnly && (
             <p className="text-[11px] text-muted-foreground">
               Club Champs matches can only be booked in the slots the club reserved. Contact the organiser if none suit you.

@@ -57,7 +57,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
                 <tr className="text-left text-muted-foreground">
                   <th className="px-2 py-1">Pos</th><th className="px-2">Move</th><th className="px-2">Player</th><th className="px-2">Seed</th><th className="px-2">Wins</th>
                   {roundNums.map((r) => <th key={r} className="px-2 whitespace-nowrap">Round {r}</th>)}
-                  <th className="px-2 whitespace-nowrap">Final standing</th>
+                  <th className="px-2 whitespace-nowrap">{allComplete ? "Final standings" : "Current standings"}</th>
                 </tr>
               </thead>
               <tbody>

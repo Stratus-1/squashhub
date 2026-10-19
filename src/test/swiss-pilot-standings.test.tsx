@@ -60,7 +60,9 @@ describe("Final standing column", () => {
   it("shows dashes until every round is complete, then locked final positions", () => {
     const partial = makeModel(); // only round 1 of 3 played
     const { unmount } = render(<SwissCurrentPositionsTable model={partial} />);
-    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("Final standing");
+    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("Current standings");
+    expect(screen.getByTestId("swiss-current-positions").textContent).not.toContain("Final standing");
+
     expect(screen.getByTestId("swiss-final-standing-p1").textContent).toBe("—");
     unmount();
     render(<SwissCurrentPositionsTable model={fullModel()} />);

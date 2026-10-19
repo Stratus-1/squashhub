@@ -1385,7 +1385,41 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
          oldEvent.title !== form.title.trim() ||
          oldEvent.is_club_booking !== adminBypass);
 
-      if (timesChanged || courtsChanged) {
+      // Changing the number of weeks/occurrences must add the missing dates
+      // (and their court bookings) or drop the removed future ones.
+      const newCount = form.recurrence === "once" ? 1 : form.num_instances;
+      const countChanged = !!oldEvent &&
+        oldEvent.start_date === form.event_date &&
+        Number(oldEvent.num_instances || 0) !== newCount;
+      if (countChanged) {
+        const todayStr = new Date().toLocaleDateString("en-CA");
+        const wanted = getInstanceDates();
+        const { data: existing } = await fromExt("club_event_instances")
+          .select("id, instance_date")
+          .eq("event_id", editingEventId);
+        const have = new Set((existing || []).map((i: any) => i.instance_date));
+        const missing = wanted.filter((d) => !have.has(d));
+        if (missing.length) {
+          await fromExt("club_event_instances").insert(
+            missing.map((d) => ({ event_id: editingEventId, instance_date: d, status: "scheduled" })),
+          );
+        }
+        const wantedSet = new Set(wanted);
+        const removed = (existing || []).filter(
+          (i: any) => !wantedSet.has(i.instance_date) && i.instance_date >= todayStr,
+        );
+        if (removed.length) {
+          await fromExt("club_event_instances").delete().in("id", removed.map((i: any) => i.id));
+          await supabase
+            .from("bookings")
+            .update({ status: "cancelled" })
+            .eq("event_id", editingEventId)
+            .in("date", removed.map((i: any) => i.instance_date))
+            .eq("status", "active");
+        }
+      }
+
+      if (timesChanged || courtsChanged || countChanged) {
         // Only ever touch today's and future occurrences — past bookings are history.
         const todayStr = new Date().toLocaleDateString("en-CA");
 

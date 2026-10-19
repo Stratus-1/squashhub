@@ -139,11 +139,12 @@ Deno.serve(async (req) => {
       return capMemo.get(key)!;
     };
 
-    // 1) Booking reminders — each booking carries its own lead time and
-    //    channels (falling back to the club's defaults).
+    // 1) Booking reminders — switched OFF by owner decision (19 Oct 2026):
+    //    no 06:00 court booking reminder is sent to anyone.
     section = "bookings";
     const dayAfter = isoDateInTz(addDays(now, 2), timeZone);
-    const { data: bookings } = await supabaseAdmin
+    const BOOKING_REMINDERS_OFF = true;
+    const { data: bookings } = BOOKING_REMINDERS_OFF ? { data: [] as any[] } : await supabaseAdmin
       .from("bookings")
       .select("id,club_id,user_id,opponent_id,club_member_id,opponent_member_id,date,start_time,end_time,court_id,status,notify_channels,reminder_hours,external_id")
       .eq("status", "active")

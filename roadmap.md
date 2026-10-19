@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Open
+- [ ] Investigate Uitsig normal 45-minute grid displaying mixed hourly rows and duplicate labels; reproduce without changing bookings.
 - [ ] Fixture-aware picker filtering and authenticated end-to-end rejection remain unverified; server protection is applied.
 
 ## Done

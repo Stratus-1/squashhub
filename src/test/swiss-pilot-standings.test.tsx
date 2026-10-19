@@ -88,8 +88,10 @@ describe("Grid final-standing card", () => {
   it("shows a Projected card after the last round while rounds are unfinished, Locked once complete", () => {
     const { unmount } = render(<SwissPositionGrid model={makeModel()} />);
     const card = screen.getByTestId("swiss-final-standing-card");
-    expect(card.textContent).toContain("Final standing");
+    expect(card.textContent).toContain("Current standings");
+    expect(card.textContent).not.toContain("Final standing");
     expect(card.textContent).toContain("Projected");
+
     unmount();
     render(<SwissPositionGrid model={buildSwissProgression({ seedOrder: ["p1","p2","p3","p4"], names: {p1:"Ann",p2:"Ben",p3:"Cid",p4:"Dee"}, totalRounds: 2, matches: [
       {id:"m1",round:1,a:"p1",b:"p2",winner:"p1",status:"completed",score:"3-0"},
@@ -98,7 +100,9 @@ describe("Grid final-standing card", () => {
       {id:"m4",round:2,a:"p2",b:"p4",winner:"p2",status:"completed",score:"3-1"},
     ]})} />);
     const locked = screen.getByTestId("swiss-final-standing-card");
+    expect(locked.textContent).toContain("Final standings");
     expect(locked.textContent).toContain("Locked");
     expect(locked.textContent).toContain("seed the next stage");
+
   });
 });

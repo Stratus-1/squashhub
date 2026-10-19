@@ -305,9 +305,11 @@ export default function MyAccount() {
 
 
 
-    // Directly-paid bar purchases (card / cash / online): shown as a debit for
-    // the item plus a matching credit for the payment, so they net to zero.
+    // Directly-paid bar purchases (card / cash / online): each item is a debit,
+    // and each actual payment (one per tab / payment reference) is ONE credit
+    // for the combined total, so they net to zero.
     const methodName: Record<string, string> = { card: "Card", cash: "Cash", online: "Online", eft: "EFT" };
+    const payments = new Map<string, { method: string; total: number; last: string; count: number }>();
     for (const p of (directPurchases || []) as any[]) {
       const total = Number(p.total || 0);
       if (total <= 0) continue;
@@ -319,14 +321,22 @@ export default function MyAccount() {
         credit: 0,
         status: "confirmed",
       });
+      const key = `${p.method}|${p.payment_group ?? p.id}`;
+      const g = payments.get(key) ?? { method: p.method, total: 0, last: p.created_at, count: 0 };
+      g.total += total;
+      g.count += 1;
+      if (new Date(p.created_at) > new Date(g.last)) g.last = p.created_at;
+      payments.set(key, g);
+    }
+    for (const [key, g] of payments) {
       lines.push({
-        id: `barpay-${p.id}`,
-        date: new Date(new Date(p.created_at).getTime() + 1).toISOString(),
-        description: `${methodName[p.method] ?? p.method} payment: ${p.item_name}`,
+        id: `barpay-${key}`,
+        date: new Date(new Date(g.last).getTime() + 1).toISOString(),
+        description: `${methodName[g.method] ?? g.method} payment (${g.count} item${g.count === 1 ? "" : "s"})`,
         debit: 0,
-        credit: total,
+        credit: Math.round(g.total * 100) / 100,
         status: "confirmed",
-        paidLabel: `paid by ${p.method}`,
+        paidLabel: `paid by ${g.method}`,
       });
     }
 

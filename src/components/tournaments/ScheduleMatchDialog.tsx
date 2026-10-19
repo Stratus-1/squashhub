@@ -348,6 +348,62 @@ export function ScheduleMatchDialog({
     }
   };
 
+  /**
+   * Book an "Open" (non-Champs) slot as a normal paid GoBook booking in the
+   * player's own name. Deliberately separate from `confirm`: this never
+   * touches the fixture — the match still needs its own Club Champs slot.
+   */
+  const bookViaGobook = async (court: number, time: string) => {
+    if (!bookingClubId) return;
+    const key = `${court}-${time}`;
+    setGobookBooking(key);
+    try {
+      const start = time.slice(0, 5);
+      const end = minutesToTime(timeToMinutes(start) + slotMinutes);
+      const { data, error } = await supabase.functions.invoke("gobook-api", {
+        body: {
+          action: "book",
+          club_id: bookingClubId,
+          court_id: court,
+          booking_date: date,
+          start_time: start,
+          end_time: end,
+          notes: "Booked via SquashHub",
+        },
+      });
+      if (error) {
+        const context = (error as { context?: Response }).context;
+        const details = context ? await context.clone().json().catch(() => null) : null;
+        throw new Error(details?.error || error.message);
+      }
+      const result = data as any;
+      if (result?.error) {
+        throw new Error(
+          result.needsLink
+            ? "Your GoBook account isn't linked yet — ask a club admin to link it under Club Admin → Courts."
+            : result.error,
+        );
+      }
+      toast.success(
+        result?.alreadyBooked
+          ? `You already have this slot in GoBook at ${start}.`
+          : `Booked via GoBook at ${start} — your own paid booking, separate from this fixture.`,
+      );
+      // Mirror the new GoBook booking into the club calendar so the board
+      // shows it as taken straight away.
+      await supabase.functions
+        .invoke("gobook-api", { body: { action: "sync_core_day", club_id: bookingClubId, booking_date: date } })
+        .catch(() => null);
+      qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+    } catch (e: any) {
+      toast.error(e?.message || "GoBook rejected the booking");
+    } finally {
+      setGobookBooking(null);
+    }
+  };
+
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
     qc.invalidateQueries({ queryKey: ["club-champ-matches"] });

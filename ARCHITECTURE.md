@@ -85,6 +85,8 @@ Matches, challenges, ladder history, ranking ledgers, pending ranking points, st
 
 Tournaments, venues, rules, governance, draw versions, rounds, entries, doubles pairs, marker locks, schedules, and invite delivery support multiple formats. Pure domain behavior is concentrated in `src/lib/tournaments/` and `src/lib/tournament-formats/` and is heavily tested.
 
+Confirmed next-round Swiss candidates share the progress-log projection. Applied self/play-by rounds create saved fixtures without a court booking and use their own round row's deadline; scheduled rounds retain planned-slot creation and booking. Saved participants are excluded from generation. Court-grid projections remain scheduled-only. Server release and existing-game repair remain separate explicit actions.
+
 ### Leagues and federation
 
 League associations, seasons, rules, teams/pairs, rounds, fixtures, lineups, availability, results, penalties, national bodies, affiliations, licenses, and NSA history support club-to-federation workflows.

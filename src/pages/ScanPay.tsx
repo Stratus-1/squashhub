@@ -122,6 +122,7 @@ export default function ScanPay() {
   const [identifying, setIdentifying] = useState(false);
   const [accountChargeTarget, setAccountChargeTarget] = useState<"cart" | "tab">("cart");
   const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
+  const [settleTipOpen, setSettleTipOpen] = useState(false);
 
 
   const [guestChosen, setGuestChosen] = useState<boolean>(

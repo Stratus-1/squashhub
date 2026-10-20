@@ -10,7 +10,7 @@ const source = readFileSync("supabase/functions/gobook-api/index.ts", "utf8")
   .replace(/^import .*https:\/\/esm\.sh\/.*;$/m, "")
   .replace(/^import .*champ-hold-release.*;$/m, "");
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-type Mirror = { id: string; external_id: string; date: string; status: string; external_booker_name?: string; club_member_id?: string };
+type Mirror = { id: string; external_id: string; date: string; status: string; external_booker_name?: string; club_member_id?: string; court_id?: string; start_time?: string; end_time?: string };
 function harness(clubId = "test-club", linkedIds: string[] = [], now = "2026-10-20T10:34:00Z") {
   let handler: (req: Request) => Promise<Response> = async () => new Response();
   const mirrors: Mirror[] = [];
@@ -35,12 +35,13 @@ function harness(clubId = "test-club", linkedIds: string[] = [], now = "2026-10-
       let patch: any = null;
       let upsert: any = null;
       let ids: string[] | null = null;
+      let single = false;
       const query: any = {
         select: () => query,
         eq: (key: string, value: unknown) => { filters[key] = value; return query; },
         like: () => query,
         limit: () => query,
-        maybeSingle: () => query,
+        maybeSingle: () => { single = true; return query; },
         update: (value: unknown) => { patch = value; return query; },
         upsert: (value: unknown) => { upsert = value; return query; },
         in: (_key: string, value: string[]) => { ids = value; return query; },
@@ -51,9 +52,15 @@ function harness(clubId = "test-club", linkedIds: string[] = [], now = "2026-10-
             if (table === "courts") return { data: [{ id: "court", name: "Court 1" }] };
             if (table === "club_members") return { data: [] };
             // The sync protects fixture-linked bookings: no links in this harness.
-            if (table === "club_champs_matches") return { data: linkedIds.map((booking_id) => ({ booking_id })) };
+            if (table === "club_champs_matches") {
+              const links = linkedIds.filter(id => !filters.booking_id || id === filters.booking_id).map((booking_id) => ({ booking_id }));
+              return { data: single ? links[0] ?? null : links };
+            }
             if (table !== "bookings") throw new Error(`Unexpected table ${table}`);
             if (upsert) {
+              // PostgreSQL checks overlaps BEFORE resolving the upsert identity.
+              const clash = mirrors.find(m => m.status === "active" && m.date === upsert.date && m.court_id === upsert.court_id && m.start_time === upsert.start_time && m.id !== upsert.id);
+              if (clash) return { data: null, error: { code: "23P01" } };
               const old = mirrors.find((m) => m.external_id === upsert.external_id);
               if (old) Object.assign(old, upsert);
               else mirrors.push({ id: `local-${upsert.external_id}`, ...upsert });
@@ -65,7 +72,8 @@ function harness(clubId = "test-club", linkedIds: string[] = [], now = "2026-10-
               });
               return { data: null };
             }
-            return { data: mirrors.filter((m) => m.date === filters.date && m.status === "active") };
+            const matches = mirrors.filter(m => Object.entries(filters).every(([key, value]) => key === "club_id" || key === "source" || (m as any)[key] === value));
+            return { data: single ? matches[0] ?? null : matches };
           };
           return Promise.resolve().then(run).then(resolve, reject);
         },
@@ -87,6 +95,35 @@ function harness(clubId = "test-club", linkedIds: string[] = [], now = "2026-10-
 const booking = (id: number, date: string) => ({ bookingId: id, bookingDate: date, consultantName: "Court 1", startTime: "18:00", endTime: "19:00", status: "A" });
 
 describe("GoBook day reconciliation requires a fresh register", () => {
+  it("refreshes an already-recorded active booking using its stable UUID", async () => {
+    const h = harness();
+    h.mirrors.push({ id: "stable", external_id: "gobook:101", date: "2026-10-20", status: "active", court_id: "court", start_time: "18:00:00" });
+    h.provider([booking(101, "2026-10-20")]);
+    const result = await (await h.sync("2026-10-20")).json();
+    expect(result).toMatchObject({ success: true, synced: 1, skipped: 0 });
+    expect(h.mirrors).toHaveLength(1);
+    expect(h.mirrors[0].id).toBe("stable");
+  });
+  it("never renames an occupying hold to a cancelled booking's existing external ID", async () => {
+    const h = harness();
+    h.mirrors.push(
+      { id: "canonical", external_id: "gobook:101", date: "2026-10-20", status: "cancelled", club_member_id: "player", court_id: "court", start_time: "18:00:00" },
+      { id: "old-hold", external_id: "gobook:102", date: "2026-10-20", status: "active", external_booker_name: "Club Championships", court_id: "court", start_time: "18:00:00" },
+    );
+    h.provider([booking(101, "2026-10-20")]);
+    expect((await h.sync("2026-10-20")).status).toBe(200);
+    expect(h.mirrors.map(m => m.external_id)).toEqual(["gobook:101", "gobook:102"]);
+    expect(h.mirrors[1].status).toBe("cancelled");
+    expect((await h.sync("2026-10-20")).status).toBe(200);
+    expect(h.mirrors[0]).toMatchObject({ id: "canonical", status: "active", club_member_id: "player" });
+  });
+  it("preserves fixture-linked booking ownership and allocation when a provider hold remains", async () => {
+    const h = harness("test-club", ["linked"]);
+    h.mirrors.push({ id: "linked", external_id: "gobook:101", date: "2026-10-20", status: "active", club_member_id: "player", start_time: "18:45:00" });
+    h.provider([{ ...booking(101, "2026-10-20"), pcMappingText: "Club Championships" }]);
+    expect((await h.sync("2026-10-20")).status).toBe(200);
+    expect(h.mirrors[0]).toMatchObject({ club_member_id: "player", start_time: "18:45:00", status: "active" });
+  });
   it.each(["2026-10-20T09:50:00Z", "2026-10-20T12:50:00Z"])("removes cancelled championship holds on refresh at %s without a cron", async (now) => {
     const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19", ["linked"], now);
     h.mirrors.push(

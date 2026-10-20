@@ -1,3 +1,9 @@
+## 2026-10-20 — GoBook refresh duplicate provider identity
+- Symptom: fixture booking window withheld free slots because refresh returned 23505 on an already-recorded provider ID.
+- Finding: overlap triggers execute before upsert conflict resolution; the slot-conflict fallback overwrote another mirror's external ID even when a cancelled row already owned it.
+- Fix: both refresh paths resolve stable club/source/external identity, retain its UUID and player ownership, leave fixture-linked allocations unchanged, and never rename another occupying booking. Missing unused holds still reconcile; provider booking/cancellation actions, noon policy, prices and hardware unchanged.
+- Guard: 35 synthetic checks pass, including active self-conflict, cancelled-ID collision, repeat refresh and retained player/fixture allocation. Targeted API/sync correction deployed; two authenticated live refreshes return 200 (second: zero further cancellations). Authenticated Uitsig Book court visibly offers 19:30 · Court 4 under free Club Champs slots after refresh. No player booking submitted, provider booking/cancellation or hardware action.
+
 ## 2026-10-20 — Closed tabs report by payment method
 - Replaced separate Member sales/Card sales report choices with Closed tabs: Card (online), Cash, Swipe (terminal), Member account and All. Summary-only order/tab totals retain date/division filters and pagination; Sales statistics retains item quantities. Read-only report queries; no payment, stock or ledger writes. Manual add-charge action retained under Items & prices.
 

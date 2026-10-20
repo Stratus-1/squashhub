@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Restore saved Round 1 results in the exact Ladies A/Men's C preview without changing the supplied position charts or live games.
+
 - [x] Correct Men's C exact preview: supplied position chart now stays separate from factual saved games; 39 focused checks pass and authenticated read-only Uitsig preview visibly shows R2 1v9. Saved games/default pairing unchanged; no data writes or publication.
 
 - [x] Rachel Gates NSC: existing Treasurer grants retained; migration 0219 repairs missing bar/finance domain policies and billing/sales guards for her active NSC membership only. Synthetic PostgreSQL isolation/revocation tests pass; authenticated Rachel opens NSC Club Finance and Bar/POS and reads GL, tabs and audit successfully. No full-admin grant, financial transaction, counter/hardware operation or publication.

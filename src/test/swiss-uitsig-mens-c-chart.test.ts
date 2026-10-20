@@ -14,6 +14,18 @@ const expected = [
 const model = () => buildSwissProgression({ seedOrder: Array.from({ length: 18 }, (_,i) => `p${i+1}`), names: {}, totalRounds: 5, matches: [] });
 
 describe("Uitsig Men's C owner-approved chart", () => {
+  it("retains all nine compatible Round 1 scores and winner identities in the exact chart", () => {
+    const m = buildSwissProgression({
+      seedOrder: Array.from({ length: 18 }, (_, i) => `p${i + 1}`), names: {}, totalRounds: 5,
+      matches: expected[0].map(([a, b], i) => ({ id: `r1-${i}`, round: 1, a: `p${a}`, b: `p${b}`, winner: `p${b}`, status: "completed", score: "15-7, 15-8, 15-10" })),
+    });
+    const snapshot = JSON.stringify(m);
+    const grid = buildProposedSwissGrid(m, { exactMensCChart: true });
+    expect(grid.rounds[0].blocks.map(b => b.rows.map(r => r.pos))).toEqual(expected[0]);
+    expect(grid.rounds[0].blocks.map(b => [b.score, b.rows[0].result, b.rows[1].result, b.saved])).toEqual(Array.from({ length: 9 }, () => ["3–0", "L", "W", true]));
+    expect(grid.rounds[1].blocks[0].rows.map(r => r.pos)).toEqual([1, 9]);
+    expect(JSON.stringify(m)).toBe(snapshot);
+  });
   it.each([1,2,3,4,5])("copies every pairing in supplied round %i exactly", round => {
     const grid = buildProposedSwissGrid(model(), { exactMensCChart: true });
     expect(grid.issues).toEqual([]);

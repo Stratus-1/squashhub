@@ -296,8 +296,8 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
   return { issues, rounds: template.map((rd): GridRound => {
     if (!exactChart && rd.round === 1 && savedFirst?.created) return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
     // Saved games for this round are shown factually (real players, results, scores) — never as "projected".
-    // An exact chart is a separate proposed map: saved games stay in Log/Calendar, not overlaid
-    // onto incompatible position routes. Compatible completed results still project names via occ.
+    // An exact chart keeps its position routes. Only a completed game with the same occupants
+    // may supply its factual result; incompatible saved games remain in Log/Calendar.
     const saved = exactChart ? [] : (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
     const savedIds = new Set(saved.flatMap((b) => b.rows.map((r) => r.id)).filter((x): x is string => !!x));
     const into = occ[rd.round - 1];
@@ -314,6 +314,14 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
     const proposedBlocks: GridBlock[] = rd.pairs.flatMap((p, pi): GridBlock[] => {
       if (saved.length && covered(p.a, p.b)) return [];
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
+      if (exactChart) {
+        const x = into[p.a - 1], y = into[p.b - 1];
+        const done = x && y ? findDone(rd.round, x, y) : undefined;
+        const factual = done ? savedGrid.get(rd.round)?.blocks.find((b) => b.matchId === done.id) : undefined;
+        const a = factual?.rows.find((r) => r.id === x);
+        const b = factual?.rows.find((r) => r.id === y);
+        if (factual && a && b) return [{ ...factual, saved: true, rows: [{ ...a, pos: p.a }, { ...b, pos: p.b }] }];
+      }
       const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
       const scheduleKey = fixtureKey(rd.round, k.a, k.b);
       const slot: FixtureSchedule | undefined = appliedBy ? { kind: "play_by", date: appliedBy } as FixtureSchedule : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
@@ -323,7 +331,12 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
       if (slot?.kind === "unscheduled" && (schedule.kind === "window" || /Shortage/.test(slot.reason))) return [{ matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null }];
       return [{ matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null }];
     });
-    if (rd.bye != null && !(saved.length && covered(rd.bye))) proposedBlocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    if (rd.bye != null && !(saved.length && covered(rd.bye))) {
+      const holder = into[rd.bye - 1];
+      const bye = exactChart && holder ? model.rounds.find((r) => r.round === rd.round)?.fixtures.find((f) => f.state === "bye" && f.a === holder) : undefined;
+      const factual = bye ? savedGrid.get(rd.round)?.blocks.find((b) => b.matchId === bye.id) : undefined;
+      proposedBlocks.push(factual ? { ...factual, saved: true, rows: [{ ...factual.rows[0], pos: rd.bye }, factual.rows[1]] } : { matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    }
     // Positions orphaned because their template partner already has a saved game
     // must still be shown: pair the leftovers within their half (wide gap: i v i+len/2).
     if (saved.length && !exactChart) {

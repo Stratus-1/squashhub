@@ -757,6 +757,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-20 · Rachel Gates NSC full bar and finance domain access
+- **Symptom:** NSC treasurer could not access all bar administration and club-finance information/actions.
+- **Finding:** Rachel already holds the Treasurer role with fees/banking/members/bar/finance, but GL accounts, banking writes, fee billing, ledger audit and some bar operations still required full club administration. NSC uses legacy permissions.
+- **Fix:** Migration 0219 adds an active-member, exact-NSC, exact-Rachel domain helper requiring her existing protected bar/finance grant; 13 additive policies and preserved-body billing/sales/settlement guard patches. No full-admin or role changes, financial records/balances untouched; audit_events records the access repair.
+- **Guard:** Isolated PostgreSQL tests against the applied migration cover bar/finance reads and writes, billing/sales, other-member and cross-club denial, unrelated authority denial and grant revocation. Authenticated Rachel preview opens NSC Club Finance and Bar/POS, reads GL accounts, guest tabs and ledger audit without errors; no payments/settings/counter/hardware actions submitted. Counter personal PIN remains required. Build OK; no publication. Native-specific testing not performed.
+
 ### 2026-10-20 · NSC pyramid and verified-result follow-up
 - **Symptom:** Same-row NSC challenge was blocked and the reported result had no challenge link, so confirmation would never move the ladder.
 - **Finding:** Same-row pyramid challenges were not configurable. Legacy confirmed-match processing ran twice, excluded mixed-gender movement and ignored the newer automatic approval setting.

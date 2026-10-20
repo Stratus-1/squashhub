@@ -1,4 +1,6 @@
 import { OrderProcessSwitch } from "@/components/bar/OrderProcessSwitch";
+import { useBarTips } from "@/hooks/use-bar-tips";
+import { StaffTips } from "@/components/bar/StaffTips";
 import { MemberDebitSwitches } from "@/components/club-admin/bar/MemberDebitSwitches";
 import { useBarImageLibrary, suggestLibraryImages } from "@/lib/bar-image-library";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
@@ -103,6 +105,7 @@ interface BarTabEntry {
 export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
+  const { data: tipConfig } = useBarTips(clubId);
   const updateClub = useUpdateClub();
   const { data: members = [] } = useClubMembers(clubId);
 
@@ -212,6 +215,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     { id: "member-sales", label: "Member sales", description: "Purchases charged to a member's account tab — and a way to add a charge on a member's behalf.", complete: enabled },
     { id: "card-sales", label: "Card sales", description: "Visitor, walk-in and scan-to-pay sales paid by card instead of a member account.", complete: enabled },
     { id: "closed-tabs", label: "Sales statistics", description: "", complete: enabled },
+    ...(tipConfig?.enabled ? [{ id: "staff-tips", label: "Staff tips", description: "", complete: true }] : []),
     { id: "open-tabs", label: "Open tabs", description: "See which guest tabs are still open or unpaid, who is serving them, and what is outstanding.", complete: enabled },
   ];
 
@@ -276,6 +280,20 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
           ))}
         </div>
         {clubId && <OrderProcessSwitch clubId={clubId} />}
+        <div className="mt-3 border-t pt-3 grid sm:grid-cols-2 gap-3">
+          {([['tips_enabled', 'Enable tips', tipConfig?.enabled], ['cash_up_enabled', 'Enable cash-up', tipConfig?.cash_up_enabled]] as const).map(([key, label, checked]) => <div key={key} className="flex items-center justify-between gap-3">
+            <Label htmlFor={key}>{label}</Label><Switch id={key} checked={checked === true} disabled={barSaving || !tipConfig} onCheckedChange={async value => {
+              setBarSaving(true);
+              try {
+                const { error } = await supabase.rpc("bar_set_tip_switch" as any, { _club_id: clubId, _key: key, _value: value });
+                if (error) throw error;
+                await qc.invalidateQueries({ queryKey: ["bar-tip-config", clubId] });
+                toast.success(`${label} ${value ? "switched on" : "switched off"}`);
+              } catch (e) { toast.error(e instanceof Error ? e.message : "Could not save setting"); }
+              finally { setBarSaving(false); }
+            }} />
+          </div>)}
+        </div>
         {(club as any)?.bar_account_tab_enabled !== false && clubId && <MemberDebitSwitches clubId={clubId} />}
       </Card>
 
@@ -368,6 +386,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
       {step === "open-tabs" && <OpenTabsTab clubId={clubId} />}
       {step === "closed-tabs" && <ClosedTabsTab clubId={clubId} />}
+      {step === "staff-tips" && tipConfig?.enabled && <StaffTips clubId={clubId} />}
 
       {step === "member-sales" && (
         <div className="space-y-4">

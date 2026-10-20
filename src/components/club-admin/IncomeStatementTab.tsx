@@ -153,6 +153,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     for (const row of margins) {
       lines.push("", row.division === "shop" ? "SHOP" : "BAR");
       csvRow("Sales", row.sales);
+      row.tipIncome.forEach(tip => csvRow(tip.label, tip.amount));
       csvRow(`Less: ${basis === "purchases" ? "Stock purchases" : "Cost of sales — Items"}`, -row.tradingCost);
       row.allocated.forEach(cost => csvRow(`Less: ${cost.label}`, -cost.amount));
       csvRow("Gross profit / (loss)", row.profit);
@@ -245,6 +246,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
               <thead><tr className="border-b"><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-right">Amount ({currencySymbol})</th></tr></thead>
               <tbody>
                 <tr className="border-b"><td className="px-3 py-2">Sales</td><td className="px-3 py-2 text-right tabular-nums">{money(row.sales)}</td></tr>
+                {row.tipIncome.map(tip => <tr key={tip.label} className="border-b"><td className="px-3 py-2">{tip.label}</td><td className="px-3 py-2 text-right tabular-nums">{money(tip.amount)}</td></tr>)}
                 <tr className="border-b"><td className="px-3 py-2">Less: {basis === "purchases" ? "Stock purchases" : "Cost of sales — Items"}</td><td className="px-3 py-2 text-right tabular-nums">{money(-row.tradingCost)}</td></tr>
                 {row.allocated.map(cost => <tr key={cost.label} className="border-b"><td className="px-3 py-2 break-words">Less: {cost.label}</td><td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(-cost.amount)}</td></tr>)}
                 <tr className="bg-muted/40 font-bold"><th className="px-3 py-2 text-left">Gross profit / (loss){row.margin === null ? "" : ` · ${row.margin.toFixed(1)}%`}</th><td className={cn("px-3 py-2 text-right tabular-nums whitespace-nowrap", row.profit < 0 && "text-destructive")}>{money(row.profit)}</td></tr>

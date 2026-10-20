@@ -27,12 +27,19 @@ export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Re
     (meta.category === "Income" ? primary : expenses).push({ label: meta.label, amount });
   }
   const divisions = divisionMargins(lines, hasShop, basis, costs, purchases).map(row => {
+    const tips = new Map<string, number>();
+    if (row.division === "bar") for (const line of lines.filter(line => line.account === "bar_income" && line.description?.startsWith("Tip income — "))) {
+      const label = line.description ?? "Tip income";
+      tips.set(label, (tips.get(label) ?? 0) + Number(line.credit) - Number(line.debit));
+    }
+    const tipIncome = [...tips].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005);
+    const tipTotal = tipIncome.reduce((sum, tip) => sum + tip.amount, 0);
     const allocated = new Map<string, number>();
     for (const line of lines.filter(line => line.account === `${row.division}_cost_of_sales`)) {
       const label = line.description?.trim() || "Allocated direct costs";
       allocated.set(label, (allocated.get(label) ?? 0) + Number(line.debit) - Number(line.credit));
     }
-    return { ...row, allocated: [...allocated].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005) };
+    return { ...row, sales: row.sales - tipTotal, tipIncome, allocated: [...allocated].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005) };
   });
   const primaryTotal = primary.reduce((sum, row) => sum + row.amount, 0);
   const grossIncome = primaryTotal + divisions.reduce((sum, row) => sum + row.profit, 0);

@@ -1,4 +1,8 @@
 import { showBarChargeError } from "@/lib/bar-charge-toast";
+import { useBarTips } from "@/hooks/use-bar-tips";
+import { TipEditor } from "@/components/bar/TipEditor";
+import { StaffTips } from "@/components/bar/StaffTips";
+import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
 /**
  * Bar Counter mode — `/s/:code/counter` (device unlocked with a staff PIN, no login)
  * or `/bar/counter`, which resolves the club menu and enters the same PIN flow.
@@ -46,6 +50,8 @@ interface CounterTab {
   opened_source?: string;
   club_member_id?: string | null;
   total: number;
+  subtotal?: number;
+  tip?: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
 
@@ -117,6 +123,8 @@ export default function BarCounter() {
   // the personal-PIN session; never fall back to the club-only admin RPC path.
   const enabled = Boolean(code && token);
   const [pane, setPane] = useState<"tabs" | "orders">("tabs");
+  const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
+  const [tipsOpen, setTipsOpen] = useState(false);
 
   const { data: entryCode, isLoading: entryLoading, error: entryError } = useQuery({
     queryKey: ["bar-counter-entry-code", clubId],
@@ -154,6 +162,10 @@ export default function BarCounter() {
     },
   });
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
+  const { data: tipConfig } = useBarTips(board?.club_id);
+  useEffect(() => {
+    setTipChoice({ ...emptyTip, staffId: tipConfig?.staff.find(person => person.name === operator)?.id ?? "" });
+  }, [activeTabId, operator, tipConfig]);
   useBarAutoRefresh(enabled && !!operator && !boardError, refetch);
   // Single ping when a new tab appears on the board (first load is silent).
   const seenTabs = useRef<Set<string> | null>(null);
@@ -161,8 +173,9 @@ export default function BarCounter() {
     if (!board?.tabs) return;
     const ids = board.tabs.map((t) => t.tab_id);
     if (seenTabs.current === null) { seenTabs.current = new Set(ids); return; }
-    const fresh = ids.some((id) => !seenTabs.current!.has(id));
-    ids.forEach((id) => seenTabs.current!.add(id));
+    const known = seenTabs.current;
+    const fresh = ids.some((id) => !known.has(id));
+    ids.forEach((id) => known.add(id));
     if (fresh) playPing(1);
   }, [board?.tabs]);
   // Signed-in staff can also see their club's edited category and division labels.
@@ -364,7 +377,10 @@ export default function BarCounter() {
     setBusy(true);
     try {
       if (!(await flushCart(activeTab.tab_id))) return;
-      const { data: res, error } = await (supabase as any).rpc("bar_counter_charge_member_account", {
+      const quote = tipConfig?.enabled ? tipQuote((activeTab.subtotal ?? activeTab.total) + cartTotal, tipChoice) : null;
+      const { data: res, error } = await (supabase as any).rpc(quote ? "bar_counter_account_with_tip" : "bar_counter_charge_member_account", quote ? {
+        _tab_id: activeTab.tab_id, _token: token, _tip: quote.tip, _staff_id: tipChoice.staffId || null,
+      } : {
         _tab_id: activeTab.tab_id, _token: token, _club_id: clubId,
       });
       if (error) throw error;
@@ -422,7 +438,10 @@ export default function BarCounter() {
     try {
       // Never lose a round that was scanned but not yet added to the tab.
       if (!(await flushCart(activeTab.tab_id))) return;
-      const { data: res, error } = await supabase.rpc("bar_counter_settle_tab", {
+      const quote = tipConfig?.enabled && activeTab.status === "open" ? tipQuote((activeTab.subtotal ?? activeTab.total) + cartTotal, tipChoice) : null;
+      const { data: res, error } = await (supabase as any).rpc(quote ? "bar_counter_settle_with_tip" : "bar_counter_settle_tab", quote ? {
+        _tab_id: activeTab.tab_id, _method: method, _token: token, _tip: quote.tip, _staff_id: tipChoice.staffId || null,
+      } : {
         _tab_id: activeTab.tab_id, _method: method, _token: token, _club_id: clubId,
       } as any);
       if (error) throw error;
@@ -472,11 +491,13 @@ export default function BarCounter() {
     if (!activeTab || !identified) return;
     // Post any scanned-but-not-yet-added round first, so it is billed too.
     if (!(await flushCart(activeTab.tab_id))) throw new Error("Could not add the basket to the tab");
-    const { error } = await (supabase as any).rpc("bar_qr_charge_guest_tab_member", {
+    const quote = tipConfig?.enabled ? tipQuote((activeTab.subtotal ?? activeTab.total) + cartTotal, tipChoice) : null;
+    const { error } = await (supabase as any).rpc(quote ? "bar_qr_account_with_tip" : "bar_qr_charge_guest_tab_member", {
       _tab_id: activeTab.tab_id,
       _token: activeTab.token,
       _club_member_id: identified.id,
       _pin: secret,
+      ...(quote ? { _tip: quote.tip, _staff_id: tipChoice.staffId || null } : {}),
     });
     if (error) throw new Error(error.message);
     setPinOpen(false);
@@ -895,6 +916,8 @@ export default function BarCounter() {
 
           <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
+            {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips / Cash payout</Button>}
+            {tipConfig?.enabled && activeTab.status === "open" && <TipEditor subtotal={(activeTab.subtotal ?? activeTab.total) + cartTotal} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={busy} />}
             {activeTab.status === "closing" && activeTab.settled_method === "online" && (
               <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
                 <p className="text-xs">Waiting for an online card payment. If the customer shows you the payment went through, approve it here. If they stopped or it got stuck, cancel it and choose another way to pay.</p>
@@ -1068,7 +1091,18 @@ export default function BarCounter() {
                   <Button
                     variant="outline" className="h-11 gap-2"
                     disabled={busy || activeTab.total <= 0}
-                    onClick={async () => { if (await flushCart(activeTab.tab_id)) setOnlineOpen(true); }}
+                    onClick={async () => {
+                      try {
+                        const quote = tipConfig?.enabled ? tipQuote((activeTab.subtotal ?? activeTab.total) + cartTotal, tipChoice) : null;
+                        if (!(await flushCart(activeTab.tab_id))) return;
+                        if (quote) {
+                          const { error } = await supabase.rpc("bar_set_tab_tip" as any, { _tab_id: activeTab.tab_id, _tab_token: activeTab.token, _amount: quote.tip, _staff_id: tipChoice.staffId || null, _counter_token: token });
+                          if (error) throw error;
+                          await refetch();
+                        }
+                        setOnlineOpen(true);
+                      } catch (e) { toast.error(e instanceof Error ? e.message : "Could not prepare payment"); }
+                    }}
                   >
                     <Smartphone className="w-4 h-4" /> Pay with card online
                   </Button>
@@ -1141,6 +1175,7 @@ export default function BarCounter() {
               <Button className="w-full" onClick={() => { setOnlineOpen(false); refetch(); }}>Done</Button>
             </DialogContent>
           </Dialog>
+          <Dialog open={tipsOpen} onOpenChange={setTipsOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Staff tips</DialogTitle></DialogHeader><StaffTips clubId={board.club_id} token={token} /></DialogContent></Dialog>
 
           <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
             <DialogContent className="max-w-sm">

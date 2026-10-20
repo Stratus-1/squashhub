@@ -1077,7 +1077,15 @@ export default function ScanPay() {
                       )}
                     </div>
                   )}
+                  {club.account_tab_enabled !== false && club.pay_online_enabled !== false && (!numberEntry || accountChargeTarget !== "tab") && (
+                    <div className="flex items-center gap-2 py-0.5" aria-hidden="true">
+                      <span className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">or</span>
+                      <span className="h-px flex-1 bg-border" />
+                    </div>
+                  )}
                   {club.pay_online_enabled !== false && (
+
                     <Button size="sm" className="w-full gap-1.5" disabled={submitting} onClick={payTabOnline}>
                       {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
                       Pay tab online by card — {formatMoney(tab.total, currency)}
@@ -1354,8 +1362,16 @@ export default function ScanPay() {
                       )}
                     </div>
                   )}
+                  {club.account_tab_enabled !== false && club.pay_online_enabled !== false && (member || !numberEntry) && (
+                    <div className="flex items-center gap-2 py-0.5" aria-hidden="true">
+                      <span className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">or</span>
+                      <span className="h-px flex-1 bg-border" />
+                    </div>
+                  )}
 
                   {club.pay_online_enabled !== false && (
+
                     <Button
                       variant={member ? "outline" : "default"}
                       className="w-full gap-2 h-11"

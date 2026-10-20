@@ -1457,6 +1457,13 @@
       "when": 1792481647100,
       "tag": "0207_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1792483512387,
+      "tag": "0208_bar_tips_and_cash_payouts",
+      "breakpoints": true
     }
   ]
 }

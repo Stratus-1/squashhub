@@ -54,7 +54,7 @@ describe("reconcile diff (Riverside Round 2 shape)", () => {
   it("maps saved stages to live rounds by label", () => {
     expect(roundsForStage(stages[1], [round("r1", "Round 1", 1, "club"), round("r2", "Round 2", 2, "self")]).map((r) => r.id)).toEqual(["r2"]);
   });
-  it("Play by: clears unbooked allocations, keeps completed results, keeps players' own bookings", () => {
+  it("Play by: preserves unbooked allocations, completed results and players' own bookings", () => {
     const rounds = [round("r2", "Round 2", 2, "self")];
     const ms = [
       m("open", "r2", { scheduled_date: "2026-10-19", scheduled_time: "17:20", court_id: 20 }),
@@ -63,14 +63,15 @@ describe("reconcile diff (Riverside Round 2 shape)", () => {
     ];
     const d = diffRound(stages[1], rounds, ms);
     expect(d.roundsToUpdate).toEqual(["r2"]);
-    expect(d.clearAllocations).toEqual(["open"]);
-    expect(d.keepPlayerBookings).toEqual(["own"]);
+    expect(d.clearAllocations).toEqual([]);
+    expect(d.keepPlayerBookings).toEqual(["open", "own"]);
     expect(d.untouched).toBe(1);
     expect(d.inSync).toBe(false);
   });
-  it("Play by: organiser allocations from a timed round are released", () => {
+  it("Play by: organiser allocations from a timed round stay booked", () => {
     const d = diffRound(stages[1], [round("r2", "Round 2", 2, "club")], [m("x", "r2", { booking_id: "bk", scheduled_date: D, court_id: 1 })]);
-    expect(d.clearAllocations).toEqual(["x"]);
+    expect(d.clearAllocations).toEqual([]);
+    expect(d.keepPlayerBookings).toEqual(["x"]);
   });
   it("is idempotent: in sync after apply", () => {
     const d = diffRound(stages[1], [round("r2", "Round 2", 2, "self", "2026-11-13")], [m("x", "r2", { play_by: "2026-11-13" }), m("c", "r2", { status: "completed", court_id: 1, scheduled_date: D })]);

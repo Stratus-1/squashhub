@@ -4,8 +4,8 @@
  *
  * Saved settings live on `beta_lifecycle.format_plan.stages[]` (mode "scheduled" | "play_by", date/from/to/courtIds,
  * extraDays, deadline). The live round rows (`club_champs_rounds`) and their matches are reconciled to those settings:
- * - Play by date: server `admin_set_round_play_by` (idempotent) sets the deadline, clears unbooked allocations and
- *   organiser-made match bookings (block holds restored), keeps players' own bookings and every other booking.
+ * - Play by date: server `admin_set_round_play_by` (idempotent) sets the deadline and preserves all saved
+ *   court allocations and bookings. Clearing/moving requires an explicit fixture action.
  * - Scheduled: a conflict-aware PROPOSAL is built (no writes), previewed, and only after approval applied through
  *   `admin_set_round_timed` + `self_schedule_champ_match` (server re-validates courts/clashes, carves block holds).
  * Matches without both players (provisional) are never allocated and stay out of Upcoming Fixtures.
@@ -124,8 +124,8 @@ export const isConfirmed = (m: LiveMatch) => !!(m.player_a_member_id && m.player
 export interface ReconcileDiff {
   mode: "scheduled" | "play_by";
   roundsToUpdate: string[];
-  clearAllocations: string[];      // play_by: open matches whose court/time will be removed
-  keepPlayerBookings: string[];    // play_by: players' own bookings that stay
+  clearAllocations: string[];      // deadline edits never clear allocations
+  keepPlayerBookings: string[];    // saved bookings/allocations preserved on deadline edits
   deadlineUpdates: string[];       // play_by: open matches whose deadline changes
   needAllocation: string[];        // scheduled: confirmed open matches with no slot yet
   outsideWindow: string[];         // scheduled: organiser allocations no longer inside the saved date/time/courts
@@ -157,12 +157,11 @@ export function diffRound(stage: StageSchedule, rounds: LiveRound[], matches: Li
   for (const m of matches.filter((x) => x.round_id && ids.has(x.round_id))) {
     if (!isOpen(m)) { d.untouched++; continue; }
     if (stage.mode === "play_by") {
-      if (m.booking_id && !wasClub.get(m.round_id!)) d.keepPlayerBookings.push(m.id);
-      else if (m.booking_id || m.scheduled_date || m.scheduled_time || m.court_id) d.clearAllocations.push(m.id);
+      if (m.booking_id || m.scheduled_date || m.scheduled_time || m.court_id) d.keepPlayerBookings.push(m.id);
       if (m.play_by !== stage.deadline) d.deadlineUpdates.push(m.id);
     } else if (!isConfirmed(m)) d.provisional++;
     else if (!m.scheduled_date && !m.booking_id) d.needAllocation.push(m.id);
-    else if (wasClub.get(m.round_id!) && !insideWindows(m, stage.windows)) d.outsideWindow.push(m.id);
+    else if (m.round_id && wasClub.get(m.round_id) && !insideWindows(m, stage.windows)) d.outsideWindow.push(m.id);
   }
   d.inSync = !d.roundsToUpdate.length && !d.clearAllocations.length && !d.deadlineUpdates.length && !d.needAllocation.length && !d.outsideWindow.length;
   return d;

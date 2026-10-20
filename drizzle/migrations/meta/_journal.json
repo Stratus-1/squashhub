@@ -1436,6 +1436,13 @@
       "when": 1792434916963,
       "tag": "0204_tournament_player_info",
       "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1792473940511,
+      "tag": "0205_round_deadlines_preserve_fixture_allocations",
+      "breakpoints": true
     }
   ]
 }

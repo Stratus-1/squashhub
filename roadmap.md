@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Apply exact uploaded 18-player five-round chart to Uitsig Men's C proposed view only, with explicitly approved repeats. Preserve saved games, default generation and other clubs; no publication.
+- [x] Exact uploaded 18-player five-round chart applied to Uitsig Men's C proposed view only, with explicitly approved repeats. 38 tests pass; authenticated Men’s C preview opened and checked. Saved rounds stay factual (so may differ from chart); default generation and other clubs unchanged. No publication or live-data changes.
 
 - [x] Revised 24-player proposed preview: R4 1v4/2v3, R2 duplicate 5v8/6v7 switched to 5v7/6v8; R5 adjacent finals. Provisional R3 collisions switched; no repeated position pairs. 58 tests pass; fictional-player browser preview visibly checked R4/R5. Live engine/saved fixtures unchanged; no publication. Real tournament flow not independently rechecked.
 

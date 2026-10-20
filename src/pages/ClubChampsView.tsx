@@ -333,7 +333,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     queryKey: ["club-champ-registrations", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, status, partner_confirmed, club_member_id, partner_member_id, confirmed_at, division_choices, member:club_member_id(id, name, ladder_position, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, ladder_position, profiles:user_id(name))")
+        .select("id, status, partner_confirmed, club_member_id, partner_member_id, confirmed_at, division_choices, withdrawn_keep_position, member:club_member_id(id, name, ladder_position, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, ladder_position, profiles:user_id(name))")
         .eq("champ_id", champId!)
         .neq("status", "cancelled");
       if (error) throw error;
@@ -356,7 +356,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     queryKey: ["club-champ-registrations-all", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, status, partner_confirmed, club_member_id, invited_at, confirmed_at, confirmation_source, paid_at, fee_paid_cents, registration_status, fee_status, registration_source, member:club_member_id(id, name, profiles:user_id(name))")
+        .select("id, status, partner_confirmed, club_member_id, invited_at, confirmed_at, confirmation_source, paid_at, fee_paid_cents, registration_status, fee_status, registration_source, withdrawn_keep_position, member:club_member_id(id, name, profiles:user_id(name))")
         .eq("champ_id", champId!);
       if (error) throw error;
       return (data || []) as any[];
@@ -1356,7 +1356,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       if (!swissSt || !pilotViewerOn || !pilotSwissOn || isDoublesLeague(gn)) return classic;
       const gEntries = (entries as any[]).filter((e: any) => e.group_number === gn).sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
       const names: Record<string, string> = {};
-      rows.forEach((r: any) => { names[r.club_member_id] = r.name; });
+      const withdrawnIds = new Set((registrations as any[]).filter((r: any) => r.withdrawn_keep_position).map((r: any) => r.club_member_id));
+      rows.forEach((r: any) => { names[r.club_member_id] = withdrawnIds.has(r.club_member_id) ? `${r.name} (withdrawn – bye)` : r.name; });
       const toProgressionMatch = (m: any) => ({
         id: m.id, round: Number(m.round_number),
         a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null,
@@ -2683,6 +2684,16 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             if (error) { toast.error(error.message); return; }
             qc.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
           };
+          const toggleWithdrawnKeep = async (r: any) => {
+            const on = !r.withdrawn_keep_position;
+            if (on && !window.confirm(`${nameOf(r)} keeps their position, and every new game against them becomes a walkover win for the opponent. Continue?`)) return;
+            const { error } = await fromExt("club_champs_registrations")
+              .update({ withdrawn_keep_position: on, withdrawn_reason: on ? "withdrawn" : null }).eq("id", r.id);
+            if (error) { toast.error(error.message); return; }
+            toast.success(on ? "Marked withdrawn – position kept as a bye" : "Player back in normal play");
+            qc.invalidateQueries({ queryKey: ["club-champ-registrations-all", champId] });
+            qc.invalidateQueries({ queryKey: ["club-champ-registrations", champId] });
+          };
 
           const Row = ({ r, showInvite }: { r: any; showInvite?: boolean }) => {
             const isPaid = PAID_STATUSES.has(String(r.status || "").toLowerCase()) || (r.fee_paid_cents || 0) > 0;
@@ -2707,6 +2718,17 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                     onClick={() => toggleConfirmed(r)}
                   >
                     {r.confirmed_at ? "Unconfirm" : "Confirm"}
+                  </Button>
+                )}
+                {r.confirmed_at && !DECLINED.has(String(r.status || "").toLowerCase()) && (
+                  <Button
+                    size="sm"
+                    variant={r.withdrawn_keep_position ? "destructive" : "ghost"}
+                    className="h-6 px-1.5 text-[10px]"
+                    title="Player withdrew but keeps their position; every new game against them is a walkover win for the opponent"
+                    onClick={() => toggleWithdrawnKeep(r)}
+                  >
+                    {r.withdrawn_keep_position ? "Withdrawn (bye) – undo" : "Withdraw, keep position"}
                   </Button>
                 )}
               </li>

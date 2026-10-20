@@ -905,6 +905,8 @@ export type Database = {
       bar_cash_ups: {
         Row: {
           actor_user_id: string | null
+          card_counted: number | null
+          card_expected: number | null
           closed_by_device: string | null
           closed_by_name: string | null
           club_id: string
@@ -915,11 +917,16 @@ export type Database = {
           note: string | null
           period_end: string
           period_start: string
+          tips_paid_at_cash_up: number
           totals: Json
           variance: number
+          write_off_amount: number
+          written_off: boolean
         }
         Insert: {
           actor_user_id?: string | null
+          card_counted?: number | null
+          card_expected?: number | null
           closed_by_device?: string | null
           closed_by_name?: string | null
           club_id: string
@@ -930,11 +937,16 @@ export type Database = {
           note?: string | null
           period_end: string
           period_start: string
+          tips_paid_at_cash_up?: number
           totals: Json
           variance: number
+          write_off_amount?: number
+          written_off?: boolean
         }
         Update: {
           actor_user_id?: string | null
+          card_counted?: number | null
+          card_expected?: number | null
           closed_by_device?: string | null
           closed_by_name?: string | null
           club_id?: string
@@ -945,8 +957,11 @@ export type Database = {
           note?: string | null
           period_end?: string
           period_start?: string
+          tips_paid_at_cash_up?: number
           totals?: Json
           variance?: number
+          write_off_amount?: number
+          written_off?: boolean
         }
         Relationships: [
           {
@@ -19868,10 +19883,26 @@ export type Database = {
         }
         Returns: Json
       }
+      bar_cash_up_close_v2: {
+        Args: {
+          _card_counted: number
+          _club_id: string
+          _counted_cash: number
+          _note: string
+          _period_start: string
+          _request_id: string
+          _tip_payouts: Json
+          _token?: string
+          _write_off: boolean
+        }
+        Returns: Json
+      }
       bar_cash_up_history: {
         Args: { _club_id: string; _token?: string }
         Returns: {
           actor_user_id: string | null
+          card_counted: number | null
+          card_expected: number | null
           closed_by_device: string | null
           closed_by_name: string | null
           club_id: string
@@ -19882,8 +19913,11 @@ export type Database = {
           note: string | null
           period_end: string
           period_start: string
+          tips_paid_at_cash_up: number
           totals: Json
           variance: number
+          write_off_amount: number
+          written_off: boolean
         }[]
         SetofOptions: {
           from: "*"

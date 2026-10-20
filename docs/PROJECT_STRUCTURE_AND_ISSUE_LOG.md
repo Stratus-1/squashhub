@@ -1,3 +1,6 @@
+## 2026-10-20 — NSC doubles test-score reset
+- Owner requested clearing tonight's Nelspruit Doubles League scoring tests. Two scored rubbers reset with timestamp guards and before/after audit; two pending ranking awards rejected and one stale marker lock removed. All 15 rubbers across tonight's three real fixtures read back unscored; fixture summary rows were absent and fixture score fields blank. Players, pairs, bookings, earlier games and bye fixture retained. Both affected authenticated scorecards show blank games and Enter result. No code deployment; scoring devices should reload before starting real play.
+
 ## 2026-10-20 — Uitsig Men's C exact 18-player chart
 - Owner-supplied five-round chart selected only for the existing Uitsig championship Men's C group with 18 entrants/five rounds. Owner explicitly approved the repeated 9v10 and 15v16 pairs; the display bypasses repeat repair for this chart only. Saved games remain factual; default/writer projections, other groups, data and deployment are unchanged.
 

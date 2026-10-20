@@ -129,10 +129,14 @@ export default function BarCounter() {
   const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
   const [tipsOpen, setTipsOpen] = useState(false);
   const [cashUpOpen, setCashUpOpen] = useState(false);
-  const [settleTipOpen, setSettleTipOpen] = useState(false);
+  const [settleOpen, setSettleOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [topUpBusy, setTopUpBusy] = useState(false);
+
+  // The settle dialog belongs to the tab it was opened for — never let it
+  // pop up again when a different tab is opened.
+  useEffect(() => { setSettleOpen(false); }, [activeTabId]);
 
   const { data: entryCode, isLoading: entryLoading, error: entryError } = useQuery({
     queryKey: ["bar-counter-entry-code", clubId],
@@ -436,7 +440,6 @@ export default function BarCounter() {
         invalidate();
         toast.success("Added to tab");
         setActiveTabId(null);
-        setSettleTipOpen(false);
       }
     } finally {
       setBusy(false);
@@ -963,9 +966,6 @@ export default function BarCounter() {
           <div className="fixed bottom-16 md:bottom-0 left-0 right-0 xl:right-80 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
             {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips / Cash payout</Button>}
-            {tipConfig?.enabled && activeTab.status === "open" && cartTotal === 0 && (tipChoice.mode === "none" && !settleTipOpen
-              ? <Button size="sm" variant="ghost" onClick={() => setSettleTipOpen(true)}>Settling now? Add a tip</Button>
-              : <div className="space-y-1"><TipEditor subtotal={activeTab.subtotal ?? activeTab.total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={busy} fixedStaff /><Button size="sm" variant="ghost" onClick={() => { setSettleTipOpen(false); setTipChoice(c => ({ ...emptyTip, staffId: c.staffId })); }}>No tip</Button></div>)}
             {activeTab.status === "closing" && activeTab.settled_method === "online" && (
               <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
                 <p className="text-xs">Waiting for an online card payment. If the customer shows you the payment went through, approve it here. If they stopped or it got stuck, cancel it and choose another way to pay.</p>
@@ -1111,28 +1111,6 @@ export default function BarCounter() {
               </span>
             </Button>
 
-            {activeTab.status !== "closing" && (board.cash_enabled || board.card_enabled) && (
-            <div className={`grid gap-2 ${board.cash_enabled && board.card_enabled ? "grid-cols-2" : "grid-cols-1"}`}>
-              {board.cash_enabled && (
-              <Button
-                variant="outline" className="h-11 gap-2"
-                disabled={busy || activeTab.total <= 0}
-                onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} cash received?`)) settle("cash"); }}
-              >
-                <Banknote className="w-4 h-4" /> Paid cash at counter
-              </Button>
-              )}
-              {board.card_enabled && (
-              <Button
-                variant="outline" className="h-11 gap-2"
-                disabled={busy || activeTab.total <= 0}
-                onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} card machine payment received? Only confirm if the machine showed APPROVED.`)) settle("terminal"); }}
-              >
-                <CreditCard className="w-4 h-4" /> Swipe at card machine at counter
-              </Button>
-              )}
-            </div>
-            )}
             {activeTab.status === "open" && activeTab.club_member_id && (board.cash_enabled || board.card_enabled) && (
               <Button
                 variant="outline" className="w-full h-11 gap-2" disabled={busy}
@@ -1141,45 +1119,15 @@ export default function BarCounter() {
                 <Wallet className="w-4 h-4" /> Top-up member account
               </Button>
             )}
-            {activeTab.status !== "closing" && (board.account_enabled !== false || onlineAvailable) && (
-              <div className={`grid gap-2 ${board.account_enabled !== false && onlineAvailable ? "grid-cols-2" : "grid-cols-1"}`}>
-                {onlineAvailable && (
-                  <Button
-                    variant="outline" className="h-11 gap-2"
-                    disabled={busy || activeTab.total <= 0}
-                    onClick={async () => {
-                      try {
-                        const quote = tipConfig?.enabled ? tipQuote((activeTab.subtotal ?? activeTab.total) + cartTotal, tipChoice) : null;
-                        if (quote?.tip && !tipConfig?.online_tips_ready) throw new Error("Online tips await payment release; choose cash, card at the bar or member account.");
-                        if (!(await flushCart(activeTab.tab_id))) return;
-                        if (quote) {
-                          const { error } = await supabase.rpc("bar_set_tab_tip" as any, { _tab_id: activeTab.tab_id, _tab_token: activeTab.token, _amount: quote.tip, _staff_id: tipChoice.staffId || null, _counter_token: token });
-                          if (error) throw error;
-                          await refetch();
-                        }
-                        setOnlineOpen(true);
-                      } catch (e) { toast.error(e instanceof Error ? e.message : "Could not prepare payment"); }
-                    }}
-                  >
-                    <Smartphone className="w-4 h-4" /> Pay with card online
-                  </Button>
-                )}
-                {board.account_enabled !== false && (
-                  <Button
-                    variant="secondary" className="h-11 gap-2"
-                    disabled={busy || activeTab.total <= 0}
-                    onClick={() => {
-                      if (activeTab.club_member_id) {
-                        if (window.confirm(`Charge ${money(activeTab.total)} to ${activeTab.guest_name}'s member account?`)) chargeLinkedMember();
-                      } else {
-                        setMemberNumber(""); setMemberOpen(true);
-                      }
-                    }}
-                  >
-                    <UserCheck className="w-4 h-4" /> Member account
-                  </Button>
-                )}
-              </div>
+            {activeTab.status !== "closing" && (board.cash_enabled || board.card_enabled || board.account_enabled !== false || onlineAvailable) && (
+              <Button
+                className="w-full h-12 gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                disabled={busy || activeTab.total <= 0}
+                onClick={() => setSettleOpen(true)}
+              >
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                <span className="truncate">Settle my account now · {money(activeTab.total)}</span>
+              </Button>
             )}
             {activeTab.status === "open" && activeTab.total <= 0 && (
               <Button
@@ -1230,6 +1178,82 @@ export default function BarCounter() {
                 </div>
               )}
               <Button className="w-full" onClick={() => { setOnlineOpen(false); refetch(); }}>Done</Button>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={settleOpen} onOpenChange={open => { if (!busy) setSettleOpen(open); }}>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Settle {activeTab.guest_name}'s tab · {money(activeTab.total)}</DialogTitle>
+                <DialogDescription className="text-xs">Choose how the customer is paying.</DialogDescription>
+              </DialogHeader>
+              {tipConfig?.enabled && (
+                <TipEditor
+                  subtotal={(activeTab.subtotal ?? activeTab.total) + cartTotal}
+                  choice={tipChoice}
+                  onChange={setTipChoice}
+                  staff={tipConfig.staff}
+                  disabled={busy}
+                  fixedStaff
+                />
+              )}
+              <div className="space-y-2 pt-2">
+                {board.cash_enabled && (
+                  <Button
+                    className="w-full h-12 gap-2 justify-start"
+                    disabled={busy || activeTab.total <= 0}
+                    onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} cash received?`)) { setSettleOpen(false); settle("cash"); } }}
+                  >
+                    <Banknote className="w-5 h-5" /> Paid cash at counter
+                  </Button>
+                )}
+                {board.card_enabled && (
+                  <Button
+                    className="w-full h-12 gap-2 justify-start"
+                    disabled={busy || activeTab.total <= 0}
+                    onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} card machine payment received? Only confirm if the machine showed APPROVED.`)) { setSettleOpen(false); settle("terminal"); } }}
+                  >
+                    <CreditCard className="w-5 h-5" /> Swipe at card machine at counter
+                  </Button>
+                )}
+                {board.account_enabled !== false && (
+                  <Button
+                    className="w-full h-12 gap-2 justify-start"
+                    disabled={busy || activeTab.total <= 0}
+                    onClick={() => {
+                      if (activeTab.club_member_id) {
+                        if (window.confirm(`Charge ${money(activeTab.total)} to ${activeTab.guest_name}'s member account?`)) { setSettleOpen(false); chargeLinkedMember(); }
+                      } else {
+                        setSettleOpen(false); setMemberNumber(""); setMemberOpen(true);
+                      }
+                    }}
+                  >
+                    <UserCheck className="w-5 h-5" /> Charge member account
+                  </Button>
+                )}
+                {onlineAvailable && (
+                  <Button
+                    className="w-full h-12 gap-2 justify-start"
+                    disabled={busy || activeTab.total <= 0}
+                    onClick={async () => {
+                      try {
+                        const quote = tipConfig?.enabled ? tipQuote((activeTab.subtotal ?? activeTab.total) + cartTotal, tipChoice) : null;
+                        if (quote?.tip && !tipConfig?.online_tips_ready) throw new Error("Online tips await payment release; choose cash, card at the bar or member account.");
+                        if (!(await flushCart(activeTab.tab_id))) return;
+                        if (quote) {
+                          const { error } = await supabase.rpc("bar_set_tab_tip" as any, { _tab_id: activeTab.tab_id, _tab_token: activeTab.token, _amount: quote.tip, _staff_id: tipChoice.staffId || null, _counter_token: token });
+                          if (error) throw error;
+                          await refetch();
+                        }
+                        setSettleOpen(false);
+                        setOnlineOpen(true);
+                      } catch (e) { toast.error(e instanceof Error ? e.message : "Could not prepare payment"); }
+                    }}
+                  >
+                    <Smartphone className="w-5 h-5" /> Pay with card online
+                  </Button>
+                )}
+                <Button variant="ghost" className="w-full h-10" disabled={busy} onClick={() => setSettleOpen(false)}>Keep tab open</Button>
+              </div>
             </DialogContent>
           </Dialog>
           <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>

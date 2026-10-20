@@ -1,0 +1,38 @@
+import { beforeEach, afterAll, describe, expect, it } from "vitest";
+import postgres from "postgres";
+const port = process.env.BAR_TIPS_TEST_PORT;
+const suite = port ? describe : describe.skip;
+const club = "11111111-1111-1111-1111-111111111111", other = "22222222-2222-2222-2222-222222222222";
+const admin = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", staff = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+const token = "cccccccc-cccc-cccc-cccc-cccccccccccc", tab = "dddddddd-dddd-dddd-dddd-dddddddddddd", tabToken = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
+const payout = "ffffffff-ffff-ffff-ffff-ffffffffffff", member = "11111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+suite("tip server authority using disposable PostgreSQL", () => {
+  const sql = postgres({ host: "127.0.0.1", port: Number(port), database: "bar_tips_test", username: "lovable", max: 1 });
+  beforeEach(async () => {
+    await sql.unsafe("TRUNCATE bar_tip_payouts,bar_tips,bar_guest_tabs,bar_visitor_sales,bar_counter_sessions,bar_counter_devices,club_journal_entries,bar_tab_payment_events,club_members,club_bar_settings,clubs CASCADE");
+    await sql`SELECT set_config('test.user',${admin},false)`;
+    await sql`INSERT INTO clubs(id) VALUES(${club}),(${other})`;
+    await sql`INSERT INTO club_bar_settings(club_id,tips_enabled) VALUES(${club},true),(${other},false)`;
+    await sql`INSERT INTO bar_counter_devices(id,club_id,label,active) VALUES(${staff},${club},'Grant',true)`;
+    await sql`INSERT INTO bar_counter_sessions(device_id,club_id,token,expires_at) VALUES(${staff},${club},${token},now()+interval '1 day')`;
+    await sql`INSERT INTO club_members(id,club_id,status) VALUES(${member},${club},'active')`;
+    await sql`INSERT INTO bar_guest_tabs(id,club_id,token,status) VALUES(${tab},${club},${tabToken},'open')`;
+  });
+  afterAll(async () => { await sql.end(); });
+  const prepare = async (amount = 100) => sql`SELECT bar_set_tab_tip(${tab},${tabToken},${amount},${staff})`;
+  const earn = async () => { await prepare(); await sql`UPDATE bar_guest_tabs SET status='settled',settled_method='cash' WHERE id=${tab}`; };
+  it("tips default off for new settings", async () => { await sql`UPDATE club_bar_settings SET tips_enabled=false WHERE club_id=${club}`; await expect(prepare()).rejects.toThrow("not enabled"); });
+  it("rejects staff from another club", async () => { await sql`UPDATE bar_counter_devices SET club_id=${other} WHERE id=${staff}`; await expect(prepare()).rejects.toThrow("valid serving person"); });
+  it("counter tip ignores forged recipient and uses personal PIN owner", async () => { await sql`SELECT bar_set_tab_tip(${tab},NULL,100,${admin},${token})`; expect((await sql`SELECT staff_id FROM bar_tips`)[0].staff_id).toBe(staff); });
+  it("rejects a revoked PIN even when tab token is valid", async () => { await sql`UPDATE bar_counter_sessions SET revoked_at=now()`; await expect(sql`SELECT bar_set_tab_tip(${tab},${tabToken},100,${staff},${token})`).rejects.toThrow("PIN"); });
+  it("pending cash request earns no tip", async () => { await prepare(); await sql`UPDATE bar_guest_tabs SET status='closing',settled_method='cash' WHERE id=${tab}`; expect((await sql`SELECT status FROM bar_tips`)[0].status).toBe("pending"); expect((await sql`SELECT count(*)::int n FROM club_journal_entries`)[0].n).toBe(0); });
+  it("R100 confirmed and R50 paid leaves R50", async () => { await earn(); await sql`SELECT bar_pay_staff_tips(${club},${staff},50,${payout},${token})`; expect((await sql`SELECT * FROM bar_staff_tip_balances(${club},${token})`)[0]).toMatchObject({ earned: "100.00", paid: "50.00", remaining: "50.00" }); });
+  it("payout retry records one payment", async () => { await earn(); for (let i=0;i<2;i++) await sql`SELECT bar_pay_staff_tips(${club},${staff},50,${payout},${token})`; expect((await sql`SELECT count(*)::int n FROM bar_tip_payouts`)[0].n).toBe(1); });
+  it("payout cannot exceed the staff credit", async () => { await earn(); await expect(sql`SELECT bar_pay_staff_tips(${club},${staff},101,${payout},${token})`).rejects.toThrow("exceeds"); });
+  it("club-only admin cannot use another club's balance", async () => { await expect(sql`SELECT bar_staff_tip_balances(${other},NULL)`).rejects.toThrow("permission"); });
+  it("same settlement cannot earn twice", async () => { await earn(); await sql`UPDATE bar_guest_tabs SET status='settled' WHERE id=${tab}`; expect((await sql`SELECT sum(credit)::text amount FROM club_journal_entries WHERE account='bar_income'`)[0].amount).toBe("100.00"); });
+  it("paid tip tabs cannot reopen", async () => { await earn(); await expect(sql`UPDATE bar_guest_tabs SET status='open' WHERE id=${tab}`).rejects.toThrow("cannot be reopened"); });
+  it("unpaid member account tip is not income or available cash payout", async () => { await prepare(); await sql`UPDATE bar_guest_tabs SET status='settled',settled_method='member_account',club_member_id=${member} WHERE id=${tab}`; expect((await sql`SELECT status FROM bar_tips`)[0].status).toBe("account_due"); expect((await sql`SELECT coalesce(sum(credit),0)::text amount FROM club_journal_entries WHERE account='bar_income'`)[0].amount).toBe("0"); await expect(sql`SELECT bar_pay_staff_tips(${club},${staff},1,${payout},${token})`).rejects.toThrow("exceeds"); });
+  it("member payment recognizes the tip once when the account is covered", async () => { await prepare(); await sql`UPDATE bar_guest_tabs SET status='settled',settled_method='member_account',club_member_id=${member} WHERE id=${tab}`; await sql`INSERT INTO club_journal_entries(club_id,journal_ref,account,debit,credit,description,club_member_id) VALUES(${club},${payout},'debtors',0,100,'Account payment',${member})`; expect((await sql`SELECT status FROM bar_tips`)[0].status).toBe("earned"); expect((await sql`SELECT sum(credit)::text amount FROM club_journal_entries WHERE account='bar_income'`)[0].amount).toBe("100.00"); });
+  it("no anonymous direct table writes or public helper execution", async () => { expect((await sql`SELECT has_table_privilege('anon','bar_tips','INSERT') allowed`)[0].allowed).toBe(false); expect((await sql`SELECT has_function_privilege('anon','_bar_earn_tip(uuid,text,uuid)','EXECUTE') allowed`)[0].allowed).toBe(false); });
+});

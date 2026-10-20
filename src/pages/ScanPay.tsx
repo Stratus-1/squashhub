@@ -122,6 +122,7 @@ export default function ScanPay() {
   const [identifying, setIdentifying] = useState(false);
   const [accountChargeTarget, setAccountChargeTarget] = useState<"cart" | "tab">("cart");
   const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
+  const [settleTipOpen, setSettleTipOpen] = useState(false);
 
 
   const [guestChosen, setGuestChosen] = useState<boolean>(
@@ -933,7 +934,9 @@ export default function ScanPay() {
                   ))}
                 </div>
                 {orderProcess && <GuestOrderProgress tab={tab} />}
-                {tipConfig?.enabled && tab.status === "open" && tab.total > 0 && <TipEditor subtotal={tab.subtotal ?? tab.total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} />}
+                {tipConfig?.enabled && tab.status === "open" && tab.total > 0 && cartLines.length === 0 && (tipChoice.mode === "none" && !settleTipOpen
+                  ? <Button size="sm" variant="ghost" onClick={() => setSettleTipOpen(true)}>Settling your tab? Add a tip</Button>
+                  : <div className="space-y-1"><TipEditor subtotal={tab.subtotal ?? tab.total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} /><Button size="sm" variant="ghost" onClick={() => { setSettleTipOpen(false); setTipChoice(emptyTip); }}>No tip</Button></div>)}
                 {(tab.tip ?? 0) > 0 && <p className="text-xs">Included tip: {formatMoney(tab.tip ?? 0, currency)}</p>}
                 <Separator />
                 <p className="text-[11px] text-muted-foreground">
@@ -1233,7 +1236,7 @@ export default function ScanPay() {
                   <span>Total</span>
                   <span>{formatMoney(total, currency)}</span>
                 </div>
-                {tipConfig?.enabled && total > 0 && <TipEditor subtotal={total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} />}
+                {tipConfig?.enabled && total > 0 && !(tab && tab.status === "open") && <TipEditor subtotal={total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} />}
 
                 {(!member || club.account_tab_enabled === false) && !tab && (
                   <div className="space-y-1">

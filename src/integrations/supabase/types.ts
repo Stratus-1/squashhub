@@ -19457,6 +19457,10 @@ export type Database = {
         Args: { _id: string; _member?: string; _method: string }
         Returns: undefined
       }
+      _bar_member_tip_recipient: {
+        Args: { _club_id: string; _staff_id: string; _tab_id?: string }
+        Returns: string
+      }
       _bar_order_json: { Args: { _order_id: string }; Returns: Json }
       _bar_prepare_tip: {
         Args: {
@@ -20193,6 +20197,34 @@ export type Database = {
         Returns: {
           bar_item_id: string
           sold_qty: number
+        }[]
+      }
+      bar_member_cart_account_with_tip: {
+        Args: {
+          _club_id: string
+          _club_member_id: string
+          _lines: Json
+          _request_id: string
+          _staff_id?: string
+          _tip: number
+        }
+        Returns: Json
+      }
+      bar_member_tab_account_with_tip: {
+        Args: {
+          _club_member_id: string
+          _staff_id?: string
+          _tab_id: string
+          _tip: number
+          _token: string
+        }
+        Returns: Json
+      }
+      bar_member_tip_staff: {
+        Args: { _club_id: string }
+        Returns: {
+          id: string
+          name: string
         }[]
       }
       bar_open_tabs: { Args: { _club_id: string }; Returns: Json }

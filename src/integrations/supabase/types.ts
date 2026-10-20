@@ -9257,6 +9257,7 @@ export type Database = {
           max_active_incoming: number
           max_active_outgoing: number
           movement_policy: string
+          pyramid_allow_same_row: boolean
           pyramid_row_sizes: Json | null
           ranking_auto_approve: boolean
           ranking_mirror_margin: number
@@ -9283,6 +9284,7 @@ export type Database = {
           max_active_incoming?: number
           max_active_outgoing?: number
           movement_policy?: string
+          pyramid_allow_same_row?: boolean
           pyramid_row_sizes?: Json | null
           ranking_auto_approve?: boolean
           ranking_mirror_margin?: number
@@ -9309,6 +9311,7 @@ export type Database = {
           max_active_incoming?: number
           max_active_outgoing?: number
           movement_policy?: string
+          pyramid_allow_same_row?: boolean
           pyramid_row_sizes?: Json | null
           ranking_auto_approve?: boolean
           ranking_mirror_margin?: number
@@ -11830,6 +11833,7 @@ export type Database = {
           game_scores: string | null
           id: string
           is_imported: boolean
+          ladder_effects_applied_at: string | null
           match_date: string
           notes: string | null
           player_a: string | null
@@ -11857,6 +11861,7 @@ export type Database = {
           game_scores?: string | null
           id?: string
           is_imported?: boolean
+          ladder_effects_applied_at?: string | null
           match_date?: string
           notes?: string | null
           player_a?: string | null
@@ -11884,6 +11889,7 @@ export type Database = {
           game_scores?: string | null
           id?: string
           is_imported?: boolean
+          ladder_effects_applied_at?: string | null
           match_date?: string
           notes?: string | null
           player_a?: string | null

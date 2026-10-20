@@ -90,6 +90,7 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { isChampsReservation } from "@/lib/tournaments/self-schedule";
+import { championshipOnlyDay } from "@/lib/tournaments/reservation-day";
 import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
 import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 
@@ -411,13 +412,12 @@ export default function Bookings() {
       return ((data || []) as any[]).filter((m) => m.champ?.club_id === myClub!.id && fixtureScheduleState(m) === "unscheduled");
     },
   });
-  // While the club has reserved "Club Championships" court holds, everyone —
-  // members and club admins alike — may only book into those slots; the rest
-  // of the grid is closed. Only platform super admins keep the full grid.
+  // Restrict only the selected day with active holds, not every future date.
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: champsHoldDates = [] } = useQuery({
     queryKey: ["bookings-champs-hold-dates", myClub?.id, todayStr],
     enabled: !!myClub?.id,
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { data } = await fromExt("bookings")
         .select("date, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id")
@@ -428,7 +428,7 @@ export default function Bookings() {
       return [...new Set(((data || []) as any[]).filter((b) => isChampsReservation(b)).map((b) => String(b.date)))].sort();
     },
   });
-  const champsOnly = champsHoldDates.length > 0 && !isSuperAdmin;
+  const champsOnly = championshipOnlyDay(champsHoldDates, format(selectedDate, "yyyy-MM-dd"), isSuperAdmin);
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
   // Booking-provider settings are read straight from the club row. The club

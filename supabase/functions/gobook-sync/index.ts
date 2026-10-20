@@ -13,6 +13,7 @@
 // Uses an opted-in (is_sync_source=true), verified credential for the club.
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
+import { expiredChampHold } from "../_shared/champ-hold-release.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -425,6 +426,10 @@ async function syncClub(
         : undefined;
       const linkedMemberId = link && link.id ? link.id : null;
       const linkedUserId = link && link.id ? link.user_id : null;
+      if (!linkedMemberId && expiredChampHold(clubId, dateStr, s.bookerName)) {
+        seenExternal.delete(external);
+        continue;
+      }
 
       const row: Record<string, unknown> = {
         club_id: clubId,
@@ -486,7 +491,7 @@ async function syncClub(
     // Cancellations: delete any gobook rows for this date+club not in seen set.
     const { data: existing } = await admin
       .from("bookings")
-      .select("id, external_id, external_booker_name")
+      .select("id, external_id, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id")
       .eq("club_id", clubId)
       .eq("source", "gobook")
       .eq("date", dateStr);
@@ -499,11 +504,12 @@ async function syncClub(
       : { data: [] as any[] };
     const linkedIds = new Set((linked ?? []).map((r: any) => String(r.booking_id)));
     const stale = staleRows.filter((r: any) =>
-      !linkedIds.has(String(r.id)) && !/^club championship/i.test(String(r.external_booker_name ?? "").trim()));
+      !linkedIds.has(String(r.id)) && (!/^club championship/i.test(String(r.external_booker_name ?? "").trim()) ||
+        (![r.user_id, r.opponent_id, r.club_member_id, r.opponent_member_id].some(Boolean) && expiredChampHold(clubId, dateStr, r.external_booker_name))));
     if (stale.length > 0) {
       const { error: delErr } = await admin
         .from("bookings")
-        .delete()
+        .update({ status: "cancelled" })
         .in("id", stale.map((r: any) => r.id));
       if (!delErr) result.cancelled += stale.length;
     }

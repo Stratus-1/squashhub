@@ -20255,6 +20255,10 @@ export type Database = {
         Args: { _club_id: string; _key: string; _value: boolean }
         Returns: undefined
       }
+      bar_shift_overview: {
+        Args: { _club_id: string; _token?: string }
+        Returns: Json
+      }
       bar_special_available: { Args: { _special: string }; Returns: number }
       bar_staff_can_serve: {
         Args: { _club_id: string; _user_id: string }

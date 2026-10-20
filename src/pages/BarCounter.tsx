@@ -3,6 +3,7 @@ import { useBarTips } from "@/hooks/use-bar-tips";
 import { TipEditor } from "@/components/bar/TipEditor";
 import { StaffTips } from "@/components/bar/StaffTips";
 import { CashUp } from "@/components/bar/CashUp";
+import { ShiftSummary, ShiftTabs, useShiftOverview } from "@/components/bar/ShiftOverview";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
 /**
  * Bar Counter mode — `/s/:code/counter` (device unlocked with a staff PIN, no login)
@@ -124,7 +125,7 @@ export default function BarCounter() {
   // A SquashHub login is not a serving identity. All entry points must use
   // the personal-PIN session; never fall back to the club-only admin RPC path.
   const enabled = Boolean(code && token);
-  const [pane, setPane] = useState<"tabs" | "orders">("tabs");
+  const [pane, setPane] = useState<"tabs" | "orders" | "paid">("tabs");
   const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
   const [tipsOpen, setTipsOpen] = useState(false);
   const [cashUpOpen, setCashUpOpen] = useState(false);
@@ -167,6 +168,7 @@ export default function BarCounter() {
   });
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
   const { data: tipConfig } = useBarTips(board?.club_id);
+  const shift = useShiftOverview(board?.club_id, token);
   useEffect(() => {
     setTipChoice({ ...emptyTip, staffId: board?.tip_staff_id ?? "" });
   }, [activeTabId, board?.tip_staff_id]);
@@ -624,7 +626,7 @@ export default function BarCounter() {
 
   // ---- Board ------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-background pb-80">
+    <div className="min-h-screen bg-background pb-80 xl:pr-80">
       <SEO title="Bar counter" description="Open tabs at the bar counter" path="/bar/counter" noIndex />
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex flex-wrap gap-2 items-center justify-between">
@@ -686,12 +688,19 @@ export default function BarCounter() {
           <div className="flex gap-1">
             <Button size="sm" variant={pane === "tabs" ? "default" : "outline"} onClick={() => setPane("tabs")}>Tabs</Button>
             <Button size="sm" variant={pane === "orders" ? "default" : "outline"} onClick={() => setPane("orders")}>Orders</Button>
+            <Button size="sm" variant={pane === "paid" ? "default" : "outline"} onClick={() => setPane("paid")}>Paid since cash-up</Button>
           </div>
           {orderProcess && <BarOpenAndAlerts token={token} clubId={clubId} operator={operator} onShowOrders={() => setPane("orders")} />}
         </div>
       )}
 
-      {pane === "orders" ? (
+      <aside className="hidden xl:block fixed right-4 top-36 w-72 z-30 max-h-[calc(100vh-10rem)] overflow-y-auto"><ShiftSummary data={shift.data} tipsEnabled={Boolean(tipConfig?.enabled)} /></aside>
+      {pane === "paid" ? (
+        <div className="p-4 space-y-3 max-w-7xl mx-auto">
+          <div className="xl:hidden"><ShiftSummary data={shift.data} tipsEnabled={Boolean(tipConfig?.enabled)} /></div>
+          <ShiftTabs data={shift.data} loading={shift.isLoading} />
+        </div>
+      ) : pane === "orders" ? (
         <div className="p-4 max-w-7xl mx-auto">
           <BarCounterOrders token={token} clubId={clubId} />
         </div>
@@ -920,7 +929,7 @@ export default function BarCounter() {
           </div>
           {visibleItems.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{itemSearch ? "No products match your search." : "No products in this category."}</p>}
 
-          <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
+          <div className="fixed bottom-16 md:bottom-0 left-0 right-0 xl:right-80 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
             {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips / Cash payout</Button>}
             {tipConfig?.enabled && activeTab.status === "open" && cartTotal === 0 && (tipChoice.mode === "none" && !settleTipOpen

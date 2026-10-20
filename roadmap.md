@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Restore saved Round 1 results in exact Ladies A/Men's C previews: 27 focused tests pass; authenticated read-only screen check shows nine Men's C scores, three Ladies A scores and bye, with Men's C R2 still 1v9. Build OK; live games unchanged, not published.
-- [ ] Round 2 mismatch diagnosed: saved fixtures use the old draw while the approved positional chart projects a different draw. Await owner confirmation before changing actual fixtures; preview results restored without live changes.
+- [x] Applied owner-approved actual Round 2 charts: seven existing fixtures corrected/audited, decided Ladies A 7v8 added with 29 Oct deadline. All nine Men's C and three Ladies A R1 scores retained; no duplicate R2 participants. Changed Andre/Leon fixture detached from personal booking, which remains active and unchanged; three unaffected bookings retained. Authenticated log verifies Justin v Riaan. Ladies A unfinished R1 feeders remain undecided; no emails/publication.
 
 - [x] Correct Men's C exact preview: supplied position chart now stays separate from factual saved games; 39 focused checks pass and authenticated read-only Uitsig preview visibly shows R2 1v9. Saved games/default pairing unchanged; no data writes or publication.
 

@@ -4500,6 +4500,8 @@ export type Database = {
           status: string
           updated_at: string
           whatsapp_group_opt_in: boolean
+          withdrawn_keep_position: boolean
+          withdrawn_reason: string | null
         }
         Insert: {
           champ_id: string
@@ -4537,6 +4539,8 @@ export type Database = {
           status?: string
           updated_at?: string
           whatsapp_group_opt_in?: boolean
+          withdrawn_keep_position?: boolean
+          withdrawn_reason?: string | null
         }
         Update: {
           champ_id?: string
@@ -4574,6 +4578,8 @@ export type Database = {
           status?: string
           updated_at?: string
           whatsapp_group_opt_in?: boolean
+          withdrawn_keep_position?: boolean
+          withdrawn_reason?: string | null
         }
         Relationships: [
           {

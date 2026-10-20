@@ -3,6 +3,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { expiredChampHold } from "../../supabase/functions/_shared/champ-hold-release";
+import { champsSlotStarts } from "../lib/tournaments/self-schedule";
 
 // Execute the real edge handler with fake provider/database boundaries; no live services.
 const source = readFileSync("supabase/functions/gobook-api/index.ts", "utf8")
@@ -101,12 +102,18 @@ describe("GoBook day reconciliation requires a fresh register", () => {
     expect(h.cancellations).toEqual(["removed"]);
     expect(h.reads).toHaveLength(2);
   });
-  it("does not resurrect a released noon hold still listed at GoBook", async () => {
+  it("uses a current GoBook championship hold after noon as free capacity", async () => {
     const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19");
     h.mirrors.push({ id: "released", external_id: "gobook:101", date: "2026-10-20", status: "cancelled", external_booker_name: "Club Championships" });
     h.provider([{ ...booking(101, "2026-10-20"), pcMappingText: "Club Championships" }]);
     expect((await h.sync("2026-10-20")).status).toBe(200);
+    expect(h.mirrors[0].status).toBe("active");
+    const capacity = h.mirrors.map(m => ({ ...m, court_id: 27, start_time: "18:00", end_time: "19:00" }));
+    expect(champsSlotStarts(capacity, 45).get(27)).toEqual(["18:00"]);
+    h.provider([]);
+    await h.sync("2026-10-20");
     expect(h.mirrors[0].status).toBe("cancelled");
+    expect(champsSlotStarts(h.mirrors.map(m => ({ ...m, court_id: 27, start_time: "18:00", end_time: "19:00" })), 45).size).toBe(0);
   });
   it("releases unused reimported holds but preserves linked and member-owned rows", async () => {
     const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19", ["linked"]);

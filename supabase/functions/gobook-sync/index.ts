@@ -13,7 +13,6 @@
 // Uses an opted-in (is_sync_source=true), verified credential for the club.
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
-import { expiredChampHold } from "../_shared/champ-hold-release.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -426,10 +425,7 @@ async function syncClub(
         : undefined;
       const linkedMemberId = link && link.id ? link.id : null;
       const linkedUserId = link && link.id ? link.user_id : null;
-      if (!linkedMemberId && expiredChampHold(clubId, dateStr, s.bookerName)) {
-        seenExternal.delete(external);
-        continue;
-      }
+      // Current GoBook holds are capacity regardless of local release time.
 
       const row: Record<string, unknown> = {
         club_id: clubId,

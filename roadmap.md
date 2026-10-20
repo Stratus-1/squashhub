@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Check and fix refresh reconciliation of Gerhard-cancelled unused GoBook championship holds at any time, preserving booked games; source-only unless deployment explicitly approved.
-- [ ] Recognize newly added GoBook holds matching the tournament's saved booking name as free championship capacity on additional dates/times; resolve same-day after-noon priority before changing free-booking eligibility.
+- [x] Source-only cancellation refresh: both GoBook sync paths remove missing unused holds at any time, preserve championship players/fixture links, abort on ownership-read errors; page reload no longer reuses a three-minute sync cache and successful sync refreshes hold restrictions. Activation awaits deployment approval.
+- [x] Clarified GoBook authority implemented in source: current holds import after noon, absent unused holds cancel; API fixture picker refreshes selected dates and confirmation, fails closed on read errors, has no free fallback, and permits additional dates. Cancelled holds yield no free starts. No live writes/deployment/publication.
+- [ ] Activate GoBook-authoritative capacity — blocked on explicit deployment approval and aligning the existing noon database release job so it does not locally cancel still-present GoBook holds. Live member booking flow remains unverified.
 
 - [x] Noon release diagnosed: cron ran but GoBook reactivated seven unused holds. Source fixes shared cutoff for both sync paths, preserves linked/member rows, and confines ordinary booking restrictions to the selected day. Synthetic tests pass; no live bookings/external calls/hardware touched.
 - [ ] Activate noon-release sync fix — blocked on explicit function deployment approval; seven re-imported live holds remain unchanged.

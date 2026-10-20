@@ -6,6 +6,11 @@ const hold = (court_id: number, start_time: string, end_time: string) => ({
 });
 
 describe("champsSlotStarts — the Champs' own match-length slots inside reserved evenings", () => {
+  it("offers no free tournament choices without active championship holds", () => {
+    expect(champsSlotStarts([], 45).size).toBe(0);
+    expect(champsSlotStarts([{ ...hold(27, "18:00", "18:45"), status: "cancelled" }], 45).size).toBe(0);
+    expect(champsSlotStarts([{ ...hold(27, "18:00", "18:45"), external_booker_name: "Personal booking" }], 45).size).toBe(0);
+  });
   it("35-min games in a contiguous 18:00–21:00 block of 45-min holds start at 18:00, 18:35, 19:10, 19:45, 20:20", () => {
     const holds = [
       hold(27, "18:00", "18:45"), hold(27, "18:45", "19:30"), hold(27, "19:30", "20:15"), hold(27, "20:15", "21:00"),

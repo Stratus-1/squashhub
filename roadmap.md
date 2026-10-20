@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Restore all unintentionally cleared Uitsig screenshot fixtures and identify/protect against the clearing path; check whether last night's changes caused it. Preserve completed withdrawals, newer allocations and personal bookings.
+- [ ] Restore all unintentionally cleared Uitsig fixtures using 45-minute court slots and protect against round-setting clears; check last night's changes. Preserve completed withdrawals, newer allocations and personal bookings.
 
 - [x] Photo-reported visitor-tab RPC ambiguity: send all six arguments explicitly; focused counter regression verified. No backend or sales changes; not published.
 

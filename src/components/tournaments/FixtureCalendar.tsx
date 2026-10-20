@@ -15,7 +15,7 @@ export type CalKind = "confirmed" | "proposed" | "play_by";
 export type CalState = "upcoming" | "live" | "paused" | "completed" | "bye";
 export interface CalEvent {
   id: string; date: string; time: string | null; durationMin?: number; court: string | null;
-  title: string; subtitle?: string; kind: CalKind; state?: CalState; score?: string | null;
+  title: string; subtitle?: string; kind: CalKind; state?: CalState; score?: string | null; highlighted?: boolean;
   gameScores?: Array<{ a: number; b: number }>; currentGame?: { number: number; a: number; b: number } | null; winner?: string | null;
 }
 type View = "day" | "week" | "month";
@@ -61,11 +61,12 @@ function EventBlock({ e, top, height, left, width, compact, onOpen, preview }: {
   const st = e.state ?? "upcoming";
   const badge = e.kind === "proposed" ? "Proposed" : STATE_TEXT[st];
   return (
-    <Button variant="outline" onClick={() => e.id.startsWith("allocation:") && preview?.canDrop(e.id) ? preview.drop(e.id) : onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st}
+    <Button variant="outline" onClick={() => e.id.startsWith("allocation:") && preview?.canDrop(e.id) ? preview.drop(e.id) : onOpen(e)} data-testid="cal-event" data-kind={e.kind} data-state={st} data-highlighted={e.highlighted}
       onDragOver={(event) => { if (preview?.canDrop(e.id)) event.preventDefault(); }} onDrop={(event) => { if (preview?.canDrop(e.id)) { event.preventDefault(); preview.drop(e.id); } }}
       aria-label={`${e.time?.slice(0, 5) ?? ""} ${e.court ?? ""} ${e.title} ${badge}${e.score ? ` ${e.score}` : ""}${e.currentGame ? ` Game ${e.currentGame.number} ${e.currentGame.a}–${e.currentGame.b}` : ""}`}
       className={cn("absolute block h-auto overflow-hidden whitespace-normal rounded-md px-1 py-0.5 text-left leading-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        e.kind === "proposed" ? "border border-dashed border-muted-foreground/60 bg-muted/40" : cn("border shadow-sm", STATE_STYLE[st]))}
+        e.kind === "proposed" ? "border border-dashed border-muted-foreground/60 bg-muted/40" : cn("border shadow-sm", STATE_STYLE[st]),
+        e.highlighted && "border-success bg-success/20 hover:bg-success/30")}
       style={{ top, height, left, width, fontSize: `${Math.max(6, Math.min(11, height / 4.6))}px` }}>
       <div className="flex items-center gap-1">
         {preview?.eligible(e.id) && <span role="button" tabIndex={0} draggable aria-label={`Move match ${e.title}`} title="Drag to preview or select with Enter" className="cursor-grab p-1" onClick={(event) => { event.stopPropagation(); preview.start(e.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); preview.start(e.id); } }} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData("text/plain", e.id); preview.start(e.id); }}><GripVertical className="h-3 w-3" /></span>}
@@ -76,7 +77,7 @@ function EventBlock({ e, top, height, left, width, compact, onOpen, preview }: {
       </div>
       <FixtureScoreDetails event={e} />
       <div className={cn("mt-0.5 font-semibold", compact ? "line-clamp-3" : "line-clamp-2")}>{compact ? shortTitle(e.title) : e.title}</div>
-      {!compact && e.subtitle && <div className="truncate text-muted-foreground">{e.subtitle}</div>}
+      {e.subtitle && <div className="truncate text-muted-foreground">{e.subtitle}</div>}
     </Button>
   );
 }
@@ -177,6 +178,7 @@ export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [],
                   {es.filter((e) => e.kind === "confirmed").length > 0 && <div className="mt-0.5 rounded-sm bg-card px-1 text-[10px]">{es.filter((e) => e.kind === "confirmed").length} saved</div>}
                   {es.filter((e) => e.kind === "proposed").length > 0 && <div className="mt-0.5 rounded-sm border border-dashed border-muted-foreground/60 px-1 text-[10px]">{es.filter((e) => e.kind === "proposed").length} proposed</div>}
                   {es.filter((e) => e.kind === "play_by").length > 0 && <div className="mt-0.5 rounded-sm border border-warning/60 bg-warning/10 px-1 text-[10px]">{es.filter((e) => e.kind === "play_by").length} play-by</div>}
+                  {es.some((e) => e.highlighted) && <div className="mt-0.5 rounded-sm border border-success bg-success/20 px-1 text-[10px]">{es.filter((e) => e.highlighted).length} selected category</div>}
                 </button>
               );
             })}
@@ -195,7 +197,7 @@ export function FixtureCalendar({ events: upcomingEvents, historicalEvents = [],
                 <div className="w-16 shrink-0 px-1 py-1 text-[10px] text-muted-foreground">Play by</div>
                 {(view === "day" ? [anchor] : days).map((d) => (
                   <div key={d} style={colFlex(d)} className="space-y-0.5 border-l border-border p-1">
-                    {deadlines.filter((e) => e.date === d).map((e) => <div key={e.id} data-testid="cal-deadline" className="truncate rounded-sm border border-warning/60 bg-warning/10 px-1 text-[10px]">{e.title}</div>)}
+                    {deadlines.filter((e) => e.date === d).map((e) => <Button key={e.id} variant="outline" onClick={() => setOpen(e)} data-testid="cal-deadline" data-highlighted={e.highlighted} className={cn("block h-auto w-full truncate rounded-sm border border-warning/60 bg-warning/10 px-1 py-0.5 text-left text-[10px]", e.highlighted && "border-success bg-success/20 hover:bg-success/30")} title={`${e.title} · ${e.subtitle ?? ""}`}>{e.title}{e.subtitle && <span className="block truncate text-muted-foreground">{e.subtitle}</span>}</Button>)}
                   </div>
                 ))}
               </div>

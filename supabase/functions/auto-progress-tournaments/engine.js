@@ -7495,7 +7495,7 @@ function swissStage(champ, arch, gn) {
   const r = Number(champ?.swiss_rounds?.[String(gn)]);
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;
 }
-function projectCourtFixtures(i) {
+function projectSwissFixtures(i, playByOnly) {
   const { champ, arch, entries, matches, rounds, courts } = i;
   const noRepeats = i.noRepeats !== false;
   if (!champ?.id)
@@ -7506,7 +7506,10 @@ function projectCourtFixtures(i) {
   if (!groups.length)
     return [];
   const a = { ...champ ?? {}, ...arch ?? {} };
-  const draws = groups.map((gn) => slotOnlyDraw(String(gn), entries.filter((e) => e.group_number === gn).length, swissStage(champ, arch, gn).rounds)).filter((d) => !d.issues.length);
+  const draws = groups.flatMap((gn) => {
+    const count = swissStage(champ, arch, gn)?.rounds;
+    return count ? [slotOnlyDraw(String(gn), entries.filter((e) => e.group_number === gn).length, count)] : [];
+  }).filter((d) => !d.issues.length);
   const allowed = (a.court_ids ?? []).map(Number);
   const courtList = courts.filter((c2) => !allowed.length || allowed.includes(Number(c2.id))).map((c2) => ({ id: c2.id, name: c2.name ?? `Court ${c2.id}` }));
   const busy = matches.filter((m) => !(groups.includes(Number(m.group_number)) && Number(m.round_number) > 1)).filter((m) => m.scheduled_date && m.scheduled_time && m.court_id).map((m) => ({ date: m.scheduled_date, time: String(m.scheduled_time).slice(0, 5), courtId: m.court_id }));
@@ -7522,27 +7525,33 @@ function projectCourtFixtures(i) {
   const dur = Number(plan?.scheduling?.singles) || Number(a.match_duration_minutes) || 30;
   let slots = {};
   try {
-    slots = scheduleDraws(draws, {
-      roundWindows,
-      roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStage(champ, arch, Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x, k) => k === 0 ? null : x)])),
-      courts: courtsAll,
-      times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0),
-      matchMinutes: dur,
-      restMinutes: Number(plan?.scheduling?.rest ?? a.default_break_minutes) || 0,
-      busy
-    });
+    if (!playByOnly) {
+      slots = scheduleDraws(draws, {
+        roundWindows,
+        roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStage(champ, arch, Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x, k) => k === 0 ? null : x)])),
+        courts: courtsAll,
+        times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0),
+        matchMinutes: dur,
+        restMinutes: Number(plan?.scheduling?.rest ?? a.default_break_minutes) || 0,
+        busy
+      });
+    }
   } catch {
     return [];
-  }
-  const appliedPlayBy = {};
-  for (const r of rounds ?? []) {
-    const pb = appliedRoundPlayBy(r);
-    if (pb && !appliedPlayBy[Number(r.round_number)])
-      appliedPlayBy[Number(r.round_number)] = pb;
   }
   const out = [];
   for (const gn of groups) {
     const st = swissStage(champ, arch, gn);
+    if (!st)
+      continue;
+    const appliedPlayBy = {};
+    for (const r of rounds ?? []) {
+      if (Number(r.group_number) !== gn)
+        continue;
+      const pb = appliedRoundPlayBy(r);
+      if (pb)
+        appliedPlayBy[Number(r.round_number)] = pb;
+    }
     const gEntries = entries.filter((e) => e.group_number === gn).sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
     const names = {};
     gEntries.forEach((e) => {
@@ -7590,7 +7599,10 @@ function projectCourtFixtures(i) {
       continue;
     const inRound = (round, id) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
-      if (rd.created || appliedPlayBy[rd.round])
+      if (rd.created || rd.round < 2)
+        continue;
+      const deadline = appliedPlayBy[rd.round];
+      if (playByOnly ? !deadline : !!deadline)
         continue;
       for (const b of rd.blocks) {
         const [x, y] = b.rows;
@@ -7598,6 +7610,10 @@ function projectCourtFixtures(i) {
           continue;
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id))
           continue;
+        if (playByOnly) {
+          out.push({ champId: champ.id, group: gn, round: rd.round, aId: x.id, bId: y.id, title: `${x.name} v ${y.name}`, playBy: deadline });
+          continue;
+        }
         const s = gSlots[b.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
         if (s?.kind !== "planned")
           continue;
@@ -7622,9 +7638,15 @@ function projectCourtFixtures(i) {
   }
   return out;
 }
+function projectCourtFixtures(i) {
+  return projectSwissFixtures(i, false).filter((f) => ("courtId" in f));
+}
+function projectDecidedPlayByFixtures(i) {
+  return projectSwissFixtures(i, true).filter((f) => ("playBy" in f));
+}
 
 // src/lib/tournaments/decided-swiss.ts
-async function loadProjectedFixtures(champ) {
+async function loadProjectionInput(champ) {
   const sb = supabase;
   const [courts, arch, entries, matches, rounds] = await Promise.all([
     sb.from("courts").select("id, name, active").eq("club_id", champ.club_id).order("id"),
@@ -7634,19 +7656,15 @@ async function loadProjectedFixtures(champ) {
     sb.from("club_champs_rounds").select("*").eq("champ_id", champ.id)
   ]);
   const active = (courts.data ?? []).filter((c2) => c2.active !== false);
-  const name = (id) => active.find((c2) => Number(c2.id) === id)?.name ?? `Court ${id}`;
-  try {
-    return projectCourtFixtures({ champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active }).map((f) => ({ ...f, courtName: name(f.courtId) })).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-  } catch {
-    return [];
-  }
+  return { champ, arch: arch.data, entries: entries.data ?? [], matches: matches.data ?? [], rounds: rounds.data ?? [], courts: active };
 }
 async function createDecidedSwissGames(tid) {
   const sb = supabase;
   const { data: champ } = await sb.from("club_champs").select("*").eq("id", tid).maybeSingle();
   if (!champ)
     return { created: 0, booked: 0, issues: [] };
-  const list = await loadProjectedFixtures(champ);
+  const input = await loadProjectionInput(champ);
+  const list = [...projectCourtFixtures(input), ...projectDecidedPlayByFixtures(input)];
   let created = 0, booked = 0;
   const issues = [];
   for (const f of list) {
@@ -7656,6 +7674,8 @@ async function createDecidedSwissGames(tid) {
       continue;
     }
     created++;
+    if (!("courtId" in f))
+      continue;
     const { error: be } = await sb.rpc("self_schedule_champ_match", { p_match_id: id, p_court_id: f.courtId, p_date: f.date, p_time: `${f.time}:00`, p_duration_minutes: f.minutes });
     if (be)
       issues.push(`${f.title}: game created, court not booked (${be.message})`);

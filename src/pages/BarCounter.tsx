@@ -168,6 +168,7 @@ export default function BarCounter() {
   });
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
   const { data: tipConfig } = useBarTips(board?.club_id);
+  const shift = useShiftOverview(board?.club_id, token);
   useEffect(() => {
     setTipChoice({ ...emptyTip, staffId: board?.tip_staff_id ?? "" });
   }, [activeTabId, board?.tip_staff_id]);

@@ -99,6 +99,7 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { usesUitsigMensCChart } from "@/lib/tournaments/swiss-uitsig-mens-c-chart";
+import { usesUitsigLadiesAChart } from "@/lib/tournaments/swiss-uitsig-ladies-a-chart";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 import { CategoryFixtureCalendar } from "@/components/tournaments/CategoryFixtureCalendar";
 import type { CategoryCalendarFixture } from "@/lib/tournaments/category-calendar";
@@ -1412,8 +1413,9 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       const exactMensCChart = usesUitsigMensCChart(champ.club_id, champId, gn, model.rows.length, model.totalRounds);
+      const exactLadiesAChart = usesUitsigLadiesAChart(champ.club_id, champId, gn, model.rows.length, model.totalRounds);
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart} exactMensCChart={exactMensCChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} calendar={renderCategoryCalendar(gn)} classicStandings={riversidePreview || exactMensCChart ? classic : undefined} />{laterIsRR ? (
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart || exactLadiesAChart} exactMensCChart={exactMensCChart} exactLadiesAChart={exactLadiesAChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} calendar={renderCategoryCalendar(gn)} classicStandings={riversidePreview || exactMensCChart || exactLadiesAChart ? classic : undefined} />{laterIsRR ? (
           <div className="mt-6 space-y-4" data-testid={`stage2-progression-${gn}`}>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>

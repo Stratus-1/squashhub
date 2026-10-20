@@ -11,6 +11,20 @@ const lines = [
   { account: "bar_cost_of_sales", debit: 100, credit: 0, description: "Barman salary" }, { account: "shop_cost_of_sales", debit: 80, credit: 0, description: "Shop wages" }, { account: "rent", debit: 50, credit: 0 },
 ];
 describe("grouped income statement", () => {
+  it("separates Grant's R100 tip income from R900 product sales", () => {
+    const report = groupedIncome([{ account: "bar_income", debit: 0, credit: 900 }, { account: "bar_income", debit: 0, credit: 100, description: "Tip income — Grant" }], accounts, true, "purchases");
+    expect(report.divisions[0].sales).toBe(900);
+    expect(report.divisions[0].tipIncome[0].amount).toBe(100);
+    expect(report.divisions[0].profit).toBe(1000);
+    expect(report.divisions[1].profit).toBe(0);
+  });
+  it("Grant's R50 cash payout is Bar cost of sales, never general expense", () => {
+    const report = groupedIncome([{ account: "bar_income", debit: 0, credit: 100, description: "Tip income — Grant" }, { account: "bar_cost_of_sales", debit: 50, credit: 0, description: "Tips paid — Grant" }, { account: "cash", debit: 0, credit: 50 }], accounts, true, "cost_of_sales");
+    expect(report.divisions[0].directCosts).toBe(50);
+    expect(report.divisions[0].profit).toBe(50);
+    expect(report.generalExpenses).toBe(0);
+    expect(report.divisions[1].directCosts).toBe(0);
+  });
   it("stores Cost of sales Bar as an expense classification on a named account", () => {
     expect(accountCategoryPatch("bar_cost_of_sales")).toEqual({ category: "Expense", reporting_category: "bar_cost_of_sales" });
     expect(accountCategoryPatch("Expense")).toEqual({ category: "Expense", reporting_category: null });

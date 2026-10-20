@@ -20091,6 +20091,16 @@ export type Database = {
         Returns: Json
       }
       bar_counter_status: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_topup_member: {
+        Args: {
+          _amount: number
+          _club_member_id: string
+          _method: string
+          _request_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
       bar_counter_unlock: {
         Args: { _code: string; _pin: string }
         Returns: Json

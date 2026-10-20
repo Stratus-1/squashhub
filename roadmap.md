@@ -1,10 +1,11 @@
 # Roadmap
+- [x] Signed-in member account settlement: optional tip prompt only on Add to my member account, no OTP; single active serving PIN session auto-selected, multiple serving names selectable. 46 focused tests and disposable PostgreSQL ownership/recipient/rollback/retry/account-tip recognition tests pass; fictional dialog browser checked desktop/mobile. Order-process ON/OFF unchanged. No live charge or publication; real signed-in end-to-end settlement intentionally untested.
 
 - [x] Scan-to-pay: added an "or" divider between the member-account option and the card-online option on both the open-tab card and the checkout card in src/pages/ScanPay.tsx. Display-only; Riverside preview verified the divider renders between the two buttons; build OK, no data changes, not published.
 
 
 
-- [x] ScanPay member-account charge: signed-in member confirmed at the scanned club charges directly — no member number, no one-time code (owner: session login is enough, 20 Oct). New session-verified RPCs bar_qr_charge_member_session / bar_qr_charge_guest_tab_member_session re-check ownership server-side (user_id or shared family email); guests/QR-only users keep number + OTP. Tip-enabled clubs keep the OTP path. 20 tests pass, build OK; RPC gates verified (anon rejected, foreign member rejected, no writes). End-to-end UI charge not exercised (no live charges allowed).
+- [x] ScanPay member-account charge: signed-in member confirmed at the scanned club charges directly — no member number, no one-time code, including tip-enabled clubs. Session RPCs re-check ownership; guests/QR-only users keep number + OTP. Focused tests and authority gates pass. Real end-to-end charge not exercised (no live charges allowed).
 
 - [x] Diagnosed Nelspruit closed orders: mode was OFF, member handoff wrongly submitted staffed orders. Added mode-aware self-service draft handoff and fail-closed unknown mode; 28 mode/QR/PIN tests pass, build OK. Nelspruit menu inspected read-only; during investigation external settings changed to process ON/open until 21 Oct 05:07 UTC (07:07 Johannesburg); no settings changed by this task. Riverside basket screen checked, but signed-in account lacks a usable member/venue handoff so full checkout remains unverified; no sales/payment/hardware writes or publication.
 
@@ -123,4 +124,4 @@
 - [x] Cleared Johann van Coller's tonight bar items (NSC): tab, 6 entries (R114), orders, credits and ledger removed; stock restored (Castle Lite 42, Creme Soda 24); older Oct entries kept
 - [x] Cleared Rachel Gates' 2 sparkling waters (R20) from her open tab; stock restored to 9, tab left open
 - [ ] Nelspruit hang on league night — backend connection saturation (44/60); offered instance upgrade + query slimming, awaiting choice
-- [ ] Why does settle-tab-on-member-account ask for membership number when member is logged in? (screenshot image-166: "Your membership number (digits only)" + OTP)
+- [x] Signed-in settle-tab member-number/OTP friction resolved through session authorization, including optional tips; anonymous QR verification preserved.

@@ -1,0 +1,21 @@
+CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+CREATE SCHEMA auth; CREATE SCHEMA extensions;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('test.user',true),'')::uuid $$;
+CREATE TYPE gl_account AS ENUM('debtors','creditors','bar_income','cash','bank_current','member_credits');
+CREATE TABLE clubs(id uuid PRIMARY KEY,honesty_bar_enabled boolean DEFAULT true,bar_account_tab_enabled boolean DEFAULT true);
+CREATE TABLE profiles(id uuid PRIMARY KEY,email text);
+CREATE TABLE club_members(id uuid PRIMARY KEY,club_id uuid,user_id uuid,email text,name text,status text DEFAULT 'active',role text DEFAULT 'member');
+CREATE TABLE club_bar_settings(club_id uuid PRIMARY KEY,tips_enabled boolean DEFAULT true,online_tips_ready boolean DEFAULT false,bar_allow_member_debit boolean DEFAULT true);
+CREATE TABLE bar_counter_devices(id uuid PRIMARY KEY,club_id uuid,label text,active boolean DEFAULT true);
+CREATE TABLE bar_counter_sessions(id uuid DEFAULT gen_random_uuid(),device_id uuid,club_id uuid,revoked_at timestamptz,expires_at timestamptz DEFAULT now()+interval '1 day');
+CREATE TABLE bar_guest_tabs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),club_id uuid,guest_name text,club_member_id uuid,token uuid DEFAULT gen_random_uuid(),status text DEFAULT 'open',closed_at timestamptz,settled_method text,counter_device_id uuid,opened_source text DEFAULT 'qr');
+CREATE TABLE bar_items(id uuid PRIMARY KEY,club_id uuid,active boolean DEFAULT true,name text,price numeric,stock_qty numeric DEFAULT 20,updated_at timestamptz);
+CREATE TABLE bar_visitor_sales(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),guest_tab_id uuid,bar_item_id uuid,quantity int,unit_price numeric,total numeric,payment_status text DEFAULT 'on_tab',created_at timestamptz DEFAULT now());
+CREATE TABLE bar_tab_entries(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),club_id uuid,club_member_id uuid,bar_item_id uuid,quantity int,unit_price numeric,total numeric,logged_by uuid,source text,verification_method text,verified_at timestamptz);
+CREATE TABLE bar_tips(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),club_id uuid,tab_id uuid UNIQUE,sale_id uuid,staff_id uuid,staff_name text,amount numeric,status text DEFAULT 'pending',method text,club_member_id uuid,earned_at timestamptz);
+CREATE TABLE club_journal_entries(id uuid DEFAULT gen_random_uuid(),club_id uuid,journal_ref uuid,account gl_account,debit numeric,credit numeric,description text,club_member_id uuid);
+CREATE FUNCTION member_account_gate(uuid,numeric) RETURNS TABLE(shortfall numeric,projected_owing numeric,allowance numeric) LANGUAGE sql AS $$ SELECT 0::numeric,0::numeric,0::numeric $$;
+CREATE FUNCTION synthetic_product_journal() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+ INSERT INTO club_journal_entries(club_id,journal_ref,account,debit,credit,club_member_id) VALUES(NEW.club_id,NEW.id,'debtors',NEW.total,0,NEW.club_member_id),(NEW.club_id,NEW.id,'bar_income',0,NEW.total,NULL);
+ RETURN NEW; END $$;
+CREATE TRIGGER product_journal AFTER INSERT ON bar_tab_entries FOR EACH ROW EXECUTE FUNCTION synthetic_product_journal();

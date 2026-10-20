@@ -36,6 +36,8 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useBarTips } from "@/hooks/use-bar-tips";
 import { TipEditor } from "@/components/bar/TipEditor";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
+import { MemberAccountTipDialog } from "@/components/bar/MemberAccountTipDialog";
+import { memberSettlementTip, type ServingPerson } from "@/lib/bar/member-settlement-tip";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -188,47 +190,75 @@ export default function ScanPay() {
   const member: { id: string; name: string } | null = null;
   const { activeMember } = useMemberContext();
   const [checkingMembership, setCheckingMembership] = useState(false);
+  const [memberTipPending, setMemberTipPending] = useState<{ target: "cart" | "tab"; memberId: string; staff: ServingPerson[]; requestId: string } | null>(null);
+  const accountChargeBusy = useRef(false);
+
+  const chargeSignedInAccount = async (target: "cart" | "tab", memberId: string, choice?: TipChoice, staff: ServingPerson[] = [], requestId?: string) => {
+    if (!club || accountChargeBusy.current) return;
+    accountChargeBusy.current = true;
+    setCheckingMembership(true);
+    try {
+      const subtotal = target === "tab" && tab ? tab.subtotal ?? tab.total : total;
+      const quote = choice ? memberSettlementTip(subtotal, choice, staff) : null;
+      if (target === "tab") {
+        if (!tab) throw new Error("Your tab is no longer open. Refresh and try again.");
+        const settledName = tab.guest_name;
+        const { error } = await (supabase as any).rpc(quote ? "bar_member_tab_account_with_tip" : "bar_qr_charge_guest_tab_member_session", {
+          _tab_id: tab.tab_id, _token: tab.token, _club_member_id: memberId,
+          ...(quote ? { _tip: quote.tip, _staff_id: quote.staffId } : {}),
+        });
+        if (error) throw error;
+        localStorage.removeItem(tabKey);
+        setTab(null);
+        setDone({ total: quote?.total ?? tab.total, itemName: `Bar tab · ${settledName}`, onAccount: true });
+      } else {
+        const { error } = await (supabase as any).rpc(quote ? "bar_member_cart_account_with_tip" : "bar_qr_charge_member_session", {
+          _club_id: club.id, _club_member_id: memberId,
+          _lines: cartLines.map(l => ({ bar_item_id: l.item.id, quantity: l.qty })),
+          ...(quote ? { _tip: quote.tip, _staff_id: quote.staffId, _request_id: requestId } : {}),
+        });
+        if (error) throw error;
+        setDone({ total: quote?.total ?? total, itemName: cartLabel, onAccount: true });
+        setCart({});
+      }
+      setMemberTipPending(null);
+      setTipChoice(emptyTip);
+      toast.success("Charged to your member account", { closeButton: true, duration: 8000 });
+    } catch (err: any) {
+      toast.error(err?.message || "Could not charge your member account");
+    } finally {
+      accountChargeBusy.current = false;
+      setCheckingMembership(false);
+    }
+  };
 
   /** Start a member-account charge: direct for a confirmed signed-in member, number entry + one-time code otherwise. */
   const startAccountCharge = async (target: "cart" | "tab") => {
+    if (checkingMembership || memberTipPending) return;
     setAccountChargeTarget(target);
     if (!club || !activeMember) { setNumberEntry(true); return; }
     setCheckingMembership(true);
     try {
-      const { data } = await supabase
+      const { data, error: membershipError } = await supabase
         .from("club_members")
         .select("id, name")
         .eq("id", activeMember.id)
         .eq("club_id", club.id)
         .eq("status", "active")
         .maybeSingle();
+      if (membershipError) throw membershipError;
       const start = accountChargeStart(activeMember, data);
       if (start.mode !== "direct") { setNumberEntry(true); return; }
-      // Owner rule: a signed-in member never needs a code, even at tip-enabled
-      // clubs; tips stay optional at the counter.
-      if (target === "tab" && tab) {
-        const settledTotal = tab.total;
-        const settledName = tab.guest_name;
-        const { error } = await (supabase as any).rpc("bar_qr_charge_guest_tab_member_session", {
-          _tab_id: tab.tab_id, _token: tab.token, _club_member_id: start.memberId,
-        });
+      if (!tipConfig) throw new Error("The bar settings are still loading. Please try again.");
+      if (tipConfig.enabled) {
+        const { data: serving, error } = await supabase.rpc("bar_member_tip_staff", { _club_id: club.id });
         if (error) throw error;
-        localStorage.removeItem(tabKey);
-        setTab(null);
-        setDone({ total: settledTotal, itemName: `Bar tab · ${settledName}`, onAccount: true });
-      } else {
-        const { error } = await (supabase as any).rpc("bar_qr_charge_member_session", {
-          _club_id: club.id, _club_member_id: start.memberId,
-          _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
-        });
-        if (error) throw error;
-        setDone({ total, itemName: cartLabel, onAccount: true });
-        setCart({});
+        setMemberTipPending({ target, memberId: start.memberId, staff: serving ?? [], requestId: crypto.randomUUID() });
+        return;
       }
-      toast.success("Charged to your member account", { closeButton: true, duration: 8000 });
+      await chargeSignedInAccount(target, start.memberId);
     } catch (err: any) {
       toast.error(err?.message || "Could not charge your member account");
-      setNumberEntry(true);
     } finally {
       setCheckingMembership(false);
     }
@@ -983,7 +1013,7 @@ export default function ScanPay() {
                   ))}
                 </div>
                 {orderProcess && <GuestOrderProgress tab={tab} />}
-                {tipConfig?.enabled && tab.status === "open" && tab.total > 0 && cartLines.length === 0 && (tipChoice.mode === "none" && !settleTipOpen
+                {!activeMember && tipConfig?.enabled && tab.status === "open" && tab.total > 0 && cartLines.length === 0 && (tipChoice.mode === "none" && !settleTipOpen
                   ? <Button size="sm" variant="ghost" onClick={() => setSettleTipOpen(true)}>Settling your tab? Add a tip</Button>
                   : <div className="space-y-1"><TipEditor subtotal={tab.subtotal ?? tab.total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} /><Button size="sm" variant="ghost" onClick={() => { setSettleTipOpen(false); setTipChoice(emptyTip); }}>No tip</Button></div>)}
                 {(tab.tip ?? 0) > 0 && <p className="text-xs">Included tip: {formatMoney(tab.tip ?? 0, currency)}</p>}
@@ -1288,7 +1318,7 @@ export default function ScanPay() {
                   <span>Total</span>
                   <span>{formatMoney(total, currency)}</span>
                 </div>
-                {tipConfig?.enabled && total > 0 && !(tab && tab.status === "open") && <TipEditor subtotal={total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} />}
+                {!activeMember && tipConfig?.enabled && total > 0 && !(tab && tab.status === "open") && <TipEditor subtotal={total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} />}
 
                 {(!member || club.account_tab_enabled === false) && !tab && (
                   <div className="space-y-1">
@@ -1493,6 +1523,13 @@ export default function ScanPay() {
         items={menu}
         onItem={(item) => bump(item.id, 1)}
       />
+      {memberTipPending && <MemberAccountTipDialog
+        subtotal={memberTipPending.target === "tab" && tab ? tab.subtotal ?? tab.total : total}
+        staff={memberTipPending.staff}
+        busy={checkingMembership}
+        onClose={() => setMemberTipPending(null)}
+        onConfirm={choice => chargeSignedInAccount(memberTipPending.target, memberTipPending.memberId, choice, memberTipPending.staff, memberTipPending.requestId)}
+      />}
       {!member && identified && (
         <BarOtpDialog
           open={pinOpen}

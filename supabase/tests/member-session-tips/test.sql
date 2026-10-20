@@ -1,0 +1,52 @@
+INSERT INTO clubs(id) VALUES('11111111-1111-1111-1111-111111111111'),('22222222-2222-2222-2222-222222222222');
+INSERT INTO club_members(id,club_id,user_id,name) VALUES('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','11111111-1111-1111-1111-111111111111','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','Fictional member');
+INSERT INTO club_bar_settings(club_id) VALUES('11111111-1111-1111-1111-111111111111');
+INSERT INTO bar_counter_devices(id,club_id,label) VALUES('cccccccc-cccc-cccc-cccc-cccccccccccc','11111111-1111-1111-1111-111111111111','Fictional Grant'),('dddddddd-dddd-dddd-dddd-dddddddddddd','22222222-2222-2222-2222-222222222222','Other club');
+INSERT INTO bar_counter_sessions(device_id,club_id) SELECT id,club_id FROM bar_counter_devices;
+INSERT INTO bar_items(id,club_id,price) VALUES('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','11111111-1111-1111-1111-111111111111',900);
+SELECT set_config('test.user','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',false);
+DO $$ DECLARE c uuid:='11111111-1111-1111-1111-111111111111';d uuid:=gen_random_uuid(); BEGIN
+ INSERT INTO bar_counter_devices(id,club_id,label) VALUES(d,c,'Fictional second server');
+ INSERT INTO bar_counter_sessions(device_id,club_id) VALUES(d,c);
+ BEGIN PERFORM _bar_member_tip_recipient(c,NULL); RAISE EXCEPTION 'ambiguous recipient guessed'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='ambiguous recipient guessed' THEN RAISE; END IF; END;
+ IF _bar_member_tip_recipient(c,d)<>d THEN RAISE EXCEPTION 'Serving selection not honored'; END IF;
+ UPDATE bar_counter_sessions SET expires_at=now()-interval '1 minute' WHERE device_id=d;
+ IF _bar_member_tip_recipient(c,NULL)<>'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid THEN RAISE EXCEPTION 'Expired server counted'; END IF;
+ PERFORM set_config('test.user','',false);
+ BEGIN PERFORM bar_member_cart_account_with_tip(c,'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','[]',0,gen_random_uuid()); RAISE EXCEPTION 'anonymous accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='anonymous accepted' THEN RAISE; END IF; END;
+ PERFORM set_config('test.user','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',false);
+END $$;
+DO $$ DECLARE c uuid:='11111111-1111-1111-1111-111111111111';m uuid:='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'; req uuid:='ffffffff-ffff-ffff-ffff-ffffffffffff'; r jsonb; lines jsonb:='[{"bar_item_id":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","quantity":1}]'; BEGIN
+ r:=bar_member_cart_account_with_tip(c,m,lines,100,req);
+ IF (r->>'total')::numeric<>1000 THEN RAISE EXCEPTION 'R900 + R100 must be R1000'; END IF;
+ IF (SELECT staff_id FROM bar_tips WHERE tab_id=req)<>'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid THEN RAISE EXCEPTION 'Sole serving person must receive tip'; END IF;
+ IF (SELECT status FROM bar_tips WHERE tab_id=req)<>'account_due' THEN RAISE EXCEPTION 'Unpaid tip must remain account due'; END IF;
+ IF (SELECT sum(debit-credit) FROM club_journal_entries WHERE club_member_id=m AND account='debtors')<>1000 THEN RAISE EXCEPTION 'Total debt must include tip once'; END IF;
+ PERFORM bar_member_cart_account_with_tip(c,m,lines,100,req);
+ IF (SELECT count(*) FROM bar_tab_entries)<>1 OR (SELECT count(*) FROM bar_tips)<>1 THEN RAISE EXCEPTION 'Retry duplicated charge'; END IF;
+ BEGIN PERFORM bar_member_cart_account_with_tip(c,m,lines,100,gen_random_uuid(),'dddddddd-dddd-dddd-dddd-dddddddddddd'); RAISE EXCEPTION 'foreign staff accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='foreign staff accepted' THEN RAISE; END IF; END;
+ UPDATE bar_counter_sessions SET revoked_at=now() WHERE device_id='cccccccc-cccc-cccc-cccc-cccccccccccc';
+ BEGIN PERFORM bar_member_cart_account_with_tip(c,m,lines,100,gen_random_uuid()); RAISE EXCEPTION 'revoked server accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='revoked server accepted' THEN RAISE; END IF; END;
+ PERFORM bar_member_cart_account_with_tip(c,m,lines,0,gen_random_uuid());
+ IF (SELECT count(*) FROM bar_tab_entries)<>2 THEN RAISE EXCEPTION 'No-tip charge blocked without serving staff'; END IF;
+ UPDATE bar_counter_sessions SET revoked_at=NULL;
+ BEGIN PERFORM bar_member_cart_account_with_tip(c,m,lines,-1,gen_random_uuid()); RAISE EXCEPTION 'negative accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='negative accepted' THEN RAISE; END IF; END;
+ IF (SELECT count(*) FROM bar_tab_entries)<>2 THEN RAISE EXCEPTION 'Failed tip did not roll back basket'; END IF;
+ PERFORM set_config('test.user','99999999-9999-9999-9999-999999999999',false);
+ BEGIN PERFORM bar_member_cart_account_with_tip(c,m,lines,100,gen_random_uuid()); RAISE EXCEPTION 'foreign session accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='foreign session accepted' THEN RAISE; END IF; END;
+ PERFORM set_config('test.user','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',false);
+ INSERT INTO club_journal_entries(club_id,journal_ref,account,debit,credit,club_member_id) VALUES(c,gen_random_uuid(),'debtors',0,1900,m);
+ IF (SELECT status FROM bar_tips WHERE tab_id=req)<>'earned' THEN RAISE EXCEPTION 'Paid account tip not recognized'; END IF;
+ IF has_function_privilege('anon','bar_member_cart_account_with_tip(uuid,uuid,jsonb,numeric,uuid,uuid)','EXECUTE') THEN RAISE EXCEPTION 'Anonymous charge permission'; END IF;
+ IF has_function_privilege('authenticated','_bar_member_tip_ownership(uuid,uuid)','EXECUTE') THEN RAISE EXCEPTION 'Public private helper'; END IF;
+ END $$;
+
+DO $$ DECLARE t uuid:=gen_random_uuid();tok uuid:=gen_random_uuid();c uuid:='11111111-1111-1111-1111-111111111111';m uuid:='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';r jsonb; BEGIN
+ INSERT INTO bar_guest_tabs(id,club_id,guest_name,token) VALUES(t,c,'Fictional tab',tok);
+ INSERT INTO bar_visitor_sales(guest_tab_id,bar_item_id,quantity,unit_price,total) VALUES(t,'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',1,900,900);
+ r:=bar_member_tab_account_with_tip(t,tok,m,90);
+ IF (r->>'total')::numeric<>990 OR (SELECT status FROM bar_guest_tabs WHERE id=t)<>'settled' THEN RAISE EXCEPTION 'Tab settlement incorrect'; END IF;
+ IF (SELECT count(*) FROM bar_tips WHERE tab_id=t)<>1 THEN RAISE EXCEPTION 'Missing tab tip'; END IF;
+ BEGIN PERFORM bar_member_tab_account_with_tip(t,tok,m,90); RAISE EXCEPTION 'settled tab accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='settled tab accepted' THEN RAISE; END IF; END;
+ IF (SELECT count(*) FROM bar_tips WHERE tab_id=t)<>1 THEN RAISE EXCEPTION 'Tab retry duplicated tip'; END IF;
+ END $$;

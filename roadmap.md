@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Revise 24-player proposed preview: R4 four-position crossovers, R5 adjacent finals; no repeated earlier position pairs or opponents. Preserve live engine/saved fixtures; no publication.
+
 - [x] GoBook duplicate-identity correction deployed to API/sync; 35 synthetic checks pass. Two authenticated live refreshes return 200; Uitsig Book court opens, refreshes and offers tonight's 19:30 Court 4 free slot. No player booking submitted, no GoBook booking/cancellation or hardware command; final player submission intentionally untested.
 
 - [x] Replaced Member sales/Card sales with Closed tabs, payment-method subcategories and order totals; nine focused checks pass and authenticated Riverside report/filter reads have no errors. Frontend-only, preview-only; no sales writes.

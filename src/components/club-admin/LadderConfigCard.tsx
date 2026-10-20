@@ -94,6 +94,14 @@ export function LadderConfigCard({ clubId }: Props) {
 
       <p className="text-xs text-muted-foreground">{describeLadderRule(draft)}</p>
 
+      {draft.format === "pyramid" && (
+        <div className="flex items-center gap-3 border rounded-md p-3">
+          <Label className="flex-1" htmlFor="same-row-challenges">Allow higher-ranked players in the same row</Label>
+          <Switch id="same-row-challenges" checked={draft.pyramid_allow_same_row === true}
+            onCheckedChange={(value) => set("pyramid_allow_same_row", value)} />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Ladder format</Label>

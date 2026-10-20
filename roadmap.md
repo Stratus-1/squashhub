@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] NSC ladder follow-up: verify saved settings and confirmed-result movement for Stiaan vs Leone; preserve pending verification and avoid unrelated ladder reshuffles.
+- [x] NSC ladder follow-up: same-row and directly-above-row higher-ranked challenges enabled; automatic ladder/points switches aligned. Missing-link reported 3–1 classified as ladder, still pending Leone verification, positions 70/68 unchanged. NSC-only idempotent member-first confirmed-result handler uses mixed-ladder engine. 22 unit checks and isolated synthetic PostgreSQL confirmation tests passed; Riverside authenticated ladder renders unchanged. Member confirmation UI not exercised; no publication or unrelated rank reset.
 
 - [x] NSC Stiaan vs Leone: owner-reported 3–1 saved pending verification, one notice/email queued, audited; game scores absent and positions unchanged. No existing challenge; same-row pyramid restriction and old outgoing challenge preserved. Profile shortcut now opens the selected opponent via existing ladder checks; preview only. Member submission not exercised; Riverside Super Admin check only.
 

@@ -14,6 +14,7 @@ function normalise(row: any): LadderConfig {
     format: row.format === "pyramid" ? "pyramid" : "standard",
     challenge_levels_up: Number(row.challenge_levels_up ?? 2),
     pyramid_row_sizes: sizes && sizes.length > 0 ? sizes : null,
+    pyramid_allow_same_row: row.pyramid_allow_same_row === true,
     accept_deadline_hours: Number(row.accept_deadline_hours ?? 72),
     complete_deadline_days: Number(row.complete_deadline_days ?? 14),
     max_active_outgoing: Number(row.max_active_outgoing ?? 1),

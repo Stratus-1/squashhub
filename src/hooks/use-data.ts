@@ -1436,6 +1436,7 @@ export function useCreateMatch() {
       playerBMemberId,
       winnerMemberId,
       submittedByMemberId,
+      sourceType,
     }: {
       matchId?: string;
       playerA: string;
@@ -1452,6 +1453,7 @@ export function useCreateMatch() {
       playerBMemberId?: string | null;
       winnerMemberId?: string | null;
       submittedByMemberId?: string | null;
+      sourceType?: "ladder" | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
 
@@ -1477,6 +1479,7 @@ export function useCreateMatch() {
           court_id: courtId ?? null,
           challenge_id: challengeId ?? null,
           game_scores: gameScores ?? null,
+          source_type: sourceType ?? null,
           duration_s: durationS ?? null,
           notes: notes ?? null,
           submitted_by: user.id,

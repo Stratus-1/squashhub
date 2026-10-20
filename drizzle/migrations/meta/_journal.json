@@ -1527,6 +1527,13 @@
       "when": 1792503901624,
       "tag": "0217_champ_withdrawn_keep_position",
       "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1792510338303,
+      "tag": "0218_nsc_same_row_verified_ladder_results",
+      "breakpoints": true
     }
   ]
 }

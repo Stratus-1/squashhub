@@ -1443,6 +1443,13 @@
       "when": 1792473940511,
       "tag": "0205_round_deadlines_preserve_fixture_allocations",
       "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1792477031333,
+      "tag": "0206_champ_fee_adjust_preserve_payments",
+      "breakpoints": true
     }
   ]
 }

@@ -22223,6 +22223,10 @@ export type Database = {
         Returns: Json
       }
       notify_doubles_pair: { Args: { p_pair_id: string }; Returns: Json }
+      nsc_treasurer_domain_access: {
+        Args: { _club_id: string; _permission: string; _user_id: string }
+        Returns: boolean
+      }
       open_bar_guest_tab:
         | { Args: { _code: string; _guest_name: string }; Returns: Json }
         | {

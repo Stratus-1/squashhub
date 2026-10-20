@@ -1534,6 +1534,13 @@
       "when": 1792510338303,
       "tag": "0218_nsc_same_row_verified_ladder_results",
       "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1792510785343,
+      "tag": "0219_nsc_treasurer_domain_access",
+      "breakpoints": true
     }
   ]
 }

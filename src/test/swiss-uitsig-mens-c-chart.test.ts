@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { uitsigMensCChart, usesUitsigMensCChart } from "@/lib/tournaments/swiss-uitsig-mens-c-chart";
-import { buildProposedSwissGrid, buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
+import { buildProposedSwissGrid, buildSwissGrid, buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 
 const club = "d8397b8a-60d3-4c4b-afee-25dab218bf19";
 const tournament = "f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
@@ -40,9 +40,29 @@ describe("Uitsig Men's C owner-approved chart", () => {
     m.rounds[1].created = true;
     const snapshot = JSON.stringify(m);
     const exact = buildProposedSwissGrid(m, { exactMensCChart:true });
-    expect(exact.rounds[1].blocks.find(b => b.matchId === "saved")).toMatchObject({ saved:true, score:"3–1",court:"Court 1",playBy:"2026-10-29" });
+    expect(exact.rounds[1].blocks.map(b => b.rows.map(r => r.pos))).toEqual(expected[1]);
+    expect(buildSwissGrid(m)[1].blocks.find(b => b.matchId === "saved")).toMatchObject({ score:"3–1",court:"Court 1",playBy:"2026-10-29" });
     expect(JSON.stringify(m)).toBe(snapshot);
     expect(buildProposedSwissGrid(model())).toEqual(before);
     expect(before.rounds[1].blocks.map(b => b.rows.map(r => r.pos))).not.toEqual(expected[1]);
+  });
+  it("shows Round 2 1v9 even when a full saved round pairs 1v10", () => {
+    const savedRound2 = [[1,10],[2,9],[3,8],[4,7],[5,6],[11,18],[12,17],[13,16],[14,15]];
+    const m = buildSwissProgression({
+      seedOrder: Array.from({ length: 18 }, (_,i) => `p${i+1}`), names: {}, totalRounds: 5,
+      matches: [
+        ...expected[0].map(([a,b],i) => ({ id:`r1-${i}`,round:1,a:`p${a}`,b:`p${b}`,winner:`p${a}`,status:"completed",score:"3-1" })),
+        ...savedRound2.map(([a,b],i) => ({ id:`r2-${i}`,round:2,a:`p${a}`,b:`p${b}`,winner:null,status:"scheduled",playBy:"2026-10-29" })),
+      ],
+    });
+    const snapshot = JSON.stringify(m);
+    const exact = buildProposedSwissGrid(m, { exactMensCChart: true });
+    for (let i=0;i<5;i++) expect(exact.rounds[i].blocks.map(b => b.rows.map(r => r.pos))).toEqual(expected[i]);
+    expect(exact.rounds[1].blocks[0].rows.map(r => r.id)).toEqual(["p1","p9"]);
+    expect(exact.rounds[1].blocks[0].saved).not.toBe(true);
+    expect(exact.rounds[1].blocks[0].score).toBeNull();
+    expect(buildSwissGrid(m)[1].blocks[0].rows.map(r => r.pos)).toEqual([1,10]);
+    expect(JSON.stringify(m)).toBe(snapshot);
+    expect(buildProposedSwissGrid(m).rounds[1].blocks[0].rows.map(r => r.pos)).toEqual([1,10]);
   });
 });

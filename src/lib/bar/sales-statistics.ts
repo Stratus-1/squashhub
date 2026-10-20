@@ -18,6 +18,12 @@ export function salesStatistics(lines: SalesLine[], venue: HistoryVenue) {
   return {
     total: filtered.reduce((sum, line) => sum + line.total, 0),
     count: filtered.length,
+    items: [...filtered.reduce((map, line) => {
+      const row = map.get(line.item) ?? { item: line.item, quantity: 0, total: 0 };
+      row.quantity += Number(line.quantity) || 0; row.total += line.total;
+      return map.set(line.item, row);
+    }, new Map<string, { item: string; quantity: number; total: number }>()).values()]
+      .sort((a, b) => b.quantity - a.quantity || a.item.localeCompare(b.item)),
     buckets: salesBuckets.map(bucket => {
       const selected = filtered.filter(line => line.bucket === bucket.value);
       const groups = new Map<string, { id: string; name: string; operator: string | null; total: number; lines: SalesLine[] }>();

@@ -136,6 +136,11 @@ export function ClosedTabsTab({ clubId }: { clubId: string }) {
             {groups.length > PAGE_SIZE && <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span>{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, groups.length)} of {groups.length}</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page === 0} onClick={() => { setPage(page - 1); setExpanded(null); }}>Previous</Button><Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= groups.length} onClick={() => { setPage(page + 1); setExpanded(null); }}>Next</Button></div></div>}
           </div>}
         </div>)}</div>}
+        <div className="space-y-1"><h5 className="text-sm font-medium">Items sold</h5>
+          {!stats.items.length ? <p className="text-xs text-muted-foreground">No items sold in this period.</p>
+            : <div className="divide-y border-y">{stats.items.map(row => <div key={row.item} className="flex justify-between gap-3 py-1.5 text-xs"><span className="min-w-0 break-words"><span className="tabular-nums font-medium">{row.quantity} ×</span> {row.item}</span><span className="shrink-0 tabular-nums">{money(row.total)}</span></div>)}
+              <div className="flex justify-between py-1.5 text-xs font-medium"><span>{stats.items.reduce((s, r) => s + r.quantity, 0)} items in total</span><span className="tabular-nums">{money(stats.total)}</span></div></div>}
+        </div>
       </>}
   </div>;
 }

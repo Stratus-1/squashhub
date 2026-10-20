@@ -167,7 +167,7 @@ export function ScheduleMatchDialog({
     setCourtId(courtOptions[0].id);
   }, [courtOptions, courtId, courts]);
 
-  const { data: bookings = [], isFetching, refetch: refetchBookings } = useQuery({
+  const { data: bookings = [], isFetching, isError: availabilityError, refetch: refetchBookings } = useQuery({
     queryKey: ["court-bookings-self-schedule", bookingClubId, date, match?.id, durationMinutes],
     queryFn: async () => {
       if (gobookApiMode) {
@@ -183,15 +183,17 @@ export function ScheduleMatchDialog({
         .eq("status", "active");
       if (bookingsError) throw bookingsError;
       // Scheduled games without a booking row still hold their court.
-      const { data: champs } = await fromExt("club_champs").select("id").eq("club_id", bookingClubId!);
+      const { data: champs, error: champsError } = await fromExt("club_champs").select("id").eq("club_id", bookingClubId!);
+      if (champsError) throw champsError;
       const champIds = ((champs || []) as any[]).map((c) => c.id);
       let fixtures: any[] = [];
       if (champIds.length) {
-        const { data: fx } = await fromExt("club_champs_matches")
+        const { data: fx, error: fixtureError } = await fromExt("club_champs_matches")
           .select("id, court_id, scheduled_time, booking_id, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id")
           .in("champ_id", champIds)
           .eq("scheduled_date", date)
           .not("court_id", "is", null);
+        if (fixtureError) throw fixtureError;
         fixtures = (fx || []) as any[];
       }
       const dur = Math.max(15, durationMinutes || Number(club?.booking_slot_minutes) || 45);
@@ -225,8 +227,8 @@ export function ScheduleMatchDialog({
   const [showAllTimes, setShowAllTimes] = useState(false);
   const champsOnly = (gobookApiMode || reservedDates.length > 0) && !(canManage && showAllTimes);
   useEffect(() => {
-    if (champsOnly && reservedDates.length > 0 && !reservedDates.includes(date)) setDate(reservedDates[0]);
-  }, [champsOnly, reservedDates, date]);
+    if (!gobookApiMode && champsOnly && reservedDates.length > 0 && !reservedDates.includes(date)) setDate(reservedDates[0]);
+  }, [gobookApiMode, champsOnly, reservedDates, date]);
 
   const slotMinutes = Number(club?.booking_slot_minutes) || 60;
   const duration = Math.max(15, durationMinutes || slotMinutes);
@@ -256,7 +258,7 @@ export function ScheduleMatchDialog({
   // The evening's holds merge into one span per court and the Champs' own
   // match-length slots (e.g. 35 minutes) are offered inside it.
   const champsSlots = useMemo(() => {
-    if (!match) return [] as { courtId: number; courtName: string; time: string }[];
+    if (!match || availabilityError || isFetching) return [] as { courtId: number; courtName: string; time: string }[];
     const ids = new Set(courtOptions.map((c) => c.id));
     const starts = champsSlotStarts((bookings as any[]).filter((b) => ids.has(b.court_id)), duration);
     const out: { courtId: number; courtName: string; time: string }[] = [];
@@ -267,7 +269,7 @@ export function ScheduleMatchDialog({
       }
     }
     return out.sort((a, b) => a.time.localeCompare(b.time) || a.courtName.localeCompare(b.courtName));
-  }, [bookings, courtOptions, duration, match]);
+  }, [bookings, courtOptions, duration, match, availabilityError, isFetching]);
 
   // Full-day board for Champs-only mode: every normal club slot on every
   // tournament court, marked free-Champs / reserved / taken / open. Open slots
@@ -491,7 +493,7 @@ export function ScheduleMatchDialog({
         <div className="space-y-3 overflow-y-auto pr-1">
           <div className="space-y-1">
             <Label className="text-xs">Date</Label>
-            {champsOnly && reservedDates.length > 0 ? (
+            {champsOnly && !gobookApiMode && reservedDates.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {reservedDates.map((d) => (
                   <Button key={d} type="button" size="sm" variant={date === d ? "default" : "outline"} className="h-7 text-xs" onClick={() => setDate(d)}>

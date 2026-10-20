@@ -1,3 +1,7 @@
+## 2026-10-20 — Clarified GoBook free championship capacity authority
+- Owner clarified that any current Club Championships hold on GoBook is free capacity, including after noon; absence means no free fixture choices. Removed time-based import suppression in both sync paths; absent unused holds still cancel while player/fixture-linked bookings stay protected.
+- API-mode fixture picker refreshes GoBook before reading each date and again on confirmation, fails closed on read errors, and never falls back to unrestricted free booking when holds disappear. Date input allows additional dates outside existing cached reservation lists. Cancelled holds no longer generate free starts. Source-only, no deployment/publication/live writes/external calls.
+
 ## 2026-10-20 — Gerhard-cancelled championship holds must disappear on refresh
 - Both sync paths cancel missing unused championship mirrors after successful provider reads regardless of noon, preserving player-owned championship rows and fixture links; failed ownership reads abort reconciliation. Noon anti-resurrection remains unchanged.
 - Booking-page reload no longer skips a GoBook read using the three-minute session cache; successful sync immediately refreshes championship-hold restrictions. Source-only: no deployment, publication, live bookings, external calls or hardware operations.

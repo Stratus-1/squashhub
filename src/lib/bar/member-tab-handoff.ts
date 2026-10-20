@@ -51,3 +51,23 @@ export function takeMemberTabDraft(code: string, tabId: string | null): Record<s
     return cart;
   } catch { return {}; }
 }
+
+export type AccountChargeStart =
+  | { mode: "otp"; memberId: string; memberName: string }
+  | { mode: "number" };
+
+/**
+ * Decide how the public scan-to-pay page starts a member-account charge. Only
+ * when the signed-in member is confirmed as an active member of the scanned
+ * club may the membership-number step be skipped; the one-time code approval
+ * is unchanged either way.
+ */
+export function accountChargeStart(
+  signedIn: { id: string; name: string | null } | null,
+  scannedClubMembership: { id: string; name: string | null } | null,
+): AccountChargeStart {
+  if (signedIn && scannedClubMembership && scannedClubMembership.id === signedIn.id) {
+    return { mode: "otp", memberId: scannedClubMembership.id, memberName: scannedClubMembership.name || signedIn.name || "Member" };
+  }
+  return { mode: "number" };
+}

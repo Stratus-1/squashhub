@@ -100,6 +100,9 @@ import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { usesUitsigMensCChart } from "@/lib/tournaments/swiss-uitsig-mens-c-chart";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
+import { CategoryFixtureCalendar } from "@/components/tournaments/CategoryFixtureCalendar";
+import type { CategoryCalendarFixture } from "@/lib/tournaments/category-calendar";
+import { fixtureScoreDetails, fixtureState } from "@/lib/tournaments/club-fixtures";
 import { TournamentPlayerInfoNotice } from "@/components/tournaments/TournamentPlayerInfo";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
 import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
@@ -1289,7 +1292,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               seedOrder: rrSeedOrder(pm.map((m: any) => ({ round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, isBye: !!m.is_bye })), rows.map((r: any) => r.club_member_id)),
               matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
             });
-            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar />;
+            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />;
           })}
           {(() => {
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
@@ -1410,7 +1413,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
       const exactMensCChart = usesUitsigMensCChart(champ.club_id, champId, gn, model.rows.length, model.totalRounds);
       if (riversidePreview) pilotSwissModels[gn] = model;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart} exactMensCChart={exactMensCChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} hideCalendar={!!embeddedChampId} classicStandings={riversidePreview || exactMensCChart ? classic : undefined} />{laterIsRR ? (
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart} exactMensCChart={exactMensCChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} calendar={renderCategoryCalendar(gn)} classicStandings={riversidePreview || exactMensCChart ? classic : undefined} />{laterIsRR ? (
           <div className="mt-6 space-y-4" data-testid={`stage2-progression-${gn}`}>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>
@@ -1425,7 +1428,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                 seedOrder: rankOrder,
                 matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
               });
-              return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}${laterPools.length > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar />;
+              return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}${laterPools.length > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />;
             })}
           </div>
         ) : laterIsKO ? (
@@ -1441,7 +1444,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               return <OverallStandingsPanel title={getGroupLabel(champ, gn)} rows={os.rows} complete={os.complete} names={names} clubId={champ.club_id} canManage={canManage} />;
             })()}
           </div>
-        ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} hideCalendar={!!embeddedChampId} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
+        ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} calendar={renderCategoryCalendar(gn)} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view
@@ -1601,6 +1604,25 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     (m.player_b_member_id
       ? (matchIsDoubles(m) ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b))
       : (m.placeholder_b || (isByeFixture(m) ? "BYE" : "TBD"))) + hcLabel(m.handicap_b);
+
+  // Calendar context is tournament-wide; progression stays category/stage-specific.
+  const calendarFixtures: CategoryCalendarFixture[] = (matches as any[])
+    .filter((m) => m.status !== "cancelled" && !isProvisionalSwissSlot(m, champ))
+    .map((m) => {
+      const category = getGroupLabel(champ, m.group_number);
+      return {
+        id: m.id, group: m.group_number == null ? null : Number(m.group_number), category,
+        date: m.scheduled_date ?? m.play_by ?? null,
+        time: m.scheduled_date ? m.scheduled_time ?? null : null, court: m.court?.name ?? null,
+        title: `${getMatchTeamA(m)} v ${getMatchTeamB(m)}`,
+        subtitle: `${category}${m.stage_label ? ` · ${m.stage_label}` : m.round_number ? ` · R${m.round_number}` : ""}`,
+        kind: m.scheduled_date ? "confirmed" : "play_by",
+        state: fixtureState(m, m.status === "in_progress", m.status === "paused"),
+        ...fixtureScoreDetails(m),
+        durationMin: Number(m.match_duration_minutes ?? (arch as any)?.match_duration_minutes) || undefined,
+      };
+    });
+  const renderCategoryCalendar = (gn: number) => <CategoryFixtureCalendar fixtures={calendarFixtures} group={gn} category={getGroupLabel(champ, gn)} />;
 
   // Saved games, not pool rank/colour, determine the late-stage overview.
   const structuredSummary = isStructured && !diamondEvent && arch?.builder_spec?.divisions?.length ? (() => {

@@ -1450,6 +1450,13 @@
       "when": 1792477031333,
       "tag": "0206_champ_fee_adjust_preserve_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1792481647100,
+      "tag": "0207_migration",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Diagnose and fix Nelspruit “Bar not open for orders”; preserve its disabled order-process setting and existing payment/serving protections; no real orders or hardware tests.
+- [x] Diagnosed Nelspruit closed orders: mode was OFF, member handoff wrongly submitted staffed orders. Added mode-aware self-service draft handoff and fail-closed unknown mode; 28 mode/QR/PIN tests pass, build OK. Nelspruit menu inspected read-only; during investigation external settings changed to process ON/open until 21 Oct 05:07 UTC (07:07 Johannesburg); no settings changed by this task. Riverside basket screen checked, but signed-in account lacks a usable member/venue handoff so full checkout remains unverified; no sales/payment/hardware writes or publication.
 
 - [x] Added Outstanding balance under Member Billing → Bill member: member, amount, date and reason, Dr debtors / Cr opening balance equity, atomic audited retries under existing billing authority. Eleven focused tests and isolated PostgreSQL additive-balance/authority/retry checks pass; signed-in Riverside form and success tested with intercepted submission (no live charge). Build OK; not published.
 

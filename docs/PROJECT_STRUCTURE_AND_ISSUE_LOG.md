@@ -2,7 +2,7 @@
 - Symptom: member purchases fail with “Bar not open for orders” at Nelspruit.
 - Finding: Nelspruit's honesty bar and online/member payments are enabled, staffed order process disabled; HonestyBar always called the staffed guest-order writer, which correctly rejects OFF/closed orders.
 - Fix: recheck active club order mode before handoff; OFF carries the uncharged basket to existing self-service QR/tab checkout, ON retains the staffed order submission. Unknown/error mode blocks writes. Member screen reflects the selected workflow; no club settings, sales, payments or stock changed.
-- Guard: mode OFF/ON/error and draft preservation regressions; QR settlement/counter PIN tests; read-only Nelspruit menu inspection and synthetic Riverside checkout checks. Counter read-only assertion now includes its existing shift-overview read. Preview only, not published.
+- Guard: 28 mode OFF/ON/error, draft, QR settlement and counter PIN checks pass. Read-only Nelspruit menu and Riverside basket inspected; signed-in account has no usable member/venue handoff, so full checkout is unverified. Counter read-only assertion includes its existing shift-overview read. During investigation Nelspruit settings changed externally to order process ON/open until 21 Oct 05:07 UTC; this task did not change them. Preview only, not published.
 
 ## 2026-10-20 — Outstanding member balance in Bill member
 - Symptom: Enter Transaction only records income/expenses; existing Bill member only raises income-linked fees.

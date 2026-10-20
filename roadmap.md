@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] NSC Stiaan vs Leone: owner-reported 3–1 saved pending verification, one notice/email queued, audited; game scores absent and positions unchanged. No existing challenge; same-row pyramid restriction and old outgoing challenge preserved. Profile shortcut now opens the selected opponent via existing ladder checks; preview only. Member submission not exercised; Riverside Super Admin check only.
+
 - [x] Shared category calendar: all saved tournament fixtures visible, selected category green; undated games listed. 18 checks pass; signed-in fictional Riverside RR and Swiss categories checked, day view shows 15 fixtures (11 selected/4 other), month totals and detail opening verified. Preview only; no data changes/publication.
 
 - [x] NSC tonight's doubles test scores cleared: two rubbers audited/reset, two pending test ranking awards rejected, stale marker lock released. All 15 rubbers unscored; affected signed-in scorecards read back blank. Fixtures/players/bookings retained; devices must reload before real scoring.

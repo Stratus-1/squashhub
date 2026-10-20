@@ -12,7 +12,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Flame, Loader2, Swords, Target, Timer, Trophy, TrendingUp } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,6 +28,7 @@ function initialsFromName(name: string) {
 
 export default function PlayerProfile() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { id } = useParams();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
@@ -437,11 +438,15 @@ export default function PlayerProfile() {
                 >
                   View ladder
                 </Button>
-                {canChallenge ? (
+                {!isSelf && playerMemberId && playerLadderPosition ? (
                   <Button
                     size="sm"
                     className="h-8 text-xs"
-                    onClick={() => navigate(`/ladder`)}
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams);
+                      params.set("challengeMemberId", playerMemberId);
+                      navigate(`/ladder?${params.toString()}`);
+                    }}
                   >
                     <Swords className="w-3 h-3 mr-2" />
                     Challenge

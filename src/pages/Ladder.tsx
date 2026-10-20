@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Swords, X, Layers, ArrowUp, ArrowDown, List, Triangle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateChallenge, useSquashTotals, useHeadToHead } from "@/hooks/use-data";
@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useLadderConfig } from "@/hooks/use-ladder-config";
 import { DEFAULT_LADDER_CONFIG, describeLadderRule, evaluateChallenge } from "@/lib/ladder/eligibility";
+import { resolveChallengeTarget } from "@/lib/ladder/challenge-navigation";
 import { PyramidLadder, type PyramidEntry } from "@/components/ladder/PyramidLadder";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { RankingLedgerDialog } from "@/components/club-admin/RankingLedgerDialog";
@@ -224,10 +225,11 @@ function OpponentStatsInline({ memberId, myMemberId }: { memberId: string; myMem
 
 export default function Ladder() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
-  const { data: myClubMember } = useMyClubMember();
+  const { data: myClubMember, isLoading: memberLoading } = useMyClubMember();
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
   const queryClient = useQueryClient();
@@ -500,7 +502,7 @@ export default function Ladder() {
   const { data: associationNumbers } = useAssociationNumbers(ladderMemberIds);
 
   // How many open challenges I already have (drives the same limit the DB enforces)
-  const { data: myOpenOutgoing = 0 } = useQuery({
+  const { data: myOpenOutgoing = 0, isLoading: outgoingLoading, isError: outgoingError } = useQuery({
     queryKey: ["ladder-open-outgoing", myMemberId],
     enabled: !!myMemberId,
     staleTime: 30_000,
@@ -602,6 +604,21 @@ export default function Ladder() {
     setProposedTime("18:00");
     setChallengeDialog({ open: true, player });
   };
+
+  // Profile shortcuts use the same dialog and eligibility checks as ladder actions.
+  const requestedChallengeMember = searchParams.get("challengeMemberId");
+  useEffect(() => {
+    if (!requestedChallengeMember || !clubId || memberLoading || isLoading || isLadderSettingsLoading || !ladderConfig || outgoingLoading || outgoingError) return;
+    const target = resolveChallengeTarget(allPlayers, requestedChallengeMember);
+    const params = new URLSearchParams(searchParams);
+    params.delete("challengeMemberId");
+    setSearchParams(params, { replace: true });
+    if (!target || isMe(target)) {
+      setBlockedChallenge({ open: true, description: "This player is not an eligible opponent on your club ladder." });
+      return;
+    }
+    handleChallengeClick(target);
+  }, [requestedChallengeMember, clubId, myMemberId, memberLoading, isLoading, isLadderSettingsLoading, ladderConfig, outgoingLoading, outgoingError, allPlayers, myPosition, myOpenOutgoing]);
 
   const handleSendChallenge = async () => {
     if (!challengeDialog.player || !proposedDate || !proposedTime) return;

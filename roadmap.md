@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Fix confirmed Swiss play-by generation in shared/server source: known next-round pairings save without court bookings, use their target round deadline, preserve existing games; 51 tests passed including synthetic Riverside writer readback/idempotency and participant booking permissions. Bundle regenerated locally; preview build OK.
-- [ ] Release play-by generation and repair existing missing fixtures awaits explicit deployment/live-repair approval; no live player booking claimed verified.
+- [ ] Approved now: save Uitsig Round 2/3 confirmed, filled Swiss pairings as bookable fixtures without notifications, preserving existing games/bookings. Deployment not requested; future automatic server activation still awaits explicit deployment approval.
 
 - [x] Priority follow-up: hosted read-only check confirms zero saved Marnus–Riaan games and only their completed Round 1 games. Fixture-list code offers booking only for saved eligible games; play-by predictions are excluded by projectCourtFixtures. Therefore their projected next game is not a bookable fixture. No live changes or source repair performed; player-session UI remains unverified.
 

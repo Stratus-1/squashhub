@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Correct Men's C exact preview: saved Round 2 fixtures currently replace the chart's 1v9 with 1v10; show the supplied chart separately from factual games, preserving all live data.
+
 - [x] Rachel Gates NSC: existing Treasurer grants retained; migration 0219 repairs missing bar/finance domain policies and billing/sales guards for her active NSC membership only. Synthetic PostgreSQL isolation/revocation tests pass; authenticated Rachel opens NSC Club Finance and Bar/POS and reads GL, tabs and audit successfully. No full-admin grant, financial transaction, counter/hardware operation or publication.
 
 - [x] NSC ladder follow-up: same-row and directly-above-row higher-ranked challenges enabled; automatic ladder/points switches aligned. Missing-link reported 3–1 classified as ladder, still pending Leone verification, positions 70/68 unchanged. NSC-only idempotent member-first confirmed-result handler uses mixed-ladder engine. 22 unit checks and isolated synthetic PostgreSQL confirmation tests passed; Riverside authenticated ladder renders unchanged. Member confirmation UI not exercised; no publication or unrelated rank reset.

@@ -14,6 +14,7 @@ export interface LadderConfig {
   format: LadderFormat;
   challenge_levels_up: number;
   pyramid_row_sizes: number[] | null;
+  pyramid_allow_same_row?: boolean;
   accept_deadline_hours: number;
   complete_deadline_days: number;
   max_active_outgoing: number;
@@ -44,6 +45,7 @@ export const DEFAULT_LADDER_CONFIG: LadderConfig = {
   format: "standard",
   challenge_levels_up: 2,
   pyramid_row_sizes: null,
+  pyramid_allow_same_row: false,
   accept_deadline_hours: 72,
   complete_deadline_days: 14,
   max_active_outgoing: 1,
@@ -153,7 +155,7 @@ export function evaluateChallenge(input: EligibilityInput): EligibilityResult {
     const myRow = pyramidRowFor(myPosition, config.pyramid_row_sizes);
     const oppRow = pyramidRowFor(opponentPosition, config.pyramid_row_sizes);
     if (!myRow || !oppRow) return no("Ladder rows could not be calculated.");
-    if (oppRow !== myRow - 1) {
+    if (oppRow !== myRow - 1 && !(config.pyramid_allow_same_row && oppRow === myRow)) {
       return no("You may only challenge players in the row directly above you.");
     }
   } else {
@@ -192,6 +194,7 @@ export function evaluateChallenge(input: EligibilityInput): EligibilityResult {
 /** Human-readable summary of the club's challenge rule, for headers and help text. */
 export function describeLadderRule(config: LadderConfig): string {
   if (config.format === "pyramid") {
+    if (config.pyramid_allow_same_row) return "Pyramid ladder — challenge higher-ranked players in your row or anyone in the row directly above.";
     return "Pyramid ladder — you may challenge anyone in the row directly above you.";
   }
   const n = config.challenge_levels_up;

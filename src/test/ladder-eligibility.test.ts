@@ -82,6 +82,20 @@ describe("pyramid ladder eligibility", () => {
 });
 
 describe("limits and cooldown", () => {
+  it("allows NSC 70 to challenge 68 in its own row when enabled", () => {
+    expect(evaluateChallenge({ config: pyr({ pyramid_allow_same_row: true }), sameGenderGroup: true, myPosition: 70, opponentPosition: 68 }).allowed).toBe(true);
+  });
+  it("still allows the immediately-above row with same-row enabled", () => {
+    expect(evaluateChallenge({ config: pyr({ pyramid_allow_same_row: true }), sameGenderGroup: true, myPosition: 70, opponentPosition: 66 }).allowed).toBe(true);
+  });
+  it("never challenges down or skips a row with same-row enabled", () => {
+    for (const opponentPosition of [71, 55]) {
+      expect(evaluateChallenge({ config: pyr({ pyramid_allow_same_row: true }), sameGenderGroup: true, myPosition: 70, opponentPosition }).allowed).toBe(false);
+    }
+  });
+  it("retains open challenge limits for same-row challenges", () => {
+    expect(evaluateChallenge({ config: pyr({ pyramid_allow_same_row: true }), sameGenderGroup: true, myPosition: 70, opponentPosition: 68, myOpenOutgoing: 1 }).allowed).toBe(false);
+  });
   it("blocks when the challenger is at the open limit", () => {
     const r = evaluateChallenge({
       config: std({ max_active_outgoing: 1 }),

@@ -591,6 +591,7 @@ export default function AddMatchResult() {
           gameScores: gameScoresJson,
           challengeId: urlChallengeId || null,
           notes: `Match type: ${matchType}`,
+          sourceType: matchType === "ladder" ? "ladder" : null,
           playerAMemberId: player1.clubMemberId || null,
           playerBMemberId: player2.clubMemberId || null,
           winnerMemberId,
@@ -628,6 +629,7 @@ export default function AddMatchResult() {
           gameScores: gameScoresJson,
           challengeId: urlChallengeId || null,
           notes: noteParts.join(". "),
+          sourceType: matchType === "ladder" ? "ladder" : null,
           playerAMemberId: player1.clubMemberId || null,
           playerBMemberId: player2.clubMemberId || null,
           winnerMemberId: matchWinner === "a" ? (player1.clubMemberId || null) : (player2.clubMemberId || null),
@@ -637,7 +639,7 @@ export default function AddMatchResult() {
       }
 
       // Ranking-points enqueue (only if enabled, user opted in, and both players are linked club members)
-      if (rankingEnabled && affectsRanking && clubId && player1.clubMemberId && player2.clubMemberId) {
+      if (!urlChallengeId && matchType !== "ladder" && rankingEnabled && affectsRanking && clubId && player1.clubMemberId && player2.clubMemberId) {
         try {
           const winnerMid = matchWinner === "a" ? player1.clubMemberId : player2.clubMemberId;
           const loserMid = matchWinner === "a" ? player2.clubMemberId : player1.clubMemberId;

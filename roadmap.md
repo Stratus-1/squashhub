@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Source-only cancellation refresh: both GoBook sync paths remove missing unused holds at any time, preserve championship players/fixture links, abort on ownership-read errors; page reload no longer reuses a three-minute sync cache and successful sync refreshes hold restrictions. Activation awaits deployment approval.
-- [ ] New after-noon free championship holds: confirmed requirement recorded; blocked on verified GoBook creation-time or authoritative new-booking marker. Current register mapping has no creation-time evidence; treating unknown after-noon IDs as new could resurrect old released holds. No eligibility change or live writes made.
+- [ ] Apply clarified authority: a championship hold currently on GoBook is free tournament capacity regardless of noon; absent holds offer no free tournament slots. Preserve paid bookings and existing games. Source-only; activation requires deployment approval.
 
 - [x] Noon release diagnosed: cron ran but GoBook reactivated seven unused holds. Source fixes shared cutoff for both sync paths, preserves linked/member rows, and confines ordinary booking restrictions to the selected day. Synthetic tests pass; no live bookings/external calls/hardware touched.
 - [ ] Activate noon-release sync fix — blocked on explicit function deployment approval; seven re-imported live holds remain unchanged.

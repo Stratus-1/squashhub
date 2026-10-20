@@ -21,7 +21,6 @@
 // Setup actions are club-admin only; read/booking actions are open to any
 // authenticated member of the club.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
-import { expiredChampHold } from "../_shared/champ-hold-release.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -717,8 +716,8 @@ Deno.serve(async (req) => {
           : surnameMatches.length === 1 ? surnameMatches[0]
           : null;
         const bookerName = member?.name ?? naturalName;
-        // Do not resurrect unused holds after the local release cutoff.
-        if (!member && expiredChampHold(clubId, date, bookerName)) { skipped++; continue; }
+        // GoBook is authoritative: a current championship hold remains capacity,
+        // including holds added after noon. Missing holds reconcile below.
         const rowPayload = {
           club_id: clubId, court_id: court.id, date,
           start_time: `${startTime}:00`, end_time: `${endTime}:00`,

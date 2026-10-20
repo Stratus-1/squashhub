@@ -170,11 +170,18 @@ export function ScheduleMatchDialog({
   const { data: bookings = [], isFetching, refetch: refetchBookings } = useQuery({
     queryKey: ["court-bookings-self-schedule", bookingClubId, date, match?.id, durationMinutes],
     queryFn: async () => {
-      const { data } = await fromExt("bookings")
+      if (gobookApiMode) {
+        const { data: sync, error: syncError } = await supabase.functions.invoke("gobook-api", {
+          body: { action: "sync_core_day", club_id: bookingClubId, booking_date: date },
+        });
+        if (syncError || sync?.error) throw new Error(sync?.error || "Could not verify GoBook availability");
+      }
+      const { data, error: bookingsError } = await fromExt("bookings")
         .select("id, court_id, start_time, end_time, status, source, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
         .eq("club_id", bookingClubId!)
         .eq("date", date)
         .eq("status", "active");
+      if (bookingsError) throw bookingsError;
       // Scheduled games without a booking row still hold their court.
       const { data: champs } = await fromExt("club_champs").select("id").eq("club_id", bookingClubId!);
       const champIds = ((champs || []) as any[]).map((c) => c.id);
@@ -216,9 +223,9 @@ export function ScheduleMatchDialog({
   // Organisers also start in Champs-only mode and must opt in to the full list,
   // so nobody books a Champs match outside the reserved slots by accident.
   const [showAllTimes, setShowAllTimes] = useState(false);
-  const champsOnly = reservedDates.length > 0 && !(canManage && showAllTimes);
+  const champsOnly = (gobookApiMode || reservedDates.length > 0) && !(canManage && showAllTimes);
   useEffect(() => {
-    if (champsOnly && !reservedDates.includes(date)) setDate(reservedDates[0]);
+    if (champsOnly && reservedDates.length > 0 && !reservedDates.includes(date)) setDate(reservedDates[0]);
   }, [champsOnly, reservedDates, date]);
 
   const slotMinutes = Number(club?.booking_slot_minutes) || 60;
@@ -313,7 +320,12 @@ export function ScheduleMatchDialog({
     try {
       const normalizedTime = time.length === 5 ? time : time.slice(0, 5);
       const fresh = await refetchBookings();
+      if (fresh.error) throw fresh.error;
       const freshBookings = (fresh.data || []) as any[];
+      if (gobookApiMode && !champsSlotStarts(freshBookings, duration).get(courtId)?.includes(normalizedTime)) {
+        toast.error("No free Club Champs reservation remains at that time.");
+        return;
+      }
       const stillFree = isSlotFreeForMatch(
         normalizedTime,
         duration,
@@ -479,7 +491,7 @@ export function ScheduleMatchDialog({
         <div className="space-y-3 overflow-y-auto pr-1">
           <div className="space-y-1">
             <Label className="text-xs">Date</Label>
-            {champsOnly ? (
+            {champsOnly && reservedDates.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {reservedDates.map((d) => (
                   <Button key={d} type="button" size="sm" variant={date === d ? "default" : "outline"} className="h-7 text-xs" onClick={() => setDate(d)}>
@@ -545,7 +557,7 @@ export function ScheduleMatchDialog({
                     key={`${s.courtId}-${s.time}`}
                     type="button"
                     size="sm"
-                    disabled={saving}
+                    disabled={saving || isFetching}
                     className="h-7 text-xs"
                     onClick={() => confirm(s.time, s.courtId)}
                   >
@@ -558,7 +570,7 @@ export function ScheduleMatchDialog({
 
           {champsOnly && champsSlots.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              {isFetching ? "Checking availability…" : "All Club Champs slots on this day are taken — try the other day."}
+              {isFetching ? "Checking availability…" : "No free Club Champs slots available on this day."}
             </p>
           )}
           {champsOnly && dayBoard.length > 0 && (

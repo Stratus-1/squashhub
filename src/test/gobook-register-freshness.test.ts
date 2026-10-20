@@ -101,11 +101,14 @@ describe("GoBook day reconciliation requires a fresh register", () => {
     expect(h.cancellations).toEqual(["removed"]);
     expect(h.reads).toHaveLength(2);
   });
-  it("does not resurrect a released noon hold still listed at GoBook", async () => {
+  it("uses a current GoBook championship hold after noon as free capacity", async () => {
     const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19");
     h.mirrors.push({ id: "released", external_id: "gobook:101", date: "2026-10-20", status: "cancelled", external_booker_name: "Club Championships" });
     h.provider([{ ...booking(101, "2026-10-20"), pcMappingText: "Club Championships" }]);
     expect((await h.sync("2026-10-20")).status).toBe(200);
+    expect(h.mirrors[0].status).toBe("active");
+    h.provider([]);
+    await h.sync("2026-10-20");
     expect(h.mirrors[0].status).toBe("cancelled");
   });
   it("releases unused reimported holds but preserves linked and member-owned rows", async () => {

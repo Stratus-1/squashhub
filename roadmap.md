@@ -78,7 +78,7 @@
 - [x] Tournament messaging switch: email opponent to verify entered result
 - [x] Uitsig Men's A: R1 flipped, R2 re-paired
 - [x] Withdrawn-keep-position (bye) marker + automatic walkovers; Brett marked
-- [ ] Uitsig: remove Adel Durand + Nicole Eimer entirely; Ladies B = 8 players in 2 RR pools of 4, keep played results
+- [x] Uitsig: Adele + Nicole removed; Ladies B 2 pools of 4, results kept
 - [ ] Help Center secrets update form (paused, user interrupted)
-- [ ] Ladies B: honour 2-pool setup in Pick players (snake), RR
+- [ ] Pick players ignores saved 2-pool choice (investigate code; data fixed directly)
 - [x] Correct result: Lisa Rahman beat Austyn 15-6,15-12,15-8 (not Lisa van Reeuwyk)

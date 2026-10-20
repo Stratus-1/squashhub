@@ -43,9 +43,9 @@ export function ClosedOrdersTab({ clubId }: { clubId: string }) {
         }
       };
       const [tabs, direct, members] = await Promise.all([
-        paginate(offset => supabase.from('bar_guest_tabs').select('id,guest_name,settled_method,closed_at,bar_visitor_sales(id,total,bar_items(division)),bar_orders(id,order_number)')
+        paginate(offset => supabase.from('bar_guest_tabs').select('id,guest_name,settled_method,closed_at,bar_visitor_sales(id,total,bar_items(division),bar_order_lines(order_id,bar_orders(order_number)))')
           .eq('club_id', clubId).eq('status', 'settled').gte('closed_at', range.from).lt('closed_at', range.to).order('closed_at', { ascending: false }).order('id').range(offset, offset + 249)),
-        paginate(offset => supabase.from('bar_visitor_sales').select('id,visitor_name,total,created_at,payment_method,payment_reference,bar_items(division),bar_order_lines(order_id,bar_orders(order_number))')
+        paginate(offset => supabase.from('bar_visitor_sales').select('id,visitor_name,total,created_at,payment_method,payment_reference,note,bar_items(division),bar_order_lines(order_id,bar_orders(order_number))')
           .eq('club_id', clubId).is('guest_tab_id', null).in('payment_status', ['paid', 'recorded', 'settled']).gte('created_at', range.from).lt('created_at', range.to).order('created_at', { ascending: false }).order('id').range(offset, offset + 249)),
         paginate(offset => fromExt('bar_tab_entries').select('id,club_member_id,total,created_at,source,club_members:club_member_id(name),bar_items(division)')
           .eq('club_id', clubId).gte('created_at', range.from).lt('created_at', range.to).order('created_at', { ascending: false }).order('id').range(offset, offset + 249)),
@@ -57,8 +57,8 @@ export function ClosedOrdersTab({ clubId }: { clubId: string }) {
         rows.forEach(row => links.set(row.member_tab_entry_id, { orderId: row.order_id, number: row.bar_orders?.order_number ?? null }));
       }
       return [
-        ...tabs.flatMap(tab => (tab.bar_visitor_sales ?? []).map((sale: any): ClosedOrderLine => ({ id: sale.id, orderId: tab.id, orderNumber: tab.bar_orders?.length === 1 ? tab.bar_orders[0].order_number : null, name: tab.guest_name, method: tab.settled_method ?? 'unknown', total: Number(sale.total), date: tab.closed_at, division: sale.bar_items?.division ?? null }))),
-        ...direct.map((sale): ClosedOrderLine => ({ id: sale.id, orderId: sale.bar_order_lines?.[0]?.order_id ?? sale.payment_reference ?? sale.id, orderNumber: sale.bar_order_lines?.[0]?.bar_orders?.order_number ?? null, name: sale.visitor_name ?? 'Walk-in', method: sale.payment_method === 'card' ? 'terminal' : sale.payment_method, total: Number(sale.total), date: sale.created_at, division: sale.bar_items?.division ?? null })),
+        ...tabs.flatMap(tab => (tab.bar_visitor_sales ?? []).map((sale: any): ClosedOrderLine => ({ id: sale.id, orderId: sale.bar_order_lines?.[0]?.order_id ?? tab.id, orderNumber: sale.bar_order_lines?.[0]?.bar_orders?.order_number ?? null, name: tab.guest_name, method: tab.settled_method ?? 'unknown', total: Number(sale.total), date: tab.closed_at, division: sale.bar_items?.division ?? null }))),
+        ...direct.map((sale): ClosedOrderLine => ({ id: sale.id, orderId: sale.bar_order_lines?.[0]?.order_id ?? sale.payment_reference ?? sale.id, orderNumber: sale.bar_order_lines?.[0]?.bar_orders?.order_number ?? null, name: sale.visitor_name ?? 'Walk-in', method: sale.payment_method === 'card' ? (/paid online/i.test(sale.note ?? '') ? 'online' : 'terminal') : sale.payment_method, total: Number(sale.total), date: sale.created_at, division: sale.bar_items?.division ?? null })),
         ...members.map((sale): ClosedOrderLine => ({ id: sale.id, orderId: links.get(sale.id)?.orderId ?? `account:${sale.club_member_id}:${sale.created_at}:${sale.source}`, orderNumber: links.get(sale.id)?.number ?? null, name: sale.club_members?.name ?? 'Member', method: 'member_account', total: Number(sale.total), date: sale.created_at, division: sale.bar_items?.division ?? null })),
       ];
     },

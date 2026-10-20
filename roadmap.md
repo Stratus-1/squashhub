@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Plan optional Bar tips across QR/member/counter settlement, staff balances, cash payouts and separate cash-up switch; clarify cash-up meaning and self-service staff attribution before implementation.
+
 - [x] Audited all 78 Uitsig championship fees against assessments and reflected payments: only Gerhard had a duplicate R60 adjustment, now reversed with balanced audit history. Fee wallet-paid; R152 opening balance retained. Assessment-based payment-preserving fix applied; six disposable PostgreSQL tests passed, hosted readback shows zero mismatches. Member statement UI not independently opened; no publication.
 - [x] Included Uitsig top-up members in audit: other reflected top-ups had no replacement tournament charges; no provider/recurring handlers changed.
 

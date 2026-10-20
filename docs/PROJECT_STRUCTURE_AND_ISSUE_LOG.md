@@ -1,3 +1,9 @@
+## 2026-10-20 — Voided tonight's mistaken Nelspruit bar captures (Johann van Coller, Rachel Gates)
+- Owner requested deleting Johann van Coller's bar items from tonight and clearing Rachel Gates' sparkling waters; owner confirmed items were returned, so stock was restored.
+- Johann: removed his settled member-account tab (b2812bbe) with 6 tab entries (3× Castle Lite, 3× Creme Soda, R114), 2 completed orders + 4 lines + 8 order events, 1 payment event, 6 member credit rows and 12 ledger lines (debtors/bar_income). Stock restored Castle Lite 39→42, Creme Soda 21→24 with correction movements. His older 6/13 Oct entries retained.
+- Rachel: removed 2 on-tab Sparkling Water visitor sales (R20) from her open tab; tab stays open and empty, no charge ever posted. Stock restored 7→9 with a correction movement.
+- Guard: post-delete reads show zero remaining tonight records for both members, no orphaned order lines, correct stock counts. No publication.
+
 ## 2026-10-20 — Nelspruit self-service bar blocked by order-process OFF
 - Symptom: member purchases fail with “Bar not open for orders” at Nelspruit.
 - Finding: Nelspruit's honesty bar and online/member payments are enabled, staffed order process disabled; HonestyBar always called the staffed guest-order writer, which correctly rejects OFF/closed orders.

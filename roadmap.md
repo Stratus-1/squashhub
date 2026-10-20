@@ -114,5 +114,5 @@
 - [ ] Setup file still lists the old Ladies B / Ladies C split (including Adele du Rand and Nicole Hamer) — decide whether to align it with the live pools
 - [x] Emailed all 18 Men's C players the corrected Round 2 pairings (tournament_round_draw outbox + audit)
 - [x] Uitsig Ladies A: owner's exact five-round Swiss chart applied as display-only preview (R1 1v8 2v7 3v6 4v5 bye 9; R2 1v5 2v4 6v9 7v8 bye 3; R3 1v4 3v5 6v7 8v9 bye 2; R4 1v3 2v5 6v8 7v9 bye 4; R5 1v2 3v4 bye 5; 6-9 sit out R5 per owner)
-- [ ] Clear Johann van Coller's bar items from tonight (NSC): R114 member-account charge, 6 tab entries, orders, journal, stock — in progress
-- [ ] Clear Rachel Gates' sparkling waters from tonight (NSC bar)
+- [x] Cleared Johann van Coller's tonight bar items (NSC): tab, 6 entries (R114), orders, credits and ledger removed; stock restored (Castle Lite 42, Creme Soda 24); older Oct entries kept
+- [x] Cleared Rachel Gates' 2 sparkling waters (R20) from her open tab; stock restored to 9, tab left open

@@ -204,10 +204,9 @@ export default function ScanPay() {
         .maybeSingle();
       const start = accountChargeStart(activeMember, data);
       if (start.mode !== "direct") { setNumberEntry(true); return; }
-      // Tip-enabled clubs still approve with a code so the tip can be recorded.
-      if (tipConfig?.enabled) {
-        setIdentified({ id: start.memberId, display_name: start.memberName, has_pin: true });
-        setPinOpen(true);
+      // Owner rule: a signed-in member never needs a code, even at tip-enabled
+      // clubs (tips stay optional at the counter).
+      if (false) {
         return;
       }
       if (target === "tab" && tab) {

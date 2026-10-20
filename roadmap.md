@@ -82,3 +82,8 @@
 - [ ] Help Center secrets update form (paused, user interrupted)
 - [ ] Pick players ignores saved 2-pool choice (investigate code; data fixed directly)
 - [x] Correct result: Lisa Rahman beat Austyn 15-6,15-12,15-8 (not Lisa van Reeuwyk)
+- [x] Wording: "Current standings" -> "Current positions"; Matches Won column removed (grid card, Results tab, Log View) — 11 tests pass
+- [x] Ladies B pools: Yolanda -> Pool B, Jenny -> Pool A so played opponents stay together (Berni v Elizane, Austyn v Lisa Rahman, Liezel v Jenny); Liezel v Jenny restored as played (15-8,15-10,15-6); pools are one swap from pure snake
+- [ ] Mens B, C, D and Ladies A Swiss groups: five rounds each
+- [ ] Swiss pairing progression block -> show as a round-robin block
+- [ ] Swiss progression view log is showing as a round robin view log — find the cause, restore Swiss view

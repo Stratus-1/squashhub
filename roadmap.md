@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Restore saved Round 1 results in the exact Ladies A/Men's C preview without changing the supplied position charts or live games.
-- [ ] Check mixed-up Round 2 player names in the exact charts against saved fixtures and confirmed Round 1 progression; do not rewrite live pairings without a verified correction.
+- [x] Restore saved Round 1 results in exact Ladies A/Men's C previews: 27 focused tests pass; authenticated read-only screen check shows nine Men's C scores, three Ladies A scores and bye, with Men's C R2 still 1v9. Build OK; live games unchanged, not published.
+- [ ] Round 2 mismatch diagnosed: saved fixtures use the old draw while the approved positional chart projects a different draw. Await owner confirmation before changing actual fixtures; preview results restored without live changes.
 
 - [x] Correct Men's C exact preview: supplied position chart now stays separate from factual saved games; 39 focused checks pass and authenticated read-only Uitsig preview visibly shows R2 1v9. Saved games/default pairing unchanged; no data writes or publication.
 

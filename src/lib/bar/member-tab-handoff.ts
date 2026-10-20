@@ -51,3 +51,24 @@ export function takeMemberTabDraft(code: string, tabId: string | null): Record<s
     return cart;
   } catch { return {}; }
 }
+
+export type AccountChargeStart =
+  | { mode: "direct"; memberId: string; memberName: string }
+  | { mode: "number" };
+
+/**
+ * Decide how the public scan-to-pay page starts a member-account charge. Only
+ * when the signed-in member is confirmed as an active member of the scanned
+ * club may they charge directly — the session itself is the verification and
+ * the charge functions re-check ownership server-side. Everyone else keeps
+ * the membership-number plus one-time-code flow.
+ */
+export function accountChargeStart(
+  signedIn: { id: string; name: string | null } | null,
+  scannedClubMembership: { id: string; name: string | null } | null,
+): AccountChargeStart {
+  if (signedIn && scannedClubMembership && scannedClubMembership.id === signedIn.id) {
+    return { mode: "direct", memberId: scannedClubMembership.id, memberName: scannedClubMembership.name || signedIn.name || "Member" };
+  }
+  return { mode: "number" };
+}

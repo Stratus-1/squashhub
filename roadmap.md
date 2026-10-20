@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] ScanPay member-account charge: signed-in member confirmed at the scanned club charges directly — no member number, no one-time code (owner: session login is enough, 20 Oct). New session-verified RPCs bar_qr_charge_member_session / bar_qr_charge_guest_tab_member_session re-check ownership server-side (user_id or shared family email); guests/QR-only users keep number + OTP. Tip-enabled clubs keep the OTP path. 20 tests pass, build OK; RPC gates verified (anon rejected, foreign member rejected, no writes). End-to-end UI charge not exercised (no live charges allowed).
+
 - [x] Diagnosed Nelspruit closed orders: mode was OFF, member handoff wrongly submitted staffed orders. Added mode-aware self-service draft handoff and fail-closed unknown mode; 28 mode/QR/PIN tests pass, build OK. Nelspruit menu inspected read-only; during investigation external settings changed to process ON/open until 21 Oct 05:07 UTC (07:07 Johannesburg); no settings changed by this task. Riverside basket screen checked, but signed-in account lacks a usable member/venue handoff so full checkout remains unverified; no sales/payment/hardware writes or publication.
 
 - [x] Added Outstanding balance under Member Billing → Bill member: member, amount, date and reason, Dr debtors / Cr opening balance equity, atomic audited retries under existing billing authority. Eleven focused tests and isolated PostgreSQL additive-balance/authority/retry checks pass; signed-in Riverside form and success tested with intercepted submission (no live charge). Build OK; not published.

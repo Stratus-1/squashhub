@@ -35,7 +35,7 @@ import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle, Wallet } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
@@ -130,6 +130,9 @@ export default function BarCounter() {
   const [tipsOpen, setTipsOpen] = useState(false);
   const [cashUpOpen, setCashUpOpen] = useState(false);
   const [settleTipOpen, setSettleTipOpen] = useState(false);
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpBusy, setTopUpBusy] = useState(false);
 
   const { data: entryCode, isLoading: entryLoading, error: entryError } = useQuery({
     queryKey: ["bar-counter-entry-code", clubId],
@@ -522,6 +525,30 @@ export default function BarCounter() {
     toast.success("Charged to the member's account");
   }
 
+
+  async function confirmTopUp(method: "cash" | "card") {
+    if (!activeTab?.club_member_id) return;
+    const amount = Math.round(Number(topUpAmount) * 100) / 100;
+    if (!Number.isFinite(amount) || amount <= 0) { toast.error("Enter the top-up amount"); return; }
+    const verb = method === "cash" ? "cash received" : "card machine payment received — only confirm if the machine showed APPROVED";
+    if (!window.confirm(`Confirm ${money(amount)} ${verb} for ${activeTab.guest_name}'s account top-up?`)) return;
+    setTopUpBusy(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_counter_topup_member", {
+        _club_member_id: activeTab.club_member_id, _amount: amount, _method: method,
+        _request_id: crypto.randomUUID(), _token: token,
+      });
+      if (error) throw error;
+      const feesSettled = Number((data as any)?.fees_settled || 0);
+      toast.success(`Topped up ${money(amount)} on ${(data as any)?.member_name ?? activeTab.guest_name}'s account${feesSettled > 0 ? ` — ${money(feesSettled)} went to outstanding fees` : ""}`);
+      setTopUpOpen(false);
+      invalidate();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not record the top-up");
+    } finally {
+      setTopUpBusy(false);
+    }
+  }
 
   function finishSettled() {
     setSettled(null);
@@ -1104,6 +1131,14 @@ export default function BarCounter() {
               )}
             </div>
             )}
+            {activeTab.status === "open" && activeTab.club_member_id && (board.cash_enabled || board.card_enabled) && (
+              <Button
+                variant="outline" className="w-full h-11 gap-2" disabled={busy}
+                onClick={() => { setTopUpAmount(""); setTopUpOpen(true); }}
+              >
+                <Wallet className="w-4 h-4" /> Top-up member account
+              </Button>
+            )}
             {activeTab.status !== "closing" && (board.account_enabled !== false || onlineAvailable) && (
               <div className={`grid gap-2 ${board.account_enabled !== false && onlineAvailable ? "grid-cols-2" : "grid-cols-1"}`}>
                 {onlineAvailable && (
@@ -1193,6 +1228,41 @@ export default function BarCounter() {
                 </div>
               )}
               <Button className="w-full" onClick={() => { setOnlineOpen(false); refetch(); }}>Done</Button>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Top up {activeTab.guest_name}'s account</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Take the money at the bar, then confirm how it was paid. It reduces what the member owes (or puts their account in credit) and settles outstanding fees first — the same as an online top-up.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">R</span>
+                  <Input
+                    inputMode="decimal" autoFocus value={topUpAmount}
+                    onChange={(e) => setTopUpAmount(e.target.value)}
+                    placeholder="0.00" aria-label="Top-up amount"
+                  />
+                </div>
+                <div className={`grid gap-2 ${board.cash_enabled && board.card_enabled ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {board.cash_enabled && (
+                    <Button className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("cash")}>
+                      <Banknote className="w-4 h-4" /> Cash received
+                    </Button>
+                  )}
+                  {board.card_enabled && (
+                    <Button variant="outline" className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("card")}>
+                      <CreditCard className="w-4 h-4" /> Swipe at bar
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Double-clicks are safe — each confirmation is recorded once.
+                </p>
+              </div>
             </DialogContent>
           </Dialog>
           <Dialog open={tipsOpen} onOpenChange={setTipsOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Staff tips</DialogTitle></DialogHeader><StaffTips clubId={board.club_id} token={token} /></DialogContent></Dialog>

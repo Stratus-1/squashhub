@@ -432,6 +432,8 @@ export default function BarCounter() {
         await refetch();
         invalidate();
         toast.success("Added to tab");
+        setActiveTabId(null);
+        setSettleTipOpen(false);
       }
     } finally {
       setBusy(false);

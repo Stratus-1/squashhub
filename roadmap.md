@@ -78,3 +78,5 @@
 - [x] Tournament messaging switch: email opponent to verify entered result
 - [x] Uitsig Men's A: R1 flipped, R2 re-paired
 - [x] Withdrawn-keep-position (bye) marker + automatic walkovers; Brett marked
+- [ ] Uitsig: remove Adel Durand + Nicole Eimer entirely; Ladies B = 8 players in 2 RR pools of 4, keep played results
+- [ ] Help Center secrets update form (paused, user interrupted)

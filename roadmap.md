@@ -1,8 +1,9 @@
 # Roadmap
 
-- [ ] Read-only check: explain whether the Projected label prevents Marnus booking his game with Riaan; do not change fixtures or bookings.
+- [x] Read-only: explained Projected is not a persisted bookable fixture; specific Marnus–Riaan record not inspected. No fixture or booking changes.
 
-- [ ] Implement optional Bar tips across QR/member/counter settlement, per-staff balances, cash payouts and separate cash-up switch; customer chooses staff at self-service settlement. Await plan approval before financial changes.
+- [x] Added default-off tip/cash-up switches, QR/member/counter cash/terminal/account tips, named staff balances, cash payouts and separate reporting. 59 tests and fictional Riverside QR cash-request flow verified; no live sales changes or publication.
+- [ ] Online tip checkout and provider settlement release awaits explicit release approval; currently fail-closed. No payment functions deployed. Cash-up workflow remains deferred beyond its switch, as approved.
 
 - [x] Audited all 78 Uitsig championship fees against assessments and reflected payments: only Gerhard had a duplicate R60 adjustment, now reversed with balanced audit history. Fee wallet-paid; R152 opening balance retained. Assessment-based payment-preserving fix applied; six disposable PostgreSQL tests passed, hosted readback shows zero mismatches. Member statement UI not independently opened; no publication.
 - [x] Included Uitsig top-up members in audit: other reflected top-ups had no replacement tournament charges; no provider/recurring handlers changed.

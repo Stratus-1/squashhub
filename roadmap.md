@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Read-only check: explain whether the Projected label prevents Marnus booking his game with Riaan; do not change fixtures or bookings.
+
 - [ ] Implement optional Bar tips across QR/member/counter settlement, per-staff balances, cash payouts and separate cash-up switch; customer chooses staff at self-service settlement. Await plan approval before financial changes.
 
 - [x] Audited all 78 Uitsig championship fees against assessments and reflected payments: only Gerhard had a duplicate R60 adjustment, now reversed with balanced audit history. Fee wallet-paid; R152 opening balance retained. Assessment-based payment-preserving fix applied; six disposable PostgreSQL tests passed, hosted readback shows zero mismatches. Member statement UI not independently opened; no publication.

@@ -20,6 +20,7 @@
 - Closed bar-tab history uses read-only club-scoped pagination and Johannesburg closure dates; why: no settlement changes or silently truncated history.
 - Revised Swiss finals templates are opt-in in the positional display only, separate from default/writer projections; why: preview review must not change live fixtures or generation.
 - Category calendars consume a separate tournament-wide saved-fixture projection; why: highlighting must not filter shared fixtures or change category pairing, standings or scheduling.
+- NSC verified ladder results use a member-first, match-stamped handler and the existing mixed-ladder movement engine; legacy NSC challenge effects and client awards are bypassed there; why: missing challenge links must not prevent movement or duplicate awards.
 <!-- LOVABLE:END -->
 
 ## Architecture rules

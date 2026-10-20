@@ -757,6 +757,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-20 · NSC pyramid and verified-result follow-up
+- **Symptom:** Same-row NSC challenge was blocked and the reported result had no challenge link, so confirmation would never move the ladder.
+- **Finding:** Same-row pyramid challenges were not configurable. Legacy confirmed-match processing ran twice, excluded mixed-gender movement and ignored the newer automatic approval setting.
+- **Fix:** Added opt-in same-row setting, enabled for NSC only; retain directly-above row, higher-ranked opponents, open limits and insert movement. NSC confirmed challenge/explicit ladder results now use member-first tenant checks and the existing mixed ladder engine once, with a match stamp and stable award ID. Aligned NSC automatic points with its existing automatic ladder switch. Classified the reported 3–1 as ladder, still pending Leone verification; positions remain 70/68.
+- **Guard:** 22 focused Vitest checks and isolated synthetic PostgreSQL tests cover pending vs confirmed, mixed 70→68 insert, one award, repeated confirmation and friendly exclusion. Authenticated Riverside ladder still renders unchanged. No live confirmation submitted, hardware operation or publication; member confirmation UI not exercised. Other clubs retain legacy processing. Web/PWA/native share this server result path; native-specific testing not performed.
+
 ### 2026-10-20 · NSC reported challenge result and profile shortcut
 - **Symptom:** Stiaan Swanepoel could not start a challenge against Leone Human; reported winning 3–1 today.
 - **Finding:** Video shows Profile → Challenge returning to the ladder without selecting an opponent. No challenge or match existed between these NSC members. Saved NSC configuration is pyramid: positions 70 and 68 are both row 12, so this pairing is ineligible; Stiaan also has an older pending outgoing challenge. The profile shortcut previously used a positional gap and hid the actual rule explanation. Hosted match notification triggers are absent even though their function exists.

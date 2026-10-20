@@ -93,6 +93,8 @@ League associations, seasons, rules, teams/pairs, rounds, fixtures, lineups, ava
 
 ### Billing, payments, and bar
 
+Member Billing offers a separate outstanding-balance adjustment. `admin_add_member_outstanding_balance` validates the active club/member and existing billing authority, posts only member-linked debtors and opening balance equity atomically, and audits a stable request ID. It creates neither a fee assessment nor a payment; retries cannot duplicate the debt. Existing fee billing and payment flows remain separate.
+
 Optional tips and cash-up settings default off. Tip records are separate from merchandise; confirmed cash/terminal tips earn named Bar income, and cash payouts post named Bar cost of sales. Member-account tips remain account_due against creditors until the account is covered, then earn income exactly once. Staff payouts serialize by staff identity and use stable request IDs. Counter attribution comes from a validated personal PIN session, not a client-selected staff ID. Paid-tip tabs cannot reopen without an audited correction. Online tips are fail-closed behind online_tips_ready until checkout amount/currency verification and atomic provider settlement are released; no payment functions are deployed in this phase. Cash-up currently exposes only the approved enable switch, not a reconciliation workflow.
 
 Counter sale attribution resolves the allocated named PIN credential from its valid server-side session; visitor entries keep that credential ID and a name snapshot, copied unchanged into member-account entries. Handovers affect new lines only, not earlier customer or staff sales; client-provided operator names are not authority.

@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
+import { addMemberOutstandingBalance, OUTSTANDING_BALANCE_KEY } from "@/lib/finance/member-outstanding";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote, Landmark } from "lucide-react";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -231,6 +232,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [billFeeTypeKey, setBillFeeTypeKey] = useState<string>("");
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [billSubmitting, setBillSubmitting] = useState(false);
+  const billOutstanding = billFeeTypeKey === OUTSTANDING_BALANCE_KEY;
+  const billRequestRef = useRef<{ signature: string; id: string } | null>(null);
+  const billBusyRef = useRef(false);
 
   // Row-action confirm dialog (delete/reverse)
   const [rowAction, setRowAction] = useState<null | { ref: string; mode: "delete" | "reverse"; summary: string }>(null);
@@ -500,14 +504,27 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     }
   };
 
-  /* ─── Bill a member (creates Dr Debtors / Cr Income + fee row) ─── */
+  /* ─── Fee billing or balance-sheet-only outstanding adjustment ─── */
   const handleBillMember = async () => {
+    if (billBusyRef.current) return;
     const amount = parseFloat(billAmount);
     if (!billMemberId) return toast.error("Select a member");
-    if (!amount || amount <= 0) return toast.error("Enter a valid amount");
-    if (!billLabel.trim()) return toast.error("Enter a fee description");
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error("Enter a valid amount");
+    if (!billLabel.trim()) return toast.error("Enter a description");
+    billBusyRef.current = true;
     setBillSubmitting(true);
     try {
+      if (billOutstanding) {
+        const signature = JSON.stringify([clubId, billMemberId, billAmount, billLabel.trim(), billDate]);
+        if (billRequestRef.current?.signature !== signature) {
+          billRequestRef.current = { signature, id: crypto.randomUUID() };
+        }
+        await addMemberOutstandingBalance({
+          clubId, memberId: billMemberId, amount: billAmount,
+          description: billLabel, date: billDate, requestId: billRequestRef.current.id,
+        });
+        billRequestRef.current = null;
+      } else {
       const { error } = await rpcExt("admin_bill_member_fee", {
         _club_member_id: billMemberId,
         _amount: amount,
@@ -517,14 +534,18 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         _date: new Date(billDate).toISOString(),
       });
       if (error) throw error;
-      toast.success("Member billed");
+      }
+      toast.success(billOutstanding ? "Outstanding balance increased" : "Member billed");
       setBillOpen(false);
       setBillAmount(""); setBillLabel("");
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["member-account-balance"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to bill member");
     } finally {
+      billBusyRef.current = false;
       setBillSubmitting(false);
     }
   };
@@ -1851,16 +1872,21 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               <Receipt className="w-4 h-4" /> Bill a Member
             </DialogTitle>
             <DialogDescription>
-              Raises a fee on the member's statement. Posts Dr Debtors / Cr the chosen income account, and creates a matching unpaid fee row.
+              {billOutstanding ? "Outstanding balance adjustment" : "Member fee billing"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Fee</Label>
+              <Label className="text-xs">Billing type</Label>
               <Select
                 value={billFeeTypeKey}
                 onValueChange={(key) => {
                   setBillFeeTypeKey(key);
+                  if (key === OUTSTANDING_BALANCE_KEY) {
+                    setBillLabel("");
+                    setBillAmount("");
+                    return;
+                  }
                   const opt = (billFeeOptions as BillFeeOption[]).find(o => o.key === key);
                   if (!opt) return;
                   setBillIncome(opt.income);
@@ -1868,8 +1894,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   if (opt.amount > 0) setBillAmount(opt.amount.toFixed(2));
                 }}
               >
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a fee…" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs" aria-label="Billing type"><SelectValue placeholder="Select billing type…" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={OUTSTANDING_BALANCE_KEY}>Outstanding balance</SelectItem>
                   {(["Membership", "League", "National body"] as const).map(group => {
                     const items = (billFeeOptions as BillFeeOption[]).filter(o => o.group === group);
                     if (items.length === 0) return null;
@@ -1889,9 +1916,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   )}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              {!billOutstanding && <p className="text-[10px] text-muted-foreground mt-1">
                 Posts to GL account: <strong>{getLabel(billIncome)}</strong> • Amount is editable below.
-              </p>
+              </p>}
             </div>
             <div>
               <Label className="text-xs">Member</Label>
@@ -1917,10 +1944,11 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       })
                       .sort((a: any, b: any) => (a.name || a.profiles?.name || "").localeCompare(b.name || b.profiles?.name || ""))
                       .map((m: any) => (
-                        <button
+                        <Button
                           key={m.id}
                           type="button"
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center gap-2"
+                          variant="ghost"
+                          className="w-full justify-start text-left px-3 py-2 text-xs h-auto flex items-center gap-2"
                           onClick={() => {
                             setBillMemberId(m.id);
                             setBillMemberSearch(m.name || m.profiles?.name || m.email || "");
@@ -1931,7 +1959,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                             {m.name || m.profiles?.name || m.email || "Unnamed"}
                             {m.club_member_number ? ` · ${m.club_member_number}` : ""}
                           </span>
-                        </button>
+                        </Button>
                       ))}
                     {(members || []).filter((m: any) => {
                       const term = billMemberSearch.toLowerCase();
@@ -1957,21 +1985,21 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               </div>
             </div>
             <div>
-              <Label className="text-xs">Fee description</Label>
-              <Input placeholder="e.g. Court hire — 12 June" value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
+              <Label className="text-xs">{billOutstanding ? "Reason" : "Fee description"}</Label>
+              <Input placeholder={billOutstanding ? "e.g. Brought-forward outstanding balance" : "e.g. Court hire — 12 June"} maxLength={billOutstanding ? 500 : undefined} value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
             </div>
             {billAmount && parseFloat(billAmount) > 0 && (
               <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">
                 <p className="font-semibold text-foreground text-xs">GL Preview:</p>
                 <p>• Debit Accounts Receivable {money(parseFloat(billAmount))}</p>
-                <p>• Credit {getLabel(billIncome)} {money(parseFloat(billAmount))}</p>
+                <p>• Credit {getLabel(billOutstanding ? "opening_balance_equity" : billIncome)} {money(parseFloat(billAmount))}</p>
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setBillOpen(false)}>Cancel</Button>
             <Button size="sm" onClick={handleBillMember} disabled={billSubmitting}>
-              {billSubmitting ? "Posting…" : `Bill ${Party}`}
+              {billSubmitting ? "Posting…" : billOutstanding ? "Add outstanding balance" : `Bill ${Party}`}
             </Button>
           </DialogFooter>
         </DialogContent>

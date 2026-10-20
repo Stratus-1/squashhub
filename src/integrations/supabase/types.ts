@@ -19561,6 +19561,17 @@ export type Database = {
         Args: { _lines: Json; _tab_id: string; _token: string }
         Returns: Json
       }
+      admin_add_member_outstanding_balance: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _club_member_id: string
+          _date: string
+          _description: string
+          _request_id: string
+        }
+        Returns: Json
+      }
       admin_adjust_ranking_points: {
         Args: { _delta: number; _member_id: string; _reason: string }
         Returns: number

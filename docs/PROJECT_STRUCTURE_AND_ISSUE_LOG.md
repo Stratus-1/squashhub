@@ -1,3 +1,9 @@
+## 2026-10-20 — Exact Swiss charts hid Round 1 results
+- Symptom: Ladies A and Men's C Round 1 scores disappeared from the positional preview.
+- Finding: scores remained saved (Men's C nine; Ladies A three plus a bye), but exact charts suppressed every saved block to avoid incompatible Round 2 overlays.
+- Fix: attach factual scores, winner/loser flags and byes only to chart blocks with matching round/participants, retaining the supplied positions. Unplayed and incompatible games receive no invented results.
+- Guard: focused tests cover nine Men's C results, three Ladies A results plus bye/unplayed game, exact later-round positions and source immutability. Preview only; no live-data changes or publication.
+
 ## 2026-10-20 — Men's C exact chart overridden by saved Round 2
 - Symptom: owner-supplied R2 1v9 appeared as 1v10 in Positional Preview.
 - Finding: the exact template was correct, but the saved-round overlay replaced it whenever real games existed; earlier tests covered empty rounds only.

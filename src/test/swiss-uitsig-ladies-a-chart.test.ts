@@ -14,6 +14,24 @@ const expected = [
 const model = () => buildSwissProgression({ seedOrder: Array.from({ length: 9 }, (_,i) => `p${i+1}`), names: {}, totalRounds: 5, matches: [] });
 
 describe("Uitsig Ladies A owner-approved chart", () => {
+  it("retains three Round 1 results and the bye without inventing a result for the unplayed game", () => {
+    const m = buildSwissProgression({
+      seedOrder: Array.from({ length: 9 }, (_, i) => `p${i + 1}`), names: {}, totalRounds: 5,
+      matches: [
+        ...[[1, 8], [2, 7], [4, 5]].map(([a, b], i) => ({ id: `r1-${i}`, round: 1, a: `p${a}`, b: `p${b}`, winner: `p${a}`, status: "completed", score: "11-4, 11-2, 11-6" })),
+        { id: "unplayed", round: 1, a: "p3", b: "p6", winner: null, status: "scheduled" },
+        { id: "bye", round: 1, a: "p9", b: null, winner: "p9", isBye: true, status: "completed" },
+      ],
+    });
+    const snapshot = JSON.stringify(m);
+    const grid = buildProposedSwissGrid(m, { exactLadiesAChart: true });
+    expect(grid.rounds[0].blocks.map(b => b.rows.map(r => r.pos))).toEqual(expected[0]);
+    expect(grid.rounds[0].blocks.filter(b => b.score === "3–0")).toHaveLength(3);
+    expect(grid.rounds[0].blocks.find(b => b.rows[0].pos === 3)).toMatchObject({ score: null, rows: [{ result: "" }, { result: "" }] });
+    expect(grid.rounds[0].blocks.find(b => b.matchId === "bye")?.rows[0]).toMatchObject({ id: "p9", pos: 9, result: "Bye" });
+    expect(grid.rounds[4].blocks.map(b => b.rows.map(r => r.pos))).toEqual(expected[4]);
+    expect(JSON.stringify(m)).toBe(snapshot);
+  });
   it.each([1,2,3,4,5])("copies every pairing in supplied round %i exactly, including the bye", round => {
     const grid = buildProposedSwissGrid(model(), { exactLadiesAChart: true });
     expect(grid.issues).toEqual([]);

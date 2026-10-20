@@ -105,3 +105,5 @@
 - [x] Mens B, C, D and Ladies A Swiss groups: five rounds each (setup file, stage config and mirror all say 5; page shows Round 5 / of 5)
 - [x] Swiss progression view log was showing as round robin — caused by a damaged setup file; repaired and verified Swiss "Current positions" log for all four groups
 - [ ] Setup file still lists the old Ladies B / Ladies C split (including Adele du Rand and Nicole Hamer) — decide whether to align it with the live pools
+- [x] Emailed all 18 Men's C players the corrected Round 2 pairings (tournament_round_draw outbox + audit)
+- [ ] Uitsig Ladies A (group 6, 9 players): apply owner's exact five-round Swiss chart — R5 pairings for positions 6-9 awaiting owner's choice

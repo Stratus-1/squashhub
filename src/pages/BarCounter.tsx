@@ -9,7 +9,7 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
  * from the counter (member search) charge without a code: the unlocked staff
  * PIN session is the authority. Other tabs still need the member's own code.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BarCounterOrders } from "@/components/bar/BarCounterOrders";
-import { BarOpenAndAlerts } from "@/components/bar/BarOpenAndAlerts";
+import { BarOpenAndAlerts, playPing } from "@/components/bar/BarOpenAndAlerts";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -155,6 +155,16 @@ export default function BarCounter() {
   });
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
   useBarAutoRefresh(enabled && !!operator && !boardError, refetch);
+  // Single ping when a new tab appears on the board (first load is silent).
+  const seenTabs = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!board?.tabs) return;
+    const ids = board.tabs.map((t) => t.tab_id);
+    if (seenTabs.current === null) { seenTabs.current = new Set(ids); return; }
+    const fresh = ids.some((id) => !seenTabs.current!.has(id));
+    ids.forEach((id) => seenTabs.current!.add(id));
+    if (fresh) playPing(1);
+  }, [board?.tabs]);
   // Signed-in staff can also see their club's edited category and division labels.
   const { data: orderProcess = false } = useQuery({
     queryKey: ["bar-order-process", board?.club_id],
@@ -768,30 +778,29 @@ export default function BarCounter() {
               No open tabs. Open one above when someone starts drinking.
             </Card>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
               {board.tabs.map((t) => (
                 <Card
                   key={t.tab_id}
-                  className="p-3 flex items-center justify-between active:scale-[0.99] transition cursor-pointer"
+                  className={`p-2 flex flex-col gap-0.5 active:scale-[0.98] transition cursor-pointer min-w-0 ${t.status === "closing" ? "border-destructive" : ""}`}
                   onClick={() => setActiveTabId(t.tab_id)}
+                  title={(t as any).phone || undefined}
                 >
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{t.guest_name}</div>
-                    {t.club_member_id && <Badge variant="outline" className="text-[11px]">Member</Badge>}
-                    {t.opened_source === "in_app" && <Badge variant="outline" className="text-[11px]">In-app · Self-opened</Badge>}
-                    {(t as any).phone && (
-                      <div className="text-[11px] text-muted-foreground">{(t as any).phone}</div>
-                    )}
-                    <div className="text-[11px] text-muted-foreground">
-                      open {formatDistanceToNowStrict(new Date(t.opened_at))} · {t.lines.length} item
-                      {t.lines.length === 1 ? "" : "s"}
-                      {t.operator ? ` · ${t.operator}` : ""}
-                      {t.status === "closing" && (t.settled_method === "terminal" ? " · awaiting card swipe" : t.settled_method === "cash" ? " · awaiting cash" : " · online payment pending")}
-                    </div>
+                  <div className="flex items-start justify-between gap-1">
+                    <div className="font-semibold text-xs leading-tight truncate">{t.guest_name}</div>
+                    <span className={`text-xs font-bold shrink-0 ${t.status === "closing" ? "text-destructive" : ""}`}>{money(t.total)}</span>
                   </div>
-                  <Badge variant={t.status === "closing" ? "destructive" : "secondary"} className="text-sm">
-                    {money(t.total)}
-                  </Badge>
+                  <div className="text-[10px] text-muted-foreground leading-tight truncate">
+                    {t.club_member_id ? "Member" : "Visitor"}
+                    {t.opened_source === "in_app" ? " · Self" : ""}
+                    {" · "}{formatDistanceToNowStrict(new Date(t.opened_at))} · {t.lines.length} item{t.lines.length === 1 ? "" : "s"}
+                  </div>
+                  {(t.operator || t.status === "closing") && (
+                    <div className="text-[10px] text-muted-foreground leading-tight truncate">
+                      {t.operator ?? ""}
+                      {t.status === "closing" && (t.settled_method === "terminal" ? " · awaiting card" : t.settled_method === "cash" ? " · awaiting cash" : " · online pending")}
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>

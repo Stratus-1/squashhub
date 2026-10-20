@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Replaced Member sales/Card sales with Closed tabs, payment-method subcategories and order totals; nine focused checks pass and authenticated Riverside report/filter reads have no errors. Frontend-only, preview-only; no sales writes.
+
 - [x] Source-only cancellation refresh: both GoBook sync paths remove missing unused holds at any time, preserve championship players/fixture links, abort on ownership-read errors; page reload no longer reuses a three-minute sync cache and successful sync refreshes hold restrictions. Activation awaits deployment approval.
 - [x] Clarified GoBook authority implemented in source: current holds import after noon, absent unused holds cancel; API fixture picker refreshes selected dates and confirmation, fails closed on read errors, has no free fallback, and permits additional dates. Cancelled holds yield no free starts. No live writes/deployment/publication.
 - [ ] Activate GoBook-authoritative capacity — blocked on explicit deployment approval and aligning the existing noon database release job so it does not locally cancel still-present GoBook holds. Live member booking flow remains unverified.

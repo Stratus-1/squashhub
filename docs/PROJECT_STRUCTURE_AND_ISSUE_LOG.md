@@ -1,3 +1,6 @@
+## 2026-10-20 — Closed tabs report by payment method
+- Replaced separate Member sales/Card sales report choices with Closed tabs: Card (online), Cash, Swipe (terminal), Member account and All. Summary-only order/tab totals retain date/division filters and pagination; Sales statistics retains item quantities. Read-only report queries; no payment, stock or ledger writes. Manual add-charge action retained under Items & prices.
+
 ## 2026-10-20 — Clarified GoBook free championship capacity authority
 - Owner clarified that any current Club Championships hold on GoBook is free capacity, including after noon; absence means no free fixture choices. Removed time-based import suppression in both sync paths; absent unused holds still cancel while player/fixture-linked bookings stay protected.
 - API-mode fixture picker refreshes GoBook before reading each date and again on confirmation, fails closed on read errors, and never falls back to unrestricted free booking when holds disappear. Date input allows additional dates outside existing cached reservation lists. Cancelled holds no longer generate free starts. Source-only, no deployment/publication/live writes/external calls.

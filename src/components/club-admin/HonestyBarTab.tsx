@@ -27,6 +27,7 @@ import { CostingTab } from "./bar/CostingTab";
 import { bundleCosts, perContainer } from "@/lib/bar-costing";
 import { OpenTabsTab } from "./bar/OpenTabsTab";
 import { ClosedTabsTab } from "./bar/ClosedTabsTab";
+import { ClosedOrdersTab } from "./bar/ClosedOrdersTab";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
@@ -133,32 +134,6 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     enabled: !!clubId,
   });
 
-  const { data: recentEntries = [] } = useQuery({
-    queryKey: ["bar-tab-recent", clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("bar_tab_entries")
-        .select("*, bar_items:bar_item_id(name, category), club_members:club_member_id(name)")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data as BarTabEntry[];
-    },
-  });
-
-  const { data: recentVisitorSales = [] } = useQuery({
-    queryKey: ["bar-visitor-sales-recent", clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("bar_visitor_sales")
-        .select("*, bar_items:bar_item_id(name, category), recorder:logged_by(name)")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data as any[];
-    },
-  });
-
   const { data: stockPurchases = [] } = useQuery({
     queryKey: ["bar-stock-purchases", clubId],
     queryFn: async () => {
@@ -202,8 +177,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   const [report, setReport] = useState("closed-tabs");
   const reportOptions = [
     { id: "closed-tabs", label: "Sales statistics" },
-    { id: "member-sales", label: "Member sales" },
-    { id: "card-sales", label: "Card sales" },
+    { id: "closed-orders", label: "Closed tabs" },
     ...(tipConfig?.enabled ? [{ id: "staff-tips", label: "Staff tips" }] : []),
     { id: "open-tabs", label: "Open tabs" },
   ];
@@ -331,6 +305,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             </div>
           </Card>
           <ItemManager clubId={clubId} items={items} soldCounts={new Map(madeToOrderSold.map(row => [row.bar_item_id, Number(row.sold_qty)]))} loading={itemsLoading} onQrLabels={openQrLabels} />
+          {enabled && <AdminAddCharge clubId={clubId} items={items} members={members} />}
         </div>
       )}
 
@@ -394,82 +369,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
       {showReport("closed-tabs") && <ClosedTabsTab clubId={clubId} />}
       {showReport("staff-tips") && tipConfig?.enabled && <StaffTips clubId={clubId} />}
 
-      {showReport("member-sales") && (
-        <div className="space-y-4">
-
-          {enabled ? (
-            <>
-              <Card className="p-6 space-y-4">
-                <h3 className="font-semibold">Recent Bar Charges</h3>
-                <p className="text-sm text-muted-foreground">Bar items are charged directly to each member account.</p>
-
-                {recentEntries.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No bar charges yet.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {recentEntries.slice(0, 20).map(e => (
-                      <div key={e.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{(e.club_members as any)?.name || "Unknown"}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {e.quantity}× {(e.bar_items as any)?.name || "Item"} · {format(new Date(e.created_at), "dd MMM HH:mm")}
-                          </p>
-                        </div>
-                        <Badge variant="secondary" className="text-xs">{money(e.total)}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-
-              <AdminAddCharge clubId={clubId} items={items} members={members} />
-            </>
-          ) : (
-            <Card className="p-6">
-              <p className="text-sm text-muted-foreground">
-                Honesty bar is currently disabled. Enable it above to see member sales.
-              </p>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {showReport("card-sales") && (
-        <div className="space-y-4">
-
-          {enabled ? (
-            <Card className="p-6 space-y-4">
-              <h3 className="font-semibold">Recent Visitor / Direct Card Machine Sales</h3>
-              <p className="text-sm text-muted-foreground">Sales paid directly via the card machine at the club (not charged to a member account).</p>
-
-              {recentVisitorSales.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No visitor / direct card sales yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {recentVisitorSales.slice(0, 20).map((s: any) => (
-                    <div key={s.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{s.visitor_name || "Visitor"}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {s.quantity}× {s.bar_items?.name || "Item"} · {format(new Date(s.created_at), "dd MMM HH:mm")}
-                          {s.recorder?.name ? ` · ${s.recorder.name}` : ""}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">{money(Number(s.total))}</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ) : (
-            <Card className="p-6">
-              <p className="text-sm text-muted-foreground">
-                Honesty bar is currently disabled. Enable it above to see card machine sales.
-              </p>
-            </Card>
-          )}
-        </div>
-      )}
+      {showReport("closed-orders") && <ClosedOrdersTab clubId={clubId} />}
 
       <SetupStepNav steps={barSteps} value={step} onChange={setStep} />
 

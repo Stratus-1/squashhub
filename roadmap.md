@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Restore all unintentionally cleared Uitsig fixtures using 45-minute court slots and protect against round-setting clears; check last night's changes. Preserve completed withdrawals, newer allocations and personal bookings.
+- [x] Restored 19 lost Uitsig allocations across screenshots/snapshot on 45-minute slots; no remaining future snapshot allocation missing, 23 future active links and zero court overlaps. Deadline reconciliation now preserves saved allocations (live before/after verified; 18 tests). Clearing mechanism supported by matching round-update timestamps; initiating actor unconfirmed. Completed withdrawals, newer allocations and personal bookings preserved; not published.
 
 - [x] Photo-reported visitor-tab RPC ambiguity: send all six arguments explicitly; focused counter regression verified. No backend or sales changes; not published.
 

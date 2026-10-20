@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Investigate Marnus–Riaan's actual Uitsig fixture and booking restriction read-only; report the specific cause.
+- [ ] Build enabled-only Counter cash-up: consecutive shift boundaries, payment-method totals including tips, counted cash reconciliation and named tip payouts; synthetic Riverside verification only, no publication.
+
 - [x] Read-only: explained Projected is not a persisted bookable fixture; specific Marnus–Riaan record not inspected. No fixture or booking changes.
 
 - [x] Added default-off tip/cash-up switches, QR/member/counter cash/terminal/account tips, named staff balances, cash payouts and separate reporting. 59 tests and fictional Riverside QR cash-request flow verified; no live sales changes or publication.

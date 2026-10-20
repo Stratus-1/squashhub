@@ -80,3 +80,5 @@
 - [x] Withdrawn-keep-position (bye) marker + automatic walkovers; Brett marked
 - [ ] Uitsig: remove Adel Durand + Nicole Eimer entirely; Ladies B = 8 players in 2 RR pools of 4, keep played results
 - [ ] Help Center secrets update form (paused, user interrupted)
+- [ ] Ladies B: honour 2-pool setup in Pick players (snake), RR
+- [x] Correct result: Lisa Rahman beat Austyn 15-6,15-12,15-8 (not Lisa van Reeuwyk)

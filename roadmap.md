@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Priority follow-up: verify Marnus–Riaan's actual fixture-list entry, Book a court action and blocking condition before any repair; no live changes requested.
+
 - [x] Priority read-only diagnosis: Marnus (Jacobus Marthinus Kamfer) and Riaan van Wyk both have completed Round 1 but no Round 2 fixtures. Round 2 is self/play-by; createDecidedSwissGames consumes projectCourtFixtures, which excludes applied play-by rounds and requires planned court slots. Thus the progress grid can show their names as Projected without creating a bookable match. No games/bookings/code changed; live repair requires explicit approval.
 - [ ] Build enabled-only Counter cash-up: consecutive shift boundaries, payment-method totals including tips, counted cash reconciliation and named tip payouts; synthetic Riverside verification only, no publication. Paused for the user's Marnus priority; resume after booking issue follow-up.
 

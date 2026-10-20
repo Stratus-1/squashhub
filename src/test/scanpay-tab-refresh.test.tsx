@@ -48,7 +48,7 @@ describe("customer tab cross-device updates", () => {
     expect(screen.getByText("Thank you!")).toBeInTheDocument();
     expect(mocks.success).toHaveBeenCalledTimes(1);
     expect(mocks.rpc).toHaveBeenCalledWith("get_bar_guest_tab", { _tab_id: "test-tab", _token: "test-token" });
-    expect(mocks.rpc.mock.calls.every(([name]) => ["resolve_qr_short_code", "bar_order_process_status", "get_bar_guest_tab"].includes(name))).toBe(true);
+    expect(mocks.rpc.mock.calls.every(([name]) => ["resolve_qr_short_code", "bar_order_process_status", "get_bar_guest_tab", "bar_tip_config"].includes(name))).toBe(true);
   });
 
   it("updates open-tab totals on resume without marking paid", async () => {

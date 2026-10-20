@@ -1,3 +1,8 @@
+## 2026-10-20 — Optional tips and staff cash payouts
+- Added default-off tips/cash-up switches, QR/member/counter tip choices, named staff balances, cash-only partial payouts and separate Bar income/cost reporting. Counter staff is derived from a personal PIN session. Unpaid account tips cannot be paid out; retry payouts are idempotent and paid-tip tabs cannot be reopened.
+- Migration 0208 is additive with explicit grants/RLS; no historical sales changed. Hosted switch readback: all three switches off everywhere. Online tips remain blocked until a separately approved payment release; no payment function deployment or publication occurred.
+- 59 focused tests passed, including 14 disposable PostgreSQL authority/settlement tests. Synthetic Riverside QR flow displayed R900 + R100 = R1,000 awaiting cash confirmation, with zero page errors; no real sales, payments or hardware used.
+
 ## 2026-10-20 — Tournament fee refresh re-raised a partial top-up
 - Audited all 78 Uitsig entry-fee accounts and reflected top-ups. Gerhard Fourie's R100 fee reduced to R40 after his R60 payment, then registration refresh posted R60 again on 16 October. Only his account had this mismatch; Kaylee's R100 adjustment was a genuine second-event change.
 - Migration 0206 compares requested fees to assessed tournament-income journals, retaining partial payments and paid/invoiced guards. Provider callbacks and recurring payments unchanged. Gerhard's duplicate debit corrected with a balanced audited reversal; R100 fee wallet-paid without another bank receipt; R152 opening balance retained. No publication or hardware actions.

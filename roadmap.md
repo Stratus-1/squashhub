@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Audit all Uitsig championship fees against reflected payments; correct proven recharges and prevent future duplicate fee adjustments, preserving payments and opening balances.
+
 - [x] Restored 19 lost Uitsig allocations across screenshots/snapshot on 45-minute slots; no remaining future snapshot allocation missing, 23 future active links and zero court overlaps. Deadline reconciliation now preserves saved allocations (live before/after verified; 18 tests). Clearing mechanism supported by matching round-update timestamps; initiating actor unconfirmed. Completed withdrawals, newer allocations and personal bookings preserved; not published.
 
 - [x] Photo-reported visitor-tab RPC ambiguity: send all six arguments explicitly; focused counter regression verified. No backend or sales changes; not published.

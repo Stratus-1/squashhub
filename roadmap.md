@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Check and fix refresh reconciliation of Gerhard-cancelled unused GoBook championship holds at any time, preserving booked games; source-only unless deployment explicitly approved.
+
 - [x] Noon release diagnosed: cron ran but GoBook reactivated seven unused holds. Source fixes shared cutoff for both sync paths, preserves linked/member rows, and confines ordinary booking restrictions to the selected day. Synthetic tests pass; no live bookings/external calls/hardware touched.
 - [ ] Activate noon-release sync fix — blocked on explicit function deployment approval; seven re-imported live holds remain unchanged.
 

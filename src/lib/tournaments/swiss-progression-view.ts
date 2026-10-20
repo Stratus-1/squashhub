@@ -217,7 +217,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
   const template = exactChart ? uitsigMensCChart() : opts.noRepeats === false ? categoryTemplate(n, model.totalRounds)
     : Array.from({ length: model.totalRounds }, (_, i) => (opts.previewFinals ? swissPreviewFinalsTemplate : preferredSwissTemplate)(n, i + 1));
-  const rawTemplate = categoryTemplate(n, model.totalRounds); // slot keys for the proposed schedule
+  const rawTemplate = exactChart ? uitsigMensCChart() : categoryTemplate(n, model.totalRounds); // slot keys for the proposed schedule
   const issues = validateTemplate(n, template);
   if (issues.length) return { rounds: [], issues };
   const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
@@ -318,7 +318,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
     if (rd.bye != null && !(saved.length && covered(rd.bye))) proposedBlocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
     // Positions orphaned because their template partner already has a saved game
     // must still be shown: pair the leftovers within their half (wide gap: i v i+len/2).
-    if (saved.length) {
+    if (saved.length && !exactChart) {
       const shown = new Set<number>();
       for (const b of proposedBlocks) for (const r of b.rows) if (r.pos != null) shown.add(r.pos);
       const savedPos = new Set<number>();

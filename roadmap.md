@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Fix confirmed Swiss play-by generation: save known next-round pairings without booking a court, use the target round deadline, preserve existing games; synthetic tests only, no deployment/live repair without release approval.
+
 - [x] Priority follow-up: hosted read-only check confirms zero saved Marnus–Riaan games and only their completed Round 1 games. Fixture-list code offers booking only for saved eligible games; play-by predictions are excluded by projectCourtFixtures. Therefore their projected next game is not a bookable fixture. No live changes or source repair performed; player-session UI remains unverified.
 
 - [x] Priority read-only diagnosis: Marnus (Jacobus Marthinus Kamfer) and Riaan van Wyk both have completed Round 1 but no Round 2 fixtures. Round 2 is self/play-by; createDecidedSwissGames consumes projectCourtFixtures, which excludes applied play-by rounds and requires planned court slots. Thus the progress grid can show their names as Projected without creating a bookable match. No games/bookings/code changed; live repair requires explicit approval.

@@ -8,23 +8,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { BellRing, DoorClosed, DoorOpen } from "lucide-react";
 import type { BarOrder } from "./BarCounterOrders";
 
-/** Short two-tone chime via Web Audio (no audio file needed). */
-function chime() {
+/** Ping via Web Audio (no audio file needed). times=1 new tab, times=2 new order. */
+export function playPing(times = 1) {
   try {
     const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
-    [880, 1320].forEach((f, i) => {
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
-      const t = ctx.currentTime + i * 0.25;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-      o.start(t); o.stop(t + 0.4);
-    });
-    setTimeout(() => ctx.close?.(), 1200);
+    for (let n = 0; n < times; n++) {
+      [880, 1320].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+        const t = ctx.currentTime + n * 0.7 + i * 0.25;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        o.start(t); o.stop(t + 0.4);
+      });
+    }
+    setTimeout(() => ctx.close?.(), 1200 + times * 700);
   } catch { /* sound is best-effort */ }
 }
+const chime = () => playPing(2);
 
 /**
  * Counter Mode: the person running the bar opens/closes it for phone orders,

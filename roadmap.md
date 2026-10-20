@@ -75,4 +75,4 @@
 - [x] Book a court dialog too tall on smaller screens — header stays fixed, body scrolls within 90% of the screen height
 - [x] Fixture can be explicitly linked to a player's own paid GoBook booking ("Use for this fixture"); clearing/moving never cancels it (migration 0205)
 - [x] Counter 'Paid since cash-up' tab + running totals panel (method totals, tips per person, expected cash). Preview only.
-- [ ] Tournament messaging switch: email opponent to verify entered result
+- [x] Tournament messaging switch: email opponent to verify entered result

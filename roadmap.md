@@ -77,4 +77,4 @@
 - [x] Counter 'Paid since cash-up' tab + running totals panel (method totals, tips per person, expected cash). Preview only.
 - [x] Tournament messaging switch: email opponent to verify entered result
 - [x] Uitsig Men's A: R1 flipped, R2 re-paired
-- [ ] Brett Cousins '(withdrawn – injured)' marker + automatic walkovers each round (approved; build next)
+- [x] Withdrawn-keep-position (bye) marker + automatic walkovers; Brett marked

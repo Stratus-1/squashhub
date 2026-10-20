@@ -1520,6 +1520,13 @@
       "when": 1792503501748,
       "tag": "0216_result_verify_email_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 217,
+      "version": "7",
+      "when": 1792503901624,
+      "tag": "0217_champ_withdrawn_keep_position",
+      "breakpoints": true
     }
   ]
 }

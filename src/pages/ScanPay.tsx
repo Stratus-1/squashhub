@@ -31,7 +31,8 @@ import type { BarDivision } from "@/lib/bar-categories";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
-import { takeMemberTabDraft } from "@/lib/bar/member-tab-handoff";
+import { accountChargeStart, takeMemberTabDraft } from "@/lib/bar/member-tab-handoff";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useBarTips } from "@/hooks/use-bar-tips";
 import { TipEditor } from "@/components/bar/TipEditor";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
@@ -179,11 +180,40 @@ export default function ScanPay() {
   const [orderTab, setOrderTab] = useState<GuestTab | null>(null);
   const queryClient = useQueryClient();
 
-  // The public QR page is deliberately identity-free: even if the phone is
-  // still signed in, a member must identify with their membership number and
-  // approve with their own Bar PIN. This stops a remembered phone from
-  // charging an account without verification.
+  // The public QR page stays identity-free for guests. A signed-in member who
+  // is confirmed as an active member of THIS club skips typing their
+  // membership number; every charge is still approved with their own one-time
+  // code, so a remembered phone can never charge an account unverified.
   const member: { id: string; name: string } | null = null;
+  const { activeMember } = useMemberContext();
+  const [checkingMembership, setCheckingMembership] = useState(false);
+
+  /** Start a member-account charge: straight to the one-time code for a confirmed signed-in member, number entry otherwise. */
+  const startAccountCharge = async (target: "cart" | "tab") => {
+    setAccountChargeTarget(target);
+    if (!club || !activeMember) { setNumberEntry(true); return; }
+    setCheckingMembership(true);
+    try {
+      const { data } = await supabase
+        .from("club_members")
+        .select("id, name")
+        .eq("id", activeMember.id)
+        .eq("club_id", club.id)
+        .eq("status", "active")
+        .maybeSingle();
+      const start = accountChargeStart(activeMember, data);
+      if (start.mode === "otp") {
+        setIdentified({ id: start.memberId, display_name: start.memberName, has_pin: true });
+        setPinOpen(true);
+      } else {
+        setNumberEntry(true);
+      }
+    } catch {
+      setNumberEntry(true);
+    } finally {
+      setCheckingMembership(false);
+    }
+  };
 
 
   /** Everything the payer can tap — a single-item sticker still shows a menu of one. */
@@ -978,11 +1008,8 @@ export default function ScanPay() {
                           size="sm"
                           variant="secondary"
                           className="w-full gap-1.5"
-                          disabled={submitting || tab.total <= 0}
-                          onClick={() => {
-                            setAccountChargeTarget("tab");
-                            setNumberEntry(true);
-                          }}
+                          disabled={submitting || checkingMembership || tab.total <= 0}
+                          onClick={() => startAccountCharge("tab")}
                         >
                           <Wallet className="w-3.5 h-3.5" /> Charge tab to my member account
                         </Button>
@@ -1269,7 +1296,7 @@ export default function ScanPay() {
                   {!member && club.account_tab_enabled !== false && (
                     <div className="space-y-2">
                       {!numberEntry ? (
-                        <Button variant="outline" className="w-full gap-2 h-11" onClick={() => { setAccountChargeTarget("cart"); setNumberEntry(true); }}>
+                        <Button variant="outline" className="w-full gap-2 h-11" disabled={checkingMembership} onClick={() => startAccountCharge("cart")}>
                           <Wallet className="w-4 h-4" /> Add to my member account
                         </Button>
                       ) : (
@@ -1350,7 +1377,7 @@ export default function ScanPay() {
                       ? `Signed in as ${member.name}`
                       : `Card payments go through ${club.name}'s secure checkout.`}
                   </p>
-                  {userId && !member && (
+                  {userId && !activeMember && (
                     <p className="text-[11px] text-muted-foreground text-center">
                       You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
                     </p>

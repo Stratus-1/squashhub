@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { filterFixtures, fixtureState, gameScoreLine, groupByDay, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 import { ClubFixturesPilot } from "@/components/tournaments/ClubFixturesPilot";
@@ -48,6 +48,8 @@ describe("club fixtures pilot", () => {
 
 import { FixtureCalendar, hourRange, initialCalendarDate } from "@/components/tournaments/FixtureCalendar";
 describe("visual fixture calendar", () => {
+  beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-01T12:00:00Z")); });
+  afterEach(() => { vi.useRealTimers(); });
   const evs = [
     { id: "a", date: "2026-10-14", time: "17:40", court: "Court 1", title: "A v B", kind: "confirmed" as const },
     { id: "b", date: "2026-10-14", time: "18:20", court: "Court 3", title: "C v D", kind: "confirmed" as const },

@@ -1903,6 +1903,131 @@ export type Database = {
           },
         ]
       }
+      bar_tip_payouts: {
+        Row: {
+          actor_device_id: string | null
+          actor_user_id: string | null
+          amount: number
+          club_id: string
+          created_at: string
+          id: string
+          method: string
+          staff_id: string
+          staff_name: string
+        }
+        Insert: {
+          actor_device_id?: string | null
+          actor_user_id?: string | null
+          amount: number
+          club_id: string
+          created_at?: string
+          id: string
+          method?: string
+          staff_id: string
+          staff_name: string
+        }
+        Update: {
+          actor_device_id?: string | null
+          actor_user_id?: string | null
+          amount?: number
+          club_id?: string
+          created_at?: string
+          id?: string
+          method?: string
+          staff_id?: string
+          staff_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_tip_payouts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tip_payouts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_tips: {
+        Row: {
+          amount: number
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          earned_at: string | null
+          id: string
+          method: string | null
+          sale_id: string | null
+          staff_id: string
+          staff_name: string
+          status: string
+          tab_id: string | null
+        }
+        Insert: {
+          amount: number
+          club_id: string
+          club_member_id?: string | null
+          created_at?: string
+          earned_at?: string | null
+          id?: string
+          method?: string | null
+          sale_id?: string | null
+          staff_id: string
+          staff_name: string
+          status?: string
+          tab_id?: string | null
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          earned_at?: string | null
+          id?: string
+          method?: string | null
+          sale_id?: string | null
+          staff_id?: string
+          staff_name?: string
+          status?: string
+          tab_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_tips_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tips_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "bar_visitor_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tips_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tips_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: true
+            referencedRelation: "bar_guest_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_visitor_sales: {
         Row: {
           bar_item_id: string
@@ -3710,34 +3835,43 @@ export type Database = {
         Row: {
           allow_negative_stock: boolean
           bar_allow_member_debit: boolean
+          cash_up_enabled: boolean
           club_id: string
           costing_enabled: boolean
           costing_enabled_at: string | null
           costing_enabled_by: string | null
           created_at: string
+          online_tips_ready: boolean
           shop_allow_member_debit: boolean
+          tips_enabled: boolean
           updated_at: string
         }
         Insert: {
           allow_negative_stock?: boolean
           bar_allow_member_debit?: boolean
+          cash_up_enabled?: boolean
           club_id: string
           costing_enabled?: boolean
           costing_enabled_at?: string | null
           costing_enabled_by?: string | null
           created_at?: string
+          online_tips_ready?: boolean
           shop_allow_member_debit?: boolean
+          tips_enabled?: boolean
           updated_at?: string
         }
         Update: {
           allow_negative_stock?: boolean
           bar_allow_member_debit?: boolean
+          cash_up_enabled?: boolean
           club_id?: string
           costing_enabled?: boolean
           costing_enabled_at?: string | null
           costing_enabled_by?: string | null
           created_at?: string
+          online_tips_ready?: boolean
           shop_allow_member_debit?: boolean
+          tips_enabled?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -19221,7 +19355,25 @@ export type Database = {
     }
     Functions: {
       _bar_counter_device: { Args: { _token: string }; Returns: string }
+      _bar_earn_tip: {
+        Args: { _id: string; _member?: string; _method: string }
+        Returns: undefined
+      }
       _bar_order_json: { Args: { _order_id: string }; Returns: Json }
+      _bar_prepare_tip: {
+        Args: {
+          _amount: number
+          _club: string
+          _sale: string
+          _staff: string
+          _tab: string
+        }
+        Returns: undefined
+      }
+      _bar_recognise_account_tips: {
+        Args: { _club: string; _member: string }
+        Returns: undefined
+      }
       _bar_reopen_tab: {
         Args: {
           _action: string
@@ -19231,6 +19383,10 @@ export type Database = {
           _user: string
         }
         Returns: undefined
+      }
+      _bar_tip_authorise: {
+        Args: { _club: string; _token: string }
+        Returns: string
       }
       _champ_admin_guard: { Args: { p_champ_id: string }; Returns: undefined }
       _champ_draw_notice_mode: { Args: { p_champ_id: string }; Returns: string }
@@ -19647,6 +19803,15 @@ export type Database = {
         }[]
       }
       bar_costing_enabled: { Args: { _club: string }; Returns: boolean }
+      bar_counter_account_with_tip: {
+        Args: {
+          _staff_id: string
+          _tab_id: string
+          _tip: number
+          _token: string
+        }
+        Returns: Json
+      }
       bar_counter_add_to_tab:
         | {
             Args: {
@@ -19808,6 +19973,16 @@ export type Database = {
         }
         Returns: Json
       }
+      bar_counter_settle_with_tip: {
+        Args: {
+          _method: string
+          _staff_id: string
+          _tab_id: string
+          _tip: number
+          _token: string
+        }
+        Returns: Json
+      }
       bar_counter_status: { Args: { _club_id: string }; Returns: Json }
       bar_counter_unlock: {
         Args: { _code: string; _pin: string }
@@ -19845,6 +20020,16 @@ export type Database = {
       }
       bar_open_tabs: { Args: { _club_id: string }; Returns: Json }
       bar_order_process_status: { Args: { _club_id: string }; Returns: boolean }
+      bar_pay_staff_tips: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _request_id: string
+          _staff_id: string
+          _token?: string
+        }
+        Returns: undefined
+      }
       bar_post_sale_journal: {
         Args: {
           _sale: Database["public"]["Tables"]["bar_visitor_sales"]["Row"]
@@ -19859,6 +20044,28 @@ export type Database = {
           _tab_id: string
         }
         Returns: undefined
+      }
+      bar_qr_account_with_tip: {
+        Args: {
+          _club_member_id: string
+          _pin: string
+          _staff_id: string
+          _tab_id: string
+          _tip: number
+          _token: string
+        }
+        Returns: Json
+      }
+      bar_qr_cart_account_with_tip: {
+        Args: {
+          _club_member_id: string
+          _code: string
+          _lines: Json
+          _pin: string
+          _staff_id: string
+          _tip: number
+        }
+        Returns: Json
       }
       bar_qr_charge_guest_tab_member: {
         Args: {
@@ -19890,6 +20097,16 @@ export type Database = {
         Args: { _stock_id: string }
         Returns: undefined
       }
+      bar_request_settlement_with_tip: {
+        Args: {
+          _method: string
+          _staff_id: string
+          _tab_id: string
+          _tip: number
+          _token: string
+        }
+        Returns: Json
+      }
       bar_resolve_member_by_number: {
         Args: { _club_id: string; _number: string }
         Returns: {
@@ -19917,10 +20134,34 @@ export type Database = {
         Args: { _club_id: string; _enabled: boolean }
         Returns: Json
       }
+      bar_set_tab_tip: {
+        Args: {
+          _amount: number
+          _counter_token?: string
+          _staff_id: string
+          _tab_id: string
+          _tab_token: string
+        }
+        Returns: undefined
+      }
+      bar_set_tip_switch: {
+        Args: { _club_id: string; _key: string; _value: boolean }
+        Returns: undefined
+      }
       bar_special_available: { Args: { _special: string }; Returns: number }
       bar_staff_can_serve: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
+      }
+      bar_staff_tip_balances: {
+        Args: { _club_id: string; _token?: string }
+        Returns: {
+          earned: number
+          name: string
+          paid: number
+          remaining: number
+          staff_id: string
+        }[]
       }
       bar_stock_apply: {
         Args: {
@@ -19963,6 +20204,17 @@ export type Database = {
         }
         Returns: Json
       }
+      bar_terminal_cart_with_tip: {
+        Args: {
+          _buyer_name: string
+          _code: string
+          _lines: Json
+          _staff_id: string
+          _tip: number
+        }
+        Returns: Json
+      }
+      bar_tip_config: { Args: { _club_id: string }; Returns: Json }
       bar_units_per_sale: {
         Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
         Returns: number

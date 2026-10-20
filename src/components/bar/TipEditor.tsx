@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { tipQuote, type TipChoice, type TipMode } from "@/lib/bar/tips";
 
 export interface TipStaff { id: string; name: string }
-export function TipEditor({ subtotal, choice, onChange, staff, disabled = false }: {
-  subtotal: number; choice: TipChoice; onChange: (choice: TipChoice) => void; staff: TipStaff[]; disabled?: boolean;
+export function TipEditor({ subtotal, choice, onChange, staff, disabled = false, fixedStaff = false }: {
+  subtotal: number; choice: TipChoice; onChange: (choice: TipChoice) => void; staff: TipStaff[]; disabled?: boolean; fixedStaff?: boolean;
 }) {
   const id = useId();
   let quote: ReturnType<typeof tipQuote> | undefined;
@@ -21,10 +21,10 @@ export function TipEditor({ subtotal, choice, onChange, staff, disabled = false 
     </div>
     {choice.mode !== "none" && <div className="grid sm:grid-cols-2 gap-2">
       <div className="space-y-1"><Label htmlFor={`${id}-staff`}>Serving person</Label>
-        <Select value={choice.staffId} disabled={disabled} onValueChange={staffId => onChange({ ...choice, staffId })}>
+        {fixedStaff ? <p className="text-sm py-2">{staff.find(person => person.id === choice.staffId)?.name ?? "Current serving person"}</p> : <Select value={choice.staffId} disabled={disabled} onValueChange={staffId => onChange({ ...choice, staffId })}>
           <SelectTrigger id={`${id}-staff`} aria-label="Serving person"><SelectValue placeholder="Choose staff" /></SelectTrigger>
           <SelectContent>{staff.map(person => <SelectItem key={person.id} value={person.id}>{person.name}</SelectItem>)}</SelectContent>
-        </Select>
+        </Select>}
       </div>
       {(choice.mode === "amount" || choice.mode === "total") && <div className="space-y-1">
         <Label htmlFor={`${id}-amount`}>{choice.mode === "total" ? "Total to pay (R)" : "Tip amount (R)"}</Label>

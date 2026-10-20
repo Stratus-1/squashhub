@@ -56,6 +56,7 @@ interface CounterTab {
 }
 
 interface Board {
+  tip_staff_id?: string;
   club_id: string;
   club_name: string;
   cash_enabled: boolean;
@@ -164,8 +165,8 @@ export default function BarCounter() {
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
   const { data: tipConfig } = useBarTips(board?.club_id);
   useEffect(() => {
-    setTipChoice({ ...emptyTip, staffId: tipConfig?.staff.find(person => person.name === operator)?.id ?? "" });
-  }, [activeTabId, operator, tipConfig]);
+    setTipChoice({ ...emptyTip, staffId: board?.tip_staff_id ?? "" });
+  }, [activeTabId, board?.tip_staff_id]);
   useBarAutoRefresh(enabled && !!operator && !boardError, refetch);
   // Single ping when a new tab appears on the board (first load is silent).
   const seenTabs = useRef<Set<string> | null>(null);
@@ -652,6 +653,7 @@ export default function BarCounter() {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips</Button>}
           {board.venue_code && (
             <Button size="icon" variant="ghost" onClick={() => setMenuQrOpen(true)} aria-label="Show menu QR code" title="Menu QR code">
               <QrCode className="w-4 h-4" />
@@ -917,7 +919,7 @@ export default function BarCounter() {
           <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
             {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips / Cash payout</Button>}
-            {tipConfig?.enabled && activeTab.status === "open" && <TipEditor subtotal={(activeTab.subtotal ?? activeTab.total) + cartTotal} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={busy} />}
+            {tipConfig?.enabled && activeTab.status === "open" && <TipEditor subtotal={(activeTab.subtotal ?? activeTab.total) + cartTotal} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={busy} fixedStaff />}
             {activeTab.status === "closing" && activeTab.settled_method === "online" && (
               <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
                 <p className="text-xs">Waiting for an online card payment. If the customer shows you the payment went through, approve it here. If they stopped or it got stuck, cancel it and choose another way to pay.</p>
@@ -1094,6 +1096,7 @@ export default function BarCounter() {
                     onClick={async () => {
                       try {
                         const quote = tipConfig?.enabled ? tipQuote((activeTab.subtotal ?? activeTab.total) + cartTotal, tipChoice) : null;
+                        if (quote?.tip && !tipConfig?.online_tips_ready) throw new Error("Online tips await payment release; choose cash, card at the bar or member account.");
                         if (!(await flushCart(activeTab.tab_id))) return;
                         if (quote) {
                           const { error } = await supabase.rpc("bar_set_tab_tip" as any, { _tab_id: activeTab.tab_id, _tab_token: activeTab.token, _amount: quote.tip, _staff_id: tipChoice.staffId || null, _counter_token: token });

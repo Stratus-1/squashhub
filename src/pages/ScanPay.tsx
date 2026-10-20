@@ -32,6 +32,9 @@ import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, u
 import { validitySummary } from "@/lib/bar-inventory";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 import { takeMemberTabDraft } from "@/lib/bar/member-tab-handoff";
+import { useBarTips } from "@/hooks/use-bar-tips";
+import { TipEditor } from "@/components/bar/TipEditor";
+import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -79,6 +82,8 @@ interface GuestTab {
   status: string;
   settled_method?: string | null;
   total: number;
+  subtotal?: number;
+  tip?: number;
   lines: { id: string; name: string; quantity: number; total: number }[];
 }
 
@@ -116,6 +121,7 @@ export default function ScanPay() {
   const [identified, setIdentified] = useState<{ id: string; display_name: string; has_pin: boolean } | null>(null);
   const [identifying, setIdentifying] = useState(false);
   const [accountChargeTarget, setAccountChargeTarget] = useState<"cart" | "tab">("cart");
+  const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
 
 
   const [guestChosen, setGuestChosen] = useState<boolean>(
@@ -147,6 +153,7 @@ export default function ScanPay() {
   });
 
   const club = data?.club;
+  const { data: tipConfig } = useBarTips(club?.id);
   const currency = club?.currency_code;
   const { data: catRows } = useBarCategories(club?.id);
   const { divisions: configuredDivisions } = useBarDivisions(club?.id);
@@ -347,6 +354,8 @@ export default function ScanPay() {
       status: payload.status,
       settled_method: payload.settled_method ?? null,
       total: Number(payload.total || 0),
+      subtotal: Number(payload.subtotal ?? payload.total ?? 0),
+      tip: Number(payload.tip ?? 0),
       lines: payload.lines || [],
     };
     setTab(next);
@@ -517,12 +526,15 @@ export default function ScanPay() {
     if (!tab) return;
     setSubmitting(true);
     try {
+      const quote = tipConfig?.enabled ? tipQuote(tab.subtotal ?? tab.total, tipChoice) : null;
+      if (quote?.tip && !tipConfig?.online_tips_ready) throw new Error("Online tips await payment release; choose cash, card at the bar or member account.");
       rememberPayReturnTarget(`${window.location.origin}/s/${code}/success`);
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
         body: {
           code,
           tab_id: tab.tab_id,
           tab_token: tab.token,
+          ...(quote ? { tip_amount: quote.tip, tip_staff_id: tipChoice.staffId || null } : {}),
           return_url: "https://squashhub.co.za/pay/return",
         },
       });
@@ -549,8 +561,10 @@ export default function ScanPay() {
     if (!tab) return;
     setSubmitting(true);
     try {
-      const { data, error } = await (supabase as any).rpc("settle_bar_guest_tab", {
+      const quote = tipConfig?.enabled ? tipQuote(tab.subtotal ?? tab.total, tipChoice) : null;
+      const { data, error } = await (supabase as any).rpc(quote ? "bar_request_settlement_with_tip" : "settle_bar_guest_tab", {
         _tab_id: tab.tab_id, _token: tab.token, _method: method,
+        ...(quote ? { _tip: quote.tip, _staff_id: tipChoice.staffId || null } : {}),
       });
       if (error) throw error;
       const p = data as any;
@@ -580,10 +594,11 @@ export default function ScanPay() {
     const name = member?.name || visitorName.trim() || tab?.guest_name?.trim() || "";
     setSubmitting(true);
     try {
-      const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
+      const quote = tipConfig?.enabled ? tipQuote(total, tipChoice) : null;
+      const { data, error } = await (supabase as any).rpc(quote ? "bar_terminal_cart_with_tip" : "record_bar_terminal_sale", {
         _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
         _code: code,
-        _club_id: null,
+        ...(quote ? { _tip: quote.tip, _staff_id: tipChoice.staffId || null } : { _club_id: null }),
         _buyer_name: name || null,
       });
       if (error) throw error;
@@ -611,6 +626,8 @@ export default function ScanPay() {
     if (cartLines.length === 0) return;
     setSubmitting(true);
     try {
+      const quote = tipConfig?.enabled ? tipQuote(total, tipChoice) : null;
+      if (quote?.tip && !tipConfig?.online_tips_ready) throw new Error("Online tips await payment release; choose card at the bar or member account.");
       rememberPayReturnTarget(`${window.location.origin}/s/${code}/success`);
       const buyerName = member?.name || visitorName.trim() || tab?.guest_name?.trim() || null;
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
@@ -618,6 +635,7 @@ export default function ScanPay() {
           code,
           lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
           buyer_name: buyerName,
+          ...(quote ? { tip_amount: quote.tip, tip_staff_id: tipChoice.staffId || null } : {}),
           return_url: "https://squashhub.co.za/pay/return",
         },
       });
@@ -678,21 +696,23 @@ export default function ScanPay() {
   const confirmGuestAccountCharge = async ({ secret }: { secret: string }) => {
     if (!club || !identified) return;
     const isTabCharge = accountChargeTarget === "tab" && tab !== null;
+    const quote = tipConfig?.enabled ? tipQuote(isTabCharge ? tab.subtotal ?? tab.total : total, tipChoice) : null;
     const { error } = isTabCharge
-      ? await (supabase as any).rpc("bar_qr_charge_guest_tab_member", {
+      ? await (supabase as any).rpc(quote ? "bar_qr_account_with_tip" : "bar_qr_charge_guest_tab_member", {
           _tab_id: tab.tab_id,
           _token: tab.token,
           _club_member_id: identified.id,
           _pin: secret,
+          ...(quote ? { _tip: quote.tip, _staff_id: tipChoice.staffId || null } : {}),
         })
-      : await (supabase as any).rpc("bar_qr_charge_member", {
-          _club_id: club.id,
+      : await (supabase as any).rpc(quote ? "bar_qr_cart_account_with_tip" : "bar_qr_charge_member", {
+          ...(quote ? { _code: code, _tip: quote.tip, _staff_id: tipChoice.staffId || null } : { _club_id: club.id }),
           _club_member_id: identified.id,
           _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
           _pin: secret,
         });
     if (error) throw error;
-    const chargedTotal = isTabCharge ? tab.total : total;
+    const chargedTotal = quote?.total ?? (isTabCharge ? tab.total : total);
     const chargedLabel = isTabCharge ? `Bar tab · ${tab.guest_name}` : cartLabel;
     if (isTabCharge) {
       localStorage.removeItem(tabKey);
@@ -708,8 +728,12 @@ export default function ScanPay() {
   };
 
   const confirmAccountCharge = async ({ secret, method }: { secret: string; method: "otp" }) => {
-    const { error } = await (supabase as any).rpc("charge_bar_to_member", {
-      _club_member_id: member!.id,
+    if (!member) throw new Error("Select your member account");
+    const quote = tipConfig?.enabled ? tipQuote(total, tipChoice) : null;
+    const { error } = await (supabase as any).rpc(quote ? "bar_qr_cart_account_with_tip" : "charge_bar_to_member", quote ? {
+      _club_member_id: member.id, _code: code, _lines: cartLines.map(l => ({ bar_item_id: l.item.id, quantity: l.qty })), _pin: secret, _tip: quote.tip, _staff_id: tipChoice.staffId || null,
+    } : {
+      _club_member_id: member.id,
       _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
       _secret: secret,
       _method: method,
@@ -718,7 +742,7 @@ export default function ScanPay() {
     });
     if (error) throw error;
     setPinOpen(false);
-    setDone({ total, itemName: cartLabel, onAccount: true });
+    setDone({ total: quote?.total ?? total, itemName: cartLabel, onAccount: true });
     setCart({});
   };
 
@@ -909,6 +933,8 @@ export default function ScanPay() {
                   ))}
                 </div>
                 {orderProcess && <GuestOrderProgress tab={tab} />}
+                {tipConfig?.enabled && tab.status === "open" && tab.total > 0 && <TipEditor subtotal={tab.subtotal ?? tab.total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} />}
+                {(tab.tip ?? 0) > 0 && <p className="text-xs">Included tip: {formatMoney(tab.tip ?? 0, currency)}</p>}
                 <Separator />
                 <p className="text-[11px] text-muted-foreground">
                   {tab.status === "open"
@@ -1207,6 +1233,7 @@ export default function ScanPay() {
                   <span>Total</span>
                   <span>{formatMoney(total, currency)}</span>
                 </div>
+                {tipConfig?.enabled && total > 0 && <TipEditor subtotal={total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={submitting} />}
 
                 {(!member || club.account_tab_enabled === false) && !tab && (
                   <div className="space-y-1">

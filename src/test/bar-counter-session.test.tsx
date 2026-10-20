@@ -10,7 +10,7 @@ vi.mock("@/contexts/ClubContext", () => ({ useClubContext: () => ({ club: { id: 
 vi.mock("@/hooks/use-club", () => ({ useMyClub: () => ({ data: null }) }));
 vi.mock("@/components/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/bar/BarCounterOrders", () => ({ BarCounterOrders: () => null }));
-vi.mock("@/components/bar/BarOpenAndAlerts", () => ({ BarOpenAndAlerts: () => null }));
+vi.mock("@/components/bar/BarOpenAndAlerts", () => ({ BarOpenAndAlerts: () => null, playPing: vi.fn() }));
 vi.mock("@/components/bar/BarOtpDialog", () => ({ BarOtpDialog: () => null }));
 vi.mock("@/components/bar/ProductScanDialog", () => ({ ProductScanDialog: () => null }));
 vi.mock("@/lib/bar-categories", () => ({
@@ -71,7 +71,7 @@ describe("counter personal PIN boundary", () => {
     await screen.findByText("Customer menu");
     expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBeNull();
     expect(localStorage.getItem("sh.barcounter.operator.river-menu")).toBeNull();
-    expect(mocks.rpc.mock.calls.every(([name]) => ["bar_counter_board", "bar_order_process_status"].includes(name))).toBe(true);
+    expect(mocks.rpc.mock.calls.every(([name]) => ["bar_counter_board", "bar_order_process_status", "bar_tip_config"].includes(name))).toBe(true);
   });
 
   it("can leave the PIN screen without entering a PIN", async () => {

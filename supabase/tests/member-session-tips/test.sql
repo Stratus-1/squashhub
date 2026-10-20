@@ -5,6 +5,17 @@ INSERT INTO bar_counter_devices(id,club_id,label) VALUES('cccccccc-cccc-cccc-ccc
 INSERT INTO bar_counter_sessions(device_id,club_id) SELECT id,club_id FROM bar_counter_devices;
 INSERT INTO bar_items(id,club_id,price) VALUES('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','11111111-1111-1111-1111-111111111111',900);
 SELECT set_config('test.user','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',false);
+DO $$ DECLARE c uuid:='11111111-1111-1111-1111-111111111111';d uuid:=gen_random_uuid(); BEGIN
+ INSERT INTO bar_counter_devices(id,club_id,label) VALUES(d,c,'Fictional second server');
+ INSERT INTO bar_counter_sessions(device_id,club_id) VALUES(d,c);
+ BEGIN PERFORM _bar_member_tip_recipient(c,NULL); RAISE EXCEPTION 'ambiguous recipient guessed'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='ambiguous recipient guessed' THEN RAISE; END IF; END;
+ IF _bar_member_tip_recipient(c,d)<>d THEN RAISE EXCEPTION 'Serving selection not honored'; END IF;
+ UPDATE bar_counter_sessions SET expires_at=now()-interval '1 minute' WHERE device_id=d;
+ IF _bar_member_tip_recipient(c,NULL)<>'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid THEN RAISE EXCEPTION 'Expired server counted'; END IF;
+ PERFORM set_config('test.user','',false);
+ BEGIN PERFORM bar_member_cart_account_with_tip(c,'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','[]',0,gen_random_uuid()); RAISE EXCEPTION 'anonymous accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='anonymous accepted' THEN RAISE; END IF; END;
+ PERFORM set_config('test.user','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',false);
+END $$;
 DO $$ DECLARE c uuid:='11111111-1111-1111-1111-111111111111';m uuid:='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'; req uuid:='ffffffff-ffff-ffff-ffff-ffffffffffff'; r jsonb; lines jsonb:='[{"bar_item_id":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","quantity":1}]'; BEGIN
  r:=bar_member_cart_account_with_tip(c,m,lines,100,req);
  IF (r->>'total')::numeric<>1000 THEN RAISE EXCEPTION 'R900 + R100 must be R1000'; END IF;

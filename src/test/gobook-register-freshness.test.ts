@@ -2,13 +2,15 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
+import { expiredChampHold } from "../../supabase/functions/_shared/champ-hold-release";
 
 // Execute the real edge handler with fake provider/database boundaries; no live services.
 const source = readFileSync("supabase/functions/gobook-api/index.ts", "utf8")
-  .replace(/^import .*https:\/\/esm\.sh\/.*;$/m, "");
+  .replace(/^import .*https:\/\/esm\.sh\/.*;$/m, "")
+  .replace(/^import .*champ-hold-release.*;$/m, "");
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-type Mirror = { id: string; external_id: string; date: string; status: string };
-function harness() {
+type Mirror = { id: string; external_id: string; date: string; status: string; external_booker_name?: string; club_member_id?: string };
+function harness(clubId = "test-club", linkedIds: string[] = []) {
   let handler: (req: Request) => Promise<Response> = async () => new Response();
   const mirrors: Mirror[] = [];
   const reads: string[] = [];
@@ -48,7 +50,7 @@ function harness() {
             if (table === "courts") return { data: [{ id: "court", name: "Court 1" }] };
             if (table === "club_members") return { data: [] };
             // The sync protects fixture-linked bookings: no links in this harness.
-            if (table === "club_champs_matches") return { data: [] };
+            if (table === "club_champs_matches") return { data: linkedIds.map((booking_id) => ({ booking_id })) };
             if (table !== "bookings") throw new Error(`Unexpected table ${table}`);
             if (upsert) {
               const old = mirrors.find((m) => m.external_id === upsert.external_id);
@@ -72,17 +74,37 @@ function harness() {
   };
   vm.runInNewContext(compiled, {
     createClient: () => admin, fetch, Request, Response, URL, console,
+    expiredChampHold: (club: string, date: string, name: unknown) => expiredChampHold(club, date, name, new Date("2026-10-20T10:34:00Z")),
     Deno: { env: { get: () => "test-only" }, serve: (fn: typeof handler) => { handler = fn; } },
   });
   return {
     mirrors, reads, cancellations,
     provider(rows: unknown, status = 200) { providerRows = rows; providerStatus = status; },
-    sync(date: string) { return handler(new Request("http://localhost/sync", { method: "POST", headers: { Authorization: "Bearer test-only", "Content-Type": "application/json" }, body: JSON.stringify({ action: "sync_core_day", club_id: "test-club", booking_date: date }) })); },
+    sync(date: string) { return handler(new Request("http://localhost/sync", { method: "POST", headers: { Authorization: "Bearer test-only", "Content-Type": "application/json" }, body: JSON.stringify({ action: "sync_core_day", club_id: clubId, booking_date: date }) })); },
   };
 }
 const booking = (id: number, date: string) => ({ bookingId: id, bookingDate: date, consultantName: "Court 1", startTime: "18:00", endTime: "19:00", status: "A" });
 
 describe("GoBook day reconciliation requires a fresh register", () => {
+  it("does not resurrect a released noon hold still listed at GoBook", async () => {
+    const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19");
+    h.mirrors.push({ id: "released", external_id: "gobook:101", date: "2026-10-20", status: "cancelled", external_booker_name: "Club Championships" });
+    h.provider([{ ...booking(101, "2026-10-20"), pcMappingText: "Club Championships" }]);
+    expect((await h.sync("2026-10-20")).status).toBe(200);
+    expect(h.mirrors[0].status).toBe("cancelled");
+  });
+  it("releases unused reimported holds but preserves linked and member-owned rows", async () => {
+    const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19", ["linked"]);
+    h.mirrors.push(
+      { id: "unused", external_id: "gobook:101", date: "2026-10-20", status: "active", external_booker_name: "Club Championships" },
+      { id: "linked", external_id: "gobook:102", date: "2026-10-20", status: "active", external_booker_name: "Club Championships" },
+      { id: "member", external_id: "gobook:103", date: "2026-10-20", status: "active", external_booker_name: "Club Championships", club_member_id: "synthetic-member" },
+    );
+    h.provider([]);
+    await h.sync("2026-10-20");
+    expect(h.mirrors.map((m) => m.status)).toEqual(["cancelled", "active", "active"]);
+    expect(h.cancellations).toEqual(["unused"]);
+  });
   it("does not cancel a booking created after the preceding sync", async () => {
     const h = harness();
     h.provider([]);

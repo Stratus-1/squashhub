@@ -1,3 +1,7 @@
+## 2026-10-20 — Noon-released championship holds reactivated by GoBook sync
+- Hosted read-only evidence: noon cron succeeded at 10:00 UTC; seven unused Uitsig holds have noon release audit notes but are active again. Official sync unconditionally upserts provider rows as active and protects stale generic holds.
+- Source-only repair: shared existing Uitsig cutoff (same-day noon Johannesburg; Saturday Friday 17:00), skip expired generic holds, reconcile expired unowned mirrors while preserving fixture links/member ownership. No live bookings, external calls, hardware, deployment or publication.
+
 ## 2026-10-20 — Optional tips and staff cash payouts
 - Added default-off tips/cash-up switches, QR/member/counter tip choices, named staff balances, cash-only partial payouts and separate Bar income/cost reporting. Counter staff is derived from a personal PIN session. Unpaid account tips cannot be paid out; retry payouts are idempotent and paid-tip tabs cannot be reopened.
 - Migration 0208 is additive with explicit grants/RLS; no historical sales changed. Hosted switch readback: all three switches off everywhere. Online tips remain blocked until a separately approved payment release; no payment function deployment or publication occurred.

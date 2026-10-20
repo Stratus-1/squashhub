@@ -21,6 +21,7 @@
 // Setup actions are club-admin only; read/booking actions are open to any
 // authenticated member of the club.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { expiredChampHold } from "../_shared/champ-hold-release.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -716,6 +717,8 @@ Deno.serve(async (req) => {
           : surnameMatches.length === 1 ? surnameMatches[0]
           : null;
         const bookerName = member?.name ?? naturalName;
+        // Do not resurrect unused holds after the local release cutoff.
+        if (!member && expiredChampHold(clubId, date, bookerName)) { skipped++; continue; }
         const rowPayload = {
           club_id: clubId, court_id: court.id, date,
           start_time: `${startTime}:00`, end_time: `${endTime}:00`,
@@ -752,7 +755,7 @@ Deno.serve(async (req) => {
       }
 
 
-      const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id, external_booker_name").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
+      const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
       if (existingError) throw existingError;
       const staleRows = (existing ?? []).filter((row: any) => !seen.has(row.external_id));
       // Protected: Club Championship holds and any booking explicitly linked to
@@ -762,7 +765,9 @@ Deno.serve(async (req) => {
         ? await admin.from("club_champs_matches").select("booking_id").in("booking_id", staleRows.map((r: any) => r.id))
         : { data: [] as any[] };
       const linkedIds = new Set((linked ?? []).map((r: any) => String(r.booking_id)));
-      const isProtected = (r: any) => linkedIds.has(String(r.id)) || /^club championship/i.test(String(r.external_booker_name ?? "").trim());
+      const isProtected = (r: any) => linkedIds.has(String(r.id)) ||
+        (/^club championship/i.test(String(r.external_booker_name ?? "").trim()) &&
+          ([r.user_id, r.opponent_id, r.club_member_id, r.opponent_member_id].some(Boolean) || !expiredChampHold(clubId, date, r.external_booker_name)));
       const protectedRows = staleRows.filter(isProtected);
       const stale = staleRows.filter((r: any) => !isProtected(r)).map((r: any) => r.id);
       if (stale.length) {

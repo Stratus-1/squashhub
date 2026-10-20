@@ -18,6 +18,7 @@
 - Bar menus share spirit-category mixer inclusion in `src/lib/bar-spirit-menu.ts`, preserving original IDs and independent basket lines; why: display changes must not create combo sales or alter stock definitions.
 - Row structure projects existing StepAnswers through pure adapters and is gated to flagged Riverside preview new drafts; why: one authority, no live tournament autosave or global layout change.
 - Closed bar-tab history uses read-only club-scoped pagination and Johannesburg closure dates; why: no settlement changes or silently truncated history.
+- Both GoBook sync paths share `_shared/champ-hold-release.ts`; expired unused pilot holds cannot reactivate, fixture links and member ownership stay protected; why: external holds outlive noon release.
 <!-- LOVABLE:END -->
 
 ## Architecture rules

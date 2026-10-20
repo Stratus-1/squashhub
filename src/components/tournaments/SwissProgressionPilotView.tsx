@@ -18,7 +18,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
   // Final standing locks when the Swiss stage's own rounds are complete — later follow-up stage games don't block it.
   const allComplete = model.swissStageComplete;
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
-  const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots, appliedPlayBy, noRepeats });
+  const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots, appliedPlayBy, noRepeats, previewFinals: positionalPreview });
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">

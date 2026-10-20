@@ -1,3 +1,6 @@
+## 2026-10-20 — Proposed 24-player Swiss finals revision
+- Opt-in display only: R4 top-four crossover, R5 adjacent finals. R4 5v8/6v7 switch to 5v7/6v8 (already used in R2); provisional R3 3v4/9v10 switch to 3v9/4v10. Repeated +12 in lower half; saved fixtures, default/live projections and server bundle unchanged. No data writes or publication.
+
 ## 2026-10-20 — GoBook refresh duplicate provider identity
 - Symptom: fixture booking window withheld free slots because refresh returned 23505 on an already-recorded provider ID.
 - Finding: overlap triggers execute before upsert conflict resolution; the slot-conflict fallback overwrote another mirror's external ID even when a cancelled row already owned it.

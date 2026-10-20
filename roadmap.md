@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Audit all Uitsig championship fees against reflected payments; correct proven recharges and prevent future duplicate fee adjustments, preserving payments and opening balances.
-- [ ] Include Uitsig top-up members in the recharge audit; top-ups must not create replacement tournament charges.
+- [x] Audited all 78 Uitsig championship fees against assessments and reflected payments: only Gerhard had a duplicate R60 adjustment, now reversed with balanced audit history. Fee wallet-paid; R152 opening balance retained. Assessment-based payment-preserving fix applied; six disposable PostgreSQL tests passed, hosted readback shows zero mismatches. Member statement UI not independently opened; no publication.
+- [x] Included Uitsig top-up members in audit: other reflected top-ups had no replacement tournament charges; no provider/recurring handlers changed.
 
 - [x] Restored 19 lost Uitsig allocations across screenshots/snapshot on 45-minute slots; no remaining future snapshot allocation missing, 23 future active links and zero court overlaps. Deadline reconciliation now preserves saved allocations (live before/after verified; 18 tests). Clearing mechanism supported by matching round-update timestamps; initiating actor unconfirmed. Completed withdrawals, newer allocations and personal bookings preserved; not published.
 

@@ -1,3 +1,6 @@
+## 2026-10-20 — Uitsig Men's C exact 18-player chart
+- Owner-supplied five-round chart selected only for the existing Uitsig championship Men's C group with 18 entrants/five rounds. Owner explicitly approved the repeated 9v10 and 15v16 pairs; the display bypasses repeat repair for this chart only. Saved games remain factual; default/writer projections, other groups, data and deployment are unchanged.
+
 ## 2026-10-20 — Proposed 24-player Swiss finals revision
 - Opt-in display only: R4 top-four crossover, R5 adjacent finals. R4 5v8/6v7 switch to 5v7/6v8 (already used in R2); provisional R3 3v4/9v10 switch to 3v9/4v10. Repeated +12 in lower half; saved fixtures, default/live projections and server bundle unchanged. No data writes or publication.
 

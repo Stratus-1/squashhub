@@ -98,6 +98,7 @@ import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
+import { usesUitsigMensCChart } from "@/lib/tournaments/swiss-uitsig-mens-c-chart";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 import { TournamentPlayerInfoNotice } from "@/components/tournaments/TournamentPlayerInfo";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";

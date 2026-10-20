@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Revise 24-player proposed preview: R4 four-position crossovers, R5 adjacent finals; no repeated earlier position pairs or opponents. Preserve live engine/saved fixtures; no publication.
+- [x] Revised 24-player proposed preview: R4 1v4/2v3, R2 duplicate 5v8/6v7 switched to 5v7/6v8; R5 adjacent finals. Provisional R3 collisions switched; no repeated position pairs. 58 tests pass; fictional-player browser preview visibly checked R4/R5. Live engine/saved fixtures unchanged; no publication. Real tournament flow not independently rechecked.
 
 - [x] GoBook duplicate-identity correction deployed to API/sync; 35 synthetic checks pass. Two authenticated live refreshes return 200; Uitsig Book court opens, refreshes and offers tonight's 19:30 Court 4 free slot. No player booking submitted, no GoBook booking/cancellation or hardware command; final player submission intentionally untested.
 

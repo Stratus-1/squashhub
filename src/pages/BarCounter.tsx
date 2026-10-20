@@ -687,6 +687,8 @@ export default function BarCounter() {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <Dialog open={tipsOpen} onOpenChange={setTipsOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Staff tips</DialogTitle></DialogHeader>{tipsOpen && <StaffTips clubId={board.club_id} token={token} />}</DialogContent></Dialog>
+          <Dialog open={cashUpOpen} onOpenChange={setCashUpOpen}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Cash-up</DialogTitle></DialogHeader>{cashUpOpen && <CashUp clubId={board.club_id} token={token} tipsEnabled={Boolean(tipConfig?.enabled)} />}</DialogContent></Dialog>
           {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips</Button>}
           {tipConfig?.cash_up_enabled && <Button size="sm" variant="outline" onClick={() => setCashUpOpen(true)}>Cash-up</Button>}
           {board.venue_code && (

@@ -111,13 +111,13 @@ export function preferredSwissTemplate(n: number, round: number) {
 /** Resolve unsaved slots only. An incomplete field cannot be confirmed before legal completion is known. */
 export function strictSwissPlan(input: {
   occupants: Array<string | null>; round: number; preferred?: SwissSlotPair[]; bye?: number | null;
-  history: SwissHistoryGame[]; locked?: Array<{ a: string; b: string | null }>;
+  history: SwissHistoryGame[]; locked?: Array<{ a: string; b: string | null }>; usePreferredTemplate?: boolean;
 }): StrictSwissPlan {
   const { occupants, round, history } = input;
   const raw = preferredSwissTemplate(occupants.length, round);
   const halves = swissHalves(occupants.length);
   
-  const preferred = halves && round >= swissStrictFromRound(occupants.length) ? raw.pairs : input.preferred ?? raw.pairs;
+  const preferred = input.usePreferredTemplate ? input.preferred ?? raw.pairs : halves && round >= swissStrictFromRound(occupants.length) ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id)) return { pairs: preferred, bye, ready: false };
   const ids = occupants.filter((id): id is string => !!id);

@@ -1319,7 +1319,7 @@ export default function ScanPay() {
                   {!member && club.account_tab_enabled !== false && (
                     <div className="space-y-2">
                       {!numberEntry ? (
-                        <Button variant="outline" className="w-full gap-2 h-11" disabled={checkingMembership} onClick={() => startAccountCharge("cart")}>
+<Button className="w-full gap-2 h-11" disabled={checkingMembership} onClick={() => startAccountCharge("cart")}>
                           <Wallet className="w-4 h-4" /> Add to my member account
                         </Button>
                       ) : (

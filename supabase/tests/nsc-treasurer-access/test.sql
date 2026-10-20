@@ -29,7 +29,7 @@ CREATE FUNCTION public.bar_tab_entries_guard_self_settlement() RETURNS trigger L
 DECLARE v_is_admin boolean; BEGIN
 SELECT public.is_club_admin(auth.uid(), NEW.club_id) INTO v_is_admin;
 IF NOT v_is_admin THEN RAISE EXCEPTION 'Forbidden'; END IF; RETURN NEW; END $$;
-\i :migration_file
+\ir ../../../drizzle/migrations/0219_nsc_treasurer_domain_access.sql
 INSERT INTO club_members VALUES
 ('55704b70-fb5a-4bf9-bbde-8d7856119ff1','061e6dd9-0ec2-4427-a939-3f18ad0884c8','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','active'),
 ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','061e6dd9-0ec2-4427-a939-3f18ad0884c8','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','active');

@@ -76,4 +76,5 @@
 - [x] Fixture can be explicitly linked to a player's own paid GoBook booking ("Use for this fixture"); clearing/moving never cancels it (migration 0205)
 - [x] Counter 'Paid since cash-up' tab + running totals panel (method totals, tips per person, expected cash). Preview only.
 - [x] Tournament messaging switch: email opponent to verify entered result
-- [~] Uitsig Men's A: flip R1 (done) to Wynand w/o win, re-pair affected R2, Brett injured = walkovers each round
+- [x] Uitsig Men's A: R1 flipped, R2 re-paired
+- [ ] Brett Cousins '(withdrawn – injured)' marker + automatic walkovers each round (approved; build next)

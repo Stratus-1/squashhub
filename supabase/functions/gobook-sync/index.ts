@@ -443,8 +443,25 @@ async function syncClub(
         user_id: linkedUserId,
       };
 
-      // Check for an existing active booking at this exact slot.
-      const { data: existingSlot } = await admin
+      // Resolve stable external identity, including cancelled mirrors.
+      const { data: mirror, error: mirrorError } = await admin.from("bookings")
+        .select("id, user_id, opponent_id, club_member_id, opponent_member_id")
+        .eq("club_id", clubId).eq("source", "gobook").eq("external_id", external)
+        .maybeSingle();
+      if (mirrorError) throw mirrorError;
+      if (mirror) {
+        const { data: fixture, error: fixtureError } = await admin.from("club_champs_matches")
+          .select("booking_id").eq("booking_id", mirror.id).limit(1).maybeSingle();
+        if (fixtureError) throw fixtureError;
+        if (fixture) { result.synced++; continue; }
+        if ([mirror.user_id, mirror.opponent_id, mirror.club_member_id, mirror.opponent_member_id].some(Boolean)) {
+          Object.assign(row, {
+            user_id: mirror.user_id, club_member_id: mirror.club_member_id,
+            opponent_id: mirror.opponent_id, opponent_member_id: mirror.opponent_member_id,
+          });
+        }
+      }
+      const { data: existingSlot, error: slotError } = await admin
         .from("bookings")
         .select("id, source")
         .eq("club_id", clubId)
@@ -454,21 +471,18 @@ async function syncClub(
         .eq("status", "active")
         .maybeSingle();
 
-      if (existingSlot && (existingSlot as any).source !== "gobook") {
-        // Native (or other-source) booking owns this slot — don't clobber.
+      if (slotError) throw slotError;
+      if (existingSlot && existingSlot.id !== mirror?.id) {
+        // Another booking owns the slot; never rewrite its external identity.
         continue;
       }
 
-      if (existingSlot) {
+      if (mirror) {
         const { error: updErr } = await admin
           .from("bookings")
-          .update({
-            external_id: external,
-            external_booker_name: s.bookerName,
-            club_member_id: linkedMemberId,
-            user_id: linkedUserId,
-          })
-          .eq("id", (existingSlot as any).id);
+          .update(row)
+          .eq("club_id", clubId).eq("source", "gobook")
+          .eq("id", mirror.id);
         if (updErr) {
           console.error("update failed", external, updErr.message);
           continue;

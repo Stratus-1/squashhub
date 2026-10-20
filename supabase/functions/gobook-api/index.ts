@@ -725,27 +725,35 @@ Deno.serve(async (req) => {
           external_booker_name: bookerName, user_id: member?.user_id ?? null,
           club_member_id: member?.id ?? null, is_friendly: true,
         };
-        const { error } = await admin.from("bookings").upsert(rowPayload, { onConflict: "club_id,source,external_id" });
+        // Resolve provider identity before INSERT triggers run. A fresh UUID in
+        // an upsert otherwise clashes with its own active mirror before conflict
+        // resolution; falling back to the occupying row can steal another ID.
+        const { data: mirror, error: mirrorError } = await admin.from("bookings")
+          .select("id, user_id, opponent_id, club_member_id, opponent_member_id")
+          .eq("club_id", clubId).eq("source", "gobook").eq("external_id", externalId)
+          .maybeSingle();
+        if (mirrorError) throw mirrorError;
+        seen.add(externalId);
+        if (mirror) {
+          const { data: fixture, error: fixtureError } = await admin.from("club_champs_matches")
+            .select("booking_id").eq("booking_id", mirror.id).limit(1).maybeSingle();
+          if (fixtureError) throw fixtureError;
+          if (fixture) { synced++; continue; }
+        }
+        const owned = mirror && [mirror.user_id, mirror.opponent_id, mirror.club_member_id, mirror.opponent_member_id].some(Boolean);
+        const payload = mirror ? {
+          ...rowPayload, id: mirror.id,
+          ...(owned ? {
+            user_id: mirror.user_id, club_member_id: mirror.club_member_id,
+            opponent_id: mirror.opponent_id, opponent_member_id: mirror.opponent_member_id,
+          } : {}),
+        } : rowPayload;
+        const { error } = await admin.from("bookings").upsert(payload, { onConflict: "club_id,source,external_id" });
         if (error) {
-          // Another booking already occupies this slot (unique/exclusion clash).
-          // If it's an older GoBook mirror row, refresh it in place; otherwise
-          // leave the local booking alone and keep syncing the rest of the day.
+          // A different booking owns this slot. Never rewrite its provider ID
+          // or participants. Keep reconciling other rows, including absent holds.
           const clash = error.code === "23505" || error.code === "23P01";
           if (!clash) throw error;
-          const { data: occupying } = await admin
-            .from("bookings")
-            .select("id, source, external_id")
-            .eq("club_id", clubId).eq("court_id", court.id).eq("date", date)
-            .eq("start_time", `${startTime}:00`).eq("status", "active")
-            .limit(1).maybeSingle();
-          if (occupying?.source === "gobook") {
-            const { error: updateError } = await admin.from("bookings").update(rowPayload).eq("id", occupying.id);
-            if (updateError) throw updateError;
-            seen.add(externalId);
-            if (occupying.external_id) seen.add(occupying.external_id);
-            synced++;
-            continue;
-          }
           skipped++;
           continue;
         }

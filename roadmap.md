@@ -84,6 +84,6 @@
 - [x] Correct result: Lisa Rahman beat Austyn 15-6,15-12,15-8 (not Lisa van Reeuwyk)
 - [x] Wording: "Current standings" -> "Current positions"; Matches Won column removed (grid card, Results tab, Log View) — 11 tests pass
 - [x] Ladies B pools: Yolanda -> Pool B, Jenny -> Pool A so played opponents stay together (Berni v Elizane, Austyn v Lisa Rahman, Liezel v Jenny); Liezel v Jenny restored as played (15-8,15-10,15-6); pools are one swap from pure snake
-- [ ] Mens B, C, D and Ladies A Swiss groups: five rounds each
-- [ ] Swiss pairing progression block -> show as a round-robin block
-- [ ] Swiss progression view log is showing as a round robin view log — find the cause, restore Swiss view
+- [x] Mens B, C, D and Ladies A Swiss groups: five rounds each (setup file, stage config and mirror all say 5; page shows Round 5 / of 5)
+- [x] Swiss progression view log was showing as round robin — caused by a damaged setup file; repaired and verified Swiss "Current positions" log for all four groups
+- [ ] Setup file still lists the old Ladies B / Ladies C split (including Adele du Rand and Nicole Hamer) — decide whether to align it with the live pools

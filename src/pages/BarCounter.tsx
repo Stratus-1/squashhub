@@ -1235,7 +1235,7 @@ export default function BarCounter() {
               <DialogHeader>
                 <DialogTitle>Top up {activeTab.guest_name}'s account</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Take the money at the bar, then confirm how it was paid. It reduces what the member owes (or puts their account in credit) and settles outstanding fees first — the same as an online top-up.
+                  Swipe the card at the bar, then confirm. It reduces what the member owes (or puts their account in credit) and settles outstanding fees first — the same as an online top-up.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -1247,17 +1247,11 @@ export default function BarCounter() {
                     placeholder="0.00" aria-label="Top-up amount"
                   />
                 </div>
-                <div className={`grid gap-2 ${board.cash_enabled && board.card_enabled ? "grid-cols-2" : "grid-cols-1"}`}>
-                  {board.cash_enabled && (
-                    <Button className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("cash")}>
-                      <Banknote className="w-4 h-4" /> Cash received
-                    </Button>
-                  )}
-                  {board.card_enabled && (
-                    <Button variant="outline" className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("card")}>
-                      <CreditCard className="w-4 h-4" /> Swipe at bar
-                    </Button>
-                  )}
+                <div className="grid gap-2 grid-cols-1">
+                  <Button className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("card")}>
+                    <CreditCard className="w-4 h-4" /> Swipe at bar
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">Top-ups are card only — cash is not accepted.</p>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Double-clicks are safe — each confirmation is recorded once.

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Check and correct same-day noon release of unused championship slots; preserve booked games and external cancellations.
+
 - [x] Fix confirmed Swiss play-by generation in shared/server source: known next-round pairings save without court bookings, use their target round deadline, preserve existing games; 51 tests passed including synthetic Riverside writer readback/idempotency and participant booking permissions. Bundle regenerated locally; preview build OK.
 - [x] Approved Uitsig repair: saved 12 confirmed missing Round 2 games (Mens B 2, C 4, D 6), all with saved 29 Oct play-by deadline and pending notices; zero automatic court bookings. No confirmed missing Round 3 pairings yet. Marnus–Riaan saved and visible in authenticated admin Log View; player-session booking not exercised. No deployment; future automatic server activation still awaits explicit deployment approval.
 

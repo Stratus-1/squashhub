@@ -639,7 +639,7 @@ export default function AddMatchResult() {
       }
 
       // Ranking-points enqueue (only if enabled, user opted in, and both players are linked club members)
-      if (!urlChallengeId && matchType !== "ladder" && rankingEnabled && affectsRanking && clubId && player1.clubMemberId && player2.clubMemberId) {
+      if (!(clubId === "061e6dd9-0ec2-4427-a939-3f18ad0884c8" && (urlChallengeId || matchType === "ladder")) && rankingEnabled && affectsRanking && clubId && player1.clubMemberId && player2.clubMemberId) {
         try {
           const winnerMid = matchWinner === "a" ? player1.clubMemberId : player2.clubMemberId;
           const loserMid = matchWinner === "a" ? player2.clubMemberId : player1.clubMemberId;

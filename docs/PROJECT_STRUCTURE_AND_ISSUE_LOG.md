@@ -1,3 +1,6 @@
+## 2026-10-20 — Shared category tournament calendar
+- Existing Swiss/round-robin Calendar Views now show all saved tournament fixtures, including later stages, while progression remains category/pool-specific. Selected-category games are green in timed blocks, deadlines and month counts; other categories retain labels, scores and states. Undated fixtures remain listed without invented allocations. Embedded Swiss Calendar View is available. Presentation-only; no fixture, permission, notification, backend or publication changes.
+
 ## 2026-10-20 — NSC doubles test-score reset
 - Owner requested clearing tonight's Nelspruit Doubles League scoring tests. Two scored rubbers reset with timestamp guards and before/after audit; two pending ranking awards rejected and one stale marker lock removed. All 15 rubbers across tonight's three real fixtures read back unscored; fixture summary rows were absent and fixture score fields blank. Players, pairs, bookings, earlier games and bye fixture retained. Both affected authenticated scorecards show blank games and Enter result. No code deployment; scoring devices should reload before starting real play.
 

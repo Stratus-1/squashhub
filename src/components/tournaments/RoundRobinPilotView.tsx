@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
@@ -12,7 +12,7 @@ export function poolRankTone(index: number, count: number) {
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
 
 /** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
-export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots = false, withCalendar = false }: { title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
+export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false, showSlots = false, withCalendar = false }: { calendar?: ReactNode; title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
   const { players, matrix, totals, rounds } = view;
   const [mode, setMode] = useState<"matrix" | "calendar">("matrix");
   const calEvents = rounds.flatMap((rd) => rd.matches.filter((m) => m.status !== "bye" && (m.date || m.playBy)).map((m) => ({
@@ -37,7 +37,7 @@ export function RoundRobinPilotView({ title, view, matrixOnly = false, showSlots
         </div>
       )}
       {mode === "calendar" && (!matrixOnly || withCalendar) ? (
-        <div className="space-y-2 text-xs" data-testid="rr-calendar">
+        calendar ?? <div className="space-y-2 text-xs" data-testid="rr-calendar">
           <p className="text-muted-foreground">Read-only calendar for this pool. Solid blocks are saved fixtures; play-by rounds show their deadline day.</p>
           <FixtureCalendar events={calEvents} />
         </div>

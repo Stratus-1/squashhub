@@ -19,6 +19,7 @@
 - Row structure projects existing StepAnswers through pure adapters and is gated to flagged Riverside preview new drafts; why: one authority, no live tournament autosave or global layout change.
 - Closed bar-tab history uses read-only club-scoped pagination and Johannesburg closure dates; why: no settlement changes or silently truncated history.
 - Revised Swiss finals templates are opt-in in the positional display only, separate from default/writer projections; why: preview review must not change live fixtures or generation.
+- Category calendars consume a separate tournament-wide saved-fixture projection; why: highlighting must not filter shared fixtures or change category pairing, standings or scheduling.
 <!-- LOVABLE:END -->
 
 ## Architecture rules

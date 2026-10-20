@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Fix GoBook refresh duplicate external-booking identity, preserve player/fixture ownership, run synthetic regressions and deploy the targeted function correction approved on 20 October. Verify refresh-first → current championship hold → free slot, including Gerhard's newly added tonight slot, without submitting real bookings.
+- [x] GoBook duplicate-identity correction deployed to API/sync; 35 synthetic checks pass. Two authenticated live refreshes return 200; Uitsig Book court opens, refreshes and offers tonight's 19:30 Court 4 free slot. No player booking submitted, no GoBook booking/cancellation or hardware command; final player submission intentionally untested.
 
 - [x] Replaced Member sales/Card sales with Closed tabs, payment-method subcategories and order totals; nine focused checks pass and authenticated Riverside report/filter reads have no errors. Frontend-only, preview-only; no sales writes.
 

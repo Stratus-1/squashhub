@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Signed-in member account settlement: optional tip prompt only on Add to my member account, no OTP; assign serving staff automatically when unambiguous or show serving-person choices. Preserve order-process ON/OFF and anonymous QR verification; synthetic testing only, no publication/live transactions.
 
 - [x] Scan-to-pay: added an "or" divider between the member-account option and the card-online option on both the open-tab card and the checkout card in src/pages/ScanPay.tsx. Display-only; Riverside preview verified the divider renders between the two buttons; build OK, no data changes, not published.
 

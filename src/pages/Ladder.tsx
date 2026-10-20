@@ -229,7 +229,7 @@ export default function Ladder() {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
-  const { data: myClubMember } = useMyClubMember();
+  const { data: myClubMember, isLoading: memberLoading } = useMyClubMember();
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
   const queryClient = useQueryClient();
@@ -608,7 +608,7 @@ export default function Ladder() {
   // Profile shortcuts use the same dialog and eligibility checks as ladder actions.
   const requestedChallengeMember = searchParams.get("challengeMemberId");
   useEffect(() => {
-    if (!requestedChallengeMember || !clubId || !myMemberId || isLoading || isLadderSettingsLoading || !ladderConfig || outgoingLoading || outgoingError) return;
+    if (!requestedChallengeMember || !clubId || memberLoading || isLoading || isLadderSettingsLoading || !ladderConfig || outgoingLoading || outgoingError) return;
     const target = resolveChallengeTarget(allPlayers, requestedChallengeMember);
     const params = new URLSearchParams(searchParams);
     params.delete("challengeMemberId");
@@ -618,7 +618,7 @@ export default function Ladder() {
       return;
     }
     handleChallengeClick(target);
-  }, [requestedChallengeMember, clubId, myMemberId, isLoading, isLadderSettingsLoading, ladderConfig, outgoingLoading, outgoingError, allPlayers, myPosition, myOpenOutgoing]);
+  }, [requestedChallengeMember, clubId, myMemberId, memberLoading, isLoading, isLadderSettingsLoading, ladderConfig, outgoingLoading, outgoingError, allPlayers, myPosition, myOpenOutgoing]);
 
   const handleSendChallenge = async () => {
     if (!challengeDialog.player || !proposedDate || !proposedTime) return;

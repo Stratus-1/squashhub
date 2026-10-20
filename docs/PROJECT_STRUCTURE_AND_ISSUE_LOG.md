@@ -757,6 +757,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-20 · NSC reported challenge result and profile shortcut
+- **Symptom:** Stiaan Swanepoel could not start a challenge against Leone Human; reported winning 3–1 today.
+- **Finding:** Video shows Profile → Challenge returning to the ladder without selecting an opponent. No challenge or match existed between these NSC members. Saved NSC configuration is pyramid: positions 70 and 68 are both row 12, so this pairing is ineligible; Stiaan also has an older pending outgoing challenge. The profile shortcut previously used a positional gap and hid the actual rule explanation. Hosted match notification triggers are absent even though their function exists.
+- **Fix:** Profile passes the selected member to the existing ladder dialog, preserving club query parameters, member-first identity and eligibility explanations. Owner-reported 3–1 stored with null game scores, no fabricated challenge/court, pending Leone verification; one in-app notice and verification email queued explicitly with an audit. No ranking/ladder update, rules change, deployment or publication.
+- **Guard:** Focused tests preserve member selection, club-target exclusion and the NSC same-row block. Result/notice/email/unchanged positions read back. Browser checks use Riverside only; current Super Admin membership may show the account-link explanation rather than a sendable challenge. Existing missing statistics RPCs are outside this fix.
+
 ### 2026-10-18 · Marnus follow-up: rescheduling ownership mismatch
 - **Symptom:** after the self-conflict correction, moving Marnus's match failed with Booking member ownership mismatch.
 - **Finding:** the real ownership trigger rejects reactivating the old ownerless Club Championships hold; it also rejects player B moving the player-A-owned fixture. Previous isolated tests did not install that trigger.

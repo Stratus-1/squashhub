@@ -128,6 +128,7 @@ export default function BarCounter() {
   const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
   const [tipsOpen, setTipsOpen] = useState(false);
   const [cashUpOpen, setCashUpOpen] = useState(false);
+  const [settleTipOpen, setSettleTipOpen] = useState(false);
 
   const { data: entryCode, isLoading: entryLoading, error: entryError } = useQuery({
     queryKey: ["bar-counter-entry-code", clubId],
@@ -922,7 +923,9 @@ export default function BarCounter() {
           <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
             {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips / Cash payout</Button>}
-            {tipConfig?.enabled && activeTab.status === "open" && <TipEditor subtotal={(activeTab.subtotal ?? activeTab.total) + cartTotal} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={busy} fixedStaff />}
+            {tipConfig?.enabled && activeTab.status === "open" && cartTotal === 0 && (tipChoice.mode === "none" && !settleTipOpen
+              ? <Button size="sm" variant="ghost" onClick={() => setSettleTipOpen(true)}>Settling now? Add a tip</Button>
+              : <div className="space-y-1"><TipEditor subtotal={activeTab.subtotal ?? activeTab.total} choice={tipChoice} onChange={setTipChoice} staff={tipConfig.staff} disabled={busy} fixedStaff /><Button size="sm" variant="ghost" onClick={() => { setSettleTipOpen(false); setTipChoice(c => ({ ...emptyTip, staffId: c.staffId })); }}>No tip</Button></div>)}
             {activeTab.status === "closing" && activeTab.settled_method === "online" && (
               <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
                 <p className="text-xs">Waiting for an online card payment. If the customer shows you the payment went through, approve it here. If they stopped or it got stuck, cancel it and choose another way to pay.</p>

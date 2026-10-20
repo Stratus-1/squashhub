@@ -181,14 +181,15 @@ export default function ScanPay() {
   const queryClient = useQueryClient();
 
   // The public QR page stays identity-free for guests. A signed-in member who
-  // is confirmed as an active member of THIS club skips typing their
-  // membership number; every charge is still approved with their own one-time
-  // code, so a remembered phone can never charge an account unverified.
+  // is confirmed as an active member of THIS club charges straight to their
+  // account — the app session is the verification and the charge functions
+  // re-check ownership server-side. Everyone else keeps the membership-number
+  // plus one-time-code flow.
   const member: { id: string; name: string } | null = null;
   const { activeMember } = useMemberContext();
   const [checkingMembership, setCheckingMembership] = useState(false);
 
-  /** Start a member-account charge: straight to the one-time code for a confirmed signed-in member, number entry otherwise. */
+  /** Start a member-account charge: direct for a confirmed signed-in member, number entry + one-time code otherwise. */
   const startAccountCharge = async (target: "cart" | "tab") => {
     setAccountChargeTarget(target);
     if (!club || !activeMember) { setNumberEntry(true); return; }
@@ -202,13 +203,35 @@ export default function ScanPay() {
         .eq("status", "active")
         .maybeSingle();
       const start = accountChargeStart(activeMember, data);
-      if (start.mode === "otp") {
+      if (start.mode !== "direct") { setNumberEntry(true); return; }
+      // Tip-enabled clubs still approve with a code so the tip can be recorded.
+      if (tipConfig?.enabled) {
         setIdentified({ id: start.memberId, display_name: start.memberName, has_pin: true });
         setPinOpen(true);
-      } else {
-        setNumberEntry(true);
+        return;
       }
-    } catch {
+      if (target === "tab" && tab) {
+        const settledTotal = tab.total;
+        const settledName = tab.guest_name;
+        const { error } = await (supabase as any).rpc("bar_qr_charge_guest_tab_member_session", {
+          _tab_id: tab.tab_id, _token: tab.token, _club_member_id: start.memberId,
+        });
+        if (error) throw error;
+        localStorage.removeItem(tabKey);
+        setTab(null);
+        setDone({ total: settledTotal, itemName: `Bar tab · ${settledName}`, onAccount: true });
+      } else {
+        const { error } = await (supabase as any).rpc("bar_qr_charge_member_session", {
+          _club_id: club.id, _club_member_id: start.memberId,
+          _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+        });
+        if (error) throw error;
+        setDone({ total, itemName: cartLabel, onAccount: true });
+        setCart({});
+      }
+      toast.success("Charged to your member account", { closeButton: true, duration: 8000 });
+    } catch (err: any) {
+      toast.error(err?.message || "Could not charge your member account");
       setNumberEntry(true);
     } finally {
       setCheckingMembership(false);

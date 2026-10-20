@@ -2,6 +2,7 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useBarTips } from "@/hooks/use-bar-tips";
 import { TipEditor } from "@/components/bar/TipEditor";
 import { StaffTips } from "@/components/bar/StaffTips";
+import { CashUp } from "@/components/bar/CashUp";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
 /**
  * Bar Counter mode — `/s/:code/counter` (device unlocked with a staff PIN, no login)
@@ -126,6 +127,7 @@ export default function BarCounter() {
   const [pane, setPane] = useState<"tabs" | "orders">("tabs");
   const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
   const [tipsOpen, setTipsOpen] = useState(false);
+  const [cashUpOpen, setCashUpOpen] = useState(false);
 
   const { data: entryCode, isLoading: entryLoading, error: entryError } = useQuery({
     queryKey: ["bar-counter-entry-code", clubId],
@@ -654,6 +656,7 @@ export default function BarCounter() {
         </div>
         <div className="flex items-center gap-1">
           {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips</Button>}
+          {tipConfig?.cash_up_enabled && <Button size="sm" variant="outline" onClick={() => setCashUpOpen(true)}>Cash-up</Button>}
           {board.venue_code && (
             <Button size="icon" variant="ghost" onClick={() => setMenuQrOpen(true)} aria-label="Show menu QR code" title="Menu QR code">
               <QrCode className="w-4 h-4" />
@@ -1179,6 +1182,7 @@ export default function BarCounter() {
             </DialogContent>
           </Dialog>
           <Dialog open={tipsOpen} onOpenChange={setTipsOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Staff tips</DialogTitle></DialogHeader><StaffTips clubId={board.club_id} token={token} /></DialogContent></Dialog>
+          <Dialog open={cashUpOpen} onOpenChange={setCashUpOpen}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Cash-up</DialogTitle></DialogHeader>{cashUpOpen && <CashUp clubId={board.club_id} token={token} tipsEnabled={Boolean(tipConfig?.enabled)} />}</DialogContent></Dialog>
 
           <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
             <DialogContent className="max-w-sm">

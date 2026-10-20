@@ -19457,6 +19457,10 @@ export type Database = {
         Args: { _id: string; _member?: string; _method: string }
         Returns: undefined
       }
+      _bar_member_tip_ownership: {
+        Args: { _club_id: string; _member_id: string }
+        Returns: undefined
+      }
       _bar_member_tip_recipient: {
         Args: { _club_id: string; _staff_id: string; _tab_id?: string }
         Returns: string

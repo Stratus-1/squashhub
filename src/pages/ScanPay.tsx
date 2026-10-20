@@ -205,10 +205,7 @@ export default function ScanPay() {
       const start = accountChargeStart(activeMember, data);
       if (start.mode !== "direct") { setNumberEntry(true); return; }
       // Owner rule: a signed-in member never needs a code, even at tip-enabled
-      // clubs (tips stay optional at the counter).
-      if (false) {
-        return;
-      }
+      // clubs; tips stay optional at the counter.
       if (target === "tab" && tab) {
         const settledTotal = tab.total;
         const settledName = tab.guest_name;

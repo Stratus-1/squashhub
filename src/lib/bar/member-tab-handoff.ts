@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 const draftKey = (code: string, tabId: string) => `sh.bar.member-draft.${code}.${tabId}`;
 
 export async function placeMemberCounterOrder(clubId: string, memberId: string, cart: Record<string, number>, requestId: string) {
+  // Read the club's current mode before opening anything. Self-service clubs
+  // continue through the existing tab checkout, not the staffed order queue.
+  const { data: orderProcess, error: modeError } = await supabase.rpc("bar_order_process_status", { _club_id: clubId });
+  if (modeError) throw modeError;
+  if (orderProcess === false) return openMemberCounterTab(clubId, memberId, cart);
+  if (orderProcess !== true) throw new Error("Could not check the bar's order settings. Please try again.");
   const { data, error } = await supabase.rpc("open_my_bar_tab", { _club_id: clubId, _club_member_id: memberId });
   if (error) throw error;
   const tab = data as { tab_id?: string; token?: string; code?: string } | null;

@@ -1,3 +1,15 @@
+## 2026-10-20 — Nelspruit self-service bar blocked by order-process OFF
+- Symptom: member purchases fail with “Bar not open for orders” at Nelspruit.
+- Finding: Nelspruit's honesty bar and online/member payments are enabled, staffed order process disabled; HonestyBar always called the staffed guest-order writer, which correctly rejects OFF/closed orders.
+- Fix: recheck active club order mode before handoff; OFF carries the uncharged basket to existing self-service QR/tab checkout, ON retains the staffed order submission. Unknown/error mode blocks writes. Member screen reflects the selected workflow; no club settings, sales, payments or stock changed.
+- Guard: mode OFF/ON/error and draft preservation regressions; QR settlement/counter PIN tests; read-only Nelspruit menu inspection and synthetic Riverside checkout checks. Counter read-only assertion now includes its existing shift-overview read. Preview only, not published.
+
+## 2026-10-20 — Outstanding member balance in Bill member
+- Symptom: Enter Transaction only records income/expenses; existing Bill member only raises income-linked fees.
+- Finding: brought-forward debt needs a member-linked receivable with a balance-sheet counterpart, not a fee assessment or payment.
+- Fix: added Outstanding balance under Bill member, with member, amount, date and reason; an atomic club-authorised RPC posts Dr debtors / Cr opening balance equity and audits a retry-safe request ID. No real member balances changed and no publication.
+- Guard: focused input and synthetic accounting/authority tests; existing fee billing and transaction/payment writers retained.
+
 ## 2026-10-20 — Exact Swiss charts hid Round 1 results
 - Symptom: Ladies A and Men's C Round 1 scores disappeared from the positional preview.
 - Finding: scores remained saved (Men's C nine; Ladies A three plus a bye), but exact charts suppressed every saved block to avoid incompatible Round 2 overlays.

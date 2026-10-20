@@ -1541,6 +1541,13 @@
       "when": 1792510785343,
       "tag": "0219_nsc_treasurer_domain_access",
       "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1792515340839,
+      "tag": "0220_member_outstanding_balance_adjustment",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Diagnose and fix Nelspruit “Bar not open for orders”; preserve its disabled order-process setting and existing payment/serving protections; no real orders or hardware tests.
+
+- [x] Added Outstanding balance under Member Billing → Bill member: member, amount, date and reason, Dr debtors / Cr opening balance equity, atomic audited retries under existing billing authority. Eleven focused tests and isolated PostgreSQL additive-balance/authority/retry checks pass; signed-in Riverside form and success tested with intercepted submission (no live charge). Build OK; not published.
+
 - [x] Restore saved Round 1 results in exact Ladies A/Men's C previews: 27 focused tests pass; authenticated read-only screen check shows nine Men's C scores, three Ladies A scores and bye, with Men's C R2 still 1v9. Build OK; live games unchanged, not published.
 - [x] Applied owner-approved actual Round 2 charts: seven existing fixtures corrected/audited, decided Ladies A 7v8 added with 29 Oct deadline. All nine Men's C and three Ladies A R1 scores retained; no duplicate R2 participants. Changed Andre/Leon fixture detached from personal booking, which remains active and unchanged; three unaffected bookings retained. Authenticated log verifies Justin v Riaan. Ladies A unfinished R1 feeders remain undecided; no emails/publication.
 

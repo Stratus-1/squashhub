@@ -73,6 +73,17 @@ export default function HonestyBar() {
   const memberId = activeMember?.id;
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
+  const { data: orderProcess, isLoading: orderModeLoading, isError: orderModeError } = useQuery({
+    queryKey: ["bar-order-process", clubId],
+    enabled: !!clubId,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("bar_order_process_status", { _club_id: clubId ?? "" });
+      if (error) throw error;
+      if (typeof data !== "boolean") throw new Error("Could not check the bar's order settings");
+      return data;
+    },
+  });
 
 
   // OPEN tab for this visit — device-local, never posted until settled.
@@ -221,7 +232,7 @@ export default function HonestyBar() {
         accountRequest.current = { signature, id: crypto.randomUUID() };
       }
       const destination = await placeMemberCounterOrder(clubId, memberId, cart, accountRequest.current.id);
-      toast.success("Order sent to the bar");
+      toast.success(orderProcess ? "Order sent to the bar" : "Your tab is ready");
       accountRequest.current = null;
       setCart({});
       if (tabKey) saveOpenTab(tabKey, {});
@@ -584,8 +595,8 @@ export default function HonestyBar() {
                       </div>
                     ))}
                   </div>
-                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode}>
-                      <ShoppingCart className="w-4 h-4" /> Place order · {money(cartTotal)}
+                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
+                      <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Continue to my tab"} · {money(cartTotal)}
                     </Button>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>
                     Clear tab

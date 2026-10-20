@@ -758,16 +758,15 @@ Deno.serve(async (req) => {
       const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
       if (existingError) throw existingError;
       const staleRows = (existing ?? []).filter((row: any) => !seen.has(row.external_id));
-      // Protected: Club Championship holds and any booking explicitly linked to
-      // a tournament fixture are never auto-cancelled by a sync (a missed/partial
-      // GoBook read must not wipe the schedule). Moving holds is an admin re-run.
-      const { data: linked } = staleRows.length
+      // Fresh registers remove missing unused holds at any time; preserve games.
+      const { data: linked, error: linkedError } = staleRows.length
         ? await admin.from("club_champs_matches").select("booking_id").in("booking_id", staleRows.map((r: any) => r.id))
-        : { data: [] as any[] };
+        : { data: [] as any[], error: null };
+      if (linkedError) throw linkedError;
       const linkedIds = new Set((linked ?? []).map((r: any) => String(r.booking_id)));
       const isProtected = (r: any) => linkedIds.has(String(r.id)) ||
         (/^club championship/i.test(String(r.external_booker_name ?? "").trim()) &&
-          ([r.user_id, r.opponent_id, r.club_member_id, r.opponent_member_id].some(Boolean) || !expiredChampHold(clubId, date, r.external_booker_name)));
+          [r.user_id, r.opponent_id, r.club_member_id, r.opponent_member_id].some(Boolean));
       const protectedRows = staleRows.filter(isProtected);
       const stale = staleRows.filter((r: any) => !isProtected(r)).map((r: any) => r.id);
       if (stale.length) {

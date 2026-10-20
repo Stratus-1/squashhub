@@ -488,24 +488,27 @@ async function syncClub(
 
     }
 
-    // Cancellations: delete any gobook rows for this date+club not in seen set.
-    const { data: existing } = await admin
+    // Reconcile active mirrors only after a successful provider read.
+    const { data: existing, error: existingError } = await admin
       .from("bookings")
       .select("id, external_id, external_booker_name, user_id, opponent_id, club_member_id, opponent_member_id")
       .eq("club_id", clubId)
       .eq("source", "gobook")
-      .eq("date", dateStr);
+      .eq("date", dateStr)
+      .eq("status", "active");
+    if (existingError) throw existingError;
     const staleRows = (existing ?? []).filter(
       (r: any) => r.external_id && !seenExternal.has(r.external_id),
     );
-    // Never remove Club Championship holds or fixture-linked bookings on sync.
-    const { data: linked } = staleRows.length
+    // Missing unused holds disappear whenever cancelled, independently of noon.
+    const { data: linked, error: linkedError } = staleRows.length
       ? await admin.from("club_champs_matches").select("booking_id").in("booking_id", staleRows.map((r: any) => r.id))
-      : { data: [] as any[] };
+      : { data: [] as any[], error: null };
+    if (linkedError) throw linkedError;
     const linkedIds = new Set((linked ?? []).map((r: any) => String(r.booking_id)));
     const stale = staleRows.filter((r: any) =>
       !linkedIds.has(String(r.id)) && (!/^club championship/i.test(String(r.external_booker_name ?? "").trim()) ||
-        (![r.user_id, r.opponent_id, r.club_member_id, r.opponent_member_id].some(Boolean) && expiredChampHold(clubId, dateStr, r.external_booker_name))));
+        ![r.user_id, r.opponent_id, r.club_member_id, r.opponent_member_id].some(Boolean)));
     if (stale.length > 0) {
       const { error: delErr } = await admin
         .from("bookings")

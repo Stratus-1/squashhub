@@ -10,7 +10,7 @@ const source = readFileSync("supabase/functions/gobook-api/index.ts", "utf8")
   .replace(/^import .*champ-hold-release.*;$/m, "");
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
 type Mirror = { id: string; external_id: string; date: string; status: string; external_booker_name?: string; club_member_id?: string };
-function harness(clubId = "test-club", linkedIds: string[] = []) {
+function harness(clubId = "test-club", linkedIds: string[] = [], now = "2026-10-20T10:34:00Z") {
   let handler: (req: Request) => Promise<Response> = async () => new Response();
   const mirrors: Mirror[] = [];
   const reads: string[] = [];
@@ -74,7 +74,7 @@ function harness(clubId = "test-club", linkedIds: string[] = []) {
   };
   vm.runInNewContext(compiled, {
     createClient: () => admin, fetch, Request, Response, URL, console,
-    expiredChampHold: (club: string, date: string, name: unknown) => expiredChampHold(club, date, name, new Date("2026-10-20T10:34:00Z")),
+    expiredChampHold: (club: string, date: string, name: unknown) => expiredChampHold(club, date, name, new Date(now)),
     Deno: { env: { get: () => "test-only" }, serve: (fn: typeof handler) => { handler = fn; } },
   });
   return {
@@ -86,6 +86,21 @@ function harness(clubId = "test-club", linkedIds: string[] = []) {
 const booking = (id: number, date: string) => ({ bookingId: id, bookingDate: date, consultantName: "Court 1", startTime: "18:00", endTime: "19:00", status: "A" });
 
 describe("GoBook day reconciliation requires a fresh register", () => {
+  it.each(["2026-10-20T09:50:00Z", "2026-10-20T12:50:00Z"])("removes cancelled championship holds on refresh at %s without a cron", async (now) => {
+    const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19", ["linked"], now);
+    h.mirrors.push(
+      { id: "removed", external_id: "gobook:101", date: "2026-10-20", status: "active", external_booker_name: "Club Championships" },
+      { id: "linked", external_id: "gobook:102", date: "2026-10-20", status: "active", external_booker_name: "Club Championships" },
+      { id: "member", external_id: "gobook:103", date: "2026-10-20", status: "active", external_booker_name: "Club Championships", club_member_id: "synthetic-member" },
+    );
+    h.provider([]);
+    expect((await h.sync("2026-10-20")).status).toBe(200);
+    expect(h.mirrors.map(m => m.status)).toEqual(["cancelled", "active", "active"]);
+    expect(h.cancellations).toEqual(["removed"]);
+    await h.sync("2026-10-20");
+    expect(h.cancellations).toEqual(["removed"]);
+    expect(h.reads).toHaveLength(2);
+  });
   it("does not resurrect a released noon hold still listed at GoBook", async () => {
     const h = harness("d8397b8a-60d3-4c4b-afee-25dab218bf19");
     h.mirrors.push({ id: "released", external_id: "gobook:101", date: "2026-10-20", status: "cancelled", external_booker_name: "Club Championships" });

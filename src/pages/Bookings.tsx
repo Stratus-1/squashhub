@@ -647,6 +647,7 @@ export default function Bookings() {
       } else {
         toast.success(`GoBook synced — ${r?.synced ?? 0} bookings, ${r?.cancelled ?? 0} cancellations`);
         await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        await queryClient.invalidateQueries({ queryKey: ["bookings-champs-hold-dates", myClub.id] });
       }
     } catch (e: any) {
       toast.error(e?.message || "GoBook sync failed");
@@ -670,6 +671,7 @@ export default function Bookings() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings-champs-hold-dates", myClub.id] });
       if (opts.notify) {
         toast.success(`GoBook refreshed — ${(data as any)?.synced ?? 0} bookings on ${day}`);
       }
@@ -687,11 +689,7 @@ export default function Bookings() {
     const key = `${myClub.id}:${dateStr}`;
     if (gobookSyncedDayRef.current === key) return;
     gobookSyncedDayRef.current = key;
-    // Throttle per device: re-opening the page within 3 minutes reuses the last sync.
-    const stamp = `sh.gobook.sync.${key}`;
-    const last = Number(sessionStorage.getItem(stamp) ?? 0);
-    if (Date.now() - last < 3 * 60 * 1000) return;
-    sessionStorage.setItem(stamp, String(Date.now()));
+    // Reopening or refreshing must fetch current cancellations, never a cached day.
     void syncGobookApiDay(dateStr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gobookApiMode, myClub?.id, dateStr]);

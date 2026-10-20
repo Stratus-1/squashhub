@@ -20253,6 +20253,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bar_qr_charge_guest_tab_member_session: {
+        Args: { _club_member_id: string; _tab_id: string; _token: string }
+        Returns: Json
+      }
       bar_qr_charge_member: {
         Args: {
           _club_id: string
@@ -20260,6 +20264,10 @@ export type Database = {
           _lines: Json
           _pin: string
         }
+        Returns: Json
+      }
+      bar_qr_charge_member_session: {
+        Args: { _club_id: string; _club_member_id: string; _lines: Json }
         Returns: Json
       }
       bar_qr_lookup_member: {

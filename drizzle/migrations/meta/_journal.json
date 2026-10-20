@@ -1548,6 +1548,13 @@
       "when": 1792515340839,
       "tag": "0220_member_outstanding_balance_adjustment",
       "breakpoints": true
+    },
+    {
+      "idx": 221,
+      "version": "7",
+      "when": 1792517945373,
+      "tag": "0221_bar_session_charge",
+      "breakpoints": true
     }
   ]
 }

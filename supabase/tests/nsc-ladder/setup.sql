@@ -1,4 +1,4 @@
-CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+DO $$ BEGIN IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon; END IF; IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated; END IF; IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role; END IF; END $$;
 CREATE TABLE clubs(id uuid primary key, mixed_ladder_enabled boolean, challenge_levels_up int);
 CREATE TABLE club_members(id uuid primary key,club_id uuid,user_id uuid,gender text,ladder_position int,joined_at timestamptz,updated_at timestamptz);
 CREATE TABLE ladder_configs(id uuid,club_id uuid,format text,challenge_levels_up int,pyramid_row_sizes int[],max_active_outgoing int,max_active_incoming int,rematch_cooldown_days int,movement_policy text,affects_club_ranking boolean,ladder_auto_apply boolean);

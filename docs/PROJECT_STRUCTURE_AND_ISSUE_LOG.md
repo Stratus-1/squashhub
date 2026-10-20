@@ -1,3 +1,8 @@
+## 2026-10-20 — Tournament fee refresh re-raised a partial top-up
+- Audited all 78 Uitsig entry-fee accounts and reflected top-ups. Gerhard Fourie's R100 fee reduced to R40 after his R60 payment, then registration refresh posted R60 again on 16 October. Only his account had this mismatch; Kaylee's R100 adjustment was a genuine second-event change.
+- Migration 0206 compares requested fees to assessed tournament-income journals, retaining partial payments and paid/invoiced guards. Provider callbacks and recurring payments unchanged. Gerhard's duplicate debit corrected with a balanced audited reversal; R100 fee wallet-paid without another bank receipt; R152 opening balance retained. No publication or hardware actions.
+- Disposable PostgreSQL regressions cover R100/R60 partial payment, full R100 top-up, extra event, reduction, invoice and club isolation.
+
 ## 2026-10-19 — Visitor counter tab opening selects ambiguous RPC overload
 - Photo shows PostgREST cannot choose between the five- and six-argument `bar_counter_open_tab` functions. Visitor requests omitted `_club_member_id`, allowing both defaulted overloads to match.
 - Visitor requests now explicitly pass a null member ID; member requests explicitly pass a null guest phone, so both use the six-argument member-aware function. Existing personal-PIN authority, club isolation, visitor phone requirement and serving identity remain unchanged.

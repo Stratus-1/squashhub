@@ -97,6 +97,8 @@ Shop trading uses distinct standard income/expense GL accounts. Sale routing pre
 
 Member fees, fee categories, club subscriptions, platform invoices, mandates, payment sessions, collections, payable batches, ledger entries, bar items, stock, tabs, and visitor sales connect club operations to finance.
 
+Tournament fee adjustments compare targets to net fee-linked tournament-income assessments rather than mutable remaining debt, retaining applied partial payments. Paid/invoiced guards and top-up/provider/recurring handlers are unchanged.
+
 Member self-opened tabs are shared `bar_guest_tabs` records opened by `open_my_bar_tab` (authenticated, active own membership, club-scoped, serialized and reused while open/closing). `opened_source` marks in-app origin independently of serving identity. HonestyBar hands off to the existing ScanPay tab/order/receipt flow; selected items remain drafts until submitted. Counter polling discovers the shared tab without reload; existing PIN and settlement checks remain authoritative.
 
 HonestyBar now sends orders before settlement: `placeMemberCounterOrder` opens/reuses an own-member shared tab via `open_my_bar_tab`, submits collect-at-bar items through `bar_submit_guest_order` with a stable retry key, and navigates to ScanPay only after success. The order creates unpaid tab sales and counter order lines, not a member account debit; ScanPay retains existing separate account-charge/payment authority. Existing club order-process settings remain required; rejected ordering preserves the basket. The earlier `submit_my_bar_account_order` remains backward-compatible but is no longer used by HonestyBar. No historical sales are converted.

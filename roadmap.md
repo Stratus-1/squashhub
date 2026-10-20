@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Restore all unintentionally cleared Uitsig screenshot fixtures and identify/protect against the clearing path; check whether last night's changes caused it. Preserve completed withdrawals, newer allocations and personal bookings.
+
 - [x] Photo-reported visitor-tab RPC ambiguity: send all six arguments explicitly; focused counter regression verified. No backend or sales changes; not published.
 
 ## Open

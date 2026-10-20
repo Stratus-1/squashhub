@@ -1259,8 +1259,6 @@ export default function BarCounter() {
               </div>
             </DialogContent>
           </Dialog>
-          <Dialog open={tipsOpen} onOpenChange={setTipsOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Staff tips</DialogTitle></DialogHeader><StaffTips clubId={board.club_id} token={token} /></DialogContent></Dialog>
-          <Dialog open={cashUpOpen} onOpenChange={setCashUpOpen}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Cash-up</DialogTitle></DialogHeader>{cashUpOpen && <CashUp clubId={board.club_id} token={token} tipsEnabled={Boolean(tipConfig?.enabled)} />}</DialogContent></Dialog>
 
           <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
             <DialogContent className="max-w-sm">

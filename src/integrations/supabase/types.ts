@@ -7679,6 +7679,7 @@ export type Database = {
           ranking_provisional_min_matches: number
           ranking_provisional_start_points: number
           require_visitor_for_member_booking: boolean
+          result_verify_email: boolean
           roster_seeded_at: string | null
           secretary_member_id: string | null
           shelly_integration_enabled: boolean
@@ -7841,6 +7842,7 @@ export type Database = {
           ranking_provisional_min_matches?: number
           ranking_provisional_start_points?: number
           require_visitor_for_member_booking?: boolean
+          result_verify_email?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
@@ -8003,6 +8005,7 @@ export type Database = {
           ranking_provisional_min_matches?: number
           ranking_provisional_start_points?: number
           require_visitor_for_member_booking?: boolean
+          result_verify_email?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean

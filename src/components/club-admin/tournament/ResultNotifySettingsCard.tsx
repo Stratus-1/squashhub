@@ -19,6 +19,8 @@ type Props = {
   onScope: (s: ResultNotifyScope) => void;
   onChannels: (c: ResultNotifyChannel[]) => void;
   onIncludeForfeits: (v: boolean) => void;
+  verifyEmail?: boolean;
+  onVerifyEmail?: (v: boolean) => void;
 };
 
 /** Post-match result messages — separate from invites, reminders and announcements. */
@@ -85,6 +87,15 @@ export function ResultNotifySettingsCard(p: Props) {
             WhatsApp and SMS follow the club's messaging settings and are charged as usual.
           </p>
         </div>
+        {p.onVerifyEmail && (
+          <label className="flex items-start gap-2 cursor-pointer border-t pt-3">
+            <Checkbox checked={!!p.verifyEmail} onCheckedChange={(v) => p.onVerifyEmail?.(!!v)} />
+            <span className="text-xs">
+              Email the opponent when a player enters a result, asking them to log in and verify it
+              <span className="block text-muted-foreground">Club-wide setting, saved immediately.</span>
+            </span>
+          </label>
+        )}
           </CardContent>
         </CollapsibleContent>
       </Card>

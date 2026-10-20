@@ -102,18 +102,18 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
         <table data-testid="swiss-final-standing-card" className="round-panel min-w-[220px] self-start overflow-hidden rounded-md border border-border border-collapse">
           <thead>
             <tr className="round-header bg-muted text-left">
-              <th colSpan={3} className="border-t-4 px-2.5 py-1.5 font-semibold" style={{ borderTopColor: "hsl(var(--success))" }}>
+              <th colSpan={2} className="border-t-4 px-2.5 py-1.5 font-semibold" style={{ borderTopColor: "hsl(var(--success))" }}>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">{model.swissStageComplete ? "Final standings" : "Current standings"}</span>
+                  <span className="text-sm">{model.swissStageComplete ? "Final standings" : "Current positions"}</span>
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `hsl(var(${model.swissStageComplete ? "--success" : "--muted-foreground"}) / 0.15)`, color: "hsl(var(--foreground))" }}>
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `hsl(var(${model.swissStageComplete ? "--success" : "--muted-foreground"}))` }} />{model.swissStageComplete ? "Locked" : "Projected"}
                   </span>
                 </div>
-                <div className="text-[11px] font-normal text-muted-foreground">{model.swissStageComplete ? "All rounds complete — these positions seed the next stage" : `Current positions · locks when Round ${model.totalRounds ?? "?"} completes`}</div>
+                <div className="text-[11px] font-normal text-muted-foreground">{model.swissStageComplete ? "All rounds complete — these positions seed the next stage" : `Locks when Round ${model.totalRounds ?? "?"} completes`}</div>
               </th>
             </tr>
             <tr className="text-left text-[11px] text-muted-foreground">
-              <th className="px-2 py-1 w-8">Pos</th><th className="px-2">Player</th><th className="px-2">Wins</th>
+              <th className="px-2 py-1 w-8">Pos</th><th className="px-2">Player</th>
             </tr>
           </thead>
           <tbody>
@@ -121,7 +121,6 @@ export function SwissPositionGrid({ model, proposedRounds }: { model: SwissProgr
               <tr key={r.id} className={cn("border-t border-border", model.swissStageComplete && "bg-success/10")}>
                 <td className="px-2 py-1 tabular-nums font-semibold">{model.swissStageComplete ? (r.swissFinalPosition ?? r.current) : r.current}</td>
                 <td className="px-2 whitespace-nowrap">{r.name}</td>
-                <td className="px-2 tabular-nums">{r.wins}</td>
               </tr>
             ))}
           </tbody>
@@ -140,11 +139,11 @@ export function SwissCurrentPositionsTable({ model }: { model: SwissProgressionM
     <div className="overflow-x-auto bg-background text-xs text-foreground">
      <table className="border-collapse min-w-[300px] self-start" data-testid="swiss-current-positions">
         <thead>
-          <tr className="bg-muted text-left"><th colSpan={4 + model.totalRounds} className="px-2 py-1">{allComplete ? "Final standings · all rounds complete — these positions seed the next stage" : "Current positions · live score-based standings"}</th></tr>
-          <tr className="text-left text-muted-foreground"><th className="px-2">Pos</th><th className="px-2">Player</th><th className="px-2">Wins</th>{model.rounds.map((r) => <th key={r.round} className="px-2 whitespace-nowrap">R{r.round} result</th>)}<th className="px-2 whitespace-nowrap">{allComplete ? "Final standings" : "Current standings"}</th></tr>
+          <tr className="bg-muted text-left"><th colSpan={3 + model.totalRounds} className="px-2 py-1">{allComplete ? "Final standings · all rounds complete — these positions seed the next stage" : "Current positions · live score-based standings"}</th></tr>
+          <tr className="text-left text-muted-foreground"><th className="px-2">Pos</th><th className="px-2">Player</th>{model.rounds.map((r) => <th key={r.round} className="px-2 whitespace-nowrap">R{r.round} result</th>)}<th className="px-2 whitespace-nowrap">{allComplete ? "Final standings" : "Current positions"}</th></tr>
         </thead>
         <tbody>{model.rows.map((row) => <tr key={row.id} className="border-t border-border">
-          <td className="px-2 py-1 tabular-nums">{row.current}</td><td className="px-2 whitespace-nowrap">{row.name}</td><td className="px-2">{row.wins}</td>
+          <td className="px-2 py-1 tabular-nums">{row.current}</td><td className="px-2 whitespace-nowrap">{row.name}</td>
           {row.cells.map((cell, i) => <td key={i} className="px-2 whitespace-nowrap">{cell}</td>)}
           <td data-testid={`swiss-final-standing-${row.id}`} className={cn("px-2 tabular-nums whitespace-nowrap", allComplete ? "bg-success/10 font-semibold text-foreground" : "text-muted-foreground")}>{row.swissFinalPosition ?? "—"}</td>
         </tr>)}</tbody>

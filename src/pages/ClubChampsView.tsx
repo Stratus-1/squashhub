@@ -2589,7 +2589,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                     ? "Play at least one group match first"
                     : groupComplete
                       ? "Final seeding — pool stage complete"
-                      : "Provisional seeding from current standings; updates automatically after every pool result"
+                      : "Provisional seeding from current positions; updates automatically after every pool result"
                 }
               >
                 {generatePlayoffs.isPending ? (
@@ -3674,8 +3674,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     // still in it or out — so the wooden spoons stay hidden. While a knockout
     // runs we show a compact "Survivors" short-list instead of the full leaders.
     const koRunning = hasKnockoutStage(matches) && !isComplete;
-    const winnersTitle = isComplete ? "Winners" : "Current Standings — Leaders";
-    const spoonsTitle = isComplete ? "Wooden Spoons" : "Current Standings — Bottom";
+    const winnersTitle = isComplete ? "Winners" : "Current Positions — Leaders";
+    const spoonsTitle = isComplete ? "Wooden Spoons" : "Current Positions — Bottom";
     const overallWinnerLabel = isComplete ? "Overall" : "Overall (current)";
 
     // Knockout-running short-list: every entrant that has actually won a knockout

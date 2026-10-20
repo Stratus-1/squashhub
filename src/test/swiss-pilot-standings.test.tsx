@@ -36,7 +36,7 @@ describe("Riverside optional classic standings", () => {
   it("Results-tab table shows factual live score-based positions", () => {
     render(<SwissCurrentPositionsTable model={makeModel()} />);
     const t = screen.getByTestId("swiss-current-positions").textContent ?? "";
-    expect(t).toContain("W v Ann"); expect(t).toContain("live score-based standings");
+    expect(t).toContain("W v Ann"); expect(t).toContain("live score-based standings"); expect(t).not.toContain("Wins");
   });
   it("one three-tab bar, no duplicate classic button; calendar separates saved vs proposed", () => {
     render(<SwissProgressionPilotView title="Test" model={makeModel(8)} positionalPreview classicStandings={classic} />);
@@ -60,7 +60,8 @@ describe("Final standing column", () => {
   it("shows dashes until every round is complete, then locked final positions", () => {
     const partial = makeModel(); // only round 1 of 3 played
     const { unmount } = render(<SwissCurrentPositionsTable model={partial} />);
-    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("Current standings");
+    expect(screen.getByTestId("swiss-current-positions").textContent).toContain("Current positions");
+    expect(screen.getByTestId("swiss-current-positions").textContent).not.toContain("Wins");
     expect(screen.getByTestId("swiss-current-positions").textContent).not.toContain("Final standing");
 
     expect(screen.getByTestId("swiss-final-standing-p1").textContent).toBe("—");
@@ -90,7 +91,8 @@ describe("Grid final-standing card", () => {
   it("shows a Projected card after the last round while rounds are unfinished, Locked once complete", () => {
     const { unmount } = render(<SwissPositionGrid model={makeModel()} />);
     const card = screen.getByTestId("swiss-final-standing-card");
-    expect(card.textContent).toContain("Current standings");
+    expect(card.textContent).toContain("Current positions");
+    expect(card.textContent).not.toContain("Wins");
     expect(card.textContent).not.toContain("Final standing");
     expect(card.textContent).toContain("Projected");
 

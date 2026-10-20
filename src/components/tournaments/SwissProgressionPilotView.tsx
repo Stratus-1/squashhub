@@ -57,9 +57,9 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
             <table className="text-xs border-collapse bg-background text-foreground">
               <thead>
                 <tr className="text-left text-muted-foreground">
-                  <th className="px-2 py-1">Pos</th><th className="px-2">Move</th><th className="px-2">Player</th><th className="px-2">Seed</th><th className="px-2">Wins</th>
+                  <th className="px-2 py-1">Pos</th><th className="px-2">Move</th><th className="px-2">Player</th><th className="px-2">Seed</th>
                   {roundNums.map((r) => <th key={r} className="px-2 whitespace-nowrap">Round {r}</th>)}
-                  <th className="px-2 whitespace-nowrap">{allComplete ? "Final standings" : "Current standings"}</th>
+                  <th className="px-2 whitespace-nowrap">{allComplete ? "Final standings" : "Current positions"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -71,7 +71,6 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
                       <td className="px-2" aria-label="movement">{mv == null || mv === 0 ? "–" : mv > 0 ? `▲${mv}` : `▼${-mv}`}</td>
                       <td className="px-2 font-medium whitespace-nowrap">{row.name}</td>
                       <td className="px-2">{row.seed}</td>
-                      <td className="px-2">{row.wins}</td>
                       {row.cells.map((c, i) => (
                         <td key={i} className={`px-2 whitespace-nowrap ${c.startsWith("W ") ? "text-primary font-medium" : c.startsWith("L ") ? "text-muted-foreground" : ""}`}>
                           {c}{row.positions[i] != null ? <span className="text-muted-foreground"> · {row.positions[i]}</span> : null}

@@ -21,7 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BarCounterOrders } from "@/components/bar/BarCounterOrders";
-import { BarOpenAndAlerts } from "@/components/bar/BarOpenAndAlerts";
+import { BarOpenAndAlerts, playPing } from "@/components/bar/BarOpenAndAlerts";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";

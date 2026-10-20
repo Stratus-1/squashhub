@@ -1,3 +1,7 @@
+## 2026-10-20 — Gerhard-cancelled championship holds must disappear on refresh
+- Both sync paths cancel missing unused championship mirrors after successful provider reads regardless of noon, preserving player-owned championship rows and fixture links; failed ownership reads abort reconciliation. Noon anti-resurrection remains unchanged.
+- Booking-page reload no longer skips a GoBook read using the three-minute session cache; successful sync immediately refreshes championship-hold restrictions. Source-only: no deployment, publication, live bookings, external calls or hardware operations.
+
 ## 2026-10-20 — Noon-released championship holds reactivated by GoBook sync
 - Hosted read-only evidence: noon cron succeeded at 10:00 UTC; seven unused Uitsig holds have noon release audit notes but are active again. Official sync unconditionally upserts provider rows as active and protects stale generic holds.
 - Source-only repair: shared existing Uitsig cutoff (same-day noon Johannesburg; Saturday Friday 17:00), skip expired generic holds, reconcile expired unowned mirrors while preserving fixture links/member ownership. No live bookings, external calls, hardware, deployment or publication.

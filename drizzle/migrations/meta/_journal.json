@@ -1492,6 +1492,13 @@
       "when": 1792491223185,
       "tag": "0212_bar_topup_card_only",
       "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1792491730380,
+      "tag": "0213_bar_cash_up_tips_and_writeoff",
+      "breakpoints": true
     }
   ]
 }

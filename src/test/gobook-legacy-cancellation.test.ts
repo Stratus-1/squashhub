@@ -43,7 +43,7 @@ describe("legacy GoBook cancelled championship holds", () => {
     const result = await vm.runInContext("reconcile()", ctx);
     expect(result.cancelled).toBe(1);
     expect(rows.map(r => r.status)).toEqual(["cancelled", "active", "active", "active", "cancelled"]);
-    expect((await vm.runInContext("reconcile()", ctx)).cancelled).toBe(2); // cumulative count across two calls
+    expect((await vm.runInContext("reconcile()", ctx)).cancelled).toBe(1); // repeat refresh does not count released rows again
     expect(rows.filter(r => r.status === "active").map(r => r.id)).toEqual(["linked", "member", "present"]);
   });
 });

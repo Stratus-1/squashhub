@@ -902,6 +902,69 @@ export type Database = {
         }
         Relationships: []
       }
+      bar_cash_ups: {
+        Row: {
+          actor_user_id: string | null
+          closed_by_device: string | null
+          closed_by_name: string | null
+          club_id: string
+          counted_cash: number
+          created_at: string
+          expected_cash: number
+          id: string
+          note: string | null
+          period_end: string
+          period_start: string
+          totals: Json
+          variance: number
+        }
+        Insert: {
+          actor_user_id?: string | null
+          closed_by_device?: string | null
+          closed_by_name?: string | null
+          club_id: string
+          counted_cash: number
+          created_at?: string
+          expected_cash: number
+          id: string
+          note?: string | null
+          period_end: string
+          period_start: string
+          totals: Json
+          variance: number
+        }
+        Update: {
+          actor_user_id?: string | null
+          closed_by_device?: string | null
+          closed_by_name?: string | null
+          club_id?: string
+          counted_cash?: number
+          created_at?: string
+          expected_cash?: number
+          id?: string
+          note?: string | null
+          period_end?: string
+          period_start?: string
+          totals?: Json
+          variance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_cash_ups_closed_by_device_fkey"
+            columns: ["closed_by_device"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_cash_ups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_counter_devices: {
         Row: {
           active: boolean
@@ -19354,6 +19417,11 @@ export type Database = {
       }
     }
     Functions: {
+      _bar_cash_up_start: { Args: { _club: string }; Returns: string }
+      _bar_cash_up_summary: {
+        Args: { _club: string; _end: string; _start: string }
+        Returns: Json
+      }
       _bar_counter_device: { Args: { _token: string }; Returns: string }
       _bar_earn_tip: {
         Args: { _id: string; _member?: string; _method: string }
@@ -19788,6 +19856,45 @@ export type Database = {
       bar_can_manage_pins: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
+      }
+      bar_cash_up_close: {
+        Args: {
+          _club_id: string
+          _counted_cash: number
+          _note: string
+          _period_start: string
+          _request_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
+      bar_cash_up_history: {
+        Args: { _club_id: string; _token?: string }
+        Returns: {
+          actor_user_id: string | null
+          closed_by_device: string | null
+          closed_by_name: string | null
+          club_id: string
+          counted_cash: number
+          created_at: string
+          expected_cash: number
+          id: string
+          note: string | null
+          period_end: string
+          period_start: string
+          totals: Json
+          variance: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bar_cash_ups"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      bar_cash_up_preview: {
+        Args: { _club_id: string; _token?: string }
+        Returns: Json
       }
       bar_cost_of_sales: {
         Args: { _club: string; _from: string; _to: string }

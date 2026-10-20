@@ -1464,6 +1464,13 @@
       "when": 1792483512387,
       "tag": "0208_bar_tips_and_cash_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1792486386347,
+      "tag": "0209_bar_cash_up",
+      "breakpoints": true
     }
   ]
 }

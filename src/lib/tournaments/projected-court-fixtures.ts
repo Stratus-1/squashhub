@@ -28,6 +28,11 @@ export interface ProjectionInput {
   noRepeats?: boolean;
 }
 
+export interface DecidedPlayByFixture {
+  champId: string; group: number; round: number;
+  aId: string; bId: string; title: string; playBy: string;
+}
+
 function swissStage(champ: any, arch: any, gn: number): { rounds: number | null; tieBreaks?: string[]; schedule?: any } | null {
   if (arch?.builder_architecture === "structured") {
     const spec = arch?.builder_spec;
@@ -43,7 +48,7 @@ function swissStage(champ: any, arch: any, gn: number): { rounds: number | null;
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;
 }
 
-export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[] {
+function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<ProjectedCourtFixture | DecidedPlayByFixture> {
   const { champ, arch, entries, matches, rounds, courts } = i;
   const noRepeats = i.noRepeats !== false;
   if (!champ?.id) return [];
@@ -52,7 +57,10 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
   const groups = [...new Set(entries.map((e) => Number(e.group_number)))].filter((gn) => Number.isFinite(gn) && !doubles(gn) && swissStage(champ, arch, gn)?.rounds);
   if (!groups.length) return [];
   const a: any = { ...(champ ?? {}), ...(arch ?? {}) };
-  const draws = groups.map((gn) => slotOnlyDraw(String(gn), entries.filter((e) => e.group_number === gn).length, swissStage(champ, arch, gn)!.rounds!)).filter((d) => !d.issues.length);
+  const draws = groups.flatMap((gn) => {
+    const count = swissStage(champ, arch, gn)?.rounds;
+    return count ? [slotOnlyDraw(String(gn), entries.filter((e) => e.group_number === gn).length, count)] : [];
+  }).filter((d) => !d.issues.length);
   const allowed = (a.court_ids ?? []).map(Number);
   const courtList = courts.filter((c) => !allowed.length || allowed.includes(Number(c.id))).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` }));
   // Decided Swiss games already created for rounds 2+ keep their projected slot, so they never block it.
@@ -65,20 +73,25 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
   const courtsAll = planCourtIds.length ? courts.filter((c) => planCourtIds.includes(Number(c.id))).map((c) => ({ id: c.id, name: c.name ?? `Court ${c.id}` })) : courtList;
   const dur = Number(plan?.scheduling?.singles) || Number(a.match_duration_minutes) || 30;
   let slots: Record<string, FixtureSchedule> = {};
-  try {
+  try { if (!playByOnly) {
     slots = scheduleDraws(draws, {
       roundWindows,
       roundDates: Object.fromEntries(draws.map((d) => [d.categoryKey, (swissStage(champ, arch, Number(d.categoryKey))?.schedule?.roundDates ?? []).map((x: any, k: number) => (k === 0 ? null : x))])),
       courts: courtsAll, times: timeSlots(a.start_time, a.end_time, dur, Number(a.default_break_minutes) || 0), matchMinutes: dur,
       restMinutes: Number(plan?.scheduling?.rest ?? a.default_break_minutes) || 0, busy,
     } as any);
-  } catch { return []; }
-  const appliedPlayBy: Record<number, string> = {};
-  for (const r of rounds ?? []) { const pb = appliedRoundPlayBy(r); if (pb && !appliedPlayBy[Number(r.round_number)]) appliedPlayBy[Number(r.round_number)] = pb; }
+  } } catch { return []; }
 
-  const out: ProjectedCourtFixture[] = [];
+  const out: Array<ProjectedCourtFixture | DecidedPlayByFixture> = [];
   for (const gn of groups) {
-    const st = swissStage(champ, arch, gn)!;
+    const st = swissStage(champ, arch, gn);
+    if (!st) continue;
+    const appliedPlayBy: Record<number, string> = {};
+    for (const r of rounds ?? []) {
+      if (Number(r.group_number) !== gn) continue;
+      const pb = appliedRoundPlayBy(r);
+      if (pb) appliedPlayBy[Number(r.round_number)] = pb;
+    }
     const gEntries = entries.filter((e) => e.group_number === gn).sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
     const names: Record<string, string> = {};
     gEntries.forEach((e) => { if (e.club_member_id) names[e.club_member_id] = e.club_members?.name ?? e.name ?? "Player"; });
@@ -98,11 +111,17 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
     // Per game: skip a pairing once either player already has a saved game in that round.
     const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
-      if (rd.created || appliedPlayBy[rd.round]) continue;
+      if (rd.created || rd.round < 2) continue;
+      const deadline = appliedPlayBy[rd.round];
+      if (playByOnly ? !deadline : !!deadline) continue;
       for (const b of rd.blocks) {
         const [x, y] = b.rows;
         if (!x.id || !y.id || x.pos == null || y.pos == null) continue;
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id)) continue;
+        if (playByOnly) {
+          out.push({ champId: champ.id, group: gn, round: rd.round, aId: x.id, bId: y.id, title: `${x.name} v ${y.name}`, playBy: deadline });
+          continue;
+        }
         const s = gSlots[b.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
         if (s?.kind !== "planned") continue;
         if (matches.some((m) => Number(m.court_id) === Number(s.courtId) && m.scheduled_date === s.date && String(m.scheduled_time).slice(0, 5) === s.time)) continue;
@@ -116,4 +135,14 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
     }
   }
   return out;
+}
+
+/** Court occupancy projections never include unbooked play-by games. */
+export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[] {
+  return projectSwissFixtures(i, false).filter((f): f is ProjectedCourtFixture => "courtId" in f);
+}
+
+/** Confirmed players in applied play-by rounds need a fixture, not an automatic booking. */
+export function projectDecidedPlayByFixtures(i: ProjectionInput): DecidedPlayByFixture[] {
+  return projectSwissFixtures(i, true).filter((f): f is DecidedPlayByFixture => "playBy" in f);
 }

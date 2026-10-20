@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Shared calendar inside each tournament category: show all tournament fixtures, highlight selected category green, preserve schedules/actions; verify preview only.
+- [x] Shared category calendar: all saved tournament fixtures visible, selected category green; undated games listed. 18 checks pass; signed-in fictional Riverside RR and Swiss categories checked, day view shows 15 fixtures (11 selected/4 other), month totals and detail opening verified. Preview only; no data changes/publication.
 
 - [x] NSC tonight's doubles test scores cleared: two rubbers audited/reset, two pending test ranking awards rejected, stale marker lock released. All 15 rubbers unscored; affected signed-in scorecards read back blank. Fixtures/players/bookings retained; devices must reload before real scoring.
 

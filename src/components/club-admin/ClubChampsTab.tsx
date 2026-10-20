@@ -2010,6 +2010,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [resultNotifyScope, setResultNotifyScope] = useState<ResultNotifyScope>("all");
   const [resultNotifyChannels, setResultNotifyChannels] = useState<ResultNotifyChannel[]>(["email"]);
   const [resultNotifyForfeits, setResultNotifyForfeits] = useState(false);
+  const [resultVerifyEmail, setResultVerifyEmail] = useState(true);
+  useEffect(() => {
+    if (!clubId) return;
+    (supabase as any).from("clubs").select("result_verify_email").eq("id", clubId).maybeSingle()
+      .then(({ data }: any) => { if (data) setResultVerifyEmail(data.result_verify_email !== false); });
+  }, [clubId]);
+  const saveResultVerifyEmail = async (v: boolean) => {
+    const prev = resultVerifyEmail;
+    setResultVerifyEmail(v);
+    const { error } = await (supabase as any).from("clubs").update({ result_verify_email: v }).eq("id", clubId);
+    if (error) { setResultVerifyEmail(prev); toast.error("Could not save the result email setting"); }
+    else toast.success(v ? "Opponents will be emailed to verify results" : "Result verify emails switched off");
+  };
   const [avoidPickA, setAvoidPickA] = useState<string>("");
   const [avoidPickB, setAvoidPickB] = useState<string>("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
@@ -13169,6 +13182,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               onScope={setResultNotifyScope}
               onChannels={setResultNotifyChannels}
               onIncludeForfeits={setResultNotifyForfeits}
+              verifyEmail={resultVerifyEmail}
+              onVerifyEmail={saveResultVerifyEmail}
             />
 
             {/* WhatsApp group for this tournament. Lives on the Invites &

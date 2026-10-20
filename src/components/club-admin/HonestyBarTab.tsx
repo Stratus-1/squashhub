@@ -199,6 +199,15 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
   const enabled = !!club.honesty_bar_enabled;
   const [step, setStep] = useState("items");
+  const [report, setReport] = useState("closed-tabs");
+  const reportOptions = [
+    { id: "closed-tabs", label: "Sales statistics" },
+    { id: "member-sales", label: "Member sales" },
+    { id: "card-sales", label: "Card sales" },
+    ...(tipConfig?.enabled ? [{ id: "staff-tips", label: "Staff tips" }] : []),
+    { id: "open-tabs", label: "Open tabs" },
+  ];
+  const showReport = (id: string) => step === "reports" && report === id;
   const [qrOpen, setQrOpen] = useState(false);
   const [menuQrOpen, setMenuQrOpen] = useState(false);
   const [qrItemId, setQrItemId] = useState<string | null>(null);
@@ -212,11 +221,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     { id: "stock-purchases", label: "Stock purchases", description: "Record supplier invoices so stock levels and bar cost of sales stay accurate.", complete: stockPurchases.length > 0 },
     { id: "stock-levels", label: "Stock levels", description: "See stock on hand on any date and run a stock take to find differences.", complete: items.length > 0 },
     { id: "costing", label: "Costing & margins", description: "Optional average-cost tracking with cost of sales, gross profit and margin.", complete: false },
-    { id: "member-sales", label: "Member sales", description: "Purchases charged to a member's account tab — and a way to add a charge on a member's behalf.", complete: enabled },
-    { id: "card-sales", label: "Card sales", description: "Visitor, walk-in and scan-to-pay sales paid by card instead of a member account.", complete: enabled },
-    { id: "closed-tabs", label: "Sales statistics", description: "", complete: enabled },
-    ...(tipConfig?.enabled ? [{ id: "staff-tips", label: "Staff tips", description: "", complete: true }] : []),
-    { id: "open-tabs", label: "Open tabs", description: "See which guest tabs are still open or unpaid, who is serving them, and what is outstanding.", complete: enabled },
+    { id: "reports", label: "Reports", description: "", complete: enabled },
   ];
 
 
@@ -384,11 +389,12 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
       {step === "costing" && <CostingTab clubId={clubId} />}
 
-      {step === "open-tabs" && <OpenTabsTab clubId={clubId} />}
-      {step === "closed-tabs" && <ClosedTabsTab clubId={clubId} />}
-      {step === "staff-tips" && tipConfig?.enabled && <StaffTips clubId={clubId} />}
+      {step === "reports" && <div className="flex flex-wrap gap-1" role="group" aria-label="Choose report">{reportOptions.map(r => <Button key={r.id} size="sm" variant={report === r.id ? "default" : "outline"} aria-pressed={report === r.id} onClick={() => setReport(r.id)}>{r.label}</Button>)}</div>}
+      {showReport("open-tabs") && <OpenTabsTab clubId={clubId} />}
+      {showReport("closed-tabs") && <ClosedTabsTab clubId={clubId} />}
+      {showReport("staff-tips") && tipConfig?.enabled && <StaffTips clubId={clubId} />}
 
-      {step === "member-sales" && (
+      {showReport("member-sales") && (
         <div className="space-y-4">
 
           {enabled ? (
@@ -428,7 +434,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         </div>
       )}
 
-      {step === "card-sales" && (
+      {showReport("card-sales") && (
         <div className="space-y-4">
 
           {enabled ? (

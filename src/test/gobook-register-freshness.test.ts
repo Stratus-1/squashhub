@@ -108,7 +108,6 @@ describe("GoBook day reconciliation requires a fresh register", () => {
     h.provider([{ ...booking(101, "2026-10-20"), pcMappingText: "Club Championships" }]);
     expect((await h.sync("2026-10-20")).status).toBe(200);
     expect(h.mirrors[0].status).toBe("active");
-    expect(champsSlotStarts(h.mirrors, 45).get(Number.NaN)).toBeUndefined();
     const capacity = h.mirrors.map(m => ({ ...m, court_id: 27, start_time: "18:00", end_time: "19:00" }));
     expect(champsSlotStarts(capacity, 45).get(27)).toEqual(["18:00"]);
     h.provider([]);

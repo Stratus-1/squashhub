@@ -88,6 +88,19 @@ export function ClosedTabsTab({ clubId }: { clubId: string }) {
     },
   });
   const stats = salesStatistics(data ?? [], venue);
+  const { data: periodTips = [] } = useQuery({ queryKey: ['bar-period-tips', clubId, range?.from, range?.to], enabled: Boolean(range), queryFn: async () => {
+    if (!range) return [];
+    const tips: { staff_name: string; amount: number }[] = [];
+    for (let offset = 0; ; offset += 250) {
+      const { data, error } = await (supabase as any).from('bar_tips').select('staff_name,amount').eq('club_id', clubId).eq('status', 'earned').gte('earned_at', range.from).lt('earned_at', range.to).order('id').range(offset, offset + 249);
+      if (error) throw error;
+      tips.push(...(data ?? []));
+      if ((data?.length ?? 0) < 250) break;
+    }
+    const totals = new Map<string, number>();
+    tips.forEach(tip => totals.set(tip.staff_name, (totals.get(tip.staff_name) ?? 0) + Number(tip.amount)));
+    return [...totals].map(([name, amount]) => ({ name, amount }));
+  }});
   const selected = stats.buckets.find(value => value.value === bucket);
   const groups = selected?.groups ?? [];
   const visible = groups.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -98,6 +111,7 @@ export function ClosedTabsTab({ clubId }: { clubId: string }) {
       {period === 'custom' && <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2"><HistoryDatePicker label="From date" date={from} onChange={date => { setFrom(date); setPage(0); }} /><HistoryDatePicker label="To date" date={to} onChange={date => { setTo(date); setPage(0); }} /></div>}
     </div>
     <p className="text-xs text-muted-foreground">Sale date · Johannesburg time{period === 'week' ? ' · Past 7 days' : ''}{venue !== 'both' ? ` · ${venue === 'bar' ? 'Bar' : 'Shop'} items and amounts` : ''}</p>
+    {venue !== 'shop' && periodTips.length > 0 && <div className="border-y py-2 space-y-1">{periodTips.map(tip => <div key={tip.name} className="flex justify-between text-xs gap-3"><span>Tip income — {tip.name}</span><span className="tabular-nums">{money(tip.amount)}</span></div>)}</div>}
     {!range ? <p role="alert" className="text-sm text-destructive">Choose a start and end date, with the end on or after the start.</p>
       : error ? <div role="alert" className="text-sm text-destructive">Could not load sales statistics. <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button></div>
       : isLoading ? <p className="text-sm text-muted-foreground">Loading sales…</p>

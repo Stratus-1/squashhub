@@ -10,7 +10,7 @@ vi.mock("@/contexts/ClubContext", () => ({ useClubContext: () => ({ club: { id: 
 vi.mock("@/hooks/use-club", () => ({ useMyClub: () => ({ data: null }) }));
 vi.mock("@/components/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/bar/BarCounterOrders", () => ({ BarCounterOrders: () => null }));
-vi.mock("@/components/bar/BarOpenAndAlerts", () => ({ BarOpenAndAlerts: () => null }));
+vi.mock("@/components/bar/BarOpenAndAlerts", () => ({ BarOpenAndAlerts: () => null, playPing: vi.fn() }));
 vi.mock("@/components/bar/BarOtpDialog", () => ({ BarOtpDialog: () => null }));
 vi.mock("@/components/bar/ProductScanDialog", () => ({ ProductScanDialog: () => null }));
 vi.mock("@/lib/bar-categories", () => ({

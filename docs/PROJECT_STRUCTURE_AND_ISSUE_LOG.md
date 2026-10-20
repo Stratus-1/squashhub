@@ -4,6 +4,12 @@
 - Fix: attach factual scores, winner/loser flags and byes only to chart blocks with matching round/participants, retaining the supplied positions. Unplayed and incompatible games receive no invented results.
 - Guard: focused tests cover nine Men's C results, three Ladies A results plus bye/unplayed game, exact later-round positions and source immutability. Preview only; no live-data changes or publication.
 
+## 2026-10-20 — Owner-approved actual Round 2 chart alignment
+- Symptom: saved Men's C/Ladies A Round 2 games still used the older draw while exact charts displayed different opponents.
+- Finding: Men's C has one R1 upset (seed 11 occupies position 8, seed 8 occupies position 11); Ladies A R1 3v6 is unfinished. Seven existing unscored R2 rows needed correction, and Ladies A 7v8 was missing.
+- Fix: explicitly approved, row-locked/audited changes align five Men's C and two Ladies A fixtures and add decided Ladies A 7v8, all due 29 Oct. Changed Andre/Leon fixture detached from its personal booking without cancelling/transferring it; unaffected bookings retained. Unresolved Ladies A feeders remain undecided. No emails or publication; this repair does not activate future exact-chart generation.
+- Guard: twelve R1 scores remain saved, no duplicate R2 participants, personal booking remains active; authenticated screen verifies restored scores and saved Justin Naude v Riaan van Wyk.
+
 ## 2026-10-20 — Men's C exact chart overridden by saved Round 2
 - Symptom: owner-supplied R2 1v9 appeared as 1v10 in Positional Preview.
 - Finding: the exact template was correct, but the saved-round overlay replaced it whenever real games existed; earlier tests covered empty rounds only.

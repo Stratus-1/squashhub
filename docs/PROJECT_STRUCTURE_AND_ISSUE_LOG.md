@@ -1,3 +1,9 @@
+## 2026-10-20 — Men's C exact chart overridden by saved Round 2
+- Symptom: owner-supplied R2 1v9 appeared as 1v10 in Positional Preview.
+- Finding: the exact template was correct, but the saved-round overlay replaced it whenever real games existed; earlier tests covered empty rounds only.
+- Fix: exact-chart previews retain every supplied position pair and project names only from compatible completed results. Factual games remain in Log/Calendar without changes; default grids and live generation retain saved-game authority.
+- Guard: full saved R1/R2 regression checks all five supplied rounds, R2 1v9 versus factual 1v10, unchanged source model and unchanged default view. No data changes or publication.
+
 ## 2026-10-20 — Shared category tournament calendar
 - Existing Swiss/round-robin Calendar Views now show all saved tournament fixtures, including later stages, while progression remains category/pool-specific. Selected-category games are green in timed blocks, deadlines and month counts; other categories retain labels, scores and states. Undated fixtures remain listed without invented allocations. Embedded Swiss Calendar View is available. Presentation-only; no fixture, permission, notification, backend or publication changes.
 

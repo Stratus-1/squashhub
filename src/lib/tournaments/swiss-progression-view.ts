@@ -288,9 +288,11 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
   }
   const savedGrid = new Map(buildSwissGrid(model).map((r) => [r.round, r]));
   return { issues, rounds: template.map((rd): GridRound => {
-    if (rd.round === 1 && savedFirst?.created) return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
+    if (!exactChart && rd.round === 1 && savedFirst?.created) return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
     // Saved games for this round are shown factually (real players, results, scores) — never as "projected".
-    const saved = (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
+    // An exact chart is a separate proposed map: saved games stay in Log/Calendar, not overlaid
+    // onto incompatible position routes. Compatible completed results still project names via occ.
+    const saved = exactChart ? [] : (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
     const savedIds = new Set(saved.flatMap((b) => b.rows.map((r) => r.id)).filter((x): x is string => !!x));
     const into = occ[rd.round - 1];
     // A round switched to Play by date (applied to live rounds) overrides stale proposed court/time slots.

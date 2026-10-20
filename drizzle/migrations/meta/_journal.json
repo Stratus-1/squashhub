@@ -1499,6 +1499,13 @@
       "when": 1792491730380,
       "tag": "0213_bar_cash_up_tips_and_writeoff",
       "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1792494532214,
+      "tag": "0214_stop_noon_champ_hold_release",
+      "breakpoints": true
     }
   ]
 }

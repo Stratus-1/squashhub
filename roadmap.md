@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] NSC tonight's doubles test scores cleared: two rubbers audited/reset, two pending test ranking awards rejected, stale marker lock released. All 15 rubbers unscored; affected signed-in scorecards read back blank. Fixtures/players/bookings retained; devices must reload before real scoring.
+
 - [ ] Uitsig Men's B final uploaded 24-player chart: confirm whether the four R3/R5 repeated position pairs are intentional exceptions before applying to preview; saved games/live data unchanged.
 
 - [x] Exact uploaded 18-player five-round chart applied to Uitsig Men's C proposed view only, with explicitly approved repeats. 38 tests pass; authenticated Men’s C preview opened and checked. Saved rounds stay factual (so may differ from chart); default generation and other clubs unchanged. No publication or live-data changes.

@@ -1,3 +1,4 @@
+import type React from "react";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,9 +10,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface MethodTotal { sales: number; tips: number; count: number }
 interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number }
-interface Closed { id: string; period_start: string; period_end: string; totals: Summary; expected_cash: number; counted_cash: number; variance: number; closed_by_name: string | null; written_off?: boolean }\ninterface Balance { staff_id: string; name: string; earned: number; paid: number; remaining: number }\nconst MONEY = /^\\d+(\\.\\d{1,2})?$/;
+interface Closed { id: string; period_start: string; period_end: string; totals: Summary; expected_cash: number; counted_cash: number; variance: number; closed_by_name: string | null; written_off?: boolean }
+interface Balance { staff_id: string; name: string; earned: number; paid: number; remaining: number }
+const MONEY = /^\d+(\.\d{1,2})?$/;
 
-const LABELS: [string, string][] = [["online", "Online card (paid online)"], ["card_bar", "Card swiped at the bar"], ["cash", "Cash"], ["member_account", "Member account"]];
 const R = (n: number | string | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" });
 

@@ -9,7 +9,7 @@ import { showBarChargeError } from "@/lib/bar-charge-toast";
  * from the counter (member search) charge without a code: the unlocked staff
  * PIN session is the authority. Other tabs still need the member's own code.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

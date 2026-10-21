@@ -140,3 +140,13 @@ export function removeFromManualDraws(
   return changed ? next : null;
 }
 
+
+/**
+ * Swiss categories keep a withdrawn player's position (shown as "withdrawn – bye"); removing the
+ * entry would shrink the field and break the position chart. Returns the Swiss groups to keep.
+ */
+export function keepPositionGroups(champ: { swiss_rounds?: Record<string, unknown> | null } | null | undefined, memberGroups: number[], groupNumber: number | null): number[] {
+  const swiss = new Set(Object.entries(champ?.swiss_rounds ?? {}).filter(([, v]) => Number(v) > 0).map(([k]) => Number(k)));
+  const targets = groupNumber == null ? memberGroups : [groupNumber];
+  return targets.filter((g) => swiss.has(Number(g)));
+}

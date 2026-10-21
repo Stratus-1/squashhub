@@ -135,3 +135,4 @@
 - [x] Riverside AABB: deleted 84 played test games + 50 linked bookings.
 - [x] AABB 18-player categories use Uitsig Men's C chart; 16-player use approved halves-of-8 model (preview, applies once drawn). Tests pass.
 - [x] Switching a timed round to play-by cancels system-made court bookings and clears fixture times; played games, GoBook and already-play-by rounds untouched. Not exercised end-to-end.
+- [x] Swiss withdrawals (both Withdraw buttons) keep the entry/position and mark 'withdrawn – bye' (auto walkover trigger from Brett fix); no collapse.

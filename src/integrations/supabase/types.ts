@@ -19490,6 +19490,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bar_tab_sales: { Args: { _tab: string }; Returns: number }
       _bar_tip_authorise: {
         Args: { _club: string; _token: string }
         Returns: string

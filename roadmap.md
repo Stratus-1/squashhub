@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Finish reachable Riverside Swiss RR finish controls, verify synthetic flow and club isolation, then request shared-app publication after checks; no live fixture writes.
 - [ ] Verify Uitsig Deon and Lazelle test-sale stock history; test transactions must have no net stock effect.
 - [ ] Run one approved bounded Help Center receipt test only if existing publisher preserves one-row scope and cron; otherwise report blocker without invoking.
 - [x] Removed the unpaid-fees warning and unused query from Enter Transaction; payment posting unchanged. Clean edit checks and preview build OK; no live data changes or publication.

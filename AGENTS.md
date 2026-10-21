@@ -51,3 +51,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
+- The Structure screen's per-category Swiss stage plan is the single source of the Swiss round count; it is copied into builder_spec on save and never lowered below a round with games; why: the progression log and engine read builder_spec.

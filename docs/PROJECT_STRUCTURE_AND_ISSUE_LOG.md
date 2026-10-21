@@ -1,3 +1,7 @@
+## 2026-10-21 — Ladies B clean round-robin view
+- Symptom: Uitsig Ladies B still used the old matrix/order-of-play view while Men's A used clean draggable pool panels.
+- Fix: include current Ladies B category 6 in the same existing Uitsig clean-view predicate; pool calculations, fixtures, results, settings and calendars unchanged. No publication or backend changes.
+
 ## 2026-10-21 — Ladies A approved screenshot preview restored
 - Symptom: current Ladies A category 5 showed generic pairings and scheduled positions 6–9 in R5, unlike the approved nine-position chart.
 - Fix: update the display-only selector from former category 6 to current category 5; approved Ladies A matrix takes precedence over RR display settings and bye substitutions. R5 remains 1–2, 3–4, bye 5 only; saved R2 discrepancy remains untouched in Log/Calendar.

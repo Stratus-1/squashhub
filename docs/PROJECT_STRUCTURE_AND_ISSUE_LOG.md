@@ -1,3 +1,7 @@
+## 2026-10-21 — Authorised Ladies B three-round setup
+- Owner approved three RR rounds for both four-player pools, similar to Men's A, with play-offs later. Updated only Ladies B saved setup round counts and structured schedule/stage mirror to three dates.
+- Read-back confirmed three rounds; all tournament fixtures/results retained the exact same fingerprint. Existing fixture round assignments remain unchanged and require separate safe alignment; no regeneration, booking writes, notices or publication.
+
 ## 2026-10-21 — App-wide clean round-robin presentation
 - Removed club/category and beta-switch restrictions from the standalone RR view; the shared component defaults to draggable fixtures/results and standings for standalone and existing follow-up RR callers. Doubles partner IDs resolve to the existing team row for display only.
 - Kept Swiss/matchup format boundaries, calendar, management permissions, pairing and all hosted data unchanged. No publication or service deployment.

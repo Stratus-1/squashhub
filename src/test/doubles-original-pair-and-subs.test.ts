@@ -56,3 +56,13 @@ describe("doubles sub eligibility", () => {
     expect(checkDoublesSub({ ...base, enforce: false }, {}, 1).ok).toBe(true);
   });
 });
+
+describe("multi-game-a-night subs", () => {
+  const base = { enforce: true, fromReserves: true, fromByeTeam: true, rankRule: "any" as const };
+  it("allows a player from a team also playing tonight when the league allows more than one game a night", () => {
+    expect(checkDoublesSub({ ...base, fromPlayingTeams: true }, { playingTeamRank: 3 }, 3).ok).toBe(true);
+  });
+  it("still blocks that player when the league allows only one game a night", () => {
+    expect(checkDoublesSub({ ...base, fromPlayingTeams: false }, { playingTeamRank: 3 }, 3).ok).toBe(false);
+  });
+});

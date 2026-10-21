@@ -14,6 +14,9 @@ export interface DoublesSubRules {
   fromReserves: boolean;
   fromByeTeam: boolean;
   rankRule: SubRankRule;
+  /** League allows a player to play more than one game a night: players from
+   *  teams also playing that evening may sub in. */
+  fromPlayingTeams?: boolean;
 }
 
 export interface SubCandidateInfo {
@@ -21,6 +24,8 @@ export interface SubCandidateInfo {
   reserveRank?: number | null;
   /** Pair number in their own team, if that team has a bye this week. */
   byeRank?: number | null;
+  /** Pair number in their own team when that team also plays this evening. */
+  playingTeamRank?: number | null;
 }
 
 export type SubCheck = { ok: true } | { ok: false; reason: string };
@@ -33,6 +38,7 @@ export function checkDoublesSub(rules: DoublesSubRules, info: SubCandidateInfo, 
   const sources: Array<{ label: string; rank: number }> = [];
   if (rules.fromReserves && info.reserveRank != null) sources.push({ label: "reserve", rank: info.reserveRank });
   if (rules.fromByeTeam && info.byeRank != null) sources.push({ label: "bye", rank: info.byeRank });
+  if (rules.fromPlayingTeams && info.playingTeamRank != null) sources.push({ label: "team", rank: info.playingTeamRank });
   if (!sources.length) {
     const allowed = [rules.fromReserves && "the reserve team", rules.fromByeTeam && "a team on bye"].filter(Boolean);
     return {

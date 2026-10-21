@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Ladies B setup changed to three RR rounds with both existing four-player pools; saved stage schedule/mirror and setup round counts verified at 3. Fixtures/results fingerprint unchanged; play-offs deferred.
+- [ ] Ladies B existing fixtures still need reviewed alignment into R1–3; blocked pending safe fixture correction, not regeneration or booking changes.
 - [x] Ladies B Pool 2 read-only check: four players, all six unique RR pairings saved across five rounds (1/2/1/1/1 games); “Bye” heading infers unscheduled players, not an odd player count. Reported; no fixture changes.
 - [x] New draggable round-robin view standard across clubs and tournaments (singles/doubles presentation); 23 tests pass, pilot switches-off desktop/mobile drag checked, preview OK; no publication or live-data changes.
 - [x] Ladies B uses the same draggable clean pool view as Men's A; 19 tests pass, authenticated desktop/mobile both pools drag correctly, build OK. Display only; games/results/settings unchanged, not published.

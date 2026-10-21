@@ -2,7 +2,7 @@
 
 - Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
 - Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/functions/AGENTS.md` (device age gate, arrears plans), `supabase/AGENTS.md` (Help Center feed).
-- Step-by-Step Beta rules: see `src/components/smart-builder/AGENTS.md`.
+- Step-by-Step Beta, tournament admin UI and Swiss round-count rules: see `src/components/smart-builder/AGENTS.md`.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
 - Commands: `npm run dev|test|lint|build|cap:sync`; review native sync.
 
@@ -27,8 +27,6 @@
 - Counter tab-opening requests supply all six named arguments, with an explicit null member ID for visitors; why: older defaulted RPC overloads otherwise make visitor requests ambiguous.
 - Booking grid uses saved tournament duration, not historical booking lengths, inside reserved evenings; fixture slots preserve that interval, other courts keep club slots, overlaps stay separate; why: setup changes must not retain stale short rows or move bookings.
 - Booking writes enforce scheduled, unlinked championship allocations through `guard_scheduled_championship_booking`, using saved fixture duration without an admin bypass; why: capacity holds must not conceal already assigned games.
-- Tournament administration hierarchy uses explicit local roots and light-only semantic surfaces, including notification portals; why: public/member pages and existing dark mode must remain unchanged.
-- Draw notification dialogs keep the header and actions outside one viewport-bounded scrolling body; why: expanded personalized previews must not hide send/cancel controls or scroll the underlying page.
 - Scope Club Admin steps/contrast locally (portals too); why: shared member/association UI must stay unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.
@@ -51,4 +49,3 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- The Structure screen's per-category Swiss stage plan is the single source of the Swiss round count; it is copied into builder_spec on save and never lowered below a round with games; why: the progression log and engine read builder_spec.

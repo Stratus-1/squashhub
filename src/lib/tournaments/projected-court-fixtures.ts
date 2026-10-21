@@ -90,10 +90,19 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
     const st = swissStage(champ, arch, gn);
     if (!st) continue;
     const appliedPlayBy: Record<number, string> = {};
+    const savedRounds = new Set<number>();
     for (const r of rounds ?? []) {
       if (Number(r.group_number) !== gn) continue;
+      savedRounds.add(Number(r.round_number));
       const pb = appliedRoundPlayBy(r);
       if (pb) appliedPlayBy[Number(r.round_number)] = pb;
+    }
+    // Play-by stage with no saved row for a round yet: the stage deadline applies — never invent court times.
+    const sch: any = st.schedule;
+    if (sch?.rule === "play_by") for (let n = 2; n <= (st.rounds ?? 0); n++) {
+      if (savedRounds.has(n) || appliedPlayBy[n]) continue;
+      const d = (sch.roundDates ?? [])[n - 1] ?? sch.deadline;
+      if (d) appliedPlayBy[n] = String(d).slice(0, 10);
     }
     const gEntries = entries.filter((e) => e.group_number === gn).sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
     if (st.rrFinish?.enabled && rrFinishIssues(gEntries.length, st.rounds, st.rrFinish.groups).length) continue;

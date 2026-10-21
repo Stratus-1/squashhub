@@ -48,7 +48,8 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       {mode === "classic" && classicStandings ? classicStandings : null}
       {mode === "calendar" ? calendar ?? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(/^r(\d+)-/.exec(k)?.[1])])) : slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
-        <>
+        <div className={cn(rr.showStandings && rrStandings ? "grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]" : undefined)}>
+        <div className="min-w-0 space-y-3">
           {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
@@ -59,7 +60,9 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
             </TournamentInteractiveViewer>
           )}
           </>}
-        </>
+        </div>
+        {rr.showStandings && rrStandings ? <div className="min-w-0" data-testid="rr-standings-beside-grid">{rrStandings}</div> : null}
+        </div>
       ) : (
         <>
           <TournamentInteractiveViewer title={`${title} — ${stageNoun} progression (${kind})`} inlineHeight={360}>

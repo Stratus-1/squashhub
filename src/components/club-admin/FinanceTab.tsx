@@ -167,6 +167,16 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
   const [txRecurring, setTxRecurring] = useState(false);
+  const [txProof, setTxProof] = useState<File | null>(null);
+  const openJournalProof = async (ref: string) => {
+    const { data, error } = await (sbClient as any).from("club_journal_attachments")
+      .select("storage_path").eq("club_id", clubId).eq("journal_ref", ref).order("created_at", { ascending: false }).limit(1);
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.info("No proof document attached to this entry");
+    const { data: signed, error: sErr } = await sbClient.storage.from("finance-proofs").createSignedUrl(data[0].storage_path, 300);
+    if (sErr || !signed) return toast.error(sErr?.message || "Could not open document");
+    window.open(signed.signedUrl, "_blank", "noopener");
+  };
   const [txFrequency, setTxFrequency] = useState<RecurringFrequency>("monthly");
   const [ledgerReconOpen, setLedgerReconOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -481,6 +491,23 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         }
       }
 
+      if (txProof) {
+        try {
+          const { data: auth } = await sbClient.auth.getUser();
+          const safe = txProof.name.replace(/[^\w.\-]+/g, "_").slice(-80);
+          const path = `${clubId}/${refs[0]}/${Date.now()}-${safe}`;
+          const { error: upErr } = await sbClient.storage.from("finance-proofs").upload(path, txProof, { contentType: txProof.type || undefined });
+          if (upErr) throw upErr;
+          const { error: aErr } = await (sbClient as any).from("club_journal_attachments").insert({
+            club_id: clubId, journal_ref: refs[0], storage_path: path, file_name: txProof.name, uploaded_by: auth.user?.id,
+          });
+          if (aErr) throw aErr;
+        } catch (pErr: any) {
+          toast.error(`Recorded, but the proof document could not be saved: ${pErr.message}`);
+        }
+        setTxProof(null);
+      }
+
       if (txRecurring) {
         const { error: recErr } = await (sbClient as any).from("club_recurring_transactions").insert({
           club_id: clubId, direction: txDirection, account: effectiveTxAccount, custom_account_id: customId,
@@ -590,6 +617,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
           onClick={() => setRowAction({ ref: entry.journal_ref, mode: "reverse", summary: journalRefSummary(entry.journal_ref) })}
         >
           <Undo2 className="w-3.5 h-3.5 mr-2" /> Reverse entry
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openJournalProof(entry.journal_ref)}>
+          <FileText className="w-3.5 h-3.5 mr-2" /> View proof document
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -1435,6 +1465,13 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 </Select>
               )}
               {txRecurring && <p className="w-full text-[11px] text-muted-foreground">Next on {nextDueDate(txDate, txFrequency)} — it waits for finance to approve (date and amount can be changed then).</p>}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="tx-proof" className="text-xs">Upload proof document (optional)</Label>
+              <Input id="tx-proof" type="file" accept="image/*,application/pdf" className="h-9 text-xs"
+                onChange={e => setTxProof(e.target.files?.[0] ?? null)} disabled={txSubmitting} />
+              {txProof && <p className="text-[11px] text-muted-foreground">{txProof.name}</p>}
             </div>
             </div>
             <Button className="w-full shrink-0" onClick={handleRecordTransaction} disabled={txSubmitting}>

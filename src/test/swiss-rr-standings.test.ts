@@ -9,6 +9,16 @@ const run = (matches: RrStandingMatch[], criteria: any = ["game_difference", "ga
   rrFinishStandings({ snapshot: snap, groups: 3, matches, criteria, gameSets: gameSetsOf as any });
 
 describe("Round-robin standings — from Round 3", () => {
+  it("16 players / 4 groups keeps all 16 positions and updates through R3, R4 and R5", () => {
+    const snapshot = snap.slice(0, 16);
+    const matches = [m(3, "p4", "p1", "p4", "3-0"), m(4, "p4", "p2", "p4", "3-1"), m(5, "p4", "p3", "p4", "3-2")];
+    for (let round = 3; round <= 5; round++) {
+      const g = rrFinishStandings({ snapshot, groups: 4, matches: matches.filter((x) => x.round <= round), criteria: ["game_difference"], gameSets: gameSetsOf as any });
+      expect(g.map((x) => x.positions)).toEqual([[1, 4], [5, 8], [9, 12], [13, 16]]);
+      expect(g.flatMap((x) => x.rows)).toHaveLength(16);
+      expect(g[0].rows[0]).toMatchObject({ id: "p4", pairingPosition: 4, rank: 1, wins: round - 2, played: round - 2 });
+    }
+  });
   it("18 players / 3 groups: only positions 1–12 shown; 13–18 stay Swiss", () => {
     const g = run([]);
     expect(g.map((x) => x.positions)).toEqual([[1, 4], [5, 8], [9, 12]]);

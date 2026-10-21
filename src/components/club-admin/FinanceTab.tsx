@@ -1310,9 +1310,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     Accounts Receivable — settles this member's outstanding bill
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    A member is linked, so this payment is automatically posted against their outstanding balance
-                    (Dr {txMethod === "cash" ? "Cash" : "Current Account"} / Cr Accounts Receivable). Do NOT credit an income
-                    account here — the income was already recognised when the fee was raised.
+                    This records money received against the member's outstanding balance
+                    (Dr {txMethod === "cash" ? "Cash" : "Current Account"} / Cr Accounts Receivable), not a new membership fee.
+                    For an old payment, use the original payment date and check that the receipt is not already recorded.
+                    A brought-forward balance is not necessarily income raised in this system.
                   </p>
                 </>
               ) : (
@@ -1372,8 +1373,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     <div>
                       <p className="font-semibold">This member has {money(outstanding)} in unpaid fees.</p>
                       <p className="mt-0.5">
-                        Rather mark the specific fee paid in <strong>Members → Fees</strong> so it links to the invoice.
-                        A free-form payment here posts a second Cr Debtors leg that will double-count when the fee row is later toggled paid.
+                        If this payment belongs to a fee listed in <strong>Members → Fees</strong>, record it there instead
+                        so it is linked to that fee. For a legacy outstanding balance without a matching fee, record the
+                        receipt here using its original payment date. Do not record the same payment here and again under Fees.
+                        If the old payment is already included in the opening balance or books, do not enter another receipt.
                       </p>
                     </div>
                   </div>

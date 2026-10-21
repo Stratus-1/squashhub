@@ -3615,3 +3615,6 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ### 2026-10-21 · Riverside Swiss+RR standings moved into round track
 - Removed the separate right-hand RR standings panel in the Swiss grid; live group standings now render as a compact column immediately after Round 5 in the same horizontal track (`SwissPositionGrid` `afterRounds`), with "View Standings →" / "← Back to Rounds" jump controls. Calculations, visibility (actual R3 activity) and Log View unchanged; standalone RR and normal Swiss unaffected.
+
+### 2026-10-21 — Uitsig Club Champs 2026: Ladies C removed (data cleanup, authorized)
+- Ladies C (g8) had no games/entries; its players and results already lived once in Ladies B (pools A/B). Deleted empty Ladies C category, stage and 5 rounds; removed g8/"Ladies C" and declined players (Nicole Hamer, Adele du Rand) from saved plan; Ladies B saved plan now mirrors live two pools. Single guarded transaction; all 87 games verified byte-identical before/after. Registrations/accounts kept. Backup JSON in private Files metadata (`.lovable/backups/uitsig-ladies-c-20261021T205838.json`).

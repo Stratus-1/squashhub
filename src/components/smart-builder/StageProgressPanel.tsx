@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { drawNotifyOn } from "@/lib/smart-builder/draw-notice";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -60,14 +60,13 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
   const states = allStates.filter((s) => !koDivs.has(s.divisionKey));
 
   const refresh = () => { qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(champId) }); refetch(); };
-  const running = useRef(false);
-  // Draws generated before play-offs were bridged: attach the builder's planned play-offs (append-only,
-  // no games written) so a finished stage is never a dead end. Idempotent — only fills divisions with none.
-  const repaired = useRef(false);
-  useEffect(() => {
-    if (repaired.current) return;
-    repaired.current = true;
-    (async () => {
+  // Opening this panel is read-only, including automatic-ready lifecycle states.
+  // Older draws can attach their planned stages only through this explicit action.
+  const [attaching, setAttaching] = useState(false);
+  const attachPlan = async () => {
+    if (attaching) return;
+    setAttaching(true);
+    try {
       const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champId).maybeSingle();
       const plan = (data as any)?.beta_lifecycle?.format_plan ?? null;
       if (!plan || !attachPlannedPlayoffs(spec, plan)) return;
@@ -77,25 +76,9 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
         if (next) await tx.update("tournaments", { id: champId }, { builder_spec: next });
       });
       refresh();
-    })().catch((e) => toast.error(`Couldn't attach the planned play-offs: ${e.message}`));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [champId]);
-  useEffect(() => {
-    // "Set up later" play-offs with an automatic start are promoted inside autoProgress, so a due needs_setup stage also triggers it.
-    if (running.current || !states.some((s) => (s.state === "ready" && s.automatic) || s.state === "needs_setup")) return;
-    running.current = true;
-    autoProgress(supabaseDb, champId, exec)
-      .then(async (r) => {
-        if (!r.started.length) return;
-        toast.success(`Started automatically: ${r.started.map((s) => s.name).join(", ")}`);
-        scheduleToast(await schedulePlannedPlayoffGames(champId));
-        for (const st of r.started) await notifyStage(champId, spec, st.divisionKey, st.stageKey);
-        refresh();
-      })
-      .catch((e) => toast.error(e.message))
-      .finally(() => { running.current = false; });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [states]);
+    } catch (e: any) { toast.error(`Couldn't attach the planned play-offs: ${e.message}`); }
+    finally { setAttaching(false); }
+  };
 
   const [setup, setSetup] = useState<StageStatus | null>(null);
   const [confirm, setConfirm] = useState<StageStatus | null>(null);
@@ -108,19 +91,20 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
   };
 
   const tieAlerts = states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail));
-  const goRows = states.filter((s) => s.state === "ready" && !s.automatic);
+  const goRows = states.filter((s) => s.state === "ready");
   const dueRows = states.filter((s) => s.state === "needs_setup");
   // Replace promoted Swiss controls; keep the same lifecycle and dialogs as stage steps.
   const promoted = (s: StageStatus) => !!renderNextActions && !!s.afterStageKey && spec.divisions
     .find((d) => d.divisionId === s.divisionKey)?.stages.some((st) => st.id === s.afterStageKey && st.kind === "swiss");
   const openStage = (s: StageStatus) => {
     if (s.state === "needs_setup") setSetup(s);
-    else if (s.state === "ready" && !s.automatic) setConfirm(s);
+    else if (s.state === "ready") setConfirm(s);
   };
   const body = (
     <>
       {renderNextActions?.(states, openStage)}
       <div className="font-semibold">Stage progress</div>
+      <Button size="sm" variant="outline" disabled={attaching} onClick={() => void attachPlan()}><Settings2 className="mr-1 h-4 w-4" />Attach planned playoffs</Button>
       {tieAlerts.map((s) => {
         const src = tieSource(s.divisionKey, s.stageKey);
         return (

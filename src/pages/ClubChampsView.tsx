@@ -1289,6 +1289,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     if (!rrPilotOn(gn)) return null;
     const pc = poolCountFor(gn);
     const gm = (matches as any[]).filter((m: any) => m.group_number === gn && (m.stage || "group") === "group");
+    const rrDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
+    const rrStage = rrDivision?.stages?.find((s: any) => s.kind === "round_robin");
     if (!gm.length) return null;
     return (
       <SwissPilotBoundary fallback={null}>
@@ -1310,6 +1312,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               rankOrder: rows.map((r: any) => r.club_member_id),
               seedOrder: rrSeedOrder(poolMatches, rows.map((r: any) => r.club_member_id)),
               matches: poolMatches,
+              stageRoundCount: rrStage?.schedule?.roundDates?.length,
             });
             return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · ${poolName(gn, pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} group={pn} groupLabel={pc > 1 ? poolName(gn, pn) : getGroupLabel(champ, gn)} />;
           })}

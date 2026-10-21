@@ -970,17 +970,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     const next = [...stages]; next.splice(i + 1, 0, copy); setStages(next);
   };
   const setAllCategories = (s: ClubStage) => { const drop = new Set(groupOf(s).filter((x) => x.id !== s.id).map((x) => x.id)); setStages(stages.filter((x) => !drop.has(x.id)).map((x) => (x.id === s.id ? { ...x, unit: "" } : x))); };
-  /** Main rounds: choose several categories at once. The round stays one per category (copies share its settings). */
-  const setStageUnits = (s: ClubStage, keys: string[]) => {
-    if (!keys.length) { updStage(s.id, { unit: "" }); return; }
-    const [first, ...rest] = keys;
-    const copies = rest.filter((u) => !stages.some((x) => x.id !== s.id && (x.phase ?? "main") === "main" && x.unit === u && x.name === s.name))
-      .map((u) => ({ ...s, id: crypto.randomUUID(), unit: u, extraDays: (s.extraDays ?? []).map((d) => ({ ...d })), courtIds: [...s.courtIds] }));
-    const i = stages.findIndex((x) => x.id === s.id);
-    const next = stages.map((x) => (x.id === s.id ? { ...x, unit: first } : x));
-    next.splice(i + 1, 0, ...copies);
-    setStages(next);
-  };
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
   const courtChips = (ids: string[], set: (ids: string[]) => void) => clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
     const on = ids.includes(c.id);

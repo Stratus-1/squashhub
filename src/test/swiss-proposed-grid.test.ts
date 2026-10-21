@@ -14,7 +14,8 @@ describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
     model.rounds[1].complete = true;
     const before = JSON.stringify(model);
     const grid = buildProposedSwissGrid(model);
-    expect(grid.rounds[2].blocks.map((b) => b.rows.map((r) => r.pos))).toEqual([[1,4],[2,3],[5,8],[6,7],[9,12],[10,11]]);
+    expect(grid.rounds[2].blocks.filter((b) => (b.rows[0].pos ?? 99) <= 12).map((b) => b.rows.map((r) => r.pos))).toEqual([[1,4],[2,3],[5,8],[6,7],[9,12],[10,11]]);
+    expect(grid.rounds[2].blocks.flatMap((b) => b.rows.map((r) => r.id)).filter((id) => id && Number(id.slice(1)) >= 13).sort()).toEqual(["p13","p14","p15","p16","p17","p18"]);
     expect(grid.rounds[3].blocks[0].rows.map((r) => r.id)).toEqual(["p1", "p3"]);
     expect(grid.rounds[4].blocks[0].rows.map((r) => r.id)).toEqual(["p1", "p2"]);
     expect(grid.rounds[4].blocks.flatMap((b) => b.rows.map((r) => r.id))).not.toContain("p13");

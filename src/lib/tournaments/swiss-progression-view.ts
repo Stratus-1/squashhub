@@ -55,6 +55,7 @@ export interface ProgressionRow {
 }
 export interface SwissProgressionModel {
   rrFinish?: RrFinish | null;
+  tieBreaks?: readonly string[] | null;
   format: SwissFormatKind; totalRounds: number; rounds: ProgressionRound[]; rows: ProgressionRow[];
   /** Configured Swiss round count (excludes later follow-up stage games that share the round axis). */
   configuredRounds: number;
@@ -125,7 +126,7 @@ export function buildSwissProgression(input: {
     swissFinalPosition: swissStageComplete ? swissFinal.get(id) ?? null : null,
   })).sort((x, y) => x.current - y.current);
 
-  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows };
+  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows, tieBreaks };
 }
 
 /** Movement between the two latest rounds with results: positive = moved up. */
@@ -243,7 +244,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
         catch { issues.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`); }
       }
       const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
-        matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: fixed.get(id) ?? null, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
+        matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
       }));
       return { ...rd, blocks: [...factual, ...pending].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
     }) };

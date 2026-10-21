@@ -38,10 +38,10 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       </div>
       <div id="swiss-tabpanel" role="tabpanel" aria-labelledby={`swiss-tab-${mode}`} className="space-y-3">
       {mode !== "calendar" && rr.enabled && <div className="space-y-1 text-xs" data-testid="rr-pairing-groups">
-        <h3 className="font-semibold">{rr.locked ? "Locked pairing groups — after Round 2" : "Projected pairing groups — lock after Round 2"}</h3>
+        <h3 className="font-semibold">{rr.heading}{rr.locked && <Badge variant="outline" className="ml-2 text-[10px]">Locked</Badge>}</h3>
         <div className="flex flex-wrap gap-2">
-          {rr.groupRanges.map(([lo, hi], i) => <span key={lo} className="riverside-rr-band px-2 py-1" data-rr-group={rr.locked ? i + 1 : undefined}>Group {i + 1} · positions {lo}–{hi}</span>)}
-          {rr.remainder && <span className="riverside-rr-band px-2 py-1" data-rr-group={rr.locked ? "swiss" : undefined}>Swiss remainder · positions {rr.remainder[0]}–{rr.remainder[1]}</span>}
+          {rr.groupRanges.map(([lo, hi], i) => <span key={lo} className="riverside-rr-band px-2 py-1" data-rr-group={i + 1}>Group {i + 1} · positions {lo}–{hi}</span>)}
+          {rr.remainder && <span className="riverside-rr-band px-2 py-1" data-rr-group="swiss">{rr.remainderLabel} · positions {rr.remainder[0]}–{rr.remainder[1]}</span>}
         </div>
       </div>}
       {mode === "grid" && unavailable && classicStandings ? classicStandings : null}
@@ -49,13 +49,13 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       {mode === "calendar" ? calendar ?? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(/^r(\d+)-/.exec(k)?.[1])])) : slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
         <>
-          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrMemberships={rr.memberships} /></TournamentInteractiveViewer> : <>
+          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
           </div>
           {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (
             <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none" wheelZoom="direct">
-              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrMemberships={rr.memberships} />
+              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} />
             </TournamentInteractiveViewer>
           )}
           </>}
@@ -75,13 +75,14 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
                 {model.rows.map((row) => {
                   const mv = movement(row);
                   const membership = rr.memberships.get(row.id);
+                  const grp = rr.groupOf(row.id, row.current);
                   return (
-                    <tr key={row.id} data-rr-group={membership ? membership.group ?? "swiss" : undefined} className={cn("border-t border-border", membership && "riverside-rr-band")}>
+                    <tr key={row.id} data-rr-group={grp ?? undefined} className={cn("border-t border-border", grp != null && "riverside-rr-band")}>
                       <td className="px-2 py-1 font-semibold">{row.current}</td>
                       <td className="px-2" aria-label="movement">{mv == null || mv === 0 ? "–" : mv > 0 ? `▲${mv}` : `▼${-mv}`}</td>
                       <td className="px-2 font-medium whitespace-nowrap">{row.name}</td>
                       <td className="px-2">{row.seed}</td>
-                      {rr.locked && <><td className="px-2">{membership?.position ?? "—"}</td><td className="px-2 whitespace-nowrap">{membership?.group ? `Group ${membership.group}` : "Swiss remainder"}</td></>}
+                      {rr.locked && <><td className="px-2">{membership?.position ?? "—"}</td><td className="px-2 whitespace-nowrap">{membership?.group ? <>Group {membership.group} <Badge variant="outline" className="ml-1 text-[10px]">Locked</Badge></> : "Continued Swiss"}</td></>}
                       {row.cells.map((c, i) => (
                         <td key={i} className={`px-2 whitespace-nowrap ${c.startsWith("W ") ? "text-primary font-medium" : c.startsWith("L ") ? "text-muted-foreground" : ""}`}>
                           {c}{row.positions[i] != null ? <span className="text-muted-foreground"> · {row.positions[i]}</span> : null}

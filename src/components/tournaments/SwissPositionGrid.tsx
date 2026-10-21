@@ -31,7 +31,7 @@ function WhenTag({ text }: { text: string }) {
 }
 
 /** Read-only, spreadsheet-like Swiss grid: rounds side by side, each match a 2-row block. Visual layer only. */
-export function SwissPositionGrid({ model, proposedRounds, rrMemberships }: { model: SwissProgressionModel; proposedRounds?: GridRound[]; rrMemberships?: Map<string, { position: number; group: number | null }> }) {
+export function SwissPositionGrid({ model, proposedRounds, rrGroupOf, rrLocked = false }: { model: SwissProgressionModel; proposedRounds?: GridRound[]; rrGroupOf?: (id: string | null | undefined, slot: number | null | undefined) => number | "swiss" | null; rrLocked?: boolean }) {
   const rounds = proposedRounds ?? buildSwissGrid(model);
   const slots = Math.max(1, model.rows.length);
   const [selected, setSelected] = useState<string | null>(null);
@@ -72,9 +72,9 @@ export function SwissPositionGrid({ model, proposedRounds, rrMemberships }: { mo
             <tbody key={b.matchId} data-status={st} className="border-t-[3px] border-foreground/60" style={{ boxShadow: `inset 3px 0 0 hsl(var(${sv}) / ${st === "unresolved" ? 0.35 : 0.8})` }}>
               {b.rows.map((r, i) => {
                 const on = !!selected && r.id === selected;
-                const membership = rd.round >= 3 && r.id ? rrMemberships?.get(r.id) : undefined;
+                const grp = rd.round >= 3 ? rrGroupOf?.(r.id, r.pos) ?? null : null;
                 return (
-                <tr key={i} data-path={on ? "on" : undefined} data-rr-group={membership ? membership.group ?? "swiss" : undefined} className={cn(membership && "riverside-rr-band", r.result === "W" && "bg-success/10 font-semibold", r.result === "L" && "text-muted-foreground", on && "bg-primary/20 outline outline-2 -outline-offset-2 outline-primary")}>
+                <tr key={i} data-path={on ? "on" : undefined} data-rr-group={grp ?? undefined} className={cn(grp != null && "riverside-rr-band", r.result === "W" && "bg-success/10 font-semibold", r.result === "L" && "text-muted-foreground", on && "bg-primary/20 outline outline-2 -outline-offset-2 outline-primary")}>
                   <td className="px-2 py-1 tabular-nums">{r.pos ?? "—"}</td>
                   <td className="px-2 whitespace-nowrap">
                     {r.id ? <><button type="button" aria-pressed={on} className="text-left underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setSelected(on ? null : r.id)}>{r.name}</button>{r.projected ? <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground" title="Projected from a confirmed result — proposed slot, not a saved fixture">projected</span> : null}</> : <span className={cn(r.name === "TBD" && "text-muted-foreground")}>{r.name}</span>}
@@ -110,7 +110,7 @@ export function SwissPositionGrid({ model, proposedRounds, rrMemberships }: { mo
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `hsl(var(${model.swissStageComplete ? "--success" : "--muted-foreground"}))` }} />{model.swissStageComplete ? "Locked" : "Projected"}
                   </span>
                 </div>
-                <div className="text-[11px] font-normal text-muted-foreground">{model.swissStageComplete ? "All rounds complete — these positions seed the next stage" : `Locks when Round ${model.totalRounds ?? "?"} completes`}</div>
+                <div className="text-[11px] font-normal text-muted-foreground">{model.swissStageComplete ? "All rounds complete — these positions seed the next stage" : null}</div>
               </th>
             </tr>
             <tr className="text-left text-[11px] text-muted-foreground">
@@ -118,12 +118,12 @@ export function SwissPositionGrid({ model, proposedRounds, rrMemberships }: { mo
             </tr>
           </thead>
           <tbody>
-            {model.rows.map((r) => (
-              <tr key={r.id} className={cn("border-t border-border", model.swissStageComplete && "bg-success/10")}>
+            {model.rows.map((r) => { const grp = rrGroupOf?.(r.id, r.current) ?? null; return (
+              <tr key={r.id} data-rr-group={grp ?? undefined} className={cn("border-t border-border", grp != null ? "riverside-rr-band" : model.swissStageComplete && "bg-success/10")}>
                 <td className="px-2 py-1 tabular-nums font-semibold">{model.swissStageComplete ? (r.swissFinalPosition ?? r.current) : r.current}</td>
-                <td className="px-2 whitespace-nowrap">{r.name}</td>
+                <td className="px-2 whitespace-nowrap">{r.name}{rrLocked && typeof grp === "number" ? <span className="ml-1 rounded border border-border px-1 text-[10px] text-muted-foreground">Locked</span> : null}</td>
               </tr>
-            ))}
+            ); })}
           </tbody>
         </table>
       ) : null}

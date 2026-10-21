@@ -29,7 +29,7 @@ describe("one category with N pools", () => {
   });
   it("draw spec makes one division with named pools", () => {
     const units = Array.from({ length: 8 }, (_, i) => ({ member: `m${i}` })) as any;
-    const d: DrawDivision = { group: 1, label: "Mens A · Singles", doubles: false, units, format: { kind: "pools", pools: 2, seeding: "snake", schedule: { rule: "none", deadlines: [] } } as any, notes: [], playoffs: [], poolNames: ["North", "South"] };
+    const d: DrawDivision = { group: 1, label: "Mens A · Singles", doubles: false, units, format: { kind: "pools", pools: 2, seeding: "snake", schedule: { rule: "fixed", deadlines: [], dates: [] } } as any, notes: [], playoffs: [], poolNames: ["North", "South"] };
     const spec = buildDrawSpec("T", [d], "v1");
     expect(spec.divisions).toHaveLength(1);
     expect((spec.divisions[0] as any).poolLabels).toEqual(["North", "South"]);

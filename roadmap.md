@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Riverside Division 3: actual R3-start standings gate, fixed group colours/Swiss remainder; verify 16/4, 18/3 and normal Swiss, report before deployment. No Uitsig writes or duplicate site.
 - [x] Riverside RR finish verified: reachable toggle, synthetic R3–R5 writer and manual scheduling; 379 tests, preview build OK, existing Riverside desktop/phone checked with writes intercepted. Shared-app publication requested after checks; no live fixture writes.
 - [x] Used existing Riverside in this project only: no duplicated tournament, club, staging instance or separate site.
 - [ ] Verify Uitsig Deon and Lazelle test-sale stock history; test transactions must have no net stock effect.

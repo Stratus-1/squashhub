@@ -1,3 +1,8 @@
+## 2026-10-21 — Missing standard standings totals
+- Screenshot showed completed Ladies B three-game wins with GF/GA/GD/Pts all zero. Standard standings counted only string JSON sets, ignoring saved score text and object JSON.
+- Reused the shared saved-set parser, normalizing JSON first, with score-text fallback. Games-only summaries never fabricate rally points. No stored score/result or fixture changes.
+- 34 focused tests pass; signed-in Classic Log verified Liezel and Lisa Rahman GF3 GA0 GD+3 Pts3, with Jenny/Austyn GA3; preview build OK. Not published.
+
 ## 2026-10-21 — Authorised Ladies B three-round setup
 - Owner approved three RR rounds for both four-player pools, similar to Men's A, with play-offs later. Updated only Ladies B saved setup round counts and structured schedule/stage mirror to three dates.
 - Read-back confirmed three rounds; all tournament fixtures/results retained the exact same fingerprint. Existing fixture round assignments remain unchanged and require separate safe alignment; no regeneration, booking writes, notices or publication.

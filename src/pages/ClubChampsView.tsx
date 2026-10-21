@@ -1284,7 +1284,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // Riverside Swiss pilot: models built while rendering standings, reused on the Results tab (same data, no recalculation).
   const pilotSwissModels: Record<number, any> = {};
   // Standard read-only round-robin view for every club, from the same saved matches.
-  const rrPilotOn = (gn: number) => !swissStageFor(gn) && !isSwissForLeague(gn) && isRoundRobinForLeague(gn) && !isDoublesLeague(gn) && !matchupForGroup(matchups, gn);
+  const rrPilotOn = (gn: number) => !swissStageFor(gn) && !isSwissForLeague(gn) && isRoundRobinForLeague(gn) && !matchupForGroup(matchups, gn);
   const renderRoundRobinPilot = (gn: number) => {
     if (!rrPilotOn(gn)) return null;
     const pc = poolCountFor(gn);
@@ -1297,11 +1297,19 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const rows = getGroupStandings(gn, pc > 1 ? pn : null) as any[];
             const pm = gm.filter((m: any) => pc <= 1 || resolvePoolNumber(m, gn) === pn);
             if (!pm.length) return null;
+            // Partners resolve to their existing team row; display mapping only.
+            const byMember = new Map<string, string>();
+            rows.forEach((r: any) => {
+              byMember.set(r.club_member_id, r.club_member_id);
+              if (r.partner_member_id) byMember.set(r.partner_member_id, r.club_member_id);
+            });
+            const unit = (id: string | null | undefined) => id ? byMember.get(id) ?? id : null;
+            const poolMatches = pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: unit(m.player_a_member_id ?? m.bye_member_id), b: m.is_bye ? null : unit(m.player_b_member_id), winner: unit(m.winner_member_id), score: m.score, gameScores: m.game_scores, forfeitMemberId: unit(m.forfeit_member_id), status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by }));
             const view = buildRoundRobinView({
               players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })),
               rankOrder: rows.map((r: any) => r.club_member_id),
-              seedOrder: rrSeedOrder(pm.map((m: any) => ({ round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, isBye: !!m.is_bye })), rows.map((r: any) => r.club_member_id)),
-              matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
+              seedOrder: rrSeedOrder(poolMatches, rows.map((r: any) => r.club_member_id)),
+              matches: poolMatches,
             });
             return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · ${poolName(gn, pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} group={pn} groupLabel={pc > 1 ? poolName(gn, pn) : getGroupLabel(champ, gn)} />;
           })}

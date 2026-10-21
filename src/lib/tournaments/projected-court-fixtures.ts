@@ -125,7 +125,7 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
     // Per game: skip a pairing once either player already has a saved game in that round.
     const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
-      if (rd.created || rd.round < 2) continue;
+      if (rd.round < 2) continue;
       if (st.rrFinish?.enabled && !model.rounds.find((r) => r.round === rd.round - 1)?.complete) continue;
       const deadline = appliedPlayBy[rd.round];
       if (playByOnly ? !deadline : !!deadline) continue;
@@ -160,4 +160,21 @@ export function projectCourtFixtures(i: ProjectionInput): ProjectedCourtFixture[
 /** Confirmed players in applied play-by rounds need a fixture, not an automatic booking. */
 export function projectDecidedPlayByFixtures(i: ProjectionInput): DecidedPlayByFixture[] {
   return projectSwissFixtures(i, true).filter((f): f is DecidedPlayByFixture => "playBy" in f);
+}
+
+/** Recover only a still-unstarted scheduled Swiss fixture whose failed initial booking
+ * left no allocation. Re-project with that ONE row excluded, then require identical
+ * participants. Never reschedule a player-owned, started, scored or allocated game. */
+export function projectSwissBookingRetries(i: ProjectionInput): Array<ProjectedCourtFixture & { matchId: string }> {
+  return i.matches.flatMap((m) => {
+    if (m.status !== "scheduled" || m.booking_id || m.court_id || m.scheduled_date || m.scheduled_time
+      || m.winner_member_id || m.score || m.game_scores || Number(m.side_a_points) > 0 || Number(m.side_b_points) > 0
+      || m.is_bye || !m.player_a_member_id || !m.player_b_member_id || Number(m.round_number) < 2) return [];
+    const group = Number(m.group_number), round = Number(m.round_number);
+    const previous = i.matches.filter((f) => Number(f.group_number) === group && Number(f.round_number) === round - 1);
+    if (!previous.length || previous.some((f) => f.status !== "completed" || (!f.is_bye && !f.winner_member_id))) return [];
+    const match = projectCourtFixtures({ ...i, matches: i.matches.filter((f) => f.id !== m.id) }).find((f) =>
+      f.group === group && f.round === round && [f.aId, f.bId].sort().join("|") === [m.player_a_member_id, m.player_b_member_id].sort().join("|"));
+    return match ? [{ ...match, matchId: m.id }] : [];
+  });
 }

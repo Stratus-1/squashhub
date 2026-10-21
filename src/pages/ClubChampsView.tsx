@@ -1305,7 +1305,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               seedOrder: rrSeedOrder(pm.map((m: any) => ({ round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, isBye: !!m.is_bye })), rows.map((r: any) => r.club_member_id)),
               matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
             });
-            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · ${poolName(gn, pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} clean={champ.club_id === RIVERSIDE_CLUB_ID} group={pn} groupLabel={pc > 1 ? poolName(gn, pn) : getGroupLabel(champ, gn)} />;
+            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · ${poolName(gn, pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} clean={champ.club_id === RIVERSIDE_CLUB_ID || (champId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && gn === 1)} group={pn} groupLabel={pc > 1 ? poolName(gn, pn) : getGroupLabel(champ, gn)} />;
           })}
           {(() => {
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
@@ -2430,20 +2430,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // standings, which count stage=group rows only and are therefore frozen.
   // Before the boundary slots stay TBD; after it, filled/started slots are
   // never re-seeded automatically. Editing slot times never triggers this.
-  const autoPlayoffKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (inlineStandings || !canManage || !enablePlayoffs || isStructured) return;
-    if (generatePlayoffs.isPending || playoffsComplete) return;
-    if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
-
-    const completed = (matches as any[]).filter((m: any) => m.status === "completed");
-    const key = completed.map((m: any) => m.id).sort().join(",");
-    if (autoPlayoffKeyRef.current === key) return;
-    autoPlayoffKeyRef.current = key;
-
-    generatePlayoffs.mutate({ silent: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, enablePlayoffs, groupResultsCount, matches]);
+  // Viewing results never fills playoff slots. Generation remains an explicit organiser action.
 
 
 

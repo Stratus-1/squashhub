@@ -16,35 +16,15 @@ async function pushStructureRoundsLive(clubId: string, tid: string | null | unde
     const { data: ms } = await fromExt("club_champs_matches").select("group_number, round_number").eq("champ_id", tid);
     const created: Record<number, number> = {};
     (ms ?? []).forEach((m: any) => { const g = Number(m.group_number); created[g] = Math.max(created[g] ?? 0, Number(m.round_number) || 0); });
-    // Riverside pilot: resolve each category exactly as the Structure screen shows it (own plan → parent →
-    // tournament default) and carry the round-robin finish option. Other clubs keep explicit plans only.
-    const source = clubId === RIVERSIDE_CLUB_ID ? answers : { stagePlans: answers.stagePlans ?? {} };
+    // Shared category resolution; no club-specific inherited/default handling.
+    const source = answers;
     const r = syncSwissRoundsToSpec(t.builder_spec, source, created);
     r.blocked.forEach((msg) => toast.error(msg));
+    if (r.blocked.length) return;
     if (r.spec === t.builder_spec) return;
-    const rounds = { ...(t.swiss_rounds ?? {}) } as Record<string, number>;
-    r.spec.divisions.forEach((d: any) => { const st = d.stages?.[0]; if (st?.kind === "swiss" && st.swissRounds) rounds[String(d.groupNumber)] = st.swissRounds; });
-    const { error } = await fromExt("tournaments").update({ builder_spec: r.spec, swiss_rounds: rounds }).eq("id", tid).eq("club_id", clubId);
-    if (error) throw error;
-    await fromExt("club_champs").update({ swiss_rounds: rounds }).eq("id", tid).eq("club_id", clubId);
-    if (clubId === RIVERSIDE_CLUB_ID) {
-      const { data: divisions, error: de } = await fromExt("tournament_divisions").select("id,spec_key").eq("tournament_id", tid);
-      if (de) throw de;
-      for (const d of r.spec.divisions) {
-        const division = (divisions ?? []).find((v: any) => v.spec_key === d.divisionId);
-        if (!division) continue;
-        for (const st of d.stages ?? []) {
-          if (st.kind !== "swiss") continue;
-          const { data: saved, error: se } = await fromExt("tournament_stages").select("id,config").eq("tournament_id", tid).eq("division_id", division.id).eq("spec_key", st.id).maybeSingle();
-          if (se) throw se;
-          if (!saved) continue;
-          const config = { ...(saved.config ?? {}), swissRounds: st.swissRounds, rrFinish: st.rrFinish?.enabled ? st.rrFinish : null };
-          const { error: ue } = await fromExt("tournament_stages").update({ config }).eq("id", saved.id).eq("tournament_id", tid);
-          if (ue) throw ue;
-        }
-      }
-    }
-    toast.success(r.changes.length ? `Running tournament updated: ${r.changes.map((c) => `${c.label} ${c.from ?? "?"} → ${c.to} rounds`).join(", ")}` : "Running tournament updated.");
+    // The available structured_commit is append-only and refuses existing stage changes.
+    // Separate REST updates are not atomic: do not partially apply spec/config/round mirrors.
+    toast.warning("Structure draft saved only. Applying changes to the running tournament requires a reviewed, all-or-nothing settings update; existing games are unchanged.");
   } catch (e: any) {
     toast.error(`Structure saved, but the running tournament wasn't updated: ${e?.message ?? "unknown error"}`);
   }
@@ -417,9 +397,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         setA((cur) => normalise({ ...fromServer, planId: (fromServer as any).planId ?? cur.planId, createdTournamentId: tournamentId } as any));
       } else if (!hasLocalPlan) {
         setA((cur) => normalise({ ...cur, ...fallback, createdTournamentId: tournamentId } as any));
-      } else if (life) {
-        // Nothing saved on the tournament yet: publish this device's plan once so other devices can edit it.
-        setA((cur) => { saveLifecycle(tournamentId, { ...life, answers: JSON.parse(JSON.stringify(cur)) }).catch(() => undefined); return cur; });
       }
       setServerReady(true);
     })();
@@ -681,52 +658,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   // Keep the saved tournament's "A player may pay for both partners" answer in step with the builder, so the
   // partner-payment buttons the players see always match what the messages promise (not only after Complete Setup).
   const partnerPayAnswer: boolean | undefined = fee.has && dblUnits.length > 0 && fee.doublesCover !== null ? fee.doublesCover : undefined;
-  useEffect(() => {
-    const tid = a.createdTournamentId;
-    if (!tid || partnerPayAnswer === undefined) return;
-    (async () => {
-      const cur = await loadLifecycle(tid).catch(() => null);
-      if (!cur || cur.partner_pay === partnerPayAnswer) return;
-      await saveLifecycle(tid, { ...cur, partner_pay: partnerPayAnswer }).catch(() => undefined);
-    })();
-  }, [a.createdTournamentId, partnerPayAnswer]);
-  // Keep the full setup on the tournament so "Edit setup" shows the same answers on every device.
+  // Serialization is local only. Hosted saves require an explicit organiser action.
   const answersJson = JSON.stringify(a);
-  useEffect(() => {
-    const tid = a.createdTournamentId;
-    if (!tid || !serverReady || !hasRealAnswers(a)) return;
-    const t = setTimeout(async () => {
-      const cur = await loadLifecycle(tid).catch(() => null);
-      if (!cur?.stage || JSON.stringify(cur.answers ?? null) === answersJson) return;
-      await saveLifecycle(tid, { ...cur, answers: JSON.parse(answersJson) }).catch(() => undefined);
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [a.createdTournamentId, answersJson, serverReady]);
-  // Save the draw-relevant setup (format incl. within/between/custom matchups, seeding, stages) on the tournament so
-  // Generate draw & fixtures uses it on any device.
   const drawPlanJson = JSON.stringify(drawPlanOf(a as any));
-  useEffect(() => {
+  const [savingDraft, setSavingDraft] = useState(false);
+  const saveSetupDraft = async () => {
     const tid = a.createdTournamentId;
-    if (!tid || !serverReady || !hasRealAnswers(a)) return;
-    const t = setTimeout(async () => {
-      const cur = await loadLifecycle(tid).catch(() => null);
-      if (!cur?.stage || JSON.stringify(cur.format_plan ?? null) === drawPlanJson) return;
-      await saveLifecycle(tid, { ...cur, format_plan: JSON.parse(drawPlanJson) }).catch(() => undefined);
-      // Each fixed stage schedules only on its OWN courts/window: re-slot games a setup change made invalid.
-      try {
-        for (const r of await reconcileFixedStages(tid)) {
-          if (r.overflow.length) toast.error(`${r.label}: ${r.required} games need a slot but only ${r.available} fit on its selected courts — widen the time window or add courts.`);
-          else toast.success(`${r.label} re-scheduled on its selected courts.`);
-        }
-        const tr = await scheduleTimedRounds(tid);
-        if (tr?.issues.length) toast.error(tr.issues[0]);
-        else if (tr?.scheduled) toast.success(`${tr.scheduled} games given times and courts.`);
-      } catch { /* scheduling retried on next save/confirm */ }
-      // Tie-break rules also apply to an already-generated draw (only stages not yet created are affected).
-      await saveTieBreakRules(supabaseDb, tid, normaliseTieBreaks(JSON.parse(drawPlanJson).tieBreaks), (fn) => atomically(supabaseDb, tid, commitStructured, fn)).catch(() => undefined);
-    }, 800);
-    return () => clearTimeout(t);
-  }, [a.createdTournamentId, drawPlanJson]);
+    if (!tid || !serverReady || savingDraft) return;
+    setSavingDraft(true);
+    try {
+      const cur = await loadLifecycle(tid);
+      if (!cur) throw new Error("The saved tournament couldn't be read. Nothing was saved.");
+      await saveLifecycle(tid, { ...cur, answers: JSON.parse(answersJson), format_plan: JSON.parse(drawPlanJson), ...(partnerPayAnswer === undefined ? {} : { partner_pay: partnerPayAnswer }) });
+      toast.success("Setup draft saved. Existing games and court bookings unchanged.");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSavingDraft(false); }
+  };
   const feeUnitText = (u: { key: string; disc: Disc | null }) => `R${feeFor(u.key) || "?"} ${u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}`;
   const methodOpts = payCfg ? tournamentMethodOptions(payCfg) : [];
   const availMethods = methodOpts.filter((o) => o.available);
@@ -1512,7 +1459,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       if (!tournamentId) { clearDraft(clubId); setKey(tournamentKey(tid)); }
       setA(nextA);
       const currentLifecycle = await loadLifecycle(tid);
-      await saveLifecycle(tid, { ...(currentLifecycle ?? { stage: "invite", completed: ["planning"] }), answers: JSON.parse(JSON.stringify(nextA)) });
+      await saveLifecycle(tid, { ...(currentLifecycle ?? { stage: "invite", completed: ["planning"] }), answers: JSON.parse(JSON.stringify(nextA)), format_plan: drawPlanOf(nextA as any), ...(partnerPayAnswer === undefined ? {} : { partner_pay: partnerPayAnswer }) });
       if (!stay) onCompleted?.(tid);
     } catch (e: any) {
       setCompleteErr(e?.message || "Something went wrong — nothing was changed.");
@@ -2867,6 +2814,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
           {cur !== "Summary" && (
             <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+              {a.createdTournamentId && <Button variant="outline" size="sm" disabled={!serverReady || savingDraft || rowStructureDirty} onClick={() => void saveSetupDraft()}>{savingDraft ? "Saving…" : "Save setup draft"}</Button>}
               <Button variant="outline" size="sm" className="min-h-10 min-w-24" disabled={step === 0 || rowStructureDirty} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
               <Button size="sm" className="min-h-10 min-w-24" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
             </div>

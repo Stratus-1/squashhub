@@ -3,3 +3,5 @@ export { autoProgress, stageLifecycle } from "@/lib/tournaments/progression";
 export { atomically } from "@/lib/tournaments/structured-persist";
 export { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 export { createDecidedSwissGames } from "@/lib/tournaments/decided-swiss";
+// Pure exports permit behavioral parity checks of the shipped bundle without a hosted write.
+export { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";

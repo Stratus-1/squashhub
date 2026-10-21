@@ -219,7 +219,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined }, opts);
     const saved = buildSwissGrid(model);
@@ -242,7 +242,20 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs: Array<[string, string | null]> = plan.pairs;
-      if ((model.rounds.find((r) => r.round === rd.round - 1)?.complete || (!locked && rd.round === 3)) && plan.remainder.length) {
+      const chartRest = (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
+      const prevDone = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
+      // Owner's 18-player chart: positions 13–18 follow the chart (13v17,14v18,15v16 / 13v15,14v17,16v18 / 13v14,15v16,17v18),
+      // with positions taken from standings after the previous round. Names appear only once that round is complete.
+      const chartBlocks: GridBlock[] = [];
+      if (chartRest) {
+        const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => plan.remainder.includes(r.id));
+        for (const p of uitsigMensCChart()[rd.round - 1].pairs.filter((p) => p.a > 12)) {
+          const x = prevDone ? table[p.a - 13]?.id ?? null : null, y = prevDone ? table[p.b - 13]?.id ?? null : null;
+          if ((x && covered.has(x)) || (y && covered.has(y))) continue;
+          const row = (id: string | null, pos: number): GridRow => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", when: schedule.label };
+          chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
+        }
+      } else if ((prevDone || (!locked && rd.round === 3)) && plan.remainder.length) {
         const rest = new Set(plan.remainder);
         const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => rest.has(r.id));
         const met = new Set(history.filter((f) => f.a && f.b).map((f) => [f.a, f.b].sort().join("|")));
@@ -253,7 +266,18 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
       const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
         matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
       }));
-      return { ...rd, blocks: [...factual, ...pending].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
+      // Future Swiss opponents depend on results: represent every residual position without
+      // inventing a pairing or a decided participant that a writer could turn into a fixture.
+      const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));
+      const unresolved: GridBlock[] = chartRest ? [] : plan.remainder.flatMap((id) => {
+        const pos = fixed.get(id);
+        if (pos == null || shown.has(pos)) return [];
+        return [{ matchId: `swiss-wait-${rd.round}-${pos}`, rows: [
+          { id: null, pos, name: "Swiss player — results pending", result: "", projected: true, when: schedule.label },
+          { id: null, pos: null, name: "Opponent decided after previous round", result: "", projected: true, when: null },
+        ], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null }];
+      });
+      return { ...rd, blocks: [...factual, ...pending, ...chartBlocks, ...unresolved].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
     }) };
   }
   const n = model.rows.length;

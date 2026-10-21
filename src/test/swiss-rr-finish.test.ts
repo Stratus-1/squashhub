@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { rrFinishIssues, rrFinishRound, rrFinishSplit, rrFinishRepeats } from "@/lib/tournaments/swiss-rr-finish";
 import { nextSwissRound, type SpecDivision } from "@/lib/tournaments/engine-service";
 import { syncSwissRoundsToSpec } from "@/lib/smart-builder/sync-live-rounds";
+import { buildProposedSwissGrid, buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `p${i + 1}`);
 const key = (a: string, b: string) => [a, b].sort().join("|");
@@ -56,6 +57,34 @@ const played = [
 ];
 
 describe("engine with the option", () => {
+  it.each([[18, 3], [16, 4]])("source projection and generation agree through R3–5 for %i players/%i groups", (n, groups) => {
+    const d = div({ enabled: true, groups });
+    d.entrants = ids(n).map((id, i) => ({ id, rank: i + 1 }));
+    d.stages[0].tieBreaks = ["position_swap"];
+    const r2 = n === 18 ? [[1,9],[2,8],[3,7],[4,6],[5,10],[11,18],[12,17],[13,16],[14,15]]
+      : [[1,8],[2,7],[3,6],[4,5],[9,16],[10,15],[11,14],[12,13]];
+    const rows = [...Array.from({ length: n / 2 }, (_, i) => fx(1, `p${i + 1}`, `p${i + 1 + n / 2}`, `p${i + 1}`)),
+      ...r2.map(([a,b]) => fx(2, `p${a}`, `p${b}`, `p${a}`))];
+    const remainder = new Set(ids(n).slice(groups * 4));
+    const seen = new Set(rows.map((r) => key(r.a, r.b)));
+    for (const round of [3,4,5]) {
+      const model = buildSwissProgression({ seedOrder: ids(n), names: {}, totalRounds: 5, tieBreaks: ["position_swap"], matches: rows.map((r,i) => ({ ...r, id: `row-${i}` })) });
+      model.rrFinish = { enabled: true, groups };
+      const projected = buildProposedSwissGrid(model).rounds.find((r) => r.round === round)?.blocks
+        .filter((b) => b.rows.every((r) => r.id)).map((b) => key(String(b.rows[0].id), String(b.rows[1].id))).sort();
+      const generated = nextSwissRound("synthetic", d, "s", rows);
+      expect(generated).toHaveLength(n / 2);
+      expect(new Set(generated.flatMap((g) => [g.a,g.b])).size).toBe(n);
+      expect(generated.map((g) => key(String(g.a),String(g.b))).sort()).toEqual(projected);
+      for (const game of generated) {
+        const pair = key(String(game.a),String(game.b));
+        expect(seen.has(pair)).toBe(false);
+        seen.add(pair);
+        // Swiss remainder standings change with upsets; subsequent pairings recompute.
+        rows.push(fx(round, String(game.a), game.b, remainder.has(String(game.a)) ? game.b : game.a));
+      }
+    }
+  });
   it("Round 3 with groups: 6 group games + 3 Swiss games among positions 13–18, no repeats outside groups", () => {
     const rows = [...Array.from({ length: 9 }, (_, i) => fx(1, `p${2 * i + 1}`, `p${2 * i + 2}`, `p${2 * i + 1}`)),
       ...[[1, 3], [5, 7], [9, 11], [13, 15], [17, 2], [4, 6], [8, 10], [12, 14], [16, 18]].map(([a, b]) => fx(2, `p${a}`, `p${b}`, `p${a}`))];

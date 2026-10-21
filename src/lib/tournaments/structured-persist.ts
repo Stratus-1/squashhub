@@ -534,13 +534,13 @@ export async function withdrawStructured(db: Db, tid: string, memberId: string):
       const registrations = await db.select("club_champs_registrations", { champ_id: tid, club_member_id: memberId });
       if (!registrations.length) throw new IntegrityError("not_entered", "The registration is missing; no Swiss position was removed.");
       await db.update("club_champs_registrations", { champ_id: tid, club_member_id: memberId }, { withdrawn_keep_position: true, withdrawn_reason: "Withdrawn" });
-      const matches = await db.select("club_champs_matches", { champ_id: tid });
+      const matches = (await db.select("club_champs_matches", { champ_id: tid })).flatMap((m) => typeof m.id === "string" ? [{ ...m, id: m.id }] : []);
       for (const group of new Set(keep.map((e) => e.group_number))) {
         for (const u of withdrawalUpdates(matches, memberId, { groupNumber: group, bestOf: tour.best_of ?? 5, pointsPerGame: tour.points_per_game ?? 11 })) {
           await db.update("club_champs_matches", { id: u.id }, u.payload);
         }
       }
-      return { regenerated: [], keptPlayed: matches.filter((m) => m.status === "completed").length, removedFuture: 0 };
+      return { regenerated: [], keptPlayed: matches.filter((m) => m.status === "completed").length, removedFuture: 0, created: 0 };
     }
   }
   await db.remove("club_champs_entries", entries.map((e) => e.id));

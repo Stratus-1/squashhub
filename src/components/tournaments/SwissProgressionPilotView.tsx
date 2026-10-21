@@ -51,6 +51,12 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">{formatNote ?? SWISS_FORMAT_LABEL[model.format]}</span>
+        {allComplete && (
+          <div data-testid="category-completed-banner" className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-1.5">
+            <span className="text-sm font-bold uppercase tracking-wider text-success">Completed</span>
+            <span className="text-[11px] text-muted-foreground">All rounds played — category completed</span>
+          </div>
+        )}
       </div>
       <div id="swiss-tabpanel" role="tabpanel" aria-labelledby={`swiss-tab-${mode}`} className="space-y-3">
       {mode !== "calendar" && rr.enabled && <div className="space-y-1 text-xs" data-testid="rr-pairing-groups">

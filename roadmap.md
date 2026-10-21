@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Read-only Nelspruit reversal audit: verify balanced GL reversals and member-only net effect, especially reported R5100; no real reversals or data changes.
 - [x] Riverside Division 3: persisted R3–R5 score-activity gate, fixed R2 group colours/Swiss remainder; 38 focused checks and browser-only 16/4, 18/3 start/scheduled/live/R3/R4/R5/normal Swiss states pass. Existing Division 3 inspected authenticated read-only; build OK. No Uitsig writes, duplicate site or deployment; report before deployment.
 - [x] Riverside RR finish verified: reachable toggle, synthetic R3–R5 writer and manual scheduling; 379 tests, preview build OK, existing Riverside desktop/phone checked with writes intercepted. Shared-app publication requested after checks; no live fixture writes.
 - [x] Used existing Riverside in this project only: no duplicated tournament, club, staging instance or separate site.

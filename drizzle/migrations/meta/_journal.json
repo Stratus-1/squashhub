@@ -1625,6 +1625,13 @@
       "when": 1792605296716,
       "tag": "0231_play_by_releases_timed_allocations",
       "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1792613814879,
+      "tag": "0232_decided_swiss_inherits_play_by",
+      "breakpoints": true
     }
   ]
 }

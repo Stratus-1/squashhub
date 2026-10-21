@@ -30,6 +30,7 @@ export function rrFinishIssues(entrants: number, rounds: number | null | undefin
   if (entrants > 0 && g * 4 > entrants) out.push(`${g} groups of 4 need ${g * 4} players; only ${entrants} entered.`);
   const rest = entrants - g * 4;
   if (entrants > 0 && rest === 1) out.push("That leaves one player on their own after the groups. Choose a different number of groups.");
+  if (entrants > 0 && (rest === 2 || rest === 3)) out.push("That leaves too few Swiss players for three rounds without repeat opponents. Leave at least four players outside the groups, or include everyone in groups of four.");
   return out;
 }
 

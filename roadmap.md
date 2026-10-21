@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Owner priority 22 Oct: Men's C and Ladies A only; other items parked.
 - [ ] Urgent Uitsig audit: locate actual C/D/Ladies A screenshots, compare all rounds and saved pairs; preserve Ladies A and all live data.
 - [ ] Remove viewing-triggered tournament writes; display all six Men's C Swiss remainder places in R3–5; test source/service parity and safe retry/settings boundaries. No publication/deployment.
 - [x] Frontend-only safety assessment: provisional R3–5 projection retained, 15 focused tests pass. STOP: manager view mounts client auto-progression/scheduling/notifications; opening setup can auto-save local answers and changed plans trigger scheduling; non-Riverside settings mirrors remain inconsistent. No frontend publication or service deployment. Setup browser check redirected to dashboard, so not verified.

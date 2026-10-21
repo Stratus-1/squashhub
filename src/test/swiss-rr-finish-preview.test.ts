@@ -53,11 +53,8 @@ describe("Swiss + round robin finish — projected Rounds 3–5 stay within grou
       expect(rd).toBeDefined();
       const positions = rd?.blocks.flatMap((b) => b.rows.map((r) => r.pos)).filter((p) => p != null).sort((a, b) => Number(a) - Number(b));
       expect(positions).toEqual(Array.from({ length: 18 }, (_, i) => i + 1));
-      if (round >= 4) {
-        const rest = rd?.blocks.filter((b) => Number(b.rows[0].pos) >= 13) ?? [];
-        expect(rest).toHaveLength(6);
-        expect(rest.every((b) => b.rows.every((r) => r.id === null))).toBe(true);
-      }
+      const rest = (rd?.blocks ?? []).filter((b) => Number(b.rows[0].pos) >= 13).map((b) => b.rows.map((r) => r.pos).join("v"));
+      expect(rest).toEqual({ 3: ["13v17", "14v18", "15v16"], 4: ["13v15", "14v17", "16v18"], 5: ["13v14", "15v16", "17v18"] }[round]);
     }
     expect(JSON.stringify(m)).toBe(original);
   });

@@ -63,7 +63,7 @@ describe("engine with the option", () => {
     d.stages[0].tieBreaks = ["position_swap"];
     const r2 = n === 18 ? [[1,9],[2,8],[3,7],[4,6],[5,10],[11,18],[12,17],[13,16],[14,15]]
       : [[1,8],[2,7],[3,6],[4,5],[9,16],[10,15],[11,14],[12,13]];
-    const rows = [...Array.from({ length: n / 2 }, (_, i) => fx(1, `p${i + 1}`, `p${n - i}`, `p${i + 1}`)),
+    const rows = [...Array.from({ length: n / 2 }, (_, i) => fx(1, `p${i + 1}`, `p${i + 1 + n / 2}`, `p${i + 1}`)),
       ...r2.map(([a,b]) => fx(2, `p${a}`, `p${b}`, `p${a}`))];
     const remainder = new Set(ids(n).slice(groups * 4));
     const seen = new Set(rows.map((r) => key(r.a, r.b)));

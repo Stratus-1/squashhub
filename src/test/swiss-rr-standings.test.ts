@@ -38,4 +38,9 @@ describe("Round-robin standings — from Round 3", () => {
     const g = run([m(3, "p1", "p4", "p1", "3-0"), m(3, "p2", "p3", "p2", "3-0")], ["game_difference"]);
     expect(g[0].rows.slice(0, 2).map((r) => [r.rank, r.tied])).toEqual([[1, true], [1, true]]);
   });
+  it("does not invent wins from incomplete, invalid-winner or later-stage matches", () => {
+    const g = run([m(6, "p1", "p2", "p1", "3-0"), m(3, "p1", "p4", "p5", "3-0"), { ...m(4, "p1", "p3", "p1", "3-0"), status: "scheduled" }]);
+    expect(g[0].played).toBe(0);
+    expect(g[0].rows.every((r) => r.wins === 0 && r.played === 0)).toBe(true);
+  });
 });

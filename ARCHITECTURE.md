@@ -6,6 +6,7 @@ Last verified against the repository on 2026-08-25.
 
 Swiss positional pairing uses the shared history-aware `swiss-no-repeat` resolver from round 3 in generation and projections for every club. Saved games remain fixed; rounds 1 and 2 retain their original pairing rules. Unsatisfiable draws stop instead of silently repeating opponents.
 For fields with even upper and lower halves, the shared preferred-template adapter pairs opposite quarters within each half in rounds 3–4; repairs respect those boundaries. Uneven halves retain existing rules pending review. Original schedule-slot keys remain independent of revised opponent positions.
+Riverside's optional five-round Swiss RR finish is category-configured in Structure, mirrored into the draw spec and stage guards. Both nextSwissRound and decided-fixture projection use the Round-2 snapshot for four-player RR groups in R3–R5; the remainder uses no-repeat Swiss. RR-only live standings and cumulative standings are separate. Scheduling remains manual and category-count validation never creates/deletes rounds.
 
 Booking-grid presentation uses `src/lib/booking-grid.ts` to retain every court-row overlap, ordered by start time. Separate selectable entries show names on their starting row and continuation markers on later rows; booking times, ownership, billing and availability enforcement are unchanged.
 

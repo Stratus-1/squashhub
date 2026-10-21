@@ -13,7 +13,7 @@ export function SwissRrFinishStandings({ groups, fromRound, showPoints }: { grou
           <div className="font-medium">Group {g.group} · positions {g.positions[0]}–{g.positions[1]} · {g.played}/{g.total} games played</div>
           <table className="mt-1 border-collapse">
             <thead><tr className="text-left text-muted-foreground">
-              <th className="pr-3">Rank</th><th className="pr-3">Pairing pos.</th><th className="pr-3">Player</th><th className="pr-3">P</th><th className="pr-3">W</th><th className="pr-3">L</th><th className="pr-3">Games</th><th className="pr-3">Game diff</th>{showPoints && <th className="pr-3">Points diff</th>}
+              <th className="pr-3">Rank</th><th className="pr-3">Pairing pos.</th><th className="pr-3">Player</th><th className="pr-3">RR points</th><th className="pr-3">P</th><th className="pr-3">W</th><th className="pr-3">L</th><th className="pr-3">Games</th><th className="pr-3">Game diff</th>{showPoints && <><th className="pr-3">Points scored</th><th className="pr-3">Points diff</th></>}
             </tr></thead>
             <tbody>
               {g.rows.map((r) => (
@@ -21,10 +21,11 @@ export function SwissRrFinishStandings({ groups, fromRound, showPoints }: { grou
                   <td className="pr-3 font-semibold">{r.played ? `${r.rank}${r.tied ? "=" : ""}` : "—"}</td>
                   <td className="pr-3">{r.pairingPosition}</td>
                   <td className="pr-3 whitespace-nowrap">{(r as any).name ?? r.id}</td>
+                  <td className="pr-3">{r.wins}</td>
                   <td className="pr-3">{r.played}</td><td className="pr-3">{r.wins}</td><td className="pr-3">{r.losses}</td>
                   <td className="pr-3">{r.gamesKnown ? `${r.gamesWon}–${r.gamesLost}` : "—"}</td>
                   <td className="pr-3">{r.gamesKnown ? r.gamesWon - r.gamesLost : "—"}</td>
-                  {showPoints && <td className="pr-3">{r.pointsKnown && r.played ? r.pointsFor - r.pointsAgainst : "—"}</td>}
+                  {showPoints && <><td className="pr-3">{r.pointsKnown && r.played ? r.pointsFor : "—"}</td><td className="pr-3">{r.pointsKnown && r.played ? r.pointsFor - r.pointsAgainst : "—"}</td></>}
                 </tr>
               ))}
             </tbody>

@@ -1416,6 +1416,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       };
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
+      if (riversidePreview && rrFinishOn(swissSt.rrFinish)) model.rrFinish = swissSt.rrFinish;
       const exactMensCChart = usesUitsigMensCChart(champ.club_id, champId, gn, model.rows.length, model.totalRounds) || usesAabbEighteenChart(champ.club_id, champId, model.rows.length, model.totalRounds);
       const exactSixteenChart = usesAabbSixteenChart(champ.club_id, champId, model.rows.length, model.totalRounds);
       const exactLadiesAChart = usesUitsigLadiesAChart(champ.club_id, champId, gn, model.rows.length, model.totalRounds);

@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Riverside RR finish verified: reachable toggle, synthetic R3–R5 writer and manual scheduling; 379 tests, preview build OK, existing Riverside desktop/phone checked with writes intercepted. Shared-app publication requested after checks; no live fixture writes.
+- [x] Used existing Riverside in this project only: no duplicated tournament, club, staging instance or separate site.
 - [ ] Verify Uitsig Deon and Lazelle test-sale stock history; test transactions must have no net stock effect.
 - [ ] Run one approved bounded Help Center receipt test only if existing publisher preserves one-row scope and cron; otherwise report blocker without invoking.
 - [x] Removed the unpaid-fees warning and unused query from Enter Transaction; payment posting unchanged. Clean edit checks and preview build OK; no live data changes or publication.

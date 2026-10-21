@@ -7,6 +7,9 @@
  * Nothing here writes; persistence is `step_prepare_draw` + the engine's structured_commit.
  */
 import { readTournamentPlan } from "./step-storage";
+import { resolveStagePlan } from "./stage-plan";
+import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
+import { rrFinishIssues, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
 import { buildPlayoffChain } from "./playoff-chain";
 import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
@@ -27,6 +30,7 @@ export type DivFormat = {
   kind: DrawKind | null;
   pools: number;
   swissRounds: number;
+  rrFinish?: RrFinish | null;
   seeding: DrawSeeding;
   schedule: DivSchedule;
   /** cross: every tournament group in this cross-league set (incl. its own). Each group plays every other group. */
@@ -235,7 +239,7 @@ export function playoffStagesFor(main: any, version: string, p: { playoffs: stri
   return { stages: [main], deferredStages: deferredFor(version, p.playoffs, p.playoffPlans) };
 }
 
-export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans: Array<PlannedPlayoff | null>; crossKeys: string[]; crossPairKeys: string[][] | null; crossByParent: boolean } {
+export function proposeFormat(plan: Plan | null, label: string, clubId?: string): { format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans: Array<PlannedPlayoff | null>; crossKeys: string[]; crossPairKeys: string[][] | null; crossByParent: boolean } {
   const key = unitKeyOf(label);
   const pick = <T,>(o: Record<string, T> | undefined, d: T): T => o?.[key] ?? o?.[key.split("::")[0]] ?? d;
   const notes: string[] = [];
@@ -299,7 +303,8 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
     ko = { pace: f.koPace === "immediate" ? "immediate" : "paced", pairing: f.koPairing === "traditional" ? "traditional" : "progressive", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
   }
   // Confirmed Swiss count (if set) decides the live stage; the estimate is only a fallback.
-  return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number((f as any).swissRoundsConfirmed || f.swissRounds) || 0), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
+  const stage = clubId === RIVERSIDE_CLUB_ID ? resolveStagePlan(plan ?? {}, key).stages[0] : null;
+  return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(stage?.kind === "swiss" ? stage.endAfterRound ?? stage.rounds : (f as any).swissRoundsConfirmed || f.swissRounds) || 0), ...(clubId === RIVERSIDE_CLUB_ID && kind === "swiss" ? { rrFinish: stage?.rrFinish ?? null } : {}), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
 }
 
 /* ── pools preview (source of truth for Generate) ── */
@@ -346,6 +351,7 @@ export function divisionIssues(d: DrawDivision, all?: DrawDivision[]): string[] 
   if (!f.kind) out.push("choose a format");
   if (hasPools(f) && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
   if (f.kind === "swiss" && (f.swissRounds < 1 || f.swissRounds > n - 1)) out.push(`Swiss rounds must be 1–${Math.max(1, n - 1)}`);
+  if (f.kind === "swiss" && f.rrFinish?.enabled) out.push(...rrFinishIssues(n, f.swissRounds, f.rrFinish.groups));
   if (f.kind === "cross" && crossOpponents(d, all).length < 1) out.push(f.crossVs ? "choose at least one group for this group to play" : "cross-league needs this group and at least one other group to play against");
   if (f.kind === "cross" && f.crossHow === "players" && all && crossOpponents(d, all).length) {
     const rel = all.filter((x) => x.group === d.group || crossOpponents(d, all).includes(x.group));
@@ -644,6 +650,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
         poolSize: kind === "pools" ? Math.max(1, ...(poolsFor(d, mode) ?? [[]]).map((p) => p.length)) : undefined,
         poolMembers: kind === "pools" || kind === "round_robin" || isPooledKnockout(f) ? poolsFor(d, mode) ?? undefined : undefined,
         swissRounds: kind === "swiss" ? f.swissRounds : undefined,
+        ...(kind === "swiss" && f.rrFinish?.enabled ? { rrFinish: f.rrFinish } : {}),
         drawSize: kind === "knockout" && !isPooledKnockout(f) ? nextPow2(n) : undefined,
         paced: isPooledKnockout(f) ? withConfirmedPairs(pooledPaced(d, mode), d.koPairs, true) : kind === "knockout" && f.paced ? (() => { const p = pacePlan({ active: n, target: f.paced.target, roundsLeft: f.paced.rounds, pace: "paced", milestoneLabel: f.paced.label }); return d.koPairs ? withConfirmedPairs({ count: p.thisRound, pairing: f.paced.pairing }, d.koPairs, false) : p.thisRound > 0 ? { count: p.thisRound, pairing: f.paced.pairing } : undefined; })() : undefined,
         discipline: d.doubles ? "doubles" : "singles",

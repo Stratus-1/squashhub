@@ -12,10 +12,13 @@ describe("round robin in the final 3 rounds — feasibility", () => {
     expect(rrFinishSplit(18, 3)).toEqual({ groupRanges: [[1, 4], [5, 8], [9, 12]], remainder: [13, 18] });
   });
   it("needs exactly 5 rounds, enough players, and never leaves one player alone", () => {
+    expect(rrFinishIssues(18, 5, 1.5)).toContain("Choose at least one group of 4.");
     expect(rrFinishIssues(18, 4, 3)[0]).toMatch(/exactly 5/);
     expect(rrFinishIssues(10, 5, 3)[0]).toMatch(/need 12 players/);
     expect(rrFinishIssues(13, 5, 3).join()).toMatch(/one player on their own/);
     expect(rrFinishIssues(16, 5, 4)).toEqual([]);
+    expect(rrFinishIssues(18, 5, 4).join()).toMatch(/too few Swiss players/);
+    expect(rrFinishIssues(15, 5, 3).join()).toMatch(/too few Swiss players/);
   });
 });
 

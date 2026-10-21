@@ -6,6 +6,18 @@ import { rowStages } from "@/lib/smart-builder/structure-rows";
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it("round trips per-category RR finish through the reachable original screen without changing manual rounds", () => {
+    const a = base();
+    a.stagePlans = { Men: [{ id: "s", kind: "swiss", rounds: 4, endAfterRound: 4 }] };
+    const raw = originalStructureFromAnswers(a);
+    expect(raw.swiss_rounds["1"]).toBe(4);
+    raw.swiss_rounds["1"] = 5;
+    raw.swiss_rr_finish = { "1": { enabled: true, groups: 3 } };
+    const restored = answersFromOriginalStructure(a, raw);
+    expect(rowStages(restored, "Men")[0]).toMatchObject({ rounds: 5, endAfterRound: 5, rrFinish: { enabled: true, groups: 3 } });
+    expect(originalStructureFromAnswers(JSON.parse(JSON.stringify(restored))).swiss_rr_finish["1"]).toEqual({ enabled: true, groups: 3 });
+    expect(restored.stages).toEqual(a.stages);
+  });
   it("preserves category locks through the real structure save adapter", () => {
     const a = base();
     const raw = originalStructureFromAnswers(a);

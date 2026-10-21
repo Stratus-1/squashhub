@@ -78,6 +78,18 @@ const finishPools = () => matches().filter((m) => m.pool_id).forEach((m) => {
 });
 
 describe("structured Beta generation", () => {
+  it("Riverside structured Swiss withdrawal keeps all 18 entry slots and marks the registration as bye", async () => {
+    const spec: TournamentSpec = { version: 1, architecture: "structured", name: "Existing Riverside", divisions: [{ divisionId: "g1", groupNumber: 1, label: "Men", unit: "players", entrants: [], stages: [{ id: "sw", order: 0, kind: "swiss", name: "Swiss", swissRounds: 5, rrFinish: { enabled: true, groups: 3 } }] } as any] };
+    env.t.tournaments[0] = { id: TID, club_id: "11111111-1111-1111-1111-111111111111", builder_architecture: "structured", builder_spec: spec };
+    env.t.club_champs_entries = Array.from({ length: 18 }, (_, i) => ({ id: `e${i}`, champ_id: TID, group_number: 1, club_member_id: `m${i + 1}`, order_index: i }));
+    env.t.club_champs_registrations = [{ id: "reg", champ_id: TID, club_member_id: "m16" }];
+    env.t.club_champs_matches = [];
+    await withdrawStructured(env.db, TID, "m16");
+    expect(env.t.club_champs_entries).toHaveLength(18);
+    expect(env.t.club_champs_entries[15].club_member_id).toBe("m16");
+    expect(env.t.club_champs_registrations[0].withdrawn_keep_position).toBe(true);
+    expect(env.t.tournaments[0].builder_spec).toEqual(spec);
+  });
   it("persists structure first; pool games carry division/stage/pool/round ids", async () => {
     await generateStructuredTournament(env.db, TID);
     expect(env.t.tournament_divisions).toHaveLength(2);

@@ -7,7 +7,7 @@ import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
 import { proposePairings } from "./paced-knockout";
 import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
-import { rrFinishIssues, rrFinishOn, rrFinishRound, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
+import { rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -206,10 +206,13 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
     if (issues.length) throw new IntegrityError("prereq", issues[0]);
     // Frozen snapshot: standings from Rounds 1–2 only (withdrawn players keep their entrant slot).
     const snapshot = swissStandings(d, st, rows.filter((f) => (f.round ?? 0) <= 2)).map((t) => t.id);
+    if (rrFinishRepeats(snapshot, st.rrFinish.groups, mine.filter((f) => (f.round ?? 0) <= 2 && f.a && f.b).map((f) => [String(f.a), f.b])).length) {
+      throw new IntegrityError("prereq", "The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3.");
+    }
     const plan = rrFinishRound(snapshot, gate.nextRound, st.rrFinish.groups);
     const rest = new Set(plan.remainder);
     const table = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
-    const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a!, f.b!)));
+    const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
     const swissPart = swissRound(table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
     if (swissPart.some(([a, b]) => b && played.has(pairKey(a, b)))) throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
     return [...plan.pairs, ...swissPart].map(([a, b], i) => ({

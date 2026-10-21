@@ -7488,15 +7488,15 @@ function buildProposedSwissGrid(model, opts = {}) {
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined }, opts);
     const saved = buildSwissGrid(model);
-    const locked = model.rounds.find((r) => r.round === 2)?.complete;
-    const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [];
+    const locked = !!model.rounds.find((r) => r.round === 2)?.complete;
+    const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
     const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
     const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
     const issues2 = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     return { issues: issues2, rounds: saved.map((rd) => {
-      if (rd.round < 3 || !locked)
+      if (rd.round < 3)
         return normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan2 = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
       const groupIds = new Set(plan2.pairs.flat());
@@ -7504,7 +7504,7 @@ function buildProposedSwissGrid(model, opts = {}) {
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs = plan2.pairs;
-      if (model.rounds.find((r) => r.round === rd.round - 1)?.complete && plan2.remainder.length) {
+      if ((model.rounds.find((r) => r.round === rd.round - 1)?.complete || !locked && rd.round === 3) && plan2.remainder.length) {
         const rest = new Set(plan2.remainder);
         const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => rest.has(r.id));
         const met = new Set(history.filter((f) => f.a && f.b).map((f) => [f.a, f.b].sort().join("|")));
@@ -7522,7 +7522,17 @@ function buildProposedSwissGrid(model, opts = {}) {
         court: null,
         playBy: opts.appliedPlayBy?.[rd.round] ?? null
       }));
-      return { ...rd, blocks: [...factual, ...pending].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
+      const shown = new Set([...factual, ...pending].flatMap((b) => b.rows.map((r) => r.pos)));
+      const unresolved = plan2.remainder.flatMap((id) => {
+        const pos = fixed.get(id);
+        if (pos == null || shown.has(pos))
+          return [];
+        return [{ matchId: `swiss-wait-${rd.round}-${pos}`, rows: [
+          { id: null, pos, name: "Swiss player — results pending", result: "", projected: true, when: schedule.label },
+          { id: null, pos: null, name: "Opponent decided after previous round", result: "", projected: true, when: null }
+        ], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null }];
+      });
+      return { ...rd, blocks: [...factual, ...pending, ...unresolved].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
     }) };
   }
   const n = model.rows.length;
@@ -7829,7 +7839,7 @@ function projectSwissFixtures(i, playByOnly) {
       continue;
     const inRound = (round, id) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
-      if (rd.created || rd.round < 2)
+      if (rd.round < 2)
         continue;
       if (st.rrFinish?.enabled && !model.rounds.find((r) => r.round === rd.round - 1)?.complete)
         continue;
@@ -7876,6 +7886,18 @@ function projectCourtFixtures(i) {
 function projectDecidedPlayByFixtures(i) {
   return projectSwissFixtures(i, true).filter((f) => ("playBy" in f));
 }
+function projectSwissBookingRetries(i) {
+  return i.matches.flatMap((m) => {
+    if (m.status !== "scheduled" || m.booking_id || m.court_id || m.scheduled_date || m.scheduled_time || m.winner_member_id || m.score || m.game_scores || Number(m.side_a_points) > 0 || Number(m.side_b_points) > 0 || m.is_bye || !m.player_a_member_id || !m.player_b_member_id || Number(m.round_number) < 2)
+      return [];
+    const group = Number(m.group_number), round = Number(m.round_number);
+    const previous = i.matches.filter((f) => Number(f.group_number) === group && Number(f.round_number) === round - 1);
+    if (!previous.length || previous.some((f) => f.status !== "completed" || !f.is_bye && !f.winner_member_id))
+      return [];
+    const match = projectCourtFixtures({ ...i, matches: i.matches.filter((f) => f.id !== m.id) }).find((f) => f.group === group && f.round === round && [f.aId, f.bId].sort().join("|") === [m.player_a_member_id, m.player_b_member_id].sort().join("|"));
+    return match ? [{ ...match, matchId: m.id }] : [];
+  });
+}
 
 // src/lib/tournaments/decided-swiss.ts
 async function loadProjectionInput(champ) {
@@ -7899,6 +7921,13 @@ async function createDecidedSwissGames(tid) {
   const list = [...projectCourtFixtures(input), ...projectDecidedPlayByFixtures(input)];
   let created = 0, booked = 0;
   const issues = [];
+  for (const f of projectSwissBookingRetries(input)) {
+    const { error } = await sb.rpc("self_schedule_champ_match", { p_match_id: f.matchId, p_court_id: f.courtId, p_date: f.date, p_time: `${f.time}:00`, p_duration_minutes: f.minutes });
+    if (error)
+      issues.push(`${f.title}: court booking retry failed (${error.message})`);
+    else
+      booked++;
+  }
   for (const f of list) {
     const { data: id, error } = await sb.rpc("create_decided_swiss_game", { p_tid: tid, p_group: f.group, p_round: f.round, p_a: f.aId, p_b: f.bId });
     if (error || !id) {

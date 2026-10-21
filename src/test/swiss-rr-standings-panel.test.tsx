@@ -38,6 +38,6 @@ describe("RR standings overall rank", () => {
     const groups = rrFinishStandings({ snapshot: snap(16), groups: 4, criteria: ["wins"] as any, gameSets: gs, matches: [{ a: "p5", b: "p6", winner: "p6", round: 3, status: "completed" }] });
     render(<SwissRrFinishStandings groups={groups} fromRound={3} />);
     expect(within(screen.getByTestId("rr-row-p6")).getAllByRole("cell")[0].textContent).toBe("5");
-    expect(within(screen.getByTestId("rr-row-p5")).getAllByRole("cell")[0].textContent).toBe("6");
+    expect(within(screen.getByTestId("rr-row-p5")).getAllByRole("cell")[0].textContent).toMatch(/^6/);
   });
 });

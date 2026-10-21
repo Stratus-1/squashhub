@@ -53,3 +53,20 @@ describe("Riverside RR phase visibility and fixed groups", () => {
     expect(hasSwissMatchActivity(match({ status: "in_progress", gameScores: "invalid" }))).toBe(false);
   });
 });
+describe("Riverside pairing-group colours and headings", () => {
+  it.each([[16, 4], [18, 3]])("%i/%i: before R2 ends colour follows the slot; after, it locks to the player", (n, groups) => {
+    const pre = swissRrDisplay(scenario(n, groups, [], false), RIVERSIDE_CLUB_ID);
+    expect(pre.heading).toBe("Projected Pairing Groups — Swiss Rounds 1–2 | Round Robin Rounds 3–5");
+    expect([1, 4, 5, 8, 9, 12].map((s) => pre.groupOf("x", s))).toEqual([1, 1, 2, 2, 3, 3]);
+    expect(pre.groupOf("x", 13)).toBe(n === 16 ? 4 : "swiss");
+    const post = swissRrDisplay(scenario(n, groups), RIVERSIDE_CLUB_ID);
+    expect(post.heading.startsWith("Confirmed Pairing Groups")).toBe(true);
+    const first = post.snapshot[0];
+    expect(post.groupOf(first, 99)).toBe(1); // slot no longer matters
+    expect(post.remainderLabel).toBe("Continued Swiss Pairing — Rounds 1–5");
+    if (n === 18) expect(post.groupOf(post.snapshot[17], 1)).toBe("swiss");
+  });
+  it("normal Swiss / other clubs get no colours", () => {
+    expect(swissRrDisplay(scenario(16, 4), "uitsig").groupOf("p1", 1)).toBeNull();
+  });
+});

@@ -127,3 +127,4 @@
 - [x] Cleared Rachel Gates' 2 sparkling waters (R20) from her open tab; stock restored to 9, tab left open
 - [ ] Nelspruit hang on league night — backend connection saturation (44/60); offered instance upgrade + query slimming, awaiting choice
 - [x] Signed-in settle-tab member-number/OTP friction resolved through session authorization, including optional tips; anonymous QR verification preserved.
+- [x] Finance transaction proof: add Take photo / scan option (camera)

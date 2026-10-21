@@ -24,7 +24,7 @@ export const rrFinishOn = (f: RrFinish | null | undefined): f is RrFinish => !!f
 /** Setup problems that stop the option from being used. Empty = feasible. */
 export function rrFinishIssues(entrants: number, rounds: number | null | undefined, groups: number): string[] {
   const out: string[] = [];
-  const g = Math.floor(Number(groups));
+  const g = Number(groups);
   if (Number(rounds) !== RR_FINISH_ROUNDS) out.push(`Round robin in the final 3 rounds needs exactly ${RR_FINISH_ROUNDS} Swiss rounds.`);
   if (!Number.isInteger(g) || g < 1) out.push("Choose at least one group of 4.");
   if (entrants > 0 && g * 4 > entrants) out.push(`${g} groups of 4 need ${g * 4} players; only ${entrants} entered.`);
@@ -61,7 +61,7 @@ const key = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /** Group pairings in Rounds 3–5 that repeat a Round 1–2 game (a round robin cannot avoid them; shown as a warning). */
 export function rrFinishRepeats(snapshot: string[], groups: number, earlier: Array<[string, string | null]>): Array<{ round: number; a: string; b: string }> {
-  const met = new Set(earlier.filter(([a, b]) => a && b).map(([a, b]) => key(a, b!)));
+  const met = new Set(earlier.flatMap(([a, b]) => a && b ? [key(a, b)] : []));
   const out: Array<{ round: number; a: string; b: string }> = [];
   for (let r = RR_FINISH_FROM_ROUND; r <= RR_FINISH_ROUNDS; r++) {
     rrFinishRound(snapshot, r, groups).pairs.forEach(([a, b]) => { if (met.has(key(a, b))) out.push({ round: r, a, b }); });

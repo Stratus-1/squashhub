@@ -1,4 +1,7 @@
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
+import { SwissRrFinishControls } from "@/components/smart-builder/SwissRrFinishControls";
+import { rrFinishIssues, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
+import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 import { categoryLockKey, setCategoryLocked, type CategoryLocks } from "@/lib/smart-builder/category-locks";
 import { Lock as CategoryLockIcon, LockOpen as CategoryUnlockIcon } from "lucide-react";
 import { CategorySeedingSelect } from "./CategorySeedingSelect";
@@ -1207,6 +1210,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   const [collapsedLeagues, setCollapsedLeagues] = useState<Record<string, boolean>>({});
   const [swissRounds, setSwissRounds] = useState<Record<string, number>>({});
+  const [swissRrFinish, setSwissRrFinish] = useState<Record<string, RrFinish | null>>({});
   // Swiss round 1 pairing: "seeded" (strongest v weakest) or "random".
   const [swissPairingModes, setSwissPairingModes] = useState<Record<string, "seeded" | "random">>({});
   // Optional knockout after the Swiss rounds: how many qualify. 0 / absent = off.
@@ -9052,6 +9056,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueFormats(v.league_formats ?? {});
     setSwissPools(v.swiss_pools ?? {});
     setSwissRounds(v.swiss_rounds ?? {});
+    setSwissRrFinish(v.swiss_rr_finish ?? {});
     setLeagueGenders(v.league_genders ?? {});
     setLeagueMatchTypes(v.league_match_types ?? {});
     setLeagueScoringModes(v.league_scoring_modes ?? {});
@@ -9119,6 +9124,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const swKey = String(i);
       if (formatForLeague(i) !== "swiss") continue;
       if (!Number(finalSwissRounds[swKey])) finalSwissRounds[swKey] = swissSuggestedRounds(i);
+      if (clubId === RIVERSIDE_CLUB_ID && swissRrFinish[swKey]?.enabled) {
+        const issue = rrFinishIssues(expectedPlayers[swKey], finalSwissRounds[swKey], swissRrFinish[swKey]?.groups ?? 0)[0];
+        if (issue) { toast.error(`Category ${i}: ${issue}`); return; }
+      }
     }
     originalBaselineRef.current = originalChangeKey;
     structureOnly.onDirtyChange?.(false);
@@ -9129,6 +9138,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_formats: leagueFormats,
       swiss_pools: swissPools,
       swiss_rounds: finalSwissRounds,
+      swiss_rr_finish: swissRrFinish,
       monrad_rounds: finalMonradRounds,
       league_genders: leagueGenders,
       league_match_types: leagueMatchTypes,
@@ -9167,7 +9177,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return true;
   };
 
-  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10490,6 +10500,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 {!followsDivision(divisionFollows, gn) && <div className="space-y-1.5">
                                   <SegRow label="Category seeding · Stage 1" color="cyan" value={leagueSeedingPlans[key] ?? "later"} options={SEEDING_TILE_OPTIONS} onChange={(value) => setLeagueSeedingPlans((m) => ({ ...m, [key]: value }))} />
                                 </div>}
+                                {fmt === "swiss" && <SwissRrFinishControls clubId={clubId} label={groupLabels[key] || `Category ${gn}`} rounds={swissRoundsFor(gn, "swiss")} entrants={Number(expectedPlayers[key]) || 0} value={swissRrFinish[key]} disabled={categoryLocked} onChange={(value) => setSwissRrFinish((m) => ({ ...m, [key]: value }))} />}
                                 {usesPoolPlacement(fmt, poolsForDivision(gn)) && <PlacementTiles label="Placement option" value={placementForLeague(gn)} onChange={(value) => setLeaguePoolPlacement((m) => ({ ...m, [key]: value }))} />}
                                 <div className="grid gap-3">
                                 <div className="rounded-md border border-border p-2 space-y-1.5">

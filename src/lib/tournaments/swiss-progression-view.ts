@@ -13,6 +13,7 @@ import { strictSwissPlan, preferredSwissTemplate, swissStrictFromRound, swissHal
 import { swissPreviewFinalsTemplate } from "./swiss-preview-finals";
 import { uitsigMensCChart } from "./swiss-uitsig-mens-c-chart";
 import { uitsigLadiesAChart } from "./swiss-uitsig-ladies-a-chart";
+import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -211,14 +212,15 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; exactLadiesAChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
   const n = model.rows.length;
   const mensC = opts.exactMensCChart === true && n === 18 && model.totalRounds === 5;
   const ladiesA = opts.exactLadiesAChart === true && n === 9 && model.totalRounds === 5;
-  const exactChart = mensC || ladiesA;
+  const sixteen = opts.exactSixteenChart === true && n === 16 && model.totalRounds === 5;
+  const exactChart = mensC || ladiesA || sixteen;
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length) return { rounds: [], issues: plan.issues };
-  const exactPlan = mensC ? uitsigMensCChart() : uitsigLadiesAChart();
+  const exactPlan = mensC ? uitsigMensCChart() : sixteen ? sixteenPlayerChart() : uitsigLadiesAChart();
   const template = exactChart ? exactPlan : opts.noRepeats === false ? categoryTemplate(n, model.totalRounds)
     : Array.from({ length: model.totalRounds }, (_, i) => (opts.previewFinals ? swissPreviewFinalsTemplate : preferredSwissTemplate)(n, i + 1));
   const rawTemplate = exactChart ? exactPlan : categoryTemplate(n, model.totalRounds); // slot keys for the proposed schedule

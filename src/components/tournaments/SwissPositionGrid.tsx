@@ -1,3 +1,4 @@
+import type React from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { buildSwissGrid, type GridBlock, type GridRound, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
@@ -31,7 +32,7 @@ function WhenTag({ text }: { text: string }) {
 }
 
 /** Read-only, spreadsheet-like Swiss grid: rounds side by side, each match a 2-row block. Visual layer only. */
-export function SwissPositionGrid({ model, proposedRounds, rrGroupOf, rrLocked = false }: { model: SwissProgressionModel; proposedRounds?: GridRound[]; rrGroupOf?: (id: string | null | undefined, slot: number | null | undefined) => number | "swiss" | null; rrLocked?: boolean }) {
+export function SwissPositionGrid({ model, proposedRounds, rrGroupOf, rrLocked = false, afterRounds }: { afterRounds?: React.ReactNode; model: SwissProgressionModel; proposedRounds?: GridRound[]; rrGroupOf?: (id: string | null | undefined, slot: number | null | undefined) => number | "swiss" | null; rrLocked?: boolean }) {
   const rounds = proposedRounds ?? buildSwissGrid(model);
   const slots = Math.max(1, model.rows.length);
   const [selected, setSelected] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export function SwissPositionGrid({ model, proposedRounds, rrGroupOf, rrLocked =
           )}
         </table>
       ); })}
+      {afterRounds}
       {model.rows.length ? (
         <table data-testid="swiss-final-standing-card" className="round-panel min-w-[220px] self-start overflow-hidden rounded-md border border-border border-collapse">
           <thead>

@@ -48,20 +48,18 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       {mode === "classic" && classicStandings ? classicStandings : null}
       {mode === "calendar" ? calendar ?? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(/^r(\d+)-/.exec(k)?.[1])])) : slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
-        <div className={cn(rr.showStandings && rrStandings ? "grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(360px,480px)]" : undefined)}>
-        <div className="min-w-0 space-y-3">
-          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} /></TournamentInteractiveViewer> : <>
+        <div className="min-w-0 space-y-3" ref={gridWrapRef}>
+          {rrColumn ? <div className="flex justify-end"><button type="button" data-testid="rr-view-standings" className="rounded border border-border px-2 py-1 text-xs font-medium hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => jumpTo("[data-testid=rr-standings-column]")}>View Standings →</button></div> : null}
+          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={rrColumn} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
           </div>
           {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (
             <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none" wheelZoom="direct">
-              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} />
+              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={rrColumn} />
             </TournamentInteractiveViewer>
           )}
           </>}
-        </div>
-        {rr.showStandings && rrStandings ? <div className="min-w-0" data-testid="rr-standings-beside-grid">{rrStandings}</div> : null}
         </div>
       ) : (
         <>

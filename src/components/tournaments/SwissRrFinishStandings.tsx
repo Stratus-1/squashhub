@@ -1,13 +1,13 @@
 import type { RrGroupStanding } from "@/lib/tournaments/swiss-rr-standings";
 
 /** Riverside: live round-robin tables (one per locked group of four), styled like the standalone round-robin standings. */
-export function SwissRrFinishStandings({ groups, fromRound, showPoints = true }: { groups: RrGroupStanding[]; fromRound: number; showPoints?: boolean }) {
+export function SwissRrFinishStandings({ groups, fromRound, showPoints = true, compact = false }: { compact?: boolean; groups: RrGroupStanding[]; fromRound: number; showPoints?: boolean }) {
   if (!groups.length) return null;
   return (
-    <section className="space-y-3 text-xs" data-testid="rr-finish-standings">
+    <section className={compact ? "space-y-2 text-[11px]" : "space-y-3 text-xs"} data-testid="rr-finish-standings">
       <div>
-        <h3 className="font-semibold">Round-robin standings — live from Round {fromRound}</h3>
-        <p className="text-muted-foreground">Only Round {fromRound}+ group games count. "Pos." is the locked pairing slot and never moves; Rank updates with each result.</p>
+        <h3 className="font-semibold">{compact ? `Round Robin Standings · live from R${fromRound}` : `Round-robin standings — live from Round ${fromRound}`}</h3>
+        <p className={compact ? "sr-only" : "text-muted-foreground"}>Only Round {fromRound}+ group games count. "Pos." is the locked pairing slot and never moves; Rank updates with each result.</p>
       </div>
       {groups.map((g) => (
         <div key={g.group} className="overflow-hidden rounded-md border border-border" data-testid={`rr-group-${g.group}`}>

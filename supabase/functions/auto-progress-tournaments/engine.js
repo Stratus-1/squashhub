@@ -7319,6 +7319,31 @@ function uitsigLadiesAChart() {
   return pairs.map((ps, index) => ({ round: index + 1, bye: byes[index], pairs: ps.map(([a, b]) => ({ round: index + 1, a, b })) }));
 }
 
+// src/lib/tournaments/swiss-rr-display.ts
+function hasSwissMatchActivity(m) {
+  if (!m.a || !m.b || m.isBye || m.forfeitMemberId)
+    return false;
+  if (!["in_progress", "paused", "completed"].includes(m.status ?? ""))
+    return false;
+  if (m.status === "completed" && m.winner !== m.a && m.winner !== m.b)
+    return false;
+  if ((m.sideAPoints ?? 0) > 0 || (m.sideBPoints ?? 0) > 0)
+    return true;
+  let scores = m.gameScores;
+  if (typeof scores === "string") {
+    try {
+      scores = JSON.parse(scores);
+    } catch {
+      scores = null;
+    }
+  }
+  const sets = Array.isArray(scores) ? scores : scores?.sets ?? [];
+  const current = !Array.isArray(scores) ? scores?.current : null;
+  if ([...sets, current].some((s) => s && (Number(s.a) > 0 || Number(s.b) > 0)))
+    return true;
+  return m.status === "completed" && /[1-9]\d*\s*[-–]\s*\d+|\d+\s*[-–]\s*[1-9]\d*/.test(m.score ?? "");
+}
+
 // src/lib/tournaments/swiss-progression-view.ts
 var UNRESOLVED = "To be decided";
 function buildSwissProgression(input) {
@@ -7338,6 +7363,7 @@ function buildSwissProgression(input) {
         id: m.id,
         round: r,
         state,
+        started: hasSwissMatchActivity(m),
         a: m.a,
         b: bye ? null : m.b,
         aLabel: nm(m.a, m.placeholderA),
@@ -7730,13 +7756,24 @@ function projectSwissFixtures(i, playByOnly) {
     if (!st)
       continue;
     const appliedPlayBy = {};
+    const savedRounds = new Set;
     for (const r of rounds ?? []) {
       if (Number(r.group_number) !== gn)
         continue;
+      savedRounds.add(Number(r.round_number));
       const pb = appliedRoundPlayBy(r);
       if (pb)
         appliedPlayBy[Number(r.round_number)] = pb;
     }
+    const sch = st.schedule;
+    if (sch?.rule === "play_by")
+      for (let n = 2;n <= (st.rounds ?? 0); n++) {
+        if (savedRounds.has(n) || appliedPlayBy[n])
+          continue;
+        const d = (sch.roundDates ?? [])[n - 1] ?? sch.deadline;
+        if (d)
+          appliedPlayBy[n] = String(d).slice(0, 10);
+      }
     const gEntries = entries.filter((e) => e.group_number === gn).sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
     if (st.rrFinish?.enabled && rrFinishIssues(gEntries.length, st.rounds, st.rrFinish.groups).length)
       continue;

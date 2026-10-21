@@ -27,6 +27,7 @@ import { CostingTab } from "./bar/CostingTab";
 import { bundleCosts, perContainer } from "@/lib/bar-costing";
 import { OpenTabsTab } from "./bar/OpenTabsTab";
 import { ClosedTabsTab } from "./bar/ClosedTabsTab";
+import { CashUpsReport } from "./bar/CashUpsReport";
 import { ClosedOrdersTab } from "./bar/ClosedOrdersTab";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -180,6 +181,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     { id: "closed-orders", label: "Closed tabs" },
     ...(tipConfig?.enabled ? [{ id: "staff-tips", label: "Staff tips" }] : []),
     { id: "open-tabs", label: "Open tabs" },
+    { id: "cash-ups", label: "Cash-ups" },
   ];
   const showReport = (id: string) => step === "reports" && report === id;
   const [qrOpen, setQrOpen] = useState(false);
@@ -366,6 +368,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
       {step === "reports" && <div className="flex flex-wrap gap-1" role="group" aria-label="Choose report">{reportOptions.map(r => <Button key={r.id} size="sm" variant={report === r.id ? "default" : "outline"} aria-pressed={report === r.id} onClick={() => setReport(r.id)}>{r.label}</Button>)}</div>}
       {showReport("open-tabs") && <OpenTabsTab clubId={clubId} />}
+      {showReport("cash-ups") && <CashUpsReport clubId={clubId} />}
       {showReport("closed-tabs") && <ClosedTabsTab clubId={clubId} />}
       {showReport("staff-tips") && tipConfig?.enabled && <StaffTips clubId={clubId} />}
 

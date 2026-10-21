@@ -1468,9 +1468,16 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="tx-proof" className="text-xs">Upload proof document (optional)</Label>
-              <Input id="tx-proof" type="file" accept="image/*,application/pdf" className="h-9 text-xs"
-                onChange={e => setTxProof(e.target.files?.[0] ?? null)} disabled={txSubmitting} />
+              <Label className="text-xs">Proof document (optional)</Label>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" disabled={txSubmitting} onClick={() => document.getElementById("tx-proof-file")?.click()}>Upload file</Button>
+                <Button type="button" variant="outline" size="sm" disabled={txSubmitting} onClick={() => document.getElementById("tx-proof-camera")?.click()}>Take photo / scan</Button>
+                {txProof && <Button type="button" variant="ghost" size="sm" disabled={txSubmitting} onClick={() => setTxProof(null)}>Remove</Button>}
+              </div>
+              <input id="tx-proof-file" type="file" accept="image/*,application/pdf" className="hidden"
+                onChange={e => { setTxProof(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+              <input id="tx-proof-camera" type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={e => { setTxProof(e.target.files?.[0] ?? null); e.target.value = ""; }} />
               {txProof && <p className="text-[11px] text-muted-foreground">{txProof.name}</p>}
             </div>
             </div>

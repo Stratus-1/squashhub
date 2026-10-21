@@ -164,15 +164,30 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         } else {
           setActiveMemberId(selfId);
         }
+        return true;
       } catch (e) {
         console.warn("[MemberContext] Failed to fetch members:", e);
+        return false;
       } finally {
         setIsLoading(false);
         setLoadedKey(`${user.id}:${club.id}`);
       }
     };
 
-    fetchData();
+    // A single dropped/slow request used to leave the user as "Unknown member"
+    // with no members or account data until a manual reload. Retry with backoff.
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const run = async (attempt: number) => {
+      const ok = await fetchData();
+      if (!ok && !cancelled && attempt < 6) {
+        timer = setTimeout(() => run(attempt + 1), Math.min(2000 * 2 ** attempt, 30000));
+      }
+    };
+    run(0);
+    const onOnline = () => { if (!cancelled) run(5); };
+    window.addEventListener("online", onOnline);
+    return () => { cancelled = true; if (timer) clearTimeout(timer); window.removeEventListener("online", onOnline); };
   }, [user?.id, user?.email, club?.id]);
 
   const switchMember = useCallback((memberId: string) => {

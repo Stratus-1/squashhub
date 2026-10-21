@@ -914,6 +914,22 @@ var RR_GROUP_SCHEDULE = {
   5: [[1, 2], [3, 4]]
 };
 var rrFinishOn = (f) => !!f?.enabled && Number(f.groups) >= 1;
+function rrFinishIssues(entrants, rounds, groups) {
+  const out = [];
+  const g = Number(groups);
+  if (Number(rounds) !== RR_FINISH_ROUNDS)
+    out.push(`Round robin in the final 3 rounds needs exactly ${RR_FINISH_ROUNDS} Swiss rounds.`);
+  if (!Number.isInteger(g) || g < 1)
+    out.push("Choose at least one group of 4.");
+  if (entrants > 0 && g * 4 > entrants)
+    out.push(`${g} groups of 4 need ${g * 4} players; only ${entrants} entered.`);
+  const rest = entrants - g * 4;
+  if (entrants > 0 && rest === 1)
+    out.push("That leaves one player on their own after the groups. Choose a different number of groups.");
+  if (entrants > 0 && (rest === 2 || rest === 3))
+    out.push("That leaves too few Swiss players for three rounds without repeat opponents. Leave at least four players outside the groups, or include everyone in groups of four.");
+  return out;
+}
 function rrFinishSplit(entrants, groups) {
   const g = Math.max(0, Math.min(Math.floor(groups), Math.floor(entrants / 4)));
   const groupRanges = Array.from({ length: g }, (_, i) => [i * 4 + 1, i * 4 + 4]);
@@ -7722,6 +7738,8 @@ function projectSwissFixtures(i, playByOnly) {
         appliedPlayBy[Number(r.round_number)] = pb;
     }
     const gEntries = entries.filter((e) => e.group_number === gn).sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
+    if (st.rrFinish?.enabled && rrFinishIssues(gEntries.length, st.rounds, st.rrFinish.groups).length)
+      continue;
     const names = {};
     gEntries.forEach((e) => {
       if (e.club_member_id)

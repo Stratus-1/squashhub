@@ -209,7 +209,7 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
     const plan = rrFinishRound(snapshot, gate.nextRound, st.rrFinish.groups);
     const rest = new Set(plan.remainder);
     const table = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
-    const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a!, f.b!)));
+    const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
     const swissPart = swissRound(table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
     if (swissPart.some(([a, b]) => b && played.has(pairKey(a, b)))) throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
     return [...plan.pairs, ...swissPart].map(([a, b], i) => ({

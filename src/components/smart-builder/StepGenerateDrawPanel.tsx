@@ -142,7 +142,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const doubles = tt?.league_match_types?.[String(g)] === "doubles";
       const r = unitsFor((regs ?? []) as RegLite[], g, n, doubles);
       errs.push(...r.errors.map((e) => `${label}: ${e}`));
-      const p = proposeFormat(plan, label);
+      const p = proposeFormat(plan, label, clubId);
       units.push(r.units);
       const notes = [...p.notes];
       if (p.format.kind === "cross" && !p.crossKeys.length && !p.crossByParent && !p.crossPairKeys) unspecifiedCross.add(g);

@@ -305,8 +305,11 @@ export function proposeFormat(plan: Plan | null, label: string, clubId?: string)
     ko = { pace: f.koPace === "immediate" ? "immediate" : "paced", pairing: f.koPairing === "traditional" ? "traditional" : "progressive", target: m.fieldSize, rounds: m.roundDates.length || null, label: m.label };
   }
   // Confirmed Swiss count (if set) decides the live stage; the estimate is only a fallback.
-  const stage = clubId === RIVERSIDE_CLUB_ID ? resolveStagePlan(plan ?? {}, key).stages[0] : null;
-  return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(stage?.kind === "swiss" ? stage.endAfterRound ?? stage.rounds : (f as any).swissRoundsConfirmed || f.swissRounds) || 0), ...(clubId === RIVERSIDE_CLUB_ID && kind === "swiss" ? { rrFinish: stage?.rrFinish ?? null } : {}), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
+  // Swiss + round-robin finish is available to every club: when switched on, its confirmed round count is used too.
+  const rrStage = resolveStagePlan(plan ?? {}, key).stages[0];
+  const rrFinish = rrStage?.kind === "swiss" && rrStage.rrFinish?.enabled ? rrStage.rrFinish : null;
+  const stage = clubId === RIVERSIDE_CLUB_ID || rrFinish ? rrStage : null;
+  return { format: { kind, pools: kind === "knockout" ? 1 : Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(stage?.kind === "swiss" ? stage.endAfterRound ?? stage.rounds : (f as any).swissRoundsConfirmed || f.swissRounds) || 0), ...(kind === "swiss" && (clubId === RIVERSIDE_CLUB_ID || rrFinish) ? { rrFinish: stage?.rrFinish ?? null } : {}), seeding, schedule, crossGroups: [], crossVs: null, paced, ko }, notes, playoffs, playoffPlans, crossKeys, crossPairKeys, crossByParent };
 }
 
 /* ── pools preview (source of truth for Generate) ── */

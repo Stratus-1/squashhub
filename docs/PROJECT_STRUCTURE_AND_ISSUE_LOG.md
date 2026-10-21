@@ -3634,3 +3634,9 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Finding: no live tournament (Riverside or any club) stores pools as separate numbered subdivisions any more; Riverside AABB "Mens A 2" is already ONE category with 2 pools. The duplication was UI-only: the structure screen showed no pool names/sizes for real pools, and legacy numbered pool slots each rendered a full settings card.
 - Fix: the category card shows "N pools · X players" when collapsed and, inside the one expansion, editable pool-name boxes with per-pool player counts (default Pool 1, Pool 2; saved names kept). Legacy numbered slots render inside the first card only and inherit its settings on save (`mirrorPoolGroupSettings`). Pool names save as `league_pool_names` → stage `poolNames` (labels only; no players/fixtures/results touched).
 - Tests: `src/test/category-pools-model.test.ts`; `card-structure.test.tsx` default name updated.
+
+## 2026-10-21 — Swiss + round-robin finish opened to all clubs; pool card general
+- RR-finish gates (setup switch, validation, draw spec, display, projected fixtures, auto-progress bundle source) no longer require Riverside; behaviour only activates when a category's `rrFinish.enabled` is set. Read-only check: only one Riverside tournament has it on, so no existing tournament changes. Riverside-only withdrawal/position-keeping and per-category Swiss round counts remain Riverside-gated.
+- Single category card with named pools was already club-agnostic.
+- Uitsig Men's A audit (read-only): already ONE division with 2 pools (merged 2026-10-21); any A1/A2 cards seen are from the unpublished frontend or a stale device copy. No migration needed.
+- `auto-progress-tournaments` engine bundle rebuilt but NOT deployed (awaiting approval).

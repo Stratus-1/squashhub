@@ -1,13 +1,12 @@
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { rrFinishIssues, rrFinishSplit, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
-import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 
 export function SwissRrFinishControls({ clubId, label, rounds, entrants, value, disabled, onChange }: {
   clubId: string; label: string; rounds: number; entrants: number; value?: RrFinish | null;
   disabled?: boolean; onChange: (value: RrFinish | null) => void;
 }) {
-  if (clubId !== RIVERSIDE_CLUB_ID || (rounds !== 5 && !value?.enabled)) return null;
+  if (rounds !== 5 && !value?.enabled) return null;
   const groups = value?.groups ?? Math.max(1, Math.floor(entrants / 4) - (entrants % 4 > 0 ? 1 : 0));
   const split = rrFinishSplit(entrants, groups);
   const issues = value?.enabled ? rrFinishIssues(entrants, rounds, groups) : [];

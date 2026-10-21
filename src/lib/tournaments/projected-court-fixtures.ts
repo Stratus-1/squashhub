@@ -41,11 +41,11 @@ function swissStage(champ: any, arch: any, gn: number): { rounds: number | null;
     const d = (spec?.divisions ?? []).find((x: any) => divisionGroup(spec, x) === gn);
     const st = [...(d?.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
     if (st?.kind !== "swiss") return null;
-    const rrFinish = champ.club_id === RIVERSIDE_CLUB_ID ? st.rrFinish : undefined;
+    const rrFinish = st.rrFinish?.enabled ? st.rrFinish : undefined;
     const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
     if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish };
     const roundDates = timeline.map((t: any) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
-    return { tieBreaks: st.tieBreaks, rounds: champ.club_id === RIVERSIDE_CLUB_ID ? st.swissRounds ?? null : timeline.length, schedule: { ...(st.schedule ?? {}), roundDates }, rrFinish };
+    return { tieBreaks: st.tieBreaks, rounds: champ.club_id === RIVERSIDE_CLUB_ID || rrFinish ? st.swissRounds ?? null : timeline.length, schedule: { ...(st.schedule ?? {}), roundDates }, rrFinish };
   }
   const r = Number((champ?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;

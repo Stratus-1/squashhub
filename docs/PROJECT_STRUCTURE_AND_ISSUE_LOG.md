@@ -3629,3 +3629,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Categories 3–7 renumbered to 2–6 across games, rounds, entries, registrations' choices, per-category settings, structured spec and saved setup plan; category count 7→6 (earlier stale 8→7 fixed first).
 - Single guarded transaction: fingerprint of all 87 games identical before/after, fees 78 / R8,400 unchanged, no fee rows created. Backup under private documents (uitsig-mens-a-pools-2026-10-21).
 - Note: match-day guard requires service-role context for admin re-pointing of games.
+
+## 2026-10-21 — One category card for pooled round robins (structure screen)
+- Finding: no live tournament (Riverside or any club) stores pools as separate numbered subdivisions any more; Riverside AABB "Mens A 2" is already ONE category with 2 pools. The duplication was UI-only: the structure screen showed no pool names/sizes for real pools, and legacy numbered pool slots each rendered a full settings card.
+- Fix: the category card shows "N pools · X players" when collapsed and, inside the one expansion, editable pool-name boxes with per-pool player counts (default Pool 1, Pool 2; saved names kept). Legacy numbered slots render inside the first card only and inherit its settings on save (`mirrorPoolGroupSettings`). Pool names save as `league_pool_names` → stage `poolNames` (labels only; no players/fixtures/results touched).
+- Tests: `src/test/category-pools-model.test.ts`; `card-structure.test.tsx` default name updated.

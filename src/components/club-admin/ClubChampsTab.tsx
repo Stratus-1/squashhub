@@ -1,3 +1,4 @@
+import { poolNamesFor, poolPlayerSplit, poolSummary, renamePool } from "@/lib/smart-builder/category-pools";
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
 import { SwissRrFinishControls } from "@/components/smart-builder/SwissRrFinishControls";
 import { rrFinishIssues, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
@@ -1512,6 +1513,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leagueSeedingPlans, setLeagueSeedingPlans] = useState<Record<string, string>>({});
   // Per-category pool placement (snake vs strength band); blank inherits the tournament-wide poolAllocation.
   const [leaguePoolPlacement, setLeaguePoolPlacement] = useState<Record<string, PoolAllocationMode>>({});
+  // Structure screen: editable pool labels per category (labels only — never players, fixtures or results).
+  const [leaguePoolNames, setLeaguePoolNames] = useState<Record<string, string[]>>({});
   const placementForLeague = (gn: number): PoolAllocationMode => leaguePoolPlacement[String(gn)] ?? poolAllocation;
   const [leagueFollowUpSeeding, setLeagueFollowUpSeeding] = useState<Record<string, string>>({});
   const [monradRounds, setMonradRounds] = useState<Record<string, number>>({});
@@ -9073,6 +9076,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueFollowUpFormats(v.league_follow_up_formats ?? {});
     setLeagueSeedingPlans(v.league_seeding_plans ?? {});
     setLeaguePoolPlacement(v.league_pool_placement ?? {});
+    setLeaguePoolNames(v.league_pool_names ?? {});
     setLeagueFollowUpSeeding(v.league_follow_up_seeding ?? {});
     setMonradRounds(v.monrad_rounds ?? {});
     setLeagueByeHandling(v.league_bye_handling ?? {});
@@ -9156,6 +9160,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_follow_up_formats: leagueFollowUpFormats,
       league_seeding_plans: leagueSeedingPlans,
       league_pool_placement: leaguePoolPlacement,
+      league_pool_names: Object.fromEntries(Object.entries(swissPools).filter(([, n]) => Number(n) > 1).map(([k, n]) => [k, poolNamesFor({ pools: Number(n), poolNames: leaguePoolNames[k] })])),
       league_follow_up_seeding: leagueFollowUpSeeding,
       league_bye_handling: leagueByeHandling,
       league_forfeit_rules: leagueForfeitRules,
@@ -9177,7 +9182,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return true;
   };
 
-  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leaguePoolNames, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -9311,6 +9316,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         const poolIndex = poolGroup ? poolGroup.slots.indexOf(gn) + 1 : 0;
                         const identityLocked = !!structureOnly?.initial._identity_locked;
                         const displayCategory = gn - (structureOnly?.initial._pool_groups ?? []).reduce((n: number, group: { slots: number[] }) => n + group.slots.filter((slot) => slot < gn && slot !== group.slots[0]).length, 0);
+                        // One category card only: legacy numbered pool slots share the first pool's settings.
+                        if (poolGroup && poolIndex > 1) return null;
+                        const cardPools = structureOnly && formatUsesPools(fmt) ? (poolGroup ? poolGroup.slots.length : poolsForDivision(gn)) : 1;
+                        const cardPlayers = poolGroup ? poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0) : Number(expectedPlayers[key] || 0);
                         return (
                           <div key={gn} className={poolGroup ? "border-l-2 border-border pl-3" : ""} data-testid={poolGroup ? `structure-pool-${gn}` : undefined}>
                             {poolGroup && poolIndex === 1 && <header className="flex flex-wrap items-center gap-3 border-b border-border py-3" data-testid="structure-parent-category"><span className="text-xs font-semibold">Category {displayCategory}</span><h3 className="text-sm font-semibold">{poolGroup.label}</h3><Badge variant="secondary">{poolGroup.slots.length} pools</Badge><span className="text-xs text-muted-foreground">{poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0)} players</span></header>}
@@ -9333,10 +9342,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", (collapsed || categoryLocked) && "cursor-pointer")}
                                   onClick={collapsed && !categoryLocked ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
                                 >
-                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">{poolGroup ? `${poolGroup.label} · Pool ${poolIndex}` : `Category ${displayCategory}`}</span>
+                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">{`Category ${displayCategory}`}</span>
+                                  {collapsed && poolGroup && <span className="text-sm font-semibold truncate">{poolGroup.label}</span>}
                                   {collapsed && !poolGroup && groupLabels[key] && (
                                     <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
                                   )}
+                                  {cardPools > 1 && <span data-testid={`category-pool-summary-${gn}`} className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground">{poolSummary(cardPlayers, cardPools, matchTypeForLeague(gn) === "doubles" ? "pairs" : "players")}</span>}
                                   <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
                                   <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                                     {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
@@ -9676,7 +9687,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 {/* THE pool selector for this division — the
                                     only editable pool control, shared by every
                                     format that uses pools. */}
-                                {poolGroup && <p className="text-xs text-muted-foreground">{poolGroup.label} · {poolGroup.slots.length} pools · Pool {poolIndex}</p>}
+                                {poolGroup && <div className="rounded-md border bg-muted/30 p-2 space-y-1.5" data-testid={`category-pools-${gn}`}>
+                                  <p className="text-[11px] font-semibold">{poolGroup.label} · {poolSummary(cardPlayers, poolGroup.slots.length)}</p>
+                                  {poolGroup.slots.map((slot, i) => <div key={slot} className="flex items-center gap-2 text-xs"><span className="w-20 font-medium">Pool {i + 1}</span><Input type="number" min={1} className="h-7 w-20 text-xs" aria-label={`${poolGroup.label} pool ${i + 1} expected players`} value={expectedPlayers[String(slot)] || ""} onChange={(e) => setExpectedPlayers((m) => ({ ...m, [String(slot)]: Math.max(0, Math.floor(Number(e.target.value)) || 0) }))} /><span className="text-muted-foreground">players</span></div>)}
+                                  <p className="text-[11px] text-muted-foreground">One category: these settings apply to every pool. Each pool keeps its own games and standings; all pools feed the same category play-offs.</p>
+                                </div>}
                                 {formatUsesPools(fmt) && !poolGroup && (() => {
                                   const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                   const rawPools = poolsForDivision(gn);
@@ -9692,6 +9707,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         options={poolOptionsFor(fmt, pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
                                         onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
                                       />
+                                      {structureOnly && pools > 1 && (() => {
+                                        const names = poolNamesFor({ pools, poolNames: leaguePoolNames[key] });
+                                        const split = poolPlayerSplit(entrants, pools);
+                                        return <div className="grid gap-1.5 sm:grid-cols-2" data-testid={`category-pools-${gn}`} aria-label={`${groupLabels[key] ?? `Category ${gn}`} pool names`}>
+                                          {names.map((name, i) => <label key={i} className="flex items-center gap-2 text-xs">
+                                            <Input className="h-7 text-xs" aria-label={`${groupLabels[key] ?? `Category ${gn}`} pool ${i + 1} name`} value={leaguePoolNames[key]?.[i] ?? name} onChange={(e) => setLeaguePoolNames((m) => ({ ...m, [key]: renamePool(m[key], pools, i, e.target.value) }))} onBlur={(e) => { if (!e.target.value.trim()) setLeaguePoolNames((m) => ({ ...m, [key]: renamePool(m[key], pools, i, `Pool ${i + 1}`) })); }} />
+                                            <span className="whitespace-nowrap text-muted-foreground">({split[i]} {matchTypeForLeague(gn) === "doubles" ? "pairs" : "players"})</span>
+                                          </label>)}
+                                          <p className="col-span-full text-[11px] text-muted-foreground">Names are labels only. Players are placed into pools at Generate draw; each pool keeps its own games and standings and all pools feed this category's play-offs.</p>
+                                        </div>;
+                                      })()}
                                       <p className="text-[11px] text-muted-foreground">
                                         {entrants > 0
                                           ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? poolNoun(fmt, false) : "draw"}. `

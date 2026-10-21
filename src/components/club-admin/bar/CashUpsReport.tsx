@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,52 +14,109 @@ interface CashUpRow {
   id: string; period_start: string; period_end: string; expected_cash: number; counted_cash: number; variance: number;
   card_expected: number | null; card_counted: number | null; written_off: boolean | null; write_off_amount: number | null;
   note: string | null; closed_by_name: string | null;
-  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number; cash_opening?: number } | null;
+  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number } | null;
 }
 const MONEY = /^\d+(\.\d{1,2})?$/;
 const R = (n: number | string | null | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" });
-const LABELS: Record<string, string> = { online: "Online card", card_bar: "Card at the bar", cash: "Cash", member_account: "Member account" };
+
+/** Running cash: the opening balance is the cash counted at the previous cash-up. */
+export function cashUpFigures(c: CashUpRow, previous: CashUpRow | undefined) {
+  const m = (k: string) => c.totals?.methods?.[k] ?? { sales: 0, tips: 0, count: 0 };
+  const gross = (k: string) => Number(m(k).sales) + Number(m(k).tips);
+  const opening = Number(previous?.counted_cash ?? 0);
+  const tipsOut = Number(c.totals?.tip_payouts ?? 0);
+  return { m, gross, opening, tipsOut, cashShould: opening + gross("cash") - tipsOut, cardShould: gross("card_bar") };
+}
 
 export function CashUpsReport({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const today = format(new Date(), "yyyy-MM-dd");
   const [from, setFrom] = useState(format(subDays(new Date(), 7), "yyyy-MM-dd"));
   const [to, setTo] = useState(today);
-  const [open, setOpen] = useState<CashUpRow | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [edit, setEdit] = useState({ cash: "", card: "", note: "", reason: "" });
   const [busy, setBusy] = useState(false);
 
-  const list = useQuery({
-    queryKey: ["bar-cash-up-report", clubId, from, to],
+  const all = useQuery({
+    queryKey: ["bar-cash-up-report", clubId, "all"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("bar_cash_up_report" as any, { _club_id: clubId, _from: from, _to: to });
+      const { data, error } = await supabase.rpc("bar_cash_up_report" as any, { _club_id: clubId, _from: "2000-01-01", _to: "2100-01-01" });
       if (error) throw error;
       return (data ?? []) as unknown as CashUpRow[];
     },
   });
+  const rows = (all.data ?? []).filter(c => {
+    const d = format(new Date(c.period_end), "yyyy-MM-dd");
+    return d >= from && d <= to;
+  });
+  const prevOf = (c: CashUpRow) => (all.data ?? []).find(p => p.period_end < c.period_end);
+  const open = (all.data ?? []).find(c => c.id === openId) ?? null;
 
   const show = (c: CashUpRow) => {
-    setOpen(c);
+    setOpenId(c.id);
     setEdit({ cash: Number(c.counted_cash).toFixed(2), card: Number(c.card_counted ?? c.card_expected ?? 0).toFixed(2), note: c.note ?? "", reason: "" });
   };
 
-  const valid = MONEY.test(edit.cash) && MONEY.test(edit.card) && edit.reason.trim().length > 0;
   async function save() {
-    if (!open || !valid) return;
+    if (!open) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("bar_cash_up_admin_update" as any, {
+      const { error } = await supabase.rpc("bar_cash_up_admin_update" as any, {
         _id: open.id, _counted_cash: Number(edit.cash), _card_counted: Number(edit.card), _note: edit.note, _reason: edit.reason,
       });
       if (error) throw error;
       toast.success("Cash-up updated");
-      setOpen(data as unknown as CashUpRow);
       setEdit(e => ({ ...e, reason: "" }));
       await Promise.all(["bar-cash-up-report", "bar-cash-up-history"].map(k => qc.invalidateQueries({ queryKey: [k] })));
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update cash-up"); }
     finally { setBusy(false); }
   }
+
+  const renderDetail = (c: CashUpRow) => {
+    const f = cashUpFigures(c, prevOf(c));
+    const locked = !!c.written_off || busy;
+    const vCash = MONEY.test(edit.cash) ? Number(edit.cash) - f.cashShould : null;
+    const vCard = MONEY.test(edit.card) ? Number(edit.card) - f.cardShould : null;
+    const variance = vCash === null || vCard === null ? null : Math.round((vCash + vCard) * 100) / 100;
+    const valid = MONEY.test(edit.cash) && MONEY.test(edit.card) && edit.reason.trim().length > 0;
+    const row = (label: string, k: string, out: number, should: number, actual: React.ReactNode) =>
+      <tr key={k} className="border-b"><td className="py-1">{label} <span className="text-muted-foreground">({f.m(k).count})</span></td>
+        <td className="text-right tabular-nums">{R(f.m(k).sales)}</td><td className="text-right tabular-nums">{R(f.m(k).tips)}</td>
+        <td className="text-right tabular-nums">{out ? `−${R(out)}` : "—"}</td><td className="text-right tabular-nums font-medium">{R(should)}</td>
+        <td className="text-right pl-2">{actual}</td></tr>;
+    return <div className="space-y-4 text-xs">
+      <p className="text-muted-foreground">Shift from <strong>{when(c.period_start)}</strong> to <strong>{when(c.period_end)}</strong>{c.closed_by_name ? ` · closed by ${c.closed_by_name}` : ""}</p>
+      <div className="overflow-x-auto"><h4 className="font-semibold mb-1">Reconciliation</h4>
+        <table className="w-full"><thead><tr className="border-b"><th className="text-left py-1">Payment type</th><th className="text-right">Sales</th><th className="text-right">Tips</th><th className="text-right">Tips paid in cash</th><th className="text-right">Should be</th><th className="text-right pl-2">Actual</th></tr></thead>
+          <tbody>
+            {row("Online card (paid online)", "online", 0, f.gross("online"), <span className="tabular-nums">{R(f.gross("online"))}</span>)}
+            {row("Card swiped at the bar", "card_bar", 0, f.cardShould, <Input aria-label="Actual card at the bar" inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={edit.card} disabled={locked} onChange={e => setEdit({ ...edit, card: e.target.value })} />)}
+            {row("Cash", "cash", f.tipsOut, f.cashShould, <Input aria-label="Cash counted" inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={edit.cash} disabled={locked} onChange={e => setEdit({ ...edit, cash: e.target.value })} />)}
+            {row("Member account", "member_account", 0, f.gross("member_account"), <span className="tabular-nums">{R(f.gross("member_account"))}</span>)}
+            <tr className="font-semibold"><td className="py-1">Total</td><td className="text-right tabular-nums">{R(c.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(c.totals?.total_tips)}</td><td className="text-right tabular-nums">{f.tipsOut ? `−${R(f.tipsOut)}` : "—"}</td>
+              <td className="text-right tabular-nums">{R(f.gross("online") + f.cardShould + f.cashShould + f.gross("member_account"))}</td>
+              <td className="text-right tabular-nums pl-2">{MONEY.test(edit.cash) && MONEY.test(edit.card) ? R(f.gross("online") + Number(edit.card) + Number(edit.cash) + f.gross("member_account")) : "—"}</td></tr>
+          </tbody></table></div>
+      <div className="rounded-md border p-3 space-y-1 max-w-sm" aria-label="Cash balance">
+        <h4 className="font-semibold">Cash balance</h4>
+        <div className="flex justify-between"><span>Opening balance (counted at previous cash-up)</span><span className="tabular-nums">{R(f.opening)}</span></div>
+        <div className="flex justify-between"><span>+ New cash sales &amp; tips</span><span className="tabular-nums">{R(f.gross("cash"))}</span></div>
+        <div className="flex justify-between"><span>− Tips paid out</span><span className="tabular-nums">{R(f.tipsOut)}</span></div>
+        <div className="flex justify-between font-semibold border-t pt-1"><span>Should be in the till</span><span className="tabular-nums">{R(f.cashShould)}</span></div>
+        <div className="flex justify-between"><span>Closing balance (counted)</span><span className="tabular-nums">{MONEY.test(edit.cash) ? R(edit.cash) : "—"}</span></div>
+      </div>
+      <div className="rounded-md border p-3 space-y-2">
+        {variance !== null && <p className={variance === 0 ? "text-muted-foreground" : "text-destructive font-medium"}>{variance === 0 ? "Everything balances." : `${variance > 0 ? "Surplus" : "Shortfall"} of ${R(Math.abs(variance))}`}</p>}
+        {c.written_off && <p className="text-muted-foreground">At closing, {R(c.write_off_amount)} was written off to bar cost of sales. The counted amounts are locked — record a correcting transaction in Club Finance for any remaining difference.</p>}
+        <Label htmlFor="cu-note">Note</Label>
+        <Input id="cu-note" maxLength={500} value={edit.note} disabled={busy} onChange={e => setEdit({ ...edit, note: e.target.value })} />
+        <Label htmlFor="cu-reason">Reason for change (required)</Label>
+        <Input id="cu-reason" maxLength={500} value={edit.reason} disabled={busy} onChange={e => setEdit({ ...edit, reason: e.target.value })} />
+        <Button onClick={save} disabled={busy || !valid}>Save changes</Button>
+      </div>
+    </div>;
+  };
 
   return (
     <section className="space-y-3 text-xs" aria-label="Cash-ups report">
@@ -67,46 +125,27 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
         <div><Label htmlFor="cu-to">To</Label><Input id="cu-to" type="date" className="h-8" value={to} min={from} onChange={e => setTo(e.target.value)} /></div>
         <Button size="sm" variant="outline" onClick={() => { setFrom(today); setTo(today); }}>Today</Button>
       </div>
-      {list.isLoading ? <p className="text-muted-foreground">Loading…</p>
-        : list.error ? <p role="alert" className="text-destructive">{(list.error as Error).message}</p>
-        : !list.data?.length ? <p className="text-muted-foreground">No cash-ups in this period.</p>
+      {all.isLoading ? <p className="text-muted-foreground">Loading…</p>
+        : all.error ? <p role="alert" className="text-destructive">{(all.error as Error).message}</p>
+        : !rows.length ? <p className="text-muted-foreground">No cash-ups in this period.</p>
         : <div className="overflow-x-auto"><table className="w-full">
-          <thead><tr className="border-b"><th className="text-left py-1">Shift</th><th className="text-left">By</th><th className="text-right">Sales</th><th className="text-right">Tips paid</th><th className="text-right">Expected cash</th><th className="text-right">Counted</th><th className="text-right">Difference</th><th /></tr></thead>
-          <tbody>{list.data.map(c => <tr key={c.id} className="border-b">
+          <thead><tr className="border-b"><th className="text-left py-1">Shift</th><th className="text-left">By</th><th className="text-right">Sales</th><th className="text-right">Opening cash</th><th className="text-right">Cash should be</th><th className="text-right">Closing (counted)</th><th className="text-right">Difference</th><th /></tr></thead>
+          <tbody>{rows.map(c => { const f = cashUpFigures(c, prevOf(c)); const d = Number(c.counted_cash) - f.cashShould + Number(c.card_counted ?? f.cardShould) - f.cardShould; return <tr key={c.id} className="border-b">
             <td className="py-1">{when(c.period_start)} → {when(c.period_end)}</td>
             <td>{c.closed_by_name ?? "—"}</td>
             <td className="text-right tabular-nums">{R(c.totals?.total_sales)}</td>
-            <td className="text-right tabular-nums">{R(c.totals?.tip_payouts)}</td>
-            <td className="text-right tabular-nums">{R(c.expected_cash)}</td>
+            <td className="text-right tabular-nums">{R(f.opening)}</td>
+            <td className="text-right tabular-nums">{R(f.cashShould)}</td>
             <td className="text-right tabular-nums">{R(c.counted_cash)}</td>
-            <td className={`text-right tabular-nums ${Number(c.variance) ? "text-destructive" : ""}`}>{R(c.variance)}{c.written_off ? " · written off" : ""}</td>
+            <td className={`text-right tabular-nums ${Math.abs(d) > 0.004 ? "text-destructive" : ""}`}>{R(d)}{c.written_off ? " · written off" : ""}</td>
             <td className="text-right pl-2"><Button size="sm" variant="outline" className="h-7" onClick={() => show(c)}>View / edit</Button></td>
-          </tr>)}</tbody>
+          </tr>; })}</tbody>
         </table></div>}
 
-      <Dialog open={!!open} onOpenChange={v => !v && setOpen(null)}>
-        <DialogContent className="max-w-xl">
+      <Dialog open={!!open} onOpenChange={v => !v && setOpenId(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Cash-up {open ? when(open.period_end) : ""}</DialogTitle></DialogHeader>
-          {open && <div className="space-y-3 text-xs">
-            <p className="text-muted-foreground">Shift {when(open.period_start)} → {when(open.period_end)}{open.closed_by_name ? ` · closed by ${open.closed_by_name}` : ""}</p>
-            <table className="w-full"><thead><tr className="border-b"><th className="text-left py-1">Payment type</th><th className="text-right">Sales</th><th className="text-right">Tips</th><th className="text-right">Count</th></tr></thead>
-              <tbody>{Object.entries(open.totals?.methods ?? {}).map(([k, m]) => <tr key={k} className="border-b"><td className="py-1">{LABELS[k] ?? k}</td><td className="text-right tabular-nums">{R(m.sales)}</td><td className="text-right tabular-nums">{R(m.tips)}</td><td className="text-right tabular-nums">{m.count}</td></tr>)}</tbody></table>
-            <div className="rounded-md border p-2 space-y-1">
-              <div className="flex justify-between"><span>Opening cash</span><span className="tabular-nums">{R(open.totals?.cash_opening)}</span></div>
-              <div className="flex justify-between"><span>Tips paid out</span><span className="tabular-nums">{R(open.totals?.tip_payouts)}</span></div>
-              <div className="flex justify-between"><span>Expected cash</span><span className="tabular-nums">{R(open.expected_cash)}</span></div>
-              <div className="flex justify-between"><span>Expected card</span><span className="tabular-nums">{R(open.card_expected)}</span></div>
-              <div className={`flex justify-between font-semibold ${Number(open.variance) ? "text-destructive" : ""}`}><span>Difference</span><span className="tabular-nums">{R(open.variance)}{open.written_off ? ` · written off ${R(open.write_off_amount)}` : ""}</span></div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label htmlFor="cu-cash">Cash counted</Label><Input id="cu-cash" inputMode="decimal" className="h-8 text-right" value={edit.cash} disabled={busy || !!open.written_off} onChange={e => setEdit({ ...edit, cash: e.target.value })} /></div>
-              <div><Label htmlFor="cu-card">Card counted</Label><Input id="cu-card" inputMode="decimal" className="h-8 text-right" value={edit.card} disabled={busy || !!open.written_off} onChange={e => setEdit({ ...edit, card: e.target.value })} /></div>
-            </div>
-            {open.written_off && <p className="text-muted-foreground">The difference was written off, so the amounts are locked. Record a correcting transaction in Club Finance instead.</p>}
-            <div><Label htmlFor="cu-note">Note</Label><Input id="cu-note" maxLength={500} value={edit.note} disabled={busy} onChange={e => setEdit({ ...edit, note: e.target.value })} /></div>
-            <div><Label htmlFor="cu-reason">Reason for change (required)</Label><Input id="cu-reason" maxLength={500} value={edit.reason} disabled={busy} onChange={e => setEdit({ ...edit, reason: e.target.value })} /></div>
-            <Button onClick={save} disabled={busy || !valid}>Save changes</Button>
-          </div>}
+          {open && renderDetail(open)}
         </DialogContent>
       </Dialog>
     </section>

@@ -1604,6 +1604,13 @@
       "when": 1792571611207,
       "tag": "0228_journal_proof_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1792571989704,
+      "tag": "0229_bar_cash_up_running_opening",
+      "breakpoints": true
     }
   ]
 }

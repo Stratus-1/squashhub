@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { syncSwissRoundsToSpec } from "@/lib/smart-builder/sync-live-rounds";
 import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
+import { roundCountCheck } from "@/lib/smart-builder/round-count-check";
 
 /** Copies saved Structure Swiss round counts into a running tournament (never below rounds that already have games). */
 async function pushStructureRoundsLive(clubId: string, tid: string | null | undefined, answers: any) {
@@ -1208,7 +1209,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { StructureReview: false, Structure: false, Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: estimateConflicts(a, cats).length === 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk && (!cardStructure || entriesOk), Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk && (!cardStructure || entriesOk), Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined && roundCountProblems.length === 0, Playoffs: true, Summary: false };
   okFor.Structure = okFor.Guide && okFor.Subcategories && okFor.Format;
   if (structureStep) okFor.Match = okFor.Match && okFor.Overrides;
   if (rowStructure) okFor.Categories = !rowStructureDirty && structureRowIssues(a).length === 0 && okFor.Format;
@@ -1290,6 +1291,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       ))}
     </div>
   );
+  /** Riverside pilot: each category must have exactly the Structure's round count (manual rounds; check only). */
+  const roundCounts = clubId === RIVERSIDE_CLUB_ID ? roundCountCheck(a as any, units, stages) : [];
+  const roundCountProblems = roundCounts.map((r) => r.problem).filter((x): x is string => !!x);
   /** Exact reasons the Stages & scheduling step is not complete. */
   const scheduleProblems: string[] = (() => {
     const out: string[] = [];
@@ -1306,6 +1310,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       }
     });
     if (a.playoffSync === null || a.playoffSync === undefined) out.push("Answer whether playoff dates are shared across categories (Decide later is fine).");
+    out.push(...roundCountProblems);
     return out;
   })();
   const reached = useMemo(() => {

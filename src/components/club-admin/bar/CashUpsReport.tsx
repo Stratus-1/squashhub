@@ -14,7 +14,7 @@ interface CashUpRow {
   id: string; period_start: string; period_end: string; expected_cash: number; counted_cash: number; variance: number;
   card_expected: number | null; card_counted: number | null; written_off: boolean | null; write_off_amount: number | null;
   note: string | null; closed_by_name: string | null;
-  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number } | null;
+  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number; cash_opening?: number } | null;
 }
 const MONEY = /^\d+(\.\d{1,2})?$/;
 const R = (n: number | string | null | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
@@ -24,7 +24,7 @@ const when = (s: string) => new Date(s).toLocaleString("en-ZA", { dateStyle: "me
 export function cashUpFigures(c: CashUpRow, previous: CashUpRow | undefined) {
   const m = (k: string) => c.totals?.methods?.[k] ?? { sales: 0, tips: 0, count: 0 };
   const gross = (k: string) => Number(m(k).sales) + Number(m(k).tips);
-  const opening = Number(previous?.counted_cash ?? 0);
+  const opening = Number(previous ? previous.counted_cash : (c.totals?.cash_opening ?? 0));
   const tipsOut = Number(c.totals?.tip_payouts ?? 0);
   return { m, gross, opening, tipsOut, cashShould: opening + gross("cash") - tipsOut, cardShould: gross("card_bar") };
 }

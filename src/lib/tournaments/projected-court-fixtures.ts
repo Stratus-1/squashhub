@@ -13,7 +13,7 @@ import { appliedRoundPlayBy } from "@/lib/tournaments/stage-schedule";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
-import type { RrFinish } from "./swiss-rr-finish";
+import { rrFinishIssues, type RrFinish } from "./swiss-rr-finish";
 
 export interface ProjectedCourtFixture {
   key: string; champId: string; group: number; round: number;
@@ -96,6 +96,7 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
       if (pb) appliedPlayBy[Number(r.round_number)] = pb;
     }
     const gEntries = entries.filter((e) => e.group_number === gn).sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
+    if (st.rrFinish?.enabled && rrFinishIssues(gEntries.length, st.rounds, st.rrFinish.groups).length) continue;
     const names: Record<string, string> = {};
     gEntries.forEach((e) => { if (e.club_member_id) names[e.club_member_id] = e.club_members?.name ?? e.name ?? "Player"; });
     const gm = matches.filter((m) => m.group_number === gn && (m.round_number ?? 0) > 0);

@@ -8,7 +8,7 @@ export function SwissRrFinishControls({ clubId, label, rounds, entrants, value, 
   disabled?: boolean; onChange: (value: RrFinish | null) => void;
 }) {
   if (clubId !== RIVERSIDE_CLUB_ID || (rounds !== 5 && !value?.enabled)) return null;
-  const groups = value?.groups ?? Math.max(1, Math.floor(entrants / 4) - (entrants % 4 === 1 ? 1 : 0));
+  const groups = value?.groups ?? Math.max(1, Math.floor(entrants / 4) - (entrants % 4 > 0 ? 1 : 0));
   const split = rrFinishSplit(entrants, groups);
   const issues = value?.enabled ? rrFinishIssues(entrants, rounds, groups) : [];
   return <div className="space-y-2 border-t border-border pt-2" data-testid={`rr-finish-${label}`}>

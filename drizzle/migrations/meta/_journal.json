@@ -1569,6 +1569,13 @@
       "when": 1792521510490,
       "tag": "0223_bar_member_tip_ownership_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1792566954097,
+      "tag": "0224_bar_counter_topup_pin_access",
+      "breakpoints": true
     }
   ]
 }

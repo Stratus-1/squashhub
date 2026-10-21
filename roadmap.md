@@ -1,4 +1,5 @@
 # Roadmap
+- [x] PIN-only counter top-up permission repaired and hosted grant confirmed; isolated PostgreSQL signed-out R100 card receipt, balanced journal, retry and invalid/missing/expired/revoked PIN, cash and foreign-club rejection checks pass. No real payment/member balance changes or publication; actual tablet payment not exercised.
 - [x] Signed-in member account settlement: optional tip prompt only on Add to my member account, no OTP; single active serving PIN session auto-selected, multiple serving names selectable. 46 focused tests and disposable PostgreSQL ownership/recipient/rollback/retry/account-tip recognition tests pass; fictional dialog browser checked desktop/mobile. Order-process ON/OFF unchanged. No live charge or publication; real signed-in end-to-end settlement intentionally untested.
 
 - [x] Scan-to-pay: added an "or" divider between the member-account option and the card-online option on both the open-tab card and the checkout card in src/pages/ScanPay.tsx. Display-only; Riverside preview verified the divider renders between the two buttons; build OK, no data changes, not published.

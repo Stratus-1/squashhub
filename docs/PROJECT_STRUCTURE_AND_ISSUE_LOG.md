@@ -1,3 +1,8 @@
+## 2026-10-21 — PIN-only counter member top-up permission
+- Confirmed QA finding: the counter supplies its personal PIN session token, but the deployed top-up RPC lacked anon execution permission, preventing signed-out tablets from reaching its authorization checks.
+- Fix: additive execute grant for anon on this RPC only; existing PIN-session, club/member, card-only, amount and retry checks unchanged. No table permissions, frontend changes, member balances, payments or hardware operations.
+- Regression: disposable PostgreSQL suite reproduces the old permission gap and runs the real top-up/context functions as anon with fictional sessions; checks R100 card receipt, journal balance, retry and missing/invalid/expired/revoked session, cash and foreign-club rejection. No real top-up exercised.
+
 ## 2026-10-20 — Voided tonight's mistaken Nelspruit bar captures (Johann van Coller, Rachel Gates)
 - Owner requested deleting Johann van Coller's bar items from tonight and clearing Rachel Gates' sparkling waters; owner confirmed items were returned, so stock was restored.
 - Johann: removed his settled member-account tab (b2812bbe) with 6 tab entries (3× Castle Lite, 3× Creme Soda, R114), 2 completed orders + 4 lines + 8 order events, 1 payment event, 6 member credit rows and 12 ledger lines (debtors/bar_income). Stock restored Castle Lite 39→42, Creme Soda 21→24 with correction movements. His older 6/13 Oct entries retained.

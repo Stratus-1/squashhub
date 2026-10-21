@@ -1,3 +1,9 @@
+## 2026-10-21 — Riverside RR standings phase and fixed-group identity
+- Symptom: the separate RR standings appeared as soon as Round 2 completed, before Round 3 started; the generic view-pilot helper was all-club, not Riverside-only.
+- Finding: no independent round-start timestamp is used by this view. Saved match status is in_progress/paused/completed, with side_a_points/side_b_points and game_scores; marker entry explicitly does not start a match. Scheduled fixtures, a marker visit, administrative byes/forfeits and 0–0 state are not proof of play.
+- Fix: Riverside-only swissRrDisplay locks memberships from final R2 positions, exposes projected/locked group information and requires persisted R3–R5 real-match score activity before showing the separate RR table. Historical completed results also reveal it after reload. Group colours follow frozen identity, residual Swiss rows are separately labelled/dashed; overall rankings remain separate. Existing RR result calculation/tiebreak hierarchy unchanged.
+- Guard: 38 focused tests pass, including 16/four groups, 18/three groups, R1/R2 and scheduled-R3 invisibility, first point, completed results, game reset/pause, byes/forfeits, normal Swiss and non-Riverside isolation. Authenticated existing Riverside AABB Division 3 opens read-only with no RR standings; browser-only fictional states verify both sizes through R3/R4/R5 and mobile. No duplicated site, saved results/fixtures/settings, Uitsig writes or deployment; preview build OK.
+
 ## 2026-10-21 — Legacy membership payment warning
 - Removed the unpaid-fees warning and its unused query from Enter Transaction at the owner's request; legacy payments have their own place. Retained a neutral explanation of the receivable posting without claiming every brought-forward balance was income raised in this system.
 - Presentation-only: posting, fee status, permissions and live records unchanged; no publication.

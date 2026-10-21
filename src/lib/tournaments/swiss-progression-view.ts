@@ -220,7 +220,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
 export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
-  if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5) {
+  if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5 && !(opts.exactLadiesAChart && model.rows.length === 9 && model.totalRounds === 5)) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined }, opts);
     const saved = buildSwissGrid(model);
     const locked = !!model.rounds.find((r) => r.round === 2)?.complete;
@@ -313,7 +313,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
     if (rd.round === 1 && savedR1Bye) { const id = savedR1Bye.a ?? savedR1Bye.b; if (id) byeHolders.add(id); }
     else if (rd.bye != null) {
       const holder = cur[rd.bye - 1];
-      if (holder && byeHolders.has(holder)) {
+      if (!ladiesA && holder && byeHolders.has(holder)) {
         for (let sl = n; sl >= 1; sl--) {
           const o = cur[sl - 1];
           if (o && byeHolders.has(o)) continue;

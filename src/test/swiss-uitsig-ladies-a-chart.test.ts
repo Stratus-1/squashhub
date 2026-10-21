@@ -14,6 +14,14 @@ const expected = [
 const model = () => buildSwissProgression({ seedOrder: Array.from({ length: 9 }, (_,i) => `p${i+1}`), names: {}, totalRounds: 5, matches: [] });
 
 describe("Uitsig Ladies A owner-approved chart", () => {
+  it("uses the approved five rounds even when conflicting RR display settings are present", () => {
+    const m = model();
+    m.rrFinish = { enabled: true, groups: 2 };
+    const before = JSON.stringify(m);
+    const exact = buildProposedSwissGrid(m, { exactLadiesAChart: usesUitsigLadiesAChart(club, tournament, 5, 9, 5) });
+    expect(exact.rounds.map(r => r.blocks.map(b => b.rows.map(row => row.pos)))).toEqual(expected);
+    expect(JSON.stringify(m)).toBe(before);
+  });
   it("retains three Round 1 results and the bye without inventing a result for the unplayed game", () => {
     const m = buildSwissProgression({
       seedOrder: Array.from({ length: 9 }, (_, i) => `p${i + 1}`), names: {}, totalRounds: 5,

@@ -1,3 +1,8 @@
+## 2026-10-21 — Ladies A approved screenshot preview restored
+- Symptom: current Ladies A category 5 showed generic pairings and scheduled positions 6–9 in R5, unlike the approved nine-position chart.
+- Fix: update the display-only selector from former category 6 to current category 5; approved Ladies A matrix takes precedence over RR display settings and bye substitutions. R5 remains 1–2, 3–4, bye 5 only; saved R2 discrepancy remains untouched in Log/Calendar.
+- Guard: exact five-round numeric regression, conflicting RR settings and model-immutability checks; authenticated preview inspected with write requests blocked. No saved fixtures/results/settings, generation or publication changes.
+
 ## 2026-10-21 — Clean round-robin fixture/result track dragging
 - Symptom: Men's A Pool A/B clean round panels offered only scrollbar navigation, unlike the draggable progression views.
 - Fix: pointer-captured mouse drag scroll on the existing horizontal track; native touch swiping retained, standings buttons excluded. Display-only; no scheduling, result, identity, backend or publication changes.

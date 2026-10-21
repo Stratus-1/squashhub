@@ -319,27 +319,6 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     enabled: !!clubId,
   });
 
-  // Unpaid fee totals per member — used to warn admins against posting
-  // free-form "Members Subscription" payments that will double-count when
-  // the fee row is later toggled paid.
-  const { data: unpaidByMember } = useQuery({
-    queryKey: ["unpaid-fees-by-member", clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("club_member_fee_payments")
-        .select("club_member_id, amount, paid")
-        .eq("paid", false);
-      if (error) throw error;
-      const memberIds = new Set((members || []).map((m: any) => m.id));
-      const totals = new Map<string, number>();
-      for (const r of data || []) {
-        if (!memberIds.has(r.club_member_id)) continue;
-        totals.set(r.club_member_id, (totals.get(r.club_member_id) || 0) + Number(r.amount || 0));
-      }
-      return totals;
-    },
-    enabled: !!clubId && !!members?.length,
-  });
-
   const getMemberName = (memberId: string) => {
     const member = (members || []).find(m => m.id === memberId);
     return member?.name || member?.profiles?.name || "Unknown";
@@ -1310,9 +1289,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     Accounts Receivable — settles this member's outstanding bill
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    A member is linked, so this payment is automatically posted against their outstanding balance
-                    (Dr {txMethod === "cash" ? "Cash" : "Current Account"} / Cr Accounts Receivable). Do NOT credit an income
-                    account here — the income was already recognised when the fee was raised.
+                    This records money received against the member's outstanding balance
+                    (Dr {txMethod === "cash" ? "Cash" : "Current Account"} / Cr Accounts Receivable), not a new membership fee.
                   </p>
                 </>
               ) : (
@@ -1363,22 +1341,6 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   )}
                 </div>
               )}
-              {txDirection === "income" && txMemberId && txMemberId !== "__none__" && (() => {
-                const outstanding = unpaidByMember?.get(txMemberId) || 0;
-                if (outstanding <= 0.01) return null;
-                return (
-                  <div className="mt-2 p-2 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] text-amber-900 dark:text-amber-200 flex gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="font-semibold">This member has {money(outstanding)} in unpaid fees.</p>
-                      <p className="mt-0.5">
-                        Rather mark the specific fee paid in <strong>Members → Fees</strong> so it links to the invoice.
-                        A free-form payment here posts a second Cr Debtors leg that will double-count when the fee row is later toggled paid.
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
 
             <div>

@@ -1,3 +1,7 @@
+## 2026-10-21 — Legacy membership payment warning
+- Removed the unpaid-fees warning and its unused query from Enter Transaction at the owner's request; legacy payments have their own place. Retained a neutral explanation of the receivable posting without claiming every brought-forward balance was income raised in this system.
+- Presentation-only: posting, fee status, permissions and live records unchanged; no publication.
+
 ## 2026-10-21 — Owner-approved stale Uitsig timed allocation cleanup
 - Cleared the previously reported restoration batch only: nine old club_event bookings on 27 Oct/3 Nov cancelled through Willem's authenticated session, retaining cancellation history; linked undecided fixtures automatically released their booking/court/date/time. AJ/Ulrich on 22 Oct unscheduled through the protected RPC, preserving the underlying GoBook Club Championships capacity hold. Johann/Bernard's old booking was already cancelled and its fixture unscheduled before this request, so no replacement member booking was touched.
 - Verification: all ten old individual booking records (nine newly cancelled plus Johann's existing cancellation) are cancelled; all nine surviving fixtures are unscheduled with play-by deadlines retained. Before/after digests match for 38 scored fixtures, all 86 fixture deadlines and 96 active personal GoBook bookings. Signed-in Uitsig 27 Oct court grid no longer shows the old Lisa van Reeuwyk/Liezel slot or other cancelled allocations; Andre/Wynand's later member-arranged booking remains visible.

@@ -1,3 +1,8 @@
+## 2026-10-21 — Clean round-robin fixture/result track dragging
+- Symptom: Men's A Pool A/B clean round panels offered only scrollbar navigation, unlike the draggable progression views.
+- Fix: pointer-captured mouse drag scroll on the existing horizontal track; native touch swiping retained, standings buttons excluded. Display-only; no scheduling, result, identity, backend or publication changes.
+- Guard: focused round-track drag/input-immutability regression and authenticated read-only desktop/mobile checks.
+
 ## 2026-10-21 — Riverside RR standings phase and fixed-group identity
 - Symptom: the separate RR standings appeared as soon as Round 2 completed, before Round 3 started; the generic view-pilot helper was all-club, not Riverside-only.
 - Finding: no independent round-start timestamp is used by this view. Saved match status is in_progress/paused/completed, with side_a_points/side_b_points and game_scores; marker entry explicitly does not start a match. Scheduled fixtures, a marker visit, administrative byes/forfeits and 0–0 state are not proof of play.

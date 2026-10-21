@@ -1,10 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
-import { RoundRobinCleanView } from "@/components/tournaments/RoundRobinPilotView";
+import { RoundRobinCleanView, RoundRobinPilotView } from "@/components/tournaments/RoundRobinPilotView";
 
 const players = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }));
 describe("Riverside standalone round robin clean view", () => {
+  it("keeps saved inputs unchanged when results refresh through the standard view", () => {
+    const matches = [{ id: "standard", round: 1, a: "p1", b: "p2", status: "scheduled", winner: null as string | null, score: null as string | null }];
+    const before = JSON.stringify(matches);
+    const make = (input: typeof matches) => buildRoundRobinView({ players: players(2), matches: input });
+    const { rerender } = render(<RoundRobinPilotView title="Club tournament" view={make(matches)} />);
+    expect(within(screen.getByTestId("rr-clean-row-p1")).getAllByRole("cell")[3].textContent).toBe("0");
+    rerender(<RoundRobinPilotView title="Club tournament" view={make([{ ...matches[0], status: "completed", winner: "p1", score: "3-1" }])} />);
+    expect(within(screen.getByTestId("rr-clean-row-p1")).getAllByRole("cell").slice(3, 6).map(c => c.textContent)).toEqual(["1", "1", "0"]);
+    expect(JSON.stringify(matches)).toBe(before);
+  });
   it("drags the round track without changing saved fixtures or results", () => {
     const view = buildRoundRobinView({ players: players(4), matches: [
       { id: "drag-result", round: 1, a: "p1", b: "p4", winner: "p1", status: "completed", score: "3-1" },

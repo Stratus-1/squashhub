@@ -15,7 +15,6 @@ import { monradPlan } from "@/lib/smart-builder/monrad";
 import { evaluateStructures } from "@/lib/smart-builder/structure-guide";
 import { categoryEstimate } from "@/lib/smart-builder/expected-entries";
 import { RRTopologyEditor } from "./RRTopologyEditor";
-import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 import { rrFinishIssues, rrFinishSplit } from "@/lib/tournaments/swiss-rr-finish";
 import { FormatLearnButton, FormatLearnDialog } from "./FormatLearnDialog";
 import type { LearnFormat } from "@/lib/smart-builder/format-learn";

@@ -1,7 +1,6 @@
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { rrFinishIssues, rrFinishSplit, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
-import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 
 export function SwissRrFinishControls({ clubId, label, rounds, entrants, value, disabled, onChange }: {
   clubId: string; label: string; rounds: number; entrants: number; value?: RrFinish | null;

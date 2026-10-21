@@ -1,6 +1,5 @@
 import type { ProgressionMatchInput, SwissProgressionModel } from "./swiss-progression-view";
 import { rrFinishOn, rrFinishSplit, RR_FINISH_FROM_ROUND, RR_FINISH_ROUNDS } from "./swiss-rr-finish";
-import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
 
 /** Persisted match activity, not a marker visit, a draw or a scheduled date. */
 export function hasSwissMatchActivity(m: ProgressionMatchInput): boolean {

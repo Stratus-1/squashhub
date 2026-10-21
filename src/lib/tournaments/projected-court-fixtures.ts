@@ -12,6 +12,8 @@ import { scheduleDraws, slotOnlyDraw, timeSlots, fixtureKey, type FixtureSchedul
 import { appliedRoundPlayBy } from "@/lib/tournaments/stage-schedule";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
+import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
+import type { RrFinish } from "./swiss-rr-finish";
 
 export interface ProjectedCourtFixture {
   key: string; champId: string; group: number; round: number;
@@ -33,16 +35,17 @@ export interface DecidedPlayByFixture {
   aId: string; bId: string; title: string; playBy: string;
 }
 
-function swissStage(champ: any, arch: any, gn: number): { rounds: number | null; tieBreaks?: string[]; schedule?: any } | null {
+function swissStage(champ: any, arch: any, gn: number): { rounds: number | null; tieBreaks?: string[]; schedule?: any; rrFinish?: RrFinish } | null {
   if (arch?.builder_architecture === "structured") {
     const spec = arch?.builder_spec;
     const d = (spec?.divisions ?? []).find((x: any) => divisionGroup(spec, x) === gn);
     const st = [...(d?.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
     if (st?.kind !== "swiss") return null;
+    const rrFinish = champ.club_id === RIVERSIDE_CLUB_ID ? st.rrFinish : undefined;
     const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
-    if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null };
+    if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish };
     const roundDates = timeline.map((t: any) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
-    return { tieBreaks: st.tieBreaks, rounds: timeline.length, schedule: { ...(st.schedule ?? {}), roundDates } };
+    return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: { ...(st.schedule ?? {}), roundDates }, rrFinish };
   }
   const r = Number((champ?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;
@@ -104,6 +107,7 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
         placeholderA: m.placeholder_a, placeholderB: m.placeholder_b })),
     });
     const prefix = `${gn}:`;
+    model.rrFinish = st.rrFinish;
     const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
     try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats }); } catch { continue; }
@@ -112,6 +116,7 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
     const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
       if (rd.created || rd.round < 2) continue;
+      if (st.rrFinish?.enabled && !model.rounds.find((r) => r.round === rd.round - 1)?.complete) continue;
       const deadline = appliedPlayBy[rd.round];
       if (playByOnly ? !deadline : !!deadline) continue;
       for (const b of rd.blocks) {

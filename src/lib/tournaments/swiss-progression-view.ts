@@ -14,7 +14,8 @@ import { swissPreviewFinalsTemplate } from "./swiss-preview-finals";
 import { uitsigMensCChart } from "./swiss-uitsig-mens-c-chart";
 import { uitsigLadiesAChart } from "./swiss-uitsig-ladies-a-chart";
 import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
-import { rrFinishOn, rrFinishRound, type RrFinish } from "./swiss-rr-finish";
+import { rrFinishOn, rrFinishRound, rrFinishRepeats, type RrFinish } from "./swiss-rr-finish";
+import { swissRound } from "./contract";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -216,19 +217,32 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  */
 export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5) {
+    const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined }, opts);
     const saved = buildSwissGrid(model);
     const locked = model.rounds.find((r) => r.round === 2)?.complete;
     const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [];
     const byId = new Map(model.rows.map((r) => [r.id, r]));
     const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
-    return { issues: [], rounds: saved.map((rd) => {
-      if (rd.round < 3 || !locked) return { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) };
+    const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
+    const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
+    const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
+    return { issues, rounds: saved.map((rd) => {
+      if (rd.round < 3 || !locked) return normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
       const groupIds = new Set(plan.pairs.flat());
       const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })) as [GridRow, GridRow] }));
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
-      const pending = plan.pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
+      let pairs: Array<[string, string | null]> = plan.pairs;
+      if (model.rounds.find((r) => r.round === rd.round - 1)?.complete && plan.remainder.length) {
+        const rest = new Set(plan.remainder);
+        const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => rest.has(r.id));
+        const met = new Set(history.filter((f) => f.a && f.b).map((f) => [f.a, f.b].sort().join("|")));
+        const usedRest = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
+        try { pairs = [...pairs, ...swissRound(table.filter((r) => !usedRest.has(r.id)).map((r, i) => ({ id: r.id, points: r.points, seed: i + 1 })), met)]; }
+        catch { issues.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`); }
+      }
+      const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
         matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: fixed.get(id) ?? null, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
       }));
       return { ...rd, blocks: [...factual, ...pending].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };

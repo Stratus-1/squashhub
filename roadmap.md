@@ -131,3 +131,7 @@
 - [ ] Nelspruit hang on league night — backend connection saturation (44/60); offered instance upgrade + query slimming, awaiting choice
 - [x] Signed-in settle-tab member-number/OTP friction resolved through session authorization, including optional tips; anonymous QR verification preserved.
 - [x] Finance transaction proof: add Take photo / scan option (camera)
+
+- [x] Riverside AABB: deleted 84 played test games + 50 linked bookings.
+- [x] AABB 18-player categories use Uitsig Men's C chart; 16-player use approved halves-of-8 model (preview, applies once drawn). Tests pass.
+- [x] Switching a timed round to play-by cancels system-made court bookings and clears fixture times; played games, GoBook and already-play-by rounds untouched. Not exercised end-to-end.

@@ -3612,3 +3612,6 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ## 2026-10-21 — Riverside AABB Division 3 Round 2 got timed court bookings in a play-by stage
 - Cause: automatic Swiss next-round creation (`createDecidedSwissGames` → `create_decided_swiss_game`) only treated a round as play-by when a saved round row existed for that category. Division 3 had no saved Round 2 row (the "All categories" round lives in the stage schedule), so the projection planned court slots and the RPC inserted a new round with `scheduling_mode='club'`, then booked Courts 2/4.
 - Fix: RPC now copies the stage's play-by deadline (roundDates/deadline) into new rounds and matches; projection falls back to the stage play-by deadline when no round row exists, so no court slot is planned. Auto-progress engine rebuilt and redeployed. 8 bookings cancelled, games reset to play by 31 Oct.
+
+### 2026-10-21 · Riverside Swiss+RR standings moved into round track
+- Removed the separate right-hand RR standings panel in the Swiss grid; live group standings now render as a compact column immediately after Round 5 in the same horizontal track (`SwissPositionGrid` `afterRounds`), with "View Standings →" / "← Back to Rounds" jump controls. Calculations, visibility (actual R3 activity) and Log View unchanged; standalone RR and normal Swiss unaffected.

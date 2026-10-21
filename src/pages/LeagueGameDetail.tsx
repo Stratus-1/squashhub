@@ -680,6 +680,9 @@ export default function LeagueGameDetail() {
       // Bye teams: same-association teams with no fixture on this date.
       let byeLeagueIds: string[] = [];
       let byeCodeById = new Map<string, string>();
+      // Other teams playing the same evening — eligible subs when the league
+      // allows a player more than one game a night.
+      const playingOtherIds: string[] = [];
       if (assocId && fixtureDate) {
         const { data: assocTeams } = await (supabase as any)
           .from("leagues").select("id, code").eq("association_id", assocId).is("archived_at", null);
@@ -699,13 +702,14 @@ export default function LeagueGameDetail() {
         for (const t of (assocTeams || []) as any[]) {
           const c = String(t.code || "").toUpperCase();
           if (c && !playing.has(c)) { byeLeagueIds.push(t.id); byeCodeById.set(t.id, c); }
+          else if (c && !leagueIds.includes(t.id)) playingOtherIds.push(t.id);
         }
       }
 
       const { data: allPairs } = await (supabase as any)
         .from("league_team_pairs")
         .select("league_id, pair_label, pair_order, player_one_member_id, player_two_member_id, is_active, effective_from, effective_to")
-        .in("league_id", [...leagueIds, ...byeLeagueIds])
+        .in("league_id", [...leagueIds, ...byeLeagueIds, ...playingOtherIds])
         .order("pair_order", { ascending: true });
       const pairs = pairsEffectiveOn(
         ((allPairs || []) as any[]).map((p) => ({ ...p, one: p.player_one_member_id, two: p.player_two_member_id })),
@@ -752,9 +756,16 @@ export default function LeagueGameDetail() {
       const pairKeysByCode: Record<string, string[]> = {};
       const byeRankByName: Record<string, number> = {};
       const byeOrderCount = new Map<string, number>();
+      const playingTeamRankByName: Record<string, number> = {};
       for (const p of pairs as any[]) {
         const one = nameById.get(p.player_one_member_id) || "";
         const two = nameById.get(p.player_two_member_id) || "";
+        if (playingOtherIds.includes(p.league_id)) {
+          const rank = Number(p.pair_order) || 1;
+          if (one) playingTeamRankByName[normalizePlayerName(one)] ??= rank;
+          if (two) playingTeamRankByName[normalizePlayerName(two)] ??= rank;
+          continue;
+        }
         const byeCode = byeCodeById.get(p.league_id);
         if (byeCode) {
           const n = (byeOrderCount.get(byeCode) || 0) + 1;
@@ -795,7 +806,7 @@ export default function LeagueGameDetail() {
       }
       const memberIdByName: Record<string, string> = {};
       for (const [id, n] of nameById) if (n) memberIdByName[normalizePlayerName(n)] ||= id;
-      return { isDoubles: true, memberIdByName, rubbers, pairsByCode, pairKeysByCode, byeRankByName, reserveRankByName, stalePairNamesByCode };
+      return { isDoubles: true, memberIdByName, rubbers, pairsByCode, pairKeysByCode, byeRankByName, reserveRankByName, playingTeamRankByName, stalePairNamesByCode };
     },
   });
   const doublesRubbers = doublesInfo?.isDoubles ? doublesInfo.rubbers : 0;
@@ -2869,6 +2880,7 @@ export default function LeagueGameDetail() {
       fromReserves: (leagueRules as any).sub_from_reserves ?? true,
       fromByeTeam: !!(leagueRules as any).sub_from_bye_team,
       rankRule: ((leagueRules as any).sub_rank_rule ?? "any") as any,
+      fromPlayingTeams: !!(leagueRules as any).allow_multi_fixture_per_night,
     };
     const info: any = doublesInfo as any;
     for (const n of split) {
@@ -2877,6 +2889,7 @@ export default function LeagueGameDetail() {
       const r = checkDoublesSub(rules, {
         reserveRank: info.reserveRankByName?.[key] ?? null,
         byeRank: info.byeRankByName?.[key] ?? null,
+        playingTeamRank: info.playingTeamRankByName?.[key] ?? null,
       }, idx + 1);
       if (r.ok === false) return `${n}: ${r.reason}`;
     }

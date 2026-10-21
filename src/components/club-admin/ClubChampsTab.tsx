@@ -1,3 +1,4 @@
+import { poolNamesFor, poolPlayerSplit, poolSummary, renamePool } from "@/lib/smart-builder/category-pools";
 import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
 import { SwissRrFinishControls } from "@/components/smart-builder/SwissRrFinishControls";
 import { rrFinishIssues, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
@@ -9346,7 +9347,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   {collapsed && !poolGroup && groupLabels[key] && (
                                     <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
                                   )}
-                                  {cardPools > 1 && <span data-testid={`category-pool-summary-${gn}`} className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground">{poolSummary(cardPools, cardPlayers, matchTypeForLeague(gn) === "doubles" ? "pairs" : "players").replace(/^(\d+ pools?) · (\d+)/, "$1 · $2")}</span>}
+                                  {cardPools > 1 && <span data-testid={`category-pool-summary-${gn}`} className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground">{poolSummary(cardPlayers, cardPools, matchTypeForLeague(gn) === "doubles" ? "pairs" : "players")}</span>}
                                   <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
                                   <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                                     {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}
@@ -9686,7 +9687,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 {/* THE pool selector for this division — the
                                     only editable pool control, shared by every
                                     format that uses pools. */}
-                                {poolGroup && <p className="text-xs text-muted-foreground">{poolGroup.label} · {poolGroup.slots.length} pools · Pool {poolIndex}</p>}
+                                {poolGroup && <div className="rounded-md border bg-muted/30 p-2 space-y-1.5" data-testid={`category-pools-${gn}`}>
+                                  <p className="text-[11px] font-semibold">{poolGroup.label} · {poolSummary(cardPlayers, poolGroup.slots.length)}</p>
+                                  {poolGroup.slots.map((slot, i) => <div key={slot} className="flex items-center gap-2 text-xs"><span className="w-20 font-medium">Pool {i + 1}</span><Input type="number" min={1} className="h-7 w-20 text-xs" aria-label={`${poolGroup.label} pool ${i + 1} expected players`} value={expectedPlayers[String(slot)] || ""} onChange={(e) => setExpectedPlayers((m) => ({ ...m, [String(slot)]: Math.max(0, Math.floor(Number(e.target.value)) || 0) }))} /><span className="text-muted-foreground">players</span></div>)}
+                                  <p className="text-[11px] text-muted-foreground">One category: these settings apply to every pool. Each pool keeps its own games and standings; all pools feed the same category play-offs.</p>
+                                </div>}
                                 {formatUsesPools(fmt) && !poolGroup && (() => {
                                   const entrants = (groups as any[])[gn - 1]?.length || Number(expectedPlayers[key]) || 0;
                                   const rawPools = poolsForDivision(gn);
@@ -9702,6 +9707,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         options={poolOptionsFor(fmt, pools).map((n) => ({ v: String(n), l: poolLabelFor(n, fmt) }))}
                                         onChange={(v) => setPoolsForDivision(gn, Number(v) || 1)}
                                       />
+                                      {structureOnly && pools > 1 && (() => {
+                                        const names = poolNamesFor({ pools, poolNames: leaguePoolNames[key] });
+                                        const split = poolPlayerSplit(entrants, pools);
+                                        return <div className="grid gap-1.5 sm:grid-cols-2" data-testid={`category-pools-${gn}`} aria-label={`${groupLabels[key] ?? `Category ${gn}`} pool names`}>
+                                          {names.map((name, i) => <label key={i} className="flex items-center gap-2 text-xs">
+                                            <Input className="h-7 text-xs" aria-label={`${groupLabels[key] ?? `Category ${gn}`} pool ${i + 1} name`} value={leaguePoolNames[key]?.[i] ?? name} onChange={(e) => setLeaguePoolNames((m) => ({ ...m, [key]: renamePool(m[key], pools, i, e.target.value) }))} onBlur={(e) => { if (!e.target.value.trim()) setLeaguePoolNames((m) => ({ ...m, [key]: renamePool(m[key], pools, i, names[i] === e.target.value ? names[i] : `Pool ${i + 1}`) })); }} />
+                                            <span className="whitespace-nowrap text-muted-foreground">({split[i]} {matchTypeForLeague(gn) === "doubles" ? "pairs" : "players"})</span>
+                                          </label>)}
+                                          <p className="col-span-full text-[11px] text-muted-foreground">Names are labels only. Players are placed into pools at Generate draw; each pool keeps its own games and standings and all pools feed this category's play-offs.</p>
+                                        </div>;
+                                      })()}
                                       <p className="text-[11px] text-muted-foreground">
                                         {entrants > 0
                                           ? `${entrants} entrant${entrants === 1 ? "" : "s"} → about ${perPool} per ${pools > 1 ? poolNoun(fmt, false) : "draw"}. `

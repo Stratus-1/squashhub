@@ -69,7 +69,7 @@ describe("replacement card structure", () => {
     expect(onSave).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save Structure" }));
     expect(onSave).toHaveBeenCalledOnce();
-    expect(rowStages(onSave.mock.calls[0][0], "Division 1::Group 1")[0].poolNames).toEqual(["Pool A", "Pool B North"]);
+    expect(rowStages(onSave.mock.calls[0][0], "Division 1::Group 1")[0].poolNames).toEqual(["Pool 1", "Pool B North"]);
     fireEvent.click(screen.getByRole("button", { name: "Close format descriptions" }));
     expect(screen.queryByRole("complementary", { name: "Format descriptions" })).toBeNull();
   });

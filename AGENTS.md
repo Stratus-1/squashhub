@@ -51,3 +51,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
+- Clean round-robin tracks use pointer-captured mouse drag scrolling and native touch scrolling, excluding interactive controls; why: fixture/result navigation must never mutate tournament data or intercept standings actions.

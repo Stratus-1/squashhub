@@ -1583,6 +1583,13 @@
       "when": 1792570615026,
       "tag": "0225_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1792571411831,
+      "tag": "0226_bar_cash_up_report",
+      "breakpoints": true
     }
   ]
 }

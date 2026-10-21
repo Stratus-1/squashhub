@@ -1,6 +1,6 @@
 ## 2026-10-21 — App-wide clean round-robin presentation
-- Removed club/category and beta-switch restrictions from the standalone singles RR view; the shared component defaults to draggable fixtures/results and standings for standalone and existing follow-up RR callers.
-- Kept Swiss/doubles/matchup format boundaries, calendar, management permissions, pairing and all hosted data unchanged. No publication or service deployment.
+- Removed club/category and beta-switch restrictions from the standalone RR view; the shared component defaults to draggable fixtures/results and standings for standalone and existing follow-up RR callers. Doubles partner IDs resolve to the existing team row for display only.
+- Kept Swiss/matchup format boundaries, calendar, management permissions, pairing and all hosted data unchanged. No publication or service deployment.
 - Regression checks cover saved-input immutability, result refresh, drag navigation, matrix fallback and viewing safety. Signed-in saved Uitsig pools drag 170px on desktop/mobile with unchanged content and no page errors.
 
 ## 2026-10-21 — Ladies B clean round-robin view

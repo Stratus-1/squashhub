@@ -71,7 +71,9 @@ export type DrawDivision = { group: number; label: string; doubles: boolean; uni
   /** Paced knockout: organiser-reviewed Round 1 matches per pool (index 0 = whole field when there are no pools). Used exactly at Generate. */
   koPairs?: Array<Array<[string, string]>> | null;
   /** Read-only match format from setup (e.g. "PAR 11 · Best of 5"), shown to the admin on the draw page. */
-  scoringText?: string | null };
+  scoringText?: string | null;
+  /** Organiser pool names inside this ONE category (index = pool order). Never separate categories. */
+  poolNames?: string[] | null };
 
 /** Respect an explicit No even if a saved provisional format used several pools; absent rule keeps legacy format. */
 export function formatWithPoolRule(format: DivFormat, rule: PoolPlan | null, entrants: number): DivFormat {
@@ -642,6 +644,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
     const kind = f.kind!, id = `g${d.group}`;
     out.push({
       divisionId: id, label: d.label, unit: d.doubles ? "pairs" : "players", expectedEntrants: n, groupNumber: d.group,
+      ...(kind === "pools" && d.poolNames?.some((x) => x?.trim()) ? { poolLabels: Array.from({ length: f.pools ?? 1 }, (_, i) => d.poolNames?.[i]?.trim() || `Pool ${String.fromCharCode(65 + i)}`) } : {}),
       seeding: { source: "entry_order", method: f.seeding === "random" ? "random" : "snake" },
       placements: "champion", finalStandings: "last_stage", entrants: [], ...(d.bottomHalf ? { playoffBottomHalf: true } : {}),
       ...playoffStagesFor({

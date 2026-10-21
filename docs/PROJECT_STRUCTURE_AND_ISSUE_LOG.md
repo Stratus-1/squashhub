@@ -3618,3 +3618,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ### 2026-10-21 — Uitsig Club Champs 2026: Ladies C removed (data cleanup, authorized)
 - Ladies C (g8) had no games/entries; its players and results already lived once in Ladies B (pools A/B). Deleted empty Ladies C category, stage and 5 rounds; removed g8/"Ladies C" and declined players (Nicole Hamer, Adele du Rand) from saved plan; Ladies B saved plan now mirrors live two pools. Single guarded transaction; all 87 games verified byte-identical before/after. Registrations/accounts kept. Backup JSON in private Files metadata (`.lovable/backups/uitsig-ladies-c-20261021T205838.json`).
+
+## 2026-10-21 — Category with N pools (not separate categories)
+- Problem: setup "Group" button created numbered subdivisions (e.g. Men's A › 1, › 2) that look like pools but are separate draws with separate playoffs (root of Uitsig Men's A split). Pool names edited in card/canvas editors never reached the saved draw; public page always showed "Pool A/B".
+- Fix: button renamed "Subdivision"; setup warns when ≥2 round-robin subdivisions exist and offers a one-click "Make these N pools" (setup only, blocked once players are placed) via `src/lib/smart-builder/category-pools.ts`; pool-name inputs on pooled rows; draw spec carries pool names (`poolLabels`); saving refreshes existing pool labels without touching games; `ClubChampsView` shows saved pool names. Test: `src/test/category-pools-model.test.ts`.
+- No live data changed. Uitsig Men's A migration is a separate, unapproved proposal.

@@ -195,6 +195,9 @@ export async function persistStructure(db: Db, tid: string, spec: TournamentSpec
       if (st.kind === "pools") for (let i = 0; i < (st.pools ?? 1); i++) {
         let [p] = await db.select("tournament_pools", { stage_id: row.id, pool_index: i });
         p ??= (await db.insert("tournament_pools", [{ tournament_id: tid, stage_id: row.id, pool_index: i, label: d.poolLabels?.[i] || poolDefaultLabel(i) }]))[0];
+        // Renamed pools keep their row (fixtures/standings untouched); only the label follows the organiser's name.
+        const want = d.poolLabels?.[i]?.trim();
+        if (want && p.label !== want) { await db.update("tournament_pools", { id: p.id }, { label: want }); p = { ...p, label: want }; }
         ids.pool[`${sk}/${i}`] = p.id;
       }
     }

@@ -710,6 +710,13 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       : 1;
 
   const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
+  /** Organiser's saved pool name inside ONE category (structured spec), falling back to "Pool A/B…". */
+  const poolName = (gn: number, p: number): string => {
+    const spec = isStructured ? arch?.builder_spec : null;
+    const d = spec?.divisions?.find((x: any) => divisionGroup(spec, x) === gn);
+    const saved = d?.poolLabels?.[p - 1];
+    return typeof saved === "string" && saved.trim() ? saved.trim() : `Pool ${poolLabel(p)}`;
+  };
   // Standings must follow the pool games actually created, not a re-derived split.
   const playedPoolMap = (groupNum: number, pc: number, dbl: boolean) =>
     poolsFromGames(assignPools(entries as SwissEntry[], groupNum, pc, dbl), entries as SwissEntry[], matches as any[], groupNum, dbl);
@@ -1298,7 +1305,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               seedOrder: rrSeedOrder(pm.map((m: any) => ({ round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, isBye: !!m.is_bye })), rows.map((r: any) => r.club_member_id)),
               matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
             });
-            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} clean={champ.club_id === RIVERSIDE_CLUB_ID} group={pn} groupLabel={pc > 1 ? `Pool ${poolLabel(pn)}` : getGroupLabel(champ, gn)} />;
+            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · ${poolName(gn, pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} clean={champ.club_id === RIVERSIDE_CLUB_ID} group={pn} groupLabel={pc > 1 ? poolName(gn, pn) : getGroupLabel(champ, gn)} />;
           })}
           {(() => {
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
@@ -1537,7 +1544,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               className="space-y-2"
               header={
                 <>
-                  <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                  <Badge variant="outline" className="text-xs font-semibold">{poolName(gn, poolNumber)}</Badge>
                   <span className="text-xs text-muted-foreground">
                     {s.length} {isDoubles ? (s.length === 1 ? "pair" : "pairs") : (s.length === 1 ? "player" : "players")}
                   </span>
@@ -3645,7 +3652,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       if (m.stage_label) return String(m.stage_label);
       if ((m.stage || "group") !== "group") return "Play-off";
       const p = resolvePoolNumber(m, gn);
-      return p != null && poolCountFor(gn) > 1 ? `Pool ${poolLabel(p)}` : "Pool match";
+      return p != null && poolCountFor(gn) > 1 ? poolName(gn, p) : "Pool match";
     };
 
     return (
@@ -3769,7 +3776,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     const sliceLabel = (s: Slice) =>
       s.poolNumber == null
         ? getGroupLabel(champ, s.gn)
-        : `${getGroupLabel(champ, s.gn)} · Pool ${poolLabel(s.poolNumber)}`;
+        : `${getGroupLabel(champ, s.gn)} · ${poolName(s.gn, s.poolNumber)}`;
 
     // Winners table — top of each league/pool plus the overall tournament winner.
     const leagueWinners = slices
@@ -4130,7 +4137,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             if (poolRows.length === 0) return null;
             return (
               <div key={poolNumber} className="space-y-1.5">
-                <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                <Badge variant="outline" className="text-xs font-semibold">{poolName(gn, poolNumber)}</Badge>
                 {poolRows.map((m: any) => renderMatchRow(m))}
               </div>
             );
@@ -4227,7 +4234,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               return (
                 <div key={poolNumber} className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                    <Badge variant="outline" className="text-xs font-semibold">{poolName(gn, poolNumber)}</Badge>
                     <span className="text-xs text-muted-foreground">{poolMatches.length} matches</span>
                   </div>
                   {poolMatches.length > 0

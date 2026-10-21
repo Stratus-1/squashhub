@@ -1597,6 +1597,13 @@
       "when": 1792571438846,
       "tag": "0227_bar_cash_up_admin_update_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1792571611207,
+      "tag": "0228_journal_proof_documents",
+      "breakpoints": true
     }
   ]
 }

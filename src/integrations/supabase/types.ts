@@ -5696,6 +5696,44 @@ export type Database = {
           },
         ]
       }
+      club_journal_attachments: {
+        Row: {
+          club_id: string
+          created_at: string
+          file_name: string
+          id: string
+          journal_ref: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          journal_ref: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          journal_ref?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_journal_attachments_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_journal_entries: {
         Row: {
           account: Database["public"]["Enums"]["gl_account"]

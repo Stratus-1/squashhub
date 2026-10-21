@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Clear the 11 owner-approved stale Uitsig timed allocations; preserve member bookings, deadlines and played results; verify hosted readback.
 - [x] PIN-only counter top-up permission repaired and hosted grant confirmed; isolated PostgreSQL signed-out R100 card receipt, balanced journal, retry and invalid/missing/expired/revoked PIN, cash and foreign-club rejection checks pass. No real payment/member balance changes or publication; actual tablet payment not exercised.
 - [x] Signed-in member account settlement: optional tip prompt only on Add to my member account, no OTP; single active serving PIN session auto-selected, multiple serving names selectable. 46 focused tests and disposable PostgreSQL ownership/recipient/rollback/retry/account-tip recognition tests pass; fictional dialog browser checked desktop/mobile. Order-process ON/OFF unchanged. No live charge or publication; real signed-in end-to-end settlement intentionally untested.
 

@@ -2,6 +2,7 @@ import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
 import { structureUnits, structureRowIssues, rowStages, writeRowStages } from "./structure-rows";
 import { newStageId, validateStagePlan, type StageKind, type StagePlanItem } from "./stage-plan";
 import { rrIssues } from "./rr-topology";
+import { rrFinishIssues } from "@/lib/tournaments/swiss-rr-finish";
 
 /** One-page structure flow is the only builder flow for every club (old multi-page structure retired 2026-10-16). */
 export function cardStructurePilot(_clubId: string, _hostname: string, _tournamentId?: string, _enabled = false) {

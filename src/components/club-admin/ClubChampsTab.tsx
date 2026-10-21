@@ -1512,6 +1512,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leagueSeedingPlans, setLeagueSeedingPlans] = useState<Record<string, string>>({});
   // Per-category pool placement (snake vs strength band); blank inherits the tournament-wide poolAllocation.
   const [leaguePoolPlacement, setLeaguePoolPlacement] = useState<Record<string, PoolAllocationMode>>({});
+  // Structure screen: editable pool labels per category (labels only — never players, fixtures or results).
+  const [leaguePoolNames, setLeaguePoolNames] = useState<Record<string, string[]>>({});
   const placementForLeague = (gn: number): PoolAllocationMode => leaguePoolPlacement[String(gn)] ?? poolAllocation;
   const [leagueFollowUpSeeding, setLeagueFollowUpSeeding] = useState<Record<string, string>>({});
   const [monradRounds, setMonradRounds] = useState<Record<string, number>>({});
@@ -9073,6 +9075,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueFollowUpFormats(v.league_follow_up_formats ?? {});
     setLeagueSeedingPlans(v.league_seeding_plans ?? {});
     setLeaguePoolPlacement(v.league_pool_placement ?? {});
+    setLeaguePoolNames(v.league_pool_names ?? {});
     setLeagueFollowUpSeeding(v.league_follow_up_seeding ?? {});
     setMonradRounds(v.monrad_rounds ?? {});
     setLeagueByeHandling(v.league_bye_handling ?? {});
@@ -9156,6 +9159,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_follow_up_formats: leagueFollowUpFormats,
       league_seeding_plans: leagueSeedingPlans,
       league_pool_placement: leaguePoolPlacement,
+      league_pool_names: Object.fromEntries(Object.entries(swissPools).filter(([, n]) => Number(n) > 1).map(([k, n]) => [k, poolNamesFor({ pools: Number(n), poolNames: leaguePoolNames[k] })])),
       league_follow_up_seeding: leagueFollowUpSeeding,
       league_bye_handling: leagueByeHandling,
       league_forfeit_rules: leagueForfeitRules,
@@ -9177,7 +9181,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return true;
   };
 
-  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leaguePoolNames, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -9311,6 +9315,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         const poolIndex = poolGroup ? poolGroup.slots.indexOf(gn) + 1 : 0;
                         const identityLocked = !!structureOnly?.initial._identity_locked;
                         const displayCategory = gn - (structureOnly?.initial._pool_groups ?? []).reduce((n: number, group: { slots: number[] }) => n + group.slots.filter((slot) => slot < gn && slot !== group.slots[0]).length, 0);
+                        // One category card only: legacy numbered pool slots share the first pool's settings.
+                        if (poolGroup && poolIndex > 1) return null;
+                        const cardPools = structureOnly && formatUsesPools(fmt) ? (poolGroup ? poolGroup.slots.length : poolsForDivision(gn)) : 1;
+                        const cardPlayers = poolGroup ? poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0) : Number(expectedPlayers[key] || 0);
                         return (
                           <div key={gn} className={poolGroup ? "border-l-2 border-border pl-3" : ""} data-testid={poolGroup ? `structure-pool-${gn}` : undefined}>
                             {poolGroup && poolIndex === 1 && <header className="flex flex-wrap items-center gap-3 border-b border-border py-3" data-testid="structure-parent-category"><span className="text-xs font-semibold">Category {displayCategory}</span><h3 className="text-sm font-semibold">{poolGroup.label}</h3><Badge variant="secondary">{poolGroup.slots.length} pools</Badge><span className="text-xs text-muted-foreground">{poolGroup.slots.reduce((n, slot) => n + Number(expectedPlayers[String(slot)] || 0), 0)} players</span></header>}
@@ -9333,10 +9341,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   className={cn("flex items-center gap-2 flex-wrap", !collapsed && "mb-1", (collapsed || categoryLocked) && "cursor-pointer")}
                                   onClick={collapsed && !categoryLocked ? () => setCollapsedLeagues((m) => ({ ...m, [key]: false })) : undefined}
                                 >
-                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">{poolGroup ? `${poolGroup.label} · Pool ${poolIndex}` : `Category ${displayCategory}`}</span>
+                                  <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">{`Category ${displayCategory}`}</span>
+                                  {collapsed && poolGroup && <span className="text-sm font-semibold truncate">{poolGroup.label}</span>}
                                   {collapsed && !poolGroup && groupLabels[key] && (
                                     <span className="text-sm font-semibold truncate">{groupLabels[key]}</span>
                                   )}
+                                  {cardPools > 1 && <span data-testid={`category-pool-summary-${gn}`} className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground">{poolSummary(cardPools, cardPlayers, matchTypeForLeague(gn) === "doubles" ? "pairs" : "players").replace(/^(\d+ pools?) · (\d+)/, "$1 · $2")}</span>}
                                   <span className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">{meta.short}</span>
                                   <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                                     {GENDER_LABELS[genderForLeague(gn)]} · {matchTypeForLeague(gn) === "doubles" ? "Doubles" : "Singles"} ·{" "}

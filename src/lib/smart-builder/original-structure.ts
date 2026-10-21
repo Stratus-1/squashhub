@@ -34,7 +34,7 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
     out.expected_players[id] = Number(a.unitEntries[key]) || 0;
     out.league_formats[id] = saved.league_formats?.[id] === "double_round_robin" && (s.kind === "pools" || s.kind === "round_robin") ? "double_round_robin" : originalFormat(s.kind);
     out.swiss_pools[id] = s.pools ?? 1;
-    if ((s.pools ?? 1) > 1) out.league_pool_names[id] = saved.league_pool_names?.[id] ?? poolNamesFor(s);
+    if ((s.pools ?? 1) > 1) out.league_pool_names[id] = poolNamesFor({ pools: s.pools, poolNames: s.poolNames ?? saved.league_pool_names?.[id] });
     out.swiss_rounds[id] = s.endAfterRound ?? s.rounds ?? 5;
     out.swiss_rr_finish[id] = s.rrFinish ?? null;
     if (s.kind === "monrad" && s.rounds != null) out.monrad_rounds = { ...(out.monrad_rounds ?? {}), [id]: s.rounds };

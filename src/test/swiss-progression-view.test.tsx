@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { buildSwissGrid, buildSwissProgression, movement, type ProgressionMatchInput } from "@/lib/tournaments/swiss-progression-view";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 
@@ -68,5 +68,32 @@ describe("Swiss progression (read-only)", () => {
     expect(pending.rows.map((r) => r.name)).toEqual(["Winner R1", "To be decided"]);
     expect(g[1].blocks.flatMap((b) => b.rows.map((r) => r.id)).filter(Boolean).sort()).toEqual(["p2", "p5"]);
     expect(g[2].created).toBe(false);
+  });
+
+  it("shows a category completed banner only when every round is played", () => {
+    const done = buildSwissProgression({
+      seedOrder: seed,
+      names,
+      matches: [
+        m("r1a", 1, "p1", "p5", "p5", { score: "3-1" }),
+        m("r1b", 1, "p2", "p4", "p2"),
+        m("r1c", 1, "p3", null, null, { isBye: true, status: "completed" }),
+        m("r2a", 2, "p5", "p2", "p2", { score: "3-2" }),
+        m("r2b", 2, "p1", "p4", "p4", { score: "3-0" }),
+        m("r3a", 3, "p2", "p4", "p4", { score: "3-1" }),
+        m("r3b", 3, "p5", "p1", "p5", { score: "3-2" }),
+        m("r3c", 3, "p3", null, null, { isBye: true, status: "completed" }),
+      ],
+      totalRounds: 3,
+    });
+    render(<SwissProgressionPilotView title="Men's A" model={done} />);
+    expect(screen.getByTestId("category-completed-banner")).toBeTruthy();
+    expect(screen.getByText(/All rounds played/)).toBeTruthy();
+    expect(screen.getByText("Final standings")).toBeTruthy();
+
+    cleanup();
+    render(<SwissProgressionPilotView title="Men's A" model={buildSwissProgression({ seedOrder: seed, names, matches, totalRounds: 3 })} />);
+    expect(screen.queryByTestId("category-completed-banner")).toBeNull();
+    expect(screen.getByText("Current positions")).toBeTruthy();
   });
 });

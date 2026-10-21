@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Correct Ladies A preview to the approved nine-position screenshot only; preserve all saved games/settings and do not publish.
 - [x] Enable read-only drag scrolling on Men's A pool fixture/result panels; 19 focused tests pass and authenticated desktop/mobile both pools scroll 170px by dragging with unchanged content/no page errors. Standings controls retained; no live changes/publication.
 - [x] Read-only approved-matrix audit: actual uploaded visuals checked; Men's C R1/R2 stored pairs match entering-round positions, R3–5 not stored and all nine lower-six projected matches present. Ladies A R1 matches; R2 contains 3v6 instead of 6v9 and no bye3; R3–5 absent and preview mismatches. Exact-chart selectors still target old group numbers C4/A6 instead of current C3/A5; C RR branch freezes upper occupants and writer lacks exact-chart selection. Report correction proposals only; no application/live changes or publication.
 - [ ] Owner priority 22 Oct: Men's C and Ladies A only; other items parked.

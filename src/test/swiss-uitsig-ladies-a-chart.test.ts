@@ -48,12 +48,12 @@ describe("Uitsig Ladies A owner-approved chart", () => {
     expect(uitsigLadiesAChart().map(r => r.bye)).toEqual([9,3,2,4,5]);
   });
   it("fails closed outside the exact club, tournament, group and field size", () => {
-    expect(usesUitsigLadiesAChart(club,tournament,6,9,5)).toBe(true);
-    expect(usesUitsigLadiesAChart("other",tournament,6,9,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,"other",6,9,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,tournament,5,9,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,tournament,6,8,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,tournament,6,9,4)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,5,9,5)).toBe(true);
+    expect(usesUitsigLadiesAChart("other",tournament,5,9,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,"other",5,9,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,6,9,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,5,8,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,5,9,4)).toBe(false);
   });
   it("leaves the default model unchanged and retains saved games", () => {
     const m = model();

@@ -3592,3 +3592,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 
 - 2026-10-21 NSC doubles: "Sub not allowed" blocked Sherique Crafford (Double Troubles pair 3) subbing for another team. When a league allows more than one game a night, players from teams also playing that evening now count as allowed subs (doubles-sub-eligibility `fromPlayingTeams`).
+
+### 2026-10-21 — Swiss round count: Structure vs running tournament (Riverside)
+- Finding: "River side Club champs" Men's B (18) is 4 rounds everywhere (setup, live draw copy, legacy column empty); preview log shows 4. Men's A (24) is 5 in both. Real gap: Structure → live sync only read a category's own stage plan, so a category inheriting the tournament default never synced.
+- Fix (Riverside only): sync resolves the value exactly as Structure shows it (own → parent → default); never below a round with games.
+- Added Riverside "Round robin in final 3 rounds" for 5-round Swiss (`src/lib/tournaments/swiss-rr-finish.ts`, engine `nextSwissRound`). Tests: `src/test/swiss-rr-finish.test.ts`.

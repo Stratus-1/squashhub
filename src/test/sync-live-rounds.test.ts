@@ -8,17 +8,17 @@ const spec = { divisions: [
 
 describe("Structure Swiss rounds reach the running tournament", () => {
   it("raising 3 to 4 updates the running tournament", () => {
-    const r = syncSwissRoundsToSpec(spec, { "Mens B": [{ kind: "swiss", rounds: 4 }] }, { 3: 1 });
+    const r = syncSwissRoundsToSpec(spec, { stagePlans: { "Mens B": [{ kind: "swiss", rounds: 4 }] } } as any, { 3: 1 });
     expect(r.spec.divisions[0].stages[0].swissRounds).toBe(4);
     expect(r.changes).toEqual([{ label: "Mens B", from: 3, to: 4 }]);
   });
   it("cannot go below a round that already has games", () => {
-    const r = syncSwissRoundsToSpec(spec, { "Mens B": [{ kind: "swiss", rounds: 2 }] }, { 3: 3 });
+    const r = syncSwissRoundsToSpec(spec, { stagePlans: { "Mens B": [{ kind: "swiss", rounds: 2 }] } } as any, { 3: 3 });
     expect(r.spec.divisions[0].stages[0].swissRounds).toBe(3);
     expect(r.blocked).toHaveLength(1);
   });
   it("leaves round-robin categories alone", () => {
-    const r = syncSwissRoundsToSpec(spec, { "Ladies B": [{ kind: "swiss", rounds: 4 }] });
+    const r = syncSwissRoundsToSpec(spec, { stagePlans: { "Ladies B": [{ kind: "swiss", rounds: 4 }] } } as any);
     expect(r.changes).toEqual([]);
   });
 });

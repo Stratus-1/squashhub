@@ -15,6 +15,8 @@ import { monradPlan } from "@/lib/smart-builder/monrad";
 import { evaluateStructures } from "@/lib/smart-builder/structure-guide";
 import { categoryEstimate } from "@/lib/smart-builder/expected-entries";
 import { RRTopologyEditor } from "./RRTopologyEditor";
+import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
+import { rrFinishIssues, rrFinishSplit } from "@/lib/tournaments/swiss-rr-finish";
 import { FormatLearnButton, FormatLearnDialog } from "./FormatLearnDialog";
 import type { LearnFormat } from "@/lib/smart-builder/format-learn";
 import type { StageKind } from "@/lib/smart-builder/stage-plan";
@@ -108,6 +110,20 @@ export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: 
             <div className="font-semibold">Draw format</div><div className="grid grid-cols-2 gap-1 sm:grid-cols-4" role="group" aria-label={`${key} draw format`}>{formats.map((f) => <Button key={f} size="sm" variant={kind === f ? "default" : "outline"} className="h-auto min-h-8 whitespace-normal px-2 text-xs" aria-pressed={kind === f} onClick={() => setFormat(key, f)}>{f === "monrad" ? "Monrad" : FORMAT_HELP[f].title}</Button>)}</div>
             {first.kind && !kind && <p className="text-muted-foreground">Saved format: {first.kind}. Retained unless you choose another.</p>}
             {kind === "swiss" && <label className="flex items-center gap-2">Swiss rounds<Input type="number" min={1} max={15} className="h-8 w-20 text-xs" aria-label={`${key} Swiss rounds`} value={first.rounds ?? ""} onChange={(e) => update((a) => patchCardStage(a, key, { rounds: Number(e.target.value) || null }))} /></label>}
+            {kind === "swiss" && clubId === RIVERSIDE_CLUB_ID && (() => {
+              const rr = first.rrFinish;
+              const groups = rr?.groups ?? Math.max(1, Math.floor(n / 4) - (n % 4 === 1 ? 1 : 0));
+              const issues = rr?.enabled ? rrFinishIssues(n, first.endAfterRound ?? first.rounds, groups) : [];
+              const split = rrFinishSplit(n, groups);
+              return <div className="space-y-1 rounded-md border border-border p-2" data-testid={`rr-finish-${key}`}>
+                <label className="flex items-center gap-2"><input type="checkbox" aria-label={`${key} round robin in final 3 rounds`} checked={!!rr?.enabled} onChange={(e) => update((a) => patchCardStage(a, key, { rrFinish: e.target.checked ? { enabled: true, groups } : null }))} />Round robin in final 3 rounds <Badge variant="outline">Pilot</Badge></label>
+                {rr?.enabled && <>
+                  <label className="flex items-center gap-2">Groups of 4<Input type="number" min={1} max={Math.max(1, Math.floor(n / 4))} className="h-8 w-20 text-xs" aria-label={`${key} round robin groups`} value={groups} onChange={(e) => update((a) => patchCardStage(a, key, { rrFinish: { enabled: true, groups: Math.max(1, Math.floor(Number(e.target.value)) || 1) } }))} /></label>
+                  <p className="text-muted-foreground">Rounds 1–2 are Swiss. After Round 2 the positions are fixed: {split.groupRanges.map(([s, e]) => `${s}–${e}`).join(", ")} each play everyone in their group in Rounds 3–5.{split.remainder ? ` Positions ${split.remainder[0]}–${split.remainder[1]} carry on Swiss among themselves.` : ""} Standings keep counting all 5 rounds.</p>
+                  {issues.map((m) => <p key={m} className="text-destructive">{m}</p>)}
+                </>}
+              </div>;
+            })()}
             {kind === "monrad" && (() => { const plan = monradPlan(n); return <p className="text-muted-foreground">{plan ? `${n} expected player${n === 1 ? "" : "s"} → ${plan.rounds} round${plan.rounds === 1 ? "" : "s"} · ${plan.byes ? `${plan.bracket}-draw with ${plan.byes} bye${plan.byes === 1 ? "" : "s"} (top seeds)` : `full ${plan.bracket}-draw`} · ≈${plan.matches} matches. Every player plays every round and all finishing places are decided.` : "Enter expected entries to estimate the rounds, draw size and byes."} Draw generation is not available yet.</p>; })()}
             {kind === "round_robin" && <>
               <label className="flex items-center gap-2">Pools<Input className="h-8 w-20 text-xs" type="number" min={1} max={26} aria-label={`${key} pool count`} value={first.pools ?? 1} onChange={(e) => update((a) => { const count = Math.min(26, Math.max(1, Number(e.target.value) || 1)); return patchCardStage(a, key, { pools: count, poolNames: Array.from({ length: count }, (_, i) => rowStages(a, key)[0].poolNames?.[i] ?? `Pool ${String.fromCharCode(65 + i)}`) }); })} /></label>

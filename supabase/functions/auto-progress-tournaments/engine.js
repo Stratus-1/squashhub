@@ -7949,6 +7949,8 @@ export {
   stageLifecycle,
   schedulePlannedPlayoffGames,
   createDecidedSwissGames,
+  buildSwissProgression,
+  buildProposedSwissGrid,
   autoProgress,
   atomically
 };

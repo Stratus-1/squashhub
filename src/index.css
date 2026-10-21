@@ -612,6 +612,20 @@ body:has(.admin-contrast) [role="dialog"] {
   border-bottom: 2px solid hsl(var(--round-tone) / .7);
   color: hsl(var(--foreground));
 }
+/* Fixed pairing-group identity, never a changing standings/rank heatmap. */
+.riverside-rr-band[data-rr-group="1"] { --rr-group-tone: var(--round-1); }
+.riverside-rr-band[data-rr-group="2"] { --rr-group-tone: var(--round-2); }
+.riverside-rr-band[data-rr-group="3"] { --rr-group-tone: var(--round-3); }
+.riverside-rr-band[data-rr-group="4"] { --rr-group-tone: var(--round-4); }
+.riverside-rr-band[data-rr-group="5"] { --rr-group-tone: var(--round-5); }
+.riverside-rr-band[data-rr-group="6"] { --rr-group-tone: var(--accent); }
+.riverside-rr-band[data-rr-group="swiss"] { --rr-group-tone: var(--muted-foreground); border-left-style: dashed; }
+.riverside-rr-band[data-rr-group] {
+  background-color: hsl(var(--rr-group-tone) / .14);
+  color: hsl(var(--foreground));
+  border-left: 3px solid hsl(var(--rr-group-tone));
+}
+.riverside-rr-band[data-rr-group="swiss"] { border-left-style: dashed; }
 /* Embedded Riverside progression only; other clubs retain their selector. */
 .riverside-category-selector {
   --category-blue: 214 72% 38%;

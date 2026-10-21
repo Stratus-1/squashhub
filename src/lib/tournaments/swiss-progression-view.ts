@@ -16,6 +16,7 @@ import { uitsigLadiesAChart } from "./swiss-uitsig-ladies-a-chart";
 import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
 import { rrFinishOn, rrFinishRound, rrFinishRepeats, type RrFinish } from "./swiss-rr-finish";
 import { swissRound } from "./contract";
+import { hasSwissMatchActivity } from "./swiss-rr-display";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -31,12 +32,14 @@ export interface ProgressionMatchInput {
   isBye?: boolean;
   status?: string | null;
   score?: string | null;
+  sideAPoints?: number | null; sideBPoints?: number | null; gameScores?: any; forfeitMemberId?: string | null;
   date?: string | null; time?: string | null; court?: string | null; playBy?: string | null;
   placeholderA?: string | null; placeholderB?: string | null;
 }
 
 export type FixtureState = "completed" | "scheduled" | "awaiting_opponent" | "bye";
 export interface ProgressionFixture {
+  started?: boolean;
   id: string; round: number; state: FixtureState;
   a: string | null; b: string | null; aLabel: string; bLabel: string;
   winner: string | null; loser: string | null; score: string | null;
@@ -83,7 +86,7 @@ export function buildSwissProgression(input: {
       const state: FixtureState = bye ? "bye" : done ? "completed" : !m.a || !m.b ? "awaiting_opponent" : "scheduled";
       const loser = done ? (m.winner === m.a ? m.b : m.a) : null;
       return {
-        id: m.id, round: r, state, a: m.a, b: bye ? null : m.b,
+        id: m.id, round: r, state, started: hasSwissMatchActivity(m), a: m.a, b: bye ? null : m.b,
         aLabel: nm(m.a, m.placeholderA), bLabel: bye ? "Bye" : nm(m.b, m.placeholderB),
         winner: done ? m.winner : bye ? m.a ?? m.b : null, loser, score: m.score ?? null,
         when: m.date ? `${m.date}${m.time ? ` ${m.time.slice(0, 5)}` : ""}` : null,

@@ -7,16 +7,18 @@ import { SwissPositionGrid } from "@/components/tournaments/SwissPositionGrid";
 import type { FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { cn } from "@/lib/utils";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
+import { swissRrDisplay } from "@/lib/tournaments/swiss-rr-display";
 import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type StageScheduleConfig, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
 
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
 
 /** Riverside pilot: read-only Swiss grid (default) or classic progression tables, in the shared viewer. */
-export function SwissProgressionPilotView({ title, model, positionalPreview = false, exactMensCChart = false, exactLadiesAChart = false, exactSixteenChart = false, classicStandings, calendar, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false, stageNoun = "Swiss", formatNote, noRepeats = true, infoTournamentId, rrStandings }: { rrStandings?: ReactNode; calendar?: ReactNode; exactMensCChart?: boolean; exactSixteenChart?: boolean; exactLadiesAChart?: boolean; infoTournamentId?: string | null; noRepeats?: boolean; appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; /** Wording for non-Swiss stages (e.g. "Round robin") so later-stage logs don't read as Swiss. */ stageNoun?: string; formatNote?: string }) {
+export function SwissProgressionPilotView({ title, model, clubId, positionalPreview = false, exactMensCChart = false, exactLadiesAChart = false, exactSixteenChart = false, classicStandings, calendar, stageSchedule, courtName, slots, appliedPlayBy, hideCalendar = false, stageNoun = "Swiss", formatNote, noRepeats = true, infoTournamentId, rrStandings }: { clubId?: string | null; rrStandings?: ReactNode; calendar?: ReactNode; exactMensCChart?: boolean; exactSixteenChart?: boolean; exactLadiesAChart?: boolean; infoTournamentId?: string | null; noRepeats?: boolean; appliedPlayBy?: Record<number, string>; hideCalendar?: boolean; slots?: Record<string, FixtureSchedule>; title: string; model: SwissProgressionModel; positionalPreview?: boolean; classicStandings?: ReactNode; stageSchedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; /** Wording for non-Swiss stages (e.g. "Round robin") so later-stage logs don't read as Swiss. */ stageNoun?: string; formatNote?: string }) {
   const [mode, setMode] = useState<"grid" | "classic" | "calendar">("grid");
   const roundNums = model.rounds.map((r) => r.round);
   // Final standing locks when the Swiss stage's own rounds are complete — later follow-up stage games don't block it.
   const allComplete = model.swissStageComplete;
+  const rr = swissRrDisplay(model, clubId);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
   const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots, appliedPlayBy, noRepeats, previewFinals: positionalPreview, exactMensCChart, exactLadiesAChart, exactSixteenChart });
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
@@ -35,18 +37,25 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
         <span className="text-muted-foreground">{formatNote ?? SWISS_FORMAT_LABEL[model.format]}</span>
       </div>
       <div id="swiss-tabpanel" role="tabpanel" aria-labelledby={`swiss-tab-${mode}`} className="space-y-3">
+      {mode !== "calendar" && rr.enabled && <div className="space-y-1 text-xs" data-testid="rr-pairing-groups">
+        <h3 className="font-semibold">{rr.locked ? "Locked pairing groups — after Round 2" : "Projected pairing groups — lock after Round 2"}</h3>
+        <div className="flex flex-wrap gap-2">
+          {rr.groupRanges.map(([lo, hi], i) => <span key={lo} className="riverside-rr-band px-2 py-1" data-rr-group={rr.locked ? i + 1 : undefined}>Group {i + 1} · positions {lo}–{hi}</span>)}
+          {rr.remainder && <span className="riverside-rr-band px-2 py-1" data-rr-group={rr.locked ? "swiss" : undefined}>Swiss remainder · positions {rr.remainder[0]}–{rr.remainder[1]}</span>}
+        </div>
+      </div>}
       {mode === "grid" && unavailable && classicStandings ? classicStandings : null}
       {mode === "classic" && classicStandings ? classicStandings : null}
       {mode === "calendar" ? calendar ?? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(/^r(\d+)-/.exec(k)?.[1])])) : slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
         <>
-          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} /></TournamentInteractiveViewer> : <>
+          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrMemberships={rr.memberships} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
           </div>
           {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (
             <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none" wheelZoom="direct">
-              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} />
+              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrMemberships={rr.memberships} />
             </TournamentInteractiveViewer>
           )}
           </>}
@@ -57,7 +66,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
             <table className="text-xs border-collapse bg-background text-foreground">
               <thead>
                 <tr className="text-left text-muted-foreground">
-                  <th className="px-2 py-1">Pos</th><th className="px-2">Move</th><th className="px-2">Player</th><th className="px-2">Seed</th>
+                  <th className="px-2 py-1">Pos</th><th className="px-2">Move</th><th className="px-2">Player</th><th className="px-2">Seed</th>{rr.locked && <><th className="px-2 whitespace-nowrap">Pairing pos.</th><th className="px-2 whitespace-nowrap">Group</th></>}
                   {roundNums.map((r) => <th key={r} className="px-2 whitespace-nowrap">Round {r}</th>)}
                   <th className="px-2 whitespace-nowrap">{allComplete ? "Final standings" : "Current positions"}</th>
                 </tr>
@@ -65,12 +74,14 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
               <tbody>
                 {model.rows.map((row) => {
                   const mv = movement(row);
+                  const membership = rr.memberships.get(row.id);
                   return (
-                    <tr key={row.id} className="border-t border-border">
+                    <tr key={row.id} data-rr-group={membership ? membership.group ?? "swiss" : undefined} className={cn("border-t border-border", membership && "riverside-rr-band")}>
                       <td className="px-2 py-1 font-semibold">{row.current}</td>
                       <td className="px-2" aria-label="movement">{mv == null || mv === 0 ? "–" : mv > 0 ? `▲${mv}` : `▼${-mv}`}</td>
                       <td className="px-2 font-medium whitespace-nowrap">{row.name}</td>
                       <td className="px-2">{row.seed}</td>
+                      {rr.locked && <><td className="px-2">{membership?.position ?? "—"}</td><td className="px-2 whitespace-nowrap">{membership?.group ? `Group ${membership.group}` : "Swiss remainder"}</td></>}
                       {row.cells.map((c, i) => (
                         <td key={i} className={`px-2 whitespace-nowrap ${c.startsWith("W ") ? "text-primary font-medium" : c.startsWith("L ") ? "text-muted-foreground" : ""}`}>
                           {c}{row.positions[i] != null ? <span className="text-muted-foreground"> · {row.positions[i]}</span> : null}
@@ -83,7 +94,7 @@ export function SwissProgressionPilotView({ title, model, positionalPreview = fa
               </tbody>
             </table>
           </TournamentInteractiveViewer>
-          {rrStandings}
+          {rr.showStandings ? rrStandings : null}
           <TournamentInteractiveViewer title={`${title} — ${stageNoun} rounds`} inlineHeight={360}>
             <div className="space-y-3 bg-background p-2 text-xs text-foreground">
               {model.rounds.map((rd) => (

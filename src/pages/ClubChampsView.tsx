@@ -99,11 +99,12 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { swissTable } from "@/lib/tournaments/swiss-standings";
 import { buildSwissProgression } from "@/lib/tournaments/swiss-progression-view";
 import { usesUitsigMensCChart } from "@/lib/tournaments/swiss-uitsig-mens-c-chart";
-import { usesAabbEighteenChart, usesAabbSixteenChart } from "@/lib/tournaments/swiss-riverside-aabb-charts";
+import { usesAabbEighteenChart, usesAabbSixteenChart, RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 import { usesUitsigLadiesAChart } from "@/lib/tournaments/swiss-uitsig-ladies-a-chart";
 import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgressionPilotView";
 import { SwissRrFinishStandings } from "@/components/tournaments/SwissRrFinishStandings";
 import { rrFinishStandings } from "@/lib/tournaments/swiss-rr-standings";
+import { swissRrDisplay } from "@/lib/tournaments/swiss-rr-display";
 import { rrFinishOn, RR_FINISH_FROM_ROUND } from "@/lib/tournaments/swiss-rr-finish";
 import { CategoryFixtureCalendar } from "@/components/tournaments/CategoryFixtureCalendar";
 import type { CategoryCalendarFixture } from "@/lib/tournaments/category-calendar";
@@ -1371,6 +1372,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         id: m.id, round: Number(m.round_number),
         a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null,
         winner: m.winner_member_id, isBye: !!m.is_bye, status: m.status, score: m.score,
+        sideAPoints: m.side_a_points, sideBPoints: m.side_b_points, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id,
         date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by,
         placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
       });
@@ -1416,19 +1418,20 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       };
       const laterPools = laterIsRR ? [...new Set(laterMatches.map((m: any) => resolvePoolNumber(m, gn) ?? 1))].sort((a, b) => a - b) : [];
       const riversidePreview = isTournamentViewPilotClub(champ.club_id);
-      if (riversidePreview && rrFinishOn(swissSt.rrFinish)) model.rrFinish = swissSt.rrFinish;
+      if (champ.club_id === RIVERSIDE_CLUB_ID && rrFinishOn(swissSt.rrFinish)) model.rrFinish = swissSt.rrFinish;
       const exactMensCChart = usesUitsigMensCChart(champ.club_id, champId, gn, model.rows.length, model.totalRounds) || usesAabbEighteenChart(champ.club_id, champId, model.rows.length, model.totalRounds);
       const exactSixteenChart = usesAabbSixteenChart(champ.club_id, champId, model.rows.length, model.totalRounds);
       const exactLadiesAChart = usesUitsigLadiesAChart(champ.club_id, champId, gn, model.rows.length, model.totalRounds);
       if (riversidePreview) pilotSwissModels[gn] = model;
       // Riverside pilot: live round-robin group tables (Round 3+ only), snapshot = positions after Round 2.
-      const rrOn = riversidePreview && rrFinishOn(swissSt.rrFinish) && model.rounds.find((r) => r.round === RR_FINISH_FROM_ROUND - 1)?.complete;
-      const rrSnapshot = rrOn ? [...model.rows].sort((x, y) => (x.positions[RR_FINISH_FROM_ROUND - 2] ?? 1e9) - (y.positions[RR_FINISH_FROM_ROUND - 2] ?? 1e9)).map((r) => r.id) : [];
+      const rrDisplay = swissRrDisplay(model, champ.club_id);
+      const rrOn = rrDisplay.showStandings && rrFinishOn(swissSt.rrFinish);
+      const rrSnapshot = rrDisplay.snapshot;
       const rrGroups = rrOn ? rrFinishStandings({ snapshot: rrSnapshot, groups: swissSt.rrFinish.groups, criteria: swissSt.criteria, gameSets: gameSetsOf as any,
         matches: swissMatches.map((m: any) => ({ a: m.player_a_member_id, b: m.player_b_member_id, winner: m.winner_member_id, round: Number(m.round_number), status: m.status, score: m.score, game_scores: m.game_scores })) })
         .map((g) => ({ ...g, rows: g.rows.map((r) => ({ ...r, name: names[r.id] ?? "Unknown player" })) })) : [];
       const rrStandings = rrGroups.length ? <SwissRrFinishStandings groups={rrGroups} fromRound={RR_FINISH_FROM_ROUND} showPoints={(swissSt.criteria ?? []).includes("points_difference")} /> : null;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart || exactLadiesAChart || exactSixteenChart} exactMensCChart={exactMensCChart} exactSixteenChart={exactSixteenChart} exactLadiesAChart={exactLadiesAChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} calendar={renderCategoryCalendar(gn)} classicStandings={riversidePreview || exactMensCChart || exactLadiesAChart ? classic : undefined} rrStandings={rrStandings} />{laterIsRR ? (
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} clubId={champ.club_id} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart || exactLadiesAChart || exactSixteenChart} exactMensCChart={exactMensCChart} exactSixteenChart={exactSixteenChart} exactLadiesAChart={exactLadiesAChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} calendar={renderCategoryCalendar(gn)} classicStandings={riversidePreview || exactMensCChart || exactLadiesAChart ? classic : undefined} rrStandings={rrStandings} />{laterIsRR ? (
           <div className="mt-6 space-y-4" data-testid={`stage2-progression-${gn}`}>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>

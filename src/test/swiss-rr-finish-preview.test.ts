@@ -44,6 +44,23 @@ function check(n: number, groups: number, round2Complete: boolean, exactMensCCha
 }
 
 describe("Swiss + round robin finish — projected Rounds 3–5 stay within groups", () => {
+  it.each([false, true])("represents all six Men's C residual positions in R3–5 (Round 2 complete: %s)", (complete) => {
+    const m = model(18, 3, complete);
+    const original = JSON.stringify(m);
+    const grid = buildProposedSwissGrid(m, { exactMensCChart: true });
+    for (const round of [3, 4, 5]) {
+      const rd = grid.rounds.find((r) => r.round === round);
+      expect(rd).toBeDefined();
+      const positions = rd?.blocks.flatMap((b) => b.rows.map((r) => r.pos)).filter((p) => p != null).sort((a, b) => Number(a) - Number(b));
+      expect(positions).toEqual(Array.from({ length: 18 }, (_, i) => i + 1));
+      if (round >= 4) {
+        const rest = rd?.blocks.filter((b) => Number(b.rows[0].pos) >= 13) ?? [];
+        expect(rest).toHaveLength(6);
+        expect(rest.every((b) => b.rows.every((r) => r.id === null))).toBe(true);
+      }
+    }
+    expect(JSON.stringify(m)).toBe(original);
+  });
   it("Men's C 18 players, 3×4, Round 2 still in progress (provisional), even with the fixed 18-player chart", () => check(18, 3, false, true));
   it("Men's C 18 players, 3×4, Round 2 complete", () => check(18, 3, true, true));
   it("Men's D 16 players, 4×4, Round 2 still in progress", () => check(16, 4, false, false));

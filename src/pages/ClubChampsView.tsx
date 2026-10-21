@@ -2430,20 +2430,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   // standings, which count stage=group rows only and are therefore frozen.
   // Before the boundary slots stay TBD; after it, filled/started slots are
   // never re-seeded automatically. Editing slot times never triggers this.
-  const autoPlayoffKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (inlineStandings || !canManage || !enablePlayoffs || isStructured) return;
-    if (generatePlayoffs.isPending || playoffsComplete) return;
-    if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
-
-    const completed = (matches as any[]).filter((m: any) => m.status === "completed");
-    const key = completed.map((m: any) => m.id).sort().join(",");
-    if (autoPlayoffKeyRef.current === key) return;
-    autoPlayoffKeyRef.current = key;
-
-    generatePlayoffs.mutate({ silent: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, enablePlayoffs, groupResultsCount, matches]);
+  // Viewing results never fills playoff slots. Generation remains an explicit organiser action.
 
 
 

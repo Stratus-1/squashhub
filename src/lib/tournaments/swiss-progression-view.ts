@@ -253,7 +253,18 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
       const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
         matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
       }));
-      return { ...rd, blocks: [...factual, ...pending].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
+      // Future Swiss opponents depend on results: represent every residual position without
+      // inventing a pairing or a decided participant that a writer could turn into a fixture.
+      const shown = new Set([...factual, ...pending].flatMap((b) => b.rows.map((r) => r.pos)));
+      const unresolved: GridBlock[] = plan.remainder.flatMap((id) => {
+        const pos = fixed.get(id);
+        if (pos == null || shown.has(pos)) return [];
+        return [{ matchId: `swiss-wait-${rd.round}-${pos}`, rows: [
+          { id: null, pos, name: "Swiss player — results pending", result: "", projected: true, when: schedule.label },
+          { id: null, pos: null, name: "Opponent decided after previous round", result: "", projected: true, when: null },
+        ], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null }];
+      });
+      return { ...rd, blocks: [...factual, ...pending, ...unresolved].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
     }) };
   }
   const n = model.rows.length;

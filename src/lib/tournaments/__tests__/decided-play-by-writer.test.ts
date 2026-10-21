@@ -42,8 +42,8 @@ describe("synthetic Riverside play-by creation through writer", () => {
     state.tables.tournaments = [{ builder_architecture: "structured", builder_spec: { divisions: [{ divisionId: "d", groupNumber: 4, stages: [{ id: "swiss", order: 0, kind: "swiss", swissRounds: 5, tieBreaks: ["position_swap"], rrFinish: { enabled: true, groups: 3 } }] }] } }];
     const match = (r: number, a: number, b: number | null) => ({ id: `r${r}-${a}`, group_number: 4, round_number: r, player_a_member_id: `p${a}`, player_b_member_id: b ? `p${b}` : null, winner_member_id: `p${a}`, is_bye: b === null, status: "completed" });
     state.tables.club_champs_matches = [
-      ...[[1,7],[2,8],[3,9],[4,10],[5,11],[6,12],[13,16],[14,17],[15,18]].map(([a,b]) => match(1, a, b)),
-      ...[[1,8],[2,9],[3,10],[4,11],[5,12],[6,7],[13,17],[14,18],[15,16]].map(([a,b]) => match(2, a, b)),
+      ...[[1,5],[2,6],[3,9],[4,10],[7,11],[8,12],[13,16],[14,17],[15,18]].map(([a,b]) => match(1, a, b)),
+      ...[[1,6],[2,7],[3,10],[4,11],[5,12],[8,9],[13,17],[14,18],[15,16]].map(([a,b]) => match(2, a, b)),
     ];
     state.tables.club_champs_rounds = [3,4,5].map((r) => ({ id: `r${r}`, group_number: 4, round_number: r, scheduling_mode: "self", play_by: `2026-11-0${r}` }));
     const roundsBefore = JSON.stringify(state.tables.club_champs_rounds);

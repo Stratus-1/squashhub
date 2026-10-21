@@ -17,6 +17,8 @@ import { definedOnly, deferredStages } from "../smart-builder/deferred";
 import { effectiveMapping } from "../smart-builder/matchups";
 import { venuesOutsideSet } from "../smart-builder/venues";
 import { rawSchedule, resolveSpecDates, specDateIssues } from "./date-window";
+import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
+import { withdrawalUpdates } from "./withdraw";
 
 /* ───── spec from the Beta definition ───── */
 
@@ -522,6 +524,25 @@ export async function withdrawStructured(db: Db, tid: string, memberId: string):
   if (!db.remove) throw new IntegrityError("unsupported", "This database cannot remove rows.");
   const entries = (await db.select("club_champs_entries", { champ_id: tid })).filter((e) => e.club_member_id === memberId || e.partner_member_id === memberId);
   if (!entries.length) throw new IntegrityError("not_entered", "That player is not entered.");
+  const [tour] = await db.select("tournaments", { id: tid });
+  if (tour?.club_id === RIVERSIDE_CLUB_ID) {
+    const spec = tour.builder_spec as TournamentSpec | undefined;
+    const swissGroups = new Set((spec?.divisions ?? []).filter((d) => d.stages[0]?.kind === "swiss").flatMap((d) => divisionEntryGroups(spec as TournamentSpec, d)));
+    const keep = entries.filter((e) => swissGroups.has(e.group_number));
+    if (keep.length) {
+      if (keep.length !== entries.length) throw new IntegrityError("unsupported", "Withdraw this player's non-Swiss categories separately; Swiss positions must be kept.");
+      const registrations = await db.select("club_champs_registrations", { champ_id: tid, club_member_id: memberId });
+      if (!registrations.length) throw new IntegrityError("not_entered", "The registration is missing; no Swiss position was removed.");
+      await db.update("club_champs_registrations", { champ_id: tid, club_member_id: memberId }, { withdrawn_keep_position: true, withdrawn_reason: "Withdrawn" });
+      const matches = await db.select("club_champs_matches", { champ_id: tid });
+      for (const group of new Set(keep.map((e) => e.group_number))) {
+        for (const u of withdrawalUpdates(matches, memberId, { groupNumber: group, bestOf: tour.best_of ?? 5, pointsPerGame: tour.points_per_game ?? 11 })) {
+          await db.update("club_champs_matches", { id: u.id }, u.payload);
+        }
+      }
+      return { regenerated: [], keptPlayed: matches.filter((m) => m.status === "completed").length, removedFuture: 0 };
+    }
+  }
   await db.remove("club_champs_entries", entries.map((e) => e.id));
   return rebuildStructured(db, tid);
 }

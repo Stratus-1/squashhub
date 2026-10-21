@@ -7,6 +7,19 @@ const modelFor = (n: number, rounds: number) => buildSwissProgression({
 });
 
 describe("Proposed Swiss grid isolated from live score-based fixtures", () => {
+  it("RR finish keeps Round 2 pairing slots through R3–5 even when later winners change rank", () => {
+    const model = modelFor(18, 5);
+    model.rrFinish = { enabled: true, groups: 3 };
+    model.rows.forEach((r, i) => { r.positions = [i + 1, i + 1, 18 - i, null, null]; });
+    model.rounds[1].complete = true;
+    const before = JSON.stringify(model);
+    const grid = buildProposedSwissGrid(model);
+    expect(grid.rounds[2].blocks.map((b) => b.rows.map((r) => r.pos))).toEqual([[1,4],[2,3],[5,8],[6,7],[9,12],[10,11]]);
+    expect(grid.rounds[3].blocks[0].rows.map((r) => r.id)).toEqual(["p1", "p3"]);
+    expect(grid.rounds[4].blocks[0].rows.map((r) => r.id)).toEqual(["p1", "p2"]);
+    expect(grid.rounds[4].blocks.flatMap((b) => b.rows.map((r) => r.id))).not.toContain("p13");
+    expect(JSON.stringify(model)).toBe(before);
+  });
   it("24 entrants: preserved round 2 halves and wider later templates", () => {
     const { rounds, issues } = buildProposedSwissGrid(modelFor(24, 5));
     expect(issues).toEqual([]);

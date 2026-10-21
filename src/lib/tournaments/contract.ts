@@ -88,6 +88,8 @@ export interface PlannedStage {
   thirdPlace?: boolean;
   /** knockout: the next group down plays its own bracket (e.g. 5v8, 6v7 → bottom final). Stored as koPool 2. */
   bottomBracket?: boolean;
+  /** swiss (Riverside pilot): groups of 4 play a round robin in Rounds 3–5 of a 5-round Swiss. */
+  rrFinish?: { enabled: boolean; groups: number };
   /** singles / doubles for this stage (default = division unit) */
   discipline?: "singles" | "doubles";
   /** later stages: explicit progression rule (default for knockout = qualifiers) */

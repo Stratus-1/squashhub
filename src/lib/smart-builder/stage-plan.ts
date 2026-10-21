@@ -49,6 +49,8 @@ export interface StagePlanItem {
   advance?: StageAdvance;
   /** Parent category key when this stage is a playoff shared by sibling subcategories (e.g. Men's A1/A2). */
   sharedWith?: string | null;
+  /** Swiss only (Riverside pilot): groups of 4 play a round robin in Rounds 3–5 of a 5-round Swiss. */
+  rrFinish?: { enabled: boolean; groups: number } | null;
 }
 
 export type StagePlans = Record<string, StagePlanItem[]>;

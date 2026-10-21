@@ -37,6 +37,7 @@ export function cardStructureIssues(a: StepAnswers): string[] {
     const plan = rowStages(a, key);
     errors.push(...validateStagePlan(plan, { entrants: n }).filter((e) => e.level === "error").map((e) => `${key}: ${e.message}`));
     const s = plan[0];
+    if (s?.kind === "swiss" && s.rrFinish?.enabled) errors.push(...rrFinishIssues(n, s.endAfterRound ?? s.rounds, s.rrFinish.groups).map((e) => `${key}: ${e}`));
     if (s?.kind === "pools" || s?.kind === "round_robin") {
       errors.push(...rrIssues(n, s.pools ?? 1, s.rrTopology).map((e) => `${key}: ${e}`));
       const names = s.poolNames ?? [];

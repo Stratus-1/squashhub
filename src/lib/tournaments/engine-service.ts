@@ -7,6 +7,7 @@ import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
 import { proposePairings } from "./paced-knockout";
 import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
+import { rrFinishIssues, rrFinishOn, rrFinishRound, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -200,6 +201,21 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
   if (gate.state === "not_started") throw new IntegrityError("prereq", gate.message);
   if (gate.state === "in_progress") throw new IntegrityError("prereq", gate.message);
   if (gate.state === "finished") throw new IntegrityError("swiss_done", gate.message);
+  if (rrFinishOn(st.rrFinish) && gate.nextRound >= RR_FINISH_FROM_ROUND) {
+    const issues = rrFinishIssues(d.entrants.length, st.swissRounds, st.rrFinish.groups);
+    if (issues.length) throw new IntegrityError("prereq", issues[0]);
+    // Frozen snapshot: standings from Rounds 1–2 only (withdrawn players keep their entrant slot).
+    const snapshot = swissStandings(d, st, rows.filter((f) => (f.round ?? 0) <= 2)).map((t) => t.id);
+    const plan = rrFinishRound(snapshot, gate.nextRound, st.rrFinish.groups);
+    const rest = new Set(plan.remainder);
+    const table = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
+    const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a!, f.b!)));
+    const swissPart = swissRound(table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
+    if (swissPart.some(([a, b]) => b && played.has(pairKey(a, b)))) throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
+    return [...plan.pairs, ...swissPart].map(([a, b], i) => ({
+      tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b,
+    }));
+  }
   const fixed = fixedPositionRound(d, mine, gate.nextRound, noRepeats);
   if (fixed) return fixed.map(([a, b], i) => ({
     tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b,
@@ -418,7 +434,7 @@ export interface EditImpact {
 
 const structuralKey = (d: SpecDivision) => JSON.stringify({
   unit: d.unit, seeding: d.seeding, entrants: d.entrants.map((e) => e.id),
-  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, discipline: s.discipline, progression: s.progression, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify, legs: s.legs, tieBreaks: s.tieBreaks, thirdPlace: s.thirdPlace, bottomBracket: s.bottomBracket })),
+  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, discipline: s.discipline, progression: s.progression, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify, legs: s.legs, tieBreaks: s.tieBreaks, thirdPlace: s.thirdPlace, bottomBracket: s.bottomBracket, rrFinish: s.rrFinish ?? null })),
 });
 const scheduleKey = (d: SpecDivision) => JSON.stringify(d.stages.map((s) => [s.id, s.schedule]));
 

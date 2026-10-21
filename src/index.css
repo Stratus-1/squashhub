@@ -613,10 +613,11 @@ body:has(.admin-contrast) [role="dialog"] {
   color: hsl(var(--foreground));
 }
 /* Fixed pairing-group identity, never a changing standings/rank heatmap. */
-.riverside-rr-band[data-rr-group="1"] { --rr-group-tone: var(--round-1); }
-.riverside-rr-band[data-rr-group="2"] { --rr-group-tone: var(--round-2); }
-.riverside-rr-band[data-rr-group="3"] { --rr-group-tone: var(--round-3); }
-.riverside-rr-band[data-rr-group="4"] { --rr-group-tone: var(--round-4); }
+:root { --rr-g1: 145 55% 40%; --rr-g2: 45 90% 48%; --rr-g3: 212 75% 52%; --rr-g4: 270 55% 58%; }
+.riverside-rr-band[data-rr-group="1"] { --rr-group-tone: var(--rr-g1); }
+.riverside-rr-band[data-rr-group="2"] { --rr-group-tone: var(--rr-g2); }
+.riverside-rr-band[data-rr-group="3"] { --rr-group-tone: var(--rr-g3); }
+.riverside-rr-band[data-rr-group="4"] { --rr-group-tone: var(--rr-g4); }
 .riverside-rr-band[data-rr-group="5"] { --rr-group-tone: var(--round-5); }
 .riverside-rr-band[data-rr-group="6"] { --rr-group-tone: var(--accent); }
 .riverside-rr-band[data-rr-group="swiss"] { --rr-group-tone: var(--muted-foreground); border-left-style: dashed; }

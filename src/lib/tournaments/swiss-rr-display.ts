@@ -29,5 +29,16 @@ export function swissRrDisplay(model: SwissProgressionModel, clubId: string | nu
     group: i < split.groupRanges.length * 4 ? Math.floor(i / 4) + 1 : null,
   }]));
   const started = locked && model.rounds.some((r) => r.round >= RR_FINISH_FROM_ROUND && r.round <= RR_FINISH_ROUNDS && r.fixtures.some((f) => f.started));
-  return { enabled, locked, snapshot, memberships, groupRanges: enabled ? split.groupRanges : [], remainder: enabled ? split.remainder : null, showStandings: started };
+  const groupCount = enabled ? split.groupRanges.length : 0;
+  /** Colour group: follows the slot (position) until Round 2 ends, then the locked membership. */
+  const groupOf = (id: string | null | undefined, slot: number | null | undefined): number | "swiss" | null => {
+    if (!enabled) return null;
+    if (locked) { const m = id ? memberships.get(id) : undefined; return m ? m.group ?? "swiss" : null; }
+    if (slot == null || slot < 1) return null;
+    return slot <= groupCount * 4 ? Math.floor((slot - 1) / 4) + 1 : "swiss";
+  };
+  const total = model.configuredRounds ?? RR_FINISH_ROUNDS;
+  const heading = `${locked ? "Confirmed" : "Projected"} Pairing Groups — Swiss Rounds 1–${RR_FINISH_FROM_ROUND - 1} | Round Robin Rounds ${RR_FINISH_FROM_ROUND}–${total}`;
+  const remainderLabel = `Continued Swiss Pairing — Rounds 1–${total}`;
+  return { enabled, locked, snapshot, memberships, groupOf, heading, remainderLabel, groupRanges: enabled ? split.groupRanges : [], remainder: enabled ? split.remainder : null, showStandings: started };
 }

@@ -16,16 +16,21 @@ const fmt: DivFormat = { kind: "round_robin", pools: 1, swissRounds: 0, seeding:
 const divs = (): DrawDivision[] => [1, 2, 3, 4].map((g) => ({ group: g, label: `Cat ${g} · Doubles`, doubles: true, units: unitsFor(regs, g, 4, true).units, format: fmt, notes: [], playoffs: [] }));
 
 describe("Step-by-Step generate draw", () => {
-  it("Riverside draw carries the category's five-round RR finish, while other clubs retain normal Swiss", () => {
+  it("Riverside draw carries the category's five-round RR finish, and other clubs get it too when switched on", () => {
     const plan = { format: { kind: "swiss", swissRounds: "4" }, stagePlans: { Men: [{ id: "s", kind: "swiss", rounds: 5, rrFinish: { enabled: true, groups: 3 } }] } };
     const p = proposeFormat(plan, "Men · Singles", "11111111-1111-1111-1111-111111111111");
     expect(p.format.swissRounds).toBe(5);
     expect(p.format.rrFinish).toEqual({ enabled: true, groups: 3 });
     const d: DrawDivision = { group: 1, label: "Men", doubles: false, units: Array.from({ length: 18 }, (_, i) => ({ member: `p${i}`, partner: null })), format: p.format, notes: [], playoffs: [] };
     expect(buildDrawSpec("Test", [d], "v").divisions[0].stages[0].rrFinish).toEqual({ enabled: true, groups: 3 });
+    // Every club gets the RR finish when it is switched on for the category.
     const other = proposeFormat(plan, "Men · Singles", "uitsig");
-    expect(other.format.swissRounds).toBe(4);
-    expect(other.format.rrFinish).toBeUndefined();
+    expect(other.format.swissRounds).toBe(5);
+    expect(other.format.rrFinish).toEqual({ enabled: true, groups: 3 });
+    // Switched off: other clubs keep normal Swiss exactly as before.
+    const off = { format: { kind: "swiss", swissRounds: "4" }, stagePlans: { Men: [{ id: "s", kind: "swiss", rounds: 5 }] } };
+    expect(proposeFormat(off, "Men · Singles", "uitsig").format.swissRounds).toBe(4);
+    expect(proposeFormat(off, "Men · Singles", "uitsig").format.rrFinish).toBeUndefined();
   });
   it("uses current active entries only: 20 pairs / 40 players, payment-independent", () => {
     const d = divs();

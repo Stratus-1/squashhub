@@ -36,9 +36,9 @@ describe("Riverside RR phase visibility and fixed groups", () => {
     expect(swissRrDisplay(scenario(16, 4), RIVERSIDE_CLUB_ID).showStandings).toBe(false);
     expect(swissRrDisplay(scenario(16, 4, [match({ status: "in_progress", sideAPoints: 1 })], false), RIVERSIDE_CLUB_ID).showStandings).toBe(false);
   });
-  it("normal Swiss and Uitsig remain disabled even with later-round results", () => {
+  it("works for every club when switched on; switched off stays normal Swiss", () => {
     const model = scenario(18, 3, [match({ status: "completed", winner: "p1", score: "3-0" })]);
-    expect(swissRrDisplay(model, "uitsig")).toMatchObject({ enabled: false, showStandings: false });
+    expect(swissRrDisplay(model, "uitsig").enabled).toBe(true);
     model.rrFinish = { enabled: false, groups: 3 };
     expect(swissRrDisplay(model, RIVERSIDE_CLUB_ID)).toMatchObject({ enabled: false, showStandings: false });
   });
@@ -66,7 +66,8 @@ describe("Riverside pairing-group colours and headings", () => {
     expect(post.remainderLabel).toBe("Continued Swiss Pairing — Rounds 1–5");
     if (n === 18) expect(post.groupOf(post.snapshot[17], 1)).toBe("swiss");
   });
-  it("normal Swiss / other clubs get no colours", () => {
-    expect(swissRrDisplay(scenario(16, 4), "uitsig").groupOf("p1", 1)).toBeNull();
+  it("normal Swiss (RR finish off) gets no colours at any club", () => {
+    const m = scenario(16, 4); m.rrFinish = { enabled: false, groups: 4 };
+    expect(swissRrDisplay(m, "uitsig").groupOf("p1", 1)).toBeNull();
   });
 });

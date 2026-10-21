@@ -3623,3 +3623,9 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Problem: setup "Group" button created numbered subdivisions (e.g. Men's A › 1, › 2) that look like pools but are separate draws with separate playoffs (root of Uitsig Men's A split). Pool names edited in card/canvas editors never reached the saved draw; public page always showed "Pool A/B".
 - Fix: button renamed "Subdivision"; setup warns when ≥2 round-robin subdivisions exist and offers a one-click "Make these N pools" (setup only, blocked once players are placed) via `src/lib/smart-builder/category-pools.ts`; pool-name inputs on pooled rows; draw spec carries pool names (`poolLabels`); saving refreshes existing pool labels without touching games; `ClubChampsView` shows saved pool names. Test: `src/test/category-pools-model.test.ts`.
 - No live data changed. Uitsig Men's A migration is a separate, unapproved proposal.
+
+## 2026-10-21 — Uitsig Men's A merged into one category (owner-approved live change)
+- Men's A › 1 / › 2 (separate draws 1 and 2) became one Men's A with Pool A / Pool B (tournament_pools on the kept stage) and one shared play-off; › 2's division/stage/rounds removed after its 6 games were re-pointed to the matching kept rounds.
+- Categories 3–7 renumbered to 2–6 across games, rounds, entries, registrations' choices, per-category settings, structured spec and saved setup plan; category count 7→6 (earlier stale 8→7 fixed first).
+- Single guarded transaction: fingerprint of all 87 games identical before/after, fees 78 / R8,400 unchanged, no fee rows created. Backup under private documents (uitsig-mens-a-pools-2026-10-21).
+- Note: match-day guard requires service-role context for admin re-pointing of games.

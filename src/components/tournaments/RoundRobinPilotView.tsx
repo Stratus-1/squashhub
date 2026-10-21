@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
@@ -121,19 +122,22 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
 
 /** Riverside: clean fixtures-by-round (left) + live standings (right), same layout as the Swiss final-three round robin. */
 export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolView; group: number; groupLabel: string }) {
+  const track = useRef<HTMLDivElement>(null);
+  const jump = (selector: string) => track.current?.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
   const { players, totals, rounds } = view;
   const tone = ((group - 1) % 6) + 1;
   const standings = [...players].sort((a, b) => (view.rank[a.id] ?? 99) - (view.rank[b.id] ?? 99));
   const pos = (id: string) => players.findIndex((p) => p.id === id) + 1;
   const anyPlayed = Object.values(totals).some((t) => t.played > 0);
   return (
-    <div className="grid gap-3 text-xs lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" data-testid="rr-clean">
-      <section className="space-y-2" data-testid="rr-clean-fixtures">
-        <h4 className="flex items-center gap-2 font-semibold"><span className="riverside-rr-band px-2 py-0.5" data-rr-group={tone}>{groupLabel}</span>Fixtures by round</h4>
+    <div className="space-y-2 text-xs" data-testid="rr-clean">
+      <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
+      <div ref={track} className="flex gap-3 overflow-x-auto pb-2" data-testid="rr-round-track">
+      <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {rounds.map((rd) => (
-          <div key={rd.label} className="overflow-hidden rounded-md border border-border" data-testid={`rr-clean-round-${rd.round ?? "x"}`}>
+          <div key={rd.label} className="w-80 shrink-0 self-start overflow-hidden rounded-md border border-border" data-testid={`rr-clean-round-${rd.round ?? "x"}`}>
             <div className="flex flex-wrap items-center gap-2 bg-muted px-2 py-1 font-semibold">
-              <span>{rd.label}</span><Badge variant="outline" className="text-[10px]">{ROUND_STATUS[rd.status]}</Badge>
+              <span>{groupLabel} · {rd.label}</span><Badge variant="outline" className="text-[10px]">{ROUND_STATUS[rd.status]}</Badge>
               {rd.sittingOut.length > 0 && <span className="ml-auto text-[11px] font-normal text-muted-foreground">Bye: {rd.sittingOut.join(", ")}</span>}
             </div>
             {rd.matches.map((m) => (
@@ -153,7 +157,8 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
           </div>
         ))}
       </section>
-      <section className="space-y-2" data-testid="rr-clean-standings">
+      <section className="w-max min-w-80 shrink-0 self-start space-y-2" data-testid="rr-clean-standings">
+        <Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-fixtures"]')}>← Back to Rounds</Button>
         <h4 className="font-semibold">Standings{view.complete ? " — final" : " — live"}</h4>
         <p className="text-muted-foreground">"Pos." is the fixed draw position and never moves; Rank updates with each result.</p>
         <div className="overflow-x-auto"><table className="w-full border-collapse">
@@ -167,6 +172,7 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
             </tr>); })}</tbody>
         </table></div>
       </section>
+      </div>
     </div>
   );
 }

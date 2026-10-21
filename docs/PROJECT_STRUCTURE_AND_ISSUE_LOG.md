@@ -1,5 +1,5 @@
 ## 2026-10-21 — Legacy membership payment warning
-- Clarified Enter Transaction guidance: distinguish payments linked to existing fee rows from receipts against legacy outstanding balances; use the original payment date and avoid re-entering payments already included in opening balances or books. Removed the blanket claim that income was recognised when every balance was raised.
+- Removed the unpaid-fees warning and its unused query from Enter Transaction at the owner's request; legacy payments have their own place. Retained a neutral explanation of the receivable posting without claiming every brought-forward balance was income raised in this system.
 - Presentation-only: posting, fee status, permissions and live records unchanged; no publication.
 
 ## 2026-10-21 — Owner-approved stale Uitsig timed allocation cleanup

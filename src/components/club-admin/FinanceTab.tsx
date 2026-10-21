@@ -319,27 +319,6 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     enabled: !!clubId,
   });
 
-  // Unpaid fee totals per member — used to warn admins against posting
-  // free-form "Members Subscription" payments that will double-count when
-  // the fee row is later toggled paid.
-  const { data: unpaidByMember } = useQuery({
-    queryKey: ["unpaid-fees-by-member", clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("club_member_fee_payments")
-        .select("club_member_id, amount, paid")
-        .eq("paid", false);
-      if (error) throw error;
-      const memberIds = new Set((members || []).map((m: any) => m.id));
-      const totals = new Map<string, number>();
-      for (const r of data || []) {
-        if (!memberIds.has(r.club_member_id)) continue;
-        totals.set(r.club_member_id, (totals.get(r.club_member_id) || 0) + Number(r.amount || 0));
-      }
-      return totals;
-    },
-    enabled: !!clubId && !!members?.length,
-  });
-
   const getMemberName = (memberId: string) => {
     const member = (members || []).find(m => m.id === memberId);
     return member?.name || member?.profiles?.name || "Unknown";
@@ -1312,8 +1291,6 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   <p className="text-[10px] text-muted-foreground mt-1">
                     This records money received against the member's outstanding balance
                     (Dr {txMethod === "cash" ? "Cash" : "Current Account"} / Cr Accounts Receivable), not a new membership fee.
-                    For an old payment, use the original payment date and check that the receipt is not already recorded.
-                    A brought-forward balance is not necessarily income raised in this system.
                   </p>
                 </>
               ) : (
@@ -1364,24 +1341,6 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   )}
                 </div>
               )}
-              {txDirection === "income" && txMemberId && txMemberId !== "__none__" && (() => {
-                const outstanding = unpaidByMember?.get(txMemberId) || 0;
-                if (outstanding <= 0.01) return null;
-                return (
-                  <div className="mt-2 p-2 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] text-amber-900 dark:text-amber-200 flex gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="font-semibold">This member has {money(outstanding)} in unpaid fees.</p>
-                      <p className="mt-0.5">
-                        If this payment belongs to a fee listed in <strong>Members → Fees</strong>, record it there instead
-                        so it is linked to that fee. For a legacy outstanding balance without a matching fee, record the
-                        receipt here using its original payment date. Do not record the same payment here and again under Fees.
-                        If the old payment is already included in the opening balance or books, do not enter another receipt.
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
 
             <div>

@@ -11,7 +11,7 @@ export function SwissRrFinishStandings({ groups, fromRound, showPoints }: { grou
       {groups.map((g) => (
         <div key={g.group} data-testid={`rr-group-${g.group}`}>
           <div className="font-medium">Group {g.group} · positions {g.positions[0]}–{g.positions[1]} · {g.played}/{g.total} games played</div>
-          <table className="mt-1 border-collapse">
+          <div className="overflow-x-auto"><table className="mt-1 border-collapse">
             <thead><tr className="text-left text-muted-foreground">
               <th className="pr-3">Rank</th><th className="pr-3">Pairing pos.</th><th className="pr-3">Player</th><th className="pr-3">RR points</th><th className="pr-3">P</th><th className="pr-3">W</th><th className="pr-3">L</th><th className="pr-3">Games</th><th className="pr-3">Game diff</th>{showPoints && <><th className="pr-3">Points scored</th><th className="pr-3">Points diff</th></>}
             </tr></thead>
@@ -29,7 +29,7 @@ export function SwissRrFinishStandings({ groups, fromRound, showPoints }: { grou
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       ))}
     </section>

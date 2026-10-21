@@ -1618,6 +1618,13 @@
       "when": 1792573186286,
       "tag": "0230_bar_cash_up_first_opening",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1792605296716,
+      "tag": "0231_play_by_releases_timed_allocations",
+      "breakpoints": true
     }
   ]
 }

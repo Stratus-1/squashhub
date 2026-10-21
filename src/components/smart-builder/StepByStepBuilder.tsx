@@ -83,6 +83,7 @@ import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Minus, 
 import { createPortal } from "react-dom";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
@@ -932,6 +933,17 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return keys.filter((_, i) => raw?.league_playoff_bottom_half?.[String(i + 1)]);
   }, [a.originalStructure]);
   const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
+  /** Main rounds: choose several categories at once. The round stays one per category (copies share its settings). */
+  const setStageUnits = (s: ClubStage, keys: string[]) => {
+    if (!keys.length) { updStage(s.id, { unit: "" }); return; }
+    const [first, ...rest] = keys;
+    const copies = rest.filter((u) => !stages.some((x) => x.id !== s.id && (x.phase ?? "main") === "main" && x.unit === u && x.name === s.name))
+      .map((u) => ({ ...s, id: crypto.randomUUID(), unit: u, extraDays: (s.extraDays ?? []).map((d) => ({ ...d })), courtIds: [...s.courtIds] }));
+    const i = stages.findIndex((x) => x.id === s.id);
+    const next = stages.map((x) => (x.id === s.id ? { ...x, unit: first } : x));
+    next.splice(i + 1, 0, ...copies);
+    setStages(next);
+  };
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
   const courtChips = (ids: string[], set: (ids: string[]) => void) => clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
     const on = ids.includes(c.id);
@@ -1043,10 +1055,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", s.phase === "playoff" ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.phase === "playoff" ? "Playoff" : "Main round"}</span>
-        <select aria-label="Stage applies to" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.unit} onChange={(e) => updStage(s.id, { unit: e.target.value })}>
-          <option value="">{s.phase === "playoff" && a.playoffSync === true ? "All categories (common date)" : "All categories"}</option>
+        {s.phase === "playoff" ? <select aria-label="Stage applies to" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.unit} onChange={(e) => updStage(s.id, { unit: e.target.value })}>
+          <option value="">{a.playoffSync === true ? "All categories (common date)" : "All categories"}</option>
           {units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
-        </select>
+        </select> : <Popover>
+          <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" aria-label="Stage applies to" className="h-9">{stageUnit(s.unit)} ▾</Button></PopoverTrigger>
+          <PopoverContent align="start" className="w-64 space-y-1 p-2">
+            <p className="px-1 pb-1 text-xs text-muted-foreground">Tick every category that plays this round. Each gets its own copy you can still change.</p>
+            <label className="flex items-center gap-2 rounded px-1 py-1 text-sm"><Checkbox checked={!s.unit} onCheckedChange={() => updStage(s.id, { unit: "" })} />All categories</label>
+            {units.map((u) => {
+              const on = s.unit === u.key || stages.some((x) => x.id !== s.id && (x.phase ?? "main") === "main" && x.unit === u.key && x.name === s.name);
+              return <label key={u.key} className="flex items-center gap-2 rounded px-1 py-1 text-sm"><Checkbox checked={on} disabled={on} aria-label={`Apply to ${u.base}`} onCheckedChange={() => setStageUnits(s, s.unit ? [s.unit, u.key] : [u.key])} />{u.base}</label>;
+            })}
+          </PopoverContent>
+        </Popover>}
         {s.phase === "playoff" ? (
           <select aria-label="Playoff stage" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })}>
             {s.name && !(PLAYOFF_STAGE_NAMES as readonly string[]).includes(s.name) && <option value={s.name}>{s.name}</option>}

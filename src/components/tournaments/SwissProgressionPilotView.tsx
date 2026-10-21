@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { TournamentPlayerInfoNotice } from "./TournamentPlayerInfo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,22 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
   const rr = swissRrDisplay(model, clubId);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
   const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots, appliedPlayBy, noRepeats, previewFinals: positionalPreview, exactMensCChart, exactLadiesAChart, exactSixteenChart });
+  const gridWrapRef = useRef<HTMLDivElement>(null);
+  // Scroll the round track (inside the viewer) so the target column comes into view.
+  const jumpTo = (sel: string, from?: Element | null) => {
+    const root = (from?.closest("[data-testid=swiss-position-grid]") as Element | null) ?? gridWrapRef.current;
+    const el = root?.querySelector(sel) as HTMLElement | null;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    el.focus({ preventScroll: true });
+  };
+  // Combined Swiss + final-three RR only: live group standings sit after the last round in the same horizontal track.
+  const rrColumn = rr.enabled && rr.showStandings && rrStandings ? (
+    <section tabIndex={-1} aria-label="Round Robin Standings" data-testid="rr-standings-column" className="round-panel w-[340px] max-w-[85vw] shrink-0 self-start space-y-2 rounded-md border border-border p-2 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <button type="button" data-testid="rr-back-to-rounds" className="rounded border border-border px-2 py-0.5 text-[11px] font-medium hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={(e) => jumpTo("[data-testid=swiss-round-1]", e.currentTarget)}>← Back to Rounds</button>
+      {rrStandings}
+    </section>
+  ) : null;
   const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">

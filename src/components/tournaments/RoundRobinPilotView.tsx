@@ -145,7 +145,7 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
                 <div className="flex items-center gap-2">
                   <span className="w-5 tabular-nums text-muted-foreground">{m.posA ?? ""}</span>
                   <span className={cn("flex-1 truncate", m.winner && m.winner === m.a && "font-semibold")}>{m.aName}</span>
-                  <span className="tabular-nums">{m.status === "played" ? m.score ?? "" : ""}</span>
+                  <span className="max-w-32 whitespace-normal text-right tabular-nums">{m.status === "played" ? m.score ?? "" : ""}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-5 tabular-nums text-muted-foreground">{m.posB ?? ""}</span>

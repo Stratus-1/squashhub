@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Read-only approved-matrix audit: Men's C bottom six play all five rounds; explicitly compare all three lower-six matches in R3/R4/R5 with saved fixtures and projection. No live/source changes or publication.
 - [ ] Owner priority 22 Oct: Men's C and Ladies A only; other items parked.
 - [ ] Urgent Uitsig audit: locate actual C/D/Ladies A screenshots, compare all rounds and saved pairs; preserve Ladies A and all live data.
 - [ ] Remove viewing-triggered tournament writes; display all six Men's C Swiss remainder places in R3–5; test source/service parity and safe retry/settings boundaries. No publication/deployment.

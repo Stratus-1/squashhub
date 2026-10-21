@@ -843,7 +843,7 @@ function strictSwissPlan(input) {
   const { occupants, round, history } = input;
   const raw = preferredSwissTemplate(occupants.length, round);
   const halves = swissHalves(occupants.length);
-  const preferred = halves && round >= swissStrictFromRound(occupants.length) ? raw.pairs : input.preferred ?? raw.pairs;
+  const preferred = input.usePreferredTemplate ? input.preferred ?? raw.pairs : halves && round >= swissStrictFromRound(occupants.length) ? raw.pairs : input.preferred ?? raw.pairs;
   const bye = input.bye === undefined ? raw.bye : input.bye;
   if (occupants.some((id) => !id))
     return { pairs: preferred, bye, ready: false };
@@ -903,6 +903,46 @@ function strictSwissPlan(input) {
     }
   }
   return { pairs: lockedPairs, bye: lockedBye, ready: false, issue: `Round ${round}: no pairing without repeat opponents exists while confirmed games remain fixed.` };
+}
+
+// src/lib/tournaments/swiss-rr-finish.ts
+var RR_FINISH_ROUNDS = 5;
+var RR_FINISH_FROM_ROUND = 3;
+var RR_GROUP_SCHEDULE = {
+  3: [[1, 4], [2, 3]],
+  4: [[1, 3], [2, 4]],
+  5: [[1, 2], [3, 4]]
+};
+var rrFinishOn = (f) => !!f?.enabled && Number(f.groups) >= 1;
+function rrFinishSplit(entrants, groups) {
+  const g = Math.max(0, Math.min(Math.floor(groups), Math.floor(entrants / 4)));
+  const groupRanges = Array.from({ length: g }, (_, i) => [i * 4 + 1, i * 4 + 4]);
+  const remainder = entrants > g * 4 ? [g * 4 + 1, entrants] : null;
+  return { groupRanges, remainder };
+}
+function rrFinishRound(snapshot, round, groups) {
+  const sched = RR_GROUP_SCHEDULE[round];
+  if (!sched)
+    throw new Error(`Round ${round} is not a round-robin round.`);
+  const { groupRanges } = rrFinishSplit(snapshot.length, groups);
+  const pairs = [];
+  groupRanges.forEach(([start]) => {
+    const g = snapshot.slice(start - 1, start + 3);
+    sched.forEach(([x, y]) => pairs.push([g[x - 1], g[y - 1]]));
+  });
+  return { pairs, remainder: snapshot.slice(groupRanges.length * 4) };
+}
+var key = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+function rrFinishRepeats(snapshot, groups, earlier) {
+  const met = new Set(earlier.flatMap(([a, b]) => a && b ? [key(a, b)] : []));
+  const out = [];
+  for (let r = RR_FINISH_FROM_ROUND;r <= RR_FINISH_ROUNDS; r++) {
+    rrFinishRound(snapshot, r, groups).pairs.forEach(([a, b]) => {
+      if (met.has(key(a, b)))
+        out.push({ round: r, a, b });
+    });
+  }
+  return out;
 }
 
 // src/lib/tournaments/transition.ts
@@ -1634,9 +1674,9 @@ var util;
   };
   util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object) => {
     const keys = [];
-    for (const key in object) {
-      if (Object.prototype.hasOwnProperty.call(object, key)) {
-        keys.push(key);
+    for (const key2 in object) {
+      if (Object.prototype.hasOwnProperty.call(object, key2)) {
+        keys.push(key2);
       }
     }
     return keys;
@@ -2032,10 +2072,10 @@ class ParseStatus {
   static async mergeObjectAsync(status, pairs) {
     const syncPairs = [];
     for (const pair of pairs) {
-      const key = await pair.key;
+      const key2 = await pair.key;
       const value = await pair.value;
       syncPairs.push({
-        key,
+        key: key2,
         value
       });
     }
@@ -2044,17 +2084,17 @@ class ParseStatus {
   static mergeObjectSync(status, pairs) {
     const finalObject = {};
     for (const pair of pairs) {
-      const { key, value } = pair;
-      if (key.status === "aborted")
+      const { key: key2, value } = pair;
+      if (key2.status === "aborted")
         return INVALID;
       if (value.status === "aborted")
         return INVALID;
-      if (key.status === "dirty")
+      if (key2.status === "dirty")
         status.dirty();
       if (value.status === "dirty")
         status.dirty();
-      if (key.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
-        finalObject[key.value] = value.value;
+      if (key2.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
+        finalObject[key2.value] = value.value;
       }
     }
     return { status: status.value, value: finalObject };
@@ -2078,12 +2118,12 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 class ParseInputLazyPath {
-  constructor(parent, value, path, key) {
+  constructor(parent, value, path, key2) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
     this._path = path;
-    this._key = key;
+    this._key = key2;
   }
   get path() {
     if (!this._cachedPath.length) {
@@ -3839,9 +3879,9 @@ ZodArray.create = (schema, params) => {
 function deepPartialify(schema) {
   if (schema instanceof ZodObject) {
     const newShape = {};
-    for (const key in schema.shape) {
-      const fieldSchema = schema.shape[key];
-      newShape[key] = ZodOptional.create(deepPartialify(fieldSchema));
+    for (const key2 in schema.shape) {
+      const fieldSchema = schema.shape[key2];
+      newShape[key2] = ZodOptional.create(deepPartialify(fieldSchema));
     }
     return new ZodObject({
       ...schema._def,
@@ -3893,29 +3933,29 @@ class ZodObject extends ZodType {
     const { shape, keys: shapeKeys } = this._getCached();
     const extraKeys = [];
     if (!(this._def.catchall instanceof ZodNever && this._def.unknownKeys === "strip")) {
-      for (const key in ctx.data) {
-        if (!shapeKeys.includes(key)) {
-          extraKeys.push(key);
+      for (const key2 in ctx.data) {
+        if (!shapeKeys.includes(key2)) {
+          extraKeys.push(key2);
         }
       }
     }
     const pairs = [];
-    for (const key of shapeKeys) {
-      const keyValidator = shape[key];
-      const value = ctx.data[key];
+    for (const key2 of shapeKeys) {
+      const keyValidator = shape[key2];
+      const value = ctx.data[key2];
       pairs.push({
-        key: { status: "valid", value: key },
-        value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key)),
-        alwaysSet: key in ctx.data
+        key: { status: "valid", value: key2 },
+        value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key2)),
+        alwaysSet: key2 in ctx.data
       });
     }
     if (this._def.catchall instanceof ZodNever) {
       const unknownKeys = this._def.unknownKeys;
       if (unknownKeys === "passthrough") {
-        for (const key of extraKeys) {
+        for (const key2 of extraKeys) {
           pairs.push({
-            key: { status: "valid", value: key },
-            value: { status: "valid", value: ctx.data[key] }
+            key: { status: "valid", value: key2 },
+            value: { status: "valid", value: ctx.data[key2] }
           });
         }
       } else if (unknownKeys === "strict") {
@@ -3931,12 +3971,12 @@ class ZodObject extends ZodType {
       }
     } else {
       const catchall = this._def.catchall;
-      for (const key of extraKeys) {
-        const value = ctx.data[key];
+      for (const key2 of extraKeys) {
+        const value = ctx.data[key2];
         pairs.push({
-          key: { status: "valid", value: key },
-          value: catchall._parse(new ParseInputLazyPath(ctx, value, ctx.path, key)),
-          alwaysSet: key in ctx.data
+          key: { status: "valid", value: key2 },
+          value: catchall._parse(new ParseInputLazyPath(ctx, value, ctx.path, key2)),
+          alwaysSet: key2 in ctx.data
         });
       }
     }
@@ -3944,10 +3984,10 @@ class ZodObject extends ZodType {
       return Promise.resolve().then(async () => {
         const syncPairs = [];
         for (const pair of pairs) {
-          const key = await pair.key;
+          const key2 = await pair.key;
           const value = await pair.value;
           syncPairs.push({
-            key,
+            key: key2,
             value,
             alwaysSet: pair.alwaysSet
           });
@@ -4015,8 +4055,8 @@ class ZodObject extends ZodType {
     });
     return merged;
   }
-  setKey(key, schema) {
-    return this.augment({ [key]: schema });
+  setKey(key2, schema) {
+    return this.augment({ [key2]: schema });
   }
   catchall(index) {
     return new ZodObject({
@@ -4026,9 +4066,9 @@ class ZodObject extends ZodType {
   }
   pick(mask) {
     const shape = {};
-    for (const key of util.objectKeys(mask)) {
-      if (mask[key] && this.shape[key]) {
-        shape[key] = this.shape[key];
+    for (const key2 of util.objectKeys(mask)) {
+      if (mask[key2] && this.shape[key2]) {
+        shape[key2] = this.shape[key2];
       }
     }
     return new ZodObject({
@@ -4038,9 +4078,9 @@ class ZodObject extends ZodType {
   }
   omit(mask) {
     const shape = {};
-    for (const key of util.objectKeys(this.shape)) {
-      if (!mask[key]) {
-        shape[key] = this.shape[key];
+    for (const key2 of util.objectKeys(this.shape)) {
+      if (!mask[key2]) {
+        shape[key2] = this.shape[key2];
       }
     }
     return new ZodObject({
@@ -4053,12 +4093,12 @@ class ZodObject extends ZodType {
   }
   partial(mask) {
     const newShape = {};
-    for (const key of util.objectKeys(this.shape)) {
-      const fieldSchema = this.shape[key];
-      if (mask && !mask[key]) {
-        newShape[key] = fieldSchema;
+    for (const key2 of util.objectKeys(this.shape)) {
+      const fieldSchema = this.shape[key2];
+      if (mask && !mask[key2]) {
+        newShape[key2] = fieldSchema;
       } else {
-        newShape[key] = fieldSchema.optional();
+        newShape[key2] = fieldSchema.optional();
       }
     }
     return new ZodObject({
@@ -4068,16 +4108,16 @@ class ZodObject extends ZodType {
   }
   required(mask) {
     const newShape = {};
-    for (const key of util.objectKeys(this.shape)) {
-      if (mask && !mask[key]) {
-        newShape[key] = this.shape[key];
+    for (const key2 of util.objectKeys(this.shape)) {
+      if (mask && !mask[key2]) {
+        newShape[key2] = this.shape[key2];
       } else {
-        const fieldSchema = this.shape[key];
+        const fieldSchema = this.shape[key2];
         let newField = fieldSchema;
         while (newField instanceof ZodOptional) {
           newField = newField._def.innerType;
         }
-        newShape[key] = newField;
+        newShape[key2] = newField;
       }
     }
     return new ZodObject({
@@ -4315,14 +4355,14 @@ function mergeValues(a, b) {
     return { valid: true, data: a };
   } else if (aType === ZodParsedType.object && bType === ZodParsedType.object) {
     const bKeys = util.objectKeys(b);
-    const sharedKeys = util.objectKeys(a).filter((key) => bKeys.indexOf(key) !== -1);
+    const sharedKeys = util.objectKeys(a).filter((key2) => bKeys.indexOf(key2) !== -1);
     const newObj = { ...a, ...b };
-    for (const key of sharedKeys) {
-      const sharedValue = mergeValues(a[key], b[key]);
+    for (const key2 of sharedKeys) {
+      const sharedValue = mergeValues(a[key2], b[key2]);
       if (!sharedValue.valid) {
         return { valid: false };
       }
-      newObj[key] = sharedValue.data;
+      newObj[key2] = sharedValue.data;
     }
     return { valid: true, data: newObj };
   } else if (aType === ZodParsedType.array && bType === ZodParsedType.array) {
@@ -4489,11 +4529,11 @@ class ZodRecord extends ZodType {
     const pairs = [];
     const keyType = this._def.keyType;
     const valueType = this._def.valueType;
-    for (const key in ctx.data) {
+    for (const key2 in ctx.data) {
       pairs.push({
-        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, key)),
-        value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key], ctx.path, key)),
-        alwaysSet: key in ctx.data
+        key: keyType._parse(new ParseInputLazyPath(ctx, key2, ctx.path, key2)),
+        value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key2], ctx.path, key2)),
+        alwaysSet: key2 in ctx.data
       });
     }
     if (ctx.common.async) {
@@ -4542,9 +4582,9 @@ class ZodMap extends ZodType {
     }
     const keyType = this._def.keyType;
     const valueType = this._def.valueType;
-    const pairs = [...ctx.data.entries()].map(([key, value], index) => {
+    const pairs = [...ctx.data.entries()].map(([key2, value], index) => {
       return {
-        key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index, "key"])),
+        key: keyType._parse(new ParseInputLazyPath(ctx, key2, ctx.path, [index, "key"])),
         value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index, "value"]))
       };
     });
@@ -4552,30 +4592,30 @@ class ZodMap extends ZodType {
       const finalMap = new Map;
       return Promise.resolve().then(async () => {
         for (const pair of pairs) {
-          const key = await pair.key;
+          const key2 = await pair.key;
           const value = await pair.value;
-          if (key.status === "aborted" || value.status === "aborted") {
+          if (key2.status === "aborted" || value.status === "aborted") {
             return INVALID;
           }
-          if (key.status === "dirty" || value.status === "dirty") {
+          if (key2.status === "dirty" || value.status === "dirty") {
             status.dirty();
           }
-          finalMap.set(key.value, value.value);
+          finalMap.set(key2.value, value.value);
         }
         return { status: status.value, value: finalMap };
       });
     } else {
       const finalMap = new Map;
       for (const pair of pairs) {
-        const key = pair.key;
+        const key2 = pair.key;
         const value = pair.value;
-        if (key.status === "aborted" || value.status === "aborted") {
+        if (key2.status === "aborted" || value.status === "aborted") {
           return INVALID;
         }
-        if (key.status === "dirty" || value.status === "dirty") {
+        if (key2.status === "dirty" || value.status === "dirty") {
           status.dirty();
         }
-        finalMap.set(key.value, value.value);
+        finalMap.set(key2.value, value.value);
       }
       return { status: status.value, value: finalMap };
     }
@@ -5694,6 +5734,26 @@ var DefinitionSchema = exports_external.object({
   notUnderstood: exports_external.array(exports_external.string()).default([])
 });
 
+// src/lib/tournaments/swiss-riverside-aabb-charts.ts
+var RIVERSIDE_CLUB_ID = "11111111-1111-1111-1111-111111111111";
+function sixteenPlayerChart() {
+  const half = [
+    [],
+    [[1, 8], [2, 7], [3, 6], [4, 5]],
+    [[1, 4], [2, 3], [5, 8], [6, 7]],
+    [[1, 3], [2, 4], [5, 7], [6, 8]],
+    [[1, 2], [3, 4], [5, 6], [7, 8]]
+  ];
+  const r1 = Array.from({ length: 8 }, (_, i) => [i + 1, 16 - i]);
+  return half.map((ps, i) => {
+    const pairs = i === 0 ? r1 : [...ps, ...ps.map(([a, b]) => [a + 8, b + 8])];
+    return { round: i + 1, bye: null, pairs: pairs.map(([a, b]) => ({ round: i + 1, a, b })) };
+  });
+}
+
+// src/lib/tournaments/withdraw.ts
+var FINISHED = new Set(["completed", "complete", "walkover", "forfeit", "cancelled"]);
+
 // src/lib/tournaments/structured-persist.ts
 var uuid = () => globalThis.crypto?.randomUUID?.() ?? "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => (Math.random() * 16 | 0).toString(16));
 function bufferedDb(base) {
@@ -5765,7 +5825,7 @@ async function persistStructure(db, tid, spec) {
           throw new IntegrityError("transition", `${d.label} · ${st.name}: ${errs.map((e) => e.message).join("; ")}`);
         return { ...t, source_stage_id: ids.stage[`${d.divisionId}/${prev.id}`] ?? null, destination_stage_key: st.id };
       })() : null;
-      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, qualify: st.qualify, transition: tr, schedule: rawSchedule(st) } }]))[0];
+      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, ...st.rrFinish?.enabled ? { rrFinish: st.rrFinish } : {}, qualify: st.qualify, transition: tr, schedule: rawSchedule(st) } }]))[0];
       const sk = `${d.divisionId}/${st.id}`;
       ids.stage[sk] = row.id;
       ids.stageKind[sk] = st.kind;
@@ -5834,8 +5894,8 @@ async function insertFixtures(db, tid, spec, ids, fixtures, existing = []) {
   };
   const [firstDiv] = spec.divisions;
   for (const f of fixtures) {
-    const key = `${f.divisionId}/${f.stageId}/${f.roundId}`;
-    if (roundIds[key])
+    const key2 = `${f.divisionId}/${f.stageId}/${f.roundId}`;
+    if (roundIds[key2])
       continue;
     const sk = `${f.divisionId}/${f.stageId}`;
     const [r] = await db.insert("club_champs_rounds", [{
@@ -5850,7 +5910,7 @@ async function insertFixtures(db, tid, spec, ids, fixtures, existing = []) {
       status: "active",
       ...playBy(f) ? { play_by: playBy(f) } : {}
     }]);
-    roundIds[key] = r.id;
+    roundIds[key2] = r.id;
   }
   const roundDate = (f) => {
     const st = spec.divisions.find((d2) => d2.divisionId === f.divisionId)?.stages.find((s) => s.id === f.stageId);
@@ -6559,6 +6619,18 @@ function sortGamesForSlots(games, order, groupOf) {
   return games.slice().sort((a, b) => (rank.get(Number(a.group_number)) ?? 99) - (rank.get(Number(b.group_number)) ?? 99) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
 }
 
+// src/lib/smart-builder/stage-plan.ts
+var STAGE_KINDS2 = [
+  { kind: "swiss", label: "Swiss", rounds: true },
+  { kind: "round_robin", label: "Round robin", rounds: false },
+  { kind: "pools", label: "Pools", rounds: false },
+  { kind: "knockout", label: "Knockout", rounds: false },
+  { kind: "monrad", label: "Monrad (positional draw)", rounds: false },
+  { kind: "placement", label: "Positional playoff", rounds: false },
+  { kind: "cross_league", label: "Cross-league", rounds: false }
+];
+var KNOWN = new Set(STAGE_KINDS2.map((s) => s.kind));
+
 // src/lib/smart-builder/step-draw.ts
 var INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 var unitKeyOf = (label) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
@@ -6711,13 +6783,13 @@ var isPlaceholderKey = (k) => String(k ?? "").endsWith(PH);
 var DONE4 = ["completed", "forfeited", "walkover", "in_progress", "live", "confirmed"];
 function placeholderAdoption(placeholders, real) {
   const out = [];
-  const key = (r) => `${r.group}|${r.stageKey.replace(PH, "")}`;
+  const key2 = (r) => `${r.group}|${r.stageKey.replace(PH, "")}`;
   const groups = new Map;
   for (const r of real)
-    groups.set(key(r), [...groups.get(key(r)) ?? [], r]);
+    groups.set(key2(r), [...groups.get(key2(r)) ?? [], r]);
   const phGroups = new Map;
   for (const p of placeholders)
-    phGroups.set(key(p), [...phGroups.get(key(p)) ?? [], p]);
+    phGroups.set(key2(p), [...phGroups.get(key2(p)) ?? [], p]);
   for (const [k, ps] of phGroups) {
     const rs = (groups.get(k) ?? []).sort((a, b) => a.order - b.order);
     if (!rs.length)
@@ -7106,7 +7178,7 @@ function scheduleDraws(draws, opts) {
   const rk = (c2, r, s) => `${c2}|${r}|${s}`;
   const queue = draws.flatMap((d) => d.fixtures.map((f) => ({ d, f }))).sort((x, y) => x.f.round - y.f.round || x.f.match - y.f.match || x.d.categoryKey.localeCompare(y.d.categoryKey));
   for (const { d, f } of queue) {
-    const key = `${d.categoryKey}:${f.key}`;
+    const key2 = `${d.categoryKey}:${f.key}`;
     const date = opts.roundDates[d.categoryKey]?.[f.round - 1] ?? null;
     const carryBye = () => {
       const bye = d.byes.find((y) => y.round === f.round);
@@ -7142,13 +7214,13 @@ function scheduleDraws(draws, opts) {
         if (placedW)
           break;
       }
-      out[key] = placedW ?? { kind: "unscheduled", reason: `Shortage — no free court/time left in Round ${f.round}'s saved windows` };
+      out[key2] = placedW ?? { kind: "unscheduled", reason: `Shortage — no free court/time left in Round ${f.round}'s saved windows` };
       carryBye();
       continue;
     }
     if (!date) {
       const pb = opts.playBy?.[d.categoryKey]?.[f.round - 1];
-      out[key] = pb ? { kind: "play_by", date: pb } : { kind: "unscheduled", reason: "Not scheduled — no round date" };
+      out[key2] = pb ? { kind: "play_by", date: pb } : { kind: "unscheduled", reason: "Not scheduled — no round date" };
       carryBye();
       continue;
     }
@@ -7171,7 +7243,7 @@ function scheduleDraws(draws, opts) {
       ready.set(rk(d.categoryKey, f.round + 1, f.slotB), free);
       break;
     }
-    out[key] = placed ?? { kind: "unscheduled", reason: opts.courts.length && times.length ? `Shortage — no free court/time on ${date}; organiser must add courts or start times` : `Shortage — no courts or start times set for ${date}` };
+    out[key2] = placed ?? { kind: "unscheduled", reason: opts.courts.length && times.length ? `Shortage — no free court/time on ${date}; organiser must add courts or start times` : `Shortage — no courts or start times set for ${date}` };
     carryBye();
   }
   return out;
@@ -7191,6 +7263,44 @@ function slotOnlyDraw(categoryKey, entrants, rounds) {
 // src/lib/tournaments/stage-schedule.ts
 function appliedRoundPlayBy(row) {
   return row && row.scheduling_mode === "self" && row.play_by ? String(row.play_by).slice(0, 10) : null;
+}
+
+// src/lib/tournaments/swiss-preview-finals.ts
+function swissPreviewFinalsTemplate(n, round) {
+  const original = preferredSwissTemplate(n, round);
+  if (n !== 24 || round < 3 || round > 5)
+    return original;
+  const half = {
+    3: [[1, 6], [2, 5], [3, 9], [4, 10], [7, 12], [8, 11]],
+    4: [[1, 4], [2, 3], [5, 7], [6, 8], [9, 12], [10, 11]],
+    5: [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]]
+  };
+  return { ...original, pairs: [0, 12].flatMap((offset) => half[round].map(([a, b]) => ({ round, a: a + offset, b: b + offset }))) };
+}
+
+// src/lib/tournaments/swiss-uitsig-mens-c-chart.ts
+function uitsigMensCChart() {
+  const pairs = [
+    [[1, 18], [2, 17], [3, 16], [4, 15], [5, 14], [6, 13], [7, 12], [8, 11], [9, 10]],
+    [[1, 9], [2, 8], [3, 7], [4, 6], [5, 10], [11, 18], [12, 17], [13, 16], [14, 15]],
+    [[1, 4], [2, 3], [5, 8], [6, 7], [9, 12], [10, 11], [13, 17], [14, 18], [15, 16]],
+    [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12], [13, 15], [14, 17], [16, 18]],
+    [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18]]
+  ];
+  return pairs.map((ps, index) => ({ round: index + 1, bye: null, pairs: ps.map(([a, b]) => ({ round: index + 1, a, b })) }));
+}
+
+// src/lib/tournaments/swiss-uitsig-ladies-a-chart.ts
+function uitsigLadiesAChart() {
+  const pairs = [
+    [[1, 8], [2, 7], [3, 6], [4, 5]],
+    [[1, 5], [2, 4], [6, 9], [7, 8]],
+    [[1, 4], [3, 5], [6, 7], [8, 9]],
+    [[1, 3], [2, 5], [6, 8], [7, 9]],
+    [[1, 2], [3, 4]]
+  ];
+  const byes = [9, 3, 2, 4, 5];
+  return pairs.map((ps, index) => ({ round: index + 1, bye: byes[index], pairs: ps.map(([a, b]) => ({ round: index + 1, a, b })) }));
 }
 
 // src/lib/tournaments/swiss-progression-view.ts
@@ -7265,7 +7375,7 @@ function buildSwissProgression(input) {
     current: cur.get(id)?.position ?? i + 1,
     swissFinalPosition: swissStageComplete ? swissFinal.get(id) ?? null : null
   })).sort((x, y) => x.current - y.current);
-  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows };
+  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows, tieBreaks };
 }
 function gamesWonSummary(score) {
   if (!score)
@@ -7328,13 +7438,58 @@ function buildSwissGrid(model) {
   });
 }
 function buildProposedSwissGrid(model, opts = {}) {
+  if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5) {
+    const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined }, opts);
+    const saved = buildSwissGrid(model);
+    const locked = model.rounds.find((r) => r.round === 2)?.complete;
+    const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [];
+    const byId = new Map(model.rows.map((r) => [r.id, r]));
+    const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
+    const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
+    const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
+    const issues2 = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
+    return { issues: issues2, rounds: saved.map((rd) => {
+      if (rd.round < 3 || !locked)
+        return normal.rounds.find((r) => r.round === rd.round) ?? rd;
+      const plan2 = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
+      const groupIds = new Set(plan2.pairs.flat());
+      const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })) }));
+      const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
+      const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
+      let pairs = plan2.pairs;
+      if (model.rounds.find((r) => r.round === rd.round - 1)?.complete && plan2.remainder.length) {
+        const rest = new Set(plan2.remainder);
+        const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => rest.has(r.id));
+        const met = new Set(history.filter((f) => f.a && f.b).map((f) => [f.a, f.b].sort().join("|")));
+        const usedRest = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
+        try {
+          pairs = [...pairs, ...swissRound(table.filter((r) => !usedRest.has(r.id)).map((r, i) => ({ id: r.id, points: r.points, seed: i + 1 })), met)];
+        } catch {
+          issues2.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`);
+        }
+      }
+      const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
+        matchId: `rr-proposed-${rd.round}-${a}-${b}`,
+        rows: [a, b].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })),
+        score: null,
+        court: null,
+        playBy: opts.appliedPlayBy?.[rd.round] ?? null
+      }));
+      return { ...rd, blocks: [...factual, ...pending].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
+    }) };
+  }
   const n = model.rows.length;
+  const mensC = opts.exactMensCChart === true && n === 18 && model.totalRounds === 5;
+  const ladiesA = opts.exactLadiesAChart === true && n === 9 && model.totalRounds === 5;
+  const sixteen = opts.exactSixteenChart === true && n === 16 && model.totalRounds === 5;
+  const exactChart = mensC || ladiesA || sixteen;
   const plan = planCategory(n, model.totalRounds);
   if (plan.issues.length)
     return { rounds: [], issues: plan.issues };
-  const template = opts.noRepeats === false ? categoryTemplate(n, model.totalRounds) : Array.from({ length: model.totalRounds }, (_, i) => preferredSwissTemplate(n, i + 1));
-  const rawTemplate = categoryTemplate(n, model.totalRounds);
-  const issues = validateTemplate(n, template);
+  const exactPlan = mensC ? uitsigMensCChart() : sixteen ? sixteenPlayerChart() : uitsigLadiesAChart();
+  const template = exactChart ? exactPlan : opts.noRepeats === false ? categoryTemplate(n, model.totalRounds) : Array.from({ length: model.totalRounds }, (_, i) => (opts.previewFinals ? swissPreviewFinalsTemplate : preferredSwissTemplate)(n, i + 1));
+  const rawTemplate = exactChart ? exactPlan : categoryTemplate(n, model.totalRounds);
+  const issues = exactChart ? [] : validateTemplate(n, template);
   if (issues.length)
     return { rounds: [], issues };
   const savedFirst = buildSwissGrid(model).find((r) => r.round === 1);
@@ -7371,10 +7526,10 @@ function buildProposedSwissGrid(model, opts = {}) {
       if (h)
         byeHolders.add(h);
     }
-    if (opts.noRepeats !== false) {
+    if (!exactChart && opts.noRepeats !== false) {
       const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, round: r.round })));
       const locked = (model.rounds.find((r) => r.round === rd.round)?.fixtures ?? []).flatMap((f) => f.a && (f.b || f.state === "bye") ? [{ a: f.a, b: f.b }] : []);
-      const strict = rd.round >= swissStrictFromRound(cur.length) ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
+      const strict = rd.round >= swissStrictFromRound(cur.length) ? strictSwissPlan({ occupants: cur, round: rd.round, preferred: rd.pairs, bye: rd.bye, history, locked, usePreferredTemplate: opts.previewFinals }) : { pairs: rd.pairs, bye: rd.bye, ready: true, issue: undefined };
       if (rd.round < swissStrictFromRound(cur.length) && locked.length) {
         const pos = new Map(cur.map((id, index) => [id, index + 1]));
         const actual = locked.flatMap((f) => {
@@ -7413,9 +7568,9 @@ function buildProposedSwissGrid(model, opts = {}) {
   }
   const savedGrid = new Map(buildSwissGrid(model).map((r) => [r.round, r]));
   return { issues, rounds: template.map((rd) => {
-    if (rd.round === 1 && savedFirst?.created)
+    if (!exactChart && rd.round === 1 && savedFirst?.created)
       return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
-    const saved = (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
+    const saved = exactChart ? [] : (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
     const savedIds = new Set(saved.flatMap((b) => b.rows.map((r) => r.id)).filter((x) => !!x));
     const into = occ[rd.round - 1];
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
@@ -7432,6 +7587,15 @@ function buildProposedSwissGrid(model, opts = {}) {
       if (saved.length && covered(p.a, p.b))
         return [];
       const id = `proposed-${rd.round}-${p.a}-${p.b}`;
+      if (exactChart) {
+        const x = into[p.a - 1], y = into[p.b - 1];
+        const done = x && y ? findDone(rd.round, x, y) : undefined;
+        const factual = done ? savedGrid.get(rd.round)?.blocks.find((b2) => b2.matchId === done.id) : undefined;
+        const a = factual?.rows.find((r) => r.id === x);
+        const b = factual?.rows.find((r) => r.id === y);
+        if (factual && a && b)
+          return [{ ...factual, saved: true, rows: [{ ...a, pos: p.a }, { ...b, pos: p.b }] }];
+      }
       const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
       const scheduleKey = fixtureKey(rd.round, k.a, k.b);
       const slot2 = appliedBy ? { kind: "play_by", date: appliedBy } : opts.slots?.[fixtureKey(rd.round, k.a, k.b)];
@@ -7444,9 +7608,13 @@ function buildProposedSwissGrid(model, opts = {}) {
         return [{ matchId: id, rows: withWhen("Not allocated — no free slot left in this round"), score: null, court: null, playBy: null }];
       return [{ matchId: id, rows: [pending(p.a), pending(p.b)], score: null, court: null, playBy: null }];
     });
-    if (rd.bye != null && !(saved.length && covered(rd.bye)))
-      proposedBlocks.push({ matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
-    if (saved.length) {
+    if (rd.bye != null && !(saved.length && covered(rd.bye))) {
+      const holder = into[rd.bye - 1];
+      const bye = exactChart && holder ? model.rounds.find((r) => r.round === rd.round)?.fixtures.find((f) => f.state === "bye" && f.a === holder) : undefined;
+      const factual = bye ? savedGrid.get(rd.round)?.blocks.find((b) => b.matchId === bye.id) : undefined;
+      proposedBlocks.push(factual ? { ...factual, saved: true, rows: [{ ...factual.rows[0], pos: rd.bye }, factual.rows[1]] } : { matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
+    }
+    if (saved.length && !exactChart) {
       const shown = new Set;
       for (const b of proposedBlocks)
         for (const r of b.rows)
@@ -7486,11 +7654,12 @@ function swissStage(champ, arch, gn) {
     const st = [...d?.stages ?? []].sort((x, y) => x.order - y.order)[0];
     if (st?.kind !== "swiss")
       return null;
+    const rrFinish = champ.club_id === RIVERSIDE_CLUB_ID ? st.rrFinish : undefined;
     const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
     if (!timeline.length)
-      return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null };
+      return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish };
     const roundDates = timeline.map((t) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
-    return { tieBreaks: st.tieBreaks, rounds: timeline.length, schedule: { ...st.schedule ?? {}, roundDates } };
+    return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: { ...st.schedule ?? {}, roundDates }, rrFinish };
   }
   const r = Number(champ?.swiss_rounds?.[String(gn)]);
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;
@@ -7588,6 +7757,7 @@ function projectSwissFixtures(i, playByOnly) {
       }))
     });
     const prefix = `${gn}:`;
+    model.rrFinish = st.rrFinish;
     const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
     try {
@@ -7600,6 +7770,8 @@ function projectSwissFixtures(i, playByOnly) {
     const inRound = (round, id) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
       if (rd.created || rd.round < 2)
+        continue;
+      if (st.rrFinish?.enabled && !model.rounds.find((r) => r.round === rd.round - 1)?.complete)
         continue;
       const deadline = appliedPlayBy[rd.round];
       if (playByOnly ? !deadline : !!deadline)

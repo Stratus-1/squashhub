@@ -983,6 +983,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const renderMainRounds = () => (
               <div className="space-y-3">
                 <div className="text-sm font-semibold">Main rounds</div>
+                {roundCounts.length > 0 && (
+                  <table className="text-xs" data-testid="round-count-check">
+                    <thead><tr className="text-left text-muted-foreground"><th className="pr-3">Category</th><th className="pr-3">Structure needs</th><th className="pr-3">Rounds created</th><th className="pr-3">With a date</th><th /></tr></thead>
+                    <tbody>{roundCounts.map((r) => (
+                      <tr key={r.key} className="border-t border-border">
+                        <td className="pr-3">{r.label}{r.rrFinish ? " (round robin R3–5)" : ""}</td><td className="pr-3">{r.required}</td><td className="pr-3">{r.created}</td><td className="pr-3">{r.dated}</td>
+                        <td className={r.problem ? "text-destructive" : "text-muted-foreground"}>{r.problem ? (r.created < r.required ? "Missing rounds" : "Too many rounds") : "OK"}</td>
+                      </tr>))}</tbody>
+                  </table>
+                )}
                 {mainStages.length === 0 && <p className="text-xs text-muted-foreground">No main rounds yet.</p>}
                 {mainStages.map(renderStage)}
                 {(() => {

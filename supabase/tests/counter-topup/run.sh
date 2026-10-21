@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [ "$(id -u)" = 0 ]; then
+  exec setpriv --reuid=1000 --regid=1000 --clear-groups bash "$0" "$@"
+fi
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROOT="$HERE/../../.."
 D="$(mktemp -d)"; PORT=${PORT:-54409}
 trap 'pg_ctl -D "$D/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$D"' EXIT

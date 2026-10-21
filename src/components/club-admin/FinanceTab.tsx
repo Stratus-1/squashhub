@@ -173,7 +173,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       .select("storage_path").eq("club_id", clubId).eq("journal_ref", ref).order("created_at", { ascending: false }).limit(1);
     if (error) return toast.error(error.message);
     if (!data?.length) return toast.info("No proof document attached to this entry");
-    const { data: signed, error: sErr } = await supabase.storage.from("finance-proofs").createSignedUrl(data[0].storage_path, 300);
+    const { data: signed, error: sErr } = await sbClient.storage.from("finance-proofs").createSignedUrl(data[0].storage_path, 300);
     if (sErr || !signed) return toast.error(sErr?.message || "Could not open document");
     window.open(signed.signedUrl, "_blank", "noopener");
   };
@@ -493,10 +493,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
       if (txProof) {
         try {
-          const { data: auth } = await supabase.auth.getUser();
+          const { data: auth } = await sbClient.auth.getUser();
           const safe = txProof.name.replace(/[^\w.\-]+/g, "_").slice(-80);
           const path = `${clubId}/${refs[0]}/${Date.now()}-${safe}`;
-          const { error: upErr } = await supabase.storage.from("finance-proofs").upload(path, txProof, { contentType: txProof.type || undefined });
+          const { error: upErr } = await sbClient.storage.from("finance-proofs").upload(path, txProof, { contentType: txProof.type || undefined });
           if (upErr) throw upErr;
           const { error: aErr } = await (sbClient as any).from("club_journal_attachments").insert({
             club_id: clubId, journal_ref: refs[0], storage_path: path, file_name: txProof.name, uploaded_by: auth.user?.id,

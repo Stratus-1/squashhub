@@ -123,6 +123,8 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
 /** Riverside: clean fixtures-by-round (left) + live standings (right), same layout as the Swiss final-three round robin. */
 export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolView; group: number; groupLabel: string }) {
   const track = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ pointerId: number; x: number; scrollLeft: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const jump = (selector: string) => track.current?.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
   const { players, totals, rounds } = view;
   const tone = ((group - 1) % 6) + 1;
@@ -132,7 +134,30 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
   return (
     <div className="space-y-2 text-xs" data-testid="rr-clean">
       <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
-      <div ref={track} className="flex gap-3 overflow-x-auto pb-2" data-testid="rr-round-track">
+      <div ref={track} className={cn("flex gap-3 overflow-x-auto pb-2 touch-pan-x", dragging ? "cursor-grabbing select-none" : "cursor-grab")} data-testid="rr-round-track"
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse" || event.button !== 0 || (event.target instanceof Element && event.target.closest("button, a, input, select, textarea"))) return;
+          drag.current = { pointerId: event.pointerId, x: event.clientX, scrollLeft: event.currentTarget.scrollLeft };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const start = drag.current;
+          if (!start || start.pointerId !== event.pointerId) return;
+          const distance = event.clientX - start.x;
+          if (!dragging && Math.abs(distance) < 4) return;
+          event.preventDefault();
+          setDragging(true);
+          event.currentTarget.scrollLeft = start.scrollLeft - distance;
+        }}
+        onPointerUp={(event) => {
+          if (drag.current?.pointerId !== event.pointerId) return;
+          drag.current = null;
+          setDragging(false);
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={() => { drag.current = null; setDragging(false); }}
+        onLostPointerCapture={() => { drag.current = null; setDragging(false); }}
+        onDragStart={(event) => event.preventDefault()}>
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {rounds.map((rd) => (
           <div key={rd.label} className="w-80 shrink-0 self-start overflow-hidden rounded-md border border-border" data-testid={`rr-clean-round-${rd.round ?? "x"}`}>

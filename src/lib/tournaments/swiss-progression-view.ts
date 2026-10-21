@@ -223,22 +223,26 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined }, opts);
     const saved = buildSwissGrid(model);
-    const locked = model.rounds.find((r) => r.round === 2)?.complete;
-    const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [];
+    const locked = !!model.rounds.find((r) => r.round === 2)?.complete;
+    // Before Round 2 is complete the groups are previewed from the current standing (provisional);
+    // they never fall back to plain Swiss/chart pairings, which would cross group boundaries.
+    const snapshot = locked
+      ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id)
+      : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
     const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
     const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     return { issues, rounds: saved.map((rd) => {
-      if (rd.round < 3 || !locked) return normal.rounds.find((r) => r.round === rd.round) ?? rd;
+      if (rd.round < 3) return normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
       const groupIds = new Set(plan.pairs.flat());
       const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })) as [GridRow, GridRow] }));
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs: Array<[string, string | null]> = plan.pairs;
-      if (model.rounds.find((r) => r.round === rd.round - 1)?.complete && plan.remainder.length) {
+      if ((model.rounds.find((r) => r.round === rd.round - 1)?.complete || (!locked && rd.round === 3)) && plan.remainder.length) {
         const rest = new Set(plan.remainder);
         const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => rest.has(r.id));
         const met = new Set(history.filter((f) => f.a && f.b).map((f) => [f.a, f.b].sort().join("|")));

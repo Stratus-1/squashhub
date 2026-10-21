@@ -3640,3 +3640,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Single category card with named pools was already club-agnostic.
 - Uitsig Men's A audit (read-only): already ONE division with 2 pools (merged 2026-10-21); any A1/A2 cards seen are from the unpublished frontend or a stale device copy. No migration needed.
 - `auto-progress-tournaments` engine bundle rebuilt but NOT deployed (awaiting approval).
+
+### 2026-10-21 — Swiss + RR finish preview crossed groups before Round 2 finished
+- Symptom: Uitsig Men's C projected Round 3 paired positions 5/6 into the top four.
+- Cause: `buildProposedSwissGrid` fell back to plain Swiss / fixed 18-player chart projections for Rounds 3–5 until Round 2 was complete.
+- Fix: rounds 3–5 always use the fixed RR group plan (provisional from current standing until Round 2 completes). Live generation was unaffected (it only writes after the previous round completes). Test: `src/test/swiss-rr-finish-preview.test.ts` (3×4 and 4×4).

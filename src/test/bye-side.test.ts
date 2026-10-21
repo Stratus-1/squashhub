@@ -34,3 +34,14 @@ describe("isByeFixture", () => {
     expect(isByeFixture(undefined)).toBe(false);
   });
 });
+
+import { keepPositionGroups } from "@/lib/tournaments/withdraw";
+describe("Swiss withdrawal keeps position", () => {
+  it("keeps the place in Swiss categories only", () => {
+    const champ = { swiss_rounds: { "2": 5, "3": 0 } };
+    expect(keepPositionGroups(champ, [1, 2, 3], null)).toEqual([2]);
+    expect(keepPositionGroups(champ, [1, 2], 1)).toEqual([]);
+    expect(keepPositionGroups(champ, [2], 2)).toEqual([2]);
+    expect(keepPositionGroups(null, [2], null)).toEqual([]);
+  });
+});

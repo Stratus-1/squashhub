@@ -14,6 +14,14 @@ const expected = [
 const model = () => buildSwissProgression({ seedOrder: Array.from({ length: 9 }, (_,i) => `p${i+1}`), names: {}, totalRounds: 5, matches: [] });
 
 describe("Uitsig Ladies A owner-approved chart", () => {
+  it("uses the approved five rounds even when conflicting RR display settings are present", () => {
+    const m = model();
+    m.rrFinish = { enabled: true, groups: 2 };
+    const before = JSON.stringify(m);
+    const exact = buildProposedSwissGrid(m, { exactLadiesAChart: usesUitsigLadiesAChart(club, tournament, 5, 9, 5) });
+    expect(exact.rounds.map(r => r.blocks.map(b => b.rows.map(row => row.pos)))).toEqual(expected);
+    expect(JSON.stringify(m)).toBe(before);
+  });
   it("retains three Round 1 results and the bye without inventing a result for the unplayed game", () => {
     const m = buildSwissProgression({
       seedOrder: Array.from({ length: 9 }, (_, i) => `p${i + 1}`), names: {}, totalRounds: 5,
@@ -48,12 +56,12 @@ describe("Uitsig Ladies A owner-approved chart", () => {
     expect(uitsigLadiesAChart().map(r => r.bye)).toEqual([9,3,2,4,5]);
   });
   it("fails closed outside the exact club, tournament, group and field size", () => {
-    expect(usesUitsigLadiesAChart(club,tournament,6,9,5)).toBe(true);
-    expect(usesUitsigLadiesAChart("other",tournament,6,9,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,"other",6,9,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,tournament,5,9,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,tournament,6,8,5)).toBe(false);
-    expect(usesUitsigLadiesAChart(club,tournament,6,9,4)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,5,9,5)).toBe(true);
+    expect(usesUitsigLadiesAChart("other",tournament,5,9,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,"other",5,9,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,6,9,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,5,8,5)).toBe(false);
+    expect(usesUitsigLadiesAChart(club,tournament,5,9,4)).toBe(false);
   });
   it("leaves the default model unchanged and retains saved games", () => {
     const m = model();

@@ -27,7 +27,7 @@ import { SwissPositionGrid } from "@/components/tournaments/SwissPositionGrid";
 describe("Swiss+RR standings column placement", () => {
   it("renders the standings column after the last round inside the same track", () => {
     const model: any = { rows: [], rounds: [], totalRounds: 5, format: "positional", swissStageComplete: false };
-    const { container } = render(<SwissPositionGrid model={model} proposedRounds={[1, 2, 3, 4, 5].map((r) => ({ round: r, matches: [] })) as any} afterRounds={<section data-testid="rr-standings-column" />} />);
+    const { container } = render(<SwissPositionGrid model={model} proposedRounds={[1, 2, 3, 4, 5].map((r) => ({ round: r, created: false, blocks: [] })) as any} afterRounds={<section data-testid="rr-standings-column" />} />);
     const ids = [...container.querySelectorAll("[data-testid^=swiss-round-], [data-testid=rr-standings-column]")].map((e) => e.getAttribute("data-testid"));
     expect(ids).toEqual(["swiss-round-1", "swiss-round-2", "swiss-round-3", "swiss-round-4", "swiss-round-5", "rr-standings-column"]);
   });

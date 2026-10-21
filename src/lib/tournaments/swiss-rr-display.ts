@@ -20,7 +20,7 @@ export function hasSwissMatchActivity(m: ProgressionMatchInput): boolean {
 
 /** One display authority for locked positions, group colours and live RR visibility. */
 export function swissRrDisplay(model: SwissProgressionModel, clubId: string | null | undefined) {
-  const enabled = clubId === RIVERSIDE_CLUB_ID && model.configuredRounds === RR_FINISH_ROUNDS && rrFinishOn(model.rrFinish);
+  const enabled = model.configuredRounds === RR_FINISH_ROUNDS && rrFinishOn(model.rrFinish);
   const locked = enabled && !!model.rounds.find((r) => r.round === RR_FINISH_FROM_ROUND - 1)?.complete;
   const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? a.seed) - (b.positions[1] ?? b.seed)).map((r) => r.id) : [];
   const split = rrFinishSplit(model.rows.length, enabled ? model.rrFinish?.groups ?? 0 : 0);

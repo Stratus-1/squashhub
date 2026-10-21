@@ -110,7 +110,7 @@ export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: 
             <div className="font-semibold">Draw format</div><div className="grid grid-cols-2 gap-1 sm:grid-cols-4" role="group" aria-label={`${key} draw format`}>{formats.map((f) => <Button key={f} size="sm" variant={kind === f ? "default" : "outline"} className="h-auto min-h-8 whitespace-normal px-2 text-xs" aria-pressed={kind === f} onClick={() => setFormat(key, f)}>{f === "monrad" ? "Monrad" : FORMAT_HELP[f].title}</Button>)}</div>
             {first.kind && !kind && <p className="text-muted-foreground">Saved format: {first.kind}. Retained unless you choose another.</p>}
             {kind === "swiss" && <label className="flex items-center gap-2">Swiss rounds<Input type="number" min={1} max={15} className="h-8 w-20 text-xs" aria-label={`${key} Swiss rounds`} value={first.rounds ?? ""} onChange={(e) => update((a) => patchCardStage(a, key, { rounds: Number(e.target.value) || null }))} /></label>}
-            {kind === "swiss" && clubId === RIVERSIDE_CLUB_ID && (() => {
+            {kind === "swiss" && (() => {
               const rr = first.rrFinish;
               const groups = rr?.groups ?? Math.max(1, Math.floor(n / 4) - (n % 4 === 1 ? 1 : 0));
               const issues = rr?.enabled ? rrFinishIssues(n, first.endAfterRound ?? first.rounds, groups) : [];

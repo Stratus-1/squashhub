@@ -9128,7 +9128,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const swKey = String(i);
       if (formatForLeague(i) !== "swiss") continue;
       if (!Number(finalSwissRounds[swKey])) finalSwissRounds[swKey] = swissSuggestedRounds(i);
-      if (clubId === RIVERSIDE_CLUB_ID && swissRrFinish[swKey]?.enabled) {
+      if (swissRrFinish[swKey]?.enabled) {
         const issue = rrFinishIssues(expectedPlayers[swKey], finalSwissRounds[swKey], swissRrFinish[swKey]?.groups ?? 0)[0];
         if (issue) { toast.error(`Category ${i}: ${issue}`); return; }
       }

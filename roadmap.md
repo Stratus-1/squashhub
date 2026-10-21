@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Verify Uitsig Deon and Lazelle test-sale stock history; test transactions must have no net stock effect.
-- [ ] Run one approved bounded Help Center receipt test only if existing publisher preserves one-row scope and cron; otherwise report blocker without invoking.
+- [x] Verified Uitsig test-day stock: zero orphan sale movements for deleted beer tests, recorded +10 restoration, current stock 93; no additional stock/data writes.
+- [ ] Help Center bounded receipt test blocked: pilot confirmed, zero eligible allowlisted events, no invocation or row release; existing publisher also batches up to 25 and calls cron disarm.
 - [x] Removed the unpaid-fees warning and unused query from Enter Transaction; payment posting unchanged. Clean edit checks and preview build OK; no live data changes or publication.
 - [x] Cleared owner-approved 11 stale Uitsig allocations: nine old club_event bookings cancelled, AJ/Ulrich detached from the preserved GoBook championship hold, Johann/Bernard already cancelled/unscheduled before this request. Hosted readback confirms all nine surviving fixtures have no booking/court/time; all 86 deadlines, 38 scored rows and 96 personal GoBook bookings unchanged. Signed-in 27 Oct court grid verifies vanished old allocations, including Lisa/Liezel; no provider writes, hardware or publication.
 - [x] PIN-only counter top-up permission repaired and hosted grant confirmed; isolated PostgreSQL signed-out R100 card receipt, balanced journal, retry and invalid/missing/expired/revoked PIN, cash and foreign-club rejection checks pass. No real payment/member balance changes or publication; actual tablet payment not exercised.

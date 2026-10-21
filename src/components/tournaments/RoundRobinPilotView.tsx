@@ -12,7 +12,7 @@ export function poolRankTone(index: number, count: number) {
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
 
 /** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
-export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false, showSlots = false, withCalendar = false }: { calendar?: ReactNode; title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
+export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false, showSlots = false, withCalendar = false, clean = false, group = 1, groupLabel }: { clean?: boolean; group?: number; groupLabel?: string; calendar?: ReactNode; title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
   const { players, matrix, totals, rounds } = view;
   const [mode, setMode] = useState<"matrix" | "calendar">("matrix");
   const calEvents = rounds.flatMap((rd) => rd.matches.filter((m) => m.status !== "bye" && (m.date || m.playBy)).map((m) => ({
@@ -30,7 +30,7 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
       {view.issues.length > 0 && <p className="text-xs text-destructive">{view.issues.join(" ")}</p>}
       {(!matrixOnly || withCalendar) && (
         <div role="tablist" aria-label="Round robin view" className="grid grid-cols-2 border border-border">
-          {([["matrix", "Matrix"], ["calendar", "Calendar View"]] as const).map(([k, label]) => (
+          {([["matrix", clean ? "Fixtures & standings" : "Matrix"], ["calendar", "Calendar View"]] as const).map(([k, label]) => (
             <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
               className={cn("px-3 py-1.5 text-xs font-medium", mode === k ? "bg-primary text-primary-foreground" : "bg-muted/40 text-muted-foreground hover:bg-muted")}>{label}</button>
           ))}
@@ -41,7 +41,7 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
           <p className="text-muted-foreground">Read-only calendar for this pool. Solid blocks are saved fixtures; play-by rounds show their deadline day.</p>
           <FixtureCalendar events={calEvents} />
         </div>
-      ) : (
+      ) : clean && !matrixOnly ? <RoundRobinCleanView view={view} group={group} groupLabel={groupLabel ?? `Group ${group}`} /> : (
       <TournamentInteractiveViewer title={`${title} — ${matrixOnly ? "Rankings & results" : "pool matrix & order of play"}`} inlineHeight={matrixOnly ? 240 : 460} defaultFit="none" wheelZoom="direct">
         <div className="riverside-round-visuals space-y-4 bg-background p-3 text-xs text-foreground">
           <table className="border-collapse" data-testid="rr-matrix">
@@ -115,6 +115,58 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
         </div>
       </TournamentInteractiveViewer>
       )}
+    </div>
+  );
+}
+
+/** Riverside: clean fixtures-by-round (left) + live standings (right), same layout as the Swiss final-three round robin. */
+export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolView; group: number; groupLabel: string }) {
+  const { players, totals, rounds } = view;
+  const tone = ((group - 1) % 6) + 1;
+  const standings = [...players].sort((a, b) => (view.rank[a.id] ?? 99) - (view.rank[b.id] ?? 99));
+  const pos = (id: string) => players.findIndex((p) => p.id === id) + 1;
+  const anyPlayed = Object.values(totals).some((t) => t.played > 0);
+  return (
+    <div className="grid gap-3 text-xs lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" data-testid="rr-clean">
+      <section className="space-y-2" data-testid="rr-clean-fixtures">
+        <h4 className="flex items-center gap-2 font-semibold"><span className="riverside-rr-band px-2 py-0.5" data-rr-group={tone}>{groupLabel}</span>Fixtures by round</h4>
+        {rounds.map((rd) => (
+          <div key={rd.label} className="overflow-hidden rounded-md border border-border" data-testid={`rr-clean-round-${rd.round ?? "x"}`}>
+            <div className="flex flex-wrap items-center gap-2 bg-muted px-2 py-1 font-semibold">
+              <span>{rd.label}</span><Badge variant="outline" className="text-[10px]">{ROUND_STATUS[rd.status]}</Badge>
+              {rd.sittingOut.length > 0 && <span className="ml-auto text-[11px] font-normal text-muted-foreground">Bye: {rd.sittingOut.join(", ")}</span>}
+            </div>
+            {rd.matches.map((m) => (
+              <div key={m.id} className="riverside-rr-band border-t border-border px-2 py-1" data-rr-group={tone}>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 tabular-nums text-muted-foreground">{m.posA ?? ""}</span>
+                  <span className={cn("flex-1 truncate", m.winner && m.winner === m.a && "font-semibold")}>{m.aName}</span>
+                  <span className="tabular-nums">{m.status === "played" ? m.score ?? "" : ""}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 tabular-nums text-muted-foreground">{m.posB ?? ""}</span>
+                  <span className={cn("flex-1 truncate", m.winner && m.winner === m.b && "font-semibold", m.status === "bye" && "text-muted-foreground")}>{m.bName}</span>
+                  <span className="text-[11px] text-muted-foreground">{m.status === "bye" ? "Bye" : m.status === "played" ? "Played" : m.when}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </section>
+      <section className="space-y-2" data-testid="rr-clean-standings">
+        <h4 className="font-semibold">Standings{view.complete ? " — final" : " — live"}</h4>
+        <p className="text-muted-foreground">"Pos." is the fixed draw position and never moves; Rank updates with each result.</p>
+        <div className="overflow-x-auto"><table className="w-full border-collapse">
+          <thead><tr className="text-left text-muted-foreground"><th className="px-2">Rank</th><th className="px-2">Pos.</th><th className="px-2">Player</th><th className="px-2">P</th><th className="px-2">W</th><th className="px-2">L</th><th className="px-2">Games</th><th className="px-2">GD</th><th className="px-2">Pts F/A</th></tr></thead>
+          <tbody>{standings.map((p) => { const t = totals[p.id]; return (
+            <tr key={p.id} className="riverside-rr-band border-t border-border" data-rr-group={tone} data-testid={`rr-clean-row-${p.id}`}>
+              <td className="px-2 py-1 font-semibold">{anyPlayed ? view.rank[p.id] ?? "—" : "—"}</td><td className="px-2 tabular-nums">{pos(p.id)}</td>
+              <td className="px-2 whitespace-nowrap">{p.name}</td><td className="px-2">{t.played}</td><td className="px-2">{t.wins}</td><td className="px-2">{t.losses}</td>
+              <td className="px-2">{t.gamesFor}–{t.gamesAgainst}</td><td className="px-2">{t.gamesFor - t.gamesAgainst}</td>
+              <td className="px-2 whitespace-nowrap">{t.pointsKnown && t.played ? `${t.pointsFor}/${t.pointsAgainst}` : "—"}</td>
+            </tr>); })}</tbody>
+        </table></div>
+      </section>
     </div>
   );
 }

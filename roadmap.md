@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Fix incomplete Ladies B standings totals from saved score text without changing results.
+- [x] Fixed incomplete standard standings totals from saved score text/JSON; 34 tests pass and signed-in Ladies B shows Liezel/Lisa Rahman GF3 GA0 GD+3 Pts3, opponents GA3. Results unchanged; not published.
 - [x] Ladies B setup changed to three RR rounds with both existing four-player pools; saved stage schedule/mirror and setup round counts verified at 3. Fixtures/results fingerprint unchanged; play-offs deferred.
 - [ ] Ladies B existing fixtures still need reviewed alignment into R1–3; blocked pending safe fixture correction, not regeneration or booking changes.
 - [x] Ladies B Pool 2 read-only check: four players, all six unique RR pairings saved across five rounds (1/2/1/1/1 games); “Bye” heading infers unscheduled players, not an odd player count. Reported; no fixture changes.

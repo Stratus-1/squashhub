@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Loader2, UserMinus } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { withdrawalUpdates, removeFromSeedOrder, removeFromManualDraws } from "@/lib/tournaments/withdraw";
+import { keepPositionGroups } from "@/lib/tournaments/withdraw";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -147,17 +148,27 @@ export function WithdrawPlayerButton({ champs }: Props) {
       if (bookingIds.length > 0) {
         await fromExt("bookings").update({ status: "cancelled" }).in("id", bookingIds);
       }
+      // Swiss: the position must never collapse. Keep the entry and mark the player
+      // "withdrawn – bye" so every later opponent gets an automatic walkover.
+      const swissGroups = keepPositionGroups(champ, memberLeagues(mid), groupNumber);
+      if (swissGroups.length) {
+        const { error } = await fromExt("club_champs_registrations")
+          .update({ withdrawn_keep_position: true, withdrawn_reason: "Withdrawn" })
+          .eq("id", reg.id);
+        if (error) throw error;
+      }
       let del = fromExt("club_champs_entries")
         .delete()
         .eq("champ_id", effectiveChampId)
         .eq("club_member_id", mid);
       if (groupNumber != null) del = del.eq("group_number", groupNumber);
+      if (swissGroups.length) del = del.not("group_number", "in", `(${swissGroups.join(",")})`);
       const { error: eErr } = await del;
       if (eErr) throw eErr;
 
       // Only cancel the whole entry once no league is left.
       const remaining = groupNumber == null ? 0 : memberLeagues(mid).filter((g) => g !== groupNumber).length;
-      if (remaining === 0) {
+      if (remaining === 0 && swissGroups.length === 0) {
         const { error } = await fromExt("club_champs_registrations")
           .update({ status: "cancelled" })
           .eq("id", reg.id);

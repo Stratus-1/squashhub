@@ -1611,6 +1611,13 @@
       "when": 1792571989704,
       "tag": "0229_bar_cash_up_running_opening",
       "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1792573186286,
+      "tag": "0230_bar_cash_up_first_opening",
+      "breakpoints": true
     }
   ]
 }

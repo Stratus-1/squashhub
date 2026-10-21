@@ -5849,6 +5849,11 @@ async function persistStructure(db, tid, spec) {
         for (let i = 0;i < (st.pools ?? 1); i++) {
           let [p] = await db.select("tournament_pools", { stage_id: row.id, pool_index: i });
           p ??= (await db.insert("tournament_pools", [{ tournament_id: tid, stage_id: row.id, pool_index: i, label: d.poolLabels?.[i] || poolDefaultLabel(i) }]))[0];
+          const want = d.poolLabels?.[i]?.trim();
+          if (want && p.label !== want) {
+            await db.update("tournament_pools", { id: p.id }, { label: want });
+            p = { ...p, label: want };
+          }
           ids.pool[`${sk}/${i}`] = p.id;
         }
     }
@@ -7696,12 +7701,12 @@ function swissStage(champ, arch, gn) {
     const st = [...d?.stages ?? []].sort((x, y) => x.order - y.order)[0];
     if (st?.kind !== "swiss")
       return null;
-    const rrFinish = champ.club_id === RIVERSIDE_CLUB_ID ? st.rrFinish : undefined;
+    const rrFinish = st.rrFinish?.enabled ? st.rrFinish : undefined;
     const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
     if (!timeline.length)
       return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish };
     const roundDates = timeline.map((t) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
-    return { tieBreaks: st.tieBreaks, rounds: champ.club_id === RIVERSIDE_CLUB_ID ? st.swissRounds ?? null : timeline.length, schedule: { ...st.schedule ?? {}, roundDates }, rrFinish };
+    return { tieBreaks: st.tieBreaks, rounds: champ.club_id === RIVERSIDE_CLUB_ID || rrFinish ? st.swissRounds ?? null : timeline.length, schedule: { ...st.schedule ?? {}, roundDates }, rrFinish };
   }
   const r = Number(champ?.swiss_rounds?.[String(gn)]);
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;

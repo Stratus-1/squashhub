@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Honor configured three-round RR stages in both pool displays (not legacy R1/3/5 or fragmented five-round labels); preserve saved results, fixtures and bookings; verify Ladies B and Men's A.
 - [x] Fixed incomplete standard standings totals from saved score text/JSON; 34 tests pass and signed-in Ladies B shows Liezel/Lisa Rahman GF3 GA0 GD+3 Pts3, opponents GA3. Results unchanged; not published.
 - [x] Ladies B setup changed to three RR rounds with both existing four-player pools; saved stage schedule/mirror and setup round counts verified at 3. Fixtures/results fingerprint unchanged; play-offs deferred.
 - [ ] Ladies B existing fixtures still need reviewed alignment into R1–3; blocked pending safe fixture correction, not regeneration or booking changes.

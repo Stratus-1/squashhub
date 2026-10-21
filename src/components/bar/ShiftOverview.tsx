@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 
 interface M { sales: number; tips: number; count: number }
 export interface ShiftData {
-  period_start: string; methods: Record<string, M>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number;
+  period_start: string; methods: Record<string, M>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number;
   tabs: { id: string; name: string; method: string | null; operator: string | null; at: string; sales: number; tip: number }[];
   staff_tips: { name: string; amount: number }[];
 }
@@ -30,7 +30,12 @@ export function ShiftSummary({ data, tipsEnabled }: { data?: ShiftData; tipsEnab
     {tipsEnabled && <div className="space-y-1"><div className="flex justify-between font-semibold"><span>Tips</span><span className="tabular-nums">{R(data.total_tips)}</span></div>
       {data.staff_tips.map(s => <div key={s.name} className="flex justify-between text-muted-foreground"><span>{s.name}</span><span className="tabular-nums">{R(s.amount)}</span></div>)}
       {!data.staff_tips.length && <p className="text-muted-foreground">No tips yet.</p>}</div>}
-    <div className="flex justify-between border-t pt-1"><span>Expected cash</span><span className="tabular-nums font-medium">{R(data.expected_cash)}</span></div>
+    <div className="space-y-1 border-t pt-1" aria-label="Cash balance">
+      <div className="flex justify-between"><span>Opening cash</span><span className="tabular-nums">{R(data.cash_opening)}</span></div>
+      <div className="flex justify-between"><span>+ Cash sales{tipsEnabled ? " & tips" : ""}</span><span className="tabular-nums">{R(Number(data.methods?.cash?.sales ?? 0) + Number(data.methods?.cash?.tips ?? 0))}</span></div>
+      {tipsEnabled && <div className="flex justify-between"><span>− Tips paid out</span><span className="tabular-nums">{R(data.tip_payouts)}</span></div>}
+      <div className="flex justify-between font-semibold"><span>Current cash balance</span><span className="tabular-nums">{R(data.expected_cash)}</span></div>
+    </div>
   </Card>;
 }
 

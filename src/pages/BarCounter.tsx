@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub } from "@/hooks/use-club";
 import { useBarAutoRefresh } from "@/hooks/use-bar-auto-refresh";
+import { useCounterAutoUpdate } from "@/hooks/use-counter-auto-update";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -180,6 +181,7 @@ export default function BarCounter() {
     setTipChoice({ ...emptyTip, staffId: board?.tip_staff_id ?? "" });
   }, [activeTabId, board?.tip_staff_id]);
   useBarAutoRefresh(enabled && !!operator && !boardError, refetch);
+  useCounterAutoUpdate(!activeTabId);
   // Single ping when a new tab appears on the board (first load is silent).
   const seenTabs = useRef<Set<string> | null>(null);
   useEffect(() => {

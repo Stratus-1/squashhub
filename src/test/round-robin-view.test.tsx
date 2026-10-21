@@ -38,7 +38,7 @@ describe("round-robin pilot view", () => {
     const m: RRMatchInput = {id:"x",a:"p1",b:"p2",round:1,status:"completed",winner:"p1",score:"3-1"};
     const v = buildRoundRobinView({players:P(2),matches:[m]});
     expect(v.totals.p1.pointsKnown).toBe(false);
-    render(<RoundRobinPilotView title="Pool A" view={v} />);
+    render(<RoundRobinPilotView clean={false} title="Pool A" view={v} />);
     expect(screen.getByTestId("rr-points-p1").textContent).toBe("—");
     const other=buildRoundRobinView({players:[{id:"p3",name:"Other"}],matches:[m]});
     expect(other.totals.p3).toMatchObject({played:0,pointsFor:0,pointsAgainst:0});
@@ -46,9 +46,9 @@ describe("round-robin pilot view", () => {
   it("recomputes both point totals when saved matches refetch, without changing order or inputs", () => {
     const m: RRMatchInput={id:"x",a:"p1",b:"p2",round:1,status:"in_progress",score:"0-11, 11-0, 11-0, 11-0"};
     const make=(matches:RRMatchInput[])=>buildRoundRobinView({players:P(2),matches,rankOrder:["p2","p1"]});
-    const {rerender}=render(<RoundRobinPilotView title="Pool A" view={make([m])}/>);
+    const {rerender}=render(<RoundRobinPilotView clean={false} title="Pool A" view={make([m])}/>);
     expect(screen.getByTestId("rr-points-p1").textContent).toBe("0/0");
-    rerender(<RoundRobinPilotView title="Pool A" view={make([{...m,status:"completed",winner:"p1"}])}/>);
+    rerender(<RoundRobinPilotView clean={false} title="Pool A" view={make([{...m,status:"completed",winner:"p1"}])}/>);
     expect(screen.getByTestId("rr-points-p1").textContent).toBe("33/11");
     expect(screen.getByTestId("rr-points-p2").textContent).toBe("11/33");
     expect(m.status).toBe("in_progress"); expect(make([m]).players[0].id).toBe("p2");
@@ -58,7 +58,7 @@ describe("round-robin pilot view", () => {
     const before = JSON.stringify(m);
     const view = buildRoundRobinView({ players: P(3), matches: [m, { id: "pending", a: "p1", b: "p3", round: 2 }] });
     expect(view.matrix.p1.p2?.setSummary).toBe("3–1"); expect(view.matrix.p2.p1?.setSummary).toBe("1–3");
-    render(<RoundRobinPilotView title="Pool A" view={view} />);
+    render(<RoundRobinPilotView clean={false} title="Pool A" view={view} />);
     expect(screen.getByTestId("rr-cell-p1-p2").textContent).toBe("3–1");
     expect(screen.getByTestId("rr-cell-p2-p1").textContent).toBe("1–3");
     expect(screen.getByTestId("rr-cell-p2-p1").className).toContain("rr-matrix-final");
@@ -72,7 +72,7 @@ describe("round-robin pilot view", () => {
   });
   it("never gives live or pending cells final tint or a completed set count", () => {
     const view = buildRoundRobinView({ players: P(2), matches: [{ id:"live",a:"p1",b:"p2",round:1,status:"in_progress",score:"11-0" }] });
-    render(<RoundRobinPilotView title="Pool A" view={view} />);
+    render(<RoundRobinPilotView clean={false} title="Pool A" view={view} />);
     expect(screen.getByTestId("rr-cell-p1-p2").getAttribute("data-state")).toBe("live");
     expect(screen.getByTestId("rr-cell-p1-p2").className).not.toContain("rr-matrix-final");
     expect(view.matrix.p1.p2?.setSummary).toBeNull();
@@ -85,7 +85,7 @@ describe("round-robin pilot view", () => {
   it("gives rounds distinct restrained accents without changing schedule or results", () => {
     const view = buildRoundRobinView({ players: P(5), matches: circle(5) });
     const before = JSON.stringify(view);
-    const { container } = render(<RoundRobinPilotView title="Pool A" view={view} />);
+    const { container } = render(<RoundRobinPilotView clean={false} title="Pool A" view={view} />);
     expect([...container.querySelectorAll(".round-panel")].map(r => r.getAttribute("data-round-tone"))).toEqual(["1", "2", "3", "4", "5"]);
     expect(JSON.stringify(view)).toBe(before);
   });
@@ -123,7 +123,7 @@ describe("round-robin pilot view", () => {
     expect(rrWhen({})).toBe("Not scheduled");
   });
   it("renders matrix and order of play read-only", () => {
-    render(<RoundRobinPilotView title="Ladies A · Pool C" view={buildRoundRobinView({ players: P(6), matches: circle(6) })} />);
+    render(<RoundRobinPilotView clean={false} title="Ladies A · Pool C" view={buildRoundRobinView({ players: P(6), matches: circle(6) })} />);
     expect(screen.getByTestId("rr-matrix")).toBeTruthy();
     expect(screen.getByTestId("rr-order-of-play").textContent).toContain("Round 5");
     expect(screen.queryByRole("button", { name: /save|enter result/i })).toBeNull();

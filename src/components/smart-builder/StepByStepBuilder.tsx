@@ -1640,7 +1640,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cardStructure && cur === "Structure" && <CardStructureEditor clubId={clubId} answers={a} onSave={(next) => { setA(next); void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
+          {cardStructure && cur === "Structure" && !serverReady && <p className="text-xs text-muted-foreground" role="status">Loading the saved tournament structure…</p>}
+          {cardStructure && cur === "Structure" && serverReady && <CardStructureEditor key={`structure-${tournamentId ?? "new"}`} clubId={clubId} answers={a} onSave={(next) => { setA(next); void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
           {cardStructure && cur === "StructureReview" && <CardStructureReview answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} dirty={rowStructureDirty} onEdit={() => go("Structure")} />}
           {isStruct && <>
             <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />

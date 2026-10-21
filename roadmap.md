@@ -1,4 +1,6 @@
 # Roadmap
+- [ ] Urgent Uitsig audit: locate actual C/D/Ladies A screenshots, compare all rounds and saved pairs; preserve Ladies A and all live data.
+- [ ] Remove viewing-triggered tournament writes; display all six Men's C Swiss remainder places in R3–5; test source/service parity and safe retry/settings boundaries. No publication/deployment.
 - [x] Frontend-only safety assessment: provisional R3–5 projection retained, 15 focused tests pass. STOP: manager view mounts client auto-progression/scheduling/notifications; opening setup can auto-save local answers and changed plans trigger scheduling; non-Riverside settings mirrors remain inconsistent. No frontend publication or service deployment. Setup browser check redirected to dashboard, so not verified.
 - [ ] Frontend release and live Riverside/Uitsig verification BLOCKED pending safe separation of display from client progression/setup write paths; owner review required. Service remains withheld for all three previously identified blockers.
 - [x] Controlled tournament rollout safety audit: current full suite 22 failed/3301 passed/98 skipped; 21 identical failures before horizontal layout (3d31a8848), intermittent ScanPay failure reproduced before pool UI (2f064206c). 60 focused and 368 relevant integration checks pass; no confirmed rollout-caused test failures.

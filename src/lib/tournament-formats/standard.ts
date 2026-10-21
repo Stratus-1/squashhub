@@ -1,3 +1,4 @@
+import { gameSetsOf } from "../tournaments/tie-breaks";
 import type {
   ChampLike,
   MatchLike,
@@ -51,24 +52,22 @@ export const StandardFormat: TournamentFormat = {
     if (wonByPair) stats.won += 1;
     else stats.lost += 1;
 
-    if (match.game_scores) {
-      try {
-        const gs = JSON.parse(match.game_scores);
-        const sets = (gs.sets || []) as Array<{ a?: number; b?: number }>;
-        sets.forEach((s) => {
-          const aPts = s.a || 0;
-          const bPts = s.b || 0;
-          const myPts = isA ? aPts : bPts;
-          const oppPts = isA ? bPts : aPts;
-          stats.pointsFor += myPts;
-          stats.pointsAgainst += oppPts;
-          // Count games (sets) won/lost — GD is games difference.
-          if (myPts > oppPts) stats.gamesWon += 1;
-          else if (oppPts > myPts) stats.gamesLost += 1;
-        });
-      } catch {
-        /* ignore malformed JSON */
+    let gameScores: unknown = match.game_scores;
+    if (typeof gameScores === "string") {
+      try { gameScores = JSON.parse(gameScores); }
+      catch { gameScores = null; }
+    }
+    // The shared parser falls back to saved score text when set JSON is absent.
+    const detail = gameSetsOf({ ...match, game_scores: gameScores });
+    for (const s of detail.sets ?? []) {
+      const myPts = isA ? s.a : s.b;
+      const oppPts = isA ? s.b : s.a;
+      if (detail.pointsKnown) {
+        stats.pointsFor += myPts;
+        stats.pointsAgainst += oppPts;
       }
+      if (myPts > oppPts) stats.gamesWon += 1;
+      else if (oppPts > myPts) stats.gamesLost += 1;
     }
 
     return true;

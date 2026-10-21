@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Read-only check Ladies B Pool 2's player count, missing games and apparent byes; report without changing fixtures.
+- [x] Ladies B Pool 2 read-only check: four players, all six unique RR pairings saved across five rounds (1/2/1/1/1 games); “Bye” heading infers unscheduled players, not an odd player count. Reported; no fixture changes.
 - [x] New draggable round-robin view standard across clubs and tournaments (singles/doubles presentation); 23 tests pass, pilot switches-off desktop/mobile drag checked, preview OK; no publication or live-data changes.
 - [x] Ladies B uses the same draggable clean pool view as Men's A; 19 tests pass, authenticated desktop/mobile both pools drag correctly, build OK. Display only; games/results/settings unchanged, not published.
 - [x] Correct Ladies A preview to approved nine-position screenshot: current category selector restored, exact byes/R5 sit-outs retained; 21 chart tests and authenticated all-five-round comparison pass, build OK. Saved games/settings unchanged; not published.

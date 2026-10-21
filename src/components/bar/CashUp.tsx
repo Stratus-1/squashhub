@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface MethodTotal { sales: number; tips: number; count: number }
-interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number }
+interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number }
 interface Closed { id: string; period_start: string; period_end: string; totals: Summary; expected_cash: number; counted_cash: number; variance: number; closed_by_name: string | null; written_off?: boolean }
 interface Balance { staff_id: string; name: string; earned: number; paid: number; remaining: number }
 const MONEY = /^\d+(\.\d{1,2})?$/;
@@ -50,7 +50,8 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const gross = (k: string) => Number(m(k).sales) + Number(m(k).tips);
   const tipsOut = Number(s?.tip_payouts ?? 0) + newTips;
   const cardShould = gross("card_bar");
-  const cashShould = gross("cash") - tipsOut;
+  const opening = Number(s?.cash_opening ?? 0);
+  const cashShould = opening + gross("cash") - tipsOut;
   const cardActual = card ?? cardShould.toFixed(2);
   const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid;
   const vCash = MONEY.test(counted) ? Number(counted) - cashShould : null;
@@ -107,6 +108,15 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
             <td className="text-right tabular-nums">{R(gross("online") + cardShould + cashShould + gross("member_account"))}</td>
             <td className="text-right tabular-nums pl-2">{MONEY.test(counted) && MONEY.test(cardActual) ? R(gross("online") + Number(cardActual) + Number(counted) + gross("member_account")) : "—"}</td></tr>
         </tbody></table></div>
+
+      <div className="rounded-md border p-3 space-y-1 max-w-sm" aria-label="Cash balance">
+        <h4 className="font-semibold">Cash balance</h4>
+        <div className="flex justify-between"><span>Opening balance</span><span className="tabular-nums">{R(opening)}</span></div>
+        <div className="flex justify-between"><span>+ New cash sales{tipsEnabled ? " & tips" : ""}</span><span className="tabular-nums">{R(gross("cash"))}</span></div>
+        <div className="flex justify-between"><span>− Tips paid out</span><span className="tabular-nums">{R(tipsOut)}</span></div>
+        <div className="flex justify-between font-semibold border-t pt-1"><span>New balance (should be in the till)</span><span className="tabular-nums">{R(cashShould)}</span></div>
+        <p className="text-muted-foreground">Any difference must be cleared by an admin — write it off below or record a transaction.</p>
+      </div>
 
       <div className="rounded-md border p-3 space-y-2">
         {variance !== null && <p className={variance === 0 ? "text-muted-foreground" : "text-destructive font-medium"}>{variance === 0 ? "Everything balances." : `${variance > 0 ? "Surplus" : "Shortfall"} of ${R(Math.abs(variance))}`}</p>}

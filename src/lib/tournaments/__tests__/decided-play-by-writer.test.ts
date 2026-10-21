@@ -48,7 +48,8 @@ describe("synthetic Riverside play-by creation through writer", () => {
     state.tables.club_champs_rounds = [3,4,5].map((r) => ({ id: `r${r}`, group_number: 4, round_number: r, scheduling_mode: "self", play_by: `2026-11-0${r}` }));
     const roundsBefore = JSON.stringify(state.tables.club_champs_rounds);
     for (const r of [3,4,5]) {
-      expect(await createDecidedSwissGames("fictional-riverside")).toEqual({ created: 9, booked: 0, issues: [] });
+      const outcome = await createDecidedSwissGames("fictional-riverside");
+      expect(outcome, `Round ${r}`).toEqual({ created: 9, booked: 0, issues: [] });
       const games = state.tables.club_champs_matches.filter((m) => m.round_number === r);
       expect(games).toHaveLength(9);
       const grouped = games.filter((m) => Number(m.player_a_member_id.slice(1)) <= 12);

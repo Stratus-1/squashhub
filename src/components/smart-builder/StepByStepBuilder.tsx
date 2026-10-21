@@ -954,18 +954,22 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     const raw = a.originalStructure as Record<string, any> | undefined, keys: string[] = raw?._unit_keys ?? [];
     return keys.filter((_, i) => raw?.league_playoff_bottom_half?.[String(i + 1)]);
   }, [a.originalStructure]);
-  const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
-  /** Main rounds: choose several categories at once. The round stays one per category (copies share its settings). */
-  const setStageUnits = (s: ClubStage, keys: string[]) => {
-    if (!keys.length) { updStage(s.id, { unit: "" }); return; }
-    const [first, ...rest] = keys;
-    const copies = rest.filter((u) => !stages.some((x) => x.id !== s.id && (x.phase ?? "main") === "main" && x.unit === u && x.name === s.name))
-      .map((u) => ({ ...s, id: crypto.randomUUID(), unit: u, extraDays: (s.extraDays ?? []).map((d) => ({ ...d })), courtIds: [...s.courtIds] }));
-    const i = stages.findIndex((x) => x.id === s.id);
-    const next = stages.map((x) => (x.id === s.id ? { ...x, unit: first } : x));
-    next.splice(i + 1, 0, ...copies);
-    setStages(next);
+  /** Main-round copies sharing a name form one round shown as a single card; edits apply to every copy. */
+  const groupOf = (s: ClubStage) => (s.phase ?? "main") === "main" && s.name ? stages.filter((x) => (x.phase ?? "main") === "main" && x.name === s.name) : [s];
+  const updStage = (id: string, p: Partial<ClubStage>) => {
+    const s = stages.find((x) => x.id === id); if (!s) return;
+    const ids = new Set(("unit" in p ? [s] : groupOf(s)).map((x) => x.id));
+    setStages(stages.map((x) => (ids.has(x.id) ? { ...x, ...p } : x)));
   };
+  const toggleStageUnit = (s: ClubStage, key: string) => {
+    const g = groupOf(s); const hit = g.find((x) => x.unit === key);
+    if (hit) { if (g.length > 1) setStages(stages.filter((x) => x.id !== hit.id)); return; }
+    if (g.length === 1 && !s.unit) { setStages(stages.map((x) => (x.id === s.id ? { ...x, unit: key } : x))); return; }
+    const last = g[g.length - 1]; const i = stages.findIndex((x) => x.id === last.id);
+    const copy = { ...last, id: crypto.randomUUID(), unit: key, extraDays: (last.extraDays ?? []).map((d) => ({ ...d })), courtIds: [...last.courtIds] };
+    const next = [...stages]; next.splice(i + 1, 0, copy); setStages(next);
+  };
+  const setAllCategories = (s: ClubStage) => { const drop = new Set(groupOf(s).filter((x) => x.id !== s.id).map((x) => x.id)); setStages(stages.filter((x) => !drop.has(x.id)).map((x) => (x.id === s.id ? { ...x, unit: "" } : x))); };
   const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
   const courtChips = (ids: string[], set: (ids: string[]) => void) => clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
     const on = ids.includes(c.id);
@@ -977,6 +981,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const periodText = `${fmtDay(a.periodStart)} – ${champsEnd ? fmtDay(champsEnd) : "ends with the final"}`;
   const mainStages = stages.filter((s) => (s.phase ?? "main") === "main");
   const playoffStages = stages.filter((s) => s.phase === "playoff");
+  const mainRounds: ClubStage[][] = (() => { const out: ClubStage[][] = []; const by = new Map<string, ClubStage[]>();
+    for (const s of mainStages) { const k = s.name ? `n:${s.name}` : `i:${s.id}`; const g = by.get(k); if (g) g.push(s); else { const ng = [s]; by.set(k, ng); out.push(ng); } } return out; })();
   const suggestStages = () => {
     const main = [newStage("Round 1", "play_by", "", "main"), newStage("Round 2", "play_by", "", "main")];
     const startOf = (k: string): PlayoffStart => { const n = Number(a.unitEntries?.[k]) || 0; return n >= 8 ? "qf" : n >= 4 ? "sf" : n >= 2 ? "final" : "later"; };
@@ -995,7 +1001,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const played = ((data ?? []) as any[]).filter((m) => String(m.stage_label ?? "").toLowerCase().replace(/-/g, "").includes(base.replace(/-/g, "")) && (m.status === "completed" || m.winner_member_id));
       if (played.length) { toast.error(`${s.name} already has ${played.length} played game(s) — it can't be removed. Results are kept.`); return; }
     }
-    setStages(stages.filter((x) => x.id !== s.id));
+    const drop = new Set(groupOf(s).map((x) => x.id));
+    setStages(stages.filter((x) => !drop.has(x.id)));
   };
   const renderMainRounds = () => (
               <div className="space-y-3">
@@ -1011,19 +1018,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   </table>
                 )}
                 {mainStages.length === 0 && <p className="text-xs text-muted-foreground">No main rounds yet.</p>}
-                {mainStages.map(renderStage)}
+                {mainRounds.map((g, i) => renderStage(g[0], i))}
                 {(() => {
-                  const prev = mainStages[mainStages.length - 1];
+                  const prevGroup = mainRounds[mainRounds.length - 1] ?? []; const prev = prevGroup[0];
                   const canCopy = !!prev && (!!prev.date || !!prev.deadline || prev.mode === "later");
                   const shift = (d: string, w: number) => { if (!d) return d; const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + w * 7); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
                   const add = () => {
-                    const name = `Round ${mainStages.length + 1}`;
+                    let n = mainRounds.length + 1; while (mainStages.some((x) => x.name === `Round ${n}`)) n++;
+                    const name = `Round ${n}`;
                     if (!canCopy || !prev) { const ns = newStage(name, "play_by", "", "main"); setStageOpen((o) => ({ ...o, [ns.id]: true })); setStages([...stages, ns]); return; }
                     const w = Math.max(0, Math.min(52, Number(nextRoundGapWeeks) || 1));
-                    const copy: ClubStage = { ...prev, id: Math.random().toString(36).slice(2), name, deadline: shift(prev.deadline, w), date: shift(prev.date, w), courtIds: [...prev.courtIds],
-                      extraDays: prev.extraDays?.map((d) => ({ ...d, date: shift(d.date, w), courtIds: [...d.courtIds] })) };
-                    setStageOpen((o) => ({ ...o, [copy.id]: true }));
-                    setStages([...stages, copy]);
+                    const copies: ClubStage[] = prevGroup.map((p) => ({ ...p, id: Math.random().toString(36).slice(2), name, deadline: shift(p.deadline, w), date: shift(p.date, w), courtIds: [...p.courtIds],
+                      extraDays: p.extraDays?.map((d) => ({ ...d, date: shift(d.date, w), courtIds: [...d.courtIds] })) }));
+                    setStageOpen((o) => ({ ...o, [copies[0].id]: true }));
+                    setStages([...stages, ...copies]);
                   };
                   return (
                     <div className="flex flex-wrap items-center gap-2">
@@ -1083,7 +1091,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const jumpToStage = (id: string) => { setStageOpen((o) => ({ ...o, [id]: true })); requestAnimationFrame(() => document.getElementById(`stage-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })); };
   const renderStage = (s: ClubStage, index: number) => {
     const idx = s.phase === "playoff" ? playoffStages.indexOf(s) : index;
-    return <StageCardShell key={s.id} stage={s} index={idx} title={s.name} unitLabel={stageUnit(s.unit)} summary={stageSummary(s)} status={stageStatusOf(s.id)} open={isStageOpen(s)} onToggle={() => setStageOpen((o) => ({ ...o, [s.id]: !isStageOpen(s) }))}>
+    return <StageCardShell key={s.id} stage={s} index={idx} title={s.name} unitLabel={groupOf(s).map((x) => stageUnit(x.unit)).join(", ")} summary={stageSummary(s)} status={stageStatusOf(s.id)} open={isStageOpen(s)} onToggle={() => setStageOpen((o) => ({ ...o, [s.id]: !isStageOpen(s) }))}>
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", s.phase === "playoff" ? "bg-primary text-primary-foreground" : "bg-muted")}>{s.phase === "playoff" ? "Playoff" : "Main round"}</span>
@@ -1091,13 +1099,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           <option value="">{a.playoffSync === true ? "All categories (common date)" : "All categories"}</option>
           {units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
         </select> : <Popover>
-          <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" aria-label="Stage applies to" className="h-9">{stageUnit(s.unit)} ▾</Button></PopoverTrigger>
+          <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" aria-label="Stage applies to" className="h-9">{groupOf(s).map((x) => stageUnit(x.unit)).join(", ")} ▾</Button></PopoverTrigger>
           <PopoverContent align="start" className="w-64 space-y-1 p-2">
-            <p className="px-1 pb-1 text-xs text-muted-foreground">Tick every category that plays this round. Each gets its own copy you can still change.</p>
-            <label className="flex items-center gap-2 rounded px-1 py-1 text-sm"><Checkbox checked={!s.unit} onCheckedChange={() => updStage(s.id, { unit: "" })} />All categories</label>
+            <p className="px-1 pb-1 text-xs text-muted-foreground">Tick every category that plays this round.</p>
+            <label className="flex items-center gap-2 rounded px-1 py-1 text-sm"><Checkbox checked={groupOf(s).some((x) => !x.unit)} onCheckedChange={() => setAllCategories(s)} />All categories</label>
             {units.map((u) => {
-              const on = s.unit === u.key || stages.some((x) => x.id !== s.id && (x.phase ?? "main") === "main" && x.unit === u.key && x.name === s.name);
-              return <label key={u.key} className="flex items-center gap-2 rounded px-1 py-1 text-sm"><Checkbox checked={on} disabled={on} aria-label={`Apply to ${u.base}`} onCheckedChange={() => setStageUnits(s, s.unit ? [s.unit, u.key] : [u.key])} />{u.base}</label>;
+              const g = groupOf(s); const on = g.some((x) => x.unit === u.key);
+              return <label key={u.key} className="flex items-center gap-2 rounded px-1 py-1 text-sm"><Checkbox checked={on} disabled={on && g.length === 1} aria-label={`Apply to ${u.base}`} onCheckedChange={() => toggleStageUnit(s, u.key)} />{u.base}</label>;
             })}
           </PopoverContent>
         </Popover>}

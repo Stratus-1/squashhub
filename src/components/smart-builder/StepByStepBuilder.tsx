@@ -18,23 +18,28 @@ async function pushStructureRoundsLive(clubId: string, tid: string | null | unde
     (ms ?? []).forEach((m: any) => { const g = Number(m.group_number); created[g] = Math.max(created[g] ?? 0, Number(m.round_number) || 0); });
     // Riverside pilot: resolve each category exactly as the Structure screen shows it (own plan → parent →
     // tournament default) and carry the round-robin finish option. Other clubs keep explicit plans only.
-    const source = clubId === RIVERSIDE_CLUB_ID ? answers : { stagePlans: answers.stagePlans ?? {} };
+    const source = answers;
     const r = syncSwissRoundsToSpec(t.builder_spec, source, created);
     r.blocked.forEach((msg) => toast.error(msg));
-    if (r.spec === t.builder_spec) return;
+    // A retry must reconcile mirrors even when the saved spec already matches.
+    if (r.blocked.length) return;
     const rounds = { ...(t.swiss_rounds ?? {}) } as Record<string, number>;
     r.spec.divisions.forEach((d: any) => { const st = d.stages?.[0]; if (st?.kind === "swiss" && st.swissRounds) rounds[String(d.groupNumber)] = st.swissRounds; });
     const { error } = await fromExt("tournaments").update({ builder_spec: r.spec, swiss_rounds: rounds }).eq("id", tid).eq("club_id", clubId);
     if (error) throw error;
     await fromExt("club_champs").update({ swiss_rounds: rounds }).eq("id", tid).eq("club_id", clubId);
-    if (clubId === RIVERSIDE_CLUB_ID) {
+    {
       const { data: divisions, error: de } = await fromExt("tournament_divisions").select("id,spec_key").eq("tournament_id", tid);
       if (de) throw de;
       for (const d of r.spec.divisions) {
         const division = (divisions ?? []).find((v: any) => v.spec_key === d.divisionId);
         if (!division) continue;
+        // Only categories explicitly changed in this save may update existing mirrors.
+        const old = t.builder_spec.divisions.find((v: any) => v.divisionId === d.divisionId);
         for (const st of d.stages ?? []) {
           if (st.kind !== "swiss") continue;
+          const prior = old?.stages?.find((v: any) => v.id === st.id);
+          if (prior?.swissRounds === st.swissRounds && JSON.stringify(prior?.rrFinish ?? null) === JSON.stringify(st.rrFinish ?? null)) continue;
           const { data: saved, error: se } = await fromExt("tournament_stages").select("id,config").eq("tournament_id", tid).eq("division_id", division.id).eq("spec_key", st.id).maybeSingle();
           if (se) throw se;
           if (!saved) continue;

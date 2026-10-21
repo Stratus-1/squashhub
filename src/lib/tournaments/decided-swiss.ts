@@ -4,7 +4,7 @@
  * pairing into a normal fixture and books its planned court slot in the same step. Idempotent.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { projectCourtFixtures, projectDecidedPlayByFixtures, type ProjectionInput, type ProjectedCourtFixture } from "@/lib/tournaments/projected-court-fixtures";
+import { projectCourtFixtures, projectDecidedPlayByFixtures, projectSwissBookingRetries, type ProjectionInput, type ProjectedCourtFixture } from "@/lib/tournaments/projected-court-fixtures";
 
 export type ProjectedChampFixture = ProjectedCourtFixture & { courtName: string };
 
@@ -38,6 +38,11 @@ export async function createDecidedSwissGames(tid: string): Promise<{ created: n
   const input = await loadProjectionInput(champ);
   const list = [...projectCourtFixtures(input), ...projectDecidedPlayByFixtures(input)];
   let created = 0, booked = 0; const issues: string[] = [];
+  for (const f of projectSwissBookingRetries(input)) {
+    const { error } = await sb.rpc("self_schedule_champ_match", { p_match_id: f.matchId, p_court_id: f.courtId, p_date: f.date, p_time: `${f.time}:00`, p_duration_minutes: f.minutes });
+    if (error) issues.push(`${f.title}: court booking retry failed (${error.message})`);
+    else booked++;
+  }
   for (const f of list) {
     const { data: id, error } = await sb.rpc("create_decided_swiss_game", { p_tid: tid, p_group: f.group, p_round: f.round, p_a: f.aId, p_b: f.bId });
     if (error || !id) { issues.push(`${f.title}: ${error?.message ?? "not created"}`); continue; }

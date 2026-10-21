@@ -1,8 +1,8 @@
 # Roadmap
-- [ ] Honor configured three-round RR stages in both pool displays (not legacy R1/3/5 or fragmented five-round labels); preserve saved results, fixtures and bookings; verify Ladies B and Men's A.
+- [x] Honor configured three-round RR stages in both pool displays: 25 focused checks pass; signed-in Ladies B has two games per round and no byes in both pools, Men's A also R1–3. Dragging retained; no saved fixture/result/booking writes or publication.
 - [x] Fixed incomplete standard standings totals from saved score text/JSON; 34 tests pass and signed-in Ladies B shows Liezel/Lisa Rahman GF3 GA0 GD+3 Pts3, opponents GA3. Results unchanged; not published.
 - [x] Ladies B setup changed to three RR rounds with both existing four-player pools; saved stage schedule/mirror and setup round counts verified at 3. Fixtures/results fingerprint unchanged; play-offs deferred.
-- [ ] Ladies B existing fixtures still need reviewed alignment into R1–3; blocked pending safe fixture correction, not regeneration or booking changes.
+- [ ] Ladies B underlying saved fixture rounds/deadlines still need reviewed alignment if requested; display now groups R1–3 without writes. Hosted correction remains blocked pending explicit impact review/approval; bookings and dates untouched.
 - [x] Ladies B Pool 2 read-only check: four players, all six unique RR pairings saved across five rounds (1/2/1/1/1 games); “Bye” heading infers unscheduled players, not an odd player count. Reported; no fixture changes.
 - [x] New draggable round-robin view standard across clubs and tournaments (singles/doubles presentation); 23 tests pass, pilot switches-off desktop/mobile drag checked, preview OK; no publication or live-data changes.
 - [x] Ladies B uses the same draggable clean pool view as Men's A; 19 tests pass, authenticated desktop/mobile both pools drag correctly, build OK. Display only; games/results/settings unchanged, not published.

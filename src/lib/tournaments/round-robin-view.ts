@@ -8,6 +8,7 @@
  */
 import { gameSetsOf } from "@/lib/tournaments/tie-breaks";
 import { isVoidResult } from "@/lib/tournaments/forfeit";
+import { roundRobin } from "@/lib/tournaments/contract";
 
 export interface RRPlayer { id: string; name: string }
 export interface RRMatchInput {
@@ -85,7 +86,42 @@ export function rrWhen(m: Pick<RRMatchInput, "date" | "time" | "court" | "playBy
   return "Not scheduled";
 }
 
-export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMatchInput[]; rankOrder?: string[]; seedOrder?: string[] }): RRPoolView {
+/** Project legacy pool rounds into the configured stage, never changing saved fixtures or slots. */
+function stageRoundProjection(players: RRPlayer[], matches: RRMatchInput[], count?: number): RRMatchInput[] {
+  if (!count || !Number.isInteger(count)) return matches;
+  const ids = players.map(p => p.id);
+  const expected = ids.length % 2 ? ids.length : ids.length - 1;
+  if (count !== expected || matches.some(m => m.isBye || !m.a || !m.b || !ids.includes(m.a) || !ids.includes(m.b))) return matches;
+  const pair = (a: string, b: string) => JSON.stringify([a, b].sort());
+  const keys = matches.map(m => pair(m.a ?? "", m.b ?? ""));
+  if (matches.length !== ids.length * (ids.length - 1) / 2 || new Set(keys).size !== keys.length) return matches;
+  const saved = new Map<number, RRMatchInput[]>();
+  for (const m of matches) {
+    if (m.round == null) return matches;
+    saved.set(m.round, [...(saved.get(m.round) ?? []), m]);
+  }
+  const balanced = saved.size === count && [...saved.values()].every(ms =>
+    ms.length === Math.floor(ids.length / 2) && new Set(ms.flatMap(m => [m.a, m.b])).size === ms.length * 2);
+  let groups: RRMatchInput[][];
+  if (balanced) groups = [...saved.entries()].sort(([a], [b]) => a - b).map(([, ms]) => ms);
+  else {
+    // Four players have one unique partition into three complementary match pairs.
+    // Larger conflicting schedules have multiple possible partitions: do not guess.
+    if (ids.length !== 4) return matches;
+    const lookup = new Map(matches.map(m => [pair(m.a ?? "", m.b ?? ""), m]));
+    const planned = new Map<number, RRMatchInput[]>();
+    for (const fixture of roundRobin(ids)) {
+      const m = lookup.get(pair(fixture.a, fixture.b));
+      if (!m) return matches;
+      planned.set(fixture.round, [...(planned.get(fixture.round) ?? []), m]);
+    }
+    groups = [...planned.values()].sort((a, b) => Math.min(...a.map(m => m.round ?? Infinity)) - Math.min(...b.map(m => m.round ?? Infinity)));
+  }
+  const roundOf = new Map(groups.flatMap((ms, i) => ms.map(m => [m.id, i + 1] as const)));
+  return matches.map(m => ({ ...m, round: roundOf.get(m.id) ?? m.round }));
+}
+
+export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMatchInput[]; rankOrder?: string[]; seedOrder?: string[]; stageRoundCount?: number }): RRPoolView {
   const issues: string[] = [];
   // Rows stay in fixed draw order (seedOrder) so games never jump boxes; rank is shown separately.
   const order = input.seedOrder?.length ? input.seedOrder : input.rankOrder?.length ? input.rankOrder : input.players.map((p) => p.id);
@@ -94,13 +130,14 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
     return (ix < 0 ? 1e9 : ix) - (iy < 0 ? 1e9 : iy);
   });
   const ids = new Set(players.map((p) => p.id));
+  const projectedMatches = stageRoundProjection(players, input.matches, input.stageRoundCount);
   const name = (id: string | null) => (id ? players.find((p) => p.id === id)?.name ?? "Unknown player" : "Bye");
   const pos = (id: string | null) => (id ? players.findIndex((p) => p.id === id) + 1 || null : null);
   const matrix: RRPoolView["matrix"] = {};
   const totals: RRPoolView["totals"] = {};
   for (const p of players) { matrix[p.id] = {}; totals[p.id] = { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0, pointsKnown: true, gamesFor: 0, gamesAgainst: 0 }; for (const q of players) matrix[p.id][q.id] = null; }
 
-  for (const m of input.matches) {
+  for (const m of projectedMatches) {
     if (m.isBye || !m.a || !m.b) continue;
     if (isVoidResult({ score: m.score })) continue;
     if (!ids.has(m.a) || !ids.has(m.b)) { issues.push(`Match ${m.id} has a player outside this pool.`); continue; }
@@ -134,7 +171,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
   }
 
   const byRound = new Map<number | null, RRMatchInput[]>();
-  for (const m of input.matches) { const k = m.round ?? null; const ms = byRound.get(k) ?? []; ms.push(m); byRound.set(k, ms); }
+  for (const m of projectedMatches) { const k = m.round ?? null; const ms = byRound.get(k) ?? []; ms.push(m); byRound.set(k, ms); }
   const rounds: RRRound[] = [...byRound.entries()].sort(([a], [b]) => (a ?? 1e9) - (b ?? 1e9)).map(([round, ms]) => {
     const matches = ms.map<RRRoundMatch>((m) => ({
       id: m.id, a: m.a, b: m.isBye ? null : m.b, aName: name(m.a), bName: m.isBye ? "Bye" : name(m.b),

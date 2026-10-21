@@ -63,3 +63,4 @@
 - Tournament administration hierarchy uses explicit local roots and light-only semantic surfaces, including notification portals; why: public/member pages and existing dark mode must remain unchanged.
 - Draw notification dialogs keep the header and actions outside one viewport-bounded scrolling body; why: expanded personalized previews must not hide send/cancel controls or scroll the underlying page.
 - The Structure screen's per-category Swiss stage plan is the single source of the Swiss round count; it is copied into builder_spec on save and never lowered below a round with games; why: the progression log and engine read builder_spec.
+- Riverside RR-finish controls live below Category seeding in the reachable original structure screen and round-trip through the original-structure adapter into stagePlans and the draw spec; why: CardStructureEditor's club-backed early return bypasses its legacy card markup.

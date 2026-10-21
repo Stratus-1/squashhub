@@ -14,6 +14,7 @@ import { swissPreviewFinalsTemplate } from "./swiss-preview-finals";
 import { uitsigMensCChart } from "./swiss-uitsig-mens-c-chart";
 import { uitsigLadiesAChart } from "./swiss-uitsig-ladies-a-chart";
 import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
+import { rrFinishOn, rrFinishRound, type RrFinish } from "./swiss-rr-finish";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -52,6 +53,7 @@ export interface ProgressionRow {
   swissFinalPosition?: number | null;
 }
 export interface SwissProgressionModel {
+  rrFinish?: RrFinish | null;
   format: SwissFormatKind; totalRounds: number; rounds: ProgressionRound[]; rows: ProgressionRow[];
   /** Configured Swiss round count (excludes later follow-up stage games that share the round axis). */
   configuredRounds: number;
@@ -213,6 +215,25 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
 export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[] } {
+  if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5) {
+    const saved = buildSwissGrid(model);
+    const locked = model.rounds.find((r) => r.round === 2)?.complete;
+    const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [];
+    const byId = new Map(model.rows.map((r) => [r.id, r]));
+    const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
+    return { issues: [], rounds: saved.map((rd) => {
+      if (rd.round < 3 || !locked) return { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) };
+      const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
+      const groupIds = new Set(plan.pairs.flat());
+      const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })) as [GridRow, GridRow] }));
+      const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
+      const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
+      const pending = plan.pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
+        matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: fixed.get(id) ?? null, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
+      }));
+      return { ...rd, blocks: [...factual, ...pending].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
+    }) };
+  }
   const n = model.rows.length;
   const mensC = opts.exactMensCChart === true && n === 18 && model.totalRounds === 5;
   const ladiesA = opts.exactLadiesAChart === true && n === 9 && model.totalRounds === 5;

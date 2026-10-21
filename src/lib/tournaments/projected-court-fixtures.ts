@@ -45,7 +45,7 @@ function swissStage(champ: any, arch: any, gn: number): { rounds: number | null;
     const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
     if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish };
     const roundDates = timeline.map((t: any) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
-    return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: { ...(st.schedule ?? {}), roundDates }, rrFinish };
+    return { tieBreaks: st.tieBreaks, rounds: champ.club_id === RIVERSIDE_CLUB_ID ? st.swissRounds ?? null : timeline.length, schedule: { ...(st.schedule ?? {}), roundDates }, rrFinish };
   }
   const r = Number((champ?.swiss_rounds as Record<string, number> | null)?.[String(gn)]);
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;

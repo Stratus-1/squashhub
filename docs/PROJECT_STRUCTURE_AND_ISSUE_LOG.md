@@ -1,3 +1,8 @@
+## 2026-10-21 — App-wide clean round-robin presentation
+- Removed club/category and beta-switch restrictions from the standalone RR view; the shared component defaults to draggable fixtures/results and standings for standalone and existing follow-up RR callers. Doubles partner IDs resolve to the existing team row for display only.
+- Kept Swiss/matchup format boundaries, calendar, management permissions, pairing and all hosted data unchanged. No publication or service deployment.
+- Regression checks cover saved-input immutability, result refresh, drag navigation, matrix fallback and viewing safety. Signed-in saved Uitsig pools drag 170px on desktop/mobile with unchanged content and no page errors.
+
 ## 2026-10-21 — Ladies B clean round-robin view
 - Symptom: Uitsig Ladies B still used the old matrix/order-of-play view while Men's A used clean draggable pool panels.
 - Fix: include current Ladies B category 6 in the same existing Uitsig clean-view predicate; pool calculations, fixtures, results, settings and calendars unchanged. No publication or backend changes.

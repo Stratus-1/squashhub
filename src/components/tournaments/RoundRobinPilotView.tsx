@@ -12,8 +12,8 @@ export function poolRankTone(index: number, count: number) {
 }
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
 
-/** Riverside pilot: read-only pool matrix + order of play for one round-robin pool. */
-export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false, showSlots = false, withCalendar = false, clean = false, group = 1, groupLabel }: { clean?: boolean; group?: number; groupLabel?: string; calendar?: ReactNode; title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
+/** Standard read-only fixtures, results and standings for one round-robin pool. */
+export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false, showSlots = false, withCalendar = false, clean = true, group = 1, groupLabel }: { clean?: boolean; group?: number; groupLabel?: string; calendar?: ReactNode; title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
   const { players, matrix, totals, rounds } = view;
   const [mode, setMode] = useState<"matrix" | "calendar">("matrix");
   const calEvents = rounds.flatMap((rd) => rd.matches.filter((m) => m.status !== "bye" && (m.date || m.playBy)).map((m) => ({
@@ -24,7 +24,7 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
   })));
   return (
     <div className="space-y-2" data-testid="rr-pilot">
-      {!matrixOnly && <div className="flex flex-wrap items-center gap-2 text-xs">
+      {!matrixOnly && !clean && <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">Pilot · read-only view</Badge>
         <span className="text-muted-foreground">Same saved matches as the standings table; rows stay in draw order; Rank updates after each result. No results can be entered here.</span>
       </div>}
@@ -120,7 +120,7 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
   );
 }
 
-/** Riverside: clean fixtures-by-round (left) + live standings (right), same layout as the Swiss final-three round robin. */
+/** Clean fixtures-by-round and live standings, shared by all clubs. */
 export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolView; group: number; groupLabel: string }) {
   const track = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pointerId: number; x: number; scrollLeft: number } | null>(null);

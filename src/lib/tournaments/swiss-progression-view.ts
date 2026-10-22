@@ -233,7 +233,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[]; warnings?: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { factualOpeningRounds?: boolean; exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[]; warnings?: string[] } {
   const sequencing = swissSequencingEnabled(model.swissSequencing, model.tournamentId);
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5 && !(opts.exactLadiesAChart && model.rows.length === 9 && model.totalRounds === 5)) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined, ...(sequencing ? { swissSequencing: undefined } : {}) }, opts);
@@ -250,7 +250,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings: string[] = [];
     return { issues, ...(sequencing ? { warnings } : {}), rounds: saved.map((rd) => {
-      if (rd.round < 3) return normal.rounds.find((r) => r.round === rd.round) ?? rd;
+      if (rd.round < 3) return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
       const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
       const groupIds = new Set(plan.pairs.flat());

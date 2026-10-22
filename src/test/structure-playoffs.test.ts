@@ -34,3 +34,19 @@ describe("play-off continues from an existing knockout stage", () => {
     expect(r.stages[0].mapping?.matches.length).toBe(1);
   });
 });
+
+import { syncPlayoffStages as syncQ } from "@/lib/smart-builder/structure-playoffs";
+describe("adding a quarterfinal keeps the saved pairing", () => {
+  it("moves the semifinal's crossover to the new quarterfinal; later stages follow winners", () => {
+    const st = [
+      { id: "sf", name: "Semifinal", unit: "M", phase: "playoff", pairing: "crossover" },
+      { id: "f", name: "Final", unit: "M", phase: "playoff", pairing: "winners" },
+    ];
+    const out = syncQ(st, { M: ["qf", "sf", "final"] }, (n, u) => ({ id: "qf", name: n, unit: u, phase: "playoff", pairing: "later" }));
+    expect(Object.fromEntries(out.map((s) => [s.name, s.pairing]))).toEqual({ Quarterfinal: "crossover", Semifinal: "winners", Final: "winners" });
+  });
+  it("never invents a pairing when none was saved", () => {
+    const out = syncQ([{ id: "sf", name: "Semifinal", unit: "M", phase: "playoff", pairing: "later" }], { M: ["qf", "sf"] }, (n, u) => ({ id: "qf", name: n, unit: u, phase: "playoff", pairing: "later" }));
+    expect(out.map((s) => s.pairing)).toEqual(["later", "later"]);
+  });
+});

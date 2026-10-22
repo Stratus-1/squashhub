@@ -1632,6 +1632,13 @@
       "when": 1792613814879,
       "tag": "0232_decided_swiss_inherits_play_by",
       "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1792658443648,
+      "tag": "0233_bar_club_sponsored_use",
+      "breakpoints": true
     }
   ]
 }

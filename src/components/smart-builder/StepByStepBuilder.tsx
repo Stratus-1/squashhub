@@ -8,6 +8,22 @@ import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts
 import { roundCountCheck } from "@/lib/smart-builder/round-count-check";
 
 /** Copies saved Structure Swiss round counts into a running tournament (never below rounds that already have games). */
+/**
+ * Done & lock / Save structure is an explicit organiser action: keep the tournament's
+ * saved setup answers in step, otherwise reopening loads the older server copy and
+ * the structure picks (e.g. planned play-offs) appear lost. Games/bookings untouched.
+ */
+async function persistStructureAnswers(tid: string | null | undefined, answers: any) {
+  if (!tid || !answers) return;
+  try {
+    const cur = await loadLifecycle(tid);
+    if (!cur) return;
+    await saveLifecycle(tid, { ...cur, answers });
+  } catch (e: any) {
+    toast.error(`Structure kept on this device, but couldn't be saved to the tournament: ${e?.message ?? "unknown error"}`);
+  }
+}
+
 async function pushStructureRoundsLive(clubId: string, tid: string | null | undefined, answers: any) {
   if (!tid || !answers) return;
   try {
@@ -1592,7 +1608,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
 
           {cardStructure && cur === "Structure" && !serverReady && <p className="text-xs text-muted-foreground" role="status">Loading the saved tournament structure…</p>}
-          {cardStructure && cur === "Structure" && serverReady && <CardStructureEditor key={`structure-${tournamentId ?? "new"}`} clubId={clubId} answers={a} onSave={(next) => { setA(next); void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
+          {cardStructure && cur === "Structure" && serverReady && <CardStructureEditor key={`structure-${tournamentId ?? "new"}`} clubId={clubId} answers={a} onSave={(next) => { setA(next); void persistStructureAnswers(tournamentId ?? a.createdTournamentId, next); void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
           {cardStructure && cur === "StructureReview" && <CardStructureReview answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} dirty={rowStructureDirty} onEdit={() => go("Structure")} />}
           {isStruct && <>
             <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />

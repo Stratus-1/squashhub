@@ -1723,6 +1723,27 @@
       "when": 1792690000000,
       "tag": "0245_delegation_cell_match",
       "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1792690000001,
+      "tag": "0246_counter_remove_tab_item",
+      "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1792690000002,
+      "tag": "0247_counter_board_line_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1792690000003,
+      "tag": "0248_tab_item_reversal_lines",
+      "breakpoints": true
     }
   ]
 }

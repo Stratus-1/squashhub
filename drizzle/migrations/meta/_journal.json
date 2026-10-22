@@ -1681,6 +1681,13 @@
       "when": 1792680240864,
       "tag": "0239_reject_negative_cash_up_tip_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1792681074408,
+      "tag": "0240_cash_up_paid_tip_corrections",
+      "breakpoints": true
     }
   ]
 }

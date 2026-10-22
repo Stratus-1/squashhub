@@ -19945,6 +19945,42 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      bar_cash_up_admin_correct: {
+        Args: {
+          _card_counted: number
+          _counted_cash: number
+          _id: string
+          _note: string
+          _payouts: Json
+          _reason: string
+        }
+        Returns: {
+          actor_user_id: string | null
+          card_counted: number | null
+          card_expected: number | null
+          closed_by_device: string | null
+          closed_by_name: string | null
+          club_id: string
+          counted_cash: number
+          created_at: string
+          expected_cash: number
+          id: string
+          note: string | null
+          period_end: string
+          period_start: string
+          tips_paid_at_cash_up: number
+          totals: Json
+          variance: number
+          write_off_amount: number
+          written_off: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bar_cash_ups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       bar_cash_up_admin_update: {
         Args: {
           _card_counted: number
@@ -20005,6 +20041,7 @@ export type Database = {
         }
         Returns: Json
       }
+      bar_cash_up_edit_payouts: { Args: { _id: string }; Returns: Json }
       bar_cash_up_history: {
         Args: { _club_id: string; _token?: string }
         Returns: {

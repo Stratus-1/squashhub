@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { cashUpDateLabel } from "@/components/bar/CashUp";
 
 interface MethodTotal { sales: number; tips: number; count: number }
 interface CashUpRow {
   id: string; period_start: string; period_end: string; expected_cash: number; counted_cash: number; variance: number;
   card_expected: number | null; card_counted: number | null; written_off: boolean | null; write_off_amount: number | null;
   note: string | null; closed_by_name: string | null;
-  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number; cash_opening?: number } | null;
+  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number; cash_opening?: number; cash_up_date?: string } | null;
 }
 const MONEY = /^\d+(\.\d{1,2})?$/;
 const R = (n: number | string | null | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
@@ -47,7 +48,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
     },
   });
   const rows = (all.data ?? []).filter(c => {
-    const d = format(new Date(c.period_end), "yyyy-MM-dd");
+    const d = cashUpDateLabel(c.totals?.cash_up_date) ? c.totals?.cash_up_date ?? "" : format(new Date(c.period_end), "yyyy-MM-dd");
     return d >= from && d <= to;
   });
   const prevOf = (c: CashUpRow) => (all.data ?? []).find(p => p.period_end < c.period_end);
@@ -131,7 +132,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
         : <div className="overflow-x-auto"><table className="w-full">
           <thead><tr className="border-b"><th className="text-left py-1">Shift</th><th className="text-left">By</th><th className="text-right">Sales</th><th className="text-right">Opening cash</th><th className="text-right">Cash should be</th><th className="text-right">Closing (counted)</th><th className="text-right">Difference</th><th /></tr></thead>
           <tbody>{rows.map(c => { const f = cashUpFigures(c, prevOf(c)); const d = Number(c.counted_cash) - f.cashShould + Number(c.card_counted ?? f.cardShould) - f.cardShould; return <tr key={c.id} className="border-b">
-            <td className="py-1">{when(c.period_start)} → {when(c.period_end)}</td>
+            <td className="py-1">{cashUpDateLabel(c.totals?.cash_up_date) && <div className="font-semibold">{cashUpDateLabel(c.totals?.cash_up_date)}</div>}{when(c.period_start)} → {when(c.period_end)}</td>
             <td>{c.closed_by_name ?? "—"}</td>
             <td className="text-right tabular-nums">{R(c.totals?.total_sales)}</td>
             <td className="text-right tabular-nums">{R(f.opening)}</td>
@@ -144,7 +145,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
 
       <Dialog open={!!open} onOpenChange={v => !v && setOpenId(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Cash-up {open ? when(open.period_end) : ""}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Cash-up {open ? cashUpDateLabel(open.totals?.cash_up_date) ?? when(open.period_end) : ""}</DialogTitle></DialogHeader>
           {open && renderDetail(open)}
         </DialogContent>
       </Dialog>

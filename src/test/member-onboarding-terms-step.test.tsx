@@ -147,11 +147,16 @@ describe("Terms & Privacy step in the member application", () => {
     H.state.metadata = { full_name: "Google Applicant", provider: "google" };
     renderWizard();
 
-    await waitFor(() => expect(screen.getByText("Terms & Privacy")).toBeInTheDocument());
+    // The panel slides in, so wait for the tick itself rather than the step name
+    // (the footer already shows the upcoming step's label before it opens).
+    const tick = await waitFor(
+      () => screen.getByRole("checkbox", { name: /Accept Terms and Privacy Policy/i }),
+      { timeout: 4000 }
+    );
     const next = screen.getByRole("button", { name: "Next" });
     expect(next).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: /Accept Terms and Privacy Policy/i }));
+    fireEvent.click(tick);
     await waitFor(() => expect(next).toBeEnabled());
 
     fireEvent.click(next);

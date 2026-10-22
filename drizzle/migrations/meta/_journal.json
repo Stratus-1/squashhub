@@ -1667,6 +1667,13 @@
       "when": 1792675333505,
       "tag": "0237_applicants_view_paid_fee_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 238,
+      "version": "7",
+      "when": 1792675350704,
+      "tag": "0238_joiners_view_paid_fee_categories",
+      "breakpoints": true
     }
   ]
 }

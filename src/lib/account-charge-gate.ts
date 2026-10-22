@@ -90,3 +90,20 @@ export function previewBasketCharge(opts: {
   });
   return { blocked: !r.allowed, shortfall: r.shortfall };
 }
+
+export type SpendSummary = {
+  available: number; owing: number; allowance: number;
+  bookingMin: number | null; bookingShortfall: number; barBlocked: boolean;
+};
+
+/** Member "Available to spend": same allowance rule as booking/bar gates (allowance − owing). */
+export function computeSpendSummary(o: {
+  currentOwing: number; mandateAllowance: number; approvedCredit: number;
+  bookingMin: number | null; barGated: boolean;
+}): SpendSummary {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const allowance = r2(o.mandateAllowance + o.approvedCredit);
+  const available = r2(allowance - o.currentOwing);
+  const bookingShortfall = o.bookingMin == null ? 0 : Math.max(0, r2(o.bookingMin - available));
+  return { available, owing: r2(o.currentOwing), allowance, bookingMin: o.bookingMin, bookingShortfall, barBlocked: o.barGated && available <= 0 };
+}

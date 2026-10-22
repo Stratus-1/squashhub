@@ -1,3 +1,6 @@
+## 2026-10-22 — Remove cash-up Undo
+- Owner clarified that Undo was the wrong action: remove the cash-up Undo control, handler and explanatory text, retain View / edit and Save changes, and rename the till history management button. No financial records or backend permissions changed; existing correction safeguards remain.
+
 ## 2026-10-22 — Cash-up Edit omitted paid tips
 - Added named positive-only existing payout fields to cash-up Edit. Save requires a reason and updates the payout, expected cash and staff balance atomically; only the latest cash-up allows paid-tip corrections.
 - Preserve counted cash and shift dates, keep original journals and append balanced payout/write-off corrections using their existing references so latest-only Undo reverses the full corrected net amount. Before/after payout and cash-up values are audited; stale edits, over-balance amounts and guest access fail closed.

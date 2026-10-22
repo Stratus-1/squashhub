@@ -17,7 +17,7 @@ beforeEach(() => {
 function open() {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CashUp clubId="riverside" tipsEnabled /></QueryClientProvider>);
 }
-describe("cash-up payout and undo controls", () => {
+describe("cash-up payout and edit controls", () => {
   it("rejects negative R56 input and submits positive R56", async () => {
     open();
     const tips = await screen.findByRole("textbox", { name: "Tips paid to Test staff" });
@@ -28,18 +28,20 @@ describe("cash-up payout and undo controls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Complete cash-up" }));
     await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_cash_up_close_v2", expect.objectContaining({ _tip_payouts: [{ staff_id: "staff", amount: 56 }] })));
   });
-  it("Super Admin reaches latest Undo and must provide a reason", async () => {
+  it("Super Admin saves an edit with a reason without deleting or reopening the cash-up", async () => {
     open();
-    fireEvent.click(screen.getByRole("button", { name: "Manage / undo cash-ups" }));
+    fireEvent.click(screen.getByRole("button", { name: "View / edit cash-ups" }));
     fireEvent.click(await screen.findByRole("button", { name: "View / edit" }));
-    expect(screen.getByRole("button", { name: "Undo this cash-up" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Reason for change (required)"), { target: { value: "Late paid tab" } });
-    expect(screen.getByRole("button", { name: "Undo this cash-up" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Reason for change (required)"), { target: { value: "Correct note" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_cash_up_admin_correct", expect.objectContaining({ _id: "latest", _reason: "Correct note" })));
     expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_cash_up_undo")).toBe(false);
   });
-  it("anonymous counter staff do not gain admin Undo controls", () => {
+  it("anonymous counter staff do not gain admin edit controls", () => {
     mocks.superAdmin = false;
     open();
-    expect(screen.queryByRole("button", { name: "Manage / undo cash-ups" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View / edit cash-ups" })).not.toBeInTheDocument();
   });
 });

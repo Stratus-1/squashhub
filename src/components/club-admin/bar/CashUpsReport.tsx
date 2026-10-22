@@ -94,19 +94,6 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
 
   const isLatest = (c: CashUpRow) => !(all.data ?? []).some(p => p.period_end > c.period_end);
 
-  async function undo() {
-    if (!open || !window.confirm("Undo this cash-up? The shift will be reopened so it can be cashed up again.")) return;
-    setBusy(true);
-    try {
-      const { error } = await supabase.rpc("bar_cash_up_undo" as any, { _id: open.id, _reason: edit.reason });
-      if (error) throw error;
-      toast.success("Cash-up undone — you can cash up again");
-      setOpenId(null);
-      await Promise.all(["bar-cash-up-report", "bar-cash-up-history", "bar-cash-up-preview", "bar-cash-up", "bar-staff-tips", "bar-shift-overview", "income-statement"].map(k => qc.invalidateQueries({ queryKey: [k] })));
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not undo cash-up"); }
-    finally { setBusy(false); }
-  }
-
   const renderDetail = (c: CashUpRow) => {
     const saved = cashUpFigures(c, prevOf(c));
     const payoutDelta = (payouts.data ?? []).reduce((sum, p) => {
@@ -164,9 +151,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
         <Input id="cu-reason" maxLength={500} value={edit.reason} disabled={busy} onChange={e => setEdit({ ...edit, reason: e.target.value })} />
         <div className="flex flex-wrap gap-2">
           <Button onClick={save} disabled={busy || !valid}>Save changes</Button>
-          {isLatest(c) && <Button variant="destructive" onClick={undo} disabled={busy || !edit.reason.trim()}>Undo this cash-up</Button>}
         </div>
-        {isLatest(c) && <p className="text-muted-foreground">Undo reopens this shift so it can be cashed up again (e.g. after a late tab is paid). Any tips paid out at this cash-up go back to the staff balance. A reason is required and the undo is logged.</p>}
       </div>
     </div>;
   };

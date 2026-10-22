@@ -27,7 +27,7 @@ var __export = (target, all) => {
     });
 };
 
-// node_modules/edmonds-blossom/app/blossom.js
+// node_modules/edmonds-blossom-fixed/app/blossom.js
 var require_blossom = __commonJS((exports, module) => {
   module.exports = function(edges, maxCardinality) {
     if (edges.length === 0) {
@@ -49,20 +49,20 @@ var require_blossom = __commonJS((exports, module) => {
       this.blossomBestEdges = initArrArr(2 * this.nVertex);
       this.allowEdge = filledArray(this.nEdge, false);
       this.queue = [];
-      for (var v2 = 0;v2 < this.nVertex; v2++) {
-        if (this.mate[v2] === -1 && this.label[this.inBlossom[v2]] === 0) {
-          this.assignLabel(v2, 1, -1);
+      for (var v = 0;v < this.nVertex; v++) {
+        if (this.mate[v] === -1 && this.label[this.inBlossom[v]] === 0) {
+          this.assignLabel(v, 1, -1);
         }
       }
       var augmented = false;
       while (true) {
         while (this.queue.length > 0 && !augmented) {
-          v2 = this.queue.pop();
-          for (var ii = 0;ii < this.neighbend[v2].length; ii++) {
-            var p = this.neighbend[v2][ii];
+          v = this.queue.pop();
+          for (var ii = 0;ii < this.neighbend[v].length; ii++) {
+            var p = this.neighbend[v][ii];
             var k = ~~(p / 2);
             var w = this.endpoint[p];
-            if (this.inBlossom[v2] === this.inBlossom[w])
+            if (this.inBlossom[v] === this.inBlossom[w])
               continue;
             if (!this.allowEdge[k]) {
               var kSlack = this.slack(k);
@@ -74,7 +74,7 @@ var require_blossom = __commonJS((exports, module) => {
               if (this.label[this.inBlossom[w]] === 0) {
                 this.assignLabel(w, 2, p ^ 1);
               } else if (this.label[this.inBlossom[w]] === 1) {
-                var base = this.scanBlossom(v2, w);
+                var base = this.scanBlossom(v, w);
                 if (base >= 0) {
                   this.addBlossom(base, k);
                 } else {
@@ -87,9 +87,9 @@ var require_blossom = __commonJS((exports, module) => {
                 this.labelEnd[w] = p ^ 1;
               }
             } else if (this.label[this.inBlossom[w]] === 1) {
-              var b2 = this.inBlossom[v2];
-              if (this.bestEdge[b2] === -1 || kSlack < this.slack(this.bestEdge[b2])) {
-                this.bestEdge[b2] = k;
+              var b = this.inBlossom[v];
+              if (this.bestEdge[b] === -1 || kSlack < this.slack(this.bestEdge[b])) {
+                this.bestEdge[b] = k;
               }
             } else if (this.label[w] === 0) {
               if (this.bestEdge[w] === -1 || kSlack < this.slack(this.bestEdge[w])) {
@@ -108,52 +108,52 @@ var require_blossom = __commonJS((exports, module) => {
           deltaType = 1;
           delta = getMin(this.dualVar, 0, this.nVertex - 1);
         }
-        for (v2 = 0;v2 < this.nVertex; v2++) {
-          if (this.label[this.inBlossom[v2]] === 0 && this.bestEdge[v2] !== -1) {
-            var d = this.slack(this.bestEdge[v2]);
+        for (v = 0;v < this.nVertex; v++) {
+          if (this.label[this.inBlossom[v]] === 0 && this.bestEdge[v] !== -1) {
+            var d = this.slack(this.bestEdge[v]);
             if (deltaType === -1 || d < delta) {
               delta = d;
               deltaType = 2;
-              deltaEdge = this.bestEdge[v2];
+              deltaEdge = this.bestEdge[v];
             }
           }
         }
-        for (b2 = 0;b2 < 2 * this.nVertex; b2++) {
-          if (this.blossomParent[b2] === -1 && this.label[b2] === 1 && this.bestEdge[b2] !== -1) {
-            kSlack = this.slack(this.bestEdge[b2]);
+        for (b = 0;b < 2 * this.nVertex; b++) {
+          if (this.blossomParent[b] === -1 && this.label[b] === 1 && this.bestEdge[b] !== -1) {
+            kSlack = this.slack(this.bestEdge[b]);
             d = kSlack / 2;
             if (deltaType === -1 || d < delta) {
               delta = d;
               deltaType = 3;
-              deltaEdge = this.bestEdge[b2];
+              deltaEdge = this.bestEdge[b];
             }
           }
         }
-        for (b2 = this.nVertex;b2 < this.nVertex * 2; b2++) {
-          if (this.blossomBase[b2] >= 0 && this.blossomParent[b2] === -1 && this.label[b2] === 2 && (deltaType === -1 || this.dualVar[b2] < delta)) {
-            delta = this.dualVar[b2];
+        for (b = this.nVertex;b < this.nVertex * 2; b++) {
+          if (this.blossomBase[b] >= 0 && this.blossomParent[b] === -1 && this.label[b] === 2 && (deltaType === -1 || this.dualVar[b] < delta)) {
+            delta = this.dualVar[b];
             deltaType = 4;
-            deltaBlossom = b2;
+            deltaBlossom = b;
           }
         }
         if (deltaType === -1) {
           deltaType = 1;
           delta = Math.max(0, getMin(this.dualVar, 0, this.nVertex - 1));
         }
-        for (v2 = 0;v2 < this.nVertex; v2++) {
-          var curLabel = this.label[this.inBlossom[v2]];
+        for (v = 0;v < this.nVertex; v++) {
+          var curLabel = this.label[this.inBlossom[v]];
           if (curLabel === 1) {
-            this.dualVar[v2] -= delta;
+            this.dualVar[v] -= delta;
           } else if (curLabel === 2) {
-            this.dualVar[v2] += delta;
+            this.dualVar[v] += delta;
           }
         }
-        for (b2 = this.nVertex;b2 < this.nVertex * 2; b2++) {
-          if (this.blossomBase[b2] >= 0 && this.blossomParent[b2] === -1) {
-            if (this.label[b2] === 1) {
-              this.dualVar[b2] += delta;
-            } else if (this.label[b2] === 2) {
-              this.dualVar[b2] -= delta;
+        for (b = this.nVertex;b < this.nVertex * 2; b++) {
+          if (this.blossomBase[b] >= 0 && this.blossomParent[b] === -1) {
+            if (this.label[b] === 1) {
+              this.dualVar[b] += delta;
+            } else if (this.label[b] === 2) {
+              this.dualVar[b] -= delta;
             }
           }
         }
@@ -182,18 +182,18 @@ var require_blossom = __commonJS((exports, module) => {
       }
       if (!augmented)
         break;
-      for (b2 = this.nVertex;b2 < this.nVertex * 2; b2++) {
-        if (this.blossomParent[b2] === -1 && this.blossomBase[b2] >= 0 && this.label[b2] === 1 && this.dualVar[b2] === 0) {
-          this.expandBlossom(b2, true);
+      for (b = this.nVertex;b < this.nVertex * 2; b++) {
+        if (this.blossomParent[b] === -1 && this.blossomBase[b] >= 0 && this.label[b] === 1 && this.dualVar[b] === 0) {
+          this.expandBlossom(b, true);
         }
       }
     }
-    for (v2 = 0;v2 < this.nVertex; v2++) {
-      if (this.mate[v2] >= 0) {
-        this.mate[v2] = this.endpoint[this.mate[v2]];
+    for (v = 0;v < this.nVertex; v++) {
+      if (this.mate[v] >= 0) {
+        this.mate[v] = this.endpoint[this.mate[v]];
       }
     }
-    for (v2 = 0;v2 < this.nVertex; v2++) {}
+    for (v = 0;v < this.nVertex; v++) {}
     return this.mate;
   };
   Edmonds.prototype.slack = function(k) {
@@ -202,85 +202,85 @@ var require_blossom = __commonJS((exports, module) => {
     var wt = this.edges[k][2];
     return this.dualVar[i] + this.dualVar[j] - 2 * wt;
   };
-  Edmonds.prototype.blossomLeaves = function(b2) {
-    if (b2 < this.nVertex) {
-      return [b2];
+  Edmonds.prototype.blossomLeaves = function(b) {
+    if (b < this.nVertex) {
+      return [b];
     }
     var leaves = [];
-    var childList = this.blossomChilds[b2];
+    var childList = this.blossomChilds[b];
     for (var t = 0;t < childList.length; t++) {
       if (childList[t] <= this.nVertex) {
         leaves.push(childList[t]);
       } else {
         var leafList = this.blossomLeaves(childList[t]);
-        for (var v2 = 0;v2 < leafList.length; v2++) {
-          leaves.push(leafList[v2]);
+        for (var v = 0;v < leafList.length; v++) {
+          leaves.push(leafList[v]);
         }
       }
     }
     return leaves;
   };
   Edmonds.prototype.assignLabel = function(w, t, p) {
-    var b2 = this.inBlossom[w];
-    this.label[w] = this.label[b2] = t;
-    this.labelEnd[w] = this.labelEnd[b2] = p;
-    this.bestEdge[w] = this.bestEdge[b2] = -1;
+    var b = this.inBlossom[w];
+    this.label[w] = this.label[b] = t;
+    this.labelEnd[w] = this.labelEnd[b] = p;
+    this.bestEdge[w] = this.bestEdge[b] = -1;
     if (t === 1) {
-      this.queue.push.apply(this.queue, this.blossomLeaves(b2));
+      this.queue.push.apply(this.queue, this.blossomLeaves(b));
     } else if (t === 2) {
-      var base = this.blossomBase[b2];
+      var base = this.blossomBase[b];
       this.assignLabel(this.endpoint[this.mate[base]], 1, this.mate[base] ^ 1);
     }
   };
-  Edmonds.prototype.scanBlossom = function(v2, w) {
-    var path2 = [];
+  Edmonds.prototype.scanBlossom = function(v, w) {
+    var path = [];
     var base = -1;
-    while (v2 !== -1 || w !== -1) {
-      var b2 = this.inBlossom[v2];
-      if (this.label[b2] & 4) {
-        base = this.blossomBase[b2];
+    while (v !== -1 || w !== -1) {
+      var b = this.inBlossom[v];
+      if (this.label[b] & 4) {
+        base = this.blossomBase[b];
         break;
       }
-      path2.push(b2);
-      this.label[b2] = 5;
-      if (this.labelEnd[b2] === -1) {
-        v2 = -1;
+      path.push(b);
+      this.label[b] = 5;
+      if (this.labelEnd[b] === -1) {
+        v = -1;
       } else {
-        v2 = this.endpoint[this.labelEnd[b2]];
-        b2 = this.inBlossom[v2];
-        v2 = this.endpoint[this.labelEnd[b2]];
+        v = this.endpoint[this.labelEnd[b]];
+        b = this.inBlossom[v];
+        v = this.endpoint[this.labelEnd[b]];
       }
       if (w !== -1) {
-        v2 = v2 ^ w;
-        w = w ^ v2;
-        v2 = v2 ^ w;
+        v = v ^ w;
+        w = w ^ v;
+        v = v ^ w;
       }
     }
-    for (var ii = 0;ii < path2.length; ii++) {
-      b2 = path2[ii];
-      this.label[b2] = 1;
+    for (var ii = 0;ii < path.length; ii++) {
+      b = path[ii];
+      this.label[b] = 1;
     }
     return base;
   };
   Edmonds.prototype.addBlossom = function(base, k) {
-    var v2 = this.edges[k][0];
+    var v = this.edges[k][0];
     var w = this.edges[k][1];
     var wt = this.edges[k][2];
     var bb = this.inBlossom[base];
-    var bv = this.inBlossom[v2];
+    var bv = this.inBlossom[v];
     var bw = this.inBlossom[w];
-    b = this.unusedBlossoms.pop();
+    var b = this.unusedBlossoms.pop();
     this.blossomBase[b] = base;
     this.blossomParent[b] = -1;
     this.blossomParent[bb] = b;
-    path = this.blossomChilds[b] = [];
+    var path = this.blossomChilds[b] = [];
     var endPs = this.blossomEndPs[b] = [];
     while (bv !== bb) {
       this.blossomParent[bv] = b;
       path.push(bv);
       endPs.push(this.labelEnd[bv]);
-      v2 = this.endpoint[this.labelEnd[bv]];
-      bv = this.inBlossom[v2];
+      v = this.endpoint[this.labelEnd[bv]];
+      bv = this.inBlossom[v];
     }
     path.push(bb);
     path.reverse();
@@ -298,11 +298,11 @@ var require_blossom = __commonJS((exports, module) => {
     this.dualVar[b] = 0;
     var leaves = this.blossomLeaves(b);
     for (var ii = 0;ii < leaves.length; ii++) {
-      v2 = leaves[ii];
-      if (this.label[this.inBlossom[v2]] === 2) {
-        this.queue.push(v2);
+      v = leaves[ii];
+      if (this.label[this.inBlossom[v]] === 2) {
+        this.queue.push(v);
       }
-      this.inBlossom[v2] = b;
+      this.inBlossom[v] = b;
     }
     var bestEdgeTo = filledArray(2 * this.nVertex, -1);
     for (ii = 0;ii < path.length; ii++) {
@@ -311,10 +311,10 @@ var require_blossom = __commonJS((exports, module) => {
         var nbLists = [];
         leaves = this.blossomLeaves(bv);
         for (var x = 0;x < leaves.length; x++) {
-          v2 = leaves[x];
+          v = leaves[x];
           nbLists[x] = [];
-          for (var y = 0;y < this.neighbend[v2].length; y++) {
-            var p = this.neighbend[v2][y];
+          for (var y = 0;y < this.neighbend[v].length; y++) {
+            var p = this.neighbend[v][y];
             nbLists[x].push(~~(p / 2));
           }
         }
@@ -358,9 +358,9 @@ var require_blossom = __commonJS((exports, module) => {
       }
     }
   };
-  Edmonds.prototype.expandBlossom = function(b2, endStage) {
-    for (var ii = 0;ii < this.blossomChilds[b2].length; ii++) {
-      var s = this.blossomChilds[b2][ii];
+  Edmonds.prototype.expandBlossom = function(b, endStage) {
+    for (var ii = 0;ii < this.blossomChilds[b].length; ii++) {
+      var s = this.blossomChilds[b][ii];
       this.blossomParent[s] = -1;
       if (s < this.nVertex) {
         this.inBlossom[s] = s;
@@ -369,40 +369,40 @@ var require_blossom = __commonJS((exports, module) => {
       } else {
         var leaves = this.blossomLeaves(s);
         for (var jj = 0;jj < leaves.length; jj++) {
-          v = leaves[jj];
+          var v = leaves[jj];
           this.inBlossom[v] = s;
         }
       }
     }
-    if (!endStage && this.label[b2] === 2) {
-      var entryChild = this.inBlossom[this.endpoint[this.labelEnd[b2] ^ 1]];
-      var j = this.blossomChilds[b2].indexOf(entryChild);
+    if (!endStage && this.label[b] === 2) {
+      var entryChild = this.inBlossom[this.endpoint[this.labelEnd[b] ^ 1]];
+      var j = this.blossomChilds[b].indexOf(entryChild);
       if (j & 1) {
-        j -= this.blossomChilds[b2].length;
+        j -= this.blossomChilds[b].length;
         var jStep = 1;
         var endpTrick = 0;
       } else {
         jStep = -1;
         endpTrick = 1;
       }
-      var p = this.labelEnd[b2];
+      var p = this.labelEnd[b];
       while (j !== 0) {
         this.label[this.endpoint[p ^ 1]] = 0;
-        this.label[this.endpoint[pIndex(this.blossomEndPs[b2], j - endpTrick) ^ endpTrick ^ 1]] = 0;
+        this.label[this.endpoint[pIndex(this.blossomEndPs[b], j - endpTrick) ^ endpTrick ^ 1]] = 0;
         this.assignLabel(this.endpoint[p ^ 1], 2, p);
-        this.allowEdge[~~(pIndex(this.blossomEndPs[b2], j - endpTrick) / 2)] = true;
+        this.allowEdge[~~(pIndex(this.blossomEndPs[b], j - endpTrick) / 2)] = true;
         j += jStep;
-        p = pIndex(this.blossomEndPs[b2], j - endpTrick) ^ endpTrick;
+        p = pIndex(this.blossomEndPs[b], j - endpTrick) ^ endpTrick;
         this.allowEdge[~~(p / 2)] = true;
         j += jStep;
       }
-      var bv = pIndex(this.blossomChilds[b2], j);
+      var bv = pIndex(this.blossomChilds[b], j);
       this.label[this.endpoint[p ^ 1]] = this.label[bv] = 2;
       this.labelEnd[this.endpoint[p ^ 1]] = this.labelEnd[bv] = p;
       this.bestEdge[bv] = -1;
       j += jStep;
-      while (pIndex(this.blossomChilds[b2], j) !== entryChild) {
-        bv = pIndex(this.blossomChilds[b2], j);
+      while (pIndex(this.blossomChilds[b], j) !== entryChild) {
+        bv = pIndex(this.blossomChilds[b], j);
         if (this.label[bv] === 1) {
           j += jStep;
           continue;
@@ -421,25 +421,25 @@ var require_blossom = __commonJS((exports, module) => {
         j += jStep;
       }
     }
-    this.label[b2] = this.labelEnd[b2] = -1;
-    this.blossomEndPs[b2] = this.blossomChilds[b2] = [];
-    this.blossomBase[b2] = -1;
-    this.blossomBestEdges[b2] = [];
-    this.bestEdge[b2] = -1;
-    this.unusedBlossoms.push(b2);
+    this.label[b] = this.labelEnd[b] = -1;
+    this.blossomEndPs[b] = this.blossomChilds[b] = [];
+    this.blossomBase[b] = -1;
+    this.blossomBestEdges[b] = [];
+    this.bestEdge[b] = -1;
+    this.unusedBlossoms.push(b);
   };
-  Edmonds.prototype.augmentBlossom = function(b2, v2) {
+  Edmonds.prototype.augmentBlossom = function(b, v) {
     var i, j;
-    var t = v2;
-    while (this.blossomParent[t] !== b2) {
+    var t = v;
+    while (this.blossomParent[t] !== b) {
       t = this.blossomParent[t];
     }
     if (t > this.nVertex) {
-      this.augmentBlossom(t, v2);
+      this.augmentBlossom(t, v);
     }
-    i = j = this.blossomChilds[b2].indexOf(t);
+    i = j = this.blossomChilds[b].indexOf(t);
     if (i & 1) {
-      j -= this.blossomChilds[b2].length;
+      j -= this.blossomChilds[b].length;
       var jStep = 1;
       var endpTrick = 0;
     } else {
@@ -448,29 +448,29 @@ var require_blossom = __commonJS((exports, module) => {
     }
     while (j !== 0) {
       j += jStep;
-      t = pIndex(this.blossomChilds[b2], j);
-      var p = pIndex(this.blossomEndPs[b2], j - endpTrick) ^ endpTrick;
+      t = pIndex(this.blossomChilds[b], j);
+      var p = pIndex(this.blossomEndPs[b], j - endpTrick) ^ endpTrick;
       if (t >= this.nVertex) {
         this.augmentBlossom(t, this.endpoint[p]);
       }
       j += jStep;
-      t = pIndex(this.blossomChilds[b2], j);
+      t = pIndex(this.blossomChilds[b], j);
       if (t >= this.nVertex) {
         this.augmentBlossom(t, this.endpoint[p ^ 1]);
       }
       this.mate[this.endpoint[p]] = p ^ 1;
       this.mate[this.endpoint[p ^ 1]] = p;
     }
-    this.blossomChilds[b2] = this.blossomChilds[b2].slice(i).concat(this.blossomChilds[b2].slice(0, i));
-    this.blossomEndPs[b2] = this.blossomEndPs[b2].slice(i).concat(this.blossomEndPs[b2].slice(0, i));
-    this.blossomBase[b2] = this.blossomBase[this.blossomChilds[b2][0]];
+    this.blossomChilds[b] = this.blossomChilds[b].slice(i).concat(this.blossomChilds[b].slice(0, i));
+    this.blossomEndPs[b] = this.blossomEndPs[b].slice(i).concat(this.blossomEndPs[b].slice(0, i));
+    this.blossomBase[b] = this.blossomBase[this.blossomChilds[b][0]];
   };
   Edmonds.prototype.augmentMatching = function(k) {
-    var v2 = this.edges[k][0];
+    var v = this.edges[k][0];
     var w = this.edges[k][1];
     for (var ii = 0;ii < 2; ii++) {
       if (ii === 0) {
-        var s = v2;
+        var s = v;
         var p = 2 * k + 1;
       } else {
         s = w;
@@ -654,14 +654,14 @@ function mappingIssues(m, label = "Stage") {
   const perRound = new Map;
   const met = new Set;
   for (const x of m.matches) {
-    const a = byId.get(x.a), b2 = byId.get(x.b);
-    if (!a || !b2) {
+    const a = byId.get(x.a), b = byId.get(x.b);
+    if (!a || !b) {
       out.push(`Round ${x.round}: unknown side.`);
       continue;
     }
     if (x.round < 1)
       out.push(`${label}: rounds start at 1.`);
-    const aSlots = a.slots.map(slotKey), bSlots = b2.slots.map(slotKey);
+    const aSlots = a.slots.map(slotKey), bSlots = b.slots.map(slotKey);
     if (aSlots.some((s) => bSlots.includes(s)))
       out.push(`${label} round ${x.round}: ${x.a} can't play ${x.b} (same player on both sides).`);
     const seen = perRound.get(x.round) ?? new Set;
@@ -680,7 +680,7 @@ function mappingIssues(m, label = "Stage") {
 }
 function seedPools(entrants, pools, method) {
   if (method === "banded") {
-    const ranked = [...entrants].sort((a, b2) => (a.rank ?? 1e9) - (b2.rank ?? 1e9));
+    const ranked = [...entrants].sort((a, b) => (a.rank ?? 1e9) - (b.rank ?? 1e9));
     const size = Math.ceil(ranked.length / pools);
     return Array.from({ length: pools }, (_, i) => ranked.slice(i * size, (i + 1) * size).map((e) => e.id));
   }
@@ -818,7 +818,7 @@ var nextPow2 = (n) => {
   return p;
 };
 function snakePools(entrants, pools) {
-  const ranked = entrants.filter((e) => e.rank != null).sort((a, b2) => a.rank - b2.rank || a.id.localeCompare(b2.id));
+  const ranked = entrants.filter((e) => e.rank != null).sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
   const unranked = entrants.filter((e) => e.rank == null);
   const out = Array.from({ length: pools }, () => []);
   ranked.forEach((e, i) => {
@@ -832,9 +832,9 @@ function roundRobin(ids) {
   const n = list.length, out = [];
   for (let r = 0;r < n - 1; r++) {
     for (let i = 0;i < n / 2; i++) {
-      const a = list[i], b2 = list[n - 1 - i];
-      if (a !== "__BYE__" && b2 !== "__BYE__")
-        out.push({ round: r + 1, a, b: b2 });
+      const a = list[i], b = list[n - 1 - i];
+      if (a !== "__BYE__" && b !== "__BYE__")
+        out.push({ round: r + 1, a, b });
     }
     list.splice(1, 0, list.pop());
   }
@@ -849,15 +849,15 @@ function bracketOrder(n) {
   return o;
 }
 function swissRound(players, played, preferred = new Map) {
-  const key = (a, b2) => a < b2 ? `${a}|${b2}` : `${b2}|${a}`;
-  const sorted = [...players].sort((a, b2) => b2.points - a.points || a.seed - b2.seed);
+  const key = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const sorted = [...players].sort((a, b) => b.points - a.points || a.seed - b.seed);
   const solve = (rest) => {
     if (!rest.length)
       return [];
     const [p, ...others] = rest;
     if (!others.length)
       return [[p.id, null]];
-    const candidates = preferred.size ? [...others].sort((a, b2) => Number(b2.id === preferred.get(p.id)) - Number(a.id === preferred.get(p.id)) || Math.abs(p.seed - a.seed) - Math.abs(p.seed - b2.seed)) : others;
+    const candidates = preferred.size ? [...others].sort((a, b) => Number(b.id === preferred.get(p.id)) - Number(a.id === preferred.get(p.id)) || Math.abs(p.seed - a.seed) - Math.abs(p.seed - b.seed)) : others;
     for (const candidate of candidates) {
       if (played.has(key(p.id, candidate.id)))
         continue;
@@ -1191,10 +1191,10 @@ var TIE_BREAK_TEXT = {
   points_difference: "Points difference",
   head_to_head: "Head-to-head"
 };
-function normaliseTieBreaks(v2) {
-  if (!Array.isArray(v2))
+function normaliseTieBreaks(v) {
+  if (!Array.isArray(v))
     return [...DEFAULT_TIE_BREAKS];
-  const out = v2.filter((x) => TIE_BREAK_CRITERIA.includes(x));
+  const out = v.filter((x) => TIE_BREAK_CRITERIA.includes(x));
   return [...new Set(out)];
 }
 function gameSetsOf(m) {
@@ -1266,11 +1266,11 @@ function criterionValues(c, group, stats, games) {
     return new Map(st.map((x) => [x.id, x.pointsFor - x.pointsAgainst]));
   }
   const inGroup = new Set(group);
-  const v2 = new Map(group.map((id) => [id, 0]));
+  const v = new Map(group.map((id) => [id, 0]));
   for (const g of games)
     if (g.winner && inGroup.has(g.a) && inGroup.has(g.b))
-      v2.set(g.winner, (v2.get(g.winner) ?? 0) + 1);
-  return v2;
+      v.set(g.winner, (v.get(g.winner) ?? 0) + 1);
+  return v;
 }
 function rankUnits(units, games, criteria = DEFAULT_TIE_BREAKS, manualOrder = [], extraWins) {
   const stats = unitStats(units, games);
@@ -1301,10 +1301,10 @@ function rankUnits(units, games, criteria = DEFAULT_TIE_BREAKS, manualOrder = []
       return;
     }
     for (const c of criteria) {
-      const v2 = criterionValues(c, group, stats, games);
-      if (!v2)
+      const v = criterionValues(c, group, stats, games);
+      if (!v)
         continue;
-      const parts = split(group, (id) => v2.get(id) ?? 0);
+      const parts = split(group, (id) => v.get(id) ?? 0);
       if (parts.length > 1) {
         parts.forEach(resolve);
         return;
@@ -1388,7 +1388,7 @@ function proposePairings(field, count, strategy) {
 }
 
 // src/lib/tournaments/swiss-no-repeat.ts
-var opponentKey = (a, b2) => JSON.stringify([a, b2].sort());
+var opponentKey = (a, b) => JSON.stringify([a, b].sort());
 var SWISS_NO_REPEAT_FROM_ROUND = 3;
 function swissStrictFromRound(n) {
   const h = swissHalves(n);
@@ -1430,7 +1430,7 @@ function halfRoundPairs(size, round) {
   return result;
 }
 function gapPairs(size, _gap, offset, round) {
-  return halfRoundPairs(size, round).map(([a, b2]) => ({ round, a: offset + a, b: offset + b2 }));
+  return halfRoundPairs(size, round).map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
 }
 var SWISS_HALF_MODELS = {
   "24:12": {
@@ -1467,7 +1467,7 @@ function preferredSwissTemplate(n, round) {
   const pairs = segments.flatMap(([offset, size]) => {
     const model = SWISS_HALF_MODELS[`${n}:${size}`]?.[round];
     if (model)
-      return model.map(([a, b2]) => ({ round, a: offset + a, b: offset + b2 }));
+      return model.map(([a, b]) => ({ round, a: offset + a, b: offset + b }));
     const gap = swissRoundGap(size, round);
     return gap ? gapPairs(size, gap, offset, round) : slotTemplate(size, round).pairs.map((p) => ({ ...p, a: p.a + offset, b: p.b + offset }));
   });
@@ -1489,13 +1489,13 @@ function strictSwissPlan(input) {
   const lockedPairs = [];
   let lockedBye = null;
   for (const game of input.locked ?? []) {
-    const a = position.get(game.a), b2 = game.b ? position.get(game.b) : null;
-    if (!a || game.b && !b2 || used.has(game.a) || game.b && used.has(game.b) || game.a === game.b)
+    const a = position.get(game.a), b = game.b ? position.get(game.b) : null;
+    if (!a || game.b && !b || used.has(game.a) || game.b && used.has(game.b) || game.a === game.b)
       throw new IntegrityError("swiss_locked", "Confirmed Swiss games conflict with the remaining field.");
     used.add(game.a);
-    if (game.b && b2) {
+    if (game.b && b) {
       used.add(game.b);
-      lockedPairs.push({ a: Math.min(a, b2), b: Math.max(a, b2) });
+      lockedPairs.push({ a: Math.min(a, b), b: Math.max(a, b) });
     } else
       lockedBye = a;
   }
@@ -1504,9 +1504,9 @@ function strictSwissPlan(input) {
   const byeCandidates = lockedBye != null || remaining.length % 2 === 0 ? [null] : [bye, ...ids.map((_, i) => ids.length - i)].filter((s, i, all) => s != null && all.indexOf(s) === i && remaining.includes(ids[s - 1]));
   const preferences = new Map;
   preferred.forEach((p) => {
-    const a = ids[p.a - 1], b2 = ids[p.b - 1];
-    preferences.set(a, b2);
-    preferences.set(b2, a);
+    const a = ids[p.a - 1], b = ids[p.b - 1];
+    preferences.set(a, b);
+    preferences.set(b, a);
   });
   const legacyPlayed = new Set(history.filter((g) => g.round < round && g.a && g.b).map((g) => String(g.a) < String(g.b) ? `${g.a}|${g.b}` : `${g.b}|${g.a}`));
   if (halves && round >= swissStrictFromRound(occupants.length)) {
@@ -1515,8 +1515,8 @@ function strictSwissPlan(input) {
       for (let j = i + 1;j < ids.length; j++) {
         const differentHalf = i < top !== j < top;
         if (differentHalf) {
-          const a = ids[i], b2 = ids[j];
-          legacyPlayed.add(a < b2 ? `${a}|${b2}` : `${b2}|${a}`);
+          const a = ids[i], b = ids[j];
+          legacyPlayed.add(a < b ? `${a}|${b}` : `${b}|${a}`);
         }
       }
   }
@@ -1527,8 +1527,8 @@ function strictSwissPlan(input) {
       const pairs = solved.flatMap(([x, y]) => {
         if (!y || played.has(opponentKey(x, y)))
           throw new IntegrityError("swiss_repeat", "No legal opponent pairing.");
-        const a = position.get(x), b2 = position.get(y);
-        return a && b2 ? [{ a: Math.min(a, b2), b: Math.max(a, b2) }] : [];
+        const a = position.get(x), b = position.get(y);
+        return a && b ? [{ a: Math.min(a, b), b: Math.max(a, b) }] : [];
       });
       return { pairs: [...lockedPairs, ...pairs].sort((x, y) => x.a - y.a), bye: lockedBye ?? candidate, ready: true };
     } catch (error) {
@@ -1540,8 +1540,8 @@ function strictSwissPlan(input) {
 }
 
 // src/lib/tournaments/swiss-sequencing.ts
-var import_edmonds_blossom = __toESM(require_blossom(), 1);
-var swissOpponentKey = (a, b2) => a < b2 ? `${a}|${b2}` : `${b2}|${a}`;
+var import_edmonds_blossom_fixed = __toESM(require_blossom(), 1);
+var swissOpponentKey = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
 function sequenceSwissRound(input) {
   const { players, played, round, finalRound } = input;
   if (!Number.isInteger(round) || !Number.isInteger(finalRound) || round < 1 || finalRound < round)
@@ -1572,7 +1572,7 @@ function sequenceSwissRound(input) {
     if (odd)
       edges.push([i, n, -((players[i].byes ?? 0) * byeCountUnit + (n - 1 - i) * byeRankUnit)]);
   }
-  let mates = import_edmonds_blossom.default(edges, true);
+  let mates = import_edmonds_blossom_fixed.default(edges, true);
   if (Array.from({ length: vertices }, (_, i) => mates[i]).some((j) => j == null || j < 0))
     throw new IntegrityError("swiss_repeat", `Round ${round}: no complete pairing without repeat opponents exists. Saved games remain unchanged.`);
   if (!final && !odd && n <= 8 && finalRound - round <= 2) {
@@ -1716,14 +1716,14 @@ function rrFinishRound(snapshot, round, groups) {
   });
   return { pairs, remainder: snapshot.slice(groupRanges.length * 4) };
 }
-var key = (a, b2) => a < b2 ? `${a}|${b2}` : `${b2}|${a}`;
+var key = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
 function rrFinishRepeats(snapshot, groups, earlier) {
-  const met = new Set(earlier.flatMap(([a, b2]) => a && b2 ? [key(a, b2)] : []));
+  const met = new Set(earlier.flatMap(([a, b]) => a && b ? [key(a, b)] : []));
   const out = [];
   for (let r = RR_FINISH_FROM_ROUND;r <= RR_FINISH_ROUNDS; r++) {
-    rrFinishRound(snapshot, r, groups).pairs.forEach(([a, b2]) => {
-      if (met.has(key(a, b2)))
-        out.push({ round: r, a, b: b2 });
+    rrFinishRound(snapshot, r, groups).pairs.forEach(([a, b]) => {
+      if (met.has(key(a, b)))
+        out.push({ round: r, a, b });
     });
   }
   return out;
@@ -1774,10 +1774,10 @@ function transitionIssues(t, poolCount) {
     if (!pairs.length)
       e("pairs_missing", "Choose which pools are crossed.");
     const seen = new Set;
-    for (const [a, b2] of pairs) {
-      if (a === b2)
+    for (const [a, b] of pairs) {
+      if (a === b)
         e("pair_self", "A pool cannot be crossed with itself.");
-      for (const x of [a, b2]) {
+      for (const x of [a, b]) {
         if (!pools.includes(x))
           e("pair_range", "A crossed pool is not a source pool.");
         if (seen.has(x))
@@ -1795,8 +1795,8 @@ function transitionIssues(t, poolCount) {
     if (!slots.length)
       e("manual_missing", "Map the qualifier slots into the next stage.");
     const used = new Set;
-    for (const [a, b2] of slots)
-      for (const s of [a, b2]) {
+    for (const [a, b] of slots)
+      for (const s of [a, b]) {
         if (!s)
           continue;
         if (used.has(slotKey2(s)))
@@ -1809,8 +1809,8 @@ function transitionIssues(t, poolCount) {
   return out;
 }
 function qualifierSlots(t, poolCount) {
-  const pools = t.sourcePoolIndexes?.length ? [...t.sourcePoolIndexes].sort((a, b2) => a - b2) : Array.from({ length: poolCount }, (_, i) => i);
-  const positions = [...t.positions].sort((a, b2) => a - b2);
+  const pools = t.sourcePoolIndexes?.length ? [...t.sourcePoolIndexes].sort((a, b) => a - b) : Array.from({ length: poolCount }, (_, i) => i);
+  const positions = [...t.positions].sort((a, b) => a - b);
   return positions.flatMap((position) => pools.map((poolIndex) => ({ poolIndex, position })));
 }
 function planTransition(t, poolCount) {
@@ -1818,7 +1818,7 @@ function planTransition(t, poolCount) {
   if (errs.length)
     throw new IntegrityError("transition", errs.map((e) => e.message).join("; "));
   if (t.method === "manual")
-    return (t.manualSlots ?? []).map(([a, b2], i) => ({ slot: i + 1, a, b: b2 }));
+    return (t.manualSlots ?? []).map(([a, b], i) => ({ slot: i + 1, a, b }));
   if (t.method === "cross_pool") {
     const positions = [...t.positions].sort((x, y) => x - y);
     const out2 = [];
@@ -1938,7 +1938,7 @@ function swissFirstRound(tid, d, st) {
   const pairs = ids.slice(0, half).map((a, i) => [a, ids[ids.length - 1 - i]]);
   if (bye)
     pairs.push([bye, null]);
-  return pairs.map(([a, b2], i) => ({
+  return pairs.map(([a, b], i) => ({
     tournamentId: tid,
     divisionId: d.divisionId,
     stageId: st.id,
@@ -1948,11 +1948,11 @@ function swissFirstRound(tid, d, st) {
     poolId: null,
     slot: i + 1,
     a,
-    b: b2
+    b
   }));
 }
 function swissFixtures(tid, d, st, round, players, played) {
-  return swissRound(players, played).map(([a, b2], i) => ({
+  return swissRound(players, played).map(([a, b], i) => ({
     tournamentId: tid,
     divisionId: d.divisionId,
     stageId: st.id,
@@ -1962,10 +1962,10 @@ function swissFixtures(tid, d, st, round, players, played) {
     poolId: null,
     slot: i + 1,
     a,
-    b: b2
+    b
   }));
 }
-var pairKey = (a, b2) => a < b2 ? `${a}|${b2}` : `${b2}|${a}`;
+var pairKey = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
 var swissWinner = (f) => f.a && !f.b ? f.a : f.winner ?? null;
 function swissStandings(d, st, rows) {
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === st.id);
@@ -1998,9 +1998,9 @@ function nextSwissRound(tid, d, stageId, rows, noRepeats = true, policy) {
     const table2 = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
     const played2 = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
     const swissPart = sequencing ? sequenceSwissRound({ players: table2.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played: played2, round: gate.nextRound, finalRound: st.swissRounds ?? 5, positionOffset: snapshot.length - plan.remainder.length }).pairs : swissRound(table2.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played2);
-    if (swissPart.some(([a, b2]) => b2 && played2.has(pairKey(a, b2))))
+    if (swissPart.some(([a, b]) => b && played2.has(pairKey(a, b))))
       throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
-    return [...plan.pairs, ...swissPart].map(([a, b2], i) => ({
+    return [...plan.pairs, ...swissPart].map(([a, b], i) => ({
       tournamentId: tid,
       divisionId: d.divisionId,
       stageId: st.id,
@@ -2010,18 +2010,18 @@ function nextSwissRound(tid, d, stageId, rows, noRepeats = true, policy) {
       poolId: null,
       slot: i + 1,
       a,
-      b: b2
+      b
     }));
   }
   if (sequencing && noRepeats && gate.nextRound >= 3) {
     const table2 = swissStandings(d, st, rows);
     const played2 = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
     const result = sequenceSwissRound({ players: table2.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played: played2, round: gate.nextRound, finalRound: st.swissRounds ?? gate.nextRound });
-    return result.pairs.map(([a, b2], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss", roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b: b2 }));
+    return result.pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss", roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b }));
   }
   const fixed = fixedPositionRound(d, mine, gate.nextRound, noRepeats);
   if (fixed)
-    return fixed.map(([a, b2], i) => ({
+    return fixed.map(([a, b], i) => ({
       tournamentId: tid,
       divisionId: d.divisionId,
       stageId: st.id,
@@ -2031,7 +2031,7 @@ function nextSwissRound(tid, d, stageId, rows, noRepeats = true, policy) {
       poolId: null,
       slot: i + 1,
       a,
-      b: b2
+      b
     }));
   const table = swissStandings(d, st, rows);
   const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a, f.b)));
@@ -2074,8 +2074,8 @@ function fixedPositionRound(d, mine, nextRound, noRepeats = true) {
     if (noRepeats && r >= swissStrictFromRound(n)) {
       const pos = new Map(occ2.map((id, i) => [id, i + 1]));
       const pairs2 = saved.flatMap((f) => {
-        const a = f.a ? pos.get(f.a) : undefined, b2 = f.b ? pos.get(f.b) : undefined;
-        return a && b2 ? [{ a: Math.min(a, b2), b: Math.max(a, b2) }] : [];
+        const a = f.a ? pos.get(f.a) : undefined, b = f.b ? pos.get(f.b) : undefined;
+        return a && b ? [{ a: Math.min(a, b), b: Math.max(a, b) }] : [];
       });
       const by = saved.find((f) => f.a && !f.b);
       const bye = by?.a ? pos.get(by.a) ?? null : null;
@@ -2125,7 +2125,7 @@ function fixedPositionRound(d, mine, nextRound, noRepeats = true) {
 }
 function assertConfirmedPairs(stage, pairs, allowed) {
   const used = pairs.flat();
-  if (used.some((id) => !id) || pairs.some(([a, b2]) => a === b2) || new Set(used).size !== used.length || used.some((id, k) => !allowed(id, k)))
+  if (used.some((id) => !id) || pairs.some(([a, b]) => a === b) || new Set(used).size !== used.length || used.some((id, k) => !allowed(id, k)))
     throw new IntegrityError("pool_members", `${stage}: the Round 1 matches you confirmed don't match the current entries or pools — refresh and check them.`);
 }
 function knockoutFirstRound(tid, d, st, seeded) {
@@ -2142,8 +2142,8 @@ function knockoutFirstRound(tid, d, st, seeded) {
       assertConfirmedPairs(st.name, tagged.map((t) => t.p), (id, k) => poolOf.get(id) === tagged[Math.floor(k / 2)].pi);
     }
     return st.poolMembers.flatMap((members, pi) => {
-      const pairs = confirmed ? confirmed[pi] ?? [] : proposePairings(members.map((id) => ({ id, rank: rank.get(id) })), st.paced.perPool[pi] ?? 0, st.paced.pairing).pairs.map(([a, b2]) => [a.id, b2.id]);
-      return pairs.map(([a, b2]) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, koPool: pi + 1, pacedRound: true, slot: ++slot, a, b: b2 }));
+      const pairs = confirmed ? confirmed[pi] ?? [] : proposePairings(members.map((id) => ({ id, rank: rank.get(id) })), st.paced.perPool[pi] ?? 0, st.paced.pairing).pairs.map(([a, b]) => [a.id, b.id]);
+      return pairs.map(([a, b]) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, koPool: pi + 1, pacedRound: true, slot: ++slot, a, b }));
     });
   }
   if (st.paced && (st.paced.count > 0 || st.paced.pairs)) {
@@ -2151,8 +2151,8 @@ function knockoutFirstRound(tid, d, st, seeded) {
     const ids = new Set(field.map((f) => f.id));
     if (st.paced.pairs)
       assertConfirmedPairs(st.name, st.paced.pairs, (id) => ids.has(id));
-    const pairs = st.paced.pairs ?? proposePairings(field, st.paced.count, st.paced.pairing).pairs.map(([a, b2]) => [a.id, b2.id]);
-    return pairs.map(([a, b2], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, pacedRound: true, slot: i + 1, a, b: b2 }));
+    const pairs = st.paced.pairs ?? proposePairings(field, st.paced.count, st.paced.pairing).pairs.map(([a, b]) => [a.id, b.id]);
+    return pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "knockout", roundId: `${st.id}:r1`, round: 1, poolId: null, pacedRound: true, slot: i + 1, a, b }));
   }
   if (st.bottomBracket && st.drawSize) {
     const n = st.drawSize;
@@ -2379,7 +2379,7 @@ function nextStageFixtures(tid, d, stageId, rows, opts) {
 
 // src/lib/tournaments/date-window.ts
 var d10 = (s) => s ? s.slice(0, 10) : null;
-var before = (a, b2) => a < b2;
+var before = (a, b) => a < b;
 function inside(date, w) {
   const d = d10(date);
   if (!d)
@@ -2961,8 +2961,8 @@ function getErrorMap() {
 }
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path2, errorMaps, issueData } = params;
-  const fullPath = [...path2, ...issueData.path || []];
+  const { data, path, errorMaps, issueData } = params;
+  const fullPath = [...path, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -3074,11 +3074,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 class ParseInputLazyPath {
-  constructor(parent, value, path2, key2) {
+  constructor(parent, value, path, key2) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path2;
+    this._path = path;
     this._key = key2;
   }
   get path() {
@@ -5304,17 +5304,17 @@ class ZodDiscriminatedUnion extends ZodType {
     });
   }
 }
-function mergeValues(a, b2) {
+function mergeValues(a, b) {
   const aType = getParsedType(a);
-  const bType = getParsedType(b2);
-  if (a === b2) {
+  const bType = getParsedType(b);
+  if (a === b) {
     return { valid: true, data: a };
   } else if (aType === ZodParsedType.object && bType === ZodParsedType.object) {
-    const bKeys = util.objectKeys(b2);
+    const bKeys = util.objectKeys(b);
     const sharedKeys = util.objectKeys(a).filter((key2) => bKeys.indexOf(key2) !== -1);
-    const newObj = { ...a, ...b2 };
+    const newObj = { ...a, ...b };
     for (const key2 of sharedKeys) {
-      const sharedValue = mergeValues(a[key2], b2[key2]);
+      const sharedValue = mergeValues(a[key2], b[key2]);
       if (!sharedValue.valid) {
         return { valid: false };
       }
@@ -5322,13 +5322,13 @@ function mergeValues(a, b2) {
     }
     return { valid: true, data: newObj };
   } else if (aType === ZodParsedType.array && bType === ZodParsedType.array) {
-    if (a.length !== b2.length) {
+    if (a.length !== b.length) {
       return { valid: false };
     }
     const newArray = [];
     for (let index = 0;index < a.length; index++) {
       const itemA = a[index];
-      const itemB = b2[index];
+      const itemB = b[index];
       const sharedValue = mergeValues(itemA, itemB);
       if (!sharedValue.valid) {
         return { valid: false };
@@ -5336,7 +5336,7 @@ function mergeValues(a, b2) {
       newArray.push(sharedValue.data);
     }
     return { valid: true, data: newArray };
-  } else if (aType === ZodParsedType.date && bType === ZodParsedType.date && +a === +b2) {
+  } else if (aType === ZodParsedType.date && bType === ZodParsedType.date && +a === +b) {
     return { valid: true, data: a };
   } else {
     return { valid: false };
@@ -6308,10 +6308,10 @@ class ZodPipeline extends ZodType {
       }
     }
   }
-  static create(a, b2) {
+  static create(a, b) {
     return new ZodPipeline({
       in: a,
-      out: b2,
+      out: b,
       typeName: ZodFirstPartyTypeKind.ZodPipeline
     });
   }
@@ -6702,8 +6702,8 @@ function sixteenPlayerChart() {
   ];
   const r1 = Array.from({ length: 8 }, (_, i) => [i + 1, 16 - i]);
   return half.map((ps, i) => {
-    const pairs = i === 0 ? r1 : [...ps, ...ps.map(([a, b2]) => [a + 8, b2 + 8])];
-    return { round: i + 1, bye: null, pairs: pairs.map(([a, b2]) => ({ round: i + 1, a, b: b2 })) };
+    const pairs = i === 0 ? r1 : [...ps, ...ps.map(([a, b]) => [a + 8, b + 8])];
+    return { round: i + 1, bye: null, pairs: pairs.map(([a, b]) => ({ round: i + 1, a, b })) };
   });
 }
 
@@ -6717,7 +6717,7 @@ function bufferedDb(base) {
   const pending = {};
   const removed = new Set;
   let specOverride = null;
-  const match = (r, f) => Object.entries(f).every(([k, v2]) => r[k] === v2);
+  const match = (r, f) => Object.entries(f).every(([k, v]) => r[k] === v);
   const db = {
     async insert(table, rows) {
       const out = rows.map((r) => ({ id: uuid(), ...r }));
@@ -6757,9 +6757,9 @@ function bufferedDb(base) {
 }
 async function atomically(base, tid, send, fn) {
   assertTournamentPairingWritable(tid);
-  const b2 = bufferedDb(base);
-  const result = await fn(b2.db);
-  await b2.commit(tid, send);
+  const b = bufferedDb(base);
+  const result = await fn(b.db);
+  await b.commit(tid, send);
   return result;
 }
 async function persistStructure(db, tid, spec) {
@@ -6827,7 +6827,7 @@ function persistedStage(spec, f) {
   if (legacyStage(f.stageKind) === "ko")
     return "ko";
   const stages = spec.divisions.find((d) => d.divisionId === f.divisionId)?.stages ?? [];
-  const first = [...stages].sort((a, b2) => (a.order ?? 0) - (b2.order ?? 0))[0];
+  const first = [...stages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
   return first && first.id !== f.stageId ? "ko" : "group";
 }
 async function insertFixtures(db, tid, spec, ids, fixtures, existing = []) {
@@ -6843,7 +6843,7 @@ async function insertFixtures(db, tid, spec, ids, fixtures, existing = []) {
   }
   if (fixtures.some((f) => f.courtId != null)) {
     const venues = await db.select("tournament_venues", { tournament_id: tid });
-    const pool = new Set(venues.flatMap((v2) => v2.court_ids ?? []));
+    const pool = new Set(venues.flatMap((v) => v.court_ids ?? []));
     const bad = pool.size ? fixtures.find((f) => f.courtId != null && !pool.has(f.courtId)) : undefined;
     if (bad)
       throw new IntegrityError("court_not_selected", `Court ${bad.courtId} is not one of the tournament's selected courts.`);
@@ -6942,7 +6942,7 @@ async function loadEntrants(db, tid, rawSpec) {
     divisions: spec.divisions.map((d) => ({
       ...d,
       tieBreaks: d.tieBreaks ?? spec.tieBreaks,
-      entrants: rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).sort((a, b2) => (a.order_index ?? 0) - (b2.order_index ?? 0)).map((r, k) => ({ id: r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id, rank: r.order_index != null ? k + 1 : null })),
+      entrants: rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)).map((r, k) => ({ id: r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id, rank: r.order_index != null ? k + 1 : null })),
       expectedEntrants: d.expectedEntrants ?? rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).length
     }))
   };
@@ -7055,9 +7055,9 @@ var unitOfRow = (x, side) => {
 var resolveTieBreaks = (spec, d) => d?.tieBreaks ? normaliseTieBreaks(d.tieBreaks) : normaliseTieBreaks(spec?.tieBreaks);
 function rankGamesOf(rows) {
   return rows.filter((x) => !x.is_bye && x.player_a_member_id && x.player_b_member_id).map((x) => {
-    const a = unitOfRow(x, "a"), b2 = unitOfRow(x, "b");
-    const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b2;
-    return { a, b: b2, winner, ...gameSetsOf(x) };
+    const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+    const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b;
+    return { a, b, winner, ...gameSetsOf(x) };
   });
 }
 function rankSourcePools(d, src, matches, orders, used, criteria = resolveTieBreaks(null, d)) {
@@ -7065,9 +7065,9 @@ function rankSourcePools(d, src, matches, orders, used, criteria = resolveTieBre
   if (src.kind === "swiss") {
     const members = d.entrants.map((e) => e.id);
     const games2 = rows.map((x) => {
-      const a = unitOfRow(x, "a"), b2 = unitOfRow(x, "b");
-      const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b2;
-      return { a: a || null, b: b2 || null, winner, round: Number(x.round_number) || null };
+      const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+      const winner = !x.winner_member_id ? null : String(a).split("+").includes(x.winner_member_id) ? a : b;
+      return { a: a || null, b: b || null, winner, round: Number(x.round_number) || null };
     });
     const table = swissTable(members, games2, src.swissTieBreaks ?? src.tieBreaks ?? null);
     const order = table.map((r) => r.id);
@@ -7091,7 +7091,7 @@ function rankSourcePools(d, src, matches, orders, used, criteria = resolveTieBre
         if (u && !list.includes(u))
           list.push(u);
     }
-    pools = [...by.entries()].sort((a, b2) => a[0] - b2[0]).map(([, l]) => l);
+    pools = [...by.entries()].sort((a, b) => a[0] - b[0]).map(([, l]) => l);
   }
   const seed = new Map(d.entrants.map((e, i) => [e.id, i]));
   const games = rankGamesOf(rows);
@@ -7112,12 +7112,12 @@ function sourcePositions(d, src, matches, orders, used, allowTies = false, crite
   return pools.map((p) => p.result.order);
 }
 function stageWinners(src, matches) {
-  const rows = matches.filter((x) => x.stage_key === src.id).sort((a, b2) => (a.round_number ?? 1) - (b2.round_number ?? 1) || (a.bracket_position ?? 0) - (b2.bracket_position ?? 0));
+  const rows = matches.filter((x) => x.stage_key === src.id).sort((a, b) => (a.round_number ?? 1) - (b.round_number ?? 1) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
   return rows.map((x, i) => {
     if (!x.winner_member_id)
       throw new IntegrityError("prereq", `${src.name}: game ${i + 1} has no winner yet.`);
-    const a = unitOfRow(x, "a"), b2 = unitOfRow(x, "b");
-    return String(a).split("+").includes(x.winner_member_id) ? a : b2;
+    const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+    return String(a).split("+").includes(x.winner_member_id) ? a : b;
   });
 }
 async function startMappedStage(db, tid, spec, d, st, matches, existing, ownerConfirmed) {
@@ -7185,7 +7185,7 @@ function mappingOf(source, sourceStageId, pools, poolSize, games) {
       units.set(k, { id: k, slots: [slot(p, pos)] });
     return k;
   };
-  const matches = games.map(([a, b2], i) => ({ round: 1, order: i + 1, a: id(a), b: id(b2) }));
+  const matches = games.map(([a, b], i) => ({ round: 1, order: i + 1, a: id(a), b: id(b) }));
   return { source, sourceStageId, pools, poolSize, discipline: "singles", units: [...units.values()], matches, derived: true };
 }
 function scheduleOf(p) {
@@ -7265,7 +7265,7 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
       for (let pos = 1;pos <= per; pos++)
         for (let p = 0;p < pools; p++)
           order.push([p, pos]);
-      games = seededPairs(2 * g).map(([a, b2]) => [order[a - 1], order[b2 - 1]]);
+      games = seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]]);
     } else if (pairing === "later" || pairing === "winners")
       return { stages: [], reason: `${first.name}: choose who plays whom (pairing) in Stages & Scheduling.`, notes };
     else
@@ -7278,19 +7278,19 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
     for (let pos = 1;pos <= per; pos++)
       for (let p = 0;p < 2; p++)
         order.push([p, pos]);
-    games = seededPairs(2 * g).map(([a, b2]) => [order[a - 1], order[b2 - 1]]);
+    games = seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]]);
   } else if (pools === 2 && pairing === "same_position")
     games = Array.from({ length: g }, (_, i) => [[0, i + 1], [1, i + 1]]);
   else if (pools === 1 && (pairing === "seeded" || pairing === "crossover" || pairing === "same_position")) {
     if (pairing !== "seeded")
       notes.push(`${first.name}: one group only — seeded 1 v ${2 * g} pairing is used.`);
-    games = seededPairs(2 * g).map(([a, b2]) => [[0, a], [0, b2]]);
+    games = seededPairs(2 * g).map(([a, b]) => [[0, a], [0, b]]);
   } else if (pairing === "later" || pairing === "winners")
     return { stages: [], reason: `${first.name}: choose who plays whom (pairing) in Stages & Scheduling.`, notes };
   else
     return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} groups can't be mapped automatically — set it up when the main stage finishes.`, notes };
   if (opts.bottomHalf && pools === 1)
-    games = [...games, ...seededPairs(2 * g).map(([a, b2]) => [[0, a + 2 * g], [0, b2 + 2 * g]])];
+    games = [...games, ...seededPairs(2 * g).map(([a, b]) => [[0, a + 2 * g], [0, b + 2 * g]])];
   else if (opts.bottomHalf)
     notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list (Swiss or one group).`);
   const need = Math.max(...games.flat().map(([, pos]) => pos));
@@ -7338,7 +7338,7 @@ function allocateSlots(count, w) {
     for (const c of w.courtIds) {
       if (out.length >= count)
         break;
-      const clash = taken.some((b2) => b2.courtId === c && toMin(b2.start) < t + step && toMin(b2.end) > t);
+      const clash = taken.some((b) => b.courtId === c && toMin(b.start) < t + step && toMin(b.end) > t);
       if (clash)
         continue;
       out.push({ courtId: c, time: toHHMM(t) });
@@ -7396,7 +7396,7 @@ async function stageLifecycle(db, tid) {
   const out = [];
   for (const [, d] of spec.divisions.entries()) {
     const mine = all.filter((m) => m.group_number === divisionGroup(spec, d));
-    const ordered = [...d.stages].sort((a, b2) => a.order - b2.order);
+    const ordered = [...d.stages].sort((a, b) => a.order - b.order);
     const done = new Map;
     for (const st of ordered) {
       const rows = mine.filter((m) => m.stage_key === st.id);
@@ -7425,8 +7425,8 @@ async function stageLifecycle(db, tid) {
         continue;
       }
       try {
-        const b2 = bufferedDb(db);
-        await startStage(b2.db, tid, d, st);
+        const b = bufferedDb(db);
+        await startStage(b.db, tid, d, st);
         out.push({ ...base, state: "ready", automatic: auto, plannedDate, afterStageKey: src.id, detail: auto ? `${src.name} is finished — ${st.name} will be created now.` : `${src.name} is finished — confirm to create ${st.name}.` });
       } catch (e) {
         out.push({ ...base, state: "blocked", automatic: false, detail: e?.message ?? String(e) });
@@ -7470,7 +7470,7 @@ async function promoteAutoDeferred(db, tid, exec = (fn) => fn(db)) {
         continue;
       if (!later.every((x) => x.plan && x.plan.trigger === "auto"))
         continue;
-      const main = [...d.stages].sort((a, b2) => b2.order - a.order)[0];
+      const main = [...d.stages].sort((a, b) => b.order - a.order)[0];
       const version = String(later[0].stageKey).replace(/-po\d+$/, "");
       const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan, stageKey: x.stageKey })), { bottomHalf: !!d.playoffBottomHalf });
       if (chain.reason || !chain.stages.length || chain.stages.some((c) => d.stages.some((y) => y.id === c.id)))
@@ -7577,12 +7577,12 @@ function playoffSlotOrder(divs, override) {
     byLevel.get(l).push(d);
   }
   const g = (d) => d.gender === "ladies" ? 0 : 1;
-  const tiers = [...byLevel.keys()].sort((a, b2) => b2 - a).map((l) => byLevel.get(l).slice().sort((a, b2) => g(a) - g(b2) || ids.indexOf(a.id) - ids.indexOf(b2.id)).map((d) => d.id));
+  const tiers = [...byLevel.keys()].sort((a, b) => b - a).map((l) => byLevel.get(l).slice().sort((a, b) => g(a) - g(b) || ids.indexOf(a.id) - ids.indexOf(b.id)).map((d) => d.id));
   return { source: "level", tiers, order: tiers.flat(), levels, warnings };
 }
 function sortGamesForSlots(games, order, groupOf) {
   const rank = new Map(order.map((id, i) => [groupOf(id), i]));
-  return games.slice().sort((a, b2) => (rank.get(Number(a.group_number)) ?? 99) - (rank.get(Number(b2.group_number)) ?? 99) || (a.bracket_position ?? 0) - (b2.bracket_position ?? 0));
+  return games.slice().sort((a, b) => (rank.get(Number(a.group_number)) ?? 99) - (rank.get(Number(b.group_number)) ?? 99) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
 }
 
 // src/lib/smart-builder/stage-plan.ts
@@ -7613,13 +7613,13 @@ function normaliseSchedulingPrefs(raw) {
   }) : [];
   return raw?.courtsPreBooked === true ? { rest, courts, categoryCourts, courtsPreBooked: true } : { rest, courts, categoryCourts };
 }
-function isTournamentReservation(b2, tournamentName, preBooked = false) {
-  if (String(b2.external_id ?? "").startsWith("sbs:"))
+function isTournamentReservation(b, tournamentName, preBooked = false) {
+  if (String(b.external_id ?? "").startsWith("sbs:"))
     return true;
   if (preBooked)
     return true;
   const norm = (x) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const text = [b2.external_booker_name, b2.ops_note, b2.guest_name].map(norm).join(" | ");
+  const text = [b.external_booker_name, b.ops_note, b.guest_name].map(norm).join(" | ");
   if (!text.replace(/[ |]/g, ""))
     return false;
   const name = norm(tournamentName);
@@ -7705,10 +7705,10 @@ async function loadTimedContext(champId) {
       fromExt("bookings").select("court_id, date, start_time, end_time, external_id, external_booker_name, ops_note, guest_name").in("date", dates).eq("status", "active").in("court_id", courts)
     ]);
     const prefsNow = normaliseSchedulingPrefs(t.beta_lifecycle?.scheduling_prefs);
-    const inPlannedWindow = (b2) => days.some((d) => d.date === String(b2.date).slice(0, 10) && d.courtIds.includes(Number(b2.court_id)) && String(b2.start_time).slice(0, 5) < d.to && String(b2.end_time).slice(0, 5) > d.from);
+    const inPlannedWindow = (b) => days.some((d) => d.date === String(b.date).slice(0, 10) && d.courtIds.includes(Number(b.court_id)) && String(b.start_time).slice(0, 5) < d.to && String(b.end_time).slice(0, 5) > d.from);
     busyOther = [
       ...(dayGames ?? []).filter((m) => m.champ_id !== champId && m.scheduled_time).map((m) => ({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: String(m.scheduled_time).slice(0, 5), end: toHHMM2(toMin2(m.scheduled_time) + minutes) })),
-      ...(bk ?? []).filter((b2) => !(isTournamentReservation(b2, t.name, prefsNow.courtsPreBooked) && inPlannedWindow(b2))).map((b2) => ({ date: String(b2.date).slice(0, 10), courtId: Number(b2.court_id), start: String(b2.start_time).slice(0, 5), end: String(b2.end_time).slice(0, 5) }))
+      ...(bk ?? []).filter((b) => !(isTournamentReservation(b, t.name, prefsNow.courtsPreBooked) && inPlannedWindow(b))).map((b) => ({ date: String(b.date).slice(0, 10), courtId: Number(b.court_id), start: String(b.start_time).slice(0, 5), end: String(b.end_time).slice(0, 5) }))
     ];
   }
   return {
@@ -7757,10 +7757,10 @@ function placeholderAdoption(placeholders, real) {
   for (const p of placeholders)
     phGroups.set(key2(p), [...phGroups.get(key2(p)) ?? [], p]);
   for (const [k, ps] of phGroups) {
-    const rs = (groups.get(k) ?? []).sort((a, b2) => a.order - b2.order);
+    const rs = (groups.get(k) ?? []).sort((a, b) => a.order - b.order);
     if (!rs.length)
       continue;
-    ps.sort((a, b2) => a.order - b2.order).forEach((p, i) => {
+    ps.sort((a, b) => a.order - b.order).forEach((p, i) => {
       if (rs[i])
         out.push({ placeholder: p, real: rs[i] });
     });
@@ -7824,7 +7824,7 @@ function adoptionPlan(champId, holds, rows) {
   }
   const out = [];
   for (const [k, rs] of groups)
-    rs.sort((a, b2) => a.order - b2.order).forEach((r, i) => {
+    rs.sort((a, b) => a.order - b.order).forEach((r, i) => {
       const h = byKey.get(`${k}|${i + 1}`);
       if (h)
         out.push({ rowId: r.id, hold: h });
@@ -7838,7 +7838,7 @@ async function adoptProvisionalSlots(champId) {
   if (!clubId)
     return { adopted: fromRows, clashes: [] };
   const { data: hb } = await fromExt("bookings").select("id, external_id, date, start_time, court_id").eq("club_id", clubId).eq("source", "club_event").eq("status", "active").like("external_id", `${provisionalPrefix(champId)}%`);
-  const holds = (hb ?? []).map((b2) => ({ id: b2.id, externalId: b2.external_id, date: String(b2.date).slice(0, 10), start: String(b2.start_time).slice(0, 5), courtId: Number(b2.court_id) }));
+  const holds = (hb ?? []).map((b) => ({ id: b.id, externalId: b.external_id, date: String(b.date).slice(0, 10), start: String(b.start_time).slice(0, 5), courtId: Number(b.court_id) }));
   if (!holds.length)
     return { adopted: fromRows, clashes: [] };
   const { data: ms } = await fromExt("club_champs_matches").select("id, group_number, stage, stage_label, bracket_position, round_number, created_at, scheduled_date, scheduled_time, winner_member_id, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId);
@@ -7871,11 +7871,11 @@ function planPlayoffsAfter(o) {
   const slots = [];
   const unplaced = [];
   const busy = [...o.busy];
-  const days = [...o.days].sort((a, b2) => a.date.localeCompare(b2.date) || a.from.localeCompare(b2.from));
+  const days = [...o.days].sort((a, b) => a.date.localeCompare(b.date) || a.from.localeCompare(b.from));
   let cursor = o.after ? { date: o.after.date, min: toMin3(o.after.time) } : null;
-  const rounds = [...new Set(o.games.map((g) => g.round))].sort((a, b2) => a - b2);
+  const rounds = [...new Set(o.games.map((g) => g.round))].sort((a, b) => a - b);
   for (const r of rounds) {
-    const todo = o.games.filter((g) => g.round === r).sort((a, b2) => a.order - b2.order);
+    const todo = o.games.filter((g) => g.round === r).sort((a, b) => a.order - b.order);
     let roundEnd = null;
     for (const g of todo) {
       let placed = null;
@@ -7887,7 +7887,7 @@ function planPlayoffsAfter(o) {
           start = Math.max(start, cursor.min);
         for (let t = start;t + o.minutes <= toMin3(d.to) && !placed; t += 5) {
           for (const c2 of d.courtIds) {
-            const clash = busy.some((b2) => b2.date === d.date && Number(b2.courtId) === c2 && toMin3(b2.start) < t + o.minutes && toMin3(b2.end) > t);
+            const clash = busy.some((b) => b.date === d.date && Number(b.courtId) === c2 && toMin3(b.start) < t + o.minutes && toMin3(b.end) > t);
             if (!clash) {
               placed = { id: g.id, date: d.date, time: toHHMM3(t), courtId: c2 };
               break;
@@ -7956,9 +7956,9 @@ async function scheduleWeekendPlayoffs(champId) {
 }
 
 // src/lib/smart-builder/playoff-schedule.ts
-function isOwnStageReservation(b2, w) {
+function isOwnStageReservation(b, w) {
   const hm = (t) => String(t).slice(0, 5);
-  return String(b2.external_id ?? "").startsWith("sbs:") && w.courtIds.map(Number).includes(Number(b2.court_id)) && hm(b2.start_time) <= hm(w.from) && hm(b2.end_time) >= hm(w.to);
+  return String(b.external_id ?? "").startsWith("sbs:") && w.courtIds.map(Number).includes(Number(b.court_id)) && hm(b.start_time) <= hm(w.from) && hm(b.end_time) >= hm(w.to);
 }
 function carveReservation(block, slot2) {
   const hm = (t) => String(t).slice(0, 5);
@@ -8056,8 +8056,8 @@ async function scheduleSessionPlayoffs(champId) {
     const courtIds = sch.courtIds.map(Number);
     const win = { from: sch.timeFrom, to: sch.timeTo, courtIds };
     const { data: bk } = await fromExt("bookings").select("id, club_id, court_id, start_time, end_time, external_id, source, guest_name, ops_note").eq("date", date).eq("status", "active").in("court_id", courtIds);
-    let reserved = (bk ?? []).filter((b2) => isOwnStageReservation(b2, win));
-    const busy = (bk ?? []).filter((b2) => !reserved.includes(b2)).map((b2) => ({ courtId: b2.court_id, start: b2.start_time, end: b2.end_time }));
+    let reserved = (bk ?? []).filter((b) => isOwnStageReservation(b, win));
+    const busy = (bk ?? []).filter((b) => !reserved.includes(b)).map((b) => ({ courtId: b.court_id, start: b.start_time, end: b.end_time }));
     const slots = allocateSlots(todo.length, { from: sch.timeFrom, to: sch.timeTo, courtIds, minutes, busy });
     for (const [i, m] of todo.entries()) {
       const sl = slots[i];
@@ -8070,7 +8070,7 @@ async function scheduleSessionPlayoffs(champId) {
         const t2 = h * 60 + mm + minutes;
         return `${String(Math.floor(t2 / 60)).padStart(2, "0")}:${String(t2 % 60).padStart(2, "0")}`;
       })();
-      const block = reserved.find((b2) => Number(b2.court_id) === sl.courtId && String(b2.start_time).slice(0, 5) <= sl.time && String(b2.end_time).slice(0, 5) >= slotEnd);
+      const block = reserved.find((b) => Number(b.court_id) === sl.courtId && String(b.start_time).slice(0, 5) <= sl.time && String(b.end_time).slice(0, 5) >= slotEnd);
       if (block) {
         const rest = carveReservation({ start: block.start_time, end: block.end_time }, { start: sl.time, end: slotEnd });
         const { error: de } = await fromExt("bookings").delete().eq("id", block.id);
@@ -8078,7 +8078,7 @@ async function scheduleSessionPlayoffs(champId) {
           report.unplaced.push({ stage: s.name, reason: de.message });
           continue;
         }
-        reserved = reserved.filter((b2) => b2 !== block);
+        reserved = reserved.filter((b) => b !== block);
         for (const r of rest) {
           const row = { club_id: block.club_id, court_id: block.court_id, user_id: null, club_member_id: null, date, start_time: `${r.start}:00`, end_time: `${r.end}:00`, status: "active", is_friendly: false, guest_name: block.guest_name, source: block.source, external_id: `${String(block.external_id).split("@")[0]}@${r.start.replace(":", "")}`, ops_note: block.ops_note };
           const { data: ins, error: ie } = await fromExt("bookings").insert(row).select("id, club_id, court_id, start_time, end_time, external_id, source, guest_name, ops_note").single();
@@ -8138,7 +8138,7 @@ var mins = (t) => {
 };
 function scheduleDraws(draws, opts) {
   const out = {};
-  const used = new Set((opts.busy ?? []).map((b2) => `${b2.date}|${mins(b2.time)}|${b2.courtId}`));
+  const used = new Set((opts.busy ?? []).map((b) => `${b.date}|${mins(b.time)}|${b.courtId}`));
   const times = [...new Set(opts.times)].map(mins).sort((x, y) => x - y);
   const ready = new Map;
   const rk = (c2, r, s) => `${c2}|${r}|${s}`;
@@ -8241,7 +8241,7 @@ function swissPreviewFinalsTemplate(n, round) {
     4: [[1, 4], [2, 3], [5, 7], [6, 8], [9, 12], [10, 11]],
     5: [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]]
   };
-  return { ...original, pairs: [0, 12].flatMap((offset) => half[round].map(([a, b2]) => ({ round, a: a + offset, b: b2 + offset }))) };
+  return { ...original, pairs: [0, 12].flatMap((offset) => half[round].map(([a, b]) => ({ round, a: a + offset, b: b + offset }))) };
 }
 
 // src/lib/tournaments/swiss-uitsig-mens-c-chart.ts
@@ -8253,7 +8253,7 @@ function uitsigMensCChart() {
     [[1, 3], [2, 4], [5, 7], [6, 8], [9, 11], [10, 12], [13, 15], [14, 17], [16, 18]],
     [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18]]
   ];
-  return pairs.map((ps, index) => ({ round: index + 1, bye: null, pairs: ps.map(([a, b2]) => ({ round: index + 1, a, b: b2 })) }));
+  return pairs.map((ps, index) => ({ round: index + 1, bye: null, pairs: ps.map(([a, b]) => ({ round: index + 1, a, b })) }));
 }
 
 // src/lib/tournaments/swiss-uitsig-ladies-a-chart.ts
@@ -8266,7 +8266,7 @@ function uitsigLadiesAChart() {
     [[1, 2], [3, 4]]
   ];
   const byes = [9, 3, 2, 4, 5];
-  return pairs.map((ps, index) => ({ round: index + 1, bye: byes[index], pairs: ps.map(([a, b2]) => ({ round: index + 1, a, b: b2 })) }));
+  return pairs.map((ps, index) => ({ round: index + 1, bye: byes[index], pairs: ps.map(([a, b]) => ({ round: index + 1, a, b })) }));
 }
 
 // src/lib/tournaments/swiss-rr-display.ts
@@ -8377,14 +8377,14 @@ function gamesWonSummary(score) {
     return null;
   if (sets.length === 1 && Math.max(...sets[0]) <= 5)
     return `${Math.max(...sets[0])}–${Math.min(...sets[0])}`;
-  let a = 0, b2 = 0;
+  let a = 0, b = 0;
   for (const [x, y] of sets) {
     if (x > y)
       a++;
     else if (y > x)
-      b2++;
+      b++;
   }
-  return `${Math.max(a, b2)}–${Math.min(a, b2)}`;
+  return `${Math.max(a, b)}–${Math.min(a, b)}`;
 }
 var fmtDay = (d) => {
   const dt = new Date(`${d.slice(0, 10)}T00:00:00Z`);
@@ -8409,7 +8409,7 @@ function proposedRoundSchedule(cfg, round, courtName) {
 }
 function buildSwissGrid(model) {
   const byId = new Map(model.rows.map((r) => [r.id, r]));
-  const seeds = [...model.rows].sort((a, b2) => a.seed - b2.seed).map((r) => r.id);
+  const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
   const locked = rrFinishOn(model.rrFinish) && !!model.rounds.find((r) => r.round === 2)?.complete;
   const hybridPositions = new Map(model.rounds.filter((r) => r.round >= 3).map((rd) => {
     const games = model.rounds.filter((r) => r.round < rd.round).flatMap((r) => r.fixtures.filter((f) => f.state === "completed" || f.state === "bye").map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round })));
@@ -8430,8 +8430,8 @@ function buildSwissGrid(model) {
       const res = (id) => f.state === "bye" ? id ? "Bye" : "" : f.state === "completed" && id ? f.winner === id ? "W" : "L" : "";
       const when = f.when ? f.playBy && f.state !== "completed" ? `${f.when} · Play by ${f.playBy}` : f.when : f.playBy ? `Play by ${f.playBy}` : null;
       const a = { pos: posEntering(f.a, rd.round), id: f.a, name: f.aLabel, when, result: res(f.a) };
-      const b2 = { pos: f.state === "bye" ? null : posEntering(f.b, rd.round), id: f.b, name: f.state === "bye" ? "Bye" : f.bLabel, when, result: res(f.b) };
-      const pair = b2.pos != null && (a.pos == null || b2.pos < a.pos) ? [b2, a] : [a, b2];
+      const b = { pos: f.state === "bye" ? null : posEntering(f.b, rd.round), id: f.b, name: f.state === "bye" ? "Bye" : f.bLabel, when, result: res(f.b) };
+      const pair = b.pos != null && (a.pos == null || b.pos < a.pos) ? [b, a] : [a, b];
       return { matchId: f.id, rows: pair, score: gamesWonSummary(f.score), court: f.court, playBy: f.playBy };
     }).sort((x, y) => (x.rows[0].pos ?? 999) - (y.rows[0].pos ?? 999));
     return { round: rd.round, created: rd.created, blocks };
@@ -8443,7 +8443,7 @@ function buildProposedSwissGrid(model, opts = {}) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined, ...sequencing ? { swissSequencing: undefined } : {} }, opts);
     const saved = buildSwissGrid(model);
     const locked = !!model.rounds.find((r) => r.round === 2)?.complete;
-    const snapshot = locked ? [...model.rows].sort((a, b2) => (a.positions[1] ?? 0) - (b2.positions[1] ?? 0)).map((r) => r.id) : [...model.rows].sort((a, b2) => (a.current ?? 0) - (b2.current ?? 0)).map((r) => r.id);
+    const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
     const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
@@ -8451,12 +8451,12 @@ function buildProposedSwissGrid(model, opts = {}) {
     const warnings = [];
     return { issues: issues2, ...sequencing ? { warnings } : {}, rounds: saved.map((rd) => {
       if (rd.round < 3)
-        return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b2) => ({ ...b2, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
+        return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan2 = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
       const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
       const groupIds = new Set(plan2.pairs.flat());
-      const factual = rd.blocks.map((b2) => ({ ...b2, saved: true, rows: b2.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })).sort((a, b3) => (a.pos ?? 999) - (b3.pos ?? 999)) }));
-      const covered = new Set(factual.flatMap((b2) => b2.rows.map((r) => r.id)));
+      const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })).sort((a, b2) => (a.pos ?? 999) - (b2.pos ?? 999)) }));
+      const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs = plan2.pairs;
       const chartRest = (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
@@ -8464,7 +8464,7 @@ function buildProposedSwissGrid(model, opts = {}) {
       const chartBlocks = [];
       if (chartRest) {
         const chart = uitsigMensCChart();
-        let slots = [...model.rows].sort((a, b2) => a.seed - b2.seed).map((r) => r.id);
+        let slots = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
         for (let r = 1;r < rd.round; r++) {
           const nextSlots = Array(slots.length).fill(null);
           for (const cp of chart[r - 1]?.pairs ?? []) {
@@ -8486,11 +8486,11 @@ function buildProposedSwissGrid(model, opts = {}) {
         }
       } else if ((sequencing ? prevDone && locked : prevDone || !locked && rd.round === 3) && plan2.remainder.length) {
         const rest = new Set(plan2.remainder);
-        const seeds2 = [...model.rows].sort((a, b2) => a.seed - b2.seed).map((r) => r.id);
+        const seeds2 = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
         const table = hybridSwissTable(seeds2, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.rrFinish, model.tieBreaks).filter((r) => rest.has(r.id));
         const positions = new Map(table.map((r, i) => [r.id, plan2.pairs.length * 2 + i + 1]));
         const met = new Set(history.filter((f) => f.a && f.b).map((f) => [f.a, f.b].sort().join("|")));
-        const usedRest = new Set(factual.flatMap((b2) => b2.rows.map((r) => r.id)));
+        const usedRest = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
         for (const [id, pos] of positions)
           fixed.set(id, pos);
         try {
@@ -8504,14 +8504,14 @@ function buildProposedSwissGrid(model, opts = {}) {
           issues2.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`);
         }
       }
-      const pending = pairs.filter(([a, b2]) => !covered.has(a) && !covered.has(b2)).map(([a, b2]) => ({
-        matchId: `rr-proposed-${rd.round}-${a}-${b2}`,
-        rows: [a, b2].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })),
+      const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
+        matchId: `rr-proposed-${rd.round}-${a}-${b}`,
+        rows: [a, b].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })),
         score: null,
         court: null,
         playBy: opts.appliedPlayBy?.[rd.round] ?? null
       }));
-      const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b2) => b2.rows.map((r) => r.pos)));
+      const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));
       const unresolved = chartRest ? [] : plan2.remainder.flatMap((id) => {
         const pos = fixed.get(id);
         if (pos == null || shown.has(pos))
@@ -8521,7 +8521,7 @@ function buildProposedSwissGrid(model, opts = {}) {
           { id: null, pos: null, name: "Opponent decided after previous round", result: "", projected: true, when: null }
         ], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null }];
       });
-      return { ...rd, blocks: [...factual, ...pending, ...chartBlocks, ...unresolved].sort((a, b2) => (a.rows[0].pos ?? 999) - (b2.rows[0].pos ?? 999)) };
+      return { ...rd, blocks: [...factual, ...pending, ...chartBlocks, ...unresolved].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
     }) };
   }
   const n = model.rows.length;
@@ -8533,13 +8533,13 @@ function buildProposedSwissGrid(model, opts = {}) {
     const opening = buildProposedSwissGrid({ ...model, swissSequencing: undefined }, { ...opts, previewFinals: true });
     const factual = buildSwissGrid(model);
     const warnings = [], issues2 = [];
-    const seeds2 = [...model.rows].sort((a, b2) => a.seed - b2.seed).map((r) => r.id);
+    const seeds2 = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
     const names = new Map(model.rows.map((r) => [r.id, r.name]));
     return { issues: issues2, warnings, rounds: factual.map((rd) => {
       if (rd.round < 3)
         return opening.rounds.find((r) => r.round === rd.round) ?? rd;
       if (rd.created)
-        return { ...rd, blocks: rd.blocks.map((b2) => ({ ...b2, saved: true })) };
+        return { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) };
       const prevDone = model.rounds.find((r) => r.round === rd.round - 1)?.complete;
       const label = opts.appliedPlayBy?.[rd.round] ? `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName).label;
       if (!prevDone)
@@ -8550,7 +8550,7 @@ function buildProposedSwissGrid(model, opts = {}) {
       try {
         const result = sequenceSwissRound({ players: table.map((r, i) => ({ ...r, points: isPositionSwap(model.tieBreaks) ? 0 : r.points, seed: i + 1 })), played: new Set(history.flatMap((f) => f.a && f.b ? [[f.a, f.b].sort().join("|")] : [])), round: rd.round, finalRound: model.configuredRounds });
         warnings.push(...result.exceptions);
-        return { ...rd, blocks: result.pairs.map(([a, b2], i) => ({ matchId: `swiss-proposed-${rd.round}-${i}`, rows: [a, b2].map((id) => ({ id, pos: id ? positions.get(id) ?? null : null, name: id ? names.get(id) ?? "Unknown player" : "Bye", when: label, result: "", projected: true })), score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null })) };
+        return { ...rd, blocks: result.pairs.map(([a, b], i) => ({ matchId: `swiss-proposed-${rd.round}-${i}`, rows: [a, b].map((id) => ({ id, pos: id ? positions.get(id) ?? null : null, name: id ? names.get(id) ?? "Unknown player" : "Bye", when: label, result: "", projected: true })), score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null })) };
       } catch (error) {
         issues2.push(error instanceof Error ? error.message : "No legal Swiss pairing.");
         return rd;
@@ -8607,14 +8607,14 @@ function buildProposedSwissGrid(model, opts = {}) {
       if (rd.round < swissStrictFromRound(cur.length) && locked.length) {
         const pos = new Map(cur.map((id, index) => [id, index + 1]));
         const actual = locked.flatMap((f) => {
-          const a = pos.get(f.a), b2 = f.b ? pos.get(f.b) : undefined;
-          return a && b2 ? [{ a: Math.min(a, b2), b: Math.max(a, b2), round: rd.round }] : [];
+          const a = pos.get(f.a), b = f.b ? pos.get(f.b) : undefined;
+          return a && b ? [{ a: Math.min(a, b), b: Math.max(a, b), round: rd.round }] : [];
         });
         const used = actual.flatMap((p) => [p.a, p.b]);
         const savedBye = locked.find((f) => !f.b);
         const byeSlot = savedBye ? pos.get(savedBye.a) ?? null : null;
         if (new Set(used).size === used.length) {
-          strict.pairs = [...actual, ...rd.pairs.filter((p) => !used.includes(p.a) && !used.includes(p.b) && p.a !== byeSlot && p.b !== byeSlot)].sort((a, b2) => a.a - b2.a);
+          strict.pairs = [...actual, ...rd.pairs.filter((p) => !used.includes(p.a) && !used.includes(p.b) && p.a !== byeSlot && p.b !== byeSlot)].sort((a, b) => a.a - b.a);
           strict.bye = byeSlot ?? (rd.bye != null && !used.includes(rd.bye) ? rd.bye : null);
         }
       }
@@ -8643,9 +8643,9 @@ function buildProposedSwissGrid(model, opts = {}) {
   const savedGrid = new Map(buildSwissGrid(model).map((r) => [r.round, r]));
   return { issues, rounds: template.map((rd) => {
     if (!exactChart && rd.round === 1 && savedFirst?.created)
-      return { ...savedFirst, blocks: savedFirst.blocks.map((b2) => ({ ...b2, saved: true })) };
-    const saved = exactChart ? [] : (savedGrid.get(rd.round)?.blocks ?? []).map((b2) => ({ ...b2, saved: true }));
-    const savedIds = new Set(saved.flatMap((b2) => b2.rows.map((r) => r.id)).filter((x) => !!x));
+      return { ...savedFirst, blocks: savedFirst.blocks.map((b) => ({ ...b, saved: true })) };
+    const saved = exactChart ? [] : (savedGrid.get(rd.round)?.blocks ?? []).map((b) => ({ ...b, saved: true }));
+    const savedIds = new Set(saved.flatMap((b) => b.rows.map((r) => r.id)).filter((x) => !!x));
     const into = occ[rd.round - 1];
     const appliedBy = opts.appliedPlayBy?.[rd.round] ?? null;
     const schedule = appliedBy ? { kind: "play_by", label: `Play by ${fmtDay(appliedBy)}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
@@ -8664,11 +8664,11 @@ function buildProposedSwissGrid(model, opts = {}) {
       if (exactChart) {
         const x = into[p.a - 1], y = into[p.b - 1];
         const done = x && y ? findDone(rd.round, x, y) : undefined;
-        const factual = done ? savedGrid.get(rd.round)?.blocks.find((b3) => b3.matchId === done.id) : undefined;
+        const factual = done ? savedGrid.get(rd.round)?.blocks.find((b2) => b2.matchId === done.id) : undefined;
         const a = factual?.rows.find((r) => r.id === x);
-        const b2 = factual?.rows.find((r) => r.id === y);
-        if (factual && a && b2)
-          return [{ ...factual, saved: true, rows: [{ ...a, pos: p.a }, { ...b2, pos: p.b }] }];
+        const b = factual?.rows.find((r) => r.id === y);
+        if (factual && a && b)
+          return [{ ...factual, saved: true, rows: [{ ...a, pos: p.a }, { ...b, pos: p.b }] }];
       }
       const k = rawTemplate[rd.round - 1]?.pairs[pi] ?? p;
       const scheduleKey = fixtureKey(rd.round, k.a, k.b);
@@ -8685,18 +8685,18 @@ function buildProposedSwissGrid(model, opts = {}) {
     if (rd.bye != null && !(saved.length && covered(rd.bye))) {
       const holder = into[rd.bye - 1];
       const bye = exactChart && holder ? model.rounds.find((r) => r.round === rd.round)?.fixtures.find((f) => f.state === "bye" && f.a === holder) : undefined;
-      const factual = bye ? savedGrid.get(rd.round)?.blocks.find((b2) => b2.matchId === bye.id) : undefined;
+      const factual = bye ? savedGrid.get(rd.round)?.blocks.find((b) => b.matchId === bye.id) : undefined;
       proposedBlocks.push(factual ? { ...factual, saved: true, rows: [{ ...factual.rows[0], pos: rd.bye }, factual.rows[1]] } : { matchId: `proposed-${rd.round}-bye`, rows: [pending(rd.bye), pending(null, true)], score: null, court: null, playBy: null });
     }
     if (saved.length && !exactChart) {
       const shown = new Set;
-      for (const b2 of proposedBlocks)
-        for (const r of b2.rows)
+      for (const b of proposedBlocks)
+        for (const r of b.rows)
           if (r.pos != null)
             shown.add(r.pos);
       const savedPos = new Set;
-      for (const b2 of saved)
-        for (const r of b2.rows)
+      for (const b of saved)
+        for (const r of b.rows)
           if (r.pos != null)
             savedPos.add(r.pos);
       const left = Array.from({ length: into.length }, (_, i) => i + 1).filter((p) => !shown.has(p) && !savedPos.has(p) && !covered(p));
@@ -8705,8 +8705,8 @@ function buildProposedSwissGrid(model, opts = {}) {
       for (const g of groups) {
         const h = Math.floor(g.length / 2);
         for (let i = 0;i < h; i++) {
-          const a = g[i], b2 = g[i + h];
-          proposedBlocks.push({ matchId: `proposed-${rd.round}-${a}-${b2}`, rows: [pending(a), pending(b2)], score: null, court: null, playBy: null });
+          const a = g[i], b = g[i + h];
+          proposedBlocks.push({ matchId: `proposed-${rd.round}-${a}-${b}`, rows: [pending(a), pending(b)], score: null, court: null, playBy: null });
         }
         if (g.length % 2)
           proposedBlocks.push({ matchId: `proposed-${rd.round}-${g[g.length - 1]}-wait`, rows: [pending(g[g.length - 1]), { pos: null, id: null, name: "TBD", when: schedule.label, result: "" }], score: null, court: null, playBy: null });
@@ -8847,7 +8847,7 @@ function projectSwissFixtures(i, playByOnly) {
     });
     const prefix = `${gn}:`;
     model.rrFinish = st.rrFinish;
-    const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v2]) => [k.slice(prefix.length), v2]));
+    const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
     try {
       grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats });
@@ -8865,8 +8865,8 @@ function projectSwissFixtures(i, playByOnly) {
       const deadline = appliedPlayBy[rd.round];
       if (playByOnly ? !deadline : !!deadline)
         continue;
-      for (const b2 of rd.blocks) {
-        const [x, y] = b2.rows;
+      for (const b of rd.blocks) {
+        const [x, y] = b.rows;
         if (!x.id || !y.id || x.pos == null || y.pos == null)
           continue;
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id))
@@ -8875,7 +8875,7 @@ function projectSwissFixtures(i, playByOnly) {
           out.push({ champId: champ.id, group: gn, round: rd.round, aId: x.id, bId: y.id, title: `${x.name} v ${y.name}`, playBy: deadline });
           continue;
         }
-        const s = gSlots[b2.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
+        const s = gSlots[b.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
         if (s?.kind !== "planned")
           continue;
         if (matches.some((m) => Number(m.court_id) === Number(s.courtId) && m.scheduled_date === s.date && String(m.scheduled_time).slice(0, 5) === s.time))

@@ -1329,14 +1329,30 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               // Planned play-offs shown upfront: positions until the round robin is complete, then names.
               const plan = arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null;
               const done = gm.every((m: any) => m.is_bye || !!m.winner_member_id || m.status === "completed");
-              const standings = done ? Array.from({ length: Math.max(1, pc) }, (_, i) => (getGroupStandings(gn, pc > 1 ? i + 1 : null) as any[]).map((r: any) => r.name)) : null;
+              const live = Array.from({ length: Math.max(1, pc) }, (_, i) => (getGroupStandings(gn, pc > 1 ? i + 1 : null) as any[]).map((r: any) => r.name as string));
+              const standings = done ? live : null;
               const rows = plannedPlayoffBracket(plan, unitKeyOf(rrDivision?.label ?? getGroupLabel(champ, gn)), pc, standings);
               if (!rows.length) return null;
+              const firstStage = rows.filter((r) => r.stage === rows[0].stage);
+              const pairingSet = firstStage.some((r) => r.sides.some((s) => s.pool || s.rank != null));
+              const perPoolMax = (L: string) => Math.max(0, ...firstStage.flatMap((r) => r.sides).filter((s) => (s.pool ?? "A") === L && s.rank != null).map((s) => s.rank as number));
+              const fallbackQ = Math.ceil((firstStage.length * 2) / Math.max(1, pc));
+              const poolCards = live.map((names, i) => {
+                const L = String.fromCharCode(65 + i);
+                return { pool: L, title: pc > 1 ? poolName(gn, i + 1) : getGroupLabel(champ, gn), names, qualifiers: pairingSet ? perPoolMax(L) : fallbackQ };
+              });
               return (
                 <div className={cn("order-first space-y-2 rounded-lg border p-3", rrDone ? "border-primary" : "border-border")} data-testid={`planned-playoffs-${gn}`}>
-                  <div className="text-sm font-semibold">{getGroupLabel(champ, gn)} · Play-offs</div>
-                  <div className="text-xs text-muted-foreground">{done ? "Pool games complete — qualifiers confirmed." : "Planned — pool positions are replaced by names once every pool game is complete."}</div>
-                  <PlannedPlayoffBracketView rows={rows} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-sm font-semibold">{getGroupLabel(champ, gn)} · Play-offs</div>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", done ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>{done ? "Pool games complete" : "Pools in progress"}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {!pairingSet
+                      ? "Who plays whom in the first play-off round isn't chosen yet (\"Decide pairing later\"). Choose a pairing, e.g. Pool crossover, in the play-off settings and the qualifiers fill in here."
+                      : done ? "Qualifiers confirmed from the final pool standings." : "Pool standings are live; bracket names fill in once every pool game is complete."}
+                  </div>
+                  <PlannedPlayoffBracketView rows={rows} pools={poolCards} confirmed={done && pairingSet} />
                 </div>
               );
             }

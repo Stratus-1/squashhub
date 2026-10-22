@@ -1,5 +1,11 @@
+## 2026-10-22 — Personal-PIN counter club-sponsored stock
+- Added Club sponsored directly to the unlocked counter header, opening a separate stock-only quantity basket and required reason without a customer tab. Server derives club and serving name from an active unexpired/unrevoked personal-PIN session; signed-in admin authority cannot replace it.
+- Shared private stock-use posting helper preserves signed-in/admin workflows. Atomic basket posting uses private service-only request audit/replay records, appends serving name to stock history, and posts cost only to Stock club expense versus Bar/Shop purchase expense. No sales, tips, cash, tab or hardware writes.
+- Eighteen focused UI/session checks and disposable PostgreSQL PIN/tenant/stock-only/rollback/cost/accounting/retry/signed-in-regression tests passed. Fictional browser PIN unlock, basket and recorded confirmation checked with all RPC writes intercepted. Build OK; real hosted stock use unverified by design. No publication; web/PWA/native share the counter UI.
+
 ## 2026-10-22 — Remove cash-up Undo
 - Owner clarified that Undo was the wrong action: remove the cash-up Undo control, handler and explanatory text, retain View / edit and Save changes, and rename the till history management button. No financial records or backend permissions changed; existing correction safeguards remain.
+- Six focused edit/payout tests passed and signed-in fictional cash-up Edit saved/read back R56 and R230 without Undo. Build OK; frontend unpublished.
 
 ## 2026-10-22 — Cash-up Edit omitted paid tips
 - Added named positive-only existing payout fields to cash-up Edit. Save requires a reason and updates the payout, expected cash and staff balance atomically; only the latest cash-up allows paid-tip corrections.

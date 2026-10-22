@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Add Club sponsored directly to the personal-PIN counter without opening a customer tab; preserve PIN authority, stock-at-cost expense and no-sale accounting. No real stock use or publication.
-- [ ] Remove cash-up Undo controls and handler, retain audited edits and verify no Undo requests; no live records or publication.
+- [x] Added Club sponsored directly to personal-PIN counter without a customer tab; shared stock-at-cost posting, session-derived staff/club, atomic request-stamped basket. Eighteen focused UI/session checks and disposable PostgreSQL security/rollback/accounting/retry tests pass. Fictional browser PIN/basket/success checked, build OK; real hosted use intentionally unverified. No real stock use or publication.
+- [x] Removed cash-up Undo controls and handler; audited Save changes retained. Six focused edit/payout checks and signed-in fictional browser save/readback pass with no Undo requests; no live records or publication.
 - [x] Added positive-only named paid-tip corrections to latest cash-up Edit, with required reason, staff balance and accounting updates; counted cash and dates preserved. Eight frontend checks and disposable PostgreSQL validation/accounting/retry/authority/Undo checks pass; signed-in Riverside fictional UI saved R56 and read back R230 with hosted writes intercepted. Build OK. Real hosted correction intentionally unverified; restored Uitsig R56/R230 unchanged, no publication.
 - [x] Restored accidentally undone Uitsig 21 October cash-up from audit, original positive R56 payout and R230 cash; reversed only undo journals, retained audit. Hosted read-back confirms one payout and R230 cash.
 - [x] Verified Uitsig positive R56 tip payout and R230 closing/opening cash without duplicate payment.

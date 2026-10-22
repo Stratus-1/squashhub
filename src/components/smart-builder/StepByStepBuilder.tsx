@@ -1,4 +1,5 @@
 import { reconcileFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
+import { crossoverLabel, samePositionLabel } from "@/lib/smart-builder/playoff-chain";
 import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfirmIssues, roundsBreakdown } from "@/lib/smart-builder/swiss-progression";
 import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";

@@ -1808,6 +1808,22 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     }).eq("id", member.id);
     if (error) { toast.error(error.message); return; }
 
+    // Assigning a fee category raises the pro-rata club joining fee (same as
+    // the member picking it themselves in the signup wizard). Idempotent:
+    // members with an existing club fee record are not charged again.
+    if (form.fee_category_id) {
+      try {
+        const cat = feeCategories.find((c) => c.id === form.fee_category_id) as any;
+        if (cat) {
+          const { raised, amount } = await ensureJoiningClubFee(member.id, cat);
+          if (raised) toast.success(`Joining fee of R${amount.toFixed(2)} added to ${form.name || "the member"}'s account`);
+        }
+      } catch (feeErr: any) {
+        console.warn("[admin edit member] joining fee raise failed", feeErr);
+        toast.error(`Member saved, but the joining fee could not be raised: ${feeErr?.message || "unknown error"}`);
+      }
+    }
+
     // Squash South Africa number/membership — saved through the same RPC as the
     // Status button so anything set here is marked as entered by hand and the
     // automatic sync never overwrites it.

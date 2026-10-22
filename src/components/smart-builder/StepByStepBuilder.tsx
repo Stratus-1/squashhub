@@ -969,11 +969,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   };
   /** Removing a stage never deletes games: a live tournament with played games in that stage blocks the removal. */
   const removeStage = async (s: ClubStage) => {
-    if (tournamentId && s.phase === "playoff") {
-      const { data } = await fromExt("club_champs_matches").select("id, stage_label, status, winner_member_id").eq("champ_id", tournamentId);
-      const base = s.name.toLowerCase().replace(/s$/, "");
-      const played = ((data ?? []) as any[]).filter((m) => String(m.stage_label ?? "").toLowerCase().replace(/-/g, "").includes(base.replace(/-/g, "")) && (m.status === "completed" || m.winner_member_id));
-      if (played.length) { toast.error(`${s.name} already has ${played.length} played game(s) — it can't be removed. Results are kept.`); return; }
+    if (s.phase === "playoff") {
+      toast.info(`Play-off stages follow the category's structure page. To change ${s.name}, open the structure page → the category → Planned playoffs, tick or untick the stages, then press Done & lock.`, { duration: 9000 });
+      return;
     }
     const drop = new Set(groupOf(s).map((x) => x.id));
     setStages(stages.filter((x) => !drop.has(x.id)));

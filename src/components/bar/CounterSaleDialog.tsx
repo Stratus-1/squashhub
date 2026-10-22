@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
-import { CreditCard, Loader2, Minus, Search, ShoppingCart, User, Users, Wallet, X } from "lucide-react";
+import { CreditCard, Gift, Loader2, Minus, Search, ShoppingCart, User, Users, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface BarItem {
@@ -30,6 +30,7 @@ interface BarItem {
   category: string;
   image_url?: string | null;
   stock_qty: number;
+  item_kind?: string | null;
 }
 
 interface MemberHit {
@@ -48,9 +49,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   items: BarItem[];
   clubId: string;
+  /** Club-sponsored mode: basket only — no customer, no payment, every line becomes club use. */
+  clubUseOnly?: boolean;
 }
 
-export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) {
+export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOnly = false }: Props) {
   const qc = useQueryClient();
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
@@ -67,6 +70,8 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
   const [visitorPhone, setVisitorPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [clubUseOpen, setClubUseOpen] = useState(false);
+  const [clubUseReason, setClubUseReason] = useState("");
 
   // Only items currently sellable: in stock, not archived/hidden, specials inside their window.
   const inStock = useMemo(
@@ -112,6 +117,8 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
     setSelected(null);
     setVisitorName("");
     setVisitorPhone("");
+    setClubUseOpen(false);
+    setClubUseReason("");
   };
 
   /**
@@ -145,6 +152,45 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
     qc.invalidateQueries({ queryKey: ["bar-items"] });
     qc.invalidateQueries({ queryKey: ["bar-visitor-sales"] });
     qc.invalidateQueries({ queryKey: ["my-bar-tab"] });
+  };
+
+  /**
+   * Club-sponsored basket (e.g. tournament balls): each line is recorded via
+   * `bar_club_use` — stock goes down and the cost is booked to "Stock club
+   * expense". It is never a sale: no income, cash-up, tips or member charge.
+   */
+  const recordClubUse = async () => {
+    if (count === 0 || !clubUseReason.trim()) return;
+    const nonStock = cartLines.find((l) => l.item.item_kind && l.item.item_kind !== "stock");
+    if (nonStock) {
+      toast.error(`"${nonStock.item.name}" is not a stock product — remove it or sell it normally.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      let totalCost = 0;
+      for (const l of cartLines) {
+        const { data, error } = await (supabase as any).rpc("bar_club_use", {
+          _item: l.item.id,
+          _qty: l.qty,
+          _reason: clubUseReason.trim(),
+        });
+        if (error) throw error;
+        totalCost += Number((data as any)?.cost || 0);
+      }
+      toast.success(`Recorded as club expense${totalCost > 0 ? ` (${money(totalCost)} at cost)` : ""}.`);
+      setClubUseOpen(false);
+      setClubUseReason("");
+      reset();
+      onOpenChange(false);
+      refresh();
+      qc.invalidateQueries({ queryKey: ["bar-club-use-history"] });
+      qc.invalidateQueries({ queryKey: ["bar-stock-levels"] });
+    } catch (err: any) {
+      toast.error(err.message || "Could not record club use");
+    } finally {
+      setBusy(false);
+    }
   };
 
   /** Member account charge — posted only after the member verifies. */
@@ -238,17 +284,19 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
         <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <ShoppingCart className="w-4 h-4" /> Counter sale
+              {clubUseOnly ? <Gift className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+              {clubUseOnly ? "Club sponsored (no charge)" : "Counter sale"}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Build the basket, choose the customer, then take payment. Member account charges must be
-              approved by the member on this device.
+              {clubUseOnly
+                ? "Ring up the items the club is giving away (e.g. tournament balls). Stock goes down and the cost price is booked to \"Stock club expense\" — nobody is charged."
+                : "Build the basket, choose the customer, then take payment. Member account charges must be approved by the member on this device."}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Basket */}
+          {/* Basket — club-sponsored mode lists stock products only (specials/selling options can't be given away at cost) */}
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {inStock.map((item) => {
+            {(clubUseOnly ? inStock.filter((i) => !i.item_kind || i.item_kind === "stock") : inStock).map((item) => {
               const qty = cart[item.id] || 0;
               return (
                 <Card
@@ -299,9 +347,10 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
             </div>
           )}
 
-          <Separator />
+          {!clubUseOnly && <Separator />}
 
           {/* Customer */}
+          {!clubUseOnly && (
           <Tabs value={customer} onValueChange={(v) => { setCustomer(v as any); setSelected(null); }}>
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="member" className="gap-1.5 text-xs"><User className="w-3.5 h-3.5" /> Member</TabsTrigger>
@@ -417,17 +466,20 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
               </p>
             </TabsContent>
           </Tabs>
+          )}
 
           <Separator />
 
           <div className="flex items-center justify-between">
             <Badge variant="secondary" className="text-sm py-1 px-2">
-              {money(total)}{count > 0 ? ` · ${count} item${count > 1 ? "s" : ""}` : ""}
+              {clubUseOnly
+                ? `${count} item${count === 1 ? "" : "s"} · no charge`
+                : <>{money(total)}{count > 0 ? ` · ${count} item${count > 1 ? "s" : ""}` : ""}</>}
             </Badge>
           </div>
 
           <div className="space-y-2">
-            {customer === "member" && (
+            {!clubUseOnly && customer === "member" && (
               <Button
                 className="w-full h-11 gap-2"
                 disabled={busy || count === 0 || !selected}
@@ -436,25 +488,76 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                 <Wallet className="w-4 h-4" /> Charge to member account
               </Button>
             )}
-            <Button
-              variant="outline" className="w-full h-11 gap-2"
-              disabled={busy || count === 0 || !customerReady}
-              onClick={payOnline}
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} Pay online
-            </Button>
-            <Button
-              variant="outline" className="w-full h-11 gap-2"
-              disabled={busy || count === 0 || !customerReady}
-              onClick={cardAtCounter}
-            >
-              <CreditCard className="w-4 h-4" /> Card paid at counter
-            </Button>
+            {!clubUseOnly && (
+              <>
+                <Button
+                  variant="outline" className="w-full h-11 gap-2"
+                  disabled={busy || count === 0 || !customerReady}
+                  onClick={payOnline}
+                >
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} Pay online
+                </Button>
+                <Button
+                  variant="outline" className="w-full h-11 gap-2"
+                  disabled={busy || count === 0 || !customerReady}
+                  onClick={cardAtCounter}
+                >
+                  <CreditCard className="w-4 h-4" /> Card paid at counter
+                </Button>
+              </>
+            )}
+
+            {/* Club-sponsored basket — stock down, cost to "Stock club expense", never a sale. */}
+            {!clubUseOpen && !clubUseOnly ? (
+              <Button
+                variant="outline" className="w-full h-11 gap-2"
+                disabled={busy || count === 0}
+                onClick={() => {
+                  const nonStock = cartLines.find((l) => l.item.item_kind && l.item.item_kind !== "stock");
+                  if (nonStock) {
+                    toast.error(`"${nonStock.item.name}" is not a stock product — remove it or sell it normally.`);
+                    return;
+                  }
+                  setClubUseOpen(true);
+                }}
+              >
+                <Gift className="w-4 h-4" /> Club sponsored (no charge)
+              </Button>
+            ) : (
+              <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                <Label className="text-xs">What is the club using it for?</Label>
+                <Input
+                  className="h-9 text-sm"
+                  placeholder="e.g. Club Champs balls"
+                  value={clubUseReason}
+                  onChange={(e) => setClubUseReason(e.target.value)}
+                  maxLength={120}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Stock goes down and the cost price is booked to "Stock club expense". Nobody is charged and
+                  sales, cash-ups and tips are not affected.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 h-9 gap-2"
+                    disabled={busy || !clubUseReason.trim()}
+                    onClick={recordClubUse}
+                  >
+                    {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />} Record club use
+                  </Button>
+                  {!clubUseOnly && (
+                    <Button variant="ghost" className="h-9" disabled={busy} onClick={() => setClubUseOpen(false)}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {selected && (
+      {!clubUseOnly && selected && (
         <BarOtpDialog
           open={pinOpen}
           onOpenChange={setPinOpen}

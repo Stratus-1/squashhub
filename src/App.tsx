@@ -664,6 +664,7 @@ function AppRoutes() {
       {user && <NativePushListener />}
       {user && <NotificationDeepLinkHandler />}
       {user && <DelegationRequestDialog />}
+      {user && <GoogleIdentityCheck />}
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
       <FeedbackFab />

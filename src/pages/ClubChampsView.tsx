@@ -118,7 +118,6 @@ import { overallStandings } from "@/lib/tournaments/overall-standings";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { rrSeedOrder, buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
-import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { historicalPoolStatuses, playoffDisplayStages, playoffResult, structuredProgressHeadline, stageShort, type HistoricalPoolStatus } from "@/lib/tournaments/historical-pool-progress";
@@ -1319,6 +1318,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           {(() => {
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
             const ko = (matches as any[]).filter((m: any) => m.group_number === gn && m.stage === "ko");
+            const playoffMade = (matches as any[]).some((m: any) => m.group_number === gn && (m.stage || "group") !== "group");
+            if (!ko.length && playoffMade) return null;
             if (!ko.length) {
               // Planned play-offs shown upfront: positions until the round robin is complete, then names.
               const plan = arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null;

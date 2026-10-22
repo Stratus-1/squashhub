@@ -39,7 +39,7 @@ export function CounterClubUseDialog({ token, operator, items, onClose }: { toke
       const { error } = await supabase.rpc("bar_counter_club_use", { _token: token, _lines: lines, _reason: reason.trim(), _request_id: request.id });
       if (error) throw error;
       await Promise.all(["bar-counter-board", "bar-items", "bar-stock-levels", "bar-club-use-history", "bar-club-use-items", "income-statement"].map(key => qc.invalidateQueries({ queryKey: [key] })));
-      toast.success("Club-sponsored stock recorded");
+      toast.success(`Club-sponsored stock recorded (${money(totalCost)} at cost)`);
       onClose();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not record club use. Retry the same basket."); }
     finally { setBusy(false); }

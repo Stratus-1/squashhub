@@ -161,6 +161,11 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
    */
   const recordClubUse = async () => {
     if (count === 0 || !clubUseReason.trim()) return;
+    const nonStock = cartLines.find((l) => l.item.item_kind && l.item.item_kind !== "stock");
+    if (nonStock) {
+      toast.error(`"${nonStock.item.name}" is not a stock product — remove it or sell it normally.`);
+      return;
+    }
     setBusy(true);
     try {
       let totalCost = 0;

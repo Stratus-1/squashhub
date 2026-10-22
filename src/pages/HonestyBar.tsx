@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Beer, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode, Trash2 } from "lucide-react";
+import { Beer, Gift, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode, Trash2 } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +70,8 @@ export default function HonestyBar() {
   const { activeMember, isAdmin } = useMemberContext();
   const isSuperAdmin = useIsSuperAdmin();
   const canSeeVisitors = false;
+  /** Staff with the club's Bar / POS permission may record club-sponsored items at the till. */
+  const canClubUse = useHasPermission("bar");
   const clubId = club?.id;
   const memberId = activeMember?.id;
   const { format: fmtMoney } = useClubCurrency();
@@ -102,6 +105,7 @@ export default function HonestyBar() {
   const accountRequest = useRef<{ signature: string; id: string } | null>(null);
   const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
   const [counterSaleOpen, setCounterSaleOpen] = useState(false);
+  const [clubUseOpen, setClubUseOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("shop");
   const [qrOpen, setQrOpen] = useState(false);
   const [division, setDivision] = useState<BarDivision>("bar");
@@ -415,6 +419,17 @@ export default function HonestyBar() {
           <Receipt className="w-4 h-4" /> Open my tab at the bar
         </Button>
 
+        {canClubUse && (
+          <Button
+            variant="outline"
+            className="w-full h-11 gap-2 text-sm font-semibold"
+            onClick={() => setClubUseOpen(true)}
+          >
+            <Gift className="w-4 h-4" />
+            Club sponsored — no charge
+          </Button>
+        )}
+
         {canSeeVisitors && <CounterModeCard clubId={clubId} />}
 
 
@@ -695,6 +710,14 @@ export default function HonestyBar() {
         onOpenChange={setCounterSaleOpen}
         items={items as any}
         clubId={clubId}
+      />
+
+      <CounterSaleDialog
+        open={clubUseOpen}
+        onOpenChange={setClubUseOpen}
+        items={items as any}
+        clubId={clubId}
+        clubUseOnly
       />
 
       <BarMenuQrDialog

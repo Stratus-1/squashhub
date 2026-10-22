@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Restore owner-accidentally undone Uitsig 21 October cash-up from audit with positive R56 payout and R230 cash, reversing only its undo effects.
 - [ ] Verify Uitsig tip payout is positive R56 with closing/opening cash R230; no duplicate payment.
 - [ ] Make latest cash-up Undo accessible to Super Admin and verify without undoing live cash-ups.
 - [ ] Reject negative paid-tip amounts in cash-up and staff payout forms and server validation; add focused tests.

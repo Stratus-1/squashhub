@@ -178,4 +178,4 @@
 - [x] Cash-up difference wording: a surplus now reads "surplus recorded" and a shortfall "shortfall recorded" in the till history and both correction screens; "written off" removed from the till checkbox and guidance. Report row and dialog checked signed-in; no saved records changed.
 - [ ] Uitsig 21 Oct cash-up: the R56 tip payment to Wynand is not recorded (earned R56, paid R0) and the cash-up balances at R230 with no difference. Owner's answer pending before any live financial record is touched.
 - [x] Bar counter: let the barman remove/undo a mistaken item on an open tab.
-- [ ] Tab item removal must add a visible minus line (plus and minus), never delete; any barman with counter PIN.
+- [x] Tab item removal must add a visible minus line (plus and minus), never delete; any barman with counter PIN.

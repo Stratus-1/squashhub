@@ -56,7 +56,7 @@ interface CounterTab {
   total: number;
   subtotal?: number;
   tip?: number;
-  lines: { sale_id?: string; paid?: boolean; name: string | null; quantity: number; total: number }[];
+  lines: { sale_id?: string; paid?: boolean; is_reversal?: boolean; reversed?: boolean; name: string | null; quantity: number; total: number }[];
 }
 
 interface Board {
@@ -103,7 +103,7 @@ export default function BarCounter() {
     try {
       const { error } = await (supabase as any).rpc("bar_counter_remove_tab_item", { _sale_id: removeLine.saleId, _reason: removeReason.trim(), _token: token });
       if (error) throw error;
-      toast.success("Removed from tab — stock returned");
+      toast.success("Minus line added — stock returned");
       setRemoveLine(null); setRemoveReason("");
       await refetch();
     } catch (e: any) {
@@ -719,7 +719,7 @@ export default function BarCounter() {
             <DialogContent className="max-w-sm">
               <DialogHeader>
                 <DialogTitle>Remove from tab?</DialogTitle>
-                <DialogDescription>{removeLine?.label} ({money(removeLine?.total ?? 0)}) comes off the tab and the stock goes back. Your name and reason are recorded.</DialogDescription>
+                <DialogDescription>{removeLine?.label} ({money(removeLine?.total ?? 0)}) stays on the tab with a matching minus line, and the stock goes back. Your name and reason are recorded.</DialogDescription>
               </DialogHeader>
               <Input autoFocus aria-label="Reason for removing" placeholder="Reason, e.g. rang up by mistake" value={removeReason} onChange={(e) => setRemoveReason(e.target.value)} />
               <div className="flex gap-2">
@@ -944,10 +944,10 @@ export default function BarCounter() {
                 <div className="space-y-1 text-xs">
                   {activeTab.lines.map((l, i) => (
                     <div key={l.sale_id ?? i} className="flex items-center justify-between gap-2">
-                      <span>{l.quantity} × {l.name ?? "Item"}</span>
-                      <span className="flex items-center gap-1">
+                      <span className={l.is_reversal ? "text-destructive" : l.reversed ? "line-through text-muted-foreground" : undefined}>{l.is_reversal ? "Removed: " : ""}{l.quantity} × {l.name ?? "Item"}</span>
+                      <span className={`flex items-center gap-1 ${l.is_reversal ? "text-destructive" : ""}`}>
                         {money(l.total)}
-                        {activeTab.status === "open" && l.sale_id && !l.paid && (
+                        {activeTab.status === "open" && l.sale_id && !l.paid && !l.is_reversal && !l.reversed && (
                           <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={busy}
                             aria-label={`Remove ${l.quantity} × ${l.name ?? "item"} from tab`}
                             onClick={() => setRemoveLine({ saleId: l.sale_id!, label: `${l.quantity} × ${l.name ?? "Item"}`, total: l.total })}>

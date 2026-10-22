@@ -59,6 +59,7 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
         )}
       </div>
       <div id="swiss-tabpanel" role="tabpanel" aria-labelledby={`swiss-tab-${mode}`} className="space-y-3">
+      {!!proposed.warnings?.length && <div role="status" data-testid="swiss-pairing-exceptions" className="space-y-1 text-xs text-muted-foreground">{proposed.warnings.map((warning) => <p key={warning}>{warning}</p>)}</div>}
       {mode !== "calendar" && rr.enabled && <div className="space-y-1 text-xs" data-testid="rr-pairing-groups">
         <h3 className="font-semibold">{rr.heading}{rr.locked && <Badge variant="outline" className="ml-2 text-[10px]">Locked</Badge>}</h3>
         <div className="flex flex-wrap gap-2">

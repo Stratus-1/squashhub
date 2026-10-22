@@ -7,6 +7,7 @@ import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
 import { proposePairings } from "./paced-knockout";
 import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
+import { sequenceSwissRound } from "./swiss-sequencing";
 import { hybridSwissTable, rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
 /**
  * Authoritative tournament engine service (structured architecture).
@@ -213,11 +214,19 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
     const rest = new Set(plan.remainder);
     const table = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
     const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
-    const swissPart = swissRound(table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
+    const swissPart = sequenceSwissRound({ players: table.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played, round: gate.nextRound, finalRound: st.swissRounds ?? 5, positionOffset: snapshot.length - plan.remainder.length }).pairs;
     if (swissPart.some(([a, b]) => b && played.has(pairKey(a, b)))) throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
     return [...plan.pairs, ...swissPart].map(([a, b], i) => ({
       tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b,
     }));
+  }
+  // Preserve opening-round rules; later Swiss rounds use the current authoritative table,
+  // not historical positional templates. Saved rounds are never regenerated here.
+  if (noRepeats && gate.nextRound >= 3) {
+    const table = swissStandings(d, st, rows);
+    const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
+    const result = sequenceSwissRound({ players: table.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played, round: gate.nextRound, finalRound: st.swissRounds ?? gate.nextRound });
+    return result.pairs.map(([a, b], i) => ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b }));
   }
   const fixed = fixedPositionRound(d, mine, gate.nextRound, noRepeats);
   if (fixed) return fixed.map(([a, b], i) => ({

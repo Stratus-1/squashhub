@@ -20358,6 +20358,10 @@ export type Database = {
         Args: { _club_id: string; _device_id: string }
         Returns: Json
       }
+      bar_counter_remove_tab_item: {
+        Args: { _reason: string; _sale_id: string; _token: string }
+        Returns: Json
+      }
       bar_counter_reopen_tab: {
         Args: {
           _club_id?: string

@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useBarCategories, useBarDivisions, allCategories, categoryLabel, divisionLabel } from "@/lib/bar-categories";
 import { ClipboardList, Search, Download, Upload, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ClubUseCard } from "./ClubUseCard";
 
 interface Level {
   bar_item_id: string;
@@ -312,6 +313,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
+      <ClubUseCard clubId={clubId} />
       <Card className="p-4 flex items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold text-sm">Allow selling below zero</h3>

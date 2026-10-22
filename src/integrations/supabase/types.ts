@@ -20067,6 +20067,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      bar_club_use: {
+        Args: { _item: string; _qty: number; _reason: string }
+        Returns: Json
+      }
       bar_cost_of_sales: {
         Args: { _club: string; _from: string; _to: string }
         Returns: {
@@ -23512,6 +23516,7 @@ export type Database = {
         | "shop_expense"
         | "bar_cost_of_sales"
         | "shop_cost_of_sales"
+        | "club_stock_expense"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -23697,6 +23702,7 @@ export const Constants = {
         "shop_expense",
         "bar_cost_of_sales",
         "shop_cost_of_sales",
+        "club_stock_expense",
       ],
       integration_provider: [
         "strava",

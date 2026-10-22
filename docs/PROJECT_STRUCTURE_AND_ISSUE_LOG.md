@@ -1,3 +1,6 @@
+## 2026-10-22 — Combined cash-up evening date
+- Owner requested a 21 October label only for the combined Uitsig cash-up. Store an optional cash_up_date in existing totals and display it separately from the factual shift interval; leave cutoffs, sales, tips and cash unchanged. No publication.
+
 ## 2026-10-21 — RR panels ignored configured three-round stages
 - The standalone view grouped directly by legacy saved round numbers, ignoring the structured stage's three round dates; Ladies B showed R1/3/5 and a fragmented Pool B with misleading inferred byes.
 - Pass the stage round count into a pure display projection. Compact balanced complete RR rounds; for complete four-player pools use the existing circle engine's unique complementary-pair partition, ordered by earliest saved round. Preserve IDs, opponents, scores, slots and deadlines; do not rewrite saved rounds or regenerate games. Ambiguous/incomplete schedules remain factual.

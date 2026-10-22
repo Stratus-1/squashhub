@@ -117,6 +117,8 @@ import { OverallStandingsPanel } from "@/components/tournaments/OverallStandings
 import { overallStandings } from "@/lib/tournaments/overall-standings";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { rrSeedOrder, buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
+import { plannedPlayoffBracket } from "@/lib/tournaments/planned-playoff-bracket";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";

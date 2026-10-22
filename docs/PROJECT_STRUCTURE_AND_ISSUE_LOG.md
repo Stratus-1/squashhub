@@ -3713,3 +3713,4 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Tests: `src/test/spend-summary.test.ts` (6 rules) + `src/test/member-credit-control.test.tsx` label test (15 pass together). Published to Riverside; owner verified the card there.
 
 - 2026-10-22: member_account_gate referenced non-existent club_member_fee_payments.club_id for members with an active monthly mandate, so booking eligibility, bar account preview and the Available to spend card failed (e.g. Gordons Bay). Fixed by scoping fees via club_members.club_id (migration fix_member_account_gate_club_scope).
+- 2026-10-22: Applicants could not see membership categories (RLS allowed only approved members or show_on_landing). Added policy letting signed-in users read active categories with annual_fee > 0; application form lists only those, with descriptions, and shows pro rata to next renewal + once-off registration fee, payable after sign-in.

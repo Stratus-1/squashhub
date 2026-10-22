@@ -24,7 +24,8 @@ import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees
 import { useClubCurrency } from "@/hooks/use-currency";
 import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
-import { computeJoinFee } from "@/lib/fee-proration";
+import { computeJoinFee, nextRenewalDate } from "@/lib/fee-proration";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -1348,17 +1349,21 @@ export function MemberOnboardingWizard({
                         </div>
                       ) : (
                       <Select value={feeCategoryId} onValueChange={setFeeCategoryId}>
-                        <SelectTrigger><SelectValue placeholder="Select category (optional)" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select your membership category" /></SelectTrigger>
                         <SelectContent className="max-h-[320px]">
                           {[...feeCategories]
                             // Hide the internal seeded "Standard Membership" placeholder;
                             // paying categories first, then free ones (Visitor, Honorary…)
                             .filter((c: any) => !((c.fee_class ?? "club_income") === "standard" && String(c.name ?? "").trim().toLowerCase() === "standard membership"))
-                            .sort((a, b) => (Number(b.annual_fee) > 0 ? 1 : 0) - (Number(a.annual_fee) > 0 ? 1 : 0))
+                            // Applicants choose only active, paying categories; free ones (Honorary, Committee…) are admin-assigned.
+                            .filter((c: any) => c.active !== false && Number(c.annual_fee) > 0)
+                            .sort((a, b) => Number(b.annual_fee) - Number(a.annual_fee))
                             .map((cat) => (
                               <SelectItem key={cat.id} value={cat.id}>
-                                {cat.name} — {money(cat.annual_fee)}/year
-                                {cat.id === suggestedCategory && " ⭐ Suggested"}
+                                <div className="flex flex-col">
+                                  <span>{cat.name} — {money(cat.annual_fee)}/year{cat.id === suggestedCategory && " ⭐ Suggested"}</span>
+                                  {(cat as any).description && <span className="text-[11px] text-muted-foreground whitespace-normal">{(cat as any).description}</span>}
+                                </div>
                               </SelectItem>
                             ))}
                         </SelectContent>
@@ -1369,10 +1374,19 @@ export function MemberOnboardingWizard({
                           ⭐ Auto-suggested based on your age ({detectedAge} years). You may change this if needed.
                         </p>
                       )}
-                      {!categoryLocked && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Visiting from another club? Choose the <strong>Visitor</strong> option (R0/year) if available.
-                      </p>
+                      {!categoryLocked && selectedCategory && feeBreakdown.length > 0 && (
+                        <div className="mt-2 rounded-md border bg-muted/40 p-2 text-[12px] space-y-0.5" data-testid="join-fee-summary">
+                          {feeBreakdown.map((f, i) => (
+                            <div key={i} className="flex justify-between gap-2">
+                              <span>{f.type === "club" ? `Pro rata membership up to ${format(nextRenewalDate(dueMonth, dueDay), "d MMMM yyyy")}` : `Once-off registration fee (${f.label})`}</span>
+                              <span className="font-mono">{money(f.amount)}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between gap-2 border-t pt-0.5 font-medium">
+                            <span>Total</span><span className="font-mono">{money(totalFees)}</span>
+                          </div>
+                          <p className="text-muted-foreground">Payable once you're signed in to your account.</p>
+                        </div>
                       )}
                       {categoryLocked && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">

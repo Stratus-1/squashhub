@@ -19,6 +19,7 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
   const roundNums = model.rounds.map((r) => r.round);
   // Final standing locks when the Swiss stage's own rounds are complete — later follow-up stage games don't block it.
   const allComplete = model.swissStageComplete;
+  const finalRank = rrFinalRanking(model);
   const rr = swissRrDisplay(model, clubId);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
   const proposed = buildProposedSwissGrid(model, { finalSwissAdjacencyPreview: clubId === RIVERSIDE_CLUB_ID && infoTournamentId === "5899d31f-c829-4dfc-a1fd-d963648f1a3f" && title.includes("Ladies B"), factualOpeningRounds: clubId === RIVERSIDE_CLUB_ID && !!model.rrFinish?.enabled, schedule: stageSchedule, courtName, slots, appliedPlayBy, noRepeats, previewFinals: positionalPreview, exactMensCChart, mensCRemainderChart: infoTournamentId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && title.startsWith("Mens C"), exactLadiesAChart, exactSixteenChart });
@@ -74,6 +75,20 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       {mode === "calendar" ? null : mode === "grid" ? (
         <div className="min-w-0 space-y-3" ref={gridWrapRef}>
           {rrColumn ? <section aria-label="Round Robin Standings" data-testid="rr-standings-top" className="rounded-md border border-border p-2 [&_table]:w-full">{rrStandings}</section> : null}
+          {finalRank ? (
+            <section aria-label="Final ranking" data-testid="rr-final-ranking" className="rounded-md border border-success/50 p-2 text-xs">
+              <h3 className="mb-1 font-semibold">Final ranking after {model.configuredRounds} rounds</h3>
+              <table className="w-full">
+                <thead><tr className="text-left text-muted-foreground"><th className="w-10 px-2">Pos</th><th className="px-2">Player</th><th className="px-2">Group</th><th className="px-2 text-right">RR wins</th></tr></thead>
+                <tbody>{finalRank.map((r) => (
+                  <tr key={r.id} className={cn("border-t border-border", r.group === 1 && "bg-success/10", r.group === 2 && "bg-warning/10")}>
+                    <td className="px-2 font-semibold tabular-nums">{r.place}</td><td className="px-2">{r.name}</td>
+                    <td className="px-2 text-muted-foreground">{r.group ? `Group ${r.group}` : "Swiss"}</td>
+                    <td className="px-2 text-right tabular-nums">{r.rrWins ?? ""}</td>
+                  </tr>))}</tbody>
+              </table>
+            </section>
+          ) : null}
           {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={null} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>

@@ -8451,7 +8451,7 @@ function buildProposedSwissGrid(model, opts = {}) {
     const warnings = [];
     return { issues: issues2, ...sequencing ? { warnings } : {}, rounds: saved.map((rd) => {
       if (rd.round < 3)
-        return normal.rounds.find((r) => r.round === rd.round) ?? rd;
+        return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b2) => ({ ...b2, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan2 = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
       const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
       const groupIds = new Set(plan2.pairs.flat());

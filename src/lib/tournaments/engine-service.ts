@@ -7,7 +7,7 @@ import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 import { poolFixtureIssues } from "./pool-boundaries";
 import { proposePairings } from "./paced-knockout";
 import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
-import { rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
+import { hybridSwissTable, rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -186,7 +186,7 @@ const swissWinner = (f: FixtureRow) => (f.a && !f.b ? f.a : f.winner ?? null);
  */
 export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureRow[]) {
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === st.id);
-  return swissTable(d.entrants.map((e) => e.id), mine.map((f) => ({ a: f.a, b: f.b, winner: swissWinner(f), round: f.round ?? null })), st.tieBreaks as SwissTieBreak[] | undefined);
+  return hybridSwissTable(d.entrants.map((e) => e.id), mine.map((f) => ({ a: f.a, b: f.b, winner: swissWinner(f), round: f.round ?? null })), st.rrFinish, st.tieBreaks as SwissTieBreak[] | undefined);
 }
 
 /**

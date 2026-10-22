@@ -111,7 +111,7 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
     const gm = matches.filter((m) => m.group_number === gn && (m.round_number ?? 0) > 0);
     gm.forEach((m) => { if (m.player_a_member_id && m.player_a?.name) names[m.player_a_member_id] ??= m.player_a.name; if (m.player_b_member_id && m.player_b?.name) names[m.player_b_member_id] ??= m.player_b.name; });
     const model = buildSwissProgression({
-      seedOrder: gEntries.map((e) => e.club_member_id).filter(Boolean), names, totalRounds: st.rounds, tieBreaks: st.tieBreaks,
+      seedOrder: gEntries.map((e) => e.club_member_id).filter(Boolean), names, totalRounds: st.rounds, tieBreaks: st.tieBreaks, rrFinish: st.rrFinish,
       matches: gm.map((m) => ({ id: m.id, round: Number(m.round_number), a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null,
         winner: m.winner_member_id, isBye: !!m.is_bye, status: m.status, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: null, playBy: m.play_by,
         placeholderA: m.placeholder_a, placeholderB: m.placeholder_b })),

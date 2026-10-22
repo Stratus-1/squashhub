@@ -14,7 +14,7 @@ import { swissPreviewFinalsTemplate } from "./swiss-preview-finals";
 import { uitsigMensCChart } from "./swiss-uitsig-mens-c-chart";
 import { uitsigLadiesAChart } from "./swiss-uitsig-ladies-a-chart";
 import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
-import { rrFinishOn, rrFinishRound, rrFinishRepeats, type RrFinish } from "./swiss-rr-finish";
+import { hybridSwissTable, rrFinishOn, rrFinishRound, rrFinishRepeats, type RrFinish } from "./swiss-rr-finish";
 import { swissRound } from "./contract";
 import { hasSwissMatchActivity } from "./swiss-rr-display";
 
@@ -71,6 +71,7 @@ const UNRESOLVED = "To be decided";
 export function buildSwissProgression(input: {
   seedOrder: string[]; names: Record<string, string>; matches: ProgressionMatchInput[];
   totalRounds?: number | null; tieBreaks?: readonly string[] | null; format?: SwissFormatKind;
+  rrFinish?: RrFinish | null;
 }): SwissProgressionModel {
   const { seedOrder, names, matches, tieBreaks } = input;
   const nm = (id: string | null, ph?: string | null) => (id ? names[id] ?? "Unknown player" : ph || UNRESOLVED);
@@ -104,15 +105,15 @@ export function buildSwissProgression(input: {
   });
   const posAfter: (Map<string, number> | null)[] = rounds.map((rd) => {
     if (!rd.fixtures.some((f) => f.state === "completed" || f.state === "bye")) return null;
-    return new Map(swissTable(ids, gamesUpTo(rd.round), tieBreaks).map((t) => [t.id, t.position]));
+    return new Map(hybridSwissTable(ids, gamesUpTo(rd.round), input.rrFinish, tieBreaks).map((t) => [t.id, t.position]));
   });
-  const finalTable = swissTable(ids, gamesUpTo(totalRounds), tieBreaks);
+  const finalTable = hybridSwissTable(ids, gamesUpTo(totalRounds), input.rrFinish, tieBreaks);
   const cur = new Map(finalTable.map((t) => [t.id, t]));
   // Swiss-stage-only final standing: configured rounds, ignoring follow-up stage games that share the round axis.
   const configuredRounds = Math.min(input.totalRounds ?? totalRounds, totalRounds);
   const swissRounds = rounds.filter((rd) => rd.round <= configuredRounds);
   const swissStageComplete = swissRounds.length > 0 && swissRounds.every((rd) => rd.complete);
-  const swissFinal = new Map(swissTable(ids, gamesUpTo(configuredRounds), tieBreaks).map((t) => [t.id, t.position]));
+  const swissFinal = new Map(hybridSwissTable(ids, gamesUpTo(configuredRounds), input.rrFinish, tieBreaks).map((t) => [t.id, t.position]));
 
   const rows: ProgressionRow[] = ids.map((id, i) => ({
     id, name: names[id] ?? "Unknown player", seed: i + 1,
@@ -129,7 +130,7 @@ export function buildSwissProgression(input: {
     swissFinalPosition: swissStageComplete ? swissFinal.get(id) ?? null : null,
   })).sort((x, y) => x.current - y.current);
 
-  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows, tieBreaks };
+  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows, tieBreaks, rrFinish: input.rrFinish };
 }
 
 /** Movement between the two latest rounds with results: positive = moved up. */
@@ -194,10 +195,17 @@ export function proposedRoundSchedule(cfg: StageScheduleConfig | null | undefine
  */
 export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
   const byId = new Map(model.rows.map((r) => [r.id, r]));
+  const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
+  const locked = rrFinishOn(model.rrFinish) && !!model.rounds.find((r) => r.round === 2)?.complete;
+  const hybridPositions = new Map(model.rounds.filter((r) => r.round >= 3).map((rd) => {
+    const games = model.rounds.filter((r) => r.round < rd.round).flatMap((r) => r.fixtures.filter((f) => f.state === "completed" || f.state === "bye").map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round })));
+    return [rd.round, new Map(hybridSwissTable(seeds, games, model.rrFinish, model.tieBreaks).map((r) => [r.id, r.position]))];
+  }));
   const posEntering = (id: string | null, round: number): number | null => {
     if (!id) return null;
     const row = byId.get(id);
     if (!row) return null;
+    if (locked && round >= 3) return hybridPositions.get(round)?.get(id) ?? null;
     return round === 1 ? row.seed : row.positions[round - 2] ?? null;
   };
   return model.rounds.map((rd) => {
@@ -230,15 +238,15 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
       ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id)
       : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
-    const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
     const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     return { issues, rounds: saved.map((rd) => {
       if (rd.round < 3) return normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
+      const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
       const groupIds = new Set(plan.pairs.flat());
-      const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })) as [GridRow, GridRow] }));
+      const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })).sort((a,b) => (a.pos ?? 999) - (b.pos ?? 999)) as [GridRow, GridRow] }));
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs: Array<[string, string | null]> = plan.pairs;
@@ -270,9 +278,12 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
         }
       } else if ((prevDone || (!locked && rd.round === 3)) && plan.remainder.length) {
         const rest = new Set(plan.remainder);
-        const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => rest.has(r.id));
+        const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
+        const table = hybridSwissTable(seeds, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.rrFinish, model.tieBreaks).filter((r) => rest.has(r.id));
+        const positions = new Map(table.map((r, i) => [r.id, plan.pairs.length * 2 + i + 1]));
         const met = new Set(history.filter((f) => f.a && f.b).map((f) => [f.a, f.b].sort().join("|")));
         const usedRest = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
+        for (const [id, pos] of positions) fixed.set(id, pos);
         try { pairs = [...pairs, ...swissRound(table.filter((r) => !usedRest.has(r.id)).map((r, i) => ({ id: r.id, points: r.points, seed: i + 1 })), met)]; }
         catch { issues.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`); }
       }

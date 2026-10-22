@@ -105,7 +105,7 @@ import { SwissProgressionPilotView } from "@/components/tournaments/SwissProgres
 import { SwissRrFinishStandings } from "@/components/tournaments/SwissRrFinishStandings";
 import { rrFinishStandings } from "@/lib/tournaments/swiss-rr-standings";
 import { swissRrDisplay } from "@/lib/tournaments/swiss-rr-display";
-import { rrFinishOn, RR_FINISH_FROM_ROUND } from "@/lib/tournaments/swiss-rr-finish";
+import { hybridSwissTable, rrFinishOn, RR_FINISH_FROM_ROUND } from "@/lib/tournaments/swiss-rr-finish";
 import { CategoryFixtureCalendar } from "@/components/tournaments/CategoryFixtureCalendar";
 import type { CategoryCalendarFixture } from "@/lib/tournaments/category-calendar";
 import { fixtureScoreDetails, fixtureState } from "@/lib/tournaments/club-fixtures";
@@ -946,7 +946,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         })).filter((g) => g.a && g.b),
         ...groupByes.filter((m: any) => isPoolStage(m)).map((m: any) => ({ a: byMember.get(m.bye_member_id || m.player_a_member_id) ?? null, b: null, winner: null })).filter((g) => g.a),
       ];
-      const table = swissTable(seedOrder, games, swiss.tieBreaks);
+      const table = hybridSwissTable(seedOrder, games, swiss.rrFinish, swiss.tieBreaks);
       const byKey = new Map(table.map((t) => [t.id, t]));
       const swissGames = groupMatchesAll.filter((m: any) => (m.round_number ?? 0) > 0);
       const lastRound = Math.max(0, ...swissGames.map((m: any) => Number(m.round_number) || 0));
@@ -1443,6 +1443,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         names,
         totalRounds: swissSt.rounds,
         tieBreaks: swissSt.tieBreaks,
+        rrFinish: swissSt.rrFinish,
         matches: swissMatches.map(toProgressionMatch),
       });
       const laterModel = laterMatches.length ? buildSwissProgression({

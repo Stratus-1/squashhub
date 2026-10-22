@@ -51,7 +51,7 @@ export function CounterClubUseDialog({ token, operator, items, onClose }: { toke
       <Input aria-label="Find stock item" placeholder="Find stock item" value={search} disabled={busy || !!attempt} onChange={e => setSearch(e.target.value)} />
       <div className="max-h-72 overflow-y-auto space-y-2">
         {stock.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(i => <div key={i.id} className="flex items-center justify-between gap-3 border-b py-2">
-          <span className="text-sm min-w-0">{i.name}<span className="text-muted-foreground"> · {i.division === "shop" ? "Shop" : "Bar"}</span></span>
+          <span className="text-sm min-w-0">{i.name}<span className="text-muted-foreground"> · {i.division === "shop" ? "Shop" : "Bar"} · cost {money(clubUseUnitCost(i))}</span></span>
           <div className="flex items-center gap-2 shrink-0">
             <Button size="icon" variant="outline" className="h-8 w-8" aria-label={`Remove ${i.name}`} disabled={busy || !!attempt || !quantities[i.id]} onClick={() => setQuantities(q => ({ ...q, [i.id]: Math.max(0, (q[i.id] ?? 0) - 1) }))}><Minus className="h-4 w-4" /></Button>
             <span className="w-8 text-center tabular-nums">{quantities[i.id] ?? 0}</span>
@@ -60,6 +60,7 @@ export function CounterClubUseDialog({ token, operator, items, onClose }: { toke
         </div>)}
         {!stock.length && <p className="text-sm text-muted-foreground">No stock products available.</p>}
       </div>
+      {lines.length > 0 && <p className="text-sm">Cost to club (income statement): <span className="font-medium tabular-nums">{money(totalCost)}</span></p>}
       <Label htmlFor="counter-club-use-reason">Used for</Label>
       <Input id="counter-club-use-reason" placeholder="e.g. Club Champs balls" maxLength={120} value={reason} disabled={busy || !!attempt} onChange={e => setReason(e.target.value)} />
       <Button disabled={busy || !lines.length || !reason.trim()} onClick={record} className="gap-2">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}Record club use</Button>

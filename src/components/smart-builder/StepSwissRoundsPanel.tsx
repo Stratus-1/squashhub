@@ -98,11 +98,14 @@ export function StepSwissRoundsPanel({ clubId, tournamentId, onSetupRound, stage
     <div className="space-y-2 rounded-md border border-primary/50 bg-primary/5 p-3 text-xs" data-testid="swiss-rounds-panel">
       <div className="text-sm font-semibold">Swiss rounds — next steps per category</div>
       <ul className="space-y-2">
-        {rows.map((r) => {
-          const next = r.gate.state === "ready" ? r.gate.nextRound : r.current.round + 1;
-          const division = spec.divisions[r.divisionIndex];
+        {rows.map((r0) => {
+          const division = spec.divisions[r0.divisionIndex];
           const ordered = [...division.stages].sort((a, b) => a.order - b.order);
-          const nextStage = ordered[ordered.findIndex((s) => s.id === r.stageId) + 1];
+          const nextStage = ordered[ordered.findIndex((s) => s.id === r0.stageId) + 1];
+          // Swiss + final round robin with no real later stage: the category is finished, not awaiting a play-off.
+          const rrDone = !nextStage && !!(ordered.find((s) => s.id === r0.stageId) as any)?.rrFinish?.enabled && r0.action === "playoffs";
+          const r = rrDone ? { ...r0, action: "final" as const } : r0;
+          const next = r.gate.state === "ready" ? r.gate.nextRound : r.current.round + 1;
           const nextStageKey = nextStage?.id ?? division.deferredStages?.[0]?.stageKey;
           const stage = stageStates.find((s) => s.divisionKey === r.divisionId && s.stageKey === nextStageKey);
           const stageName = stage?.name ?? (r.transition?.kind === "playoff_next" ? r.transition.name : "Next stage");

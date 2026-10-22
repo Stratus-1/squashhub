@@ -61,10 +61,31 @@ export function syncPlayoffStages<T extends PlayoffStageLike>(stages: T[], plann
       result.push({ ...template, unit: u, ...(canReuse ? {} : { id: Math.random().toString(36).slice(2) }) });
     }
   }
-  return [...others, ...result];
+  return [...others, ...carryFirstPairing(result)];
+}
+
+const POOL_PAIRINGS = new Set(["crossover", "same_position", "seeded"]);
+/**
+ * A round ticked in front of existing play-offs (e.g. Quarterfinal added after Semifinal) starts as "Decide later".
+ * The pool pairing the organiser saved on the stage it now precedes moves to the new first stage, and the later
+ * stages follow winners — so adding a round never loses the saved pairing. Nothing is invented when none was saved.
+ */
+export function carryFirstPairing<T extends PlayoffStageLike>(stages: T[]): T[] {
+  const byUnit = new Map<string, T[]>();
+  stages.forEach((s) => byUnit.set(s.unit, [...(byUnit.get(s.unit) ?? []), s]));
+  const patch = new Map<string, Partial<T>>();
+  byUnit.forEach((list) => {
+    const sorted = [...list].sort((a, b) => ORDER.findIndex((o) => o.code === playoffCode(a.name)) - ORDER.findIndex((o) => o.code === playoffCode(b.name)));
+    if (sorted.length < 2 || POOL_PAIRINGS.has(String(sorted[0].pairing ?? ""))) return;
+    const donor = sorted.slice(1).find((s) => POOL_PAIRINGS.has(String(s.pairing ?? "")));
+    if (!donor) return;
+    patch.set(sorted[0].id, { pairing: donor.pairing } as Partial<T>);
+    sorted.slice(1).forEach((s) => patch.set(s.id, { pairing: "winners" } as Partial<T>));
+  });
+  return stages.map((s) => (patch.has(s.id) ? { ...s, ...patch.get(s.id) } : s));
 }
 
 export function samePlayoffStages(a: PlayoffStageLike[], b: PlayoffStageLike[]): boolean {
-  const k = (l: PlayoffStageLike[]) => l.filter((s) => s.phase === "playoff").map((s) => `${s.id}|${s.unit}|${s.name}`).join(",");
+  const k = (l: PlayoffStageLike[]) => l.filter((s) => s.phase === "playoff").map((s) => `${s.id}|${s.unit}|${s.name}|${String(s.pairing ?? "")}`).join(",");
   return k(a) === k(b) && a.length === b.length;
 }

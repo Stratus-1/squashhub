@@ -311,16 +311,8 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
         const pos = fixed.get(id);
         return pos == null || shown.has(pos) ? [] : [pos];
       });
-      const unresolved: GridBlock[] = chartRest ? [] : sequencing || opts.factualOpeningRounds || opts.finalSwissAdjacencyPreview
-        ? pendingSwissSlots(rd.round, remainingPositions, schedule.label, opts.appliedPlayBy?.[rd.round] ?? null)
-        : plan.remainder.flatMap((id) => {
-        const pos = fixed.get(id);
-        if (pos == null || shown.has(pos)) return [];
-        return [{ matchId: `swiss-wait-${rd.round}-${pos}`, rows: [
-          { id: null, pos, name: "Swiss player — results pending", result: "", projected: true, when: schedule.label },
-          { id: null, pos: null, name: "Opponent decided after previous round", result: "", projected: true, when: null },
-        ], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null }];
-      });
+      // Always two numbered positions per game; never one row per position.
+      const unresolved: GridBlock[] = chartRest ? [] : pendingSwissSlots(rd.round, remainingPositions, schedule.label, opts.appliedPlayBy?.[rd.round] ?? null);
       return { ...rd, blocks: [...factual, ...pending, ...chartBlocks, ...unresolved].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
     }) };
   }

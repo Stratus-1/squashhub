@@ -184,3 +184,6 @@
 - [ ] Uitsig 21 Oct cash-up: the R56 tip payment to Wynand is not recorded (earned R56, paid R0) and the cash-up balances at R230 with no difference. Owner's answer pending before any live financial record is touched.
 - [x] Bar counter: let the barman remove/undo a mistaken item on an open tab.
 - [x] Tab item removal must add a visible minus line (plus and minus), never delete; any barman with counter PIN.
+- [x] Tournament Summary now lists Ladies B's final ranking 1–18 in a wrapped row with 1st named and highlighted; signed-in Riverside check shows the card open with 18 entries, no page errors. Display only; no fixture/result writes, no publication.
+- [ ] Original view and standings panels must be zoomable (mouse wheel/pinch) and draggable for navigation only; no data mutation, no live changes, no publication.
+- [x] Original pool views, standings and the colourful play-off bracket now zoom and drag: clean round-robin fixtures/standings and the play-off bracket use the shared interactive viewer (wheel, pinch, +/-, Fit/Width/100%, drag to pan), "View Standings"/"Back to Rounds" pan instead of scrolling. Verified signed-in on Riverside Pool A (wheel 100->182%, drag pans, jump pans 989px and back) and bracket (wheel 100->157%, drag pans); 20 focused viewer/bracket/round-robin tests pass, no fixture writes. Preview only, not published.

@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({ rpc: vi.fn(), close: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc } }));
 beforeEach(() => { vi.clearAllMocks(); mocks.rpc.mockResolvedValue({ error: null, data: {} }); });
 function open() {
- render(<QueryClientProvider client={new QueryClient()}><CounterClubUseDialog token="verified-pin" operator="Test server" items={[{ id: "ball", name: "Squash ball", item_kind: "stock", division: "shop" }, { id: "special", name: "Special", item_kind: "special" }]} onClose={mocks.close} /></QueryClientProvider>);
+ render(<QueryClientProvider client={new QueryClient()}><CounterClubUseDialog token="verified-pin" operator="Test server" items={[{ id: "ball", name: "Squash ball", item_kind: "stock", division: "shop", cost_price: 30, unit_yield: 1, avg_unit_cost: null }, { id: "special", name: "Special", item_kind: "special" }]} onClose={mocks.close} /></QueryClientProvider>);
 }
 describe("PIN club-sponsored basket", () => {
  it("records balls with verified PIN and reason, without customer-tab or sale requests", async () => {

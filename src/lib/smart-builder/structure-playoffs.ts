@@ -80,7 +80,7 @@ export function carryFirstPairing<T extends PlayoffStageLike>(stages: T[]): T[] 
     const donor = sorted.slice(1).find((s) => POOL_PAIRINGS.has(String(s.pairing ?? "")));
     if (!donor) return;
     patch.set(sorted[0].id, { pairing: donor.pairing } as unknown as Partial<T>);
-    sorted.slice(1).forEach((s) => patch.set(s.id, { pairing: "winners" } as Partial<T>));
+    sorted.slice(1).forEach((s) => patch.set(s.id, { pairing: "winners" } as unknown as Partial<T>));
   });
   return stages.map((s) => (patch.has(s.id) ? { ...s, ...patch.get(s.id) } : s));
 }

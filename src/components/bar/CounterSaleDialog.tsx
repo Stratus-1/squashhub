@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
-import { CreditCard, Loader2, Minus, Search, ShoppingCart, User, Users, Wallet, X } from "lucide-react";
+import { CreditCard, Gift, Loader2, Minus, Search, ShoppingCart, User, Users, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface BarItem {
@@ -487,6 +487,51 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
             >
               <CreditCard className="w-4 h-4" /> Card paid at counter
             </Button>
+
+            {/* Club-sponsored basket — stock down, cost to "Stock club expense", never a sale. */}
+            {!clubUseOpen ? (
+              <Button
+                variant="outline" className="w-full h-11 gap-2"
+                disabled={busy || count === 0}
+                onClick={() => {
+                  const nonStock = cartLines.find((l) => l.item.item_kind && l.item.item_kind !== "stock");
+                  if (nonStock) {
+                    toast.error(`"${nonStock.item.name}" is not a stock product — remove it or sell it normally.`);
+                    return;
+                  }
+                  setClubUseOpen(true);
+                }}
+              >
+                <Gift className="w-4 h-4" /> Club sponsored (no charge)
+              </Button>
+            ) : (
+              <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                <Label className="text-xs">What is the club using it for?</Label>
+                <Input
+                  className="h-9 text-sm"
+                  placeholder="e.g. Club Champs balls"
+                  value={clubUseReason}
+                  onChange={(e) => setClubUseReason(e.target.value)}
+                  maxLength={120}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Stock goes down and the cost price is booked to "Stock club expense". Nobody is charged and
+                  sales, cash-ups and tips are not affected.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 h-9 gap-2"
+                    disabled={busy || !clubUseReason.trim()}
+                    onClick={recordClubUse}
+                  >
+                    {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />} Record club use
+                  </Button>
+                  <Button variant="ghost" className="h-9" disabled={busy} onClick={() => setClubUseOpen(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

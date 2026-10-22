@@ -4632,7 +4632,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         )}
         {summary}
         {renderOutcomeSummary()}
-        {summaryRows.length > 0 && awardsCfg?.outcome !== "team" && <CollapsibleSummary storageKey={`sh.champ-summary-open.${champId}`} defaultOpen={playoffsStarted}>
+        {(summaryRows.length > 0 || rrFinalRankings.length > 0) && awardsCfg?.outcome !== "team" && <CollapsibleSummary storageKey={`sh.champ-summary-open.${champId}`} defaultOpen={playoffsStarted || rrFinalRankings.length > 0}>
             <div className="hidden md:grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)] gap-3 border-b pb-1 text-xs text-muted-foreground font-medium">
               <span>Category</span><span>Semifinals</span><span>Final</span><span>Winner</span>
             </div>
@@ -4641,6 +4641,15 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Semifinals</span>{r.semifinals.length ? r.semifinals.map(summaryMatch) : <span className="text-xs text-muted-foreground">{r.quarterfinals.length ? "Quarterfinals in progress" : r.category.firstStage === "final" ? "Not configured" : r.category.fieldReady ? "Field ready" : "Awaiting qualification"}</span>}</div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Final</span>{r.finals.length ? r.finals.map(summaryMatch) : <span className="text-xs text-muted-foreground">Awaiting finalists</span>}</div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Winner</span>{r.champion ? <span className="inline-flex items-start gap-1 text-xs font-bold text-primary break-words"><Trophy className="h-3.5 w-3.5 shrink-0" />{playoffResult(r.champion).winnerSide === "a" ? getMatchTeamA(r.champion) : getMatchTeamB(r.champion)}</span> : <span className="text-xs text-muted-foreground">{awardsCfg?.outcome === "none" ? "No overall winner" : "—"}</span>}</div>
+            </div>)}
+            {rrFinalRankings.map((r) => <div key={`rr-${r.group}`} data-testid={`summary-rr-ranking-${r.group}`} className="border-b last:border-b-0 py-2.5 min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-semibold text-sm break-words">{r.label}</span>
+                <span className="text-xs text-muted-foreground">Final ranking after 5 rounds · 1st: <span className="font-semibold text-primary">{r.rows[0]?.name}</span></span>
+              </div>
+              <ol className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs leading-snug">
+                {r.rows.map((x) => <li key={x.id} className={cn("min-w-0", x.place === 1 && "font-bold text-primary")}><span className="text-muted-foreground tabular-nums">{x.place}.</span> {x.name}</li>)}
+              </ol>
             </div>)}
         </CollapsibleSummary>}
         {!isStructured && <TournamentNextActionBar

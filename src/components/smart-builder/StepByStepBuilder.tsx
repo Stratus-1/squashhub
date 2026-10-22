@@ -686,6 +686,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const answersJson = JSON.stringify(a);
   const drawPlanJson = JSON.stringify(drawPlanOf(a as any));
   const [savingDraft, setSavingDraft] = useState(false);
+  /** Last answers written to the tournament by an explicit save; drives the unsaved-changes indicator. */
+  const [savedAnswersJson, setSavedAnswersJson] = useState<string | null>(null);
+  const setupUnsaved = !!a.createdTournamentId && savedAnswersJson !== null && savedAnswersJson !== answersJson;
+  useEffect(() => { if (savedAnswersJson === null && serverReady && a.createdTournamentId) setSavedAnswersJson(answersJson); }, [serverReady, a.createdTournamentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  /**
+   * The ONE explicit save pipeline used by every save button (Stages & Scheduling, footer, Summary):
+   * attach planned play-off rounds to the running tournament and create/refresh their fixtures.
+   * Idempotent; never touches played games, results, bookings or other categories.
+   */
+  const updateTournamentFixtures = async (tid: string, plan: any) => {
+    const attached = await attachTimelinePlayoffs(tid, plan).catch((e: any) => { toast.error(`Play-offs not added to the running tournament: ${e?.message ?? "unknown error"}`); return false; });
+    const made = await createPlannedPlayoffFixtures(tid, plan).catch((e: any) => { toast.error(`Play-off fixtures not created: ${e?.message ?? "unknown error"}`); return 0; });
+    return { attached, made };
+  };
   const saveSetupDraft = async () => {
     const tid = a.createdTournamentId;
     if (!tid || !serverReady || savingDraft) return;
@@ -693,10 +707,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     try {
       const cur = await loadLifecycle(tid);
       if (!cur) throw new Error("The saved tournament couldn't be read. Nothing was saved.");
-      await saveLifecycle(tid, { ...cur, answers: JSON.parse(answersJson), format_plan: JSON.parse(drawPlanJson), ...(partnerPayAnswer === undefined ? {} : { partner_pay: partnerPayAnswer }) });
-      const attached = await attachTimelinePlayoffs(tid, JSON.parse(drawPlanJson)).catch((e: any) => { toast.error(`Play-offs not added to the running tournament: ${e?.message ?? "unknown error"}`); return false; });
-      const made = await createPlannedPlayoffFixtures(tid, JSON.parse(drawPlanJson)).catch((e: any) => { toast.error(`Play-off fixtures not created: ${e?.message ?? "unknown error"}`); return 0; });
-      toast.success(attached || made ? `Setup draft saved. Planned play-offs added${made ? ` — ${made} play-off fixtures created (players to be decided)` : ""}. Existing games and bookings unchanged.` : "Setup draft saved. Existing games and court bookings unchanged.");
+      const snapshot = answersJson;
+      await saveLifecycle(tid, { ...cur, answers: JSON.parse(snapshot), format_plan: JSON.parse(drawPlanJson), ...(partnerPayAnswer === undefined ? {} : { partner_pay: partnerPayAnswer }) });
+      const { attached, made } = await updateTournamentFixtures(tid, JSON.parse(drawPlanJson));
+      setSavedAnswersJson(snapshot);
+      toast.success(attached || made ? `Setup saved and fixtures updated${made ? ` — ${made} play-off fixtures created` : ""}. Existing games, results and bookings unchanged.` : "Setup saved. Fixtures already up to date; existing games and court bookings unchanged.");
     } catch (e: any) { toast.error(e.message); }
     finally { setSavingDraft(false); }
   };
@@ -1488,6 +1503,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       setA(nextA);
       const currentLifecycle = await loadLifecycle(tid);
       await saveLifecycle(tid, { ...(currentLifecycle ?? { stage: "invite", completed: ["planning"] }), answers: JSON.parse(JSON.stringify(nextA)), format_plan: drawPlanOf(nextA as any), ...(partnerPayAnswer === undefined ? {} : { partner_pay: partnerPayAnswer }) });
+      if (a.createdTournamentId) { await updateTournamentFixtures(tid, drawPlanOf(nextA as any)); setSavedAnswersJson(JSON.stringify(nextA)); }
       if (!stay) onCompleted?.(tid);
     } catch (e: any) {
       setCompleteErr(e?.message || "Something went wrong — nothing was changed.");
@@ -2628,6 +2644,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                  {bottomHalfUnits.length > 0 && <p className="text-xs text-muted-foreground">Bottom half too: {bottomHalfUnits.map(unitBase).join(", ")} — the lower-half games are played in the same play-off sessions as the matching top-half round.</p>}
                  {playoffStages.length === 0 && <p className="text-xs text-muted-foreground">No playoff stages yet.</p>}
                  {playoffStages.map(renderStage)}
+                 {a.createdTournamentId && <div className="sticky bottom-2 z-10 flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-card p-2" data-testid="stages-save-bar">
+                   <Button size="sm" disabled={!serverReady || savingDraft || rowStructureDirty} onClick={() => void saveSetupDraft()}>{savingDraft ? "Saving…" : "Save & update fixtures"}</Button>
+                   <span className="text-xs text-muted-foreground">{setupUnsaved ? "Unsaved changes — saves the setup and creates/updates play-off fixtures. Played games, results and bookings are never changed." : "All changes saved."}</span>
+                 </div>}
                  <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setPlayoff({ choice: "playoffs" }); const ns = newStage(next, "later", "", "playoff"); setStageOpen((o) => ({ ...o, [ns.id]: true })); setStages([...stages, ns]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
                 {units.filter((u) => poolRule(u.key).mode !== "none" && playoffStages.some((s) => !s.unit || s.unit === u.key || s.unit === u.key.split("::")[0])).map((u) => {
                  const q = poolQualification(u.key);
@@ -2842,7 +2862,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
           {cur !== "Summary" && (
             <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
-              {a.createdTournamentId && <Button variant="outline" size="sm" disabled={!serverReady || savingDraft || rowStructureDirty} onClick={() => void saveSetupDraft()}>{savingDraft ? "Saving…" : "Save setup draft"}</Button>}
+              {a.createdTournamentId && <Button variant="outline" size="sm" disabled={!serverReady || savingDraft || rowStructureDirty} onClick={() => void saveSetupDraft()}>{savingDraft ? "Saving…" : setupUnsaved ? "Save & update fixtures •" : "Save & update fixtures"}</Button>}
               <Button variant="outline" size="sm" className="min-h-10 min-w-24" disabled={step === 0 || rowStructureDirty} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
               <Button size="sm" className="min-h-10 min-w-24" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
             </div>

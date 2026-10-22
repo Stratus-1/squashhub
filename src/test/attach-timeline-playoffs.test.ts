@@ -49,3 +49,20 @@ describe("planned play-off fixture dates", () => {
   it("final fixture gets its fixed day", () => expect(placeholderDates(plan, "Mens A 2 · Singles", "Final")).toEqual({ scheduled_date: "2026-11-15" }));
   it("other categories get nothing", () => expect(placeholderDates(plan, "Ladies B · Singles", "Final")).toEqual({}));
 });
+
+describe("play-offs saved earlier as 'decide later'", () => {
+  const stale: any = { divisions: [{ ...spec.divisions[0], deferredStages: [{ name: "Semifinal", stageKey: "v1-po1", plan: { pairing: "later" } }] }, spec.divisions[1]] };
+  const qf: any = { ...plan, playoff: { choice: "playoffs", rounds: 3 }, stages: [
+    { name: "Quarterfinal", unit: "Mens A", phase: "playoff", mode: "play_by", deadline: "2026-11-14", pairing: "crossover" },
+    ...plan.stages.map((s: any) => ({ ...s, pairing: "winners" })),
+  ] };
+  it("a later save with a Quarterfinal and pairing replaces them with real stages", () => {
+    const next: any = timelinePlayoffSpec(stale, qf);
+    expect(next.divisions[0].stages.map((s: any) => s.name).slice(1)).toEqual(["Quarterfinal", "Semifinal", "Final"]);
+    expect(next.divisions[0].deferredStages).toEqual([]);
+    expect(next.divisions[1]).toEqual(spec.divisions[1]);
+  });
+  it("saving again changes nothing (idempotent)", () => {
+    expect(timelinePlayoffSpec(timelinePlayoffSpec(stale, qf), qf)).toBeNull();
+  });
+});

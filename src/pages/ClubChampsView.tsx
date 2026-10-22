@@ -3415,6 +3415,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     const mine = isMyMatch(m);
     const completed = m.status === "completed";
     const isBye = !!m.is_bye;
+    // Planned play-off slot (pool position / "Winner QF1"): shown, but no booking, result or no-show actions.
+    const awaitingQualification = !completed && !isBye && (!m.player_a_member_id || !m.player_b_member_id);
     const winnerIsA = !isBye && completed && m.winner_member_id === m.player_a_member_id;
     const winnerIsB = !isBye && completed && m.winner_member_id === m.player_b_member_id;
     // Knockout / play-off loser stays listed but is struck through.
@@ -3486,6 +3488,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         )}
 
         {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
+        {awaitingQualification && <Badge variant="outline" className="text-[10px] text-muted-foreground" title="Players are decided by earlier results; booking and results open once both are known">Awaiting qualification</Badge>}
+        {awaitingQualification ? null : (<>
         {(() => {
           if (completed) return null;
           if (isLiveMatch && freshMatchIds.has(m.id)) {
@@ -3652,6 +3656,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             Redo score
           </Button>
         )}
+        </>)}
       </div>
     );
   }

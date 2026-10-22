@@ -210,17 +210,23 @@ export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null, o
   if (!plan || !spec?.divisions?.length) return null;
   let changed = false;
   const divisions = spec.divisions.map((d: any) => {
-    if ((d.deferredStages ?? []).length || d.stages.length > 1) return d;
+    // Real play-off stages already exist: append-only, never rebuilt here.
+    if (d.stages.length > 1) return d;
+    // Deferred ("Decide later") play-offs from an earlier save are only a plan: a later explicit save with more
+    // complete stages/pairing/dates replaces them, so a Quarterfinal added afterwards is not silently ignored.
+    const hadDeferred = (d.deferredStages ?? []).length > 0;
     // Automatic attach on setup save: only categories whose play-offs were actually put on the timeline.
     if (opts.explicitOnly && !plannedPlayoffStages(plan, unitKeyOf((d.poolLabels?.[0] as string | undefined) ?? d.label)).length) return d;
     const label = (d.poolLabels?.[0] as string | undefined) ?? d.label;
     const p = proposeFormat(plan, label);
     if (!p.playoffs.length) return d;
     const version = String(d.stages[0]?.id ?? "s").replace(/-main$/, "");
-    changed = true;
     // Setup never confirmed the play-offs (historical "Decide later"): keep organiser confirmation.
     const legacy = (playoffAnswer(plan, label)?.choice ?? "later") !== "playoffs";
-    return { ...d, ...playoffStagesFor(d.stages[0], version, p, { forceConfirm: legacy }) };
+    const next = { ...d, ...playoffStagesFor(d.stages[0], version, p, { forceConfirm: legacy }) };
+    if (hadDeferred && JSON.stringify(next.stages) === JSON.stringify(d.stages) && JSON.stringify(next.deferredStages) === JSON.stringify(d.deferredStages)) return d;
+    changed = true;
+    return next;
   });
   return changed ? { ...spec, divisions } : null;
 }

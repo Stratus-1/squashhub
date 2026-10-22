@@ -1,9 +1,9 @@
 # Roadmap
-- [ ] Restore owner-accidentally undone Uitsig 21 October cash-up from audit with positive R56 payout and R230 cash, reversing only its undo effects.
-- [ ] Verify Uitsig tip payout is positive R56 with closing/opening cash R230; no duplicate payment.
-- [ ] Make latest cash-up Undo accessible to Super Admin and verify without undoing live cash-ups.
-- [ ] Reject negative paid-tip amounts in cash-up and staff payout forms and server validation; add focused tests.
-- [ ] Screenshot: show paid-tip amounts as positive R56 in reconciliation; explain Undo enables after a reason is entered.
+- [x] Restored accidentally undone Uitsig 21 October cash-up from audit, original positive R56 payout and R230 cash; reversed only undo journals, retained audit. Hosted read-back confirms one payout and R230 cash.
+- [x] Verified Uitsig positive R56 tip payout and R230 closing/opening cash without duplicate payment.
+- [x] Exposed existing management report from till history for signed-in Super Admin; tests verify latest Undo requires a reason and grants no anonymous access. No live Undo executed by agent; Uitsig browser route redirected, so direct hosted UI read-back remains unavailable.
+- [x] Negative paid-tip input blocked in cash-up/staff forms and server cash-up RPC; 22 focused frontend tests and isolated PostgreSQL negative R56/positive R56/zero-no-payout checks pass. Preview build OK; UI not published.
+- [x] Screenshot paid-tip values display positive R56 (cash-flow subtraction label retained); explained Undo enables after entering a reason. Preview only.
 - [x] Taylor Gower (Nelspruit) read-only check: she did not apply — her member row NSC362 predates her Google-created login by six days and the login linked straight onto it; no terms tick was ever asked. No data changes.
 - [x] Google sign-in identity check: once per account per club, an unlinked Google login asks "is that you?" when a member matches, "is this a new application?" when nobody does, and offers another Google account when the person says it isn't them. 12 tests pass (7 decision, 5 dialog), build OK, signed-in preview quiet for a normal login; nothing published.
 - [x] Add separate 21 October label to the combined Uitsig cash-up, preserving covered sales, cutoff, R56 tips and R174 cash; no publication.

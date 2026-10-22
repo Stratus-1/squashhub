@@ -162,3 +162,4 @@
 - [x] Swiss withdrawals (both Withdraw buttons) keep the entry/position and mark 'withdrawn – bye' (auto walkover trigger from Brett fix); no collapse.
 - [x] New member applications: raise pro-rata club fee when admin assigns fee category (member self-select already does); prompt admin to pick category when approving an application that has none
 - [x] Credit wording finalised: read-only member notice reads "Club credit allowed: R…" (not "Additional club credit allowed"); label test added, 15 focused tests pass, build OK. Owner confirmed negative available may still book. Published to all clubs 22 Oct.
+- [ ] New member application: owner asks why Google sign-in isn't offered there. Google currently appears only on Log In and Existing Member tabs; New Member is form-only (name, email, phone, password, terms, bot check). Awaiting owner decision on adding Google to New Member.

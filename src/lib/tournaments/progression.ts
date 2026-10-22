@@ -387,3 +387,26 @@ export async function stageTies(db: Db, tid: string, divisionKey: string, stageK
   const pools = rankSourcePools(d, src, matches, spec.positionOrders?.[`${divisionKey}/${src.id}`], used, criteria).filter((p) => p.material.length);
   return { sourceStageKey: src.id, sourceName: src.name, nextName: st.name, criteria, pools };
 }
+
+/**
+ * Explicit organiser save only: start just the given (division, stage) pairs when they are `ready` and automatic —
+ * e.g. a Quarterfinal attached after its pools already finished, so the real qualifiers appear straight away.
+ * Never touches other categories or stages; stages with games are skipped by the engine guard.
+ */
+export async function startReadyStages(db: Db, tid: string, only: Array<{ divisionKey: string; stageKey: string }>, exec: Exec = (fn) => fn(db)): Promise<number> {
+  if (!only.length) return 0;
+  const want = new Set(only.map((o) => `${o.divisionKey}|${o.stageKey}`));
+  const states = await stageLifecycle(db, tid);
+  const ready = states.filter((s) => s.state === "ready" && s.automatic && want.has(`${s.divisionKey}|${s.stageKey}`));
+  if (!ready.length) return 0;
+  const [t] = await db.select("tournaments", { id: tid });
+  const spec = t.builder_spec as TournamentSpec;
+  let n = 0;
+  for (const r of ready) {
+    const d = spec.divisions.find((x) => x.divisionId === r.divisionKey);
+    const st = d?.stages.find((s) => s.id === r.stageKey);
+    if (!d || !st) continue;
+    try { await exec((tx) => startStage(tx, tid, d, st)); n++; } catch (e: any) { if (!/already/i.test(e?.message ?? "")) throw e; }
+  }
+  return n;
+}

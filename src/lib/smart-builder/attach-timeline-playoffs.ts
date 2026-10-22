@@ -4,7 +4,8 @@ import type { TournamentSpec } from "@/lib/tournaments/engine-service";
 import { attachPlannedPlayoffs } from "./step-draw";
 import { persistStructure } from "@/lib/tournaments/structured-persist";
 import { fromExt } from "@/lib/supabase-ext";
-import { isPlaceholderKey, abbrOf, syncPlayoffPlaceholders } from "./playoff-placeholders";
+import { startReadyStages } from "@/lib/tournaments/progression";
+import { isPlaceholderKey, abbrOf, syncPlayoffPlaceholders, adoptPlaceholderRows } from "./playoff-placeholders";
 
 /**
  * Timeline play-offs default to starting automatically once their source stage is decided: the organiser
@@ -27,12 +28,23 @@ export function timelinePlayoffSpec(spec: TournamentSpec | null | undefined, pla
 /** Explicit organiser save → attach planned play-offs to an already-generated structured tournament. */
 export async function attachTimelinePlayoffs(tid: string, plan: any): Promise<boolean> {
   let attached = false;
+  const firstNew: Array<{ divisionKey: string; stageKey: string }> = [];
   await atomically(supabaseDb, tid, commitStructured, async (tx) => {
     const [t] = await tx.select("tournaments", { id: tid });
     if (!t || t.builder_architecture !== "structured") return;
     const next = timelinePlayoffSpec(t.builder_spec as TournamentSpec, plan);
-    if (next) { await tx.update("tournaments", { id: tid }, { builder_spec: next }); await persistStructure(tx, tid, next); attached = true; }
+    if (next) {
+      await tx.update("tournaments", { id: tid }, { builder_spec: next }); await persistStructure(tx, tid, next); attached = true;
+      const before = new Map(((t.builder_spec as any)?.divisions ?? []).map((d: any) => [d.divisionId, new Set((d.stages ?? []).map((s: any) => s.id))]));
+      for (const d of next.divisions as any[]) {
+        const added = (d.stages ?? []).filter((s: any) => !(before.get(d.divisionId) as Set<string> | undefined)?.has(s.id));
+        if (added[0]) firstNew.push({ divisionKey: d.divisionId, stageKey: added[0].id });
+      }
+    }
   });
+  // Pools already finished (play-offs added afterwards): start just the new first play-off stage, so its fixtures
+  // carry the real qualifiers immediately. Only the newly attached stage; automatic-start stages only.
+  if (firstNew.length) await startReadyStages(supabaseDb, tid, firstNew, (fn) => atomically(supabaseDb, tid, commitStructured, fn));
   return attached;
 }
 
@@ -53,6 +65,7 @@ export function placeholderDates(plan: any, unitLabel: string, stageName: string
  */
 export async function createPlannedPlayoffFixtures(tid: string, plan: any): Promise<number> {
   const { created } = await syncPlayoffPlaceholders(tid);
+  await adoptPlaceholderRows(tid);
   const [{ data: t }, { data: rows }] = await Promise.all([
     fromExt("tournaments").select("group_labels").eq("id", tid).maybeSingle(),
     fromExt("club_champs_matches").select("id, group_number, stage_label, stage_key, scheduled_time, play_by, scheduled_date").eq("champ_id", tid),

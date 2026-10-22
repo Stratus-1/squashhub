@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import type { PlannedPlayoffRow, PlannedSide } from "@/lib/tournaments/planned-playoff-bracket";
 
 /**
@@ -33,8 +34,6 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
   const stages = [...new Set(rows.map((r) => r.stage))];
   const cols = stages.map((st) => rows.filter((r) => r.stage === st));
   const wrap = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ id: number; x: number; left: number } | null>(null);
-  const [dragging, setDragging] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -43,7 +42,9 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
     if (!el) return;
     const measure = () => {
       const base = el.getBoundingClientRect();
-      const box = (n: Element) => { const r = n.getBoundingClientRect(); return { l: r.left - base.left, r: r.right - base.left, y: r.top - base.top + r.height / 2 }; };
+      // Connector coordinates stay in unscaled content space, so they survive zooming.
+      const k = el.offsetWidth ? base.width / el.offsetWidth : 1;
+      const box = (n: Element) => { const r = n.getBoundingClientRect(); return { l: (r.left - base.left) / k, r: (r.right - base.left) / k, y: (r.top - base.top) / k + r.height / k / 2 }; };
       const curve = (x1: number, y1: number, x2: number, y2: number) => { const m = (x1 + x2) / 2; return `M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}`; };
       const out: Line[] = [];
       el.querySelectorAll<HTMLElement>("[data-side]").forEach((side) => {
@@ -73,24 +74,8 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
   const feedsOf = (g: PlannedPlayoffRow) => g.sides.map((s) => s.label.match(/^Winner (\S+)$/)?.[1]).filter(Boolean).join(",");
 
   return (
-    <div className={cn("overflow-x-auto pb-1 touch-pan-x", dragging ? "cursor-grabbing select-none" : "cursor-grab")} data-testid="planned-playoff-bracket"
-      onPointerDown={(e) => {
-        if (e.pointerType !== "mouse" || e.button !== 0 || (e.target instanceof Element && e.target.closest("button, a, input, select, textarea"))) return;
-        drag.current = { id: e.pointerId, x: e.clientX, left: e.currentTarget.scrollLeft };
-        e.currentTarget.setPointerCapture(e.pointerId);
-      }}
-      onPointerMove={(e) => {
-        const s = drag.current;
-        if (!s || s.id !== e.pointerId) return;
-        const d = e.clientX - s.x;
-        if (!dragging && Math.abs(d) < 4) return;
-        e.preventDefault(); setDragging(true);
-        e.currentTarget.scrollLeft = s.left - d;
-      }}
-      onPointerUp={(e) => { drag.current = null; setDragging(false); if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}
-      onPointerCancel={() => { drag.current = null; setDragging(false); }}
-      onLostPointerCapture={() => { drag.current = null; setDragging(false); }}
-      onDragStart={(e) => e.preventDefault()}>
+    <TournamentInteractiveViewer title="Play-off bracket" inlineHeight={460} defaultFit="none" wheelZoom="direct">
+    <div className="cursor-grab pb-1" data-testid="planned-playoff-bracket">
       <div ref={wrap} className="relative flex min-w-max gap-12 p-1">
         <svg className="pointer-events-none absolute left-0 top-0" width={size.w} height={size.h} aria-hidden>
           {lines.map((l, i) => <path key={i} d={l.d} fill="none" stroke={l.color} strokeWidth={2} strokeOpacity={0.85} strokeDasharray={l.dashed ? "5 4" : undefined} />)}
@@ -152,5 +137,6 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
         )}
       </div>
     </div>
+    </TournamentInteractiveViewer>
   );
 }

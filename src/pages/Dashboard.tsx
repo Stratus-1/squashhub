@@ -27,6 +27,7 @@ import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { MyStatsCard } from "@/components/dashboard/MyStatsCard";
+import { AvailableToSpendCard } from "@/components/dashboard/AvailableToSpendCard";
 
 import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
@@ -773,6 +774,7 @@ export default function Dashboard() {
           statsSlot={
             isPendingApplicant ? null : (
               <div className="space-y-3">
+                <AvailableToSpendCard clubId={clubId} memberId={myMemberId} />
                 <MyStatsCard memberId={myMemberId} />
                 <MyRankingsCard clubId={clubId} memberId={myMemberId} />
               </div>
@@ -967,7 +969,8 @@ export default function Dashboard() {
       <div className="flex flex-col">
       {sec("my-stats", !isPendingApplicant && (
         <div className="px-4 mt-1 space-y-3">
-          <MyStatsCard memberId={myMemberId} />
+          <AvailableToSpendCard clubId={clubId} memberId={myMemberId} />
+                <MyStatsCard memberId={myMemberId} />
         </div>
       ))}
 

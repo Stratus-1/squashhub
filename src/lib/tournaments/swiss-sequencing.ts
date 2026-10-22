@@ -1,4 +1,4 @@
-import blossom from "edmonds-blossom";
+import blossom from "edmonds-blossom-fixed";
 import { IntegrityError } from "./contract";
 
 export interface SequencingPlayer { id: string; points: number; seed: number; byes?: number }

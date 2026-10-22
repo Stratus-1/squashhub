@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Add positive-only named paid-tip corrections to cash-up Edit, with required reason, staff balance and accounting updates; preserve counted cash and shift dates. Test on disposable data only; no live corrections or publication.
 - [x] Restored accidentally undone Uitsig 21 October cash-up from audit, original positive R56 payout and R230 cash; reversed only undo journals, retained audit. Hosted read-back confirms one payout and R230 cash.
 - [x] Verified Uitsig positive R56 tip payout and R230 closing/opening cash without duplicate payment.
 - [x] Exposed existing management report from till history for signed-in Super Admin; tests verify latest Undo requires a reason and grants no anonymous access. No live Undo executed by agent; Uitsig browser route redirected, so direct hosted UI read-back remains unavailable.

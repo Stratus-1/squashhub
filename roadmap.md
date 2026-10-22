@@ -184,3 +184,5 @@
 - [ ] Uitsig 21 Oct cash-up: the R56 tip payment to Wynand is not recorded (earned R56, paid R0) and the cash-up balances at R230 with no difference. Owner's answer pending before any live financial record is touched.
 - [x] Bar counter: let the barman remove/undo a mistaken item on an open tab.
 - [x] Tab item removal must add a visible minus line (plus and minus), never delete; any barman with counter PIN.
+- [x] Tournament Summary now lists Ladies B's final ranking 1–18 in a wrapped row with 1st named and highlighted; signed-in Riverside check shows the card open with 18 entries, no page errors. Display only; no fixture/result writes, no publication.
+- [ ] Original view and standings panels must be zoomable (mouse wheel/pinch) and draggable for navigation only; no data mutation, no live changes, no publication.

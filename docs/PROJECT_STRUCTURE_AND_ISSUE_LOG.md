@@ -3711,3 +3711,5 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Wording (owner's choice): read-only member notice reads **"Club credit allowed: R…"** — not "Additional club credit allowed", not "Your credit limit" (`src/components/club-admin/MemberCreditControl.tsx`). Admin controls and the booking note already said "credit allowed" and were left unchanged.
 - Owner confirmed the behaviour: a member whose available amount is negative may still book (the recurring arrangement covers it) — no change to the booking gate.
 - Tests: `src/test/spend-summary.test.ts` (6 rules) + `src/test/member-credit-control.test.tsx` label test (15 pass together). Published to Riverside; owner verified the card there.
+
+- 2026-10-22: member_account_gate referenced non-existent club_member_fee_payments.club_id for members with an active monthly mandate, so booking eligibility, bar account preview and the Available to spend card failed (e.g. Gordons Bay). Fixed by scoping fees via club_members.club_id (migration fix_member_account_gate_club_scope).

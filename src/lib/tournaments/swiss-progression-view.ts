@@ -247,7 +247,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
-    const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
+    const conflicts = locked && !usesTenRemainderChart(model.rrFinish, snapshot.length - (model.rrFinish.groups ?? 0) * 4) ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings: string[] = [];
     return { issues, ...(sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}), rounds: saved.map((rd) => {

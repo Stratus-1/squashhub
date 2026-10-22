@@ -2012,7 +2012,8 @@ function nextSwissRound(tid, d, stageId, rows, noRepeats = true, policy) {
     if (issues.length)
       throw new IntegrityError("prereq", issues[0]);
     const snapshot = swissStandings(d, st, rows.filter((f) => (f.round ?? 0) <= 2)).map((t) => t.id);
-    if (rrFinishRepeats(snapshot, st.rrFinish.groups, mine.filter((f) => (f.round ?? 0) <= 2 && f.a && f.b).map((f) => [String(f.a), f.b])).length) {
+    const repeatsAllowed = usesTenRemainderChart(st.rrFinish, snapshot.length - st.rrFinish.groups * 4);
+    if (!repeatsAllowed && rrFinishRepeats(snapshot, st.rrFinish.groups, mine.filter((f) => (f.round ?? 0) <= 2 && f.a && f.b).map((f) => [String(f.a), f.b])).length) {
       throw new IntegrityError("prereq", "The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3.");
     }
     const plan = rrFinishRound(snapshot, gate.nextRound, st.rrFinish.groups);
@@ -8498,7 +8499,7 @@ function buildProposedSwissGrid(model, opts = {}) {
     const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
-    const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
+    const conflicts = locked && !usesTenRemainderChart(model.rrFinish, snapshot.length - (model.rrFinish.groups ?? 0) * 4) ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
     const issues2 = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings = [];
     return { issues: issues2, ...sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}, rounds: saved.map((rd) => {
@@ -8539,7 +8540,8 @@ function buildProposedSwissGrid(model, opts = {}) {
         }
       } else if (tenChart) {
         const offset = plan2.pairs.length * 2;
-        const slots = locked ? tenRemainderSlots(plan2.remainder, rd.round, history) : Array(10).fill(null);
+        const r2Done = (id) => history.some((f) => f.round === 2 && (f.state === "completed" || f.state === "bye") && (f.a === id || f.b === id));
+        const slots = locked ? tenRemainderSlots(plan2.remainder, rd.round, history) : rd.round === 3 ? plan2.remainder.map((id) => id && r2Done(id) ? id : null) : Array(10).fill(null);
         for (const [a, b] of TEN_REMAINDER_CHART[rd.round] ?? []) {
           const x = slots[a - 1] ?? null, y = slots[b - 1] ?? null;
           if (x && covered.has(x) || y && covered.has(y))

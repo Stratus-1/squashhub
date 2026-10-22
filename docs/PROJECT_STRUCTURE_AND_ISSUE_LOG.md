@@ -1,3 +1,8 @@
+## 2026-10-22 — Cash-up Edit omitted paid tips
+- Added named positive-only existing payout fields to cash-up Edit. Save requires a reason and updates the payout, expected cash and staff balance atomically; only the latest cash-up allows paid-tip corrections.
+- Preserve counted cash and shift dates, keep original journals and append balanced payout/write-off corrections using their existing references so latest-only Undo reverses the full corrected net amount. Before/after payout and cash-up values are audited; stale edits, over-balance amounts and guest access fail closed.
+- No live payout correction or publication; Uitsig's restored R56 and counted R230 remain untouched. Web/PWA/native share this report; no platform-specific or hardware change.
+
 ## 2026-10-22 — Positive tip payouts and reachable cash-up undo
 - Uitsig's actual saved tip payout is already positive R56, with owner-confirmed closing/next-opening cash R230. No duplicate tip payment.
 - Expose the existing cash-up management report from till cash-up history for signed-in platform admins. Keep latest-only, required reason and server authorization; never undo a live shift during verification.

@@ -1730,6 +1730,13 @@
       "when": 1792690000001,
       "tag": "0246_counter_remove_tab_item",
       "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1792690000002,
+      "tag": "0247_counter_board_line_ids",
+      "breakpoints": true
     }
   ]
 }

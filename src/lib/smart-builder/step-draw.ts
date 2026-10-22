@@ -206,11 +206,13 @@ export function deferredFor(version: string, names: string[], plans?: Array<Plan
  * Repair for draws generated before play-offs were bridged: attach the planned play-offs as deferred stages to
  * every division that has none and no later stage yet. Never touches existing stages, games or results.
  */
-export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null): TournamentSpec | null {
+export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null, opts: { explicitOnly?: boolean } = {}): TournamentSpec | null {
   if (!plan || !spec?.divisions?.length) return null;
   let changed = false;
   const divisions = spec.divisions.map((d: any) => {
     if ((d.deferredStages ?? []).length || d.stages.length > 1) return d;
+    // Automatic attach on setup save: only categories whose play-offs were actually put on the timeline.
+    if (opts.explicitOnly && !plannedPlayoffStages(plan, unitKeyOf((d.poolLabels?.[0] as string | undefined) ?? d.label)).length) return d;
     const label = (d.poolLabels?.[0] as string | undefined) ?? d.label;
     const p = proposeFormat(plan, label);
     if (!p.playoffs.length) return d;

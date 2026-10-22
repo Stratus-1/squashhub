@@ -1,0 +1,12 @@
+CREATE SCHEMA auth;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT NULL::uuid $$;
+CREATE TABLE club_bar_settings(club_id uuid,cash_up_enabled boolean);
+CREATE TABLE bar_counter_devices(id uuid,label text);
+CREATE TABLE club_journal_entries(club_id uuid,journal_ref uuid,account text,debit numeric,credit numeric,description text);
+CREATE TABLE test_paid(amount numeric);
+CREATE TABLE bar_cash_ups(id uuid,club_id uuid,period_start timestamptz,period_end timestamptz,totals jsonb,expected_cash numeric,counted_cash numeric,variance numeric,note text,closed_by_device uuid,closed_by_name text,actor_user_id uuid,tips_paid_at_cash_up numeric,card_expected numeric,card_counted numeric,written_off boolean,write_off_amount numeric);
+CREATE FUNCTION _bar_tip_authorise(uuid,uuid) RETURNS uuid LANGUAGE sql AS $$ SELECT NULL::uuid $$;
+CREATE FUNCTION _bar_cash_up_start(uuid) RETURNS timestamptz LANGUAGE sql AS $$ SELECT '2026-10-22T04:46:14Z'::timestamptz $$;
+CREATE FUNCTION _bar_cash_up_summary(uuid,timestamptz,timestamptz) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{"expected_cash":230,"methods":{"card_bar":{"sales":0,"tips":0}}}'::jsonb $$;
+CREATE FUNCTION bar_pay_staff_tips(uuid,uuid,numeric,uuid,uuid) RETURNS void LANGUAGE sql AS $$ INSERT INTO test_paid VALUES($3) $$;
+INSERT INTO club_bar_settings VALUES ('11111111-1111-1111-1111-111111111111',true);

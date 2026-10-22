@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
+import { rrFinalRanking } from "@/lib/tournaments/rr-final-ranking";
 import { TournamentPlayerInfoNotice } from "./TournamentPlayerInfo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -150,6 +150,40 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
     qc.invalidateQueries({ queryKey: ["my-bar-tab"] });
   };
 
+  /**
+   * Club-sponsored basket (e.g. tournament balls): each line is recorded via
+   * `bar_club_use` — stock goes down and the cost is booked to "Stock club
+   * expense". It is never a sale: no income, cash-up, tips or member charge.
+   */
+  const recordClubUse = async () => {
+    if (count === 0 || !clubUseReason.trim()) return;
+    setBusy(true);
+    try {
+      let totalCost = 0;
+      for (const l of cartLines) {
+        const { data, error } = await (supabase as any).rpc("bar_club_use", {
+          _item: l.item.id,
+          _qty: l.qty,
+          _reason: clubUseReason.trim(),
+        });
+        if (error) throw error;
+        totalCost += Number((data as any)?.cost || 0);
+      }
+      toast.success(`Recorded as club expense${totalCost > 0 ? ` (${money(totalCost)} at cost)` : ""}.`);
+      setClubUseOpen(false);
+      setClubUseReason("");
+      reset();
+      onOpenChange(false);
+      refresh();
+      qc.invalidateQueries({ queryKey: ["bar-club-use-history"] });
+      qc.invalidateQueries({ queryKey: ["bar-stock-levels"] });
+    } catch (err: any) {
+      toast.error(err.message || "Could not record club use");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /** Member account charge — posted only after the member verifies. */
   const chargeMemberAccount = async ({ secret, method }: { secret: string; method: "otp" }) => {
     const { error } = await (supabase as any).rpc("charge_bar_to_member", {

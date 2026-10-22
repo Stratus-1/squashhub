@@ -73,14 +73,14 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       {mode === "calendar" ? calendar ?? <SwissCalendarView entries={buildSwissCalendar(model, proposed.issues.length ? undefined : proposed.rounds, appliedPlayBy ? Object.fromEntries(Object.entries(slots ?? {}).filter(([k]) => !appliedPlayBy[Number(/^r(\d+)-/.exec(k)?.[1])])) : slots)} title={title} /> : null}
       {mode === "calendar" ? null : mode === "grid" ? (
         <div className="min-w-0 space-y-3" ref={gridWrapRef}>
-          {rrColumn ? <div className="flex justify-end"><button type="button" data-testid="rr-view-standings" className="rounded border border-border px-2 py-1 text-xs font-medium hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => jumpTo("[data-testid=rr-standings-column]")}>View Standings →</button></div> : null}
-          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={rrColumn} /></TournamentInteractiveViewer> : <>
+          {rrColumn ? <section aria-label="Round Robin Standings" data-testid="rr-standings-top" className="rounded-md border border-border p-2 [&_table]:w-full">{rrStandings}</section> : null}
+          {!positionalPreview ? <TournamentInteractiveViewer title={`${title} — ${stageNoun} grid (${kind})`} inlineHeight={420} wheelZoom="direct"><SwissPositionGrid model={model} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={null} /></TournamentInteractiveViewer> : <>
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
           </div>
           {proposed.issues.length && model.rrFinish?.enabled ? <p role="status" className="text-xs text-muted-foreground">{proposed.issues.join(" ")}</p> : null}{(
             <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none" wheelZoom="direct">
-              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={rrColumn} />
+              <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={null} />
             </TournamentInteractiveViewer>
           )}
           </>}

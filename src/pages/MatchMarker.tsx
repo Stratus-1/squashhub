@@ -686,6 +686,25 @@ export default function MatchMarker() {
       if (!memberB) noteParts.push(`Player 2: ${config.playerB.name} (${config.playerB.club})`);
       if (config.source !== 'manual') noteParts.push(`Source: ${config.source} ${config.sourceId || ''}`);
 
+      // Guard against the same finished match being saved again (repeat taps,
+      // restored scoreboard after reload). Same players + same score within
+      // 6 hours on this device is treated as already saved.
+      const fingerprint = [validAMemberId, validBMemberId, scoreStr, config.sourceId || ""].join("|");
+      const LAST_SAVED_KEY = "sh.marker.lastSaved";
+      try {
+        const last = JSON.parse(localStorage.getItem(LAST_SAVED_KEY) || "null");
+        if (last?.fp === fingerprint && Date.now() - Number(last.at) < 6 * 3600_000) {
+          pendingResultRef.current = null;
+          pendingMatchIdRef.current = null;
+          try {
+            localStorage.removeItem(MARKER_CONFIG_KEY);
+            localStorage.removeItem(MARKER_STATE_KEY);
+          } catch {}
+          toast.info("This result was already saved.");
+          return;
+        }
+      } catch {}
+
       // Saved through a security-definer RPC: it authorises club members,
       // the players themselves, club admins and tournament officials, and is
       // idempotent on the client-generated id so retries never duplicate.
@@ -713,6 +732,9 @@ export default function MatchMarker() {
       pendingResultRef.current = null;
       pendingMatchIdRef.current = null;
       setSaveError(null);
+      try {
+        localStorage.setItem("sh.marker.lastSaved", JSON.stringify({ fp: fingerprint, at: Date.now() }));
+      } catch {}
 
       // Match saved — clear persisted in-progress state
       try {

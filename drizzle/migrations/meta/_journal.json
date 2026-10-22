@@ -1716,6 +1716,13 @@
       "when": 1792683420821,
       "tag": "0244_counter_board_item_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1792690000000,
+      "tag": "0245_delegation_cell_match",
+      "breakpoints": true
     }
   ]
 }

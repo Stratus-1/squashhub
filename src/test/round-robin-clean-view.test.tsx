@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { RoundRobinCleanView, RoundRobinPilotView } from "@/components/tournaments/RoundRobinPilotView";
 
@@ -15,32 +15,24 @@ describe("Riverside standalone round robin clean view", () => {
     expect(within(screen.getByTestId("rr-clean-row-p1")).getAllByRole("cell").slice(3, 6).map(c => c.textContent)).toEqual(["1", "1", "0"]);
     expect(JSON.stringify(matches)).toBe(before);
   });
-  it("drags the round track without changing saved fixtures or results", () => {
+  it("zooms the shared viewer without changing saved fixtures or results", async () => {
     const view = buildRoundRobinView({ players: players(4), matches: [
       { id: "drag-result", round: 1, a: "p1", b: "p4", winner: "p1", status: "completed", score: "3-1" },
     ] as any });
     const before = JSON.stringify(view);
     render(<RoundRobinCleanView view={view} group={1} groupLabel="Pool A" />);
-    const track = screen.getByTestId("rr-round-track");
-    track.setPointerCapture = vi.fn();
-    track.hasPointerCapture = vi.fn(() => true);
-    track.releasePointerCapture = vi.fn();
-    const pointer = (type: string, x: number, target: Element = track) => {
-      const event = new Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperties(event, { pointerType: { value: "mouse" }, button: { value: 0 }, pointerId: { value: 7 }, clientX: { value: x } });
-      fireEvent(target, event);
-    };
-    pointer("pointerdown", 300);
-    pointer("pointermove", 180);
-    expect(track.scrollLeft).toBe(120);
-    pointer("pointerup", 180);
-    pointer("pointermove", 100);
-    expect(track.scrollLeft).toBe(120);
+    // The round track and standings stay inside one shared zoom/pan shell (wheel, pinch or buttons).
+    expect(screen.getByTestId("rr-round-track")).toBeInTheDocument();
+    expect(within(screen.getByTestId("rr-clean-fixtures")).getByTestId("rr-clean-round-1")).toBeInTheDocument();
+    const readout = screen.getByText("100%", { selector: "span" });
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    await waitFor(() => expect(readout.textContent).not.toBe("100%"), { timeout: 3000 });
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    await waitFor(() => expect(readout.textContent).toBe("100%"), { timeout: 3000 });
+    // The jump controls are still there and only move the view.
+    expect(within(screen.getByTestId("rr-clean-standings")).getByRole("button", { name: "← Back to Rounds" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "View Standings →" }));
     expect(JSON.stringify(view)).toBe(before);
-    const back = within(screen.getByTestId("rr-clean-standings")).getByRole("button", { name: "← Back to Rounds" });
-    pointer("pointerdown", 300, back);
-    pointer("pointermove", 100);
-    expect(track.scrollLeft).toBe(120);
   });
   it("shows every round's pairings from the draw, fixed positions, and live rank from results", () => {
     const view = buildRoundRobinView({ players: players(4), rankOrder: ["p4", "p1", "p2", "p3"], seedOrder: ["p1", "p2", "p3", "p4"], matches: [

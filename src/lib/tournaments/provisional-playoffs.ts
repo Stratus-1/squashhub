@@ -42,6 +42,16 @@ export function provisionalPlayoffs(plan: any, unitKey: string, pools: number): 
     const sorted = [...timeline].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
     names = sorted.map((s) => s.name);
     pairings = sorted.map((s, i) => (s.pairing ?? (i === 0 ? "later" : "winners")) as Pairing);
+    // A stage added in front later (e.g. Quarterfinal ticked after Semifinal) starts as "later": it inherits the
+    // pool pairing that was configured on the stage it now precedes, or the category's playoff pairing.
+    const isPool = (x: Pairing) => x === "crossover" || x === "same_position" || x === "seeded";
+    if (!isPool(pairings[0])) {
+      const inherited = pairings.slice(1).find(isPool);
+      const pp = playoffFor(plan, unitKey);
+      const cfg: Pairing | null = pp?.pairing === "cross_pools" ? "crossover" : pp?.pairing === "seeded" ? "seeded" : null;
+      if (inherited || cfg) pairings[0] = (inherited ?? cfg) as Pairing;
+    }
+    pairings = pairings.map((x, i) => (i > 0 && isPool(x) ? "winners" : x));
   } else {
     const pp = playoffFor(plan, unitKey);
     if (!pp || pp.choice !== "playoffs") return [];

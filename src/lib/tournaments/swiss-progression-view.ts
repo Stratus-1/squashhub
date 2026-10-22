@@ -14,7 +14,7 @@ import { swissPreviewFinalsTemplate } from "./swiss-preview-finals";
 import { uitsigMensCChart } from "./swiss-uitsig-mens-c-chart";
 import { uitsigLadiesAChart } from "./swiss-uitsig-ladies-a-chart";
 import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
-import { hybridSwissTable, rrFinishOn, rrFinishRound, rrFinishRepeats, type RrFinish } from "./swiss-rr-finish";
+import { hybridSwissTable, rrFinishOn, rrFinishRound, rrFinishRepeats, TEN_REMAINDER_CHART, tenRemainderSlots, usesTenRemainderChart, type RrFinish } from "./swiss-rr-finish";
 import { swissRound } from "./contract";
 import { hasSwissMatchActivity } from "./swiss-rr-display";
 import { sequenceSwissRound } from "./swiss-sequencing";

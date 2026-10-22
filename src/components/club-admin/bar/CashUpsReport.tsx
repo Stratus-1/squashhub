@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cashUpDateLabel } from "@/lib/bar/cash-up-date";
+import { isTipPayoutInput, validTipPayout } from "@/lib/bar/tips";
 
+interface EditablePayout { id: string; staff_name: string; amount: number; maximum: number }
 interface MethodTotal { sales: number; tips: number; count: number }
 interface CashUpRow {
   id: string; period_start: string; period_end: string; expected_cash: number; counted_cash: number; variance: number;
@@ -38,6 +40,17 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [edit, setEdit] = useState({ cash: "", card: "", note: "", reason: "" });
   const [busy, setBusy] = useState(false);
+  const [payoutEdits, setPayoutEdits] = useState<Record<string, string>>({});
+  const payouts = useQuery({
+    queryKey: ["bar-cash-up-edit-payouts", clubId, openId],
+    enabled: !!openId,
+    queryFn: async () => {
+      if (!openId) return [];
+      const { data, error } = await supabase.rpc("bar_cash_up_edit_payouts", { _id: openId });
+      if (error) throw error;
+      return (data ?? []) as unknown as EditablePayout[];
+    },
+  });
 
   const all = useQuery({
     queryKey: ["bar-cash-up-report", clubId, "all"],
@@ -56,6 +69,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
 
   const show = (c: CashUpRow) => {
     setOpenId(c.id);
+    setPayoutEdits({});
     setEdit({ cash: Number(c.counted_cash).toFixed(2), card: Number(c.card_counted ?? c.card_expected ?? 0).toFixed(2), note: c.note ?? "", reason: "" });
   };
 
@@ -63,13 +77,17 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
     if (!open) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("bar_cash_up_admin_update" as any, {
+      const changes = (payouts.data ?? []).filter(p => payoutEdits[p.id] !== undefined && Number(payoutEdits[p.id]) !== Number(p.amount));
+      if (changes.some(p => !validTipPayout(payoutEdits[p.id] ?? "", Number(p.maximum)))) throw new Error("Enter a positive paid-tip amount within the staff balance");
+      const { error } = await supabase.rpc("bar_cash_up_admin_correct", {
         _id: open.id, _counted_cash: Number(edit.cash), _card_counted: Number(edit.card), _note: edit.note, _reason: edit.reason,
+        _payouts: changes.map(p => ({ id: p.id, expected_amount: Number(p.amount), amount: Number(payoutEdits[p.id]) })),
       });
       if (error) throw error;
       toast.success("Cash-up updated");
       setEdit(e => ({ ...e, reason: "" }));
-      await Promise.all(["bar-cash-up-report", "bar-cash-up-history"].map(k => qc.invalidateQueries({ queryKey: [k] })));
+      await Promise.all(["bar-cash-up-edit-payouts", "bar-cash-up-report", "bar-cash-up-history", "bar-cash-up-preview", "bar-cash-up", "bar-staff-tips", "bar-shift-overview", "income-statement"].map(k => qc.invalidateQueries({ queryKey: [k] })));
+      setPayoutEdits({});
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update cash-up"); }
     finally { setBusy(false); }
   }
@@ -90,12 +108,18 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
   }
 
   const renderDetail = (c: CashUpRow) => {
-    const f = cashUpFigures(c, prevOf(c));
+    const saved = cashUpFigures(c, prevOf(c));
+    const payoutDelta = (payouts.data ?? []).reduce((sum, p) => {
+      const value = payoutEdits[p.id];
+      return sum + (value !== undefined && MONEY.test(value) ? Number(value) - Number(p.amount) : 0);
+    }, 0);
+    const f = { ...saved, tipsOut: saved.tipsOut + payoutDelta, cashShould: saved.cashShould - payoutDelta };
     const locked = !!c.written_off || busy;
     const vCash = MONEY.test(edit.cash) ? Number(edit.cash) - f.cashShould : null;
     const vCard = MONEY.test(edit.card) ? Number(edit.card) - f.cardShould : null;
     const variance = vCash === null || vCard === null ? null : Math.round((vCash + vCard) * 100) / 100;
-    const valid = MONEY.test(edit.cash) && MONEY.test(edit.card) && edit.reason.trim().length > 0;
+    const valid = MONEY.test(edit.cash) && MONEY.test(edit.card) && edit.reason.trim().length > 0 && !payouts.isLoading && !payouts.error
+      && (payouts.data ?? []).every(p => payoutEdits[p.id] === undefined || validTipPayout(payoutEdits[p.id], Number(p.maximum)));
     const row = (label: string, k: string, out: number, should: number, actual: React.ReactNode) =>
       <tr key={k} className="border-b"><td className="py-1">{label} <span className="text-muted-foreground">({f.m(k).count})</span></td>
         <td className="text-right tabular-nums">{R(f.m(k).sales)}</td><td className="text-right tabular-nums">{R(f.m(k).tips)}</td>
@@ -122,9 +146,18 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
         <div className="flex justify-between font-semibold border-t pt-1"><span>Should be in the till</span><span className="tabular-nums">{R(f.cashShould)}</span></div>
         <div className="flex justify-between"><span>Closing balance (counted)</span><span className="tabular-nums">{MONEY.test(edit.cash) ? R(edit.cash) : "—"}</span></div>
       </div>
+      {payouts.isLoading ? <p className="text-muted-foreground">Loading paid tips…</p> : payouts.error ? <p role="alert" className="text-destructive">Could not load paid tips. Close and reopen this cash-up to try again.</p> : (payouts.data ?? []).length > 0 && <div className="space-y-2">
+        <h4 className="font-semibold">Tips paid in cash</h4>
+        {(payouts.data ?? []).map(p => <div key={p.id} className="flex items-center justify-between gap-3">
+          <Label htmlFor={`cu-tip-${p.id}`}>Tips paid to {p.staff_name}</Label>
+          <Input id={`cu-tip-${p.id}`} inputMode="decimal" className="h-8 w-28 text-right" value={payoutEdits[p.id] ?? Number(p.amount).toFixed(2)} disabled={busy || !isLatest(c)}
+            onChange={e => { if (isTipPayoutInput(e.target.value)) setPayoutEdits(values => ({ ...values, [p.id]: e.target.value })); }} />
+        </div>)}
+        {!isLatest(c) && <p className="text-muted-foreground">Paid tips can only be corrected on the most recent cash-up.</p>}
+      </div>}
       <div className="rounded-md border p-3 space-y-2">
         {variance !== null && <p className={variance === 0 ? "text-muted-foreground" : "text-destructive font-medium"}>{variance === 0 ? "Everything balances." : `${variance > 0 ? "Surplus" : "Shortfall"} of ${R(Math.abs(variance))}`}</p>}
-        {c.written_off && <p className="text-muted-foreground">At closing, {R(c.write_off_amount)} was written off to bar cost of sales. The counted amounts are locked — record a correcting transaction in Club Finance for any remaining difference.</p>}
+        {c.written_off && <p className="text-muted-foreground">At closing, {R(c.write_off_amount)} was written off to bar cost of sales. Counted amounts stay locked. Saving a paid-tip correction also adjusts the write-off without changing counted cash.</p>}
         <Label htmlFor="cu-note">Note</Label>
         <Input id="cu-note" maxLength={500} value={edit.note} disabled={busy} onChange={e => setEdit({ ...edit, note: e.target.value })} />
         <Label htmlFor="cu-reason">Reason for change (required)</Label>

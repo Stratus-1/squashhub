@@ -1,0 +1,117 @@
+/**
+ * Joining club fee on category selection.
+ *
+ * Rule (owner, Oct 2026): the pro-rata club fee must be raised the moment a
+ * fee category is set for a new member application — whether the member picks
+ * it in the signup wizard or an admin assigns it (member edit dialog or the
+ * application approval prompt). The member wizard still raises its own fee
+ * rows; this helper covers the admin paths and is idempotent: a member with
+ * any existing club/membership fee record is never charged again here.
+ */
+import { fromExt } from "@/lib/supabase-ext";
+import { computeJoinFee } from "@/lib/fee-proration";
+
+export interface JoiningFeeCategory {
+  id: string;
+  name: string;
+  annual_fee: number | null;
+  due_month?: number | null;
+  due_day?: number | null;
+  pro_rate?: boolean | null;
+}
+
+export interface JoiningClubFeeDecision {
+  raise: boolean;
+  amount: number;
+  monthsCharged: number;
+  seasonYear: number;
+  fullFee: boolean;
+  proRated: boolean;
+}
+
+/** Pure decision — kept separate so the charging rule is directly testable. */
+export function decideJoiningClubFee(opts: {
+  annualFee: number | null | undefined;
+  dueMonth?: number | null;
+  dueDay?: number | null;
+  proRate?: boolean | null;
+  joinedAt?: string | null;
+  hasExistingClubFee: boolean;
+  billingExempt?: boolean | null;
+  now?: Date;
+}): JoiningClubFeeDecision {
+  const none: JoiningClubFeeDecision = {
+    raise: false, amount: 0, monthsCharged: 0, seasonYear: new Date().getFullYear(), fullFee: false, proRated: false,
+  };
+  if (opts.billingExempt) return none;
+  if (opts.hasExistingClubFee) return none;
+  const annualFee = Number(opts.annualFee) || 0;
+  if (annualFee <= 0) return none;
+
+  const proRate = opts.proRate ?? true;
+  const from = opts.joinedAt ? new Date(opts.joinedAt) : (opts.now ?? new Date());
+  const calc = computeJoinFee(annualFee, opts.dueMonth || 1, opts.dueDay || 1, proRate, from);
+  if (!(calc.amount > 0)) return none;
+  return {
+    raise: true,
+    amount: calc.amount,
+    monthsCharged: calc.monthsCharged,
+    seasonYear: calc.seasonYear,
+    fullFee: calc.fullFee,
+    proRated: proRate && !calc.fullFee,
+  };
+}
+
+/** Fee label matching the signup wizard, so statements read the same either way. */
+export function joiningClubFeeLabel(category: JoiningFeeCategory, d: JoiningClubFeeDecision): string {
+  const proRate = category.pro_rate ?? true;
+  const suffix = !proRate
+    ? ""
+    : d.fullFee
+      ? " — Full year (covers next season)"
+      : ` — Pro-rated ${d.monthsCharged} month${d.monthsCharged === 1 ? "" : "s"}`;
+  return `Club Membership (${category.name})${suffix}`;
+}
+
+/**
+ * Raise the unpaid pro-rata club fee for a member if none exists yet.
+ * Returns { raised, amount } — raised=false means nothing was written.
+ */
+export async function ensureJoiningClubFee(
+  clubMemberId: string,
+  category: JoiningFeeCategory,
+): Promise<{ raised: boolean; amount: number }> {
+  const [{ data: member, error: memErr }, { data: existing, error: feeErr }] = await Promise.all([
+    fromExt("club_members").select("id, joined_at, billing_exempt").eq("id", clubMemberId).maybeSingle(),
+    fromExt("club_member_fee_payments")
+      .select("id")
+      .eq("club_member_id", clubMemberId)
+      .in("fee_type", ["club", "membership"])
+      .limit(1),
+  ]);
+  if (memErr) throw memErr;
+  if (feeErr) throw feeErr;
+  if (!member) return { raised: false, amount: 0 };
+
+  const decision = decideJoiningClubFee({
+    annualFee: category.annual_fee,
+    dueMonth: category.due_month,
+    dueDay: category.due_day,
+    proRate: category.pro_rate,
+    joinedAt: member.joined_at,
+    hasExistingClubFee: (existing || []).length > 0,
+    billingExempt: member.billing_exempt,
+  });
+  if (!decision.raise) return { raised: false, amount: 0 };
+
+  const { error } = await fromExt("club_member_fee_payments").insert({
+    club_member_id: clubMemberId,
+    fee_type: "club",
+    fee_label: joiningClubFeeLabel(category, decision),
+    amount: decision.amount,
+    paid: false,
+    season_year: decision.seasonYear,
+  });
+  if (error) throw error;
+  return { raised: true, amount: decision.amount };
+}

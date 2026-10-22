@@ -117,7 +117,7 @@ import { OverallStandingsPanel } from "@/components/tournaments/OverallStandings
 import { overallStandings } from "@/lib/tournaments/overall-standings";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { rrSeedOrder, buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
-import { plannedPlayoffBracket } from "@/lib/tournaments/planned-playoff-bracket";
+import { plannedPlayoffBracket, overlayRealPlayoffWinners } from "@/lib/tournaments/planned-playoff-bracket";
 import { PlannedPlayoffBracketView } from "@/components/tournaments/PlannedPlayoffBracketView";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
@@ -1324,14 +1324,17 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
             const ko = (matches as any[]).filter((m: any) => m.group_number === gn && m.stage === "ko");
             const playoffMade = (matches as any[]).some((m: any) => m.group_number === gn && (m.stage || "group") !== "group");
-            if (!ko.length && playoffMade) return null;
-            if (!ko.length) {
+            // The approved pool-to-play-off bracket stays the view even once real play-off games exist
+            // (display only); the generic knockout draw is only a fallback when no planned play-offs exist.
+            const plannedRowsNow = plannedPlayoffBracket(arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null, unitKeyOf(rrDivision?.label ?? getGroupLabel(champ, gn)), pc, null);
+            if (!ko.length && playoffMade && !plannedRowsNow.length) return null;
+            if (!ko.length || plannedRowsNow.length) {
               // Planned play-offs shown upfront: positions until the round robin is complete, then names.
               const plan = arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null;
               const done = gm.every((m: any) => m.is_bye || !!m.winner_member_id || m.status === "completed");
               const live = Array.from({ length: Math.max(1, pc) }, (_, i) => (getGroupStandings(gn, pc > 1 ? i + 1 : null) as any[]).map((r: any) => r.name as string));
               const standings = done ? live : null;
-              const rows = plannedPlayoffBracket(plan, unitKeyOf(rrDivision?.label ?? getGroupLabel(champ, gn)), pc, standings);
+              const rows = overlayRealPlayoffWinners(plannedPlayoffBracket(plan, unitKeyOf(rrDivision?.label ?? getGroupLabel(champ, gn)), pc, standings), ko);
               if (!rows.length) return null;
               const firstStage = rows.filter((r) => r.stage === rows[0].stage);
               const pairingSet = firstStage.some((r) => r.sides.some((s) => s.pool || s.rank != null));

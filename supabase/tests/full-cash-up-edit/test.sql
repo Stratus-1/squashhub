@@ -34,11 +34,14 @@ DO $$ DECLARE n bar_cash_ups; cnt int; BEGIN
 END $$;
 INSERT INTO bar_cash_ups(id,club_id,period_start,period_end,totals,expected_cash,counted_cash,variance,card_expected,card_counted,written_off,write_off_amount)
  VALUES('44444444-4444-4444-4444-444444444444','11111111-1111-1111-1111-111111111111','2026-10-22T04:46Z','2026-10-23T04:46Z','{"cash_opening":230,"tip_payouts":0,"methods":{"cash":{"sales":20,"tips":0}}}',250,250,0,0,0,true,0);
+INSERT INTO bar_cash_ups(id,club_id,period_start,period_end,totals,expected_cash,counted_cash,variance,card_expected,card_counted,written_off,write_off_amount)
+ VALUES('77777777-7777-7777-7777-777777777777','11111111-1111-1111-1111-111111111111','2026-10-23T04:46Z','2026-10-24T04:46Z','{"cash_opening":250,"tip_payouts":0,"methods":{"cash":{"sales":10,"tips":0}}}',260,260,0,0,0,true,0);
 DO $$ DECLARE n bar_cash_ups; later bar_cash_ups; BEGIN
  n:=test_full(240,575,56,true);
  SELECT * INTO later FROM bar_cash_ups WHERE id='44444444-4444-4444-4444-444444444444';
  IF later.expected_cash<>260 OR later.counted_cash<>250 OR later.variance<>-10 OR later.write_off_amount<>-10 OR (later.totals->>'cash_opening')::numeric<>240 THEN RAISE EXCEPTION 'FAIL downstream continuity'; END IF;
  IF NOT EXISTS(SELECT 1 FROM audit_events WHERE action='opening_cash_correction') THEN RAISE EXCEPTION 'FAIL downstream audit'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM bar_cash_ups WHERE id='77777777-7777-7777-7777-777777777777' AND expected_cash=260 AND counted_cash=260 AND variance=0 AND (totals->>'cash_opening')::numeric=250) THEN RAISE EXCEPTION 'FAIL third shift changed despite unchanged previous count'; END IF;
  n:=test_full(240,575,40,true);
  IF n.expected_cash<>190 OR (SELECT sum(amount) FROM bar_tip_payouts)<>40 THEN RAISE EXCEPTION 'FAIL historical tips'; END IF;
  IF (SELECT sum(debit-credit) FROM club_journal_entries)<>0 THEN RAISE EXCEPTION 'FAIL history balance'; END IF;

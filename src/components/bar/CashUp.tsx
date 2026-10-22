@@ -10,6 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { CashUpsReport } from "@/components/club-admin/bar/CashUpsReport";
 import { isTipPayoutInput, validTipPayout } from "@/lib/bar/tips";
+import { cashUpDateLabel } from "@/lib/bar/cash-up-date";
+export { cashUpDateLabel } from "@/lib/bar/cash-up-date";
 
 interface MethodTotal { sales: number; tips: number; count: number }
 interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number; cash_up_date?: string }
@@ -19,12 +21,6 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
 
 const R = (n: number | string | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" });
-export function cashUpDateLabel(date: string | undefined): string | null {
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const parsed = new Date(`${date}T12:00:00Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return null;
-  return parsed.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Johannesburg" });
-}
 
 export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; token?: string | null; tipsEnabled: boolean }) {
   const qc = useQueryClient();

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { cashUpDateLabel } from "@/components/bar/CashUp";
+import { cashUpDateLabel } from "@/lib/bar/cash-up-date";
 
 interface MethodTotal { sales: number; tips: number; count: number }
 interface CashUpRow {
@@ -84,7 +84,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
       if (error) throw error;
       toast.success("Cash-up undone — you can cash up again");
       setOpenId(null);
-      await Promise.all(["bar-cash-up-report", "bar-cash-up-history", "bar-cash-up-preview"].map(k => qc.invalidateQueries({ queryKey: [k] })));
+      await Promise.all(["bar-cash-up-report", "bar-cash-up-history", "bar-cash-up-preview", "bar-cash-up", "bar-staff-tips", "bar-shift-overview", "income-statement"].map(k => qc.invalidateQueries({ queryKey: [k] })));
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not undo cash-up"); }
     finally { setBusy(false); }
   }

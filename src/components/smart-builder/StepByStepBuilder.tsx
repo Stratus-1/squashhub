@@ -18,7 +18,9 @@ async function persistStructureAnswers(tid: string | null | undefined, answers: 
   try {
     const cur = await loadLifecycle(tid);
     if (!cur) return;
-    await saveLifecycle(tid, { ...cur, answers });
+    const plan = drawPlanOf(answers);
+    await saveLifecycle(tid, { ...cur, answers, format_plan: plan });
+    if (await attachTimelinePlayoffs(tid, plan)) toast.success("Planned play-offs added to the running tournament. They start automatically once the main rounds finish.");
   } catch (e: any) {
     toast.error(`Structure kept on this device, but couldn't be saved to the tournament: ${e?.message ?? "unknown error"}`);
   }
@@ -116,6 +118,7 @@ import { evaluateStructures, materiallyDifferent, type GuideAnswers, type Struct
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
+import { attachTimelinePlayoffs } from "@/lib/smart-builder/attach-timeline-playoffs";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { FeeBasisQuestion } from "./FeeBasisQuestion";
 import { LIFECYCLE, clubAllowsTournamentLadder, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
@@ -686,7 +689,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const cur = await loadLifecycle(tid);
       if (!cur) throw new Error("The saved tournament couldn't be read. Nothing was saved.");
       await saveLifecycle(tid, { ...cur, answers: JSON.parse(answersJson), format_plan: JSON.parse(drawPlanJson), ...(partnerPayAnswer === undefined ? {} : { partner_pay: partnerPayAnswer }) });
-      toast.success("Setup draft saved. Existing games and court bookings unchanged.");
+      const attached = await attachTimelinePlayoffs(tid, JSON.parse(drawPlanJson)).catch((e: any) => { toast.error(`Play-offs not added to the running tournament: ${e?.message ?? "unknown error"}`); return false; });
+      toast.success(attached ? "Setup draft saved. Planned play-offs added to the running tournament — existing games and bookings unchanged." : "Setup draft saved. Existing games and court bookings unchanged.");
     } catch (e: any) { toast.error(e.message); }
     finally { setSavingDraft(false); }
   };

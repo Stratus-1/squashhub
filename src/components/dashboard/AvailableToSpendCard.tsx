@@ -33,7 +33,7 @@ export function AvailableToSpendCard({ clubId, memberId }: { clubId?: string | n
             : `Court bookings OK (minimum ${R(data.bookingMin)}).`}
         </div>
       )}
-      {data.barBlocked && <div className="mt-1 text-destructive">Top up at least {R(-data.available + 0.01 > 0 ? -data.available : 0) === "R0.00" ? "a little" : R(-data.available)} to charge bar or shop items to your account.</div>}
+      {data.barBlocked && <div className="mt-1 text-destructive">Top up {data.available < 0 ? `at least ${R(data.available)}` : "your account"} to charge bar or shop items to your account.</div>}
       {open && (
         <div className="mt-2 rounded-md bg-muted/50 p-2 text-[12px] text-muted-foreground">
           Available = what you're allowed to owe (unpaid fees on a recurring payment plus any credit the club has given you) minus what you currently owe. Money paid in advance adds to it.

@@ -1443,6 +1443,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         names,
         totalRounds: swissSt.rounds,
         tieBreaks: swissSt.tieBreaks,
+        rrFinish: swissSt.rrFinish,
         matches: swissMatches.map(toProgressionMatch),
       });
       const laterModel = laterMatches.length ? buildSwissProgression({

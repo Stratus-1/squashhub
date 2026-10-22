@@ -7,7 +7,23 @@
  * pairing positions. Everyone else carries on Swiss among themselves. Standings stay cumulative.
  * Off by default — with the toggle off nothing here runs.
  */
+import { swissTable, type SwissGame, type SwissRow } from "./swiss-standings";
+
 export type RrFinish = { enabled: boolean; groups: number };
+
+/** Fixed pairing labels and independent remainder ranking. Qualifying opponents' points
+ * are frozen at R2: later RR results must not change the Swiss cohort's tie-breaks. */
+export function hybridSwissTable(seedOrder: string[], games: SwissGame[], finish: RrFinish | null | undefined, tieBreaks?: readonly string[] | null): SwissRow[] {
+  if (!rrFinishOn(finish) || !games.some((g) => (g.round ?? 0) >= RR_FINISH_FROM_ROUND)) return swissTable(seedOrder, games, tieBreaks);
+  const qualifying = games.filter((g) => (g.round ?? 0) < RR_FINISH_FROM_ROUND);
+  const snapshot = swissTable(seedOrder, qualifying, tieBreaks).map((r) => r.id);
+  const fixedCount = rrFinishSplit(seedOrder.length, finish.groups).groupRanges.length * 4;
+  const rest = new Set(snapshot.slice(fixedCount));
+  const table = swissTable(seedOrder, games.filter((g) => (g.round ?? 0) < RR_FINISH_FROM_ROUND || (g.a && rest.has(g.a) && (!g.b || rest.has(g.b)))), tieBreaks);
+  const stats = new Map(swissTable(seedOrder, games, tieBreaks).map((r) => [r.id, r]));
+  const fixed = snapshot.slice(0, fixedCount).flatMap((id) => { const row = stats.get(id); return row ? [row] : []; });
+  return [...fixed, ...table.filter((r) => rest.has(r.id))].map((r, i) => ({ ...r, position: i + 1 }));
+}
 
 export const RR_FINISH_ROUNDS = 5;
 export const RR_FINISH_FROM_ROUND = 3;

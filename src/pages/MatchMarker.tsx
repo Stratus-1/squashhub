@@ -689,7 +689,7 @@ export default function MatchMarker() {
       // Guard against the same finished match being saved again (repeat taps,
       // restored scoreboard after reload). Same players + same score within
       // 6 hours on this device is treated as already saved.
-      const fingerprint = [validAMemberId, validBMemberId, scoreStr, config.sourceId || ""].join("|");
+      const fingerprint = [validAMemberId, validBMemberId, scoreStr].join("|");
       const LAST_SAVED_KEY = "sh.marker.lastSaved";
       try {
         const last = JSON.parse(localStorage.getItem(LAST_SAVED_KEY) || "null");
@@ -705,6 +705,37 @@ export default function MatchMarker() {
         }
       } catch {}
 
+      // A game scored from a blank scorer may still be a scheduled tournament
+      // fixture. If exactly one unplayed Club Champs game exists between these
+      // two members in this club, post the result onto it as well.
+      let tournamentMatchId: string | null =
+        config.source === "tournament" ? config.sourceId ?? null : null;
+      let champScoreStr = scoreStr;
+      let champGameScoresJson = gameScoresJson;
+      if (!tournamentMatchId && !isForfeit && !config.isDoubles && validAMemberId && validBMemberId && config.clubId) {
+        try {
+          const pair = `and(player_a_member_id.eq.${validAMemberId},player_b_member_id.eq.${validBMemberId}),and(player_a_member_id.eq.${validBMemberId},player_b_member_id.eq.${validAMemberId})`;
+          const { data: fixtures } = await fromExt("club_champs_matches")
+            .select("id, player_a_member_id, status, winner_member_id, club_champs!inner(club_id)")
+            .eq("club_champs.club_id", config.clubId)
+            .is("winner_member_id", null)
+            .is("partner_a_member_id", null)
+            .not("status", "in", "(completed,cancelled,bye)")
+            .or(pair);
+          if (fixtures && fixtures.length === 1) {
+            const fx = fixtures[0] as any;
+            tournamentMatchId = fx.id;
+            if (fx.player_a_member_id === validBMemberId) {
+              champScoreStr = result.games.map((g) => `${g.b}-${g.a}`).join(", ");
+              champGameScoresJson = JSON.stringify({ sets: result.games.map((g) => ({ a: g.b, b: g.a })) });
+            }
+            noteParts.push(`Source: tournament ${fx.id}`);
+          }
+        } catch (e) {
+          console.warn("Tournament fixture lookup failed:", e);
+        }
+      }
+
       // Saved through a security-definer RPC: it authorises club members,
       // the players themselves, club admins and tournament officials, and is
       // idempotent on the client-generated id so retries never duplicate.
@@ -719,7 +750,7 @@ export default function MatchMarker() {
         _duration_s: result.durationSeconds,
         _confirmed: autoConfirm,
         _notes: noteParts.join(". "),
-        _tournament_match_id: config.source === "tournament" ? config.sourceId ?? null : null,
+        _tournament_match_id: tournamentMatchId,
       });
 
       if (error) {
@@ -742,7 +773,7 @@ export default function MatchMarker() {
         localStorage.removeItem(MARKER_STATE_KEY);
       } catch {}
 
-      const isTournament = config.source === "tournament" && !!config.sourceId;
+      const isTournament = !!tournamentMatchId;
       toast.success(
         isTournament
           ? "Results posted"
@@ -752,11 +783,11 @@ export default function MatchMarker() {
       );
 
       // If this was a tournament match, update the club_champs_matches record too
-      if (config.source === "tournament" && config.sourceId) {
+      if (tournamentMatchId) {
         try {
           const updatePayload: any = {
-            score: scoreStr,
-            game_scores: gameScoresJson,
+            score: champScoreStr,
+            game_scores: champGameScoresJson,
             winner_member_id: winnerMemberId,
             status: "completed",
           };
@@ -765,7 +796,7 @@ export default function MatchMarker() {
             // Look up configured No Show points on the parent tournament
             const { data: champRow } = await fromExt("club_champs_matches")
               .select("champ_id, player_a_member_id, player_b_member_id, club_champs!inner(no_show_opponent_points, no_show_player_points)")
-              .eq("id", config.sourceId)
+              .eq("id", tournamentMatchId)
               .maybeSingle();
             const opp = Number((champRow as any)?.club_champs?.no_show_opponent_points ?? 10);
             const pen = Number((champRow as any)?.club_champs?.no_show_player_points ?? 0);
@@ -780,7 +811,7 @@ export default function MatchMarker() {
 
           await fromExt("club_champs_matches")
             .update(updatePayload)
-            .eq("id", config.sourceId);
+            .eq("id", tournamentMatchId);
           // Refresh tournament views
           queryClient.invalidateQueries({ queryKey: ["club-champ-matches"] });
           queryClient.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
@@ -791,7 +822,7 @@ export default function MatchMarker() {
           try {
             (await import("@/integrations/supabase/client")).supabase.functions.invoke(
               "reflow-freed-court",
-              { body: { tournament_match_id: config.sourceId } },
+              { body: { tournament_match_id: tournamentMatchId } },
             ).catch(() => {});
           } catch { /* ignore */ }
         } catch (e) {
@@ -805,7 +836,7 @@ export default function MatchMarker() {
             if (winnerMemberId && validAMemberId && validBMemberId && config.clubId) {
               const { data: champRow } = await fromExt("club_champs_matches")
                 .select("champ_id, club_champs!inner(affects_ranking_points)")
-                .eq("id", config.sourceId)
+                .eq("id", tournamentMatchId)
                 .maybeSingle();
               const affects = (champRow as any)?.club_champs?.affects_ranking_points;
               if (affects) {
@@ -813,7 +844,7 @@ export default function MatchMarker() {
                 await enqueueRankingDelta({
                   clubId: config.clubId,
                   matchSourceType: "tournament",
-                  matchSourceId: config.sourceId,
+                  matchSourceId: tournamentMatchId,
                   winnerMemberId,
                   loserMemberId,
                 });

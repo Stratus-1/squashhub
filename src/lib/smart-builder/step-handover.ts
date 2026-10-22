@@ -210,6 +210,7 @@ export function ladderAffectsPatch(value: boolean | undefined, isNew: boolean): 
  * Re-running syncs the active entrant set (step_sync_admin_entrants): adds, updates and withdraws.
  */
 export async function persistStepTournament(i: CreateInput): Promise<string> {
+  if (i.existingId) assertTournamentPairingWritable(i.existingId);
   const row = sanitizeDraftPayload({
     club_id: i.clubId,
     name: i.name.trim(),

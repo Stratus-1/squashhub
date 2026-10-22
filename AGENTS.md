@@ -25,6 +25,7 @@
 
 ## Architecture rules
 - Swiss sequencing is a tournament-bound prospective policy minted only on fresh first-draw generation; existing Uitsig IDs are denied by shared writer/save guards and keep legacy projections. Use the pure weighted matching optimizer for enrolled new tournaments only; why: deployment and routine viewing/saving must never adopt new pairings for existing events.
+- Riverside hybrid opening-round views show canonical saved fixture blocks even when a reused exact preview chart differs; Uitsig chart routes remain unchanged; why: recorded results must never be hidden behind hypothetical opponents or leaked into other rounds.
 - Cash-up date labels use optional totals.cash_up_date metadata, never reconciliation cutoffs; why: correcting an evening label must not move sales between shifts or change opening cash.
 - Counter tab-opening requests supply all six named arguments, with an explicit null member ID for visitors; why: older defaulted RPC overloads otherwise make visitor requests ambiguous.
 - Booking grid uses saved tournament duration, not historical booking lengths, inside reserved evenings; fixture slots preserve that interval, other courts keep club slots, overlaps stay separate; why: setup changes must not retain stale short rows or move bookings.

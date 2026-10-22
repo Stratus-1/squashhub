@@ -6,7 +6,7 @@ import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments
 import { rrFinishRound } from "@/lib/tournaments/swiss-rr-finish";
 import { autoProgress } from "@/lib/tournaments/progression";
 import { atomically, generateStructuredTournament, rebuildStructured, persistStructure, insertFixtures } from "@/lib/tournaments/structured-persist";
-import { saveLifecycle } from "@/lib/smart-builder/step-handover";
+import { persistStepTournament, saveLifecycle } from "@/lib/smart-builder/step-handover";
 import { attachTimelinePlayoffs, createPlannedPlayoffFixtures } from "@/lib/smart-builder/attach-timeline-playoffs";
 
 const policy = prospectiveSwissPolicy("new-test", "2026-10-23T00:00:00Z");
@@ -118,6 +118,7 @@ describe("Existing Uitsig and prospective tournament guardrails", () => {
     await expect(insertFixtures(db,frozen,{} as any,{} as any,[])).rejects.toThrow(/protected/);
     await expect(atomically(db,frozen,async()=>{throw new Error("commit called");},async()=>{throw new Error("action called");})).rejects.toThrow(/protected/);
     await expect(saveLifecycle(frozen,{} as any)).rejects.toThrow(/protected/);
+    await expect(persistStepTournament({existingId:frozen} as any)).rejects.toThrow(/protected/);
     await expect(attachTimelinePlayoffs(frozen,{})).rejects.toThrow(/protected/);
     await expect(createPlannedPlayoffFixtures(frozen,{})).rejects.toThrow(/protected/);
     expect(await autoProgress(db,frozen)).toEqual({started:[],blocked:[],needsSetup:[]});

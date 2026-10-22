@@ -40,8 +40,10 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
       });
       text = text.replace(/^#(\d+) v #(\d+)$/, (m, a, b) => `${name("A", Number(a)) ?? `#${a}`} v ${name("A", Number(b)) ?? `#${b}`}`);
       const sides = rest.join(": ").split(" v ").map((raw): PlannedSide => {
-        const m = raw.match(/^Pool ([A-Z]) #(\d+)$/) ?? raw.match(/^#(\d+)$/)?.slice(0, 0).concat(["", "A", raw.slice(1)]) ?? null;
-        if (m) { const pool = m[1], rank = Number(m[2]); return { label: `Pool ${pool} – ${ord(rank)}`, name: name(pool, rank), pool, rank }; }
+        const pm = raw.match(/^Pool ([A-Z]) #(\d+)$/);
+        if (pm) { const rank = Number(pm[2]); return { label: `Pool ${pm[1]} – ${ord(rank)}`, name: name(pm[1], rank), pool: pm[1], rank }; }
+        const sm = raw.match(/^#(\d+)$/);
+        if (sm) { const rank = Number(sm[1]); return { label: ord(rank), name: name("A", rank), pool: null, rank }; }
         return { label: raw, name: null, pool: null, rank: null };
       });
       return { sides: [sides[0], sides[1] ?? { label: "Bye", name: null, pool: null, rank: null }] as [PlannedSide, PlannedSide], key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === g.stage)) };

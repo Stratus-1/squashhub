@@ -19,3 +19,21 @@ describe("planned play-off bracket", () => {
     expect(plannedPlayoffBracket(plan, "Ladies B", 1, null)).toEqual([]);
   });
 });
+describe("planned bracket sides", () => {
+  const qf = { stages: [
+    { name: "Quarterfinal", unit: "X", phase: "playoff", pairing: "crossover" },
+    { name: "Semifinal", unit: "X", phase: "playoff", pairing: "winners" },
+    { name: "Final", unit: "X", phase: "playoff", pairing: "winners" },
+  ] };
+  it("8 qualifiers: 4 QF, 2 SF, final with placeholders, never provisional names", () => {
+    const r = plannedPlayoffBracket(qf, "X", 2, null);
+    expect(r.map((x) => x.id)).toEqual(["QF1", "QF2", "QF3", "QF4", "SF1", "SF2", "Final"]);
+    expect(r[0].sides.map((s) => s.name)).toEqual([null, null]);
+    expect(r[0].sides[0].label).toMatch(/^Pool [AB] – \d(st|nd|rd|th)$/);
+    expect(r[4].sides.map((s) => s.label)).toEqual(["Winner QF1", "Winner QF2"]);
+  });
+  it("4 qualifiers start at SF and names appear only when standings given", () => {
+    expect(plannedPlayoffBracket(plan, "Mens A", 2, null)[0].sides[0]).toMatchObject({ label: "Pool A – 1st", name: null });
+    expect(plannedPlayoffBracket(plan, "Mens A", 2, [["Ann", "Bob"], ["Cid", "Dan"]])[0].sides[1]).toMatchObject({ label: "Pool B – 2nd", name: "Dan" });
+  });
+});

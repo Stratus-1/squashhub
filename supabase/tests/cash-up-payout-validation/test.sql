@@ -1,0 +1,16 @@
+DO $$
+DECLARE result jsonb;
+BEGIN
+  BEGIN
+    PERFORM bar_cash_up_close_v2('11111111-1111-1111-1111-111111111111','2026-10-22T04:46:14Z','[{"staff_id":"22222222-2222-2222-2222-222222222222","amount":-56}]',0,230,false,NULL,'33333333-3333-3333-3333-333333333333');
+    RAISE EXCEPTION 'TEST FAILURE: negative R56 was accepted';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM NOT LIKE 'Tips paid out must be positive amounts%' THEN RAISE; END IF;
+  END;
+  IF EXISTS(SELECT 1 FROM test_paid) OR EXISTS(SELECT 1 FROM bar_cash_ups) THEN RAISE EXCEPTION 'TEST FAILURE: negative payout wrote data'; END IF;
+  result := bar_cash_up_close_v2('11111111-1111-1111-1111-111111111111','2026-10-22T04:46:14Z','[{"staff_id":"22222222-2222-2222-2222-222222222222","amount":56}]',0,230,false,NULL,'44444444-4444-4444-4444-444444444444');
+  IF (result->>'tips_paid_at_cash_up')::numeric <> 56 OR (SELECT sum(amount) FROM test_paid) <> 56 THEN RAISE EXCEPTION 'TEST FAILURE: positive R56 not paid'; END IF;
+  DELETE FROM test_paid;
+  PERFORM bar_cash_up_close_v2('11111111-1111-1111-1111-111111111111','2026-10-22T04:46:14Z','[{"staff_id":"22222222-2222-2222-2222-222222222222","amount":0}]',0,230,false,NULL,'55555555-5555-5555-5555-555555555555');
+  IF EXISTS(SELECT 1 FROM test_paid) THEN RAISE EXCEPTION 'TEST FAILURE: zero created a payout'; END IF;
+END $$;

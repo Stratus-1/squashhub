@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { isTipPayoutInput, validTipPayout } from "@/lib/bar/tips";
 interface Balance { staff_id: string; name: string; earned: number; paid: number; remaining: number }
 export function StaffTips({ clubId, token = null }: { clubId: string; token?: string | null }) {
   const qc = useQueryClient();
@@ -19,7 +20,7 @@ export function StaffTips({ clubId, token = null }: { clubId: string; token?: st
     return (data ?? []) as unknown as Balance[];
   }});
   async function pay() {
-    if (!person || !/^\d+(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) return;
+    if (!person || !validTipPayout(amount, Number(person.remaining))) return;
     setBusy(true);
     try {
       const { error } = await supabase.rpc("bar_pay_staff_tips" as any, { _club_id: clubId, _staff_id: person.staff_id, _amount: Number(amount), _request_id: requestId, _token: token });
@@ -38,8 +39,8 @@ export function StaffTips({ clubId, token = null }: { clubId: string; token?: st
       <tbody>{data.map(row => <tr className="border-b" key={row.staff_id}><td className="py-2">{row.name}</td>{[row.earned, row.paid, row.remaining].map((n, i) => <td key={i} className="text-right tabular-nums px-1">R{Number(n).toFixed(2)}</td>)}<td className="text-right"><Button size="sm" variant="outline" disabled={Number(row.remaining) <= 0} onClick={() => { setPerson(row); setAmount(""); setRequestId(crypto.randomUUID()); }}>Pay cash</Button></td></tr>)}</tbody>
     </table>{!data.length && <p className="text-muted-foreground text-xs py-3">No staff tips recorded.</p>}</div>}
     <Dialog open={Boolean(person)} onOpenChange={open => { if (!busy && !open) setPerson(null); }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Cash tips — {person?.name}</DialogTitle><DialogDescription>Unpaid tips: R{Number(person?.remaining ?? 0).toFixed(2)}</DialogDescription></DialogHeader>
-      <Label htmlFor="tip-cash-payout">Cash paid out (R)</Label><Input id="tip-cash-payout" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} disabled={busy} />
-      <Button onClick={pay} disabled={busy || !/^\d+(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0 || Number(amount) > Number(person?.remaining ?? 0)}>Confirm cash handed over</Button>
+      <Label htmlFor="tip-cash-payout">Cash paid out (R)</Label><Input id="tip-cash-payout" inputMode="decimal" value={amount} onChange={e => { if (isTipPayoutInput(e.target.value)) setAmount(e.target.value); }} disabled={busy} />
+      <Button onClick={pay} disabled={busy || !validTipPayout(amount, Number(person?.remaining ?? 0))}>Confirm cash handed over</Button>
     </DialogContent></Dialog>
   </section>;
 }

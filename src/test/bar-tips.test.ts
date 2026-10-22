@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { emptyTip, remainingTips, tipQuote } from "@/lib/bar/tips";
+import { emptyTip, remainingTips, tipQuote, isTipPayoutInput, validTipPayout } from "@/lib/bar/tips";
 describe("bar tip amounts", () => {
+  it("paid tips accept positive R56 and reject minus R56", () => {
+    expect(validTipPayout("56", 56)).toBe(true);
+    expect(validTipPayout("-56", 56)).toBe(false);
+    expect(isTipPayoutInput("-56")).toBe(false);
+    expect(isTipPayoutInput("56")).toBe(true);
+  });
+  it("zero is only allowed as no payout during cash-up", () => {
+    expect(validTipPayout("0", 56)).toBe(false);
+    expect(validTipPayout("0", 56, true)).toBe(true);
+  });
   it("offers 10% of sale subtotal", () => expect(tipQuote(900, { mode: "percent", value: "", staffId: "grant" })).toEqual({ subtotal: 900, tip: 90, total: 990 }));
   it("R900 paid as R1000 means R100 tip", () => expect(tipQuote(900, { mode: "total", value: "1000", staffId: "grant" })).toEqual({ subtotal: 900, tip: 100, total: 1000 }));
   it("adds a specified rand amount", () => expect(tipQuote(900, { mode: "amount", value: "100", staffId: "grant" }).total).toBe(1000));

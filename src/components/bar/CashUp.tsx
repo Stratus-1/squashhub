@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useIsSuperAdmin } from "@/hooks/use-club";
+import { CashUpsReport } from "@/components/club-admin/bar/CashUpsReport";
+import { isTipPayoutInput, validTipPayout } from "@/lib/bar/tips";
+import { cashUpDateLabel } from "@/lib/bar/cash-up-date";
+export { cashUpDateLabel } from "@/lib/bar/cash-up-date";
 
 interface MethodTotal { sales: number; tips: number; count: number }
 interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number; cash_up_date?: string }
@@ -16,15 +21,11 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
 
 const R = (n: number | string | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" });
-export function cashUpDateLabel(date: string | undefined): string | null {
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const parsed = new Date(`${date}T12:00:00Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return null;
-  return parsed.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Johannesburg" });
-}
 
 export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; token?: string | null; tipsEnabled: boolean }) {
   const qc = useQueryClient();
+  const isSuperAdmin = useIsSuperAdmin();
+  const [manageHistory, setManageHistory] = useState(false);
   const [counted, setCounted] = useState("");
   const [card, setCard] = useState<string | null>(null);
   const [payouts, setPayouts] = useState<Record<string, string>>({});
@@ -50,7 +51,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const s = preview.data;
   const owed = (staff.data ?? []).filter(b => Number(b.remaining) > 0);
   const payFor = (b: Balance) => payouts[b.staff_id] ?? Number(b.remaining).toFixed(2);
-  const payoutsValid = owed.every(b => MONEY.test(payFor(b)) && Number(payFor(b)) <= Number(b.remaining));
+  const payoutsValid = owed.every(b => validTipPayout(payFor(b), Number(b.remaining), true));
   const newTips = owed.reduce((t, b) => t + (MONEY.test(payFor(b)) ? Number(payFor(b)) : 0), 0);
   const m = (k: string) => s?.methods?.[k] ?? { sales: 0, tips: 0, count: 0 };
   const gross = (k: string) => Number(m(k).sales) + Number(m(k).tips);
@@ -85,7 +86,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const row = (label: string, k: string, out: number, should: number, actual: React.ReactNode) =>
     <tr key={k} className="border-b"><td className="py-1">{label} <span className="text-muted-foreground">({m(k).count})</span></td>
       <td className="text-right tabular-nums">{R(m(k).sales)}</td><td className="text-right tabular-nums">{R(m(k).tips)}</td>
-      <td className="text-right tabular-nums">{out ? `−${R(out)}` : "—"}</td><td className="text-right tabular-nums font-medium">{R(should)}</td>
+      <td className="text-right tabular-nums">{out ? R(out) : "—"}</td><td className="text-right tabular-nums font-medium">{R(should)}</td>
       <td className="text-right pl-2">{actual}</td></tr>;
 
   return <div className="space-y-5 text-xs">
@@ -98,9 +99,9 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
         {owed.map(b => <div key={b.staff_id} className="grid grid-cols-[1fr_auto_7rem] items-center gap-2">
           <span>{b.name}</span><span className="text-muted-foreground tabular-nums">owed {R(b.remaining)}</span>
           <Input aria-label={`Tips paid to ${b.name}`} inputMode="decimal" className="h-8 text-right" value={payFor(b)} disabled={busy}
-            onChange={e => setPayouts(p => ({ ...p, [b.staff_id]: e.target.value }))} />
+            onChange={e => { const value = e.target.value; if (isTipPayoutInput(value)) setPayouts(p => ({ ...p, [b.staff_id]: value })); }} />
         </div>)}
-        {!payoutsValid && <p className="text-destructive">A payout can't be more than the tips owed.</p>}
+        {!payoutsValid && <p className="text-destructive">Enter a positive amount no greater than the tips owed, or 0 for no payout.</p>}
       </div>}
 
       <div className="overflow-x-auto"><h4 className="font-semibold mb-1">{tipsEnabled && owed.length > 0 ? "2. " : ""}Reconciliation</h4>
@@ -110,7 +111,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
           {row("Card swiped at the bar", "card_bar", 0, cardShould, <Input aria-label="Actual card at the bar" inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={cardActual} disabled={busy} onChange={e => setCard(e.target.value)} />)}
           {row("Cash", "cash", tipsOut, cashShould, <Input aria-label="Cash counted" inputMode="decimal" placeholder="Count" className="h-8 w-28 ml-auto text-right" value={counted} disabled={busy} onChange={e => setCounted(e.target.value)} />)}
           {row("Member account", "member_account", 0, gross("member_account"), <span className="tabular-nums">{R(gross("member_account"))}</span>)}
-          <tr className="font-semibold"><td className="py-1">Total</td><td className="text-right tabular-nums">{R(s.total_sales)}</td><td className="text-right tabular-nums">{R(s.total_tips)}</td><td className="text-right tabular-nums">{tipsOut ? `−${R(tipsOut)}` : "—"}</td>
+          <tr className="font-semibold"><td className="py-1">Total</td><td className="text-right tabular-nums">{R(s.total_sales)}</td><td className="text-right tabular-nums">{R(s.total_tips)}</td><td className="text-right tabular-nums">{tipsOut ? R(tipsOut) : "—"}</td>
             <td className="text-right tabular-nums">{R(gross("online") + cardShould + cashShould + gross("member_account"))}</td>
             <td className="text-right tabular-nums pl-2">{MONEY.test(counted) && MONEY.test(cardActual) ? R(gross("online") + Number(cardActual) + Number(counted) + gross("member_account")) : "—"}</td></tr>
         </tbody></table></div>
@@ -136,6 +137,8 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
       </div>
     </section>}
     <section className="space-y-2" aria-label="Previous cash-ups"><h3 className="text-sm font-semibold">Previous cash-ups</h3>
+      {isSuperAdmin && <Button size="sm" variant="outline" onClick={() => setManageHistory(v => !v)} aria-expanded={manageHistory}>Manage / undo cash-ups</Button>}
+      {isSuperAdmin && manageHistory && <CashUpsReport clubId={clubId} />}
       {!history.data?.length ? <p className="text-muted-foreground">None yet.</p> : <table className="w-full"><thead><tr className="border-b"><th className="text-left py-1">Shift</th><th className="text-right">Sales</th><th className="text-right">Tips paid</th><th className="text-right">Expected cash</th><th className="text-right">Counted</th><th className="text-right">Difference</th></tr></thead>
         <tbody>{history.data.map(h => <tr key={h.id} className="border-b"><td className="py-1">{cashUpDateLabel(h.totals?.cash_up_date) && <div className="font-semibold">{cashUpDateLabel(h.totals?.cash_up_date)}</div>}{when(h.period_start)} → {when(h.period_end)}{h.closed_by_name ? ` · ${h.closed_by_name}` : ""}</td><td className="text-right tabular-nums">{R(h.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(h.totals?.tip_payouts)}</td><td className="text-right tabular-nums">{R(h.expected_cash)}</td><td className="text-right tabular-nums">{R(h.counted_cash)}</td><td className={`text-right tabular-nums ${Number(h.variance) ? "text-destructive" : ""}`}>{R(h.variance)}{h.written_off ? " · written off" : ""}</td></tr>)}</tbody></table>}
     </section>

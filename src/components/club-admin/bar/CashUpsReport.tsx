@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { cashUpDateLabel } from "@/components/bar/CashUp";
+import { cashUpDateLabel } from "@/lib/bar/cash-up-date";
 
 interface MethodTotal { sales: number; tips: number; count: number }
 interface CashUpRow {
@@ -84,7 +84,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
       if (error) throw error;
       toast.success("Cash-up undone — you can cash up again");
       setOpenId(null);
-      await Promise.all(["bar-cash-up-report", "bar-cash-up-history", "bar-cash-up-preview"].map(k => qc.invalidateQueries({ queryKey: [k] })));
+      await Promise.all(["bar-cash-up-report", "bar-cash-up-history", "bar-cash-up-preview", "bar-cash-up", "bar-staff-tips", "bar-shift-overview", "income-statement"].map(k => qc.invalidateQueries({ queryKey: [k] })));
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not undo cash-up"); }
     finally { setBusy(false); }
   }
@@ -99,7 +99,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
     const row = (label: string, k: string, out: number, should: number, actual: React.ReactNode) =>
       <tr key={k} className="border-b"><td className="py-1">{label} <span className="text-muted-foreground">({f.m(k).count})</span></td>
         <td className="text-right tabular-nums">{R(f.m(k).sales)}</td><td className="text-right tabular-nums">{R(f.m(k).tips)}</td>
-        <td className="text-right tabular-nums">{out ? `−${R(out)}` : "—"}</td><td className="text-right tabular-nums font-medium">{R(should)}</td>
+        <td className="text-right tabular-nums">{out ? R(out) : "—"}</td><td className="text-right tabular-nums font-medium">{R(should)}</td>
         <td className="text-right pl-2">{actual}</td></tr>;
     return <div className="space-y-4 text-xs">
       <p className="text-muted-foreground">Shift from <strong>{when(c.period_start)}</strong> to <strong>{when(c.period_end)}</strong>{c.closed_by_name ? ` · closed by ${c.closed_by_name}` : ""}</p>
@@ -110,7 +110,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
             {row("Card swiped at the bar", "card_bar", 0, f.cardShould, <Input aria-label="Actual card at the bar" inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={edit.card} disabled={locked} onChange={e => setEdit({ ...edit, card: e.target.value })} />)}
             {row("Cash", "cash", f.tipsOut, f.cashShould, <Input aria-label="Cash counted" inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={edit.cash} disabled={locked} onChange={e => setEdit({ ...edit, cash: e.target.value })} />)}
             {row("Member account", "member_account", 0, f.gross("member_account"), <span className="tabular-nums">{R(f.gross("member_account"))}</span>)}
-            <tr className="font-semibold"><td className="py-1">Total</td><td className="text-right tabular-nums">{R(c.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(c.totals?.total_tips)}</td><td className="text-right tabular-nums">{f.tipsOut ? `−${R(f.tipsOut)}` : "—"}</td>
+            <tr className="font-semibold"><td className="py-1">Total</td><td className="text-right tabular-nums">{R(c.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(c.totals?.total_tips)}</td><td className="text-right tabular-nums">{f.tipsOut ? R(f.tipsOut) : "—"}</td>
               <td className="text-right tabular-nums">{R(f.gross("online") + f.cardShould + f.cashShould + f.gross("member_account"))}</td>
               <td className="text-right tabular-nums pl-2">{MONEY.test(edit.cash) && MONEY.test(edit.card) ? R(f.gross("online") + Number(edit.card) + Number(edit.cash) + f.gross("member_account")) : "—"}</td></tr>
           </tbody></table></div>

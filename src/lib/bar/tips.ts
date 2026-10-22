@@ -2,6 +2,14 @@ export type TipMode = "none" | "percent" | "amount" | "total";
 export interface TipChoice { mode: TipMode; value: string; staffId: string }
 export const emptyTip: TipChoice = { mode: "none", value: "", staffId: "" };
 
+/** Blank is editable; a minus sign is never a valid paid-tip input. */
+export const isTipPayoutInput = (value: string) => /^\d*(\.\d{0,2})?$/.test(value);
+export function validTipPayout(value: string, remaining: number, allowZero = false) {
+  if (!/^\d+(\.\d{1,2})?$/.test(value)) return false;
+  const amount = Number(value);
+  return Number.isFinite(amount) && (allowZero ? amount >= 0 : amount > 0) && amount <= remaining;
+}
+
 export function tipQuote(subtotal: number, choice: TipChoice) {
   const cents = Math.round(subtotal * 100);
   if (!Number.isSafeInteger(cents) || cents <= 0) throw new Error("The sale amount must be positive.");

@@ -1674,6 +1674,13 @@
       "when": 1792675350704,
       "tag": "0238_joiners_view_paid_fee_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 239,
+      "version": "7",
+      "when": 1792680240864,
+      "tag": "0239_reject_negative_cash_up_tip_payouts",
+      "breakpoints": true
     }
   ]
 }

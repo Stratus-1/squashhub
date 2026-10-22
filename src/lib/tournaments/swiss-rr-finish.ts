@@ -9,7 +9,34 @@
  */
 import { swissTable, type SwissGame, type SwissRow } from "./swiss-standings";
 
-export type RrFinish = { enabled: boolean; groups: number };
+export type RrFinish = { enabled: boolean; groups: number; remainderChart?: "ten_position_swap" };
+
+/** Owner-approved fixed-position chart for a 10-player remainder (local slots 1–10, R3–R5).
+ * No position pair repeats; neighbours meet only in the final round. Repeat opponents are allowed. */
+export const TEN_REMAINDER_CHART: Record<number, Array<[number, number]>> = {
+  3: [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]],
+  4: [[1, 3], [2, 5], [4, 6], [7, 9], [8, 10]],
+  5: [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]],
+};
+
+export const usesTenRemainderChart = (f: RrFinish | null | undefined, remainder: number) =>
+  f?.remainderChart === "ten_position_swap" && remainder === 10;
+
+/** Remainder slots entering `round`: start from the post-R2 order, then winner takes the better
+ * slot of each chart pair, loser the worse. A slot is null until its deciding game is complete. */
+export function tenRemainderSlots(remainder: string[], round: number, games: Array<{ a: string | null; b: string | null; winner?: string | null; round: number; state?: string }>): Array<string | null> {
+  let slots: Array<string | null> = [...remainder];
+  for (let r = 3; r < round; r++) {
+    const next: Array<string | null> = Array(slots.length).fill(null);
+    for (const [a, b] of TEN_REMAINDER_CHART[r] ?? []) {
+      const x = slots[a - 1], y = slots[b - 1];
+      const g = x && y ? games.find((f) => f.round === r && f.winner && ((f.a === x && f.b === y) || (f.a === y && f.b === x))) : undefined;
+      if (g) { next[a - 1] = g.winner as string; next[b - 1] = g.winner === x ? y : x; }
+    }
+    slots = next;
+  }
+  return slots;
+}
 
 /** Fixed pairing labels and independent remainder ranking. Qualifying opponents' points
  * are frozen at R2: later RR results must not change the Swiss cohort's tie-breaks. */

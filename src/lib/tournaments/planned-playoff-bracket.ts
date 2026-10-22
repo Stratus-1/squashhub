@@ -50,7 +50,6 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
     });
 }
 
-const ABBR: Record<string, string> = { Quarterfinal: "QF", Semifinal: "SF", Final: "F" };
 
 /**
  * Display only: fill "Winner QF1" style sides with the decided winner of the saved real play-off game,
@@ -75,4 +74,3 @@ export function overlayRealPlayoffWinners(rows: PlannedPlayoffRow[], real: any[]
   });
   return out.map((r) => ({ ...r, sides: r.sides.map((s) => { const k = s.label.match(/^Winner (\w+)$/)?.[1]; return k && winners[k] && !s.name ? { ...s, name: winners[k] } : s; }) as [PlannedSide, PlannedSide] }));
 }
-void ABBR;

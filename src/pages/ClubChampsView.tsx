@@ -4642,7 +4642,26 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Final</span>{r.finals.length ? r.finals.map(summaryMatch) : <span className="text-xs text-muted-foreground">Awaiting finalists</span>}</div>
               <div className="min-w-0"><span className="md:hidden block text-[11px] text-muted-foreground">Winner</span>{r.champion ? <span className="inline-flex items-start gap-1 text-xs font-bold text-primary break-words"><Trophy className="h-3.5 w-3.5 shrink-0" />{playoffResult(r.champion).winnerSide === "a" ? getMatchTeamA(r.champion) : getMatchTeamB(r.champion)}</span> : <span className="text-xs text-muted-foreground">{awardsCfg?.outcome === "none" ? "No overall winner" : "—"}</span>}</div>
             </div>)}
-            {rrFinalRankings.map((r) => <div key={`rr-${r.group}`} data-testid={`summary-rr-ranking-${r.group}`} className="border-b last:border-b-0 py-2.5 min-w-0">
+            {rrFinalRankings.map((r) => {
+              const allGrouped = r.rows.every((x) => x.group != null);
+              if (allGrouped) {
+                const gs = [...new Set(r.rows.map((x) => x.group as number))];
+                return <div key={`rr-${r.group}`} data-testid={`summary-rr-groups-${r.group}`} className="border-b last:border-b-0 py-2.5 min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-semibold text-sm break-words">{r.label}</span>
+                    <span className="text-xs text-muted-foreground">Round robin group results</span>
+                  </div>
+                  <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {gs.map((g) => { const gr = r.rows.filter((x) => x.group === g); return <div key={g} className="rounded border px-2 py-1.5 min-w-0">
+                      <p className="text-[11px] text-muted-foreground">Group {g} · winner <span className="font-semibold text-primary">{gr[0]?.name}</span></p>
+                      <ol className="mt-1 text-xs leading-snug">
+                        {gr.map((x, i) => <li key={x.id} className={cn("flex justify-between gap-2", i === 0 && "font-bold text-primary")}><span className="truncate"><span className="text-muted-foreground tabular-nums">{i + 1}.</span> {x.name}</span><span className="text-muted-foreground tabular-nums shrink-0">{x.rrWins}W</span></li>)}
+                      </ol>
+                    </div>; })}
+                  </div>
+                </div>;
+              }
+              return <div key={`rr-${r.group}`} data-testid={`summary-rr-ranking-${r.group}`} className="border-b last:border-b-0 py-2.5 min-w-0">
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-semibold text-sm break-words">{r.label}</span>
                 <span className="text-xs text-muted-foreground">Final ranking after 5 rounds · 1st: <span className="font-semibold text-primary">{r.rows[0]?.name}</span></span>
@@ -4650,7 +4669,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               <ol className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs leading-snug">
                 {r.rows.map((x) => <li key={x.id} className={cn("min-w-0", x.place === 1 && "font-bold text-primary")}><span className="text-muted-foreground tabular-nums">{x.place}.</span> {x.name}</li>)}
               </ol>
-            </div>)}
+            </div>; })}
         </CollapsibleSummary>}
         {!isStructured && <TournamentNextActionBar
           champId={champId!}

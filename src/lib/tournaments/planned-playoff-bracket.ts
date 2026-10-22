@@ -49,3 +49,30 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
       return { sides: [sides[0], sides[1] ?? { label: "Bye", name: null, pool: null, rank: null }] as [PlannedSide, PlannedSide], key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === g.stage)) };
     });
 }
+
+const ABBR: Record<string, string> = { Quarterfinal: "QF", Semifinal: "SF", Final: "F" };
+
+/**
+ * Display only: fill "Winner QF1" style sides with the decided winner of the saved real play-off game,
+ * and show saved real players/dates. Saved games are matched by stage and bracket order; nothing is written.
+ */
+export function overlayRealPlayoffWinners(rows: PlannedPlayoffRow[], real: any[]): PlannedPlayoffRow[] {
+  if (!real?.length) return rows;
+  const nameOf = (m: any, id: string | null) => !id ? null : id === m.player_a_member_id ? m.player_a?.name ?? null : id === m.player_b_member_id ? m.player_b?.name ?? null : null;
+  const byStage = (stage: string) => real.filter((m) => String(m.stage_label ?? "").toLowerCase().startsWith(stage.toLowerCase()))
+    .sort((a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0) || String(a.stage_label).localeCompare(String(b.stage_label)));
+  const winners: Record<string, string> = {};
+  const out = rows.map((r) => {
+    const list = byStage(r.stage);
+    const idx = rows.filter((x) => x.stage === r.stage).indexOf(r);
+    const m = list[idx];
+    if (!m) return r;
+    const w = nameOf(m, m.winner_member_id ?? null);
+    if (w) winners[r.id] = w;
+    const a = nameOf(m, m.player_a_member_id ?? null), b = nameOf(m, m.player_b_member_id ?? null);
+    const when = m.scheduled_date ? `${m.scheduled_date}${m.scheduled_time ? ` ${String(m.scheduled_time).slice(0, 5)}` : ""}` : m.play_by ? `play by ${m.play_by}` : r.when;
+    return { ...r, when, sides: [{ ...r.sides[0], name: a ?? r.sides[0].name }, { ...r.sides[1], name: b ?? r.sides[1].name }] as [PlannedSide, PlannedSide] };
+  });
+  return out.map((r) => ({ ...r, sides: r.sides.map((s) => { const k = s.label.match(/^Winner (\w+)$/)?.[1]; return k && winners[k] && !s.name ? { ...s, name: winners[k] } : s; }) as [PlannedSide, PlannedSide] }));
+}
+void ABBR;

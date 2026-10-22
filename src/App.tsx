@@ -22,6 +22,7 @@ import { NotificationActionModal } from "@/components/NotificationActionModal";
 import { NativePushListener } from "@/components/NativePushListener";
 import { NotificationDeepLinkHandler } from "@/components/NotificationDeepLinkHandler";
 import { DelegationRequestDialog } from "@/components/DelegationRequestDialog";
+import { GoogleIdentityCheck } from "@/components/GoogleIdentityCheck";
 import { RealtimeSync } from "@/components/RealtimeSync";
 import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -664,6 +665,7 @@ function AppRoutes() {
       {user && <NativePushListener />}
       {user && <NotificationDeepLinkHandler />}
       {user && <DelegationRequestDialog />}
+      {user && <GoogleIdentityCheck />}
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
       <FeedbackFab />

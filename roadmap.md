@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Taylor Gower (Nelspruit) read-only check: she did not apply — her member row NSC362 predates her Google-created login by six days and the login linked straight onto it; no terms tick was ever asked. No data changes.
+- [x] Google sign-in identity check: once per account per club, an unlinked Google login asks "is that you?" when a member matches, "is this a new application?" when nobody does, and offers another Google account when the person says it isn't them. 12 tests pass (7 decision, 5 dialog), build OK, signed-in preview quiet for a normal login; nothing published.
 - [x] Add separate 21 October label to the combined Uitsig cash-up, preserving covered sales, cutoff, R56 tips and R174 cash; no publication.
 - [x] Honor configured three-round RR stages in both pool displays: 25 focused checks pass; signed-in Ladies B has two games per round and no byes in both pools, Men's A also R1–3. Dragging retained; no saved fixture/result/booking writes or publication.
 - [x] Fixed incomplete standard standings totals from saved score text/JSON; 34 tests pass and signed-in Ladies B shows Liezel/Lisa Rahman GF3 GA0 GD+3 Pts3, opponents GA3. Results unchanged; not published.

@@ -50,7 +50,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   }});
   const s = preview.data;
   const owed = (staff.data ?? []).filter(b => Number(b.remaining) > 0);
-  const payFor = (b: Balance) => payouts[b.staff_id] ?? Number(b.remaining).toFixed(2);
+  const payFor = (b: Balance) => payouts[b.staff_id] ?? "0";
   const payoutsValid = owed.every(b => validTipPayout(payFor(b), Number(b.remaining), true));
   const newTips = owed.reduce((t, b) => t + (MONEY.test(payFor(b)) ? Number(payFor(b)) : 0), 0);
   const m = (k: string) => s?.methods?.[k] ?? { sales: 0, tips: 0, count: 0 };
@@ -95,7 +95,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
 
       {tipsEnabled && owed.length > 0 && <div className="rounded-md border p-3 space-y-2">
         <h4 className="font-semibold">1. Tips to pay out in cash now</h4>
-        <p className="text-muted-foreground">Change the amount to pay only part of the tips — the rest stays owed to the staff member.</p>
+        <p className="text-muted-foreground">Starts at 0 — enter only the tips taken in cash now. Anything left stays owed to the staff member.</p>
         {owed.map(b => <div key={b.staff_id} className="grid grid-cols-[1fr_auto_7rem] items-center gap-2">
           <span>{b.name}</span><span className="text-muted-foreground tabular-nums">owed {R(b.remaining)}</span>
           <Input aria-label={`Tips paid to ${b.name}`} inputMode="decimal" className="h-8 text-right" value={payFor(b)} disabled={busy}

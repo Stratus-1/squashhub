@@ -1,51 +1,121 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { PlannedPlayoffRow, PlannedSide } from "@/lib/tournaments/planned-playoff-bracket";
 
-/** Display-only connected bracket for planned play-offs (no writes). Columns QF → SF → Final with connector lines. */
-const POOL_TONE = ["bg-primary text-primary-foreground", "bg-accent text-accent-foreground", "bg-secondary text-secondary-foreground", "bg-muted text-foreground"];
-export const poolTone = (pool: string | null) => (pool ? POOL_TONE[(pool.charCodeAt(0) - 65) % POOL_TONE.length] : "bg-muted text-muted-foreground");
+/**
+ * Display-only connected bracket for planned play-offs (no writes).
+ * Pool standings → QF → SF → Final, with coloured connector lines measured from the rendered layout.
+ */
+const POOL_TONES = [
+  { chip: "bg-primary text-primary-foreground", ring: "border-primary/60", head: "bg-primary/15 text-primary", line: "hsl(var(--primary))" },
+  { chip: "bg-warning text-background", ring: "border-warning/60", head: "bg-warning/15 text-warning", line: "hsl(var(--warning))" },
+  { chip: "bg-success text-background", ring: "border-success/60", head: "bg-success/15 text-success", line: "hsl(var(--success))" },
+  { chip: "bg-accent text-accent-foreground", ring: "border-accent", head: "bg-accent/30 text-accent-foreground", line: "hsl(var(--accent-foreground))" },
+];
+const toneOf = (pool: string | null) => (pool ? POOL_TONES[(pool.charCodeAt(0) - 65) % POOL_TONES.length] : null);
+export const poolTone = (pool: string | null) => toneOf(pool)?.chip ?? "bg-muted text-muted-foreground";
 
-function Side({ s }: { s: PlannedSide }) {
+export type PoolStanding = { pool: string; title: string; names: string[]; qualifiers: number };
+const ord = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
+
+function Side({ s, slot }: { s: PlannedSide; slot: string | null }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5 px-2 py-1">
-      {s.rank != null && <span className={cn("shrink-0 rounded px-1 text-[10px] font-bold", poolTone(s.pool))}>{s.pool ?? ""}{s.rank}</span>}
-      <span className={cn("truncate", s.name ? "font-medium" : "text-muted-foreground")}>{s.name ?? s.label}</span>
+    <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5" data-side={slot ?? undefined}>
+      {s.rank != null && <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold", poolTone(s.pool))}>{s.pool ?? ""}{s.rank}</span>}
+      <span className={cn("truncate", s.name ? "font-semibold text-foreground" : "text-muted-foreground")}>{s.name ?? s.label}</span>
     </div>
   );
 }
 
-export function PlannedPlayoffBracketView({ rows }: { rows: PlannedPlayoffRow[] }) {
+type Line = { d: string; color: string; dashed: boolean };
+
+export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false }: { rows: PlannedPlayoffRow[]; pools?: PoolStanding[]; confirmed?: boolean }) {
   const stages = [...new Set(rows.map((r) => r.stage))];
   const cols = stages.map((st) => rows.filter((r) => r.stage === st));
+  const wrap = useRef<HTMLDivElement>(null);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const measure = () => {
+      const base = el.getBoundingClientRect();
+      const box = (n: Element) => { const r = n.getBoundingClientRect(); return { l: r.left - base.left, r: r.right - base.left, y: r.top - base.top + r.height / 2 }; };
+      const curve = (x1: number, y1: number, x2: number, y2: number) => { const m = (x1 + x2) / 2; return `M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}`; };
+      const out: Line[] = [];
+      el.querySelectorAll<HTMLElement>("[data-side]").forEach((side) => {
+        const slot = side.dataset.side!;
+        const src = el.querySelector(`[data-pool-slot="${slot}"]`);
+        if (!src) return;
+        const a = box(src), b = box(side);
+        out.push({ d: curve(a.r, a.y, b.l, b.y), color: toneOf(slot[0])?.line ?? "hsl(var(--border))", dashed: !confirmed });
+      });
+      el.querySelectorAll<HTMLElement>("[data-feeds]").forEach((game) => {
+        game.dataset.feeds!.split(",").forEach((id) => {
+          const src = el.querySelector(`[data-game="${id}"]`);
+          if (!src) return;
+          const a = box(src), b = box(game);
+          out.push({ d: curve(a.r, a.y, b.l, b.y), color: "hsl(var(--primary))", dashed: false });
+        });
+      });
+      setLines(out);
+      setSize({ w: el.scrollWidth, h: el.scrollHeight });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rows, pools, confirmed]);
+
+  const feedsOf = (g: PlannedPlayoffRow) => g.sides.map((s) => s.label.match(/^Winner (\S+)$/)?.[1]).filter(Boolean).join(",");
+
   return (
     <div className="overflow-x-auto pb-1" data-testid="planned-playoff-bracket">
-      <div className="flex min-w-max gap-6">
+      <div ref={wrap} className="relative flex min-w-max gap-12 p-1">
+        <svg className="pointer-events-none absolute left-0 top-0" width={size.w} height={size.h} aria-hidden>
+          {lines.map((l, i) => <path key={i} d={l.d} fill="none" stroke={l.color} strokeWidth={2} strokeOpacity={0.85} strokeDasharray={l.dashed ? "5 4" : undefined} />)}
+        </svg>
+        {pools.length > 0 && (
+          <div className="flex w-52 flex-col justify-around gap-3">
+            <div className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pool standings</div>
+            {pools.map((p) => {
+              const t = toneOf(p.pool);
+              return (
+                <div key={p.pool} className={cn("overflow-hidden rounded-lg border-2 bg-card text-xs", t?.ring)} data-testid={`pool-standing-${p.pool}`}>
+                  <div className={cn("px-2 py-1 text-[11px] font-bold uppercase tracking-wide", t?.head)}>{p.title}</div>
+                  {p.names.map((n, i) => (
+                    <div key={i} data-pool-slot={i < p.qualifiers ? `${p.pool}${i + 1}` : undefined} className={cn("flex items-center gap-1.5 border-t border-border px-2 py-1", i >= p.qualifiers && "opacity-50")}>
+                      <span className={cn("w-9 shrink-0 rounded px-1 text-center text-[10px] font-bold", i < p.qualifiers ? t?.chip : "bg-muted text-muted-foreground")}>{ord(i + 1)}</span>
+                      <span className="truncate font-medium">{n}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {cols.map((games, ci) => {
           const last = ci === cols.length - 1;
-          const pairs = games.length > 1 ? Array.from({ length: Math.ceil(games.length / 2) }, (_, k) => games.slice(2 * k, 2 * k + 2)) : [games];
           return (
-            <div key={stages[ci]} className="flex w-52 flex-col">
+            <div key={stages[ci]} className="flex w-56 flex-col">
               <div className="mb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{stages[ci]}</div>
-              <div className="flex flex-1 flex-col">
-                {pairs.map((pair, pi) => (
-                  <div key={pi} className="relative flex flex-1 flex-col">
-                    {pair.map((g) => (
-                      <div key={g.key} className="relative flex flex-1 items-center py-1.5">
-                        {ci > 0 && <span className="absolute -left-3 top-1/2 w-3 border-t border-border" />}
-                        <div className={cn("w-full overflow-hidden rounded-md border bg-card text-xs", last ? "border-primary" : "border-border")}>
-                          <div className="flex items-center justify-between border-b border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
-                            <span className="font-semibold text-foreground">{g.id}</span>{g.when && <span>{g.when}</span>}
-                          </div>
-                          <Side s={g.sides[0]} />
-                          <div className="border-t border-border" />
-                          <Side s={g.sides[1]} />
-                        </div>
-                        {!last && <span className="absolute -right-3 top-1/2 w-3 border-t border-border" />}
+              <div className="flex flex-1 flex-col justify-around gap-2">
+                {games.map((g) => {
+                  const slot = (s: PlannedSide) => (s.pool && s.rank != null ? `${s.pool}${s.rank}` : null);
+                  return (
+                    <div key={g.key} data-game={g.id} data-feeds={feedsOf(g) || undefined}
+                      className={cn("overflow-hidden rounded-lg border bg-card text-xs shadow-sm", last ? "border-2 border-warning" : "border-border")}>
+                      <div className={cn("flex items-center justify-between px-2 py-1 text-[10px]", last ? "bg-warning/15" : "bg-muted/60")}>
+                        <span className={cn("font-bold", last ? "text-warning" : "text-foreground")}>{last ? "🏆 " : ""}{g.id}</span>
+                        {g.when && <span className="text-muted-foreground">{g.when}</span>}
                       </div>
-                    ))}
-                    {!last && pair.length === 2 && <span className="absolute -right-3 top-1/4 bottom-1/4 border-r border-border" />}
-                  </div>
-                ))}
+                      <Side s={g.sides[0]} slot={slot(g.sides[0])} />
+                      <div className="border-t border-border" />
+                      <Side s={g.sides[1]} slot={slot(g.sides[1])} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

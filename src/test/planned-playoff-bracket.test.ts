@@ -37,3 +37,24 @@ describe("planned bracket sides", () => {
     expect(plannedPlayoffBracket(plan, "Mens A", 2, [["Ann", "Bob"], ["Cid", "Dan"]])[0].sides[1]).toMatchObject({ label: "Pool B – 2nd", name: "Dan" });
   });
 });
+describe("quarterfinal added after the semifinal", () => {
+  const added = { stages: [
+    { name: "Quarterfinal", unit: "M", phase: "playoff", pairing: "later" },
+    { name: "Semifinal", unit: "M", phase: "playoff", pairing: "crossover" },
+    { name: "Final", unit: "M", phase: "playoff", pairing: "winners" },
+  ] };
+  const pools = [["A1n", "A2n", "A3n", "A4n"], ["B1n", "B2n", "B3n", "B4n"]];
+  it("inherits the semifinal's crossover and shows finished pool names in QFs", () => {
+    const r = plannedPlayoffBracket(added, "M", 2, pools);
+    expect(r[0].sides.map((s) => s.name)).toEqual(["A1n", "B4n"]);
+    expect(r.filter((x) => x.stage === "Semifinal").map((x) => x.sides.map((s) => s.label).join(" v "))).toEqual(["Winner QF1 v Winner QF2", "Winner QF3 v Winner QF4"]);
+  });
+  it("uses the category's pool crossover when stages say decide later", () => {
+    const r = plannedPlayoffBracket({ playoff: { choice: "playoffs", pairing: "cross_pools" }, stages: added.stages.map((s) => ({ ...s, pairing: "later" })) }, "M", 2, pools);
+    expect(r[0].sides[0]).toMatchObject({ label: "Pool A – 1st", name: "A1n" });
+  });
+  it("no pairing chosen anywhere: no invented pairings", () => {
+    const r = plannedPlayoffBracket({ stages: added.stages.map((s) => ({ ...s, pairing: "later" })) }, "M", 2, pools);
+    expect(r[0].sides.map((s) => s.name)).toEqual([null, null]);
+  });
+});

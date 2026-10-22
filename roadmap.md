@@ -1,4 +1,7 @@
 # Roadmap
+- [ ] Verify Uitsig tip payout is positive R56 with closing/opening cash R230; no duplicate payment.
+- [ ] Make latest cash-up Undo accessible to Super Admin and verify without undoing live cash-ups.
+- [ ] Reject negative paid-tip amounts in cash-up and staff payout forms and server validation; add focused tests.
 - [x] Taylor Gower (Nelspruit) read-only check: she did not apply — her member row NSC362 predates her Google-created login by six days and the login linked straight onto it; no terms tick was ever asked. No data changes.
 - [x] Google sign-in identity check: once per account per club, an unlinked Google login asks "is that you?" when a member matches, "is this a new application?" when nobody does, and offers another Google account when the person says it isn't them. 12 tests pass (7 decision, 5 dialog), build OK, signed-in preview quiet for a normal login; nothing published.
 - [x] Add separate 21 October label to the combined Uitsig cash-up, preserving covered sales, cutoff, R56 tips and R174 cash; no publication.

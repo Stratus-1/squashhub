@@ -894,9 +894,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   useEffect(() => {
     if (!structurePlayoffs) return;
     const next = syncPlayoffStages(stages, structurePlayoffs, (n, u) => newStage(n, "scheduled", u, "playoff"));
-    if (!samePlayoffStages(stages, next)) setStages(next);
+    // Play-offs ticked on the structure page mean "Yes" here, so their stages show and ask for dates.
+    const anyPlanned = Object.values(structurePlayoffs).some((r) => r.length > 0);
+    const needChoice = anyPlanned && playoff.choice !== "playoffs";
+    const stagesChanged = !samePlayoffStages(stages, next);
+    if (needChoice || stagesChanged) setA({ ...a, stages: next, ...(needChoice ? { playoff: { ...playoff, choice: "playoffs" } } : {}) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [structurePlayoffs, stages]);
+  }, [structurePlayoffs, stages, playoff.choice]);
   const bottomHalfUnits = useMemo(() => {
     const raw = a.originalStructure as Record<string, any> | undefined, keys: string[] = raw?._unit_keys ?? [];
     return keys.filter((_, i) => raw?.league_playoff_bottom_half?.[String(i + 1)]);

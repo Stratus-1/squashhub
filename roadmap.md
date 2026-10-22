@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Add separate 21 October label to the combined Uitsig cash-up, preserving covered sales, cutoff, R56 tips and R174 cash; no publication.
 - [x] Honor configured three-round RR stages in both pool displays: 25 focused checks pass; signed-in Ladies B has two games per round and no byes in both pools, Men's A also R1–3. Dragging retained; no saved fixture/result/booking writes or publication.
 - [x] Fixed incomplete standard standings totals from saved score text/JSON; 34 tests pass and signed-in Ladies B shows Liezel/Lisa Rahman GF3 GA0 GD+3 Pts3, opponents GA3. Results unchanged; not published.
 - [x] Ladies B setup changed to three RR rounds with both existing four-player pools; saved stage schedule/mirror and setup round counts verified at 3. Fixtures/results fingerprint unchanged; play-offs deferred.

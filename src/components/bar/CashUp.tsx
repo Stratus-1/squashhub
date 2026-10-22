@@ -9,13 +9,19 @@ import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface MethodTotal { sales: number; tips: number; count: number }
-interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number }
+interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number; cash_up_date?: string }
 interface Closed { id: string; period_start: string; period_end: string; totals: Summary; expected_cash: number; counted_cash: number; variance: number; closed_by_name: string | null; written_off?: boolean }
 interface Balance { staff_id: string; name: string; earned: number; paid: number; remaining: number }
 const MONEY = /^\d+(\.\d{1,2})?$/;
 
 const R = (n: number | string | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" });
+export function cashUpDateLabel(date: string | undefined): string | null {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T12:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return null;
+  return parsed.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Johannesburg" });
+}
 
 export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; token?: string | null; tipsEnabled: boolean }) {
   const qc = useQueryClient();
@@ -131,7 +137,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
     </section>}
     <section className="space-y-2" aria-label="Previous cash-ups"><h3 className="text-sm font-semibold">Previous cash-ups</h3>
       {!history.data?.length ? <p className="text-muted-foreground">None yet.</p> : <table className="w-full"><thead><tr className="border-b"><th className="text-left py-1">Shift</th><th className="text-right">Sales</th><th className="text-right">Tips paid</th><th className="text-right">Expected cash</th><th className="text-right">Counted</th><th className="text-right">Difference</th></tr></thead>
-        <tbody>{history.data.map(h => <tr key={h.id} className="border-b"><td className="py-1">{when(h.period_start)} → {when(h.period_end)}{h.closed_by_name ? ` · ${h.closed_by_name}` : ""}</td><td className="text-right tabular-nums">{R(h.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(h.totals?.tip_payouts)}</td><td className="text-right tabular-nums">{R(h.expected_cash)}</td><td className="text-right tabular-nums">{R(h.counted_cash)}</td><td className={`text-right tabular-nums ${Number(h.variance) ? "text-destructive" : ""}`}>{R(h.variance)}{h.written_off ? " · written off" : ""}</td></tr>)}</tbody></table>}
+        <tbody>{history.data.map(h => <tr key={h.id} className="border-b"><td className="py-1">{cashUpDateLabel(h.totals?.cash_up_date) && <div className="font-semibold">{cashUpDateLabel(h.totals?.cash_up_date)}</div>}{when(h.period_start)} → {when(h.period_end)}{h.closed_by_name ? ` · ${h.closed_by_name}` : ""}</td><td className="text-right tabular-nums">{R(h.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(h.totals?.tip_payouts)}</td><td className="text-right tabular-nums">{R(h.expected_cash)}</td><td className="text-right tabular-nums">{R(h.counted_cash)}</td><td className={`text-right tabular-nums ${Number(h.variance) ? "text-destructive" : ""}`}>{R(h.variance)}{h.written_off ? " · written off" : ""}</td></tr>)}</tbody></table>}
     </section>
   </div>;
 }

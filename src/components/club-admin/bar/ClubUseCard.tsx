@@ -28,7 +28,7 @@ export function ClubUseCard({ clubId }: { clubId: string }) {
   const { data: items = [] } = useQuery({
     queryKey: ["bar-club-use-items", clubId],
     queryFn: async () => (await db.from("bar_items").select("id,name,division,unit_yield,stock_units,avg_unit_cost,cost_price")
-      .eq("club_id", clubId).eq("item_kind", "stock").eq("is_active", true).order("name")).data ?? [],
+      .eq("club_id", clubId).eq("item_kind", "stock").order("name")).data ?? [],
   });
 
   const { data: history = [] } = useQuery({

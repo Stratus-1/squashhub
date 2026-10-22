@@ -4,9 +4,9 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$HERE/../../.."
 D="$(mktemp -d)"
 chmod 777 "$D"
-trap 'runuser -u nobody -- pg_ctl -D "$D/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$D"' EXIT
-runuser -u nobody -- initdb -D "$D/data" -U lovable >/dev/null
-runuser -u nobody -- pg_ctl -D "$D/data" -o "-p 54419 -k $D -c listen_addresses=''" -l "$D/log" -w start >/dev/null
+trap 'runuser -u lovable -- pg_ctl -D "$D/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$D"' EXIT
+runuser -u lovable -- initdb -D "$D/data" -U lovable >/dev/null
+runuser -u lovable -- pg_ctl -D "$D/data" -o "-p 54419 -k $D -c listen_addresses=''" -l "$D/log" -w start >/dev/null
 P=(psql -X -q -v ON_ERROR_STOP=1 -h "$D" -p 54419 -U lovable -d postgres)
 "${P[@]}" -f "$HERE/stubs.sql"
 python3 - "$ROOT/drizzle/migrations/0213_bar_cash_up_tips_and_writeoff.sql" "$D/function.sql" <<'PY'

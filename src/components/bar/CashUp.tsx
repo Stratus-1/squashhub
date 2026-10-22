@@ -86,7 +86,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const row = (label: string, k: string, out: number, should: number, actual: React.ReactNode) =>
     <tr key={k} className="border-b"><td className="py-1">{label} <span className="text-muted-foreground">({m(k).count})</span></td>
       <td className="text-right tabular-nums">{R(m(k).sales)}</td><td className="text-right tabular-nums">{R(m(k).tips)}</td>
-      <td className="text-right tabular-nums">{out ? `−${R(out)}` : "—"}</td><td className="text-right tabular-nums font-medium">{R(should)}</td>
+      <td className="text-right tabular-nums">{out ? R(out) : "—"}</td><td className="text-right tabular-nums font-medium">{R(should)}</td>
       <td className="text-right pl-2">{actual}</td></tr>;
 
   return <div className="space-y-5 text-xs">
@@ -111,7 +111,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
           {row("Card swiped at the bar", "card_bar", 0, cardShould, <Input aria-label="Actual card at the bar" inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={cardActual} disabled={busy} onChange={e => setCard(e.target.value)} />)}
           {row("Cash", "cash", tipsOut, cashShould, <Input aria-label="Cash counted" inputMode="decimal" placeholder="Count" className="h-8 w-28 ml-auto text-right" value={counted} disabled={busy} onChange={e => setCounted(e.target.value)} />)}
           {row("Member account", "member_account", 0, gross("member_account"), <span className="tabular-nums">{R(gross("member_account"))}</span>)}
-          <tr className="font-semibold"><td className="py-1">Total</td><td className="text-right tabular-nums">{R(s.total_sales)}</td><td className="text-right tabular-nums">{R(s.total_tips)}</td><td className="text-right tabular-nums">{tipsOut ? `−${R(tipsOut)}` : "—"}</td>
+          <tr className="font-semibold"><td className="py-1">Total</td><td className="text-right tabular-nums">{R(s.total_sales)}</td><td className="text-right tabular-nums">{R(s.total_tips)}</td><td className="text-right tabular-nums">{tipsOut ? R(tipsOut) : "—"}</td>
             <td className="text-right tabular-nums">{R(gross("online") + cardShould + cashShould + gross("member_account"))}</td>
             <td className="text-right tabular-nums pl-2">{MONEY.test(counted) && MONEY.test(cardActual) ? R(gross("online") + Number(cardActual) + Number(counted) + gross("member_account")) : "—"}</td></tr>
         </tbody></table></div>

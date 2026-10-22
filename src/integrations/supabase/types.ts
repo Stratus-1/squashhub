@@ -980,6 +980,51 @@ export type Database = {
           },
         ]
       }
+      bar_club_use_requests: {
+        Row: {
+          club_id: string
+          created_at: string
+          device_id: string
+          id: string
+          payload: Json
+          result: Json
+          staff_name: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          device_id: string
+          id: string
+          payload: Json
+          result: Json
+          staff_name: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          device_id?: string
+          id?: string
+          payload?: Json
+          result?: Json
+          staff_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_club_use_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_club_use_requests_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_counter_devices: {
         Row: {
           active: boolean
@@ -19490,6 +19535,16 @@ export type Database = {
         Args: { _club: string; _end: string; _start: string }
         Returns: Json
       }
+      _bar_club_use_post: {
+        Args: {
+          _item: string
+          _qty: number
+          _reason: string
+          _source_id?: string
+          _staff_name?: string
+        }
+        Returns: Json
+      }
       _bar_counter_device: { Args: { _token: string }; Returns: string }
       _bar_earn_tip: {
         Args: { _id: string; _member?: string; _method: string }
@@ -20184,6 +20239,15 @@ export type Database = {
       }
       bar_counter_close_empty_tab: {
         Args: { _club_id?: string; _tab_id: string; _token?: string }
+        Returns: Json
+      }
+      bar_counter_club_use: {
+        Args: {
+          _lines: Json
+          _reason: string
+          _request_id: string
+          _token: string
+        }
         Returns: Json
       }
       bar_counter_context: {

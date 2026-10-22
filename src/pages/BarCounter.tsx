@@ -3,6 +3,7 @@ import { useBarTips } from "@/hooks/use-bar-tips";
 import { TipEditor } from "@/components/bar/TipEditor";
 import { StaffTips } from "@/components/bar/StaffTips";
 import { CashUp } from "@/components/bar/CashUp";
+import { CounterClubUseDialog } from "@/components/bar/CounterClubUseDialog";
 import { ShiftSummary, ShiftTabs, useShiftOverview } from "@/components/bar/ShiftOverview";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
 /**
@@ -36,7 +37,7 @@ import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle, Wallet } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle, Wallet, Gift } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
@@ -130,6 +131,7 @@ export default function BarCounter() {
   const [tipChoice, setTipChoice] = useState<TipChoice>(emptyTip);
   const [tipsOpen, setTipsOpen] = useState(false);
   const [cashUpOpen, setCashUpOpen] = useState(false);
+  const [clubUseOpen, setClubUseOpen] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
@@ -577,6 +579,7 @@ export default function BarCounter() {
     setActiveTabId(null);
     setCart({});
     setSettled(null);
+    setClubUseOpen(false);
   }
 
   function exitCounter() {
@@ -691,7 +694,9 @@ export default function BarCounter() {
             {money(board.tabs.reduce((s, t) => s + Number(t.total || 0), 0))} outstanding
           </p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => setClubUseOpen(true)}><Gift className="h-4 w-4" />Club sponsored</Button>
+          {clubUseOpen && <CounterClubUseDialog key={token} token={token} operator={operator} items={board.items} onClose={() => setClubUseOpen(false)} />}
           <Dialog open={tipsOpen} onOpenChange={setTipsOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Staff tips</DialogTitle></DialogHeader>{tipsOpen && <StaffTips clubId={board.club_id} token={token} />}</DialogContent></Dialog>
           <Dialog open={cashUpOpen} onOpenChange={setCashUpOpen}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Cash-up</DialogTitle></DialogHeader>{cashUpOpen && <CashUp clubId={board.club_id} token={token} tipsEnabled={Boolean(tipConfig?.enabled)} />}</DialogContent></Dialog>
           {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips</Button>}

@@ -1688,6 +1688,13 @@
       "when": 1792681074408,
       "tag": "0240_cash_up_paid_tip_corrections",
       "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1792681682108,
+      "tag": "0241_pin_counter_club_sponsored_stock",
+      "breakpoints": true
     }
   ]
 }

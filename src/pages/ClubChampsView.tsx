@@ -4519,9 +4519,16 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
 
     // Play-offs card — grouped by bracket_position (position-based) or a
     // single knockout list when there's only one league.
-    const playoffCard = playoffsExist ? (() => {
+    // Structured tournaments: play-offs belong to their own category. Only the selected category's rows, and
+    // never for a category whose play-offs already render in its own pool-to-play-off bracket.
+    const cardMatches = !isStructured ? playoffMatches : playoffMatches.filter((m: any) => {
+      if (catGroup != null && m.group_number !== catGroup) return false;
+      const planned = plannedPlayoffBracket(arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null, unitKeyOf(getGroupLabel(champ, m.group_number)), 1, null);
+      return !planned.length;
+    });
+    const playoffCard = cardMatches.length ? (() => {
       const stageOrder = ["playoff_qf", "playoff_sf", "playoff_final", "playoff_3rd"];
-      const sorted = [...playoffMatches].sort((a: any, b: any) => {
+      const sorted = [...cardMatches].sort((a: any, b: any) => {
         const pa = (a.bracket_position ?? 0) - (b.bracket_position ?? 0);
         if (pa !== 0) return pa;
         return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);

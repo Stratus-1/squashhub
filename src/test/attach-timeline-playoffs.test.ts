@@ -38,3 +38,14 @@ describe("timeline play-offs attach on setup save", () => {
     expect(next.divisions.slice(1)).toEqual(s.divisions.slice(1));
   });
 });
+
+import { placeholderDates } from "@/lib/smart-builder/attach-timeline-playoffs";
+describe("planned play-off fixture dates", () => {
+  const plan = { stages: [
+    { name: "Semifinal", unit: "Mens A 2", phase: "playoff", mode: "play_by", deadline: "2026-11-14" },
+    { name: "Final", unit: "Mens A 2", phase: "playoff", mode: "scheduled", date: "2026-11-15", from: "11:00", to: "17:00" },
+  ] };
+  it("semifinal fixtures get the play-by date", () => expect(placeholderDates(plan, "Mens A 2 · Singles", "Semifinal 1")).toEqual({ play_by: "2026-11-14" }));
+  it("final fixture gets its fixed day", () => expect(placeholderDates(plan, "Mens A 2 · Singles", "Final")).toEqual({ scheduled_date: "2026-11-15" }));
+  it("other categories get nothing", () => expect(placeholderDates(plan, "Ladies B · Singles", "Final")).toEqual({}));
+});

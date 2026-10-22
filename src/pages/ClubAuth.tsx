@@ -1600,6 +1600,13 @@ export default function ClubAuth() {
                   : <>New to {clubName}? Create an account and complete your profile.</>}
               </p>
 
+              {!hideGoogleAuth && !isAssociation && (
+                <div className="mb-4 space-y-2">
+                  <GoogleSignInButton label="Register with Google" showHint />
+                  <GoogleAuthDivider text="or register with email and password" />
+                </div>
+              )}
+
               <form id="club-new-member-form" onSubmit={handleNewMemberSignup} className="space-y-3">
                 <div>
                   <Label htmlFor="new-name">Full Name <span className="text-destructive">*</span></Label>

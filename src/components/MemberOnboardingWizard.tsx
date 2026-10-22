@@ -25,6 +25,7 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
 import { computeJoinFee, nextRenewalDate } from "@/lib/fee-proration";
+import { termsPatch, termsPendingFromMetadata } from "@/lib/terms-acceptance";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -46,6 +47,7 @@ import {
   type SkillsDraft,
 } from "@/components/SkillsExpertiseFields";
 import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace, LogOut } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface StepDef {
   id: string;
@@ -64,6 +66,7 @@ const RULES_STEP: StepDef = { id: "rules", label: "Club Rules", icon: ScrollText
 const FAMILY_STEP: StepDef = { id: "family", label: "Family Members", icon: Users };
 const FACE_STEP: StepDef = { id: "face", label: "Face Enrolment", icon: ScanFace };
 const DONE_STEP: StepDef = { id: "done", label: "Complete", icon: Check };
+const TERMS_STEP: StepDef = { id: "terms", label: "Terms & Privacy", icon: FileText };
 
 /** Extract date of birth from SA ID number (first 6 digits = YYMMDD) */
 function getAgeFromSAId(idNumber: string): number | null {
@@ -128,6 +131,16 @@ export function MemberOnboardingWizard({
   const money = (n: number) => fmtMoney(n, 2);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  // Every signup path records terms acceptance on the auth account: the email
+  // form ticks it, the visitor and league flows write it server-side. A Google
+  // sign-in has none, so the wizard collects the tick and writes the same keys.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsPending, setTermsPending] = useState(false);
+
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    setTermsPending(termsPendingFromMetadata(user.user_metadata));
+  }, [open, user?.id]);
 
   const club = clubData?.club;
   const clubId = club?.id || ctxClub?.id;
@@ -156,9 +169,10 @@ export function MemberOnboardingWizard({
       steps.splice(feesAt + 1, 0, FAMILY_STEP);
     }
     if (faceRequired) steps.push(FACE_STEP);
+    if (termsPending) steps.push(TERMS_STEP);
     steps.push(DONE_STEP);
     return steps;
-  }, [faceRequired, rulesApply, isFamilyPrimary]);
+  }, [faceRequired, rulesApply, isFamilyPrimary, termsPending]);
 
   // Face enrolment state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1139,11 +1153,23 @@ export function MemberOnboardingWizard({
     if (step === STEPS.length - 1) {
       handleSave();
     } else {
+      if (currentStepId === "terms" && termsAccepted) void recordTermsAcceptance();
       const to = Math.min(step + 1, STEPS.length - 1);
       saveProgress(STEPS[to].id);
       setStep(to);
     }
   };
+
+  // The email registration form stores acceptance in the account's metadata.
+  // A Google sign-in never sees that form, so write the same two keys the same
+  // way — once, and never over an earlier acceptance.
+  async function recordTermsAcceptance() {
+    if (!user?.id) return;
+    const patch = termsPatch(user.user_metadata, new Date().toISOString());
+    if (!patch) return;
+    const { error } = await supabase.auth.updateUser({ data: patch });
+    if (error) console.warn("[MemberOnboardingWizard] terms acceptance record error", error);
+  }
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   // Each step must open at the top — otherwise long steps (e.g. Skills) appear to open halfway down.
@@ -1160,6 +1186,7 @@ export function MemberOnboardingWizard({
     }
     if (step === 2) return categoryLocked || feeCategories.length === 0 || !!feeCategoryId;
     if (currentStepId === "rules") return !rulesRequireAcceptance || rulesAccepted;
+    if (currentStepId === "terms") return termsAccepted;
     if (currentStepId === "family") return !familyDraftError(familyPrimaryCat, familyDrafts);
     if (currentStepId === "face") return !!capturedPhoto;
     return true;
@@ -1473,6 +1500,36 @@ export function MemberOnboardingWizard({
                     </span>
                   </label>
                 )}
+              </motion.div>
+            )}
+
+            {/* ─── TERMS & PRIVACY ─── */}
+            {currentStepId === "terms" && (
+              <motion.div key="terms" {...slideVariants} className="flex-1 space-y-4 pt-2">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-heading">Terms &amp; Privacy</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Before the club can finish your application, please confirm you agree to our terms.
+                  </DialogDescription>
+                </DialogHeader>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={termsAccepted}
+                    onCheckedChange={(v) => setTermsAccepted(v === true)}
+                    aria-label="Accept Terms and Privacy Policy"
+                  />
+                  <span className="text-[12px] leading-snug text-muted-foreground">
+                    I agree to the{" "}
+                    <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                      Terms of Use
+                    </Link>{" "}
+                    and{" "}
+                    <Link to="/privacy" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                      Privacy Policy
+                    </Link>
+                    . <span className="text-destructive">*</span>
+                  </span>
+                </label>
               </motion.div>
             )}
 

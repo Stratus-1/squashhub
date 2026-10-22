@@ -61,7 +61,7 @@
         "cmdk": "^1.1.1",
         "date-fns": "^3.6.0",
         "dompurify": "^3.4.5",
-        "edmonds-blossom": "^1.0.0",
+        "edmonds-blossom-fixed": "^1.0.1",
         "embla-carousel-react": "^8.6.0",
         "eventsource-parser": "^4.1.1",
         "framer-motion": "^12.35.0",
@@ -1173,7 +1173,7 @@
 
     "eastasianwidth": ["eastasianwidth@0.2.0", "", {}, "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA=="],
 
-    "edmonds-blossom": ["edmonds-blossom@1.0.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/edmonds-blossom/-/edmonds-blossom-1.0.0.tgz", {}, "sha512-wz18RgLg21nW4afc80d080fZuAjiaePfSoHje56aOiH8mO6O5Mc/VAv7s8bCBJkxsks37e0cYTS0dNirsQ4/rg=="],
+    "edmonds-blossom-fixed": ["edmonds-blossom-fixed@1.0.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/edmonds-blossom-fixed/-/edmonds-blossom-fixed-1.0.1.tgz", {}, "sha512-wtpraSt4yJeUpNU8RGC4q2JBxsJbHFxI7/htm/mS4FgxSN90WBwmgE7QZwpcY70KJRqmfLCNxU49UIc+DfzLKQ=="],
 
     "ee-first": ["ee-first@1.1.1", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/ee-first/-/ee-first-1.1.1.tgz", {}, "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow=="],
 

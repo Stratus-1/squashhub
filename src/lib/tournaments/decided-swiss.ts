@@ -4,6 +4,7 @@
  * pairing into a normal fixture and books its planned court slot in the same step. Idempotent.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { isFrozenUitsigTournament } from "./swiss-sequencing-policy";
 import { projectCourtFixtures, projectDecidedPlayByFixtures, projectSwissBookingRetries, type ProjectionInput, type ProjectedCourtFixture } from "@/lib/tournaments/projected-court-fixtures";
 
 export type ProjectedChampFixture = ProjectedCourtFixture & { courtName: string };
@@ -32,6 +33,7 @@ export async function loadProjectedFixtures(champ: any): Promise<ProjectedChampF
 }
 
 export async function createDecidedSwissGames(tid: string): Promise<{ created: number; booked: number; issues: string[] }> {
+  if (isFrozenUitsigTournament(tid)) return { created: 0, booked: 0, issues: ["Existing Uitsig tournament is protected; no pairing or booking updates performed."] };
   const sb = supabase as any;
   const { data: champ } = await sb.from("club_champs").select("*").eq("id", tid).maybeSingle();
   if (!champ) return { created: 0, booked: 0, issues: [] };

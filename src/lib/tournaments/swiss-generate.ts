@@ -16,7 +16,7 @@ export async function generateNextSwissRound(champId: string, spec: TournamentSp
     const div = full.divisions[divisionIndex];
     const rows = matches.filter((m) => m.group_number === divisionIndex + 1)
       .map((m) => toFixtureRow(d.divisionId, m, d.stages.find((x) => x.id === m.stage_key)?.kind ?? "swiss"));
-    const next = nextSwissRound(champId, div, stageId, rows);
+    const next = nextSwissRound(champId, div, stageId, rows, true, full.swissSequencing);
     await insertFixtures(db, champId, full, await persistStructure(db, champId, full), next, rows);
   });
 }

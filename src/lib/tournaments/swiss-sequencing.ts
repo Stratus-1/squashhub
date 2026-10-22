@@ -1,4 +1,4 @@
-import blossom from "edmonds-blossom";
+import blossom from "edmonds-blossom-fixed";
 import { IntegrityError } from "./contract";
 
 export interface SequencingPlayer { id: string; points: number; seed: number; byes?: number }
@@ -13,6 +13,8 @@ export function sequenceSwissRound(input: {
   positionOffset?: number;
 }): { pairs: Array<[string, string | null]>; exceptions: string[] } {
   const { players, played, round, finalRound } = input;
+  if (!Number.isInteger(round) || !Number.isInteger(finalRound) || round < 1 || finalRound < round)
+    throw new IntegrityError("swiss_round", "Swiss sequencing needs a valid current and final round.");
   if (new Set(players.map((p) => p.id)).size !== players.length) throw new IntegrityError("swiss_field", "Duplicate Swiss entrants.");
   if (!players.length) return { pairs: [], exceptions: [] };
   const n = players.length, final = round === finalRound;
@@ -39,9 +41,48 @@ export function sequenceSwissRound(input: {
     }
     if (odd) edges.push([i, n, -((players[i].byes ?? 0) * byeCountUnit + (n - 1 - i) * byeRankUnit)]);
   }
-  const mates = blossom(edges, true);
+  let mates = blossom(edges, true);
   if (Array.from({ length: vertices }, (_, i) => mates[i]).some((j) => j == null || j < 0))
     throw new IntegrityError("swiss_repeat", `Round ${round}: no complete pairing without repeat opponents exists. Saved games remain unchanged.`);
+  // Exact bounded opportunity lookahead for small even cohorts: choose among equally fair
+  // current draws only. Check edge-disjoint continuation, not imaginary future results.
+  // The final hypothetical matching rewards TODAY'S adjacency; actual ranks are recomputed later.
+  if (!final && !odd && n <= 8 && finalRound - round <= 2) {
+    const legal = new Map(edges.map(([i,j,w]) => [`${i}:${j}`, -w]));
+    const enumerate = (blocked: ReadonlySet<string>, visit: (pairs: Array<[number,number]>) => void) => {
+      const walk = (free: number[], pairs: Array<[number,number]>) => {
+        if (!free.length) { visit(pairs); return; }
+        const [i,...rest] = free;
+        for (const j of rest) if (legal.has(`${i}:${j}`) && !blocked.has(`${i}:${j}`))
+          walk(rest.filter((k) => k !== j), [...pairs,[i,j]]);
+      };
+      walk(Array.from({length:n},(_,i)=>i),[]);
+    };
+    const cache = new Map<string, number>();
+    const opportunity = (blocked: Set<string>, roundsLeft: number): number => {
+      const cacheKey = `${roundsLeft}/${[...blocked].sort().join(",")}`;
+      const cached = cache.get(cacheKey); if (cached !== undefined) return cached;
+      let best = -1;
+      enumerate(blocked, (pairs) => {
+        const value = roundsLeft === 1 ? pairs.filter(([i,j])=>adjacent(i,j)).length
+          : opportunity(new Set([...blocked,...pairs.map(([i,j])=>`${i}:${j}`)]),roundsLeft-1);
+        best=Math.max(best,value);
+      });
+      cache.set(cacheKey,best); return best;
+    };
+    const scoreGap = (pairs: Array<[number,number]>) => pairs.reduce((s,[i,j])=>s+Math.abs(players[i].points-players[j].points),0);
+    const current = mates.flatMap((j,i): Array<[number,number]> => i<j?[[i,j]]:[]);
+    const fairness = scoreGap(current);
+    let bestOpportunity=-1, bestCost=Infinity;
+    enumerate(new Set(), (pairs) => {
+      if (scoreGap(pairs)!==fairness) return;
+      const future=opportunity(new Set(pairs.map(([i,j])=>`${i}:${j}`)),finalRound-round);
+      const cost=pairs.reduce((s,[i,j])=>s+(legal.get(`${i}:${j}`)??0),0);
+      if (future<bestOpportunity || (future===bestOpportunity && cost>=bestCost)) return;
+      bestOpportunity=future; bestCost=cost;
+      mates=Array(n).fill(-1); pairs.forEach(([i,j])=>{mates[i]=j;mates[j]=i;});
+    });
+  }
   const pairs: Array<[string, string | null]> = [];
   for (let i = 0; i < n; i++) {
     const j = mates[i];

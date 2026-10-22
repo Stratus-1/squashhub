@@ -18,6 +18,7 @@
 import { IntegrityError, contractIssues, isDecided, progressionOf, sourcePoolCount, type PlannedStage } from "./contract";
 import { mappingIssues } from "./mapping";
 import { inheritedStageScoring } from "./stage-scoring";
+import { assertTournamentPairingWritable, isFrozenUitsigTournament } from "./swiss-sequencing-policy";
 import { transitionIssues } from "./transition";
 import { specDateIssues } from "./date-window";
 import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, rankSourcePools, resolveTieBreaks, startNextStructuredStage, type Db, type SourcePool } from "./structured-persist";
@@ -184,6 +185,7 @@ export interface ProgressReport { started: StageStatus[]; blocked: StageStatus[]
  */
 export async function autoProgress(db: Db, tid: string, exec: Exec = (fn) => fn(db)): Promise<ProgressReport> {
   const report: ProgressReport = { started: [], blocked: [], needsSetup: [] };
+  if (isFrozenUitsigTournament(tid)) return report;
   await promoteAutoDeferred(db, tid, exec);
   for (let pass = 0; pass < 10; pass++) {
     const states = await stageLifecycle(db, tid);
@@ -330,6 +332,7 @@ export async function checkDeferredSetup(db: Db, tid: string, divisionKey: strin
 
 /** Save the set-up stage and create ONLY its games, in one commit. Earlier stages/results are never touched. */
 export async function setupDeferredStage(db: Db, tid: string, divisionKey: string, stageKey: string, setup: DeferredSetup, exec: Exec = (fn) => fn(db)) {
+  assertTournamentPairingWritable(tid);
   const check = await checkDeferredSetup(db, tid, divisionKey, stageKey, setup);
   if (!setupOk(check)) throw new IntegrityError("setup", [...check.structure, ...check.engine, ...check.schedule, ...check.scoring].join("; "));
   return exec(async (tx) => {
@@ -343,6 +346,7 @@ export async function setupDeferredStage(db: Db, tid: string, divisionKey: strin
 
 /** Record the admin's order for tied positions in one source stage pool (only fills genuine ties). */
 export async function decidePositionOrder(db: Db, tid: string, divisionKey: string, stageKey: string, poolIndex: number, order: string[], exec: Exec = (fn) => fn(db)) {
+  assertTournamentPairingWritable(tid);
   return exec(async (tx) => {
     const [t] = await tx.select("tournaments", { id: tid });
     const spec = t.builder_spec as TournamentSpec;
@@ -354,6 +358,7 @@ export async function decidePositionOrder(db: Db, tid: string, divisionKey: stri
 
 /** Save the tournament's tie-break order on the live spec (affects only stages not yet created). */
 export async function saveTieBreakRules(db: Db, tid: string, tieBreaks: TieBreakCriterion[], exec: Exec = (fn) => fn(db)) {
+  assertTournamentPairingWritable(tid);
   return exec(async (tx) => {
     const [t] = await tx.select("tournaments", { id: tid });
     if (t?.builder_architecture !== "structured" || !t.builder_spec) return;

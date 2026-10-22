@@ -8,6 +8,7 @@ import type { FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { cn } from "@/lib/utils";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { swissRrDisplay } from "@/lib/tournaments/swiss-rr-display";
+import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 import { buildSwissCalendar, type SwissCalendarEntry, buildProposedSwissGrid, movement, SWISS_FORMAT_LABEL, type StageScheduleConfig, type SwissProgressionModel } from "@/lib/tournaments/swiss-progression-view";
 
 const STATE_LABEL = { completed: "Played", scheduled: "To play", awaiting_opponent: "Opponent to be decided", bye: "Bye" } as const;
@@ -20,7 +21,7 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
   const allComplete = model.swissStageComplete;
   const rr = swissRrDisplay(model, clubId);
   const kind = model.format === "positional" ? "fixed-position" : "score-based";
-  const proposed = buildProposedSwissGrid(model, { schedule: stageSchedule, courtName, slots, appliedPlayBy, noRepeats, previewFinals: positionalPreview, exactMensCChart, mensCRemainderChart: infoTournamentId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && title.startsWith("Mens C"), exactLadiesAChart, exactSixteenChart });
+  const proposed = buildProposedSwissGrid(model, { factualOpeningRounds: clubId === RIVERSIDE_CLUB_ID && !!model.rrFinish?.enabled, schedule: stageSchedule, courtName, slots, appliedPlayBy, noRepeats, previewFinals: positionalPreview, exactMensCChart, mensCRemainderChart: infoTournamentId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && title.startsWith("Mens C"), exactLadiesAChart, exactSixteenChart });
   const gridWrapRef = useRef<HTMLDivElement>(null);
   // Scroll the round track (inside the viewer) so the target column comes into view.
   const jumpTo = (sel: string, from?: Element | null) => {

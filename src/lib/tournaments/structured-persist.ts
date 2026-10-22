@@ -19,6 +19,7 @@ import { venuesOutsideSet } from "../smart-builder/venues";
 import { rawSchedule, resolveSpecDates, specDateIssues } from "./date-window";
 import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
 import { withdrawalUpdates } from "./withdraw";
+import { assertTournamentPairingWritable, prospectiveSwissPolicy } from "./swiss-sequencing-policy";
 
 /* ───── spec from the Beta definition ───── */
 
@@ -156,6 +157,7 @@ export function bufferedDb(base: Db) {
 
 /** Run an engine action against a buffer and commit it atomically. */
 export async function atomically<T>(base: Db, tid: string, send: (tid: string, ops: CommitOp[]) => Promise<unknown>, fn: (db: Db) => Promise<T>): Promise<T> {
+  assertTournamentPairingWritable(tid);
   const b = bufferedDb(base);
   const result = await fn(b.db); // any IntegrityError here means nothing was sent
   await b.commit(tid, send);
@@ -171,6 +173,7 @@ export interface StructureIds {
 
 /** Persist divisions → stages → pools. Idempotent: re-uses existing rows by spec_key. */
 export async function persistStructure(db: Db, tid: string, spec: TournamentSpec): Promise<StructureIds> {
+  assertTournamentPairingWritable(tid);
   const ids: StructureIds = { division: {}, stage: {}, pool: {}, stageKind: {} };
   const [tour] = await db.select("tournaments", { id: tid });
   if (tour?.builder_architecture !== "structured") throw new IntegrityError("not_structured", "Only structured (Beta) tournaments use this path.");
@@ -235,6 +238,7 @@ export function persistedStage(spec: TournamentSpec, f: { divisionId: string; st
 
 /** Validate then insert rounds + matches for engine fixtures. Nothing is written if validation fails. */
 export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, ids: StructureIds, fixtures: EngineFixture[], existing: FixtureRow[] = []) {
+  assertTournamentPairingWritable(tid);
   assertFixtureIdentity(hierarchyFromSpec(tid, spec), fixtures);
   assertNoReentry([...existing, ...fixtures]);
   for (const d of spec.divisions) {
@@ -340,16 +344,20 @@ export async function loadEntrants(db: Db, tid: string, rawSpec: TournamentSpec)
 
 /** Full first-stage generation for a structured tournament. */
 export async function generateStructuredTournament(db: Db, tid: string) {
+  assertTournamentPairingWritable(tid);
   const [t] = await db.select("tournaments", { id: tid });
   if (t?.builder_architecture !== "structured" || !t.builder_spec) throw new IntegrityError("not_structured", "Tournament has no structured specification.");
   const existing = await db.select("club_champs_matches", { champ_id: tid });
   if (existing.length) throw new IntegrityError("exists", "Games already exist. Use rebuild instead.");
   const spec = await loadEntrants(db, tid, t.builder_spec as TournamentSpec);
+  const policy = prospectiveSwissPolicy(tid, String(t.created_at ?? ""));
+  if (policy) spec.swissSequencing = policy;
   for (const d of spec.divisions) {
     const errs = contractIssues(d).filter((i) => i.level === "error");
     if (errs.length) throw new IntegrityError("contract", `${d.label}: ${errs.map((e) => e.message).join("; ")}`);
     if (d.entrants.length < 2) throw new IntegrityError("entrants", `${d.label}: needs at least 2 entries before games can be generated.`);
   }
+  if (policy) await db.update("tournaments", { id: tid }, { builder_spec: spec });
   const ids = await persistStructure(db, tid, spec);
   const fixtures = generateFromSpec(spec, tid);
   return insertFixtures(db, tid, spec, ids, fixtures);
@@ -488,6 +496,7 @@ export interface RebuildReport { regenerated: string[]; removedFuture: number; c
  *   who are no longer in the event are removed (withdrawal). Nothing is re-paired.
  */
 export async function rebuildStructured(db: Db, tid: string): Promise<RebuildReport> {
+  assertTournamentPairingWritable(tid);
   if (!db.remove) throw new IntegrityError("unsupported", "This database cannot remove rows.");
   const [t] = await db.select("tournaments", { id: tid });
   if (t?.builder_architecture !== "structured" || !t.builder_spec) throw new IntegrityError("not_structured", "Tournament has no structured specification.");

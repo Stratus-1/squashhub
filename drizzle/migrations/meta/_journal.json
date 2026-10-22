@@ -1639,6 +1639,13 @@
       "when": 1792658443648,
       "tag": "0233_bar_club_sponsored_use",
       "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1792658546410,
+      "tag": "0234_bar_cash_up_undo",
+      "breakpoints": true
     }
   ]
 }

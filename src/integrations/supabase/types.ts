@@ -20067,6 +20067,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      bar_cash_up_undo: {
+        Args: { _id: string; _reason: string }
+        Returns: Json
+      }
       bar_club_use: {
         Args: { _item: string; _qty: number; _reason: string }
         Returns: Json

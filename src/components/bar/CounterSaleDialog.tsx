@@ -340,9 +340,10 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
             </div>
           )}
 
-          <Separator />
+          {!clubUseOnly && <Separator />}
 
           {/* Customer */}
+          {!clubUseOnly && (
           <Tabs value={customer} onValueChange={(v) => { setCustomer(v as any); setSelected(null); }}>
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="member" className="gap-1.5 text-xs"><User className="w-3.5 h-3.5" /> Member</TabsTrigger>
@@ -458,17 +459,20 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
               </p>
             </TabsContent>
           </Tabs>
+          )}
 
           <Separator />
 
           <div className="flex items-center justify-between">
             <Badge variant="secondary" className="text-sm py-1 px-2">
-              {money(total)}{count > 0 ? ` · ${count} item${count > 1 ? "s" : ""}` : ""}
+              {clubUseOnly
+                ? `${count} item${count === 1 ? "" : "s"} · no charge`
+                : <>{money(total)}{count > 0 ? ` · ${count} item${count > 1 ? "s" : ""}` : ""}</>}
             </Badge>
           </div>
 
           <div className="space-y-2">
-            {customer === "member" && (
+            {!clubUseOnly && customer === "member" && (
               <Button
                 className="w-full h-11 gap-2"
                 disabled={busy || count === 0 || !selected}

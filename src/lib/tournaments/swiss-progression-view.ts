@@ -265,7 +265,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       // Owner's 18-player chart: positions 13–18 follow the chart (13v17,14v18,15v16 / 13v15,14v17,16v18 / 13v14,15v16,17v18),
       // with positions taken from standings after the previous round. Names appear only once that round is complete.
       const chartBlocks: GridBlock[] = [];
-      if (chartRest) {
+      if (chartRest && !tenChart) {
         // Fixed-position chart: winner takes the better slot of its pair, loser the worse slot (no points re-ranking).
         // A slot shows a name as soon as the game that decides it is complete.
         const chart = uitsigMensCChart();

@@ -122,14 +122,14 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
         <div className="flex justify-between"><span>+ New cash sales{tipsEnabled ? " & tips" : ""}</span><span className="tabular-nums">{R(gross("cash"))}</span></div>
         <div className="flex justify-between"><span>− Tips paid out</span><span className="tabular-nums">{R(tipsOut)}</span></div>
         <div className="flex justify-between font-semibold border-t pt-1"><span>New balance (should be in the till)</span><span className="tabular-nums">{R(cashShould)}</span></div>
-        <p className="text-muted-foreground">Any difference must be cleared by an admin — write it off below or record a transaction.</p>
+        <p className="text-muted-foreground">Any difference must be cleared by an admin — record it below or enter a transaction.</p>
       </div>
 
       <div className="rounded-md border p-3 space-y-2">
         {variance !== null && <p className={variance === 0 ? "text-muted-foreground" : "text-destructive font-medium"}>{variance === 0 ? "Everything balances." : `${variance > 0 ? "Surplus" : "Shortfall"} of ${R(Math.abs(variance))}`}</p>}
         {variance !== null && variance !== 0 && <label className="flex items-start gap-2">
           <Checkbox checked={writeOff} onCheckedChange={v => setWriteOff(v === true)} disabled={busy} />
-          <span>Write off the {variance > 0 ? "surplus" : "shortfall"} to bar cost of sales {variance > 0 ? "(reduces cost of sales)" : "(adds to cost of sales)"}</span>
+          <span>Record the {variance > 0 ? "surplus" : "shortfall"} against bar cost of sales {variance > 0 ? "(reduces cost of sales)" : "(adds to cost of sales)"}</span>
         </label>}
         <Label htmlFor="cash-note">Note (optional)</Label>
         <Input id="cash-note" value={note} maxLength={500} onChange={e => setNote(e.target.value)} disabled={busy} />
@@ -140,7 +140,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
       {isSuperAdmin && <Button size="sm" variant="outline" onClick={() => setManageHistory(v => !v)} aria-expanded={manageHistory}>View / edit cash-ups</Button>}
       {isSuperAdmin && manageHistory && <CashUpsReport clubId={clubId} />}
       {!history.data?.length ? <p className="text-muted-foreground">None yet.</p> : <table className="w-full"><thead><tr className="border-b"><th className="text-left py-1">Shift</th><th className="text-right">Sales</th><th className="text-right">Tips paid</th><th className="text-right">Expected cash</th><th className="text-right">Counted</th><th className="text-right">Difference</th></tr></thead>
-        <tbody>{history.data.map(h => <tr key={h.id} className="border-b"><td className="py-1">{cashUpDateLabel(h.totals?.cash_up_date) && <div className="font-semibold">{cashUpDateLabel(h.totals?.cash_up_date)}</div>}{when(h.period_start)} → {when(h.period_end)}{h.closed_by_name ? ` · ${h.closed_by_name}` : ""}</td><td className="text-right tabular-nums">{R(h.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(h.totals?.tip_payouts)}</td><td className="text-right tabular-nums">{R(h.expected_cash)}</td><td className="text-right tabular-nums">{R(h.counted_cash)}</td><td className={`text-right tabular-nums ${Number(h.variance) ? "text-destructive" : ""}`}>{R(h.variance)}{h.written_off ? " · written off" : ""}</td></tr>)}</tbody></table>}
+        <tbody>{history.data.map(h => <tr key={h.id} className="border-b"><td className="py-1">{cashUpDateLabel(h.totals?.cash_up_date) && <div className="font-semibold">{cashUpDateLabel(h.totals?.cash_up_date)}</div>}{when(h.period_start)} → {when(h.period_end)}{h.closed_by_name ? ` · ${h.closed_by_name}` : ""}</td><td className="text-right tabular-nums">{R(h.totals?.total_sales)}</td><td className="text-right tabular-nums">{R(h.totals?.tip_payouts)}</td><td className="text-right tabular-nums">{R(h.expected_cash)}</td><td className="text-right tabular-nums">{R(h.counted_cash)}</td><td className={`text-right tabular-nums ${Number(h.variance) ? "text-destructive" : ""}`}>{R(h.variance)}{h.written_off ? Number(h.variance) > 0 ? " · surplus recorded" : Number(h.variance) < 0 ? " · shortfall recorded" : " · reconciled" : ""}</td></tr>)}</tbody></table>}
     </section>
   </div>;
 }

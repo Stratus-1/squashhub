@@ -117,6 +117,8 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
     setSelected(null);
     setVisitorName("");
     setVisitorPhone("");
+    setClubUseOpen(false);
+    setClubUseReason("");
   };
 
   /**
@@ -481,23 +483,27 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
                 <Wallet className="w-4 h-4" /> Charge to member account
               </Button>
             )}
-            <Button
-              variant="outline" className="w-full h-11 gap-2"
-              disabled={busy || count === 0 || !customerReady}
-              onClick={payOnline}
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} Pay online
-            </Button>
-            <Button
-              variant="outline" className="w-full h-11 gap-2"
-              disabled={busy || count === 0 || !customerReady}
-              onClick={cardAtCounter}
-            >
-              <CreditCard className="w-4 h-4" /> Card paid at counter
-            </Button>
+            {!clubUseOnly && (
+              <>
+                <Button
+                  variant="outline" className="w-full h-11 gap-2"
+                  disabled={busy || count === 0 || !customerReady}
+                  onClick={payOnline}
+                >
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} Pay online
+                </Button>
+                <Button
+                  variant="outline" className="w-full h-11 gap-2"
+                  disabled={busy || count === 0 || !customerReady}
+                  onClick={cardAtCounter}
+                >
+                  <CreditCard className="w-4 h-4" /> Card paid at counter
+                </Button>
+              </>
+            )}
 
             {/* Club-sponsored basket — stock down, cost to "Stock club expense", never a sale. */}
-            {!clubUseOpen ? (
+            {!clubUseOpen && !clubUseOnly ? (
               <Button
                 variant="outline" className="w-full h-11 gap-2"
                 disabled={busy || count === 0}
@@ -534,9 +540,11 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
                   >
                     {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />} Record club use
                   </Button>
-                  <Button variant="ghost" className="h-9" disabled={busy} onClick={() => setClubUseOpen(false)}>
-                    Cancel
-                  </Button>
+                  {!clubUseOnly && (
+                    <Button variant="ghost" className="h-9" disabled={busy} onClick={() => setClubUseOpen(false)}>
+                      Cancel
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -544,7 +552,7 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
         </DialogContent>
       </Dialog>
 
-      {selected && (
+      {!clubUseOnly && selected && (
         <BarOtpDialog
           open={pinOpen}
           onOpenChange={setPinOpen}

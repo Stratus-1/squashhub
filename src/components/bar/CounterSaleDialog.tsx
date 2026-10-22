@@ -294,9 +294,9 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
             </DialogDescription>
           </DialogHeader>
 
-          {/* Basket */}
+          {/* Basket — club-sponsored mode lists stock products only (specials/selling options can't be given away at cost) */}
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {inStock.map((item) => {
+            {(clubUseOnly ? inStock.filter((i) => !i.item_kind || i.item_kind === "stock") : inStock).map((item) => {
               const qty = cart[item.id] || 0;
               return (
                 <Card

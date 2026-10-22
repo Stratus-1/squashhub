@@ -1,3 +1,4 @@
+SELECT set_config('test.uid','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',false);
 CREATE FUNCTION test_correction(amount numeric,reason text DEFAULT 'Correct paid tips', expected numeric DEFAULT 40) RETURNS bar_cash_ups LANGUAGE sql AS $$
  SELECT bar_cash_up_admin_correct('33333333-3333-3333-3333-333333333333',230,575,'Test',reason,
  jsonb_build_array(jsonb_build_object('id',md5('33333333-3333-3333-3333-333333333333:22222222-2222-2222-2222-222222222222')::uuid,'amount',amount,'expected_amount',expected))) $$;

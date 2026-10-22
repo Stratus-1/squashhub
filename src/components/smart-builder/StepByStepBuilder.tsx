@@ -324,6 +324,8 @@ const PAIRING_LABEL: Record<PlayoffPairing, string> = {
   winners: "Winners of the previous stage",
   later: "Pairing: decide later",
 };
+/** Pairing wording for a specific stage, so a Quarterfinal never shows Semifinal pairings. */
+const stagePairingLabel = (p: PlayoffPairing, stageName: string) => p === "crossover" ? crossoverLabel(stageName) : p === "same_position" ? samePositionLabel(stageName) : PAIRING_LABEL[p];
 type StageDay = { date: string; from: string; to: string; courtIds: string[] };
 type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; /** Further playing days for this round; day 1 is date/from/to/courtIds. */ extraDays?: StageDay[]; phase?: StagePhase; pairing?: PlayoffPairing; /** Playoffs: start automatically when the previous stage is complete, or wait for organiser confirmation. */ start?: "auto" | "confirm" };
 const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = "main"): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [], phase, ...(phase === "playoff" ? { pairing: "later" as PlayoffPairing } : {}) });
@@ -1055,7 +1057,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     const base = s.mode === "scheduled"
       ? [s.date ? fmtDay(s.date) : "date not set", ...(s.extraDays ?? []).map((d) => d.date ? fmtDay(d.date) : "date not set")].join(" + ") + ` · ${s.from || "?"}–${s.to || "?"} · ${s.courtIds.length ? clubCourts.filter((x) => s.courtIds.includes(x.id)).map((x) => x.name).join(", ") : "no courts"}`
       : stageWhen(s);
-    const extra = [c ? `~${c.matches} matches / ${c.slots} slots` : "", s.phase === "playoff" && s.pairing ? PAIRING_LABEL[s.pairing] : "",
+    const extra = [c ? `~${c.matches} matches / ${c.slots} slots` : "", s.phase === "playoff" && s.pairing ? stagePairingLabel(s.pairing, s.name) : "",
       st === "conflict" ? `clashes with ${clash.get(s.id)!.join(", ")}` : "", shared.has(s.id) ? `shares courts with ${shared.get(s.id)!.join(", ")}` : ""].filter(Boolean);
     return [base, ...extra].join(" · ");
   };
@@ -1096,8 +1098,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           const opts = pairingOptions(s, playoffStages, s.unit ? formatFor(s.unit).kind : format.kind);
           const cur = s.pairing ?? "later";
           return <select aria-label="Pairing / format" title="Who plays whom at this stage" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={cur} onChange={(e) => updStage(s.id, { pairing: e.target.value as PlayoffPairing })}>
-            {!opts.includes(cur) && <option value={cur}>{PAIRING_LABEL[cur]}</option>}
-            {opts.map((p) => <option key={p} value={p}>{PAIRING_LABEL[p]}</option>)}
+            {!opts.includes(cur) && <option value={cur}>{stagePairingLabel(cur, s.name)}</option>}
+            {opts.map((p) => <option key={p} value={p}>{stagePairingLabel(p, s.name)}</option>)}
           </select>;
         })()}
         <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => void removeStage(s)}><Trash2 className="h-4 w-4" /></Button>
@@ -3159,7 +3161,7 @@ function StageTable({ stages, unitName, when }: { stages: ClubStage[]; unitName:
   if (!stages.length) return <p className="text-xs text-muted-foreground">No stages yet.</p>;
   const main = stages.filter((s) => (s.phase ?? "main") === "main");
   const po = stages.filter((s) => s.phase === "playoff");
-  const row = (s: ClubStage) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{s.phase === "playoff" ? "Playoff" : "Main round"}</td><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1 pr-2">{s.phase === "playoff" ? PAIRING_LABEL[s.pairing ?? "later"] : "—"}</td><td className="py-1">{when(s)}</td></tr>;
+  const row = (s: ClubStage) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{s.phase === "playoff" ? "Playoff" : "Main round"}</td><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1 pr-2">{s.phase === "playoff" ? stagePairingLabel(s.pairing ?? "later", s.name) : "—"}</td><td className="py-1">{when(s)}</td></tr>;
   return <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Phase</th><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Stage</th><th className="py-1 pr-2">Pairing</th><th className="py-1">Method · deadline or date/time · courts</th></tr></thead>
     <tbody>{main.map(row)}
       {po.length > 0 && <tr><td colSpan={5} className="py-1.5"><div className="rounded bg-primary/10 px-2 py-1 text-center font-semibold text-primary">▼ Playoffs begin</div></td></tr>}

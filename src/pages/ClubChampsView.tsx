@@ -106,6 +106,7 @@ import { SwissRrFinishStandings } from "@/components/tournaments/SwissRrFinishSt
 import { rrFinishStandings } from "@/lib/tournaments/swiss-rr-standings";
 import { swissRrDisplay } from "@/lib/tournaments/swiss-rr-display";
 import { hybridSwissTable, rrFinishOn, RR_FINISH_FROM_ROUND } from "@/lib/tournaments/swiss-rr-finish";
+import { rrFinalRanking } from "@/lib/tournaments/rr-final-ranking";
 import { CategoryFixtureCalendar } from "@/components/tournaments/CategoryFixtureCalendar";
 import type { CategoryCalendarFixture } from "@/lib/tournaments/category-calendar";
 import { fixtureScoreDetails, fixtureState } from "@/lib/tournaments/club-fixtures";
@@ -1726,6 +1727,38 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   const summaryRows = structuredSummary.filter((r) => r.category.firstStage || r.quarterfinals.length || r.semifinals.length || r.finals.length);
   // Playoffs "started" = a real playoff fixture with both sides filled, not just placeholders.
   const playoffsStarted = summaryRows.some((r) => [...r.quarterfinals, ...r.semifinals, ...r.finals].some((m: any) => m.player_a_member_id && m.player_b_member_id));
+  // Categories that finish with a round robin instead of a playoff: their summary result is the
+  // final 1..N ranking (group winners re-ranked by their own Rounds 3–5 games). Read-only.
+  const rrFinalRankings = (() => {
+    const groups = [...new Set((entries as any[]).map((e: any) => Number(e.group_number)))].filter(Boolean).sort((a, b) => a - b);
+    return groups.flatMap((gn) => {
+      const st = swissStageFor(gn);
+      if (!st || !rrFinishOn(st.rrFinish)) return [];
+      const rows = getGroupStandings(gn);
+      if (!rows.length) return [];
+      const withdrawnIds = new Set((registrations as any[]).filter((r: any) => r.withdrawn_keep_position).map((r: any) => r.club_member_id));
+      const names: Record<string, string> = {};
+      rows.forEach((r: any) => { names[r.club_member_id] = withdrawnIds.has(r.club_member_id) ? `${r.name} (withdrawn – bye)` : r.name; });
+      const gEntries = (entries as any[]).filter((e: any) => Number(e.group_number) === gn).sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0));
+      const isLaterStage = (m: any) => m.stage_id && stageKindById.has(m.stage_id) && stageKindById.get(m.stage_id) !== "swiss";
+      const seedOrder = [...new Set([...gEntries.map((e: any) => e.club_member_id), ...rows.map((r: any) => r.club_member_id)])].filter(Boolean);
+      const model = buildSwissProgression({
+        seedOrder, names, totalRounds: st.rounds, tieBreaks: st.tieBreaks, rrFinish: st.rrFinish,
+        ...(st.swissSequencing ? { swissSequencing: st.swissSequencing, tournamentId: champId } : {}),
+        matches: (matches as any[]).filter((m: any) => Number(m.group_number) === gn && (m.round_number ?? 0) > 0 && !isLaterStage(m)).map((m: any) => ({
+          id: m.id, round: Number(m.round_number),
+          a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null,
+          winner: m.winner_member_id, isBye: !!m.is_bye, status: m.status, score: m.score,
+          sideAPoints: m.side_a_points, sideBPoints: m.side_b_points, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id,
+          date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by,
+          placeholderA: m.placeholder_a, placeholderB: m.placeholder_b,
+        })),
+      });
+      if (rrFinishOn(st.rrFinish)) model.rrFinish = st.rrFinish;
+      const ranking = rrFinalRanking(model);
+      return ranking?.length ? [{ group: gn, label: getGroupLabel(champ, gn), rows: ranking }] : [];
+    });
+  })();
 
   // Configured championship outcome + awards (null = keep existing behaviour).
   const awardsCfg = isStructured && !diamondEvent ? readStandingsAwards(arch?.beta_lifecycle) : null;

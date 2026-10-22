@@ -1,3 +1,8 @@
+## 2026-10-22 — Positive tip payouts and reachable cash-up undo
+- Uitsig's actual saved tip payout is already positive R56, with owner-confirmed closing/next-opening cash R230. No duplicate tip payment.
+- Expose the existing cash-up management report from till cash-up history for signed-in platform admins. Keep latest-only, required reason and server authorization; never undo a live shift during verification.
+- Paid-tip inputs reject minus signs and share amount validation. Cash-up server must reject negative values rather than silently skipping them; zero remains no payout.
+
 ## 2026-10-22 — Combined cash-up evening date
 - Owner requested a 21 October label only for the combined Uitsig cash-up. Store an optional cash_up_date in existing totals and display it separately from the factual shift interval; leave cutoffs, sales, tips and cash unchanged. No publication.
 

@@ -57,7 +57,7 @@ const played = [
 ];
 
 describe("engine with the option", () => {
-  it.each([[18, 3], [16, 4]])("source projection and generation agree through R3–5 for %i players/%i groups", (n, groups) => {
+  it.each([[18, 2], [18, 3], [16, 4]])("source projection and generation agree through R3–5 for %i players/%i groups", (n, groups) => {
     const d = div({ enabled: true, groups });
     d.entrants = ids(n).map((id, i) => ({ id, rank: i + 1 }));
     d.stages[0].tieBreaks = ["position_swap"];

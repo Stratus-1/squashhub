@@ -177,3 +177,4 @@
 - [x] Till cash-up: paid-tips field now starts at 0 so the serving barman chooses whether and how much to take in cash; the amount owed stays shown. Focused test asserts the zero start, that a minus sign is refused and that a typed R56 still pays out; 7 cash-up checks pass.
 - [x] Cash-up difference wording: a surplus now reads "surplus recorded" and a shortfall "shortfall recorded" in the till history and both correction screens; "written off" removed from the till checkbox and guidance. Report row and dialog checked signed-in; no saved records changed.
 - [ ] Uitsig 21 Oct cash-up: the R56 tip payment to Wynand is not recorded (earned R56, paid R0) and the cash-up balances at R230 with no difference. Owner's answer pending before any live financial record is touched.
+- [ ] Bar counter: let the barman remove/undo a mistaken item on an open tab.

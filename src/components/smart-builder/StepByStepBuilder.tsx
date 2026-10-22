@@ -20,7 +20,9 @@ async function persistStructureAnswers(tid: string | null | undefined, answers: 
     if (!cur) return;
     const plan = drawPlanOf(answers);
     await saveLifecycle(tid, { ...cur, answers, format_plan: plan });
-    if (await attachTimelinePlayoffs(tid, plan)) toast.success("Planned play-offs added to the running tournament. They start automatically once the main rounds finish.");
+    const added = await attachTimelinePlayoffs(tid, plan);
+    const n = await createPlannedPlayoffFixtures(tid, plan);
+    if (added || n) toast.success(`Planned play-offs added to the running tournament${n ? ` — ${n} play-off fixtures created (players to be decided)` : ""}.`);
   } catch (e: any) {
     toast.error(`Structure kept on this device, but couldn't be saved to the tournament: ${e?.message ?? "unknown error"}`);
   }
@@ -118,7 +120,7 @@ import { evaluateStructures, materiallyDifferent, type GuideAnswers, type Struct
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
-import { attachTimelinePlayoffs } from "@/lib/smart-builder/attach-timeline-playoffs";
+import { attachTimelinePlayoffs, createPlannedPlayoffFixtures } from "@/lib/smart-builder/attach-timeline-playoffs";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { FeeBasisQuestion } from "./FeeBasisQuestion";
 import { LIFECYCLE, clubAllowsTournamentLadder, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
@@ -690,7 +692,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       if (!cur) throw new Error("The saved tournament couldn't be read. Nothing was saved.");
       await saveLifecycle(tid, { ...cur, answers: JSON.parse(answersJson), format_plan: JSON.parse(drawPlanJson), ...(partnerPayAnswer === undefined ? {} : { partner_pay: partnerPayAnswer }) });
       const attached = await attachTimelinePlayoffs(tid, JSON.parse(drawPlanJson)).catch((e: any) => { toast.error(`Play-offs not added to the running tournament: ${e?.message ?? "unknown error"}`); return false; });
-      toast.success(attached ? "Setup draft saved. Planned play-offs added to the running tournament — existing games and bookings unchanged." : "Setup draft saved. Existing games and court bookings unchanged.");
+      const made = await createPlannedPlayoffFixtures(tid, JSON.parse(drawPlanJson)).catch((e: any) => { toast.error(`Play-off fixtures not created: ${e?.message ?? "unknown error"}`); return 0; });
+      toast.success(attached || made ? `Setup draft saved. Planned play-offs added${made ? ` — ${made} play-off fixtures created (players to be decided)` : ""}. Existing games and bookings unchanged.` : "Setup draft saved. Existing games and court bookings unchanged.");
     } catch (e: any) { toast.error(e.message); }
     finally { setSavingDraft(false); }
   };

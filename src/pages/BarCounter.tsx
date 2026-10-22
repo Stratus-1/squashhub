@@ -56,7 +56,7 @@ interface CounterTab {
   total: number;
   subtotal?: number;
   tip?: number;
-  lines: { name: string | null; quantity: number; total: number }[];
+  lines: { sale_id?: string; paid?: boolean; name: string | null; quantity: number; total: number }[];
 }
 
 interface Board {
@@ -910,9 +910,18 @@ export default function BarCounter() {
                 <Separator className="my-2" />
                 <div className="space-y-1 text-xs">
                   {activeTab.lines.map((l, i) => (
-                    <div key={i} className="flex justify-between">
+                    <div key={l.sale_id ?? i} className="flex items-center justify-between gap-2">
                       <span>{l.quantity} × {l.name ?? "Item"}</span>
-                      <span>{money(l.total)}</span>
+                      <span className="flex items-center gap-1">
+                        {money(l.total)}
+                        {activeTab.status === "open" && l.sale_id && !l.paid && (
+                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={busy}
+                            aria-label={`Remove ${l.quantity} × ${l.name ?? "item"} from tab`}
+                            onClick={() => setRemoveLine({ saleId: l.sale_id!, label: `${l.quantity} × ${l.name ?? "Item"}`, total: l.total })}>
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>

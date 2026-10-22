@@ -8,7 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Gift, Loader2, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-interface StockItem { id: string; name: string; item_kind?: string | null; division?: string | null }
+interface StockItem { id: string; name: string; item_kind?: string | null; division?: string | null; avg_unit_cost?: number | null; cost_price?: number | null; unit_yield?: number | null }
+const money = (n: number) => `R${n.toFixed(2)}`;
+// Cost per sold unit at cost price: average stock-unit cost when known, else purchase price spread over the yield.
+export function clubUseUnitCost(i: StockItem) {
+  const y = Math.max(1, Number(i.unit_yield || 1));
+  const perStockUnit = i.avg_unit_cost != null ? Number(i.avg_unit_cost) : Number(i.cost_price || 0) / y;
+  return y * perStockUnit;
+}
 export function CounterClubUseDialog({ token, operator, items, onClose }: { token: string; operator: string; items: StockItem[]; onClose: () => void }) {
   const qc = useQueryClient();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -18,6 +25,7 @@ export function CounterClubUseDialog({ token, operator, items, onClose }: { toke
   const [attempt, setAttempt] = useState<{ id: string; signature: string } | null>(null);
   const stock = useMemo(() => items.filter(i => i.item_kind === "stock"), [items]);
   const lines = stock.filter(i => (quantities[i.id] ?? 0) > 0).map(i => ({ item_id: i.id, quantity: quantities[i.id] })).sort((a, b) => a.item_id.localeCompare(b.item_id));
+  const totalCost = useMemo(() => Math.round(stock.reduce((sum, i) => sum + (quantities[i.id] ?? 0) * clubUseUnitCost(i), 0) * 100) / 100, [stock, quantities]);
   async function record() {
     if (!lines.length || !reason.trim() || busy) return;
     const signature = JSON.stringify({ lines, reason: reason.trim() });

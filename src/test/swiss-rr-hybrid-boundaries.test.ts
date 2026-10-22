@@ -15,7 +15,7 @@ const qualifying = [
 ];
 const modelOf = (matches: ProgressionMatchInput[]) => buildSwissProgression({ seedOrder: seeds, names, totalRounds: 5, tieBreaks: ["position_swap"], rrFinish: finish, matches });
 const division = { divisionId: "g2", entrants: seeds.map((id, i) => ({ id, rank: i + 1 })), stages: [{ id: "s", kind: "swiss", order: 0, swissRounds: 5, rrFinish: finish, tieBreaks: ["position_swap"] }] } as unknown as SpecDivision;
-const engineRows = (matches: ProgressionMatchInput[]) => matches.map((m) => ({ ...m, divisionId: "g2", stageId: "s" }));
+const engineRows = (matches: ProgressionMatchInput[]) => matches.map((m) => ({ ...m, divisionId: "g2", stageId: "s", stageKind: "swiss" as const }));
 
 describe("18-person hybrid: two fixed groups and ten dynamic Swiss players", () => {
   it("keeps A1–4/B5–8 labels while Swiss winners rerank only inside 9–18; saved R4 has no duplicate waiting slot", () => {

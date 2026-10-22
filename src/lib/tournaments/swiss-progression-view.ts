@@ -238,15 +238,15 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
       ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id)
       : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
-    const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
     const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     return { issues, rounds: saved.map((rd) => {
       if (rd.round < 3) return normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
+      const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
       const groupIds = new Set(plan.pairs.flat());
-      const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })) as [GridRow, GridRow] }));
+      const factual = rd.blocks.map((b) => ({ ...b, saved: true, rows: b.rows.map((r) => ({ ...r, pos: r.id && groupIds.has(r.id) ? fixed.get(r.id) ?? r.pos : r.pos })).sort((a,b) => (a.pos ?? 999) - (b.pos ?? 999)) as [GridRow, GridRow] }));
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs: Array<[string, string | null]> = plan.pairs;

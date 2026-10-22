@@ -36,7 +36,7 @@ describe("cash-up payout and edit controls", () => {
     fireEvent.change(screen.getByLabelText("Reason for change (required)"), { target: { value: "Correct note" } });
     await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_cash_up_admin_correct", expect.objectContaining({ _id: "latest", _reason: "Correct note" })));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_cash_up_admin_correct_full", expect.objectContaining({ _id: "latest", _reason: "Correct note" })));
     expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_cash_up_undo")).toBe(false);
   });
   it("anonymous counter staff do not gain admin edit controls", () => {

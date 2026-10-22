@@ -1,3 +1,9 @@
+## 2026-10-22 — Full saved cash-up editing
+- Symptom: settled cash/card amounts were disabled and Edit omitted normal payout/no-payout and reconciliation choices; older cash-up tips were locked.
+- Finding: the older update RPC deliberately rejected settled amount changes and did not update the next shift after a counted-cash correction.
+- Fix: full signed-in, reason-required correction RPC accepts cash/card, named staff payouts (zero = no payout), reconciliation choice and note. Expected snapshots reject stale edits. Append balanced corrections under original references at the shift's effective cutoff; preserve dates, sales and later counted cash. Recalculate/audit the immediate next opening if prior counted cash changes. Historical additions respect shift-earned and current available staff tips.
+- Guard: focused UI tests and disposable PostgreSQL checks cover positive R56, negative rejection, settled cash/card, zero/re-add, reconciliation toggles, balanced journals, effective dates, reason/permission/stale/retry checks, historical tips and next-shift continuity. Signed-in fictional preview saved/read back R240 cash, R580 card and R56 tips with writes intercepted. No real financial data edits or publication; web/PWA/native use the shared report.
+
 ## 2026-10-22 — Personal-PIN counter club-sponsored stock
 - Added Club sponsored directly to the unlocked counter header, opening a separate stock-only quantity basket and required reason without a customer tab. Server derives club and serving name from an active unexpired/unrevoked personal-PIN session; signed-in admin authority cannot replace it.
 - Shared private stock-use posting helper preserves signed-in/admin workflows. Atomic basket posting uses private service-only request audit/replay records, appends serving name to stock history, and posts cost only to Stock club expense versus Bar/Shop purchase expense. No sales, tips, cash, tab or hardware writes.

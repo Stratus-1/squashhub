@@ -289,7 +289,14 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       } else if (tenChart) {
         // Approved 10-player remainder chart: names appear once the game deciding each slot is complete.
         const offset = plan.pairs.length * 2;
-        const slots = locked ? tenRemainderSlots(plan.remainder, rd.round, history) : Array(10).fill(null);
+        // Before Round 2 is complete, a slot fills as soon as that player's own Round 2 game is decided
+        // (fixed-position swap: loser takes the lower position immediately). Round 3 only.
+        const r2Done = (id: string) => history.some((f) => f.round === 2 && (f.state === "completed" || f.state === "bye") && (f.a === id || f.b === id));
+        const slots = locked
+          ? tenRemainderSlots(plan.remainder, rd.round, history)
+          : rd.round === 3
+            ? plan.remainder.map((id) => (id && r2Done(id) ? id : null))
+            : Array(10).fill(null);
         for (const [a, b] of TEN_REMAINDER_CHART[rd.round] ?? []) {
           const x = slots[a - 1] ?? null, y = slots[b - 1] ?? null;
           if ((x && covered.has(x)) || (y && covered.has(y))) continue;

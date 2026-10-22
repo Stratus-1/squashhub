@@ -29,10 +29,12 @@ function Side({ s, slot }: { s: PlannedSide; slot: string | null }) {
 
 type Line = { d: string; color: string; dashed: boolean };
 
-export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false }: { rows: PlannedPlayoffRow[]; pools?: PoolStanding[]; confirmed?: boolean }) {
+export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false, champion = null }: { rows: PlannedPlayoffRow[]; pools?: PoolStanding[]; confirmed?: boolean; champion?: string | null }) {
   const stages = [...new Set(rows.map((r) => r.stage))];
   const cols = stages.map((st) => rows.filter((r) => r.stage === st));
   const wrap = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ id: number; x: number; left: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -66,12 +68,29 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false 
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [rows, pools, confirmed]);
+  }, [rows, pools, confirmed, champion]);
 
   const feedsOf = (g: PlannedPlayoffRow) => g.sides.map((s) => s.label.match(/^Winner (\S+)$/)?.[1]).filter(Boolean).join(",");
 
   return (
-    <div className="overflow-x-auto pb-1" data-testid="planned-playoff-bracket">
+    <div className={cn("overflow-x-auto pb-1 touch-pan-x", dragging ? "cursor-grabbing select-none" : "cursor-grab")} data-testid="planned-playoff-bracket"
+      onPointerDown={(e) => {
+        if (e.pointerType !== "mouse" || e.button !== 0 || (e.target instanceof Element && e.target.closest("button, a, input, select, textarea"))) return;
+        drag.current = { id: e.pointerId, x: e.clientX, left: e.currentTarget.scrollLeft };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        const s = drag.current;
+        if (!s || s.id !== e.pointerId) return;
+        const d = e.clientX - s.x;
+        if (!dragging && Math.abs(d) < 4) return;
+        e.preventDefault(); setDragging(true);
+        e.currentTarget.scrollLeft = s.left - d;
+      }}
+      onPointerUp={(e) => { drag.current = null; setDragging(false); if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}
+      onPointerCancel={() => { drag.current = null; setDragging(false); }}
+      onLostPointerCapture={() => { drag.current = null; setDragging(false); }}
+      onDragStart={(e) => e.preventDefault()}>
       <div ref={wrap} className="relative flex min-w-max gap-12 p-1">
         <svg className="pointer-events-none absolute left-0 top-0" width={size.w} height={size.h} aria-hidden>
           {lines.map((l, i) => <path key={i} d={l.d} fill="none" stroke={l.color} strokeWidth={2} strokeOpacity={0.85} strokeDasharray={l.dashed ? "5 4" : undefined} />)}
@@ -120,6 +139,17 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false 
             </div>
           );
         })}
+        {cols.length > 0 && (
+          <div className="flex w-52 flex-col">
+            <div className="mb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Winner</div>
+            <div className="flex flex-1 flex-col justify-around">
+              <div data-feeds={cols[cols.length - 1][0]?.id} data-testid="playoff-champion"
+                className={cn("rounded-lg border-2 px-3 py-2 text-center text-sm", champion ? "border-warning bg-warning/15 font-bold text-warning" : "border-dashed border-border text-muted-foreground")}>
+                🏆 {champion ?? `Winner ${cols[cols.length - 1][0]?.id ?? "Final"}`}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

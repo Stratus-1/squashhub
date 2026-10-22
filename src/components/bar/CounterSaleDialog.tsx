@@ -30,6 +30,7 @@ interface BarItem {
   category: string;
   image_url?: string | null;
   stock_qty: number;
+  item_kind?: string | null;
 }
 
 interface MemberHit {
@@ -67,6 +68,8 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
   const [visitorPhone, setVisitorPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [clubUseOpen, setClubUseOpen] = useState(false);
+  const [clubUseReason, setClubUseReason] = useState("");
 
   // Only items currently sellable: in stock, not archived/hidden, specials inside their window.
   const inStock = useMemo(

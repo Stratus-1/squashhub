@@ -1660,6 +1660,13 @@
       "when": 1792675101742,
       "tag": "0236_fix_member_account_gate_club_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1792675333505,
+      "tag": "0237_applicants_view_paid_fee_categories",
+      "breakpoints": true
     }
   ]
 }

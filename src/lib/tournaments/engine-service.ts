@@ -211,7 +211,8 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
     if (issues.length) throw new IntegrityError("prereq", issues[0]);
     // Frozen snapshot: standings from Rounds 1–2 only (withdrawn players keep their entrant slot).
     const snapshot = swissStandings(d, st, rows.filter((f) => (f.round ?? 0) <= 2)).map((t) => t.id);
-    if (rrFinishRepeats(snapshot, st.rrFinish.groups, mine.filter((f) => (f.round ?? 0) <= 2 && f.a && f.b).map((f) => [String(f.a), f.b])).length) {
+    const repeatsAllowed = usesTenRemainderChart(st.rrFinish, snapshot.length - st.rrFinish.groups * 4);
+    if (!repeatsAllowed && rrFinishRepeats(snapshot, st.rrFinish.groups, mine.filter((f) => (f.round ?? 0) <= 2 && f.a && f.b).map((f) => [String(f.a), f.b])).length) {
       throw new IntegrityError("prereq", "The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3.");
     }
     const plan = rrFinishRound(snapshot, gate.nextRound, st.rrFinish.groups);

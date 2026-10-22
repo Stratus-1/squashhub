@@ -1,3 +1,4 @@
+import { CategoryProgressPanel } from "./CategoryProgressPanel";
 import { Fragment, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -236,6 +237,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         )}
         {shown === "generate" && diamond === false && <StandingsAwardsSection tournamentId={tournamentId} />}
         {revisiting && shown === "generate" && diamond === false && <StepSwissRoundsPanel clubId={clubId} tournamentId={tournamentId} onSetupRound={() => onEditSetup("Schedule")} />}
+        {diamond === false && <CategoryProgressPanel tournamentId={tournamentId} />}
         {!revisiting && diamond === false && <StepKnockoutRoundsPanel tournamentId={tournamentId} plan={life?.format_plan as any} />}
         {!revisiting && (
           <StepRunOverview clubId={clubId} tournamentId={tournamentId} plan={life?.format_plan as any}

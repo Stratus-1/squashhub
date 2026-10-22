@@ -99,7 +99,6 @@ export default function Dashboard() {
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const clubId = effectiveClub?.id || clubData?.club?.id;
-  console.log("DBGDASH", contextClub?.id, clubData?.club?.id, activeMember?.id, isMobile);
   const [editDash, setEditDash] = useState(false);
   // Pilot: Edit dashboard button shown in Riverside only for now (display-only feature).
   const dashEditPilot = !!clubId;

@@ -9,7 +9,6 @@ const R = (n: number) => `R${Math.abs(n).toFixed(2)}`;
 
 export function AvailableToSpendCard({ clubId, memberId }: { clubId?: string | null; memberId?: string | null }) {
   const { data, isLoading, error } = useSpendSummary(clubId, memberId);
-  console.log("DBGSPEND", clubId, memberId, isLoading, String(error), JSON.stringify(data));
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
   if (isLoading || error || !data) return null;

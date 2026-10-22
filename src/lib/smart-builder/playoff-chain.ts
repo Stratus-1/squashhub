@@ -190,3 +190,26 @@ export function allocateSlots(count: number, w: { from: string; to: string; cour
   while (out.length < count) out.push(null);
   return out;
 }
+
+/** Games in a standard playoff round by name (Final 1, Semifinal 2, Quarterfinal 4, Round of 16 8); null when unknown. */
+export function gamesForStageName(name: string): number | null {
+  const n = name.toLowerCase();
+  if (/quarter/.test(n)) return 4;
+  if (/semi/.test(n)) return 2;
+  if (/16|last 16/.test(n)) return 8;
+  if (/final/.test(n)) return 1;
+  return null;
+}
+
+/** Stage-specific wording for the two-pool crossover, generated from the same pairing engine the fixtures use. */
+export function crossoverLabel(stageName: string): string {
+  const g = gamesForStageName(stageName) ?? 2;
+  const L2 = (p: number) => String.fromCharCode(65 + p);
+  return "Pool crossover: " + crossoverPairs(g).map(([a, b]) => `${L2(a[0])}${a[1]} vs ${L2(b[0])}${b[1]}`).join(", ");
+}
+
+/** Same-position wording for g games: A1 vs B1, A2 vs B2… */
+export function samePositionLabel(stageName: string): string {
+  const g = gamesForStageName(stageName) ?? 2;
+  return "Same position: " + Array.from({ length: g }, (_, i) => `A${i + 1} vs B${i + 1}`).join(", ");
+}

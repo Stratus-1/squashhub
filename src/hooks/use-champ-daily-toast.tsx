@@ -110,7 +110,7 @@ export function useChampDailyToast(clubId?: string | null, enabled: boolean = tr
           )}
           {loserNames.length > 0 && (
             <p className="text-muted-foreground">
-              <span className="font-medium text-foreground">Sorry to see you go:</span> {loserNames.join(", ")}
+              <span className="font-medium text-foreground">Hard luck — good effort:</span> {loserNames.join(", ")}
             </p>
           )}
           <button

@@ -24,6 +24,8 @@ export function ClubUseCard({ clubId }: { clubId: string }) {
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const today = format(new Date(), "yyyy-MM-dd");
+  const [useDate, setUseDate] = useState(today);
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-club-use-items", clubId],
@@ -48,10 +50,10 @@ export function ClubUseCard({ clubId }: { clubId: string }) {
   async function submit() {
     setBusy(true);
     try {
-      const { data, error } = await db.rpc("bar_club_use", { _item: itemId, _qty: Number(qty), _reason: reason });
+      const { data, error } = await db.rpc("bar_club_use", { _item: itemId, _qty: Number(qty), _reason: reason, _date: useDate || today });
       if (error) throw error;
       toast.success(`Recorded as club expense${data?.cost ? ` (${money(Number(data.cost), 2)} at cost)` : ""}`);
-      setQty(""); setReason(""); setItemId("");
+      setQty(""); setReason(""); setItemId(""); setUseDate(today);
       ["bar-club-use-items", "bar-club-use-history", "bar-stock-levels", "bar-items", "income-statement"]
         .forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     } catch (e: any) {
@@ -68,7 +70,7 @@ export function ClubUseCard({ clubId }: { clubId: string }) {
           "Stock club expense". It is not a sale, so sales, cash-ups and tips are not affected.
         </p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-[2fr_100px_2fr_auto] items-end">
+      <div className="grid gap-2 sm:grid-cols-[2fr_100px_140px_2fr_auto] items-end">
         <div>
           <Label className="text-[11px]">Item</Label>
           <select aria-label="Item" className="h-9 w-full rounded-md border bg-background px-2 text-sm"
@@ -85,6 +87,11 @@ export function ClubUseCard({ clubId }: { clubId: string }) {
             onChange={(e) => setQty(e.target.value.replace(/[^0-9.]/g, ""))} />
         </div>
         <div>
+          <Label className="text-[11px]">Date</Label>
+          <Input type="date" className="h-9" value={useDate} max={today} aria-label="Date"
+            onChange={(e) => setUseDate(e.target.value)} />
+        </div>
+        <div>
           <Label className="text-[11px]">Used for</Label>
           <Input className="h-9" value={reason} placeholder="e.g. Club Champs balls" aria-label="Used for"
             onChange={(e) => setReason(e.target.value)} />
@@ -98,7 +105,7 @@ export function ClubUseCard({ clubId }: { clubId: string }) {
         <div className="text-xs grid gap-1 border-t pt-2">
           {history.map((h: any) => (
             <div key={h.id} className="flex justify-between gap-2">
-              <span className="truncate">{format(new Date(h.created_at), "d MMM HH:mm")} · {h.note || "Club use"}</span>
+              <span className="truncate">{format(new Date(h.created_at), "d MMM yyyy")} · {h.note || "Club use"}</span>
               <span className="tabular-nums">{h.cost_value != null ? money(Math.abs(Number(h.cost_value)), 2) : "—"}</span>
             </div>
           ))}

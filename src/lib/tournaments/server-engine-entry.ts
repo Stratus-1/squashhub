@@ -5,3 +5,5 @@ export { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedul
 export { createDecidedSwissGames } from "@/lib/tournaments/decided-swiss";
 // Pure exports permit behavioral parity checks of the shipped bundle without a hosted write.
 export { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
+export { sequenceSwissRound } from "@/lib/tournaments/swiss-sequencing";
+export { nextSwissRound } from "@/lib/tournaments/engine-service";

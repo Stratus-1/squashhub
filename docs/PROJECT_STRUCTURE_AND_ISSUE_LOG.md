@@ -1,3 +1,8 @@
+## 2026-10-22 — Prospective Swiss final-round sequencing and Uitsig freeze
+- Added a shared weighted non-repeat matching objective: configured final-round adjacent current ranks, closest legal alternatives and explicit exception reporting; earlier rounds preserve adjacency after minimizing score gaps. Exact small-even-cohort lookahead checks edge-disjoint continuation without simulating future results. RR groups remain locked and independent from Swiss remainder standings.
+- Activation is tournament-scoped and prospective at fresh first-draw generation only. Existing tournaments without the saved policy retain legacy algorithms/projections; no view/save/rebuild adoption. Read-only audit found one existing Uitsig tournament, now ID-frozen across common structured write/save/progression paths; its exact displays and saved records remain unchanged. No migrations, hosted writes, fixture remediation, notices, deployment or publication.
+- Focused tests cover full four/five-round Swiss, six-player remainder with three RR groups, changing ranks, no repeats (including R1/R2), fair odd byes, final conflicts, protected Uitsig displays/writers and new-vs-existing activation. Local server parity and browser verification recorded on completion.
+
 ## 2026-10-22 — Full saved cash-up editing
 - Symptom: settled cash/card amounts were disabled and Edit omitted normal payout/no-payout and reconciliation choices; older cash-up tips were locked.
 - Finding: the older update RPC deliberately rejected settled amount changes and did not update the next shift after a counted-cash correction.

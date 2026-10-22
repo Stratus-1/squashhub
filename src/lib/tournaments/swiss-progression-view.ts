@@ -18,6 +18,7 @@ import { hybridSwissTable, rrFinishOn, rrFinishRound, rrFinishRepeats, type RrFi
 import { swissRound } from "./contract";
 import { hasSwissMatchActivity } from "./swiss-rr-display";
 import { sequenceSwissRound } from "./swiss-sequencing";
+import { swissSequencingEnabled, type SwissSequencingPolicy } from "./swiss-sequencing-policy";
 
 export type SwissFormatKind = "results_based" | "positional";
 export const SWISS_FORMAT_LABEL: Record<SwissFormatKind, string> = {
@@ -58,6 +59,8 @@ export interface ProgressionRow {
   swissFinalPosition?: number | null;
 }
 export interface SwissProgressionModel {
+  swissSequencing?: SwissSequencingPolicy;
+  tournamentId?: string;
   rrFinish?: RrFinish | null;
   tieBreaks?: readonly string[] | null;
   format: SwissFormatKind; totalRounds: number; rounds: ProgressionRound[]; rows: ProgressionRow[];
@@ -73,6 +76,8 @@ export function buildSwissProgression(input: {
   seedOrder: string[]; names: Record<string, string>; matches: ProgressionMatchInput[];
   totalRounds?: number | null; tieBreaks?: readonly string[] | null; format?: SwissFormatKind;
   rrFinish?: RrFinish | null;
+  swissSequencing?: SwissSequencingPolicy;
+  tournamentId?: string;
 }): SwissProgressionModel {
   const { seedOrder, names, matches, tieBreaks } = input;
   const nm = (id: string | null, ph?: string | null) => (id ? names[id] ?? "Unknown player" : ph || UNRESOLVED);
@@ -131,7 +136,7 @@ export function buildSwissProgression(input: {
     swissFinalPosition: swissStageComplete ? swissFinal.get(id) ?? null : null,
   })).sort((x, y) => x.current - y.current);
 
-  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows, tieBreaks, rrFinish: input.rrFinish };
+  return { format: input.format ?? "results_based", totalRounds, configuredRounds, swissStageComplete, rounds, rows, tieBreaks, rrFinish: input.rrFinish, ...(input.swissSequencing ? { swissSequencing: input.swissSequencing, tournamentId: input.tournamentId } : {}) };
 }
 
 /** Movement between the two latest rounds with results: positive = moved up. */
@@ -229,8 +234,9 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
 export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[]; warnings?: string[] } {
+  const sequencing = swissSequencingEnabled(model.swissSequencing, model.tournamentId);
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5 && !(opts.exactLadiesAChart && model.rows.length === 9 && model.totalRounds === 5)) {
-    const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined }, opts);
+    const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined, ...(sequencing ? { swissSequencing: undefined } : {}) }, opts);
     const saved = buildSwissGrid(model);
     const locked = !!model.rounds.find((r) => r.round === 2)?.complete;
     // Before Round 2 is complete the groups are previewed from the current standing (provisional);
@@ -243,7 +249,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
     const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings: string[] = [];
-    return { issues, warnings, rounds: saved.map((rd) => {
+    return { issues, ...(sequencing ? { warnings } : {}), rounds: saved.map((rd) => {
       if (rd.round < 3) return normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
       const fixed = new Map(snapshot.map((id, i) => [id, i + 1]));
@@ -278,7 +284,7 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
           const row = (id: string | null, pos: number): GridRow => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", when: schedule.label };
           chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
         }
-      } else if (prevDone && locked && plan.remainder.length) {
+      } else if ((sequencing ? prevDone && locked : prevDone || (!locked && rd.round === 3)) && plan.remainder.length) {
         const rest = new Set(plan.remainder);
         const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
         const table = hybridSwissTable(seeds, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.rrFinish, model.tieBreaks).filter((r) => rest.has(r.id));
@@ -288,10 +294,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
         for (const [id, pos] of positions) fixed.set(id, pos);
         try {
           // A partially saved round is authoritative, not a request to fill missing games.
-          if (!usedRest.size) {
+          if (sequencing && !usedRest.size) {
             const result = sequenceSwissRound({ players: table.map((r, i) => ({ ...r, points: isPositionSwap(model.tieBreaks) ? 0 : r.points, seed: i + 1 })), played: met, round: rd.round, finalRound: model.configuredRounds, positionOffset: plan.pairs.length * 2 });
             pairs = [...pairs, ...result.pairs]; warnings.push(...result.exceptions);
-          }
+          } else if (!sequencing) pairs = [...pairs, ...swissRound(table.filter((r) => !usedRest.has(r.id)).map((r, i) => ({ id: r.id, points: r.points, seed: i + 1 })), met)];
         }
         catch { issues.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`); }
       }
@@ -318,9 +324,9 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
   const sixteen = opts.exactSixteenChart === true && n === 16 && model.totalRounds === 5;
   const exactChart = mensC || ladiesA || sixteen;
   // Results-based Swiss stages share the generator's current-ranking optimizer from R3.
-  // Exact approved display charts and explicit positional previews retain their own routes.
-  if (!exactChart && !opts.previewFinals && opts.noRepeats !== false && model.format === "results_based") {
-    const opening = buildProposedSwissGrid(model, { ...opts, previewFinals: true });
+  // Exact approved display charts retain their own routes, regardless of policy.
+  if (sequencing && !exactChart && opts.noRepeats !== false && model.format === "results_based") {
+    const opening = buildProposedSwissGrid({ ...model, swissSequencing: undefined }, { ...opts, previewFinals: true });
     const factual = buildSwissGrid(model);
     const warnings: string[] = [], issues: string[] = [];
     const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);

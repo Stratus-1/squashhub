@@ -11,6 +11,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { sendComms, dispatchCampaign } from "@/lib/comms/send";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeDraftPayload } from "@/lib/tournaments/draft-payload";
+import { assertTournamentPairingWritable } from "@/lib/tournaments/swiss-sequencing-policy";
 
 export const LIFECYCLE = [
   { key: "planning", label: "Planning" },
@@ -353,6 +354,7 @@ export async function loadLifecycle(tournamentId: string): Promise<BetaLifecycle
   return ((data as any)?.beta_lifecycle as BetaLifecycle) ?? null;
 }
 export async function saveLifecycle(tournamentId: string, l: BetaLifecycle) {
+  assertTournamentPairingWritable(tournamentId);
   // Never drop the saved setup (format_plan) when a caller holds an older lifecycle copy without it.
   let next = l;
   if (l.format_plan === undefined || l.category_types === undefined || l.answers === undefined) { const cur = await loadLifecycle(tournamentId).catch(() => null); next = { ...l, ...(l.format_plan === undefined && cur?.format_plan ? { format_plan: cur.format_plan } : {}), ...(l.category_types === undefined && cur?.category_types ? { category_types: cur.category_types } : {}), ...(l.answers === undefined && cur?.answers ? { answers: cur.answers } : {}) }; }

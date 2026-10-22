@@ -8,6 +8,7 @@ import { poolFixtureIssues } from "./pool-boundaries";
 import { proposePairings } from "./paced-knockout";
 import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
 import { sequenceSwissRound } from "./swiss-sequencing";
+import { assertTournamentPairingWritable, swissSequencingEnabled, type SwissSequencingPolicy } from "./swiss-sequencing-policy";
 import { hybridSwissTable, rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
 /**
  * Authoritative tournament engine service (structured architecture).
@@ -52,6 +53,7 @@ export const divisionGroup = (spec: TournamentSpec, d: SpecDivision) => d.groupN
 /** Groups whose club_champs_entries form this division. */
 export const divisionEntryGroups = (spec: TournamentSpec, d: SpecDivision) => d.entryGroups?.length ? d.entryGroups : [divisionGroup(spec, d)];
 export interface TournamentSpec {
+  swissSequencing?: SwissSequencingPolicy;
   version: number;
   /**
    * Admin-decided order for tied finishing positions, keyed `${divisionId}/${stageId}` → pool index → unit ids
@@ -194,7 +196,9 @@ export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureR
  * Next Swiss round from the latest final results. Only ever Round N+1 after Round N is fully final
  * (shared `swissRoundGate`); never skips, never exceeds the configured count. Mirrored server-side.
  */
-export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[], noRepeats = true): EngineFixture[] {
+export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[], noRepeats = true, policy?: SwissSequencingPolicy): EngineFixture[] {
+  assertTournamentPairingWritable(tid);
+  const sequencing = swissSequencingEnabled(policy, tid);
   const st = d.stages.find((s) => s.id === stageId);
   if (!st || st.kind !== "swiss") throw new IntegrityError("stage_kind", "Only Swiss stages pair by results.");
   const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === stageId);
@@ -214,7 +218,7 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
     const rest = new Set(plan.remainder);
     const table = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
     const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
-    const swissPart = sequenceSwissRound({ players: table.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played, round: gate.nextRound, finalRound: st.swissRounds ?? 5, positionOffset: snapshot.length - plan.remainder.length }).pairs;
+    const swissPart = sequencing ? sequenceSwissRound({ players: table.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played, round: gate.nextRound, finalRound: st.swissRounds ?? 5, positionOffset: snapshot.length - plan.remainder.length }).pairs : swissRound(table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
     if (swissPart.some(([a, b]) => b && played.has(pairKey(a, b)))) throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
     return [...plan.pairs, ...swissPart].map(([a, b], i) => ({
       tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b,
@@ -222,7 +226,7 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
   }
   // Preserve opening-round rules; later Swiss rounds use the current authoritative table,
   // not historical positional templates. Saved rounds are never regenerated here.
-  if (noRepeats && gate.nextRound >= 3) {
+  if (sequencing && noRepeats && gate.nextRound >= 3) {
     const table = swissStandings(d, st, rows);
     const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
     const result = sequenceSwissRound({ players: table.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played, round: gate.nextRound, finalRound: st.swissRounds ?? gate.nextRound });

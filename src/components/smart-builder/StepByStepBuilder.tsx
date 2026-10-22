@@ -7,6 +7,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { syncSwissRoundsToSpec } from "@/lib/smart-builder/sync-live-rounds";
 import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 import { roundCountCheck } from "@/lib/smart-builder/round-count-check";
+import { assertTournamentPairingWritable, isFrozenUitsigTournament } from "@/lib/tournaments/swiss-sequencing-policy";
 
 /** Copies saved Structure Swiss round counts into a running tournament (never below rounds that already have games). */
 /**
@@ -17,6 +18,7 @@ import { roundCountCheck } from "@/lib/smart-builder/round-count-check";
 async function persistStructureAnswers(tid: string | null | undefined, answers: any) {
   if (!tid || !answers) return;
   try {
+    assertTournamentPairingWritable(tid);
     const cur = await loadLifecycle(tid);
     if (!cur) return;
     const plan = drawPlanOf(answers);
@@ -31,6 +33,7 @@ async function persistStructureAnswers(tid: string | null | undefined, answers: 
 
 async function pushStructureRoundsLive(clubId: string, tid: string | null | undefined, answers: any) {
   if (!tid || !answers) return;
+  if (isFrozenUitsigTournament(tid)) return;
   try {
     const { data: t } = await fromExt("tournaments").select("builder_spec, builder_architecture, swiss_rounds").eq("id", tid).eq("club_id", clubId).maybeSingle();
     if (!t?.builder_spec || t.builder_architecture !== "structured") return;
@@ -696,6 +699,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
    * Idempotent; never touches played games, results, bookings or other categories.
    */
   const updateTournamentFixtures = async (tid: string, plan: any) => {
+    assertTournamentPairingWritable(tid);
     const attached = await attachTimelinePlayoffs(tid, plan).catch((e: any) => { toast.error(`Play-offs not added to the running tournament: ${e?.message ?? "unknown error"}`); return false; });
     const made = await createPlannedPlayoffFixtures(tid, plan).catch((e: any) => { toast.error(`Play-off fixtures not created: ${e?.message ?? "unknown error"}`); return 0; });
     return { attached, made };
@@ -705,6 +709,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (!tid || !serverReady || savingDraft) return;
     setSavingDraft(true);
     try {
+      assertTournamentPairingWritable(tid);
       const cur = await loadLifecycle(tid);
       if (!cur) throw new Error("The saved tournament couldn't be read. Nothing was saved.");
       const snapshot = answersJson;

@@ -6,6 +6,7 @@ import { persistStructure } from "@/lib/tournaments/structured-persist";
 import { fromExt } from "@/lib/supabase-ext";
 import { startReadyStages } from "@/lib/tournaments/progression";
 import { isPlaceholderKey, abbrOf, syncPlayoffPlaceholders, adoptPlaceholderRows } from "./playoff-placeholders";
+import { assertTournamentPairingWritable } from "@/lib/tournaments/swiss-sequencing-policy";
 
 /**
  * Timeline play-offs default to starting automatically once their source stage is decided: the organiser
@@ -27,6 +28,7 @@ export function timelinePlayoffSpec(spec: TournamentSpec | null | undefined, pla
 
 /** Explicit organiser save → attach planned play-offs to an already-generated structured tournament. */
 export async function attachTimelinePlayoffs(tid: string, plan: any): Promise<boolean> {
+  assertTournamentPairingWritable(tid);
   let attached = false;
   const firstNew: Array<{ divisionKey: string; stageKey: string }> = [];
   await atomically(supabaseDb, tid, commitStructured, async (tx) => {
@@ -64,6 +66,7 @@ export function placeholderDates(plan: any, unitLabel: string, stageName: string
  * Winner SF1 v Winner SF2) and their dates. No players, results or bookings; the real games adopt them later.
  */
 export async function createPlannedPlayoffFixtures(tid: string, plan: any): Promise<number> {
+  assertTournamentPairingWritable(tid);
   const { created } = await syncPlayoffPlaceholders(tid);
   await adoptPlaceholderRows(tid);
   const [{ data: t }, { data: rows }] = await Promise.all([

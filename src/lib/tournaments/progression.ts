@@ -133,7 +133,9 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
     }
     // Deferred stages follow the last defined stage of the division.
     const last = ordered[ordered.length - 1];
-    (d.deferredStages ?? []).forEach((x, i) => {
+    // A Swiss stage that finishes in round-robin groups is the end of the category: no play-offs follow.
+    const endsInRr = !!(last as any)?.rrFinish?.enabled;
+    (endsInRr ? [] : d.deferredStages ?? []).forEach((x, i) => {
       const due = i === 0 && !!last && !!done.get(last.id);
       out.push({
         divisionKey: d.divisionId, divisionLabel: d.label, stageKey: x.stageKey, name: x.name, played: 0, total: 0,

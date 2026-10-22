@@ -1346,7 +1346,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const rank = (l: string) => { const x = l.toLowerCase(); return x.includes("16") ? 0 : x.includes("quarter") ? 1 : x.includes("semi") ? 2 : x.includes("final") ? 3 : 4; };
             const order = [...new Set(ko.map((m: any) => m.stage_label ?? "Play-offs"))].sort((a: any, b: any) => rank(a) - rank(b));
             return (
-              <div className={cn("space-y-2", rrDone ? "order-first" : "mt-2")} data-testid={`pool-playoffs-${gn}`}>
+              <div className={cn("space-y-2 order-first")} data-testid={`pool-playoffs-${gn}`}>
                 <div className="text-xs text-muted-foreground">Play-offs — from the final pool standings. Winners move on until the final.</div>
                 <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · Play-offs — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
                   <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · Play-offs`} names={koNames} seedOf={() => null}

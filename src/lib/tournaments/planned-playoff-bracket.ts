@@ -6,7 +6,10 @@
  */
 import { provisionalPlayoffs } from "./provisional-playoffs";
 
-export type PlannedPlayoffRow = { key: string; stage: string; id: string; text: string; when: string | null };
+export type PlannedSide = { label: string; name: string | null; pool: string | null; rank: number | null };
+export type PlannedPlayoffRow = { key: string; stage: string; id: string; text: string; when: string | null; sides: [PlannedSide, PlannedSide] };
+
+const ord = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
 
 const ORDER = ["Quarterfinal", "Semifinal", "Final"];
 
@@ -36,6 +39,13 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
         return nm ? `${nm} (${p}${n})` : `${p}${n}`;
       });
       text = text.replace(/^#(\d+) v #(\d+)$/, (m, a, b) => `${name("A", Number(a)) ?? `#${a}`} v ${name("A", Number(b)) ?? `#${b}`}`);
-      return { key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === g.stage)) };
+      const sides = rest.join(": ").split(" v ").map((raw): PlannedSide => {
+        const pm = raw.match(/^Pool ([A-Z]) #(\d+)$/);
+        if (pm) { const rank = Number(pm[2]); return { label: `Pool ${pm[1]} – ${ord(rank)}`, name: name(pm[1], rank), pool: pm[1], rank }; }
+        const sm = raw.match(/^#(\d+)$/);
+        if (sm) { const rank = Number(sm[1]); return { label: ord(rank), name: name("A", rank), pool: null, rank }; }
+        return { label: raw, name: null, pool: null, rank: null };
+      });
+      return { sides: [sides[0], sides[1] ?? { label: "Bye", name: null, pool: null, rank: null }] as [PlannedSide, PlannedSide], key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === g.stage)) };
     });
 }

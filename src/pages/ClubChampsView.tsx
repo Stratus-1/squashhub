@@ -118,6 +118,7 @@ import { overallStandings } from "@/lib/tournaments/overall-standings";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { rrSeedOrder, buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { plannedPlayoffBracket } from "@/lib/tournaments/planned-playoff-bracket";
+import { PlannedPlayoffBracketView } from "@/components/tournaments/PlannedPlayoffBracketView";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { SwissCurrentPositionsTable } from "@/components/tournaments/SwissPositionGrid";
 import { swissStandingsStatus, type SwissStandingsStatus } from "@/lib/tournaments/swiss-round-gate";
@@ -1332,17 +1333,10 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               const rows = plannedPlayoffBracket(plan, unitKeyOf(rrDivision?.label ?? getGroupLabel(champ, gn)), pc, standings);
               if (!rows.length) return null;
               return (
-                <div className={cn("space-y-2 rounded-lg border border-border p-3", rrDone ? "order-first border-primary" : "mt-2")} data-testid={`planned-playoffs-${gn}`}>
+                <div className={cn("order-first space-y-2 rounded-lg border p-3", rrDone ? "border-primary" : "border-border")} data-testid={`planned-playoffs-${gn}`}>
                   <div className="text-sm font-semibold">{getGroupLabel(champ, gn)} · Play-offs</div>
-                  <div className="text-xs text-muted-foreground">{done ? "Round robin complete — qualifiers known. The games are created automatically." : "Planned — positions are filled with names once the round robin is finished."}</div>
-                  <div className="divide-y divide-border text-sm">
-                    {rows.map((r) => (
-                      <div key={r.key} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
-                        <span><span className="font-medium">{r.id}</span> · {r.text}</span>
-                        {r.when && <span className="text-xs text-muted-foreground">{r.when}</span>}
-                      </div>
-                    ))}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{done ? "Pool games complete — qualifiers confirmed." : "Planned — pool positions are replaced by names once every pool game is complete."}</div>
+                  <PlannedPlayoffBracketView rows={rows} />
                 </div>
               );
             }
@@ -1352,7 +1346,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const rank = (l: string) => { const x = l.toLowerCase(); return x.includes("16") ? 0 : x.includes("quarter") ? 1 : x.includes("semi") ? 2 : x.includes("final") ? 3 : 4; };
             const order = [...new Set(ko.map((m: any) => m.stage_label ?? "Play-offs"))].sort((a: any, b: any) => rank(a) - rank(b));
             return (
-              <div className={cn("space-y-2", rrDone ? "order-first" : "mt-2")} data-testid={`pool-playoffs-${gn}`}>
+              <div className={cn("space-y-2 order-first")} data-testid={`pool-playoffs-${gn}`}>
                 <div className="text-xs text-muted-foreground">Play-offs — from the final pool standings. Winners move on until the final.</div>
                 <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · Play-offs — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
                   <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · Play-offs`} names={koNames} seedOf={() => null}

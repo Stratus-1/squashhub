@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { cashUpDateLabel } from "@/lib/bar/cash-up-date";
 import { isTipPayoutInput, validTipPayout } from "@/lib/bar/tips";
+import { Checkbox } from "@/components/ui/checkbox";
+import { rpcExt } from "@/lib/supabase-ext";
 
 interface EditablePayout { id: string; staff_name: string; amount: number; maximum: number }
 interface MethodTotal { sales: number; tips: number; count: number }
@@ -38,7 +40,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
   const [from, setFrom] = useState(format(subDays(new Date(), 7), "yyyy-MM-dd"));
   const [to, setTo] = useState(today);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [edit, setEdit] = useState({ cash: "", card: "", note: "", reason: "" });
+  const [edit, setEdit] = useState({ cash: "", card: "", note: "", reason: "", writeOff: false });
   const [busy, setBusy] = useState(false);
   const [payoutEdits, setPayoutEdits] = useState<Record<string, string>>({});
   const payouts = useQuery({
@@ -46,7 +48,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
     enabled: !!openId,
     queryFn: async () => {
       if (!openId) return [];
-      const { data, error } = await supabase.rpc("bar_cash_up_edit_payouts", { _id: openId });
+      const { data, error } = await rpcExt("bar_cash_up_edit_staff", { _id: openId });
       if (error) throw error;
       return (data ?? []) as unknown as EditablePayout[];
     },
@@ -70,7 +72,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
   const show = (c: CashUpRow) => {
     setOpenId(c.id);
     setPayoutEdits({});
-    setEdit({ cash: Number(c.counted_cash).toFixed(2), card: Number(c.card_counted ?? c.card_expected ?? 0).toFixed(2), note: c.note ?? "", reason: "" });
+    setEdit({ cash: Number(c.counted_cash).toFixed(2), card: Number(c.card_counted ?? c.card_expected ?? 0).toFixed(2), note: c.note ?? "", reason: "", writeOff: !!c.written_off });
   };
 
   async function save() {
@@ -78,9 +80,11 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
     setBusy(true);
     try {
       const changes = (payouts.data ?? []).filter(p => payoutEdits[p.id] !== undefined && Number(payoutEdits[p.id]) !== Number(p.amount));
-      if (changes.some(p => !validTipPayout(payoutEdits[p.id] ?? "", Number(p.maximum)))) throw new Error("Enter a positive paid-tip amount within the staff balance");
-      const { error } = await supabase.rpc("bar_cash_up_admin_correct", {
+      if (changes.some(p => !validTipPayout(payoutEdits[p.id] ?? "", Number(p.maximum), true))) throw new Error("Enter a positive paid-tip amount within the staff balance, or 0 for no payout");
+      const { error } = await rpcExt("bar_cash_up_admin_correct_full", {
         _id: open.id, _counted_cash: Number(edit.cash), _card_counted: Number(edit.card), _note: edit.note, _reason: edit.reason,
+        _write_off: edit.writeOff,
+        _expected: { counted_cash: open.counted_cash, card_counted: open.card_counted, note: open.note, written_off: open.written_off, tip_payouts: Number(open.totals?.tip_payouts ?? 0) },
         _payouts: changes.map(p => ({ id: p.id, expected_amount: Number(p.amount), amount: Number(payoutEdits[p.id]) })),
       });
       if (error) throw error;
@@ -92,8 +96,6 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
     finally { setBusy(false); }
   }
 
-  const isLatest = (c: CashUpRow) => !(all.data ?? []).some(p => p.period_end > c.period_end);
-
   const renderDetail = (c: CashUpRow) => {
     const saved = cashUpFigures(c, prevOf(c));
     const payoutDelta = (payouts.data ?? []).reduce((sum, p) => {
@@ -101,12 +103,12 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
       return sum + (value !== undefined && MONEY.test(value) ? Number(value) - Number(p.amount) : 0);
     }, 0);
     const f = { ...saved, tipsOut: saved.tipsOut + payoutDelta, cashShould: saved.cashShould - payoutDelta };
-    const locked = !!c.written_off || busy;
+    const locked = busy;
     const vCash = MONEY.test(edit.cash) ? Number(edit.cash) - f.cashShould : null;
     const vCard = MONEY.test(edit.card) ? Number(edit.card) - f.cardShould : null;
     const variance = vCash === null || vCard === null ? null : Math.round((vCash + vCard) * 100) / 100;
     const valid = MONEY.test(edit.cash) && MONEY.test(edit.card) && edit.reason.trim().length > 0 && !payouts.isLoading && !payouts.error
-      && (payouts.data ?? []).every(p => payoutEdits[p.id] === undefined || validTipPayout(payoutEdits[p.id], Number(p.maximum)));
+      && (payouts.data ?? []).every(p => payoutEdits[p.id] === undefined || validTipPayout(payoutEdits[p.id], Number(p.maximum), true));
     const row = (label: string, k: string, out: number, should: number, actual: React.ReactNode) =>
       <tr key={k} className="border-b"><td className="py-1">{label} <span className="text-muted-foreground">({f.m(k).count})</span></td>
         <td className="text-right tabular-nums">{R(f.m(k).sales)}</td><td className="text-right tabular-nums">{R(f.m(k).tips)}</td>
@@ -137,14 +139,17 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
         <h4 className="font-semibold">Tips paid in cash</h4>
         {(payouts.data ?? []).map(p => <div key={p.id} className="flex items-center justify-between gap-3">
           <Label htmlFor={`cu-tip-${p.id}`}>Tips paid to {p.staff_name}</Label>
-          <Input id={`cu-tip-${p.id}`} inputMode="decimal" className="h-8 w-28 text-right" value={payoutEdits[p.id] ?? Number(p.amount).toFixed(2)} disabled={busy || !isLatest(c)}
+          <Input id={`cu-tip-${p.id}`} inputMode="decimal" className="h-8 w-28 text-right" value={payoutEdits[p.id] ?? Number(p.amount).toFixed(2)} disabled={busy}
             onChange={e => { if (isTipPayoutInput(e.target.value)) setPayoutEdits(values => ({ ...values, [p.id]: e.target.value })); }} />
         </div>)}
-        {!isLatest(c) && <p className="text-muted-foreground">Paid tips can only be corrected on the most recent cash-up.</p>}
+        <p className="text-muted-foreground">Enter 0 for no payout. Positive amounts cannot exceed the available staff tips.</p>
       </div>}
       <div className="rounded-md border p-3 space-y-2">
         {variance !== null && <p className={variance === 0 ? "text-muted-foreground" : "text-destructive font-medium"}>{variance === 0 ? "Everything balances." : `${variance > 0 ? "Surplus" : "Shortfall"} of ${R(Math.abs(variance))}`}</p>}
-        {c.written_off && <p className="text-muted-foreground">At closing, {R(c.write_off_amount)} was written off to bar cost of sales. Counted amounts stay locked. Saving a paid-tip correction also adjusts the write-off without changing counted cash.</p>}
+        {variance !== null && variance !== 0 && <label className="flex items-start gap-2">
+          <Checkbox checked={edit.writeOff} onCheckedChange={v => setEdit(e => ({ ...e, writeOff: v === true }))} disabled={busy} />
+          <span>Record the {variance > 0 ? "surplus" : "shortfall"} against bar cost of sales {variance > 0 ? "(reduces cost of sales)" : "(adds to cost of sales)"}</span>
+        </label>}
         <Label htmlFor="cu-note">Note</Label>
         <Input id="cu-note" maxLength={500} value={edit.note} disabled={busy} onChange={e => setEdit({ ...edit, note: e.target.value })} />
         <Label htmlFor="cu-reason">Reason for change (required)</Label>
@@ -175,7 +180,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
             <td className="text-right tabular-nums">{R(f.opening)}</td>
             <td className="text-right tabular-nums">{R(f.cashShould)}</td>
             <td className="text-right tabular-nums">{R(c.counted_cash)}</td>
-            <td className={`text-right tabular-nums ${Math.abs(d) > 0.004 ? "text-destructive" : ""}`}>{R(d)}{c.written_off ? " · written off" : ""}</td>
+            <td className={`text-right tabular-nums ${Math.abs(d) > 0.004 ? "text-destructive" : ""}`}>{R(d)}{c.written_off ? d > 0 ? " · surplus recorded" : d < 0 ? " · shortfall recorded" : " · reconciled" : ""}</td>
             <td className="text-right pl-2"><Button size="sm" variant="outline" className="h-7" onClick={() => show(c)}>View / edit</Button></td>
           </tr>; })}</tbody>
         </table></div>}

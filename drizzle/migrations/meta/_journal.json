@@ -1695,6 +1695,20 @@
       "when": 1792681682108,
       "tag": "0241_pin_counter_club_sponsored_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1792682315457,
+      "tag": "0242_full_saved_cash_up_corrections",
+      "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1792682401922,
+      "tag": "0243_cash_up_correction_effective_dates",
+      "breakpoints": true
     }
   ]
 }

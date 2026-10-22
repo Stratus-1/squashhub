@@ -9,7 +9,7 @@ import { proposePairings } from "./paced-knockout";
 import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
 import { sequenceSwissRound } from "./swiss-sequencing";
 import { assertTournamentPairingWritable, swissSequencingEnabled, type SwissSequencingPolicy } from "./swiss-sequencing-policy";
-import { hybridSwissTable, rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
+import { hybridSwissTable, rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND, TEN_REMAINDER_CHART, tenRemainderSlots, usesTenRemainderChart } from "./swiss-rr-finish";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -220,7 +220,7 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
     const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
     if (usesTenRemainderChart(st.rrFinish, plan.remainder.length)) {
       // Approved fixed-position chart: repeat opponents are allowed by the organiser.
-      const slots = tenRemainderSlots(plan.remainder, gate.nextRound, mine.map((f) => ({ a: f.a ?? null, b: f.b ?? null, winner: f.winner ?? null, round: f.round ?? 0 })));
+      const slots = tenRemainderSlots(plan.remainder, gate.nextRound, mine.map((f) => ({ a: f.a ?? null, b: f.b ?? null, winner: swissWinner(f), round: f.round ?? 0 })));
       if (slots.some((s) => !s)) throw new IntegrityError("prereq", "Earlier remainder games are not all decided yet.");
       const chartPart = TEN_REMAINDER_CHART[gate.nextRound].map(([a, b]) => [slots[a - 1] as string, slots[b - 1] as string] as [string, string]);
       return [...plan.pairs, ...chartPart].map(([a, b], i) => ({

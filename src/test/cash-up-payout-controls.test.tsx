@@ -18,11 +18,13 @@ function open() {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CashUp clubId="riverside" tipsEnabled /></QueryClientProvider>);
 }
 describe("cash-up payout and edit controls", () => {
-  it("rejects negative R56 input and submits positive R56", async () => {
+  it("starts paid tips at zero, rejects negative R56 input and submits positive R56", async () => {
     open();
     const tips = await screen.findByRole("textbox", { name: "Tips paid to Test staff" });
+    expect(tips).toHaveValue("0");
+    expect(screen.getByText(/owed R56\.00/)).toBeInTheDocument();
     fireEvent.change(tips, { target: { value: "-56" } });
-    expect(tips).toHaveValue("56.00");
+    expect(tips).toHaveValue("0");
     fireEvent.change(tips, { target: { value: "56" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Cash counted" }), { target: { value: "230" } });
     fireEvent.click(screen.getByRole("button", { name: "Complete cash-up" }));

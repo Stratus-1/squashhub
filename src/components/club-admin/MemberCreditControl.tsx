@@ -33,7 +33,7 @@ export function MemberCreditControl({ clubId, memberId, readOnly = false }: {
       toast.error(e instanceof Error ? e.message : "Could not save credit allowed");
     }
   };
-  if (readOnly) return <p className="text-xs text-muted-foreground" aria-label="Member credit allowed">Additional club credit allowed: R{Number(data.credit_allowed).toFixed(2)}</p>;
+  if (readOnly) return <p className="text-xs text-muted-foreground" aria-label="Member credit allowed">Club credit allowed: R{Number(data.credit_allowed).toFixed(2)}</p>;
   return (
     <section className="space-y-2 border-b border-border py-3" aria-label={memberId ? "Member credit allowed" : "Member Credit"}>
       <h3 className="text-sm font-semibold">{memberId ? "Financial / Billing" : "Member Credit"}</h3>

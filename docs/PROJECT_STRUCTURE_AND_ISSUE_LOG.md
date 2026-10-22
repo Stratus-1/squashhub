@@ -3704,3 +3704,10 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Fix: new `src/lib/joining-fee.ts` (`decideJoiningClubFee` pure decision + `ensureJoiningClubFee` idempotent writer). Idempotency: skips when any club/membership fee row exists, when billing-exempt, or when the category fee is zero; mirrors the wizard label and `computeJoinFee` pro-rata/full-fee rules (category due_month/due_day/pro_rate, joined_at as the join date).
 - EditMemberDialog now calls it after saving a category. PendingApplicationsPanel: Approve no longer requires the applicant to have finished — when no category is set, the admin is prompted to pick one (saved, fee raised) before `review_membership_application` runs; applicants with a category get the same idempotent fee check on approval.
 - Tests: `src/test/joining-fee.test.ts` (6 rules) + `src/test/joining-fee-ui.smoke.test.tsx` (import smoke). Not exercised end-to-end against the live database; no data changed.
+
+## 2026-10-22 — Member "Available to spend" card; credit wording settled
+- Owner wanted members to see what they may still spend (court/lights/bar), taking recurring payment arrangements into account, prominently on the dashboard.
+- Added `src/lib/spend-summary.ts` (pure: allowance = recurring-plan fees + approved credit − owing, plus advance credit), `use-spend-summary.ts`, and `src/components/dashboard/AvailableToSpendCard.tsx` on the member home page; hidden when the club has nothing configured for the member.
+- Wording (owner's choice): read-only member notice reads **"Club credit allowed: R…"** — not "Additional club credit allowed", not "Your credit limit" (`src/components/club-admin/MemberCreditControl.tsx`). Admin controls and the booking note already said "credit allowed" and were left unchanged.
+- Owner confirmed the behaviour: a member whose available amount is negative may still book (the recurring arrangement covers it) — no change to the booking gate.
+- Tests: `src/test/spend-summary.test.ts` (6 rules) + `src/test/member-credit-control.test.tsx` label test (15 pass together). Published to Riverside; owner verified the card there.

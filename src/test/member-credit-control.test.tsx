@@ -34,6 +34,12 @@ describe("member credit settings", () => {
     expect(screen.queryByRole("spinbutton")).toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
   });
+  it("read-only label reads Club credit allowed, not Additional", () => {
+    mocks.data.override_amount = 800; mocks.data.credit_allowed = 800;
+    render(<MemberCreditControl clubId="club" memberId="member" readOnly />);
+    expect(screen.getByText("Club credit allowed: R800.00")).toBeInTheDocument();
+    expect(screen.queryByText(/Additional/)).toBeNull();
+  });
   it("unauthorized staff cannot edit", () => {
     mocks.data.can_edit = false;
     render(<MemberCreditControl clubId="club" memberId="member" />);

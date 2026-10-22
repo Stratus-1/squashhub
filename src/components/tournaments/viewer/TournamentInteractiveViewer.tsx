@@ -23,6 +23,10 @@ export interface TournamentInteractiveViewerProps {
   className?: string;
   /** "direct": plain mouse wheel zooms over the viewer (Ctrl/trackpad pinch also). "modifier" (default): only Ctrl/Cmd+wheel or pinch. */
   wheelZoom?: "direct" | "modifier";
+  /** Optional: hands the zoom/pan controls to the wrapped content (e.g. a "View standings" jump that pans instead of scrolls). */
+  apiRef?: { current: ReactZoomPanPinchContentRef | null };
+  /** Optional: hands the visible frame element to the wrapped content so it can measure what is on screen. */
+  frameRef?: { current: HTMLDivElement | null };
 }
 
 export const fitScale = (
@@ -46,13 +50,13 @@ export function nextWheelScale(z: number, e: { deltaY: number; deltaMode: number
 }
 
 export function TournamentInteractiveViewer({
-  title, children, contentSize, toolbarExtras, minZoom = 0.25, maxZoom = 3, defaultFit = "width", inlineHeight = 480, className, wheelZoom = "modifier",
+  title, children, contentSize, toolbarExtras, minZoom = 0.25, maxZoom = 3, defaultFit = "width", inlineHeight = 480, className, wheelZoom = "modifier", apiRef, frameRef,
 }: TournamentInteractiveViewerProps) {
   const [expanded, setExpanded] = useState(false);
   const [scale, setScale] = useState(1);
   const pos = useRef({ positionX: 0, positionY: 0, scale: 1 });
   const api = useRef<ReactZoomPanPinchContentRef | null>(null);
-  const frameRef = useRef<HTMLDivElement | null>(null);
+  const frameEl = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const expandBtn = useRef<HTMLButtonElement | null>(null);
   const closeBtn = useRef<HTMLButtonElement | null>(null);
@@ -72,7 +76,7 @@ export function TournamentInteractiveViewer({
   const size = contentSize ?? measured;
 
   const applyFit = useCallback((mode: "width" | "screen") => {
-    const f = frameRef.current; const a = api.current;
+    const f = frameEl.current; const a = api.current;
     if (!f || !a) return;
     const frame = { width: f.clientWidth, height: f.clientHeight };
     const s = fitScale(mode, frame, size, minZoom, maxZoom);
@@ -113,7 +117,7 @@ export function TournamentInteractiveViewer({
   // Native non-passive wheel handler: pointer-anchored, delta-scaled zoom.
   // At a zoom bound the event is NOT cancelled, so page scrolling continues.
   useEffect(() => {
-    const el = frameRef.current; if (!el) return;
+    const el = frameEl.current; if (!el) return;
     const onWheel = (e: WheelEvent) => {
       const a = api.current; if (!a) return;
       const pinchOrMod = e.ctrlKey || e.metaKey;
@@ -167,7 +171,7 @@ export function TournamentInteractiveViewer({
 
   const body = (
     <div
-      ref={frameRef}
+      ref={(n) => { frameEl.current = n; if (frameRef) frameRef.current = n; }}
       tabIndex={0}
       aria-label={`${title} — use plus, minus, 0 to reset, F to fit, arrows to pan`}
       onKeyDown={onFrameKey}
@@ -175,7 +179,7 @@ export function TournamentInteractiveViewer({
       style={expanded ? undefined : { height: inlineHeight }}
     >
       <TransformWrapper
-        ref={api}
+        ref={(r) => { api.current = r; if (apiRef) apiRef.current = r; }}
         minScale={minZoom}
         maxScale={maxZoom}
         limitToBounds={false}

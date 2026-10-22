@@ -259,7 +259,8 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs: Array<[string, string | null]> = plan.pairs;
-      const chartRest = (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
+      const tenChart = usesTenRemainderChart(model.rrFinish, plan.remainder.length);
+      const chartRest = tenChart || ((opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3);
       const prevDone = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
       // Owner's 18-player chart: positions 13–18 follow the chart (13v17,14v18,15v16 / 13v15,14v17,16v18 / 13v14,15v16,17v18),
       // with positions taken from standings after the previous round. Names appear only once that round is complete.
@@ -284,6 +285,16 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
           if ((x && covered.has(x)) || (y && covered.has(y))) continue;
           const row = (id: string | null, pos: number): GridRow => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", when: schedule.label };
           chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
+        }
+      } else if (tenChart) {
+        // Approved 10-player remainder chart: names appear once the game deciding each slot is complete.
+        const offset = plan.pairs.length * 2;
+        const slots = locked ? tenRemainderSlots(plan.remainder, rd.round, history) : Array(10).fill(null);
+        for (const [a, b] of TEN_REMAINDER_CHART[rd.round] ?? []) {
+          const x = slots[a - 1] ?? null, y = slots[b - 1] ?? null;
+          if ((x && covered.has(x)) || (y && covered.has(y))) continue;
+          const row = (id: string | null, pos: number): GridRow => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", projected: true, when: schedule.label };
+          chartBlocks.push({ matchId: `chart10-${rd.round}-${a}-${b}`, rows: [row(x, offset + a), row(y, offset + b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
         }
       } else if ((sequencing ? prevDone && locked : prevDone || (!locked && rd.round === 3)) && plan.remainder.length) {
         const rest = new Set(plan.remainder);

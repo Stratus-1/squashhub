@@ -20071,10 +20071,20 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: Json
       }
-      bar_club_use: {
-        Args: { _item: string; _qty: number; _reason: string }
-        Returns: Json
-      }
+      bar_club_use:
+        | {
+            Args: { _item: string; _qty: number; _reason: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _date: string
+              _item: string
+              _qty: number
+              _reason: string
+            }
+            Returns: Json
+          }
       bar_cost_of_sales: {
         Args: { _club: string; _from: string; _to: string }
         Returns: {

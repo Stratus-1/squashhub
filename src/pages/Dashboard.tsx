@@ -507,6 +507,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || isClubMemberError || !profile) return;
 
+    // A Google sign-in answered "yes, this is a new application" arrives here to
+    // start the membership fee steps straight away.
+    try {
+      if (sessionStorage.getItem("sh.open_membership_wizard") === "1") {
+        sessionStorage.removeItem("sh.open_membership_wizard");
+        setShowOnboarding(true);
+        return;
+      }
+    } catch {
+      /* private mode: nothing to open */
+    }
+
     // Super admins (platform-level) can browse any club without being forced to onboard.
     if (isSuperAdmin) return;
 

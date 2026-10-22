@@ -94,6 +94,24 @@ export default function BarCounter() {
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [removeLine, setRemoveLine] = useState<{ saleId: string; label: string; total: number } | null>(null);
+  const [removeReason, setRemoveReason] = useState("");
+  const [removing, setRemoving] = useState(false);
+  async function removeTabLine() {
+    if (!removeLine || !removeReason.trim()) return;
+    setRemoving(true);
+    try {
+      const { error } = await (supabase as any).rpc("bar_counter_remove_tab_item", { _sale_id: removeLine.saleId, _reason: removeReason.trim(), _token: token });
+      if (error) throw error;
+      toast.success("Removed from tab — stock returned");
+      setRemoveLine(null); setRemoveReason("");
+      await refetch();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not remove the item");
+    } finally {
+      setRemoving(false);
+    }
+  }
   const [division, setDivision] = useState("bar");
   const [category, setCategory] = useState<string | null>(null);
   const [itemSearch, setItemSearch] = useState("");
@@ -697,6 +715,21 @@ export default function BarCounter() {
         <div className="flex items-center gap-1 flex-wrap">
           <Button size="sm" variant="outline" className="gap-1" onClick={() => setClubUseOpen(true)}><Gift className="h-4 w-4" />Club sponsored</Button>
           {clubUseOpen && <CounterClubUseDialog key={token} token={token} operator={operator} items={board.items} onClose={() => setClubUseOpen(false)} />}
+          <Dialog open={!!removeLine} onOpenChange={(o) => { if (!o && !removing) { setRemoveLine(null); setRemoveReason(""); } }}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Remove from tab?</DialogTitle>
+                <DialogDescription>{removeLine?.label} ({money(removeLine?.total ?? 0)}) comes off the tab and the stock goes back. Your name and reason are recorded.</DialogDescription>
+              </DialogHeader>
+              <Input autoFocus aria-label="Reason for removing" placeholder="Reason, e.g. rang up by mistake" value={removeReason} onChange={(e) => setRemoveReason(e.target.value)} />
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" disabled={removing} onClick={() => { setRemoveLine(null); setRemoveReason(""); }}>Keep it</Button>
+                <Button variant="destructive" className="flex-1" disabled={removing || !removeReason.trim()} onClick={removeTabLine}>
+                  {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove item"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog open={tipsOpen} onOpenChange={setTipsOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Staff tips</DialogTitle></DialogHeader>{tipsOpen && <StaffTips clubId={board.club_id} token={token} />}</DialogContent></Dialog>
           <Dialog open={cashUpOpen} onOpenChange={setCashUpOpen}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Cash-up</DialogTitle></DialogHeader>{cashUpOpen && <CashUp clubId={board.club_id} token={token} tipsEnabled={Boolean(tipConfig?.enabled)} />}</DialogContent></Dialog>
           {tipConfig?.enabled && <Button size="sm" variant="outline" onClick={() => setTipsOpen(true)}>Staff tips</Button>}

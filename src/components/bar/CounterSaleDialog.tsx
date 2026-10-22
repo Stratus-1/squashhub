@@ -49,9 +49,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   items: BarItem[];
   clubId: string;
+  /** Club-sponsored mode: basket only — no customer, no payment, every line becomes club use. */
+  clubUseOnly?: boolean;
 }
 
-export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) {
+export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOnly = false }: Props) {
   const qc = useQueryClient();
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
@@ -275,11 +277,13 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
         <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <ShoppingCart className="w-4 h-4" /> Counter sale
+              {clubUseOnly ? <Gift className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+              {clubUseOnly ? "Club sponsored (no charge)" : "Counter sale"}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Build the basket, choose the customer, then take payment. Member account charges must be
-              approved by the member on this device.
+              {clubUseOnly
+                ? "Ring up the items the club is giving away (e.g. tournament balls). Stock goes down and the cost price is booked to \"Stock club expense\" — nobody is charged."
+                : "Build the basket, choose the customer, then take payment. Member account charges must be approved by the member on this device."}
             </DialogDescription>
           </DialogHeader>
 

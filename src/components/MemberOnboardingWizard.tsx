@@ -25,6 +25,7 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
 import { computeJoinFee, nextRenewalDate } from "@/lib/fee-proration";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -1348,7 +1349,7 @@ export function MemberOnboardingWizard({
                         </div>
                       ) : (
                       <Select value={feeCategoryId} onValueChange={setFeeCategoryId}>
-                        <SelectTrigger><SelectValue placeholder="Select category (optional)" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select your membership category" /></SelectTrigger>
                         <SelectContent className="max-h-[320px]">
                           {[...feeCategories]
                             // Hide the internal seeded "Standard Membership" placeholder;

@@ -248,9 +248,22 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { exa
       // with positions taken from standings after the previous round. Names appear only once that round is complete.
       const chartBlocks: GridBlock[] = [];
       if (chartRest) {
-        const table = swissTable(snapshot, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.tieBreaks).filter((r) => plan.remainder.includes(r.id));
-        for (const p of uitsigMensCChart()[rd.round - 1].pairs.filter((p) => p.a > 12)) {
-          const x = prevDone ? table[p.a - 13]?.id ?? null : null, y = prevDone ? table[p.b - 13]?.id ?? null : null;
+        // Fixed-position chart: winner takes the better slot of its pair, loser the worse slot (no points re-ranking).
+        // A slot shows a name as soon as the game that decides it is complete.
+        const chart = uitsigMensCChart();
+        let slots: Array<string | null> = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
+        for (let r = 1; r < rd.round; r++) {
+          const nextSlots: Array<string | null> = Array(slots.length).fill(null);
+          for (const cp of chart[r - 1]?.pairs ?? []) {
+            const x0 = slots[cp.a - 1], y0 = slots[cp.b - 1];
+            const g = x0 && y0 ? history.find((f) => f.round === r && f.state === "completed" && f.winner && ((f.a === x0 && f.b === y0) || (f.a === y0 && f.b === x0))) : undefined;
+            if (g) { nextSlots[cp.a - 1] = g.winner as string; nextSlots[cp.b - 1] = g.winner === x0 ? y0 : x0; }
+          }
+          slots = nextSlots;
+        }
+        void prevDone;
+        for (const p of chart[rd.round - 1].pairs.filter((p) => p.a > 12)) {
+          const x = slots[p.a - 1] ?? null, y = slots[p.b - 1] ?? null;
           if ((x && covered.has(x)) || (y && covered.has(y))) continue;
           const row = (id: string | null, pos: number): GridRow => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", when: schedule.label };
           chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });

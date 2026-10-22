@@ -26,6 +26,9 @@ export function plannedPlayoffsByUnit(raw: Record<string, any> | undefined): Rec
   if (!rounds || !keys.length || !Object.keys(rounds).length) return null;
   const out: Record<string, string[]> = {};
   keys.forEach((key, i) => { out[key] = (rounds[String(i + 1)] ?? []).filter((c) => ORDER.some((o) => o.code === c)); });
+  // Nothing actually ticked: let organisers add play-off stages here by hand
+  // instead of the sync silently removing every stage they add.
+  if (!Object.values(out).some((r) => r.length > 0)) return null;
   return out;
 }
 

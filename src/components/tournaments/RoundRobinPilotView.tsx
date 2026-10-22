@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
+import { type ReactZoomPanPinchContentRef } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -121,43 +122,32 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
 }
 
 /** Clean fixtures-by-round and live standings, shared by all clubs. */
+/** Clean fixtures-by-round and live standings, shared by all clubs. Zoom (wheel, pinch or buttons) and drag to navigate; saved games are never touched. */
 export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolView; group: number; groupLabel: string }) {
   const track = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ pointerId: number; x: number; scrollLeft: number } | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const jump = (selector: string) => track.current?.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+  const api = useRef<ReactZoomPanPinchContentRef | null>(null);
+  const frame = useRef<HTMLDivElement | null>(null);
   const { players, totals, rounds } = view;
   const tone = ((group - 1) % 6) + 1;
   const standings = [...players].sort((a, b) => (view.rank[a.id] ?? 99) - (view.rank[b.id] ?? 99));
   const pos = (id: string) => players.findIndex((p) => p.id === id) + 1;
   const anyPlayed = Object.values(totals).some((t) => t.played > 0);
+  /** Pan the shared viewer until the target section is inside the frame. Navigation only. */
+  const jump = (selector: string) => {
+    const el = track.current?.querySelector(selector) as HTMLElement | null;
+    if (!el) return;
+    const a = api.current, f = frame.current;
+    if (!a || !f) { el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" }); return; }
+    const r = el.getBoundingClientRect(), w = f.getBoundingClientRect();
+    const { positionX: x, positionY: y, scale: s } = a.state;
+    const dx = r.left - w.left, dy = r.top - w.top;
+    a.setTransform(dx < 8 || r.right > w.right - 8 ? x - (dx - 8) : x, dy < 8 || r.bottom > w.bottom - 8 ? y - (dy - 8) : y, s, 200);
+  };
   return (
     <div className="space-y-2 text-xs" data-testid="rr-clean">
       <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
-      <div ref={track} className={cn("flex gap-3 overflow-x-auto pb-2 touch-pan-x", dragging ? "cursor-grabbing select-none" : "cursor-grab")} data-testid="rr-round-track"
-        onPointerDown={(event) => {
-          if (event.pointerType !== "mouse" || event.button !== 0 || (event.target instanceof Element && event.target.closest("button, a, input, select, textarea"))) return;
-          drag.current = { pointerId: event.pointerId, x: event.clientX, scrollLeft: event.currentTarget.scrollLeft };
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }}
-        onPointerMove={(event) => {
-          const start = drag.current;
-          if (!start || start.pointerId !== event.pointerId) return;
-          const distance = event.clientX - start.x;
-          if (!dragging && Math.abs(distance) < 4) return;
-          event.preventDefault();
-          setDragging(true);
-          event.currentTarget.scrollLeft = start.scrollLeft - distance;
-        }}
-        onPointerUp={(event) => {
-          if (drag.current?.pointerId !== event.pointerId) return;
-          drag.current = null;
-          setDragging(false);
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-        }}
-        onPointerCancel={() => { drag.current = null; setDragging(false); }}
-        onLostPointerCapture={() => { drag.current = null; setDragging(false); }}
-        onDragStart={(event) => event.preventDefault()}>
+      <TournamentInteractiveViewer title={`${groupLabel} — fixtures & standings`} inlineHeight={520} defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame}>
+      <div ref={track} className="flex gap-3 cursor-grab" data-testid="rr-round-track">
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {rounds.map((rd) => (
           <div key={rd.label} className="w-80 shrink-0 self-start overflow-hidden rounded-md border border-border" data-testid={`rr-clean-round-${rd.round ?? "x"}`}>
@@ -198,6 +188,7 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
         </table></div>
       </section>
       </div>
+      </TournamentInteractiveViewer>
     </div>
   );
 }

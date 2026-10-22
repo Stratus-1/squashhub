@@ -38,7 +38,7 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
       {rrStandings}
     </section>
   ) : null;
-  const unavailable = positionalPreview && (proposed.issues.length > 0 || !model.rows.length || !model.rounds.some((r) => r.created));
+  const unavailable = positionalPreview && ((proposed.issues.length > 0 && !model.rrFinish?.enabled) || !model.rows.length || !model.rounds.some((r) => r.created));
   return (
     <div className="space-y-3" data-testid="swiss-progression-pilot">
       {infoTournamentId && <TournamentPlayerInfoNotice tournamentId={infoTournamentId} />}
@@ -78,7 +78,7 @@ export function SwissProgressionPilotView({ title, model, clubId, positionalPrev
           <div className="space-y-1 text-xs">
             <h3 className="font-semibold">PREVIEW · Proposed fixed-position Swiss · {model.rows.length} entrants · {model.totalRounds} rounds</h3>
           </div>
-          {proposed.issues.length ? <p className="text-xs text-muted-foreground">Positional preview unavailable: {proposed.issues.join(" ")} Saved matches remain available in Classic.</p> : (
+          {proposed.issues.length && model.rrFinish?.enabled ? <p role="status" className="text-xs text-muted-foreground">{proposed.issues.join(" ")}</p> : null}{(
             <TournamentInteractiveViewer title={`${title} — PREVIEW proposed positional slots`} inlineHeight={420} defaultFit="none" wheelZoom="direct">
               <SwissPositionGrid model={model} proposedRounds={proposed.rounds} rrGroupOf={rr.enabled ? rr.groupOf : undefined} rrLocked={rr.locked} afterRounds={rrColumn} />
             </TournamentInteractiveViewer>

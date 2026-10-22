@@ -68,7 +68,7 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [rows, pools, confirmed]);
+  }, [rows, pools, confirmed, champion]);
 
   const feedsOf = (g: PlannedPlayoffRow) => g.sides.map((s) => s.label.match(/^Winner (\S+)$/)?.[1]).filter(Boolean).join(",");
 

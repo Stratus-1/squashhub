@@ -742,11 +742,13 @@ export default function MatchMarker() {
       const { error } = await rpcExt("save_marker_match_result", {
         _match_id: pendingMatchIdRef.current,
         _club_id: config.clubId || null,
-        _player_a_member_id: validAMemberId,
-        _player_b_member_id: validBMemberId,
+        // When linked to a fixture listed the other way round, save in the
+        // fixture's player order so the tournament row reads correctly.
+        _player_a_member_id: champScoreStr !== scoreStr ? validBMemberId : validAMemberId,
+        _player_b_member_id: champScoreStr !== scoreStr ? validAMemberId : validBMemberId,
         _winner_member_id: winnerMemberId,
-        _score: scoreStr,
-        _game_scores: gameScoresJson,
+        _score: champScoreStr,
+        _game_scores: champGameScoresJson,
         _duration_s: result.durationSeconds,
         _confirmed: autoConfirm,
         _notes: noteParts.join(". "),

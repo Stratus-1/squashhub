@@ -51,7 +51,7 @@ export function provisionalPlayoffs(plan: any, unitKey: string, pools: number): 
       const cfg: Pairing | null = pp?.pairing === "cross_pools" ? "crossover" : pp?.pairing === "seeded" ? "seeded" : null;
       if (inherited || cfg) pairings[0] = (inherited ?? cfg) as Pairing;
     }
-    pairings = pairings.map((x, i) => (i > 0 && isPool(x) ? "winners" : x));
+    pairings = pairings.map((x, i) => (i > 0 ? "winners" : x));
   } else {
     const pp = playoffFor(plan, unitKey);
     if (!pp || pp.choice !== "playoffs") return [];

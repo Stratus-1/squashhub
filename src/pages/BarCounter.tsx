@@ -42,7 +42,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 
-interface CounterItem { id: string; name: string; price: number; category?: string | null; division?: string | null; item_kind?: string | null; barcode?: string | null; image_url?: string | null }
+interface CounterItem { id: string; name: string; price: number; category?: string | null; division?: string | null; item_kind?: string | null; barcode?: string | null; image_url?: string | null; avg_unit_cost?: number | null; cost_price?: number | null; unit_yield?: number | null }
 interface CounterTab {
   tab_id: string;
   token: string;

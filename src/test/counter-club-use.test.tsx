@@ -12,6 +12,8 @@ describe("PIN club-sponsored basket", () => {
  it("records balls with verified PIN and reason, without customer-tab or sale requests", async () => {
   open();
   fireEvent.click(screen.getByRole("button", { name: "Add Squash ball" }));
+  expect(screen.getByText(/cost R30\.00/)).toBeInTheDocument();
+  expect(screen.getByText(/Cost to club \(income statement\)/)).toHaveTextContent("R30.00");
   expect(screen.getByRole("button", { name: "Record club use" })).toBeDisabled();
   fireEvent.change(screen.getByLabelText("Used for"), { target: { value: "Tournament" } });
   fireEvent.click(screen.getByRole("button", { name: "Record club use" }));

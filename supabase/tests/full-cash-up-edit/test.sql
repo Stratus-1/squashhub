@@ -46,3 +46,15 @@ END $$;
 DO $$ BEGIN
  BEGIN PERFORM bar_cash_up_admin_correct_full('33333333-3333-3333-3333-333333333333',230,575,'stale','reason','[]',true,'{}'); RAISE EXCEPTION 'FAIL stale'; EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Cash-up changed; refresh before editing' THEN RAISE; END IF; END;
 END $$;
+INSERT INTO bar_counter_devices VALUES('55555555-5555-5555-5555-555555555555','11111111-1111-1111-1111-111111111111','Other staff');
+INSERT INTO bar_tips VALUES('11111111-1111-1111-1111-111111111111','55555555-5555-5555-5555-555555555555',100,'earned','2026-10-20T00:00Z','2026-10-20T00:00Z');
+INSERT INTO bar_tip_payouts VALUES('66666666-6666-6666-6666-666666666666','11111111-1111-1111-1111-111111111111','55555555-5555-5555-5555-555555555555','Other staff',80,NULL,'2026-10-23T05:00Z');
+DO $$ DECLARE c bar_cash_ups; args jsonb; changes jsonb; BEGIN
+ SELECT * INTO c FROM bar_cash_ups WHERE id='33333333-3333-3333-3333-333333333333';
+ args:=jsonb_build_object('counted_cash',c.counted_cash,'card_counted',c.card_counted,'note',c.note,'written_off',c.written_off,'tip_payouts',coalesce((c.totals->>'tip_payouts')::numeric,0));
+ changes:=jsonb_build_array(jsonb_build_object('id',md5(c.id::text||':55555555-5555-5555-5555-555555555555')::uuid,'expected_amount',0,'amount',21));
+ BEGIN PERFORM bar_cash_up_admin_correct_full(c.id,c.counted_cash,c.card_counted,c.note,'Test new staff',changes,true,args); RAISE EXCEPTION 'FAIL later payout balance'; EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Cash payout exceeds available tips for this shift' THEN RAISE; END IF; END;
+ changes:=jsonb_set(changes,'{0,amount}','20');
+ PERFORM bar_cash_up_admin_correct_full(c.id,c.counted_cash,c.card_counted,c.note,'Test new staff',changes,true,args);
+ IF (SELECT sum(amount) FROM bar_tip_payouts WHERE staff_id='55555555-5555-5555-5555-555555555555')<>100 THEN RAISE EXCEPTION 'FAIL added named payout'; END IF;
+END $$;

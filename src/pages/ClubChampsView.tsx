@@ -1293,9 +1293,11 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     const rrDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
     const rrStage = rrDivision?.stages?.find((s: any) => s.kind === "round_robin");
     if (!gm.length) return null;
+    // Round robin finished (or play-offs running): play-offs go on top, pool results move below.
+    const rrDone = gm.every((m: any) => m.is_bye || !!m.winner_member_id || m.status === "completed") || (matches as any[]).some((m: any) => m.group_number === gn && (m.stage || "group") !== "group");
     return (
       <SwissPilotBoundary fallback={null}>
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {Array.from({ length: pc }, (_, i) => i + 1).map((pn) => {
             const rows = getGroupStandings(gn, pc > 1 ? pn : null) as any[];
             const pm = gm.filter((m: any) => pc <= 1 || resolvePoolNumber(m, gn) === pn);
@@ -1330,7 +1332,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               const rows = plannedPlayoffBracket(plan, unitKeyOf(rrDivision?.label ?? getGroupLabel(champ, gn)), pc, standings);
               if (!rows.length) return null;
               return (
-                <div className="mt-6 space-y-2 rounded-lg border border-border p-3" data-testid={`planned-playoffs-${gn}`}>
+                <div className={cn("space-y-2 rounded-lg border border-border p-3", rrDone ? "order-first border-primary" : "mt-2")} data-testid={`planned-playoffs-${gn}`}>
                   <div className="text-sm font-semibold">{getGroupLabel(champ, gn)} · Play-offs</div>
                   <div className="text-xs text-muted-foreground">{done ? "Round robin complete — qualifiers known. The games are created automatically." : "Planned — positions are filled with names once the round robin is finished."}</div>
                   <div className="divide-y divide-border text-sm">
@@ -1350,7 +1352,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const rank = (l: string) => { const x = l.toLowerCase(); return x.includes("16") ? 0 : x.includes("quarter") ? 1 : x.includes("semi") ? 2 : x.includes("final") ? 3 : 4; };
             const order = [...new Set(ko.map((m: any) => m.stage_label ?? "Play-offs"))].sort((a: any, b: any) => rank(a) - rank(b));
             return (
-              <div className="mt-6 space-y-2" data-testid={`pool-playoffs-${gn}`}>
+              <div className={cn("space-y-2", rrDone ? "order-first" : "mt-2")} data-testid={`pool-playoffs-${gn}`}>
                 <div className="text-xs text-muted-foreground">Play-offs — from the final pool standings. Winners move on until the final.</div>
                 <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · Play-offs — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
                   <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · Play-offs`} names={koNames} seedOf={() => null}

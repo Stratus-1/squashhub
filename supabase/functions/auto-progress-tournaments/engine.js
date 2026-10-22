@@ -1659,6 +1659,28 @@ function swissSequencingEnabled(policy, tournamentId) {
 }
 
 // src/lib/tournaments/swiss-rr-finish.ts
+var TEN_REMAINDER_CHART = {
+  3: [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]],
+  4: [[1, 3], [2, 5], [4, 6], [7, 9], [8, 10]],
+  5: [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
+};
+var usesTenRemainderChart = (f, remainder) => f?.remainderChart === "ten_position_swap" && remainder === 10;
+function tenRemainderSlots(remainder, round, games) {
+  let slots = [...remainder];
+  for (let r = 3;r < round; r++) {
+    const next = Array(slots.length).fill(null);
+    for (const [a, b] of TEN_REMAINDER_CHART[r] ?? []) {
+      const x = slots[a - 1], y = slots[b - 1];
+      const g = x && y ? games.find((f) => f.round === r && f.winner && (f.a === x && f.b === y || f.a === y && f.b === x)) : undefined;
+      if (g) {
+        next[a - 1] = g.winner;
+        next[b - 1] = g.winner === x ? y : x;
+      }
+    }
+    slots = next;
+  }
+  return slots;
+}
 function hybridSwissTable(seedOrder, games, finish, tieBreaks) {
   if (!rrFinishOn(finish) || !games.some((g) => (g.round ?? 0) >= RR_FINISH_FROM_ROUND))
     return swissTable(seedOrder, games, tieBreaks);
@@ -1997,6 +2019,24 @@ function nextSwissRound(tid, d, stageId, rows, noRepeats = true, policy) {
     const rest = new Set(plan.remainder);
     const table2 = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
     const played2 = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
+    if (usesTenRemainderChart(st.rrFinish, plan.remainder.length)) {
+      const slots = tenRemainderSlots(plan.remainder, gate.nextRound, mine.map((f) => ({ a: f.a ?? null, b: f.b ?? null, winner: swissWinner(f), round: f.round ?? 0 })));
+      if (slots.some((s) => !s))
+        throw new IntegrityError("prereq", "Earlier remainder games are not all decided yet.");
+      const chartPart = TEN_REMAINDER_CHART[gate.nextRound].map(([a, b]) => [slots[a - 1], slots[b - 1]]);
+      return [...plan.pairs, ...chartPart].map(([a, b], i) => ({
+        tournamentId: tid,
+        divisionId: d.divisionId,
+        stageId: st.id,
+        stageKind: "swiss",
+        roundId: `${st.id}:r${gate.nextRound}`,
+        round: gate.nextRound,
+        poolId: null,
+        slot: i + 1,
+        a,
+        b
+      }));
+    }
     const swissPart = sequencing ? sequenceSwissRound({ players: table2.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played: played2, round: gate.nextRound, finalRound: st.swissRounds ?? 5, positionOffset: snapshot.length - plan.remainder.length }).pairs : swissRound(table2.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played2);
     if (swissPart.some(([a, b]) => b && played2.has(pairKey(a, b))))
       throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
@@ -8294,6 +8334,18 @@ function hasSwissMatchActivity(m) {
   return m.status === "completed" && /[1-9]\d*\s*[-–]\s*\d+|\d+\s*[-–]\s*[1-9]\d*/.test(m.score ?? "");
 }
 
+// src/lib/tournaments/swiss-pending-slots.ts
+function pendingSwissSlots(round, positions, label, playBy) {
+  const sorted = [...new Set(positions)].sort((a, b) => a - b);
+  const blocks = [];
+  const row = (pos) => ({ id: null, pos, name: pos == null ? "Bye position to be decided" : "Swiss player — results pending", result: "", projected: true, when: pos == null ? null : label });
+  for (let i = 0;i < sorted.length; i += 2) {
+    const a = sorted[i], b = sorted[i + 1] ?? null;
+    blocks.push({ matchId: `swiss-wait-${round}-${a}-${b ?? "bye"}`, rows: [row(a), row(b)], score: null, court: null, playBy });
+  }
+  return blocks;
+}
+
 // src/lib/tournaments/swiss-progression-view.ts
 var UNRESOLVED = "To be decided";
 function buildSwissProgression(input) {
@@ -8449,7 +8501,7 @@ function buildProposedSwissGrid(model, opts = {}) {
     const conflicts = locked ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
     const issues2 = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings = [];
-    return { issues: issues2, ...sequencing ? { warnings } : {}, rounds: saved.map((rd) => {
+    return { issues: issues2, ...sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}, rounds: saved.map((rd) => {
       if (rd.round < 3)
         return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan2 = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
@@ -8459,10 +8511,11 @@ function buildProposedSwissGrid(model, opts = {}) {
       const covered = new Set(factual.flatMap((b) => b.rows.map((r) => r.id)));
       const schedule = opts.appliedPlayBy?.[rd.round] ? { label: `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` } : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName);
       let pairs = plan2.pairs;
-      const chartRest = (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
+      const tenChart = usesTenRemainderChart(model.rrFinish, plan2.remainder.length);
+      const chartRest = tenChart || (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
       const prevDone = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
       const chartBlocks = [];
-      if (chartRest) {
+      if (chartRest && !tenChart) {
         const chart = uitsigMensCChart();
         let slots = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
         for (let r = 1;r < rd.round; r++) {
@@ -8484,6 +8537,16 @@ function buildProposedSwissGrid(model, opts = {}) {
           const row = (id, pos) => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", when: schedule.label };
           chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
         }
+      } else if (tenChart) {
+        const offset = plan2.pairs.length * 2;
+        const slots = locked ? tenRemainderSlots(plan2.remainder, rd.round, history) : Array(10).fill(null);
+        for (const [a, b] of TEN_REMAINDER_CHART[rd.round] ?? []) {
+          const x = slots[a - 1] ?? null, y = slots[b - 1] ?? null;
+          if (x && covered.has(x) || y && covered.has(y))
+            continue;
+          const row = (id, pos) => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", projected: true, when: schedule.label };
+          chartBlocks.push({ matchId: `chart10-${rd.round}-${a}-${b}`, rows: [row(x, offset + a), row(y, offset + b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
+        }
       } else if ((sequencing ? prevDone && locked : prevDone || !locked && rd.round === 3) && plan2.remainder.length) {
         const rest = new Set(plan2.remainder);
         const seeds2 = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
@@ -8494,7 +8557,7 @@ function buildProposedSwissGrid(model, opts = {}) {
         for (const [id, pos] of positions)
           fixed.set(id, pos);
         try {
-          if (sequencing && !usedRest.size) {
+          if ((sequencing || opts.finalSwissAdjacencyPreview && rd.round === model.configuredRounds) && !usedRest.size) {
             const result = sequenceSwissRound({ players: table.map((r, i) => ({ ...r, points: isPositionSwap(model.tieBreaks) ? 0 : r.points, seed: i + 1 })), played: met, round: rd.round, finalRound: model.configuredRounds, positionOffset: plan2.pairs.length * 2 });
             pairs = [...pairs, ...result.pairs];
             warnings.push(...result.exceptions);
@@ -8512,15 +8575,11 @@ function buildProposedSwissGrid(model, opts = {}) {
         playBy: opts.appliedPlayBy?.[rd.round] ?? null
       }));
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));
-      const unresolved = chartRest ? [] : plan2.remainder.flatMap((id) => {
+      const remainingPositions = plan2.remainder.flatMap((id) => {
         const pos = fixed.get(id);
-        if (pos == null || shown.has(pos))
-          return [];
-        return [{ matchId: `swiss-wait-${rd.round}-${pos}`, rows: [
-          { id: null, pos, name: "Swiss player — results pending", result: "", projected: true, when: schedule.label },
-          { id: null, pos: null, name: "Opponent decided after previous round", result: "", projected: true, when: null }
-        ], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null }];
+        return pos == null || shown.has(pos) ? [] : [pos];
       });
+      const unresolved = chartRest ? [] : pendingSwissSlots(rd.round, remainingPositions, schedule.label, opts.appliedPlayBy?.[rd.round] ?? null);
       return { ...rd, blocks: [...factual, ...pending, ...chartBlocks, ...unresolved].sort((a, b) => (a.rows[0].pos ?? 999) - (b.rows[0].pos ?? 999)) };
     }) };
   }
@@ -8543,7 +8602,7 @@ function buildProposedSwissGrid(model, opts = {}) {
       const prevDone = model.rounds.find((r) => r.round === rd.round - 1)?.complete;
       const label = opts.appliedPlayBy?.[rd.round] ? `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName).label;
       if (!prevDone)
-        return { ...rd, blocks: seeds2.map((_, i) => ({ matchId: `swiss-wait-${rd.round}-${i}`, rows: [{ id: null, pos: i + 1, name: "Swiss player — results pending", when: label, result: "" }, { id: null, pos: null, name: "Opponent decided after previous round", when: null, result: "" }], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null })) };
+        return { ...rd, blocks: pendingSwissSlots(rd.round, seeds2.map((_, i) => i + 1), label, opts.appliedPlayBy?.[rd.round] ?? null) };
       const history = model.rounds.filter((r) => r.round < rd.round).flatMap((r) => r.fixtures.map((f) => ({ ...f, round: r.round })));
       const table = swissTable(seeds2, history, model.tieBreaks);
       const positions = new Map(table.map((r) => [r.id, r.position]));

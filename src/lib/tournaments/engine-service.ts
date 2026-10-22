@@ -9,7 +9,7 @@ import { proposePairings } from "./paced-knockout";
 import { strictSwissPlan, swissStrictFromRound } from "./swiss-no-repeat";
 import { sequenceSwissRound } from "./swiss-sequencing";
 import { assertTournamentPairingWritable, swissSequencingEnabled, type SwissSequencingPolicy } from "./swiss-sequencing-policy";
-import { hybridSwissTable, rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND } from "./swiss-rr-finish";
+import { hybridSwissTable, rrFinishIssues, rrFinishOn, rrFinishRound, rrFinishRepeats, RR_FINISH_FROM_ROUND, TEN_REMAINDER_CHART, tenRemainderSlots, usesTenRemainderChart } from "./swiss-rr-finish";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -218,6 +218,15 @@ export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, ro
     const rest = new Set(plan.remainder);
     const table = swissStandings(d, st, rows).filter((t) => rest.has(t.id));
     const played = new Set(mine.flatMap((f) => f.a && f.b ? [pairKey(f.a, f.b)] : []));
+    if (usesTenRemainderChart(st.rrFinish, plan.remainder.length)) {
+      // Approved fixed-position chart: repeat opponents are allowed by the organiser.
+      const slots = tenRemainderSlots(plan.remainder, gate.nextRound, mine.map((f) => ({ a: f.a ?? null, b: f.b ?? null, winner: swissWinner(f), round: f.round ?? 0 })));
+      if (slots.some((s) => !s)) throw new IntegrityError("prereq", "Earlier remainder games are not all decided yet.");
+      const chartPart = TEN_REMAINDER_CHART[gate.nextRound].map(([a, b]) => [slots[a - 1] as string, slots[b - 1] as string] as [string, string]);
+      return [...plan.pairs, ...chartPart].map(([a, b], i) => ({
+        tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss" as const, roundId: `${st.id}:r${gate.nextRound}`, round: gate.nextRound, poolId: null, slot: i + 1, a, b,
+      }));
+    }
     const swissPart = sequencing ? sequenceSwissRound({ players: table.map((t, i) => ({ ...t, points: isPositionSwap(st.tieBreaks) ? 0 : t.points, seed: i + 1 })), played, round: gate.nextRound, finalRound: st.swissRounds ?? 5, positionOffset: snapshot.length - plan.remainder.length }).pairs : swissRound(table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
     if (swissPart.some(([a, b]) => b && played.has(pairKey(a, b)))) throw new IntegrityError("prereq", "The players outside the groups cannot be paired without a repeat opponent.");
     return [...plan.pairs, ...swissPart].map(([a, b], i) => ({

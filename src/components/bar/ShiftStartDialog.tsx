@@ -25,7 +25,10 @@ export function ShiftStartDialog({ token, status, onStarted, onExit }: { token: 
       const { error } = await supabase.rpc("bar_counter_start_shift" as any, { _token: token, _kind: kind, _start: kind === "special" ? new Date(`${day}T${start}:00+02:00`).toISOString() : null, _split: kind === "special" && split });
       if (error) throw error;
       onStarted();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not start the shift"); }
+    } catch (e) {
+      const message = e && typeof e === "object" && "message" in e && typeof e.message === "string" ? e.message : "Could not start the shift";
+      toast.error(message);
+    }
     finally { setBusy(false); }
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) onExit(); }}><DialogContent className="max-w-sm" onInteractOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()}>

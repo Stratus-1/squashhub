@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Investigate reported Start shift refusal: actual server error hidden by generic message; expose and test it without changing real attendance. Exact hosted refusal awaits retry evidence.
 - [x] Shared counter Add barman + serving selector retain separate personal-PIN sessions and hours; individual End shift and confirmed device exit tested. Twenty-five focused checks and fictional PIN/join/serving attribution/exit browser flow pass, build OK. No hosted attendance, sales, payouts or publication; physical native devices not tested.
 - [x] Editable payday hours, rates and totals with original/approved history; 13 pure tests, isolated PostgreSQL and fictional signed-in browser checks pass; no real payout/publication.
 - [x] Run month end preview anytime from accrued pay/tips, with hypothetical edits and no preparation or confirmation; browser verified no processing.

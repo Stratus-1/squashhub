@@ -20,6 +20,8 @@ export interface TournamentInteractiveViewerProps {
   defaultFit?: "width" | "screen" | "none";
   /** Inline frame height in px. */
   inlineHeight?: number;
+  /** Compact phone controls for stacked pool panels; other viewers retain their toolbar. */
+  compactMobileToolbar?: boolean;
   className?: string;
   /** "direct": plain mouse wheel zooms over the viewer (Ctrl/trackpad pinch also). "modifier" (default): only Ctrl/Cmd+wheel or pinch. */
   wheelZoom?: "direct" | "modifier";
@@ -50,7 +52,7 @@ export function nextWheelScale(z: number, e: { deltaY: number; deltaMode: number
 }
 
 export function TournamentInteractiveViewer({
-  title, children, contentSize, toolbarExtras, minZoom = 0.25, maxZoom = 3, defaultFit = "width", inlineHeight = 480, className, wheelZoom = "modifier", apiRef, frameRef,
+  title, children, contentSize, toolbarExtras, minZoom = 0.25, maxZoom = 3, defaultFit = "width", inlineHeight = 480, className, wheelZoom = "modifier", apiRef, frameRef, compactMobileToolbar = false,
 }: TournamentInteractiveViewerProps) {
   const [expanded, setExpanded] = useState(false);
   const [scale, setScale] = useState(1);
@@ -156,15 +158,15 @@ export function TournamentInteractiveViewer({
       <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Zoom out" onClick={() => api.current?.zoomOut(0.2, 150)}><ZoomOut className="h-4 w-4" /></Button>
       <span aria-live="polite" aria-label="Zoom level" className="min-w-[3.25rem] text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
       <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Zoom in" onClick={() => api.current?.zoomIn(0.2, 150)}><ZoomIn className="h-4 w-4" /></Button>
-      <Button type="button" size="sm" variant="outline" className="h-8 gap-1" aria-label="Fit width" onClick={() => applyFit("width")}><MoveHorizontal className="h-4 w-4" />Width</Button>
-      <Button type="button" size="sm" variant="outline" className="h-8 gap-1" aria-label="Fit screen" onClick={() => applyFit("screen")}><Expand className="h-4 w-4" />Fit</Button>
-      <Button type="button" size="sm" variant="outline" className="h-8" aria-label="Actual size 100%" onClick={actual}>100%</Button>
-      <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="Reset zoom" onClick={reset}><RotateCcw className="h-4 w-4" /></Button>
+      <Button type="button" size="sm" variant="outline" className={cn("h-8 gap-1", compactMobileToolbar && "w-8 px-0 md:w-auto md:px-3")} title="Fit width" aria-label="Fit width" onClick={() => applyFit("width")}><MoveHorizontal className="h-4 w-4" /><span className={compactMobileToolbar ? "hidden md:inline" : undefined}>Width</span></Button>
+      <Button type="button" size="sm" variant="outline" className={cn("h-8 gap-1", compactMobileToolbar && "w-8 px-0 md:w-auto md:px-3")} title="Fit screen" aria-label="Fit screen" onClick={() => applyFit("screen")}><Expand className="h-4 w-4" /><span className={compactMobileToolbar ? "hidden md:inline" : undefined}>Fit</span></Button>
+      <Button type="button" size="sm" variant="outline" className={cn("h-8", compactMobileToolbar && "hidden md:inline-flex")} aria-label="Actual size 100%" onClick={actual}>100%</Button>
+      <Button type="button" size="icon" variant="outline" className={cn("h-8 w-8", compactMobileToolbar && "hidden md:inline-flex")} aria-label="Reset zoom" onClick={reset}><RotateCcw className="h-4 w-4" /></Button>
       {toolbarExtras}
       {expanded ? (
         <Button ref={closeBtn} type="button" size="sm" className="h-8 gap-1 ml-auto" aria-label="Close expanded view" onClick={() => setExpanded(false)}><Minimize2 className="h-4 w-4" />Close</Button>
       ) : (
-        <Button ref={expandBtn} type="button" size="sm" className="h-8 gap-1 ml-auto" aria-label="Expand view" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" />Expand</Button>
+        <Button ref={expandBtn} type="button" size="sm" className={cn("h-8 gap-1 ml-auto", compactMobileToolbar && "w-8 px-0 md:w-auto md:px-3")} title="Expand view" aria-label="Expand view" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /><span className={compactMobileToolbar ? "hidden md:inline" : undefined}>Expand</span></Button>
       )}
     </div>
   );

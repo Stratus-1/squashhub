@@ -712,7 +712,16 @@ export default function MatchMarker() {
         config.source === "tournament" ? config.sourceId ?? null : null;
       let champScoreStr = scoreStr;
       let champGameScoresJson = gameScoresJson;
-      if (!tournamentMatchId && !isForfeit && !config.isDoubles && validAMemberId && validBMemberId && config.clubId) {
+      // Only games explicitly set up as Club Champs / tournament may link to a
+      // fixture — friendly, ladder and league games must never complete one.
+      if (!tournamentMatchId && mayAutoLinkChampFixture({
+        matchType: config.matchType,
+        isForfeit,
+        isDoubles: !!config.isDoubles,
+        playerAMemberId: validAMemberId,
+        playerBMemberId: validBMemberId,
+        clubId: config.clubId,
+      })) {
         try {
           const pair = `and(player_a_member_id.eq.${validAMemberId},player_b_member_id.eq.${validBMemberId}),and(player_a_member_id.eq.${validBMemberId},player_b_member_id.eq.${validAMemberId})`;
           const { data: fixtures } = await fromExt("club_champs_matches")

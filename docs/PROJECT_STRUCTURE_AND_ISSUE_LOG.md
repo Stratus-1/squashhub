@@ -3833,3 +3833,5 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ## 23 October 2026 — Explicit shared-counter shift ending
 - End shift now asks which locally signed-in barmen to clock out, with Both barmen/All barmen and individual checkboxes; nothing ends until confirmation. Existing personal-PIN ending RPCs, cash-up and payroll unchanged. Successful individual endings are removed immediately so partial failures do not retry revoked sessions.
 - Eighteen counter tests pass including one-person and both-person endings; fictional browser selection/confirmation leaves the other person serving with no page errors or hosted writes. Build OK, not published. Reported start refusal remains unresolved pending the actual retry message.
+
+- 2026-10-23: Shift start refused ("already has an open shift") when a barman signed in again with a new counter session while their earlier attendance was still open (Riverside, Sonja). Fix 0255: start_shift now moves the open attendance to the new session; paid start/hours unchanged.

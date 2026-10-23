@@ -1561,6 +1561,7 @@ export type Database = {
           hours: number | null
           id: string
           pay_basis: string
+          review: Json
           run_id: string
           salary: number
           shift_rate: number | null
@@ -1578,6 +1579,7 @@ export type Database = {
           hours?: number | null
           id?: string
           pay_basis?: string
+          review?: Json
           run_id: string
           salary?: number
           shift_rate?: number | null
@@ -1595,6 +1597,7 @@ export type Database = {
           hours?: number | null
           id?: string
           pay_basis?: string
+          review?: Json
           run_id?: string
           salary?: number
           shift_rate?: number | null

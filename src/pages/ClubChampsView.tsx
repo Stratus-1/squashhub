@@ -1507,17 +1507,24 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>
               <span className="text-muted-foreground">Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings.</span>
             </div>
-            {laterPools.map((pn) => {
-              const pm = laterMatches.filter((m: any) => (resolvePoolNumber(m, gn) ?? 1) === pn);
-              const ids = [...new Set(pm.flatMap((m: any) => [m.player_a_member_id ?? m.bye_member_id, m.is_bye ? null : m.player_b_member_id]).filter(Boolean))] as string[];
-              const rankOrder = model.rows.map((r: any) => r.id).filter((id: string) => ids.includes(id));
-              const view = buildRoundRobinView({
-                players: ids.map((id) => ({ id, name: names[id] ?? "Unknown" })),
-                seedOrder: rankOrder,
-                matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
-              });
-              return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}${laterPools.length > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />;
-            })}
+            {(() => {
+              const laterPoolViews = laterPools.map((pn) => {
+                const pm = laterMatches.filter((m: any) => (resolvePoolNumber(m, gn) ?? 1) === pn);
+                const ids = [...new Set(pm.flatMap((m: any) => [m.player_a_member_id ?? m.bye_member_id, m.is_bye ? null : m.player_b_member_id]).filter(Boolean))] as string[];
+                const rankOrder = model.rows.map((r: any) => r.id).filter((id: string) => ids.includes(id));
+                const view = buildRoundRobinView({
+                  players: ids.map((id) => ({ id, name: names[id] ?? "Unknown" })),
+                  seedOrder: rankOrder,
+                  matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
+                });
+                return { pn, view };
+              }).filter((p) => p.view.players.length > 0);
+              // Several pools share one set of colour-banded round tables; a single pool keeps its own view.
+              if (poolViews.length > 1) {
+                return <RoundRobinCombinedPilotView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} pools={poolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: `Pool ${poolLabel(p.pn)}` }))} calendar={renderCategoryCalendar(gn)} />;
+              }
+              return poolViews.map((p) => <RoundRobinPilotView key={p.pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />);
+            })()}
           </div>
         ) : laterIsKO ? (
           <div className="mt-6 space-y-2" data-testid={`stage2-progression-${gn}`}>

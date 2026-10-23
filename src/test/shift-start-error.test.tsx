@@ -15,6 +15,28 @@ describe("shift start failure", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start working" }));
     await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(refusal));
     expect(started).not.toHaveBeenCalled();
-    expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_start_shift", { _token: "fictional-session", _kind: "normal", _start: null, _split: false });
+    expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_start_shift_with_tips", { _token: "fictional-session", _kind: "normal", _start: null, _tip_mode: "own" });
+  });
+});
+
+describe("special shift tip choices", () => {
+  it.each(["own", "hours", "equal"] as const)("starts a special shift with %s tip attribution", async mode => {
+    mocks.rpc.mockResolvedValue({ error: null });
+    const started = vi.fn();
+    render(<ShiftStartDialog token="fictional-session" status={{ club_id: "fictional-club", opening: "16:00:00", attendance: null, shift: null }} onStarted={started} onExit={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Special shift" }));
+    fireEvent.change(screen.getByLabelText("Paid start time"), { target: { value: "12:00" } });
+    if (mode !== "own") fireEvent.click(screen.getByRole("radio", { name: mode === "hours" ? "Split according to hours worked" : "Split equally between staff" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start working" }));
+    await waitFor(() => expect(started).toHaveBeenCalledOnce());
+    expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_start_shift_with_tips", expect.objectContaining({ _kind: "special", _tip_mode: mode }));
+  });
+  it("joins an equal-sharing shift without changing its tip policy", async () => {
+    mocks.rpc.mockResolvedValue({ error: null });
+    render(<ShiftStartDialog token="fictional-session" status={{ club_id: "fictional-club", opening: "16:00:00", attendance: null, shift: { id: "shared", kind: "special", split_tips: true, tip_sharing_mode: "equal" } }} onStarted={vi.fn()} onExit={vi.fn()} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Each person keeps their own tips" }));
+    fireEvent.change(screen.getByLabelText("Paid start time"), { target: { value: "12:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start working" }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_start_shift_with_tips", expect.objectContaining({ _tip_mode: "equal" })));
   });
 });

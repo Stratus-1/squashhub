@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Special shifts offer own tips, hours-based sharing and equal sharing; existing shift policies/allocations preserved. Thirty-one focused checks, isolated PostgreSQL shares/history/idempotency checks and fictional counter selection/start/readback pass; preview build OK. No real attendance, sales, payouts or publication; physical native devices not tested.
 - [x] Shared End shift asks which barman or both before confirmation; 18 counter tests and fictional browser person-selection/end/readback pass, preview build OK. No real attendance changes or publication.
 - [ ] Investigate reported Start shift refusal: actual server error hidden by generic message; expose and test it without changing real attendance. Exact hosted refusal awaits retry evidence.
 - [x] Shared counter Add barman + serving selector retain separate personal-PIN sessions and hours; individual End shift and confirmed device exit tested. Twenty-five focused checks and fictional PIN/join/serving attribution/exit browser flow pass, build OK. No hosted attendance, sales, payouts or publication; physical native devices not tested.

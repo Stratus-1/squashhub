@@ -3835,3 +3835,7 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Eighteen counter tests pass including one-person and both-person endings; fictional browser selection/confirmation leaves the other person serving with no page errors or hosted writes. Build OK, not published. Reported start refusal remains unresolved pending the actual retry message.
 
 - 2026-10-23: Shift start refused ("already has an open shift") when a barman signed in again with a new counter session while their earlier attendance was still open (Riverside, Sonja). Fix 0255: start_shift now moves the open attendance to the new session; paid start/hours unchanged.
+
+## 23 October 2026 — Explicit special-shift tip choices
+- Replaced ambiguous split checkbox with own tips, hours-weighted sharing and equal sharing; joining retains the current shift's choice. Attendance history names the policy. Equal sharing preserves actual hours, distributes leftover cents deterministically and excludes staff without paid working time.
+- Additive policy and PIN-authorised start RPC preserve legacy shifts and immutable allocations; existing cash-up, earning, review and EFT payout paths remain authoritative. No hosted attendance, sales or payouts created; no publication. Focused UI and isolated PostgreSQL checks cover all three policies.

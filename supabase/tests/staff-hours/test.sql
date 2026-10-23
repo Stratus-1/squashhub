@@ -24,3 +24,14 @@ SELECT bar_counter_start_shift('77777777-7777-7777-7777-777777777777','normal');
 SELECT bar_counter_end_shift('55555555-5555-5555-5555-555555555555');
 DO $$ BEGIN IF (SELECT count(*) FROM bar_staff_attendance WHERE staff_id='33333333-3333-3333-3333-333333333333' AND ended_at IS NULL)<>1 THEN RAISE EXCEPTION 'Exit ended other staff'; END IF; IF (SELECT count(DISTINCT shift_id) FROM bar_staff_attendance)<>2 THEN RAISE EXCEPTION 'Second daily shift missing'; END IF; BEGIN PERFORM bar_counter_start_shift('55555555-5555-5555-5555-555555555555','normal'); RAISE EXCEPTION 'Revoked accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Revoked accepted' THEN RAISE; END IF; END; BEGIN PERFORM bar_set_staff_pay('99999999-9999-9999-9999-999999999999','22222222-2222-2222-2222-222222222222','hourly',50); RAISE EXCEPTION 'Foreign club accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Foreign club accepted' THEN RAISE; END IF; END; END $$;
 SELECT bar_staff_pay_overview('11111111-1111-1111-1111-111111111111');
+
+-- Record history survives payroll; unpaid correction keeps original time in audit.
+DO $$ BEGIN IF jsonb_array_length(bar_staff_attendance_log('11111111-1111-1111-1111-111111111111'))<>4 THEN RAISE EXCEPTION 'Paid history missing'; END IF; END $$;
+SELECT bar_correct_staff_attendance((SELECT id FROM bar_staff_attendance WHERE staff_id='33333333-3333-3333-3333-333333333333' AND ended_at IS NULL),now()-interval '1 hour',now(),'Fictional missing exit');
+DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM bar_staff_attendance WHERE correction_reason='Fictional missing exit' AND jsonb_array_length(corrections)=1) THEN RAISE EXCEPTION 'Correction audit missing'; END IF; END $$;
+-- Authenticated reads stay tenant-scoped and direct writes are unavailable.
+SET ROLE authenticated;
+DO $$ BEGIN IF (SELECT count(*) FROM bar_staff_attendance)<>4 THEN RAISE EXCEPTION 'Permitted attendance read failed'; END IF; IF has_table_privilege('authenticated','public.bar_staff_attendance','INSERT') THEN RAISE EXCEPTION 'Direct attendance write allowed'; END IF; END $$;
+SELECT set_config('test.uid','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',false);
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM bar_staff_attendance) OR EXISTS(SELECT 1 FROM bar_shift_tip_allocations) THEN RAISE EXCEPTION 'Unauthorized financial history leak'; END IF; END $$;
+RESET ROLE;

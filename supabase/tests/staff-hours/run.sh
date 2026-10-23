@@ -12,5 +12,6 @@ P=(psql -X -q -v ON_ERROR_STOP=1 -h "$D" -p 54425 -U lovable -d postgres)
 "${P[@]}" -f "$HERE/base-payroll.sql"
 "${P[@]}" -f "$ROOT/drizzle/migrations/0251_bar_staff_pay_per_shift.sql"
 "${P[@]}" -f "${STAFF_HOURS_SQL:-$ROOT/drizzle/migrations/0252_bar_staff_hours_and_shared_tips.sql}"
+"${P[@]}" -f "$ROOT/drizzle/migrations/0253_bar_shift_review_and_management_status.sql"
 "${P[@]}" -f "$HERE/test.sql"
 echo 'STAFF HOURS TESTS PASSED'

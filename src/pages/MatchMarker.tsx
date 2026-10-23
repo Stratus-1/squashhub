@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 import { startMarkerLoadDeadline } from "@/lib/marker/load-deadline";
+import { mayAutoLinkChampFixture } from "@/lib/marker/champ-auto-link";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];

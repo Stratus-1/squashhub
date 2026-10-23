@@ -7,6 +7,7 @@ import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/Tou
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ListOrdered } from "lucide-react";
+import { WhenTag } from "@/components/tournaments/SwissPositionGrid";
 import type { RRPoolView, RRRound } from "@/lib/tournaments/round-robin-view";
 
 /** Display bands only: caller supplies existing official order, independently per pool. */
@@ -14,6 +15,8 @@ export function poolRankTone(index: number, count: number) {
   return count <= 1 ? 2 : Math.round(index * 4 / (count - 1));
 }
 const ROUND_STATUS: Record<RRRound["status"], string> = { complete: "Complete", in_progress: "In progress", not_started: "Not started" };
+/** Status accent colours, same palette as the Swiss round panels. */
+const ROUND_STATUS_VAR: Record<RRRound["status"], string> = { complete: "--success", in_progress: "--warning", not_started: "--round-1" };
 
 /** Standard read-only fixtures, results and standings for one round-robin pool. */
 export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false, showSlots = false, withCalendar = false, clean = true, group = 1, groupLabel }: { clean?: boolean; group?: number; groupLabel?: string; calendar?: ReactNode; title: string; view: RRPoolView; matrixOnly?: boolean; showSlots?: boolean; withCalendar?: boolean }) {
@@ -153,26 +156,47 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
       <div ref={track} className="flex gap-3 cursor-grab" data-testid="rr-round-track">
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {rounds.map((rd) => (
-          <div key={rd.label} className="w-80 shrink-0 self-start overflow-hidden rounded-md border border-border" data-testid={`rr-clean-round-${rd.round ?? "x"}`}>
-            <div className="flex flex-wrap items-center gap-2 bg-muted px-2 py-1 font-semibold">
-              <span>{groupLabel} · {rd.label}</span><Badge variant="outline" className="text-[10px]">{ROUND_STATUS[rd.status]}</Badge>
-              {rd.sittingOut.length > 0 && <span className="ml-auto text-[11px] font-normal text-muted-foreground">Bye: {rd.sittingOut.join(", ")}</span>}
-            </div>
-            {rd.matches.map((m) => (
-              <div key={m.id} className="riverside-rr-band border-t border-border px-2 py-1" data-rr-group={tone}>
-                <div className="flex items-center gap-2">
-                  <span className="w-5 tabular-nums text-muted-foreground">{m.posA ?? ""}</span>
-                  <span className={cn("flex-1 truncate", m.winner && m.winner === m.a && "font-semibold")}>{m.aName}</span>
-                  <span className="max-w-32 whitespace-normal text-right tabular-nums">{m.status === "played" ? m.score ?? "" : ""}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-5 tabular-nums text-muted-foreground">{m.posB ?? ""}</span>
-                  <span className={cn("flex-1 truncate", m.winner && m.winner === m.b && "font-semibold", m.status === "bye" && "text-muted-foreground")}>{m.bName}</span>
-                  <span className="text-[11px] text-muted-foreground">{m.status === "bye" ? "Bye" : m.status === "played" ? "Played" : m.when}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <table key={rd.label} data-round-tone={((rd.round ?? 1) - 1) % 5 + 1} data-testid={`rr-clean-round-${rd.round ?? "x"}`} className="round-panel w-80 shrink-0 self-start border-collapse overflow-hidden rounded-md border border-border">
+            <thead>
+              <tr className="round-header bg-muted text-left">
+                <th colSpan={4} className="border-t-4 px-2.5 py-1.5 font-semibold" style={{ borderTopColor: `hsl(var(--round-${((rd.round ?? 1) - 1) % 5 + 1}))` }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{groupLabel} · {rd.label}</span>
+                    <span className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `hsl(var(${ROUND_STATUS_VAR[rd.status]}) / 0.15)`, color: "hsl(var(--foreground))" }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: `hsl(var(${ROUND_STATUS_VAR[rd.status]}))` }} />{ROUND_STATUS[rd.status]}
+                    </span>
+                  </div>
+                  {rd.sittingOut.length > 0 && <div className="text-[11px] font-normal text-muted-foreground">Bye: {rd.sittingOut.join(", ")}</div>}
+                </th>
+              </tr>
+              <tr className="text-left text-[11px] text-muted-foreground">
+                <th className="w-8 px-2 py-1">Pos</th><th className="px-2">Player</th><th className="px-2">Day &amp; time · court</th><th className="px-2">Result</th>
+              </tr>
+            </thead>
+            {rd.matches.map((m) => {
+              const done = m.status === "played" || m.status === "bye";
+              const sv = done ? "--success" : "--round-1";
+              return (
+              <tbody key={m.id} className="border-t-[3px] border-foreground/60" style={{ boxShadow: `inset 3px 0 0 hsl(var(${sv}) / 0.8)` }}>
+                {([0, 1] as const).map((i) => {
+                  const isA = i === 0;
+                  const won = m.status === "played" && !!m.winner && m.winner === (isA ? m.a : m.b);
+                  const lost = m.status === "played" && !!m.winner && !won;
+                  return (
+                  <tr key={i} className={cn("riverside-rr-band", won && "bg-success/10 font-semibold", lost && "text-muted-foreground", m.status === "bye" && !isA && "text-muted-foreground")} data-rr-group={tone}>
+                    <td className="px-2 py-1 tabular-nums">{(isA ? m.posA : m.posB) ?? ""}</td>
+                    <td className="px-2 whitespace-nowrap">{isA ? m.aName : m.bName}</td>
+                    {i === 0 ? (
+                      <td rowSpan={2} className="px-2 py-1 align-middle">
+                        <WhenTag text={m.status === "bye" ? "Bye" : m.status === "played" ? "Played" : m.when || "To play"} />
+                      </td>
+                    ) : null}
+                    <td className="px-2 whitespace-nowrap">{m.status === "played" ? (won ? "W" : lost ? "L" : "") : ""}{i === 0 && m.status === "played" && m.score ? <span className="ml-1 tabular-nums text-muted-foreground">{m.score}</span> : null}</td>
+                  </tr>
+                ); })}
+              </tbody>
+            ); })}
+          </table>
         ))}
       </section>
       <section className="w-max min-w-80 shrink-0 self-start space-y-2" data-testid="rr-clean-standings">

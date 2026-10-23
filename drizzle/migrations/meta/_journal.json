@@ -1744,6 +1744,13 @@
       "when": 1792690000003,
       "tag": "0248_tab_item_reversal_lines",
       "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1792735483975,
+      "tag": "0249_bar_staff_salaries_and_payroll",
+      "breakpoints": true
     }
   ]
 }

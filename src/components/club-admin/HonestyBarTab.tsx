@@ -1,5 +1,6 @@
 import { OrderProcessSwitch } from "@/components/bar/OrderProcessSwitch";
 import { useBarTips } from "@/hooks/use-bar-tips";
+import { BarStaffPay } from "@/components/bar/BarStaffPay";
 import { StaffTips } from "@/components/bar/StaffTips";
 import { MemberDebitSwitches } from "@/components/club-admin/bar/MemberDebitSwitches";
 import { useBarImageLibrary, suggestLibraryImages } from "@/lib/bar-image-library";
@@ -197,6 +198,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     { id: "stock-purchases", label: "Stock purchases", description: "Record supplier invoices so stock levels and bar cost of sales stay accurate.", complete: stockPurchases.length > 0 },
     { id: "stock-levels", label: "Stock levels", description: "See stock on hand on any date and run a stock take to find differences.", complete: items.length > 0 },
     { id: "costing", label: "Costing & margins", description: "Optional average-cost tracking with cost of sales, gross profit and margin.", complete: false },
+    { id: "staff", label: "Staff", description: "Monthly salaries, pay day and the monthly salary-and-tips payout for the people behind the bar.", complete: false },
     { id: "reports", label: "Reports", description: "", complete: enabled },
   ];
 
@@ -365,6 +367,8 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
       {step === "stock-levels" && <StockLevelsTab clubId={clubId} />}
 
       {step === "costing" && <CostingTab clubId={clubId} />}
+
+      {step === "staff" && <BarStaffPay clubId={clubId} />}
 
       {step === "reports" && <div className="flex flex-wrap gap-1" role="group" aria-label="Choose report">{reportOptions.map(r => <Button key={r.id} size="sm" variant={report === r.id ? "default" : "outline"} aria-pressed={report === r.id} onClick={() => setReport(r.id)}>{r.label}</Button>)}</div>}
       {showReport("open-tabs") && <OpenTabsTab clubId={clubId} />}

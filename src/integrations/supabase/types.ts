@@ -1553,6 +1553,99 @@ export type Database = {
           },
         ]
       }
+      bar_payroll_run_lines: {
+        Row: {
+          club_id: string
+          id: string
+          run_id: string
+          salary: number
+          staff_id: string
+          staff_name: string
+          tip_payout_id: string | null
+          tips: number
+        }
+        Insert: {
+          club_id: string
+          id?: string
+          run_id: string
+          salary?: number
+          staff_id: string
+          staff_name: string
+          tip_payout_id?: string | null
+          tips?: number
+        }
+        Update: {
+          club_id?: string
+          id?: string
+          run_id?: string
+          salary?: number
+          staff_id?: string
+          staff_name?: string
+          tip_payout_id?: string | null
+          tips?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_payroll_run_lines_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_payroll_run_lines_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bar_payroll_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_payroll_run_lines_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_payroll_runs: {
+        Row: {
+          club_id: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          period: string
+          status: string
+        }
+        Insert: {
+          club_id: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          period: string
+          status?: string
+        }
+        Update: {
+          club_id?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          period?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_payroll_runs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_special_components: {
         Row: {
           club_id: string
@@ -1598,6 +1691,42 @@ export type Database = {
             columns: ["special_item_id"]
             isOneToOne: false
             referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_staff_salaries: {
+        Row: {
+          club_id: string
+          monthly_salary: number
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          monthly_salary?: number
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          monthly_salary?: number
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_staff_salaries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_staff_salaries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
             referencedColumns: ["id"]
           },
         ]
@@ -3966,6 +4095,7 @@ export type Database = {
           created_at: string
           online_tips_ready: boolean
           shop_allow_member_debit: boolean
+          staff_payday: number | null
           tips_enabled: boolean
           updated_at: string
         }
@@ -3980,6 +4110,7 @@ export type Database = {
           created_at?: string
           online_tips_ready?: boolean
           shop_allow_member_debit?: boolean
+          staff_payday?: number | null
           tips_enabled?: boolean
           updated_at?: string
         }
@@ -3994,6 +4125,7 @@ export type Database = {
           created_at?: string
           online_tips_ready?: boolean
           shop_allow_member_debit?: boolean
+          staff_payday?: number | null
           tips_enabled?: boolean
           updated_at?: string
         }
@@ -19563,6 +19695,7 @@ export type Database = {
         Returns: string
       }
       _bar_order_json: { Args: { _order_id: string }; Returns: Json }
+      _bar_prepare_payroll_runs: { Args: never; Returns: number }
       _bar_prepare_tip: {
         Args: {
           _amount: number
@@ -20220,6 +20353,10 @@ export type Database = {
             }
             Returns: Json
           }
+      bar_confirm_payroll_run: {
+        Args: { _lines: Json; _run_id: string }
+        Returns: undefined
+      }
       bar_cost_of_sales: {
         Args: { _club: string; _from: string; _to: string }
         Returns: {
@@ -20624,6 +20761,14 @@ export type Database = {
         Args: { _club_id: string; _enabled: boolean }
         Returns: Json
       }
+      bar_set_staff_payday: {
+        Args: { _club_id: string; _day: number }
+        Returns: undefined
+      }
+      bar_set_staff_salary: {
+        Args: { _amount: number; _club_id: string; _staff_id: string }
+        Returns: undefined
+      }
       bar_set_tab_tip: {
         Args: {
           _amount: number
@@ -20647,6 +20792,7 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      bar_staff_pay_overview: { Args: { _club_id: string }; Returns: Json }
       bar_staff_tip_balances: {
         Args: { _club_id: string; _token?: string }
         Returns: {

@@ -187,7 +187,7 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
                     <td className="px-2 py-1 tabular-nums">{(isA ? m.posA : m.posB) ?? ""}</td>
                     <td className="px-2 whitespace-nowrap">{isA ? m.aName : m.bName}</td>
                     {i === 0 ? (
-                      <td rowSpan={2} className="px-2 py-1 align-middle">
+                      <td rowSpan={2} className="px-2 py-1 align-middle whitespace-nowrap">
                         <WhenTag text={m.status === "bye" ? "Bye" : m.when || "To play"} />
                       </td>
                     ) : null}

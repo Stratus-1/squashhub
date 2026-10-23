@@ -24,3 +24,10 @@ describe("bar payroll input rules", () => {
     expect(payrollLineError("0", "55.30", 55.3)).toBeNull();
   });
 });
+
+import { suggestedPay } from "@/lib/bar/payroll";
+describe("suggestedPay", () => {
+  it("multiplies the shift rate by shifts worked", () => { expect(suggestedPay("shift", 0, 250, 6)).toBe(1500); });
+  it("uses the fixed salary for monthly staff regardless of shifts", () => { expect(suggestedPay("monthly", 1000, 250, 6)).toBe(1000); });
+  it("pays nothing for zero shifts", () => { expect(suggestedPay("shift", 0, 250, 0)).toBe(0); });
+});

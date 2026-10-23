@@ -17,3 +17,11 @@ export function payrollLineError(salary: string, tips: string, maxTips: number):
   if (s === 0 && t === 0) return "Nothing to pay on this line";
   return null;
 }
+
+export type PayBasis = "monthly" | "shift";
+
+/** Pay suggested for a period: fixed monthly salary, or shift rate × shifts worked (rounded to cents). */
+export function suggestedPay(basis: PayBasis, monthlySalary: number, shiftRate: number, shifts: number): number {
+  if (basis === "shift") return Math.round(shiftRate * Math.max(0, Math.floor(shifts)) * 100) / 100;
+  return Math.round(monthlySalary * 100) / 100;
+}

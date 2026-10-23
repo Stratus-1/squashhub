@@ -189,3 +189,4 @@
 - [ ] Original view and standings panels must be zoomable (mouse wheel/pinch) and draggable for navigation only; no data mutation, no live changes, no publication.
 - [x] Original pool views, standings and the colourful play-off bracket now zoom and drag: clean round-robin fixtures/standings and the play-off bracket use the shared interactive viewer (wheel, pinch, +/-, Fit/Width/100%, drag to pan), "View Standings"/"Back to Rounds" pan instead of scrolling. Verified signed-in on Riverside Pool A (wheel 100->182%, drag pans, jump pans 989px and back) and bracket (wheel 100->157%, drag pans); 20 focused viewer/bracket/round-robin tests pass, no fixture writes. Preview only, not published.
 - [ ] Tournament management panel stale: finished tournament still prompts to draw Round 2/3
+- [ ] Merge duplicate Danie Naude in Uitsig: keep #UITS3707 (Premium, registered, R163 owed), retire #NSF0818 (Day, unregistered) after moving attachments; audited, live-data change.

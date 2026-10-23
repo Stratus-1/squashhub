@@ -29,9 +29,8 @@ describe("Riverside standalone round robin clean view", () => {
     await waitFor(() => expect(readout.textContent).not.toBe("100%"), { timeout: 3000 });
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     await waitFor(() => expect(readout.textContent).toBe("100%"), { timeout: 3000 });
-    // The jump controls are still there and only move the view.
-    expect(within(screen.getByTestId("rr-clean-standings")).getByRole("button", { name: "← Back to Rounds" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "View Standings →" }));
+    // Standings sit above the rounds, so no jump controls are needed.
+    expect(screen.getByTestId("rr-clean-standings").compareDocumentPosition(screen.getByTestId("rr-clean-fixtures")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(JSON.stringify(view)).toBe(before);
   });
   it("shows every round's pairings from the draw, fixed positions, and live rank from results", () => {

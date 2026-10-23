@@ -1800,6 +1800,13 @@
       "when": 1792743627379,
       "tag": "0256_bar_special_shift_tip_modes",
       "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1792747131276,
+      "tag": "0257_treasurer_member_billing",
+      "breakpoints": true
     }
   ]
 }

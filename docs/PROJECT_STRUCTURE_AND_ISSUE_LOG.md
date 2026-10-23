@@ -1,5 +1,5 @@
 ## 2026-10-23 — Compact mobile round-robin pools
-- Phone pool frames reduced from 520px to 180px; phone-only single-row zoom/fit/expand controls and standings icon replace the separate standings button. Desktop and expanded views retain their sizing, saved fixtures/results and ranking logic unchanged. Verification recorded in the roadmap.
+- Phone pool frames reduced from 520px to 150px; phone-only single-row zoom/fit/expand controls and standings icon replace the separate standings button. Desktop and expanded views retain their sizing, saved fixtures/results and ranking logic unchanged. Verification recorded in the roadmap.
 
 ## 2026-10-22 — Riverside Ladies B R5 singleton pending rows
 - Root cause: the read-only hybrid projection emitted one GridBlock per unresolved Swiss position, each with a null opponent position. The generator and saved fixtures were not responsible: database audit retains nine scored games per R1–R3, nine unscored R4 games, no R5 fixtures.

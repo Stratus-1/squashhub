@@ -149,7 +149,7 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
   return (
     <div className="space-y-2 text-xs" data-testid="rr-clean">
       <div className="hidden justify-end md:flex"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
-      <TournamentInteractiveViewer title={`${groupLabel} — fixtures & standings`} inlineHeight={isMobile ? 180 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame} toolbarExtras={<Button size="icon" variant="outline" className="h-8 w-8 md:hidden" title="View standings" aria-label="View standings" onClick={() => jump('[data-testid="rr-clean-standings"]')}><ListOrdered className="h-4 w-4" /></Button>}>
+      <TournamentInteractiveViewer title={`${groupLabel} — fixtures & standings`} inlineHeight={isMobile ? 150 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame} toolbarExtras={<Button size="icon" variant="outline" className="h-8 w-8 md:hidden" title="View standings" aria-label="View standings" onClick={() => jump('[data-testid="rr-clean-standings"]')}><ListOrdered className="h-4 w-4" /></Button>}>
       <div ref={track} className="flex gap-3 cursor-grab" data-testid="rr-round-track">
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {rounds.map((rd) => (

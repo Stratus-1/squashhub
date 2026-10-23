@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
-import { RoundRobinCleanView, RoundRobinPilotView } from "@/components/tournaments/RoundRobinPilotView";
+import { RoundRobinCleanView, RoundRobinCombinedCleanView, RoundRobinPilotView } from "@/components/tournaments/RoundRobinPilotView";
 
 const players = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }));
 describe("Riverside standalone round robin clean view", () => {
@@ -55,5 +55,31 @@ describe("Riverside standalone round robin clean view", () => {
     render(<RoundRobinCleanView view={view} group={1} groupLabel="Group 1" />);
     expect(within(screen.getByTestId("rr-clean-round-1")).getAllByText("Bye").length).toBeGreaterThan(0);
     expect(within(screen.getByTestId("rr-clean-row-p5")).getAllByRole("cell")[3].textContent).toBe("0");
+  });
+  it("two pools share one round table and one standings table, colour-banded per pool", () => {
+    const mk = (ids: string[], tag: string) => buildRoundRobinView({
+      players: ids.map((id, i) => ({ id, name: `${tag} Player ${i + 1}` })),
+      matches: [{ id: `${tag}-m`, round: 1, a: ids[0], b: ids[1], winner: ids[0], status: "completed", score: "3-1" }] as any,
+    });
+    const a = mk(["a1", "a2"], "A");
+    const b = mk(["b1", "b2"], "B");
+    const before = JSON.stringify([a, b]);
+    render(<RoundRobinCombinedCleanView pools={[{ view: a, group: 1, groupLabel: "Pool A" }, { view: b, group: 2, groupLabel: "Pool B" }]} />);
+    const round = screen.getByTestId("rr-clean-round-1");
+    // One table per round holds both pools, each introduced by its coloured label row.
+    expect(within(round).getByText("Pool A")).toBeInTheDocument();
+    expect(within(round).getByText("Pool B")).toBeInTheDocument();
+    expect(within(round).getByText("A Player 1")).toBeInTheDocument();
+    expect(within(round).getByText("B Player 1")).toBeInTheDocument();
+    expect(within(round).getByText("Pool A").closest("tr")!.getAttribute("data-rr-group")).toBe("1");
+    expect(within(round).getByText("Pool B").closest("tr")!.getAttribute("data-rr-group")).toBe("2");
+    // One shared standings table keeps each pool's own ranking and pool column.
+    const standings = screen.getByTestId("rr-clean-standings");
+    expect(within(standings).getAllByRole("columnheader").map((c) => c.textContent)).toContain("Pool");
+    expect(screen.getByTestId("rr-clean-row-a1").getAttribute("data-rr-group")).toBe("1");
+    expect(screen.getByTestId("rr-clean-row-b1").getAttribute("data-rr-group")).toBe("2");
+    expect(within(screen.getByTestId("rr-clean-row-a1")).getAllByRole("cell").slice(0, 4).map((c) => c.textContent)).toEqual(["Pool A", "1", "1", "A Player 1"]);
+    // Display only: inputs untouched.
+    expect(JSON.stringify([a, b])).toBe(before);
   });
 });

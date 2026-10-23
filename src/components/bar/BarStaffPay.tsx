@@ -47,7 +47,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
 
   async function savePayday() {
     const day = payday === null || payday === "" ? null : Number(payday);
-    if (day !== null && (!Number.isInteger(day) || day < 1 || day > 28)) { toast.error("Pay day must be between 1 and 28"); return; }
+    if (day !== null && (!Number.isInteger(day) || day < 1 || day > 31)) { toast.error("Pay day must be between 1 and 31"); return; }
     setBusy(true);
     try {
       const { error } = await supabase.rpc("bar_set_staff_payday" as any, { _club_id: clubId, _day: day });
@@ -114,7 +114,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
         </p>
         <div className="flex items-end gap-2">
           <div>
-            <Label htmlFor="staff-payday" className="text-[11px]">Day of month (1–28)</Label>
+            <Label htmlFor="staff-payday" className="text-[11px]">Day of month (1–31; shorter months use their last day)</Label>
             <Input id="staff-payday" inputMode="numeric" className="h-9 w-24" value={payday ?? String(data?.payday ?? "")}
               onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); setPayday(v); }} disabled={busy} />
           </div>

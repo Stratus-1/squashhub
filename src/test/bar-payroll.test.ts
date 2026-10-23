@@ -27,6 +27,7 @@ describe("bar payroll input rules", () => {
 
 import { suggestedPay } from "@/lib/bar/payroll";
 describe("suggestedPay", () => {
+  it("pays an hourly rate for exact logged hours", () => { expect(suggestedPay("hourly", 0, 0, 0, 50, 6.5)).toBe(325); });
   it("multiplies the shift rate by shifts worked", () => { expect(suggestedPay("shift", 0, 250, 6)).toBe(1500); });
   it("uses the fixed salary for monthly staff regardless of shifts", () => { expect(suggestedPay("monthly", 1000, 250, 6)).toBe(1000); });
   it("pays nothing for zero shifts", () => { expect(suggestedPay("shift", 0, 250, 0)).toBe(0); });

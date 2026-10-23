@@ -3,6 +3,7 @@ import { useBarTips } from "@/hooks/use-bar-tips";
 import { TipEditor } from "@/components/bar/TipEditor";
 import { StaffTips } from "@/components/bar/StaffTips";
 import { CashUp } from "@/components/bar/CashUp";
+import { ShiftStartDialog, type CounterShiftStatus } from "@/components/bar/ShiftStartDialog";
 import { CounterClubUseDialog } from "@/components/bar/CounterClubUseDialog";
 import { ShiftSummary, ShiftTabs, useShiftOverview } from "@/components/bar/ShiftOverview";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
@@ -197,6 +198,11 @@ export default function BarCounter() {
   // PIN-only devices receive the sellable menu from the authorised counter RPC.
   const { data: tipConfig } = useBarTips(board?.club_id);
   const shift = useShiftOverview(board?.club_id, token);
+  const attendance = useQuery({ queryKey: ["bar-counter-attendance", token], enabled: Boolean(token && operator), refetchInterval: 15000, retry: false, queryFn: async () => {
+    const { data, error } = await supabase.rpc("bar_counter_shift_status" as any, { _token: token });
+    if (error) throw error;
+    return data as unknown as CounterShiftStatus;
+  }});
   useEffect(() => {
     setTipChoice({ ...emptyTip, staffId: board?.tip_staff_id ?? "" });
   }, [activeTabId, board?.tip_staff_id]);
@@ -302,6 +308,10 @@ export default function BarCounter() {
       const t = (data as any)?.token as string;
       const who = ((data as any)?.label as string) ?? null;
       if (!t || !who?.trim()) throw new Error("This PIN has no serving name. Ask a club admin to check your staff PIN.");
+      if (token && token !== t) {
+        const { error: endError } = await supabase.rpc("bar_counter_end_shift" as any, { _token: token });
+        if (endError) throw endError;
+      }
       localStorage.setItem(tokenKey(code), t);
       if (who) localStorage.setItem(operatorKey(code), who);
       setToken(t);
@@ -582,7 +592,11 @@ export default function BarCounter() {
     invalidate();
   }
 
-  function endShift() {
+  async function endShift() {
+    if (token) {
+      const { error } = await supabase.rpc("bar_counter_end_shift" as any, { _token: token });
+      if (error) { toast.error(error.message || "Could not end the shift"); return false; }
+    }
     if (code) {
       localStorage.removeItem(tokenKey(code));
       localStorage.removeItem(operatorKey(code));
@@ -598,10 +612,11 @@ export default function BarCounter() {
     setCart({});
     setSettled(null);
     setClubUseOpen(false);
+    return true;
   }
 
-  function exitCounter() {
-    endShift();
+  async function exitCounter() {
+    if (!await endShift()) return;
     navigate(code ? `/s/${encodeURIComponent(code)}` : "/", { replace: true });
   }
 
@@ -679,6 +694,9 @@ export default function BarCounter() {
     );
   }
 
+  if (attendance.isLoading || attendance.error) return <div className="p-6 space-y-3"><p role={attendance.error ? "alert" : undefined} className="text-sm">{attendance.error ? "Could not check your working shift." : "Checking your shift…"}</p><Button onClick={() => attendance.refetch()}>Retry</Button><Button variant="outline" onClick={exitCounter}>Exit counter mode</Button></div>;
+  if (attendance.data && !attendance.data.attendance) return <ShiftStartDialog token={token} status={attendance.data} onStarted={() => { attendance.refetch(); setSwitchOpen(false); }} onExit={exitCounter} />;
+
   // ---- Board ------------------------------------------------------------
   return (
     <div className="min-h-screen bg-background pb-80 xl:pr-80">
@@ -695,6 +713,7 @@ export default function BarCounter() {
                 <UserCheck className="w-3.5 h-3.5" /> {operator}
               </Badge>
             )}
+            {attendance.data?.attendance && <span className="text-xs text-muted-foreground">Paid from {new Date(attendance.data.attendance.paid_start).toLocaleTimeString("en-ZA", { timeZone: "Africa/Johannesburg", hour: "2-digit", minute: "2-digit" })}</span>}
             <Button
               size="sm"
               variant="ghost"

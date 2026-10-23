@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ListOrdered } from "lucide-react";
 import { WhenTag } from "@/components/tournaments/SwissPositionGrid";
 import type { RRPoolView, RRRound } from "@/lib/tournaments/round-robin-view";
 
@@ -151,8 +150,21 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
   };
   return (
     <div className="space-y-2 text-xs" data-testid="rr-clean">
-      <div className="hidden justify-end md:flex"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
-      <TournamentInteractiveViewer title={`${groupLabel} — fixtures & standings`} inlineHeight={isMobile ? 150 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame} toolbarExtras={<Button size="icon" variant="outline" className="h-8 w-8 md:hidden" title="View standings" aria-label="View standings" onClick={() => jump('[data-testid="rr-clean-standings"]')}><ListOrdered className="h-4 w-4" /></Button>}>
+      <section className="space-y-2 overflow-x-auto rounded-md border border-border p-2" data-testid="rr-clean-standings">
+        <h4 className="font-semibold">Standings{view.complete ? " — final" : " — live"}</h4>
+        <p className="text-muted-foreground">"Pos." is the fixed draw position and never moves; Rank updates with each result.</p>
+        <div className="overflow-x-auto"><table className="w-full border-collapse">
+          <thead><tr className="text-left text-muted-foreground"><th className="px-2">Rank</th><th className="px-2">Pos.</th><th className="px-2">Player</th><th className="px-2">P</th><th className="px-2">W</th><th className="px-2">L</th><th className="px-2">Games</th><th className="px-2">GD</th><th className="px-2">Pts F/A</th></tr></thead>
+          <tbody>{standings.map((p) => { const t = totals[p.id]; return (
+            <tr key={p.id} className="riverside-rr-band border-t border-border" data-rr-group={tone} data-testid={`rr-clean-row-${p.id}`}>
+              <td className="px-2 py-1 font-semibold">{anyPlayed ? view.rank[p.id] ?? "—" : "—"}</td><td className="px-2 tabular-nums">{pos(p.id)}</td>
+              <td className="px-2 whitespace-nowrap">{p.name}</td><td className="px-2">{t.played}</td><td className="px-2">{t.wins}</td><td className="px-2">{t.losses}</td>
+              <td className="px-2">{t.gamesFor}–{t.gamesAgainst}</td><td className="px-2">{t.gamesFor - t.gamesAgainst}</td>
+              <td className="px-2 whitespace-nowrap">{t.pointsKnown && t.played ? `${t.pointsFor}/${t.pointsAgainst}` : "—"}</td>
+            </tr>); })}</tbody>
+        </table></div>
+      </section>
+      <TournamentInteractiveViewer title={`${groupLabel} — fixtures & standings`} inlineHeight={isMobile ? 150 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame}>
       <div ref={track} className="flex gap-3 cursor-grab" data-testid="rr-round-track">
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {rounds.map((rd) => (
@@ -198,21 +210,6 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
             ); })}
           </table>
         ))}
-      </section>
-      <section className="w-max min-w-80 shrink-0 self-start space-y-2" data-testid="rr-clean-standings">
-        <Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-fixtures"]')}>← Back to Rounds</Button>
-        <h4 className="font-semibold">Standings{view.complete ? " — final" : " — live"}</h4>
-        <p className="text-muted-foreground">"Pos." is the fixed draw position and never moves; Rank updates with each result.</p>
-        <div className="overflow-x-auto"><table className="w-full border-collapse">
-          <thead><tr className="text-left text-muted-foreground"><th className="px-2">Rank</th><th className="px-2">Pos.</th><th className="px-2">Player</th><th className="px-2">P</th><th className="px-2">W</th><th className="px-2">L</th><th className="px-2">Games</th><th className="px-2">GD</th><th className="px-2">Pts F/A</th></tr></thead>
-          <tbody>{standings.map((p) => { const t = totals[p.id]; return (
-            <tr key={p.id} className="riverside-rr-band border-t border-border" data-rr-group={tone} data-testid={`rr-clean-row-${p.id}`}>
-              <td className="px-2 py-1 font-semibold">{anyPlayed ? view.rank[p.id] ?? "—" : "—"}</td><td className="px-2 tabular-nums">{pos(p.id)}</td>
-              <td className="px-2 whitespace-nowrap">{p.name}</td><td className="px-2">{t.played}</td><td className="px-2">{t.wins}</td><td className="px-2">{t.losses}</td>
-              <td className="px-2">{t.gamesFor}–{t.gamesAgainst}</td><td className="px-2">{t.gamesFor - t.gamesAgainst}</td>
-              <td className="px-2 whitespace-nowrap">{t.pointsKnown && t.played ? `${t.pointsFor}/${t.pointsAgainst}` : "—"}</td>
-            </tr>); })}</tbody>
-        </table></div>
       </section>
       </div>
       </TournamentInteractiveViewer>
@@ -274,8 +271,31 @@ export function RoundRobinCombinedCleanView({ pools }: { pools: { view: RRPoolVi
   const allComplete = pools.every((p) => p.view.complete);
   return (
     <div className="space-y-2 text-xs" data-testid="rr-clean">
-      <div className="hidden justify-end md:flex"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
-      <TournamentInteractiveViewer title="Pools — fixtures & standings" inlineHeight={isMobile ? 150 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame} toolbarExtras={<Button size="icon" variant="outline" className="h-8 w-8 md:hidden" title="View standings" aria-label="View standings" onClick={() => jump('[data-testid="rr-clean-standings"]')}><ListOrdered className="h-4 w-4" /></Button>}>
+      <section className="space-y-2 overflow-x-auto rounded-md border border-border p-2" data-testid="rr-clean-standings">
+        <h4 className="font-semibold">Standings{allComplete ? " — final" : " — live"}</h4>
+        <p className="text-muted-foreground">"Pos." is the fixed draw position and never moves; Rank updates with each result, within each pool.</p>
+        <div className="overflow-x-auto"><table className="w-full border-collapse">
+          <thead><tr className="text-left text-muted-foreground"><th className="px-2">Pool</th><th className="px-2">Rank</th><th className="px-2">Pos.</th><th className="px-2">Player</th><th className="px-2">P</th><th className="px-2">W</th><th className="px-2">L</th><th className="px-2">Games</th><th className="px-2">GD</th><th className="px-2">Pts F/A</th></tr></thead>
+          {pools.map((p) => {
+            const tone = ((p.group - 1) % 6) + 1;
+            const standings = [...p.view.players].sort((a, b) => (p.view.rank[a.id] ?? 99) - (p.view.rank[b.id] ?? 99));
+            const anyPlayed = Object.values(p.view.totals).some((t) => t.played > 0);
+            const pos = (id: string) => p.view.players.findIndex((pl) => pl.id === id) + 1;
+            return (
+            <tbody key={p.group}>
+              {standings.map((pl, ri) => { const t = p.view.totals[pl.id]; return (
+                <tr key={pl.id} className="riverside-rr-band border-t border-border" data-rr-group={tone} data-testid={`rr-clean-row-${pl.id}`}>
+                  {ri === 0 ? <td rowSpan={standings.length} className="px-2 py-1 font-semibold">{p.groupLabel}</td> : null}
+                  <td className="px-2 py-1 font-semibold">{anyPlayed ? p.view.rank[pl.id] ?? "—" : "—"}</td><td className="px-2 tabular-nums">{pos(pl.id)}</td>
+                  <td className="px-2 whitespace-nowrap">{pl.name}</td><td className="px-2">{t.played}</td><td className="px-2">{t.wins}</td><td className="px-2">{t.losses}</td>
+                  <td className="px-2">{t.gamesFor}–{t.gamesAgainst}</td><td className="px-2">{t.gamesFor - t.gamesAgainst}</td>
+                  <td className="px-2 whitespace-nowrap">{t.pointsKnown && t.played ? `${t.pointsFor}/${t.pointsAgainst}` : "—"}</td>
+                </tr>); })}
+            </tbody>
+          ); })}
+        </table></div>
+      </section>
+      <TournamentInteractiveViewer title="Pools — fixtures & standings" inlineHeight={isMobile ? 150 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame}>
       <div ref={track} className="flex gap-3 cursor-grab" data-testid="rr-round-track">
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {roundLabels.map((label, li) => {
@@ -313,31 +333,6 @@ export function RoundRobinCombinedCleanView({ pools }: { pools: { view: RRPoolVi
             ); })}
           </table>
         ); })}
-      </section>
-      <section className="w-max min-w-80 shrink-0 self-start space-y-2" data-testid="rr-clean-standings">
-        <Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-fixtures"]')}>← Back to Rounds</Button>
-        <h4 className="font-semibold">Standings{allComplete ? " — final" : " — live"}</h4>
-        <p className="text-muted-foreground">"Pos." is the fixed draw position and never moves; Rank updates with each result, within each pool.</p>
-        <div className="overflow-x-auto"><table className="w-full border-collapse">
-          <thead><tr className="text-left text-muted-foreground"><th className="px-2">Pool</th><th className="px-2">Rank</th><th className="px-2">Pos.</th><th className="px-2">Player</th><th className="px-2">P</th><th className="px-2">W</th><th className="px-2">L</th><th className="px-2">Games</th><th className="px-2">GD</th><th className="px-2">Pts F/A</th></tr></thead>
-          {pools.map((p) => {
-            const tone = ((p.group - 1) % 6) + 1;
-            const standings = [...p.view.players].sort((a, b) => (p.view.rank[a.id] ?? 99) - (p.view.rank[b.id] ?? 99));
-            const anyPlayed = Object.values(p.view.totals).some((t) => t.played > 0);
-            const pos = (id: string) => p.view.players.findIndex((pl) => pl.id === id) + 1;
-            return (
-            <tbody key={p.group}>
-              {standings.map((pl, ri) => { const t = p.view.totals[pl.id]; return (
-                <tr key={pl.id} className="riverside-rr-band border-t border-border" data-rr-group={tone} data-testid={`rr-clean-row-${pl.id}`}>
-                  {ri === 0 ? <td rowSpan={standings.length} className="px-2 py-1 font-semibold">{p.groupLabel}</td> : null}
-                  <td className="px-2 py-1 font-semibold">{anyPlayed ? p.view.rank[pl.id] ?? "—" : "—"}</td><td className="px-2 tabular-nums">{pos(pl.id)}</td>
-                  <td className="px-2 whitespace-nowrap">{pl.name}</td><td className="px-2">{t.played}</td><td className="px-2">{t.wins}</td><td className="px-2">{t.losses}</td>
-                  <td className="px-2">{t.gamesFor}–{t.gamesAgainst}</td><td className="px-2">{t.gamesFor - t.gamesAgainst}</td>
-                  <td className="px-2 whitespace-nowrap">{t.pointsKnown && t.played ? `${t.pointsFor}/${t.pointsAgainst}` : "—"}</td>
-                </tr>); })}
-            </tbody>
-          ); })}
-        </table></div>
       </section>
       </div>
       </TournamentInteractiveViewer>

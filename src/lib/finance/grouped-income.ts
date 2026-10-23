@@ -27,18 +27,29 @@ export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Re
     (meta.category === "Income" ? primary : expenses).push({ label: meta.label, amount });
   }
   const divisions = divisionMargins(lines, hasShop, basis, costs, purchases).map(row => {
-    const tips = new Map<string, number>();
+    const tipPeople = new Map<string, { received: number; paid: number }>();
+    const tipPerson = (name: string) => {
+      const person = tipPeople.get(name) ?? { received: 0, paid: 0 };
+      tipPeople.set(name, person);
+      return person;
+    };
     if (row.division === "bar") for (const line of lines.filter(line => line.account === "bar_income" && line.description?.startsWith("Tip income — "))) {
-      const label = line.description ?? "Tip income";
-      tips.set(label, (tips.get(label) ?? 0) + Number(line.credit) - Number(line.debit));
+      tipPerson((line.description ?? "").slice("Tip income — ".length).trim() || "Staff").received += Number(line.credit) - Number(line.debit);
     }
-    const tipIncome = [...tips].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005);
-    const tipTotal = tipIncome.reduce((sum, tip) => sum + tip.amount, 0);
     const allocated = new Map<string, number>();
     for (const line of lines.filter(line => line.account === `${row.division}_cost_of_sales`)) {
       const label = line.description?.trim() || "Allocated direct costs";
-      allocated.set(label, (allocated.get(label) ?? 0) + Number(line.debit) - Number(line.credit));
+      const amount = Number(line.debit) - Number(line.credit);
+      if (row.division === "bar" && label.startsWith("Tips paid — ")) {
+        tipPerson(label.slice("Tips paid — ".length).trim() || "Staff").paid += amount;
+        continue;
+      }
+      allocated.set(label, (allocated.get(label) ?? 0) + amount);
     }
+    const tipTotal = [...tipPeople.values()].reduce((sum, person) => sum + person.received, 0);
+    const tipIncome = [...tipPeople]
+      .map(([name, person]) => ({ label: `Tips — ${name}`, amount: person.received - person.paid, received: person.received, paid: person.paid }))
+      .filter(row => Math.abs(row.amount) >= 0.005);
     return { ...row, sales: row.sales - tipTotal, tipIncome, allocated: [...allocated].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005) };
   });
   const primaryTotal = primary.reduce((sum, row) => sum + row.amount, 0);

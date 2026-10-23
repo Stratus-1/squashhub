@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Editable payday hours, rates and totals with saved original/approved values; synthetic tests only, no real payout/publication.
-- [ ] Run month end preview anytime using current accrued pay/tips, with no preparation or payment processing.
+- [x] Editable payday hours, rates and totals with original/approved history; 13 pure tests, isolated PostgreSQL and fictional signed-in browser checks pass; no real payout/publication.
+- [x] Run month end preview anytime from accrued pay/tips, with hypothetical edits and no preparation or confirmation; browser verified no processing.
 - [x] Hourly staff pay, configurable normal opening, normal/special attendance and history, shared tips by hours and all-participant cash-up closure implemented. 35 frontend checks and isolated PostgreSQL payroll/tip/permissions/EFT tests pass; signed-in Riverside read-only settings plus fictional intercepted hourly-save/special-entry/exit verified. No real attendance/payout, hardware or tournament writes; not published.
 - [x] Compact mobile round-robin pool panels: both Riverside panels fit at 384×680 (top 8–264 / 280–536), single-row controls, zoom verified at 120%; 12 focused checks pass, preview build OK. Desktop sizing unchanged; hosted writes intercepted, no tournament data changes or publication.
 - [x] Riverside AABB Ladies B R5 display: five numbered pairs 9–10/11–12/13–14/15–16/17–18 verified in authenticated screenshot/DOM, four fixed RR matches preserved; final names preview current standings/no repeats only after R4 completes. 78 checks pass, saved R1–R4 fingerprints unchanged, no page errors/writes. No Uitsig rendering changes, regeneration/notices/publication.

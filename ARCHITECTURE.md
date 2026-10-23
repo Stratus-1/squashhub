@@ -98,6 +98,8 @@ League associations, seasons, rules, teams/pairs, rounds, fixtures, lineups, ava
 
 ### Billing, payments, and bar
 
+Payroll review permits quantity/rate, salary, tips and total edits; confirmation stores original and approved values in `bar_payroll_run_lines.review`, retaining server authority, unpaid-tip caps and EFT accounting. Read-only month-end preview calculates current accrued pay from the existing overview without preparing or confirming a run; hypothetical edits are local only.
+
 Bar staff supports monthly, per-shift and hourly pay. `bar_work_shifts` groups concurrent attendance until cash-up; `bar_staff_attendance` records PIN-derived individuals, actual entry, paid start and exit, with append-only correction snapshots for unpaid/unallocated records. Shared special-shift tips retain original sale attribution and append weighted-cent allocation records plus balanced income reclassification; `bar_staff_tip_earnings` is the consistent balance/payout source. Unallocated tips are withheld and zero-hour shifts require explicit management review. Payroll snapshots its attendance cutoff so hours after preparation remain eligible next period, retains manual overrides, and records only approved salary/tips against bank_current and Bar cost of sales. No historical attendance is invented or historical tips reallocated.
 
 Member Billing offers a separate outstanding-balance adjustment. `admin_add_member_outstanding_balance` validates the active club/member and existing billing authority, posts only member-linked debtors and opening balance equity atomically, and audits a stable request ID. It creates neither a fee assessment nor a payment; retries cannot duplicate the debt. Existing fee billing and payment flows remain separate.

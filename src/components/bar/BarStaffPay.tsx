@@ -18,7 +18,7 @@ import { StaffAttendanceLog } from "@/components/bar/StaffAttendanceLog";
 interface StaffPay { id: string; name: string; pay_basis: PayBasis; salary: number; shift_rate: number; hourly_rate: number; hours: number; shifts: number; earned: number; paid: number; remaining: number }
 interface PayrollLine { id: string; staff_id: string; name: string; salary: number; tips: number; pay_basis?: PayBasis; hours?: number; hourly_rate?: number; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }
 interface PendingRun { id: string; period: string; lines: PayrollLine[] }
-interface PayrollReviewSnapshot { approved?: { quantity: number; rate: number; salary: number; tips: number; total: number } }
+interface PayrollReviewSnapshot { original?: { hours: number; shifts: number; rate: number; salary: number; tips: number }; approved?: { quantity: number; rate: number; salary: number; tips: number; total: number } }
 interface ConfirmedRun { id: string; period: string; confirmed_at: string; lines: { review?: PayrollReviewSnapshot; name: string; salary: number; tips: number; pay_basis?: PayBasis; hours?: number; hourly_rate?: number; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }[] }
 interface Overview { payday: number | null; opening?: string; shifts_since?: string; staff: StaffPay[]; pending_run: PendingRun | null; confirmed_runs: ConfirmedRun[] }
 
@@ -227,7 +227,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
               <summary className="text-xs font-medium cursor-pointer">{monthLabel(r.period)} — confirmed {new Date(r.confirmed_at).toLocaleDateString("en-ZA")}</summary>
               <table className="w-full text-xs mt-2">
                 <tbody>{r.lines.map((l, i) => (
-                  <tr className="border-b last:border-0" key={i}><td className="py-1">{l.name}</td><td className="text-right tabular-nums px-1">{l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h · ` : l.pay_basis === "shift" ? `${l.shifts ?? 0} shifts · ` : ""}Pay {money(l.salary)}{l.review?.approved && <p className="text-muted-foreground">Approved {l.review.approved.quantity} × {money(l.review.approved.rate)} · Total {money(l.review.approved.total)}</p>}</td><td className="text-right tabular-nums px-1">Tips {money(l.tips)}</td></tr>
+                  <tr className="border-b last:border-0" key={i}><td className="py-1">{l.name}</td><td className="text-right tabular-nums px-1">{l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h · ` : l.pay_basis === "shift" ? `${l.shifts ?? 0} shifts · ` : ""}Pay {money(l.salary)}{l.review?.original && <p className="text-muted-foreground">Original pay {money(l.review.original.salary)} · Rate {money(l.review.original.rate)}</p>}{l.review?.approved && <p className="text-muted-foreground">Approved {l.review.approved.quantity} × {money(l.review.approved.rate)} · Total {money(l.review.approved.total)}</p>}</td><td className="text-right tabular-nums px-1">Tips {money(l.tips)}</td></tr>
                 ))}</tbody>
               </table>
             </details>

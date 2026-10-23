@@ -650,14 +650,17 @@ export default function BarCounter() {
   async function exitCounter() {
     if (serverChoices.length > 1) {
       if (!window.confirm("Exit this counter and end the working time of everyone signed in on this device? Other counters are unaffected.")) return;
-      for (const server of serverChoices.filter(s => s.token !== token)) {
+      let remaining = [...serverChoices];
+      for (const server of serverChoices) {
         const { error } = await supabase.rpc("bar_counter_end_shift" as any, { _token: server.token });
         if (error) { toast.error(error.message || "Could not end the shift"); return; }
-        saveServers(serverChoices.filter(s => s.token !== server.token));
+        remaining = remaining.filter(s => s.token !== server.token);
+        saveServers(remaining);
+        qc.removeQueries({ queryKey: ["bar-counter-board", server.token, clubId], exact: true });
+        qc.removeQueries({ queryKey: ["bar-counter-orders", server.token, clubId] });
+        if (server.token === token) selectServer(remaining[0] ?? null);
       }
-      saveServers(token && operator ? [{ token, operator }] : []);
-    }
-    if (!await endShift()) return;
+    } else if (!await endShift()) return;
     saveServers([]);
     selectServer(null);
     navigate(code ? `/s/${encodeURIComponent(code)}` : "/", { replace: true });
@@ -810,7 +813,7 @@ export default function BarCounter() {
           <Button size="icon" variant="ghost" onClick={() => refetch()} aria-label="Refresh">
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="outline" className="gap-1" onClick={exitCounter}>
+          <Button size="sm" variant="outline" className="gap-1" disabled={servingBusy} onClick={exitCounter}>
             <LogOut className="w-4 h-4" /> Exit counter mode
           </Button>
           {operator && (

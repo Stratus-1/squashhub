@@ -76,6 +76,19 @@ describe("counter personal PIN boundary", () => {
     expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([{ token: "first-session", operator: "First barman" }]);
   });
 
+  it("confirmed device exit ends both retained people and clears all serving tokens", async () => {
+    await addSecondBarman();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Exit counter mode" }));
+    await screen.findByText("Customer menu");
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_end_shift")).toEqual([
+      ["bar_counter_end_shift", { _token: "first-session" }], ["bar_counter_end_shift", { _token: "second-session" }],
+    ]);
+    expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([]);
+    confirm.mockRestore();
+  });
+
   it("opens visitor tabs with the explicit six-argument member-aware function", async () => {
     localStorage.setItem("sh.barcounter.token.river-menu", "verified-session");
     localStorage.setItem("sh.barcounter.operator.river-menu", "Test server");

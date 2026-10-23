@@ -76,6 +76,17 @@ interface Board {
 
 const tokenKey = (code: string) => `sh.barcounter.token.${code}`;
 const operatorKey = (code: string) => `sh.barcounter.operator.${code}`;
+const serversKey = (code: string) => `sh.barcounter.servers.${code}`;
+interface CounterServer { token: string; operator: string }
+
+function storedServers(code?: string): CounterServer[] {
+  if (!code) return [];
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(serversKey(code)) ?? "[]");
+    if (Array.isArray(saved)) return saved.filter((s): s is CounterServer => typeof s?.token === "string" && typeof s?.operator === "string" && Boolean(s.operator.trim()));
+  } catch { /* Invalid local preferences never confer serving authority. */ }
+  return [];
+}
 
 export default function BarCounter() {
   const { code } = useParams<{ code?: string }>();
@@ -91,6 +102,7 @@ export default function BarCounter() {
   const [operator, setOperator] = useState<string | null>(() => (code ? localStorage.getItem(operatorKey(code)) : null));
   const [switchOpen, setSwitchOpen] = useState(false);
   const [switchPin, setSwitchPin] = useState("");
+  const [servers, setServers] = useState<CounterServer[]>(() => storedServers(code));
   const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -155,6 +167,34 @@ export default function BarCounter() {
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [topUpBusy, setTopUpBusy] = useState(false);
+  const serverChoices = useMemo(() => token && operator && !servers.some(s => s.token === token)
+    ? [...servers, { token, operator }] : servers, [servers, token, operator]);
+  const servingBusy = busy || unlocking || removing || topUpBusy || Boolean(Object.values(cart).some(q => q > 0)) || settleOpen || memberOpen || onlineOpen || pinOpen || scanOpen || clubUseOpen || cashUpOpen || tipsOpen || topUpOpen || Boolean(settled);
+
+  function saveServers(next: CounterServer[]) {
+    setServers(next);
+    if (code) localStorage.setItem(serversKey(code), JSON.stringify(next));
+  }
+
+  function selectServer(server: CounterServer | null) {
+    if (!code) return;
+    // Revalidate the selected personal session before displaying serving controls.
+    if (server) {
+      qc.removeQueries({ queryKey: ["bar-counter-board", server.token, clubId], exact: true });
+      qc.removeQueries({ queryKey: ["bar-counter-attendance", server.token], exact: true });
+      localStorage.setItem(tokenKey(code), server.token);
+      localStorage.setItem(operatorKey(code), server.operator);
+    } else {
+      localStorage.removeItem(tokenKey(code));
+      localStorage.removeItem(operatorKey(code));
+    }
+    setToken(server?.token ?? null);
+    setOperator(server?.operator ?? null);
+    setActiveTabId(null);
+    setCart({});
+    setClubUseOpen(false);
+    setTipChoice(emptyTip);
+  }
 
   // The settle dialog belongs to the tab it was opened for — never let it
   // pop up again when a different tab is opened.
@@ -259,6 +299,8 @@ export default function BarCounter() {
     if (/unlock|revok|token|permission/i.test(String((boardError as any)?.message ?? ""))) {
       localStorage.removeItem(tokenKey(code));
       localStorage.removeItem(operatorKey(code));
+      const remaining = serverChoices.filter(s => s.token !== token);
+      saveServers(remaining);
       setOperator(null);
       setToken(null);
       setPin("");
@@ -267,7 +309,7 @@ export default function BarCounter() {
       toast.error("This device was signed out — enter the counter PIN to unlock it again.");
       qc.removeQueries({ queryKey: ["bar-counter-board", token, clubId], exact: true });
     }
-  }, [boardError, code, token, qc, clubId]);
+  }, [boardError, code, token, qc, clubId, serverChoices]);
 
   useEffect(() => {
     if (!activeTabId) setCart({});
@@ -297,8 +339,7 @@ export default function BarCounter() {
 
   // Each staff member has their own PIN (allocated by the club). The PIN
   // identifies the person — the backend returns their name as `label` — so
-  // unlocking and switching server are the same action. Several people can be
-  // signed in on one device over a shift; they all see the same orders.
+  // Each verified PIN keeps its own session and attendance on this counter.
   async function unlockWithPin(rawPin: string) {
     if (!code) return false;
     setUnlocking(true);
@@ -308,14 +349,8 @@ export default function BarCounter() {
       const t = (data as any)?.token as string;
       const who = ((data as any)?.label as string) ?? null;
       if (!t || !who?.trim()) throw new Error("This PIN has no serving name. Ask a club admin to check your staff PIN.");
-      if (token && token !== t) {
-        const { error: endError } = await supabase.rpc("bar_counter_end_shift" as any, { _token: token });
-        if (endError) throw endError;
-      }
-      localStorage.setItem(tokenKey(code), t);
-      if (who) localStorage.setItem(operatorKey(code), who);
-      setToken(t);
-      setOperator(who);
+      saveServers([...serverChoices.filter(s => s.token !== t), { token: t, operator: who }]);
+      selectServer({ token: t, operator: who });
       setPin("");
       return true;
     } catch (e: any) {
@@ -335,7 +370,7 @@ export default function BarCounter() {
     if (ok) {
       setSwitchPin("");
       setSwitchOpen(false);
-      toast.success("Server switched");
+      toast.success("Barman added — join the shift to start working");
     }
   }
 
@@ -597,14 +632,11 @@ export default function BarCounter() {
       const { error } = await supabase.rpc("bar_counter_end_shift" as any, { _token: token });
       if (error) { toast.error(error.message || "Could not end the shift"); return false; }
     }
-    if (code) {
-      localStorage.removeItem(tokenKey(code));
-      localStorage.removeItem(operatorKey(code));
-    }
+    const remaining = serverChoices.filter(s => s.token !== token);
+    saveServers(remaining);
     qc.removeQueries({ queryKey: ["bar-counter-board", token, clubId], exact: true });
     qc.removeQueries({ queryKey: ["bar-counter-orders", token, clubId] });
-    setOperator(null);
-    setToken(null);
+    selectServer(remaining[0] ?? null);
     setPin("");
     setSwitchPin("");
     setSwitchOpen(false);
@@ -616,7 +648,18 @@ export default function BarCounter() {
   }
 
   async function exitCounter() {
+    if (serverChoices.length > 1) {
+      if (!window.confirm("Exit this counter and end the working time of everyone signed in on this device? Other counters are unaffected.")) return;
+      for (const server of serverChoices.filter(s => s.token !== token)) {
+        const { error } = await supabase.rpc("bar_counter_end_shift" as any, { _token: server.token });
+        if (error) { toast.error(error.message || "Could not end the shift"); return; }
+        saveServers(serverChoices.filter(s => s.token !== server.token));
+      }
+      saveServers(token && operator ? [{ token, operator }] : []);
+    }
     if (!await endShift()) return;
+    saveServers([]);
+    selectServer(null);
     navigate(code ? `/s/${encodeURIComponent(code)}` : "/", { replace: true });
   }
 
@@ -695,7 +738,7 @@ export default function BarCounter() {
   }
 
   if (attendance.isLoading || attendance.error) return <div className="p-6 space-y-3"><p role={attendance.error ? "alert" : undefined} className="text-sm">{attendance.error ? "Could not check your working shift." : "Checking your shift…"}</p><Button onClick={() => attendance.refetch()}>Retry</Button><Button variant="outline" onClick={exitCounter}>Exit counter mode</Button></div>;
-  if (attendance.data && !attendance.data.attendance && !cashUpOpen) return <ShiftStartDialog token={token} status={attendance.data} onStarted={() => { attendance.refetch(); setSwitchOpen(false); }} onExit={exitCounter} />;
+  if (attendance.data && !attendance.data.attendance && !cashUpOpen) return <ShiftStartDialog key={token} token={token} status={attendance.data} onStarted={() => { attendance.refetch(); setSwitchOpen(false); }} onExit={serverChoices.length > 1 ? () => { void endShift(); } : exitCounter} />;
 
   // ---- Board ------------------------------------------------------------
   return (
@@ -718,13 +761,19 @@ export default function BarCounter() {
               size="sm"
               variant="ghost"
               className="h-6 px-2 text-xs"
+              disabled={servingBusy}
               onClick={() => {
                 setSwitchPin("");
                 setSwitchOpen(true);
               }}
             >
-              Switch
+              <Plus className="h-3 w-3 mr-1" /> Add barman
             </Button>
+            {serverChoices.length > 1 && <div role="group" aria-label="Serving barman" className="flex flex-wrap gap-1">
+              {serverChoices.map(server => <Button key={server.token} size="sm" variant={server.token === token ? "default" : "outline"} disabled={servingBusy} aria-pressed={server.token === token} onClick={() => { if (server.token !== token) selectServer(server); }}>
+                <UserCheck className="h-3 w-3 mr-1" />{server.operator}
+              </Button>)}
+            </div>}
           </div>
           <p className="text-xs text-muted-foreground">
             {board.tabs.length} open tab{board.tabs.length === 1 ? "" : "s"} ·{" "}
@@ -768,6 +817,7 @@ export default function BarCounter() {
             <Button
               size="sm"
               variant="outline"
+              disabled={servingBusy}
               onClick={endShift}
             >
               End shift
@@ -1447,9 +1497,9 @@ export default function BarCounter() {
       <Dialog open={switchOpen} onOpenChange={(o) => { if (o) setSwitchOpen(true); else setSwitchOpen(false); }}>
         <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>{operator ? "Switch server" : "Who is serving?"}</DialogTitle>
+            <DialogTitle>{operator ? "Add another barman" : "Who is serving?"}</DialogTitle>
             <DialogDescription>
-              Enter your own counter PIN. Your name shows at the top of the screen so everyone can see who is operating the bar. Both of you see the same orders.
+              Enter the other barman's personal counter PIN to join this shift.
             </DialogDescription>
           </DialogHeader>
           <Input
@@ -1465,7 +1515,7 @@ export default function BarCounter() {
             className="h-14 text-center text-2xl tracking-[0.4em]"
           />
           <Button className="w-full h-12" disabled={switchPin.length < 4 || unlocking} onClick={switchServer}>
-            {unlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start serving"}
+            {unlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add barman"}
           </Button>
         </DialogContent>
       </Dialog>

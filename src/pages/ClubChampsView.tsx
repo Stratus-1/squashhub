@@ -1520,10 +1520,10 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                 return { pn, view };
               }).filter((p) => p.view.players.length > 0);
               // Several pools share one set of colour-banded round tables; a single pool keeps its own view.
-              if (poolViews.length > 1) {
-                return <RoundRobinCombinedPilotView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} pools={poolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: `Pool ${poolLabel(p.pn)}` }))} calendar={renderCategoryCalendar(gn)} />;
+              if (laterPoolViews.length > 1) {
+                return <RoundRobinCombinedPilotView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} pools={laterPoolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: `Pool ${poolLabel(p.pn)}` }))} calendar={renderCategoryCalendar(gn)} />;
               }
-              return poolViews.map((p) => <RoundRobinPilotView key={p.pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />);
+              return laterPoolViews.map((p) => <RoundRobinPilotView key={p.pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />);
             })()}
           </div>
         ) : laterIsKO ? (

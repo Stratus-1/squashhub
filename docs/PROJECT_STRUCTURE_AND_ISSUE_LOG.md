@@ -1,3 +1,6 @@
+## 2026-10-23 — Compact mobile round-robin pools
+- Phone pool frames reduced from 520px to 180px; phone-only single-row zoom/fit/expand controls and standings icon replace the separate standings button. Desktop and expanded views retain their sizing, saved fixtures/results and ranking logic unchanged. Verification recorded in the roadmap.
+
 ## 2026-10-22 — Riverside Ladies B R5 singleton pending rows
 - Root cause: the read-only hybrid projection emitted one GridBlock per unresolved Swiss position, each with a null opponent position. The generator and saved fixtures were not responsible: database audit retains nine scored games per R1–R3, nine unscored R4 games, no R5 fixtures.
 - Added pure paired-slot display helper, enabled for Riverside hybrid previews and prospective Swiss previews without changing existing Uitsig chart routes. R5 bottom ten now displays exactly 9–10, 11–12, 13–14, 15–16, 17–18 in five two-player blocks, with null identities and no scores; four fixed RR blocks remain unchanged. Odd fields show one clearly undecided bye slot. Riverside AABB Ladies B's final display alone uses current-rank non-repeat optimizer after R4 completes, reporting adjacency exceptions, without changing saved policy or participants.

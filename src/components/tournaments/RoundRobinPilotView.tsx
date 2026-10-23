@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ListOrdered } from "lucide-react";
 import type { RRPoolView, RRRound } from "@/lib/tournaments/round-robin-view";
 
 /** Display bands only: caller supplies existing official order, independently per pool. */
@@ -124,6 +126,7 @@ export function RoundRobinPilotView({ title, view, calendar, matrixOnly = false,
 /** Clean fixtures-by-round and live standings, shared by all clubs. */
 /** Clean fixtures-by-round and live standings, shared by all clubs. Zoom (wheel, pinch or buttons) and drag to navigate; saved games are never touched. */
 export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolView; group: number; groupLabel: string }) {
+  const isMobile = useIsMobile();
   const track = useRef<HTMLDivElement>(null);
   const api = useRef<ReactZoomPanPinchContentRef | null>(null);
   const frame = useRef<HTMLDivElement | null>(null);
@@ -145,8 +148,8 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
   };
   return (
     <div className="space-y-2 text-xs" data-testid="rr-clean">
-      <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
-      <TournamentInteractiveViewer title={`${groupLabel} — fixtures & standings`} inlineHeight={520} defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame}>
+      <div className="hidden justify-end md:flex"><Button size="sm" variant="outline" onClick={() => jump('[data-testid="rr-clean-standings"]')}>View Standings →</Button></div>
+      <TournamentInteractiveViewer title={`${groupLabel} — fixtures & standings`} inlineHeight={isMobile ? 180 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame} toolbarExtras={<Button size="icon" variant="outline" className="h-8 w-8 md:hidden" title="View standings" aria-label="View standings" onClick={() => jump('[data-testid="rr-clean-standings"]')}><ListOrdered className="h-4 w-4" /></Button>}>
       <div ref={track} className="flex gap-3 cursor-grab" data-testid="rr-round-track">
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {rounds.map((rd) => (

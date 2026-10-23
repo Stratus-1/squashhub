@@ -3782,3 +3782,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Owner-requested merge of duplicate Danie Naude records: kept #UITS3707 "Danie (kiepie) Naude" (Premium, registered login, R163 owed, ladder 89); retired #NSF0818 "Danie Naude" (Day, unregistered May-import, ladder 88, person SSA000899).
 - Moved the active Northern Squash Association affiliation (NSF0818, nsa_team_sheet) and the SportyHQ profile to the kept record/person; deleted the duplicate's inactive NSA level-12 league registration, ghost club ranking-snapshot entry and six expired activation invites; marked the duplicate person `merged` with `merged_into_person_id`; deleted the #NSF0818 club_members row. Suspension/delivery audit history untouched.
 - Verified read-back: one Danie Naude row remains in Uitsig; affiliation and SportyHQ attached to kept record; duplicate person status merged.
+
+## 23 October 2026 — Income statement tips rows netted per person
+- The Bar section of the income statement listed every "Tip income — Name" and "Less: Tips paid — Name" line. Now each person shows one default row "Tips — Name" with only the outstanding amount (received − paid); fully settled people are hidden. Expanding the row shows Received, Paid out and Outstanding.
+- Change is display-only in `src/lib/finance/grouped-income.ts` (tips paid removed from allocated direct-cost rows and netted per person) and `src/components/club-admin/IncomeStatementTab.tsx` (expandable rows); division gross profit and totals are mathematically unchanged. CSV export shows the same net rows.
+- Test added in `src/test/grouped-income.test.ts` (13 pass); verified live on Riverside (WP R75.30 received − R20.00 paid = R55.30 outstanding; Sonja R7.40). No data changed, not published.

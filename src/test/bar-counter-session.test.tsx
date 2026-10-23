@@ -43,7 +43,7 @@ describe("counter personal PIN boundary", () => {
     mount("/s/river-menu/counter");
     fireEvent.click(await screen.findByRole("button", { name: "Add barman" }));
     fireEvent.change(screen.getByLabelText("Switch staff counter PIN"), { target: { value: "5678" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add barman", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Add barman$/ }));
     await screen.findByRole("button", { name: "Second barman" });
   }
 

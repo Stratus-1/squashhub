@@ -1758,6 +1758,13 @@
       "when": 1792736384294,
       "tag": "0250_bar_payroll_fix_and_payday_1_31",
       "breakpoints": true
+    },
+    {
+      "idx": 251,
+      "version": "7",
+      "when": 1792736943933,
+      "tag": "0251_bar_staff_pay_per_shift",
+      "breakpoints": true
     }
   ]
 }

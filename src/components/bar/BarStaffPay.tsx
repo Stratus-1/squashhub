@@ -12,13 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { isPayrollAmountInput, payrollAmount, payrollLineError } from "@/lib/bar/payroll";
+import { isPayrollAmountInput, payrollAmount, payrollLineError, suggestedPay, type PayBasis } from "@/lib/bar/payroll";
 
-interface StaffPay { id: string; name: string; salary: number; earned: number; paid: number; remaining: number }
-interface PayrollLine { id: string; staff_id: string; name: string; salary: number; tips: number }
+interface StaffPay { id: string; name: string; pay_basis: PayBasis; salary: number; shift_rate: number; shifts: number; earned: number; paid: number; remaining: number }
+interface PayrollLine { id: string; staff_id: string; name: string; salary: number; tips: number; pay_basis?: PayBasis; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }
 interface PendingRun { id: string; period: string; lines: PayrollLine[] }
-interface ConfirmedRun { id: string; period: string; confirmed_at: string; lines: { name: string; salary: number; tips: number }[] }
-interface Overview { payday: number | null; staff: StaffPay[]; pending_run: PendingRun | null; confirmed_runs: ConfirmedRun[] }
+interface ConfirmedRun { id: string; period: string; confirmed_at: string; lines: { name: string; salary: number; tips: number; pay_basis?: PayBasis; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }[] }
+interface Overview { payday: number | null; shifts_since?: string; staff: StaffPay[]; pending_run: PendingRun | null; confirmed_runs: ConfirmedRun[] }
 
 const money = (n: number) => `R${Number(n).toFixed(2)}`;
 const monthLabel = (period: string) => new Date(`${period}T00:00:00`).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
@@ -27,6 +27,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const [payday, setPayday] = useState<string | null>(null);
   const [salaryEdits, setSalaryEdits] = useState<Record<string, string>>({});
+  const [basisEdits, setBasisEdits] = useState<Record<string, PayBasis>>({});
   const [lineEdits, setLineEdits] = useState<Record<string, { salary: string; tips: string }> | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -59,17 +60,18 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
   }
 
   async function saveSalary(person: StaffPay) {
-    const raw = salaryEdits[person.id];
-    if (raw === undefined) return;
+    const basis = basisEdits[person.id] ?? person.pay_basis;
+    const raw = salaryEdits[person.id] ?? String(basis === "shift" ? person.shift_rate : person.salary);
     const amount = payrollAmount(raw);
     if (Number.isNaN(amount)) { toast.error("Enter a valid salary"); return; }
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("bar_set_staff_salary" as any, { _club_id: clubId, _staff_id: person.id, _amount: amount });
+      const { error } = await supabase.rpc("bar_set_staff_pay" as any, { _club_id: clubId, _staff_id: person.id, _basis: basis, _amount: amount });
       if (error) throw error;
       setSalaryEdits(prev => { const next = { ...prev }; delete next[person.id]; return next; });
+      setBasisEdits(prev => { const next = { ...prev }; delete next[person.id]; return next; });
       await refresh();
-      toast.success(`${person.name}'s monthly salary saved`);
+      toast.success(basis === "shift" ? `${person.name}'s pay per shift saved` : `${person.name}'s monthly salary saved`);
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not save salary"); }
     finally { setBusy(false); }
   }
@@ -123,27 +125,39 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
       </Card>
 
       <Card className="p-4 space-y-2">
-        <h3 className="text-sm font-semibold">Staff salaries &amp; tips</h3>
-        <p className="text-xs text-muted-foreground">Set each barman's monthly salary next to their counter PIN name. Outstanding tips are what they have not yet taken in cash.</p>
+        <h3 className="text-sm font-semibold">Staff pay &amp; tips</h3>
+        <p className="text-xs text-muted-foreground">Choose a fixed monthly salary or an amount per shift for each counter PIN person. A shift is a day they signed in at the counter with their PIN, counted since the last confirmed payout{data?.shifts_since ? ` (${new Date(data.shifts_since).toLocaleDateString("en-ZA")})` : ""}. Outstanding tips are what they have not yet taken in cash.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead><tr className="border-b">
-              <th className="text-left py-2">Staff</th><th className="text-right">Monthly salary</th><th className="text-right">Tips earned</th><th className="text-right">Tips paid</th><th className="text-right">Outstanding tips</th><th />
+              <th className="text-left py-2">Staff</th><th className="text-left px-1">Paid</th><th className="text-right">Amount (R)</th><th className="text-right">Shifts</th><th className="text-right">Pay so far</th><th className="text-right">Tips earned</th><th className="text-right">Tips paid</th><th className="text-right">Outstanding tips</th><th />
             </tr></thead>
             <tbody>{(data?.staff ?? []).map(person => {
               const edited = salaryEdits[person.id];
+              const basis = basisEdits[person.id] ?? person.pay_basis;
+              const stored = basis === "shift" ? Number(person.shift_rate) : Number(person.salary);
+              const amountNow = edited !== undefined ? payrollAmount(edited) || 0 : stored;
+              const dirty = edited !== undefined || basis !== person.pay_basis;
               return (
                 <tr className="border-b" key={person.id}>
                   <td className="py-2">{person.name}</td>
+                  <td className="px-1">
+                    <select aria-label={`${person.name} pay basis`} className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={basis} disabled={busy}
+                      onChange={e => { const b = e.target.value as PayBasis; setBasisEdits(prev => ({ ...prev, [person.id]: b })); setSalaryEdits(prev => { const n = { ...prev }; delete n[person.id]; return n; }); }}>
+                      <option value="monthly">Monthly salary</option><option value="shift">Per shift</option>
+                    </select>
+                  </td>
                   <td className="text-right px-1">
-                    <Input inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={edited ?? (Number(person.salary) ? Number(person.salary).toFixed(2) : "")}
+                    <Input aria-label={`${person.name} amount`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={edited ?? (stored ? stored.toFixed(2) : "")}
                       placeholder="0.00" disabled={busy}
                       onChange={e => { if (isPayrollAmountInput(e.target.value)) setSalaryEdits(prev => ({ ...prev, [person.id]: e.target.value })); }} />
                   </td>
+                  <td className="text-right tabular-nums px-1">{basis === "shift" ? person.shifts : "—"}</td>
+                  <td className="text-right tabular-nums px-1">{money(suggestedPay(basis, amountNow, amountNow, person.shifts))}</td>
                   <td className="text-right tabular-nums px-1">{money(person.earned)}</td>
                   <td className="text-right tabular-nums px-1">{money(person.paid)}</td>
                   <td className="text-right tabular-nums px-1">{money(person.remaining)}</td>
-                  <td className="text-right"><Button size="sm" variant="outline" disabled={busy || edited === undefined} onClick={() => saveSalary(person)}>Save</Button></td>
+                  <td className="text-right"><Button size="sm" variant="outline" disabled={busy || !dirty} onClick={() => saveSalary(person)}>Save</Button></td>
                 </tr>
               );
             })}</tbody>
@@ -156,18 +170,20 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
         <Card className="p-4 space-y-3 border-primary/40">
           <div>
             <h3 className="text-sm font-semibold">Payout ready — {monthLabel(run.period)}</h3>
-            <p className="text-xs text-muted-foreground">Review and adjust the amounts, then confirm. Confirming pays each person's outstanding tips with their salary and records both under Bar cost of sales (paid from the bank).</p>
+            <p className="text-xs text-muted-foreground">Pay is worked out automatically (shifts × rate, or the monthly salary); you can override any amount before confirming. Confirming pays each person's outstanding tips with their salary and records both under Bar cost of sales (paid from the bank).</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead><tr className="border-b"><th className="text-left py-2">Staff</th><th className="text-right">Salary (R)</th><th className="text-right">Tips (R)</th><th className="text-right">Total</th></tr></thead>
+              <thead><tr className="border-b"><th className="text-left py-2">Staff</th><th className="text-right">Pay (R)</th><th className="text-right">Tips (R)</th><th className="text-right">Total</th></tr></thead>
               <tbody>{run.lines.map(l => {
                 const e = edits[l.id] ?? { salary: "0", tips: "0" };
                 const err = lineErrors[l.id];
                 const total = (payrollAmount(e.salary) || 0) + (payrollAmount(e.tips) || 0);
                 return (
                   <tr className="border-b" key={l.id}>
-                    <td className="py-2">{l.name}{err && <p className="text-destructive text-[11px]">{err}</p>}</td>
+                    <td className="py-2">{l.name}
+                      <p className="text-muted-foreground text-[11px]">{l.pay_basis === "shift" ? `${l.shifts ?? 0} shift${l.shifts === 1 ? "" : "s"} × ${money(Number(l.shift_rate ?? 0))} = ${money(Number(l.calculated_salary ?? 0))}` : "Monthly salary"}{l.calculated_salary != null && Math.abs((payrollAmount(e.salary) || 0) - Number(l.calculated_salary)) > 0.004 ? " · overridden" : ""}</p>
+                      {err && <p className="text-destructive text-[11px]">{err}</p>}</td>
                     <td className="text-right px-1"><Input aria-label={`${l.name} salary`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.salary} disabled={busy}
                       onChange={ev => { if (isPayrollAmountInput(ev.target.value)) setLineEdits(prev => ({ ...(prev ?? edits), [l.id]: { ...(prev ?? edits)[l.id], salary: ev.target.value } })); }} /></td>
                     <td className="text-right px-1"><Input aria-label={`${l.name} tips`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.tips} disabled={busy}
@@ -196,7 +212,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
               <summary className="text-xs font-medium cursor-pointer">{monthLabel(r.period)} — confirmed {new Date(r.confirmed_at).toLocaleDateString("en-ZA")}</summary>
               <table className="w-full text-xs mt-2">
                 <tbody>{r.lines.map((l, i) => (
-                  <tr className="border-b last:border-0" key={i}><td className="py-1">{l.name}</td><td className="text-right tabular-nums px-1">Salary {money(l.salary)}</td><td className="text-right tabular-nums px-1">Tips {money(l.tips)}</td></tr>
+                  <tr className="border-b last:border-0" key={i}><td className="py-1">{l.name}</td><td className="text-right tabular-nums px-1">{l.pay_basis === "shift" ? `${l.shifts ?? 0} shifts · ` : ""}Pay {money(l.salary)}</td><td className="text-right tabular-nums px-1">Tips {money(l.tips)}</td></tr>
                 ))}</tbody>
               </table>
             </details>

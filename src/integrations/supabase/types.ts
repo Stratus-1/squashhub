@@ -2578,6 +2578,7 @@ export type Database = {
           kind: string
           opened_at: string
           split_tips: boolean
+          tip_sharing_mode: string | null
         }
         Insert: {
           closed_at?: string | null
@@ -2586,6 +2587,7 @@ export type Database = {
           kind: string
           opened_at?: string
           split_tips?: boolean
+          tip_sharing_mode?: string | null
         }
         Update: {
           closed_at?: string | null
@@ -2594,6 +2596,7 @@ export type Database = {
           kind?: string
           opened_at?: string
           split_tips?: boolean
+          tip_sharing_mode?: string | null
         }
         Relationships: [
           {
@@ -20820,6 +20823,15 @@ export type Database = {
           _kind: string
           _split?: boolean
           _start?: string
+          _token: string
+        }
+        Returns: Json
+      }
+      bar_counter_start_shift_with_tips: {
+        Args: {
+          _kind: string
+          _start?: string
+          _tip_mode?: string
           _token: string
         }
         Returns: Json

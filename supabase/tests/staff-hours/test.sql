@@ -27,7 +27,7 @@ SELECT bar_staff_pay_overview('11111111-1111-1111-1111-111111111111');
 
 -- Record history survives payroll; unpaid correction keeps original time in audit.
 DO $$ BEGIN IF jsonb_array_length(bar_staff_attendance_log('11111111-1111-1111-1111-111111111111'))<>4 THEN RAISE EXCEPTION 'Paid history missing'; END IF; END $$;
-SELECT bar_correct_staff_attendance((SELECT id FROM bar_staff_attendance WHERE staff_id='33333333-3333-3333-3333-333333333333' AND ended_at IS NULL),now()-interval '1 hour',now(),'Fictional missing exit');
+SELECT bar_correct_staff_attendance((SELECT id FROM bar_staff_attendance WHERE staff_id='33333333-3333-3333-3333-333333333333' AND ended_at IS NULL),now(),now(),'Fictional missing exit');
 DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM bar_staff_attendance WHERE correction_reason='Fictional missing exit' AND jsonb_array_length(corrections)=1) THEN RAISE EXCEPTION 'Correction audit missing'; END IF; END $$;
 -- Authenticated reads stay tenant-scoped and direct writes are unavailable.
 SET ROLE authenticated;

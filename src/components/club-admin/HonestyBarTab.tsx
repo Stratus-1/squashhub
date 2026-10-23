@@ -306,8 +306,8 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </Button>
             </div>
           </Card>
-          <ItemManager clubId={clubId} items={items} soldCounts={new Map(madeToOrderSold.map(row => [row.bar_item_id, Number(row.sold_qty)]))} loading={itemsLoading} onQrLabels={openQrLabels} />
           {enabled && <AdminAddCharge clubId={clubId} items={items} members={members} />}
+          <ItemManager clubId={clubId} items={items} soldCounts={new Map(madeToOrderSold.map(row => [row.bar_item_id, Number(row.sold_qty)]))} loading={itemsLoading} onQrLabels={openQrLabels} />
         </div>
       )}
 

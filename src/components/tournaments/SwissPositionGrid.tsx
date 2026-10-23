@@ -20,7 +20,7 @@ export function roundStatus(rd: GridRound): RoundStatus {
 const STATUS_VAR: Record<RoundStatus, string> = { completed: "--success", in_progress: "--warning", upcoming: "--round-1", unresolved: "--muted-foreground" };
 const STATUS_TEXT: Record<RoundStatus, string> = { completed: "Completed", in_progress: "In progress", upcoming: "Upcoming", unresolved: "Players TBD" };
 
-function WhenTag({ text }: { text: string }) {
+export function WhenTag({ text }: { text: string }) {
   const kind = /^Play by/i.test(text) ? "playby" : /^Proposed/i.test(text) ? "proposed" : /^(Not scheduled|TBD|Not allocated)/i.test(text) ? "none" : "saved";
   return (
     <span data-when={kind} className={cn("inline-block rounded px-1.5 py-0.5 text-[11px] leading-tight",

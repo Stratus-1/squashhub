@@ -112,7 +112,8 @@ import type { CategoryCalendarFixture } from "@/lib/tournaments/category-calenda
 import { fixtureScoreDetails, fixtureState } from "@/lib/tournaments/club-fixtures";
 import { TournamentPlayerInfoNotice } from "@/components/tournaments/TournamentPlayerInfo";
 import { SwissPilotBoundary } from "@/components/tournaments/SwissPilotBoundary";
-import { RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
+import { RoundRobinCombinedPilotView, RoundRobinPilotView, poolRankTone } from "@/components/tournaments/RoundRobinPilotView";
+import type { RRPoolView } from "@/lib/tournaments/round-robin-view";
 import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
 import { OverallStandingsPanel } from "@/components/tournaments/OverallStandingsPanel";
 import { overallStandings } from "@/lib/tournaments/overall-standings";
@@ -1300,27 +1301,34 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     return (
       <SwissPilotBoundary fallback={null}>
         <div className="flex flex-col gap-4">
-          {Array.from({ length: pc }, (_, i) => i + 1).map((pn) => {
-            const rows = getGroupStandings(gn, pc > 1 ? pn : null) as any[];
-            const pm = gm.filter((m: any) => pc <= 1 || resolvePoolNumber(m, gn) === pn);
-            if (!pm.length) return null;
-            // Partners resolve to their existing team row; display mapping only.
-            const byMember = new Map<string, string>();
-            rows.forEach((r: any) => {
-              byMember.set(r.club_member_id, r.club_member_id);
-              if (r.partner_member_id) byMember.set(r.partner_member_id, r.club_member_id);
-            });
-            const unit = (id: string | null | undefined) => id ? byMember.get(id) ?? id : null;
-            const poolMatches = pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: unit(m.player_a_member_id ?? m.bye_member_id), b: m.is_bye ? null : unit(m.player_b_member_id), winner: unit(m.winner_member_id), score: m.score, gameScores: m.game_scores, forfeitMemberId: unit(m.forfeit_member_id), status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by }));
-            const view = buildRoundRobinView({
-              players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })),
-              rankOrder: rows.map((r: any) => r.club_member_id),
-              seedOrder: rrSeedOrder(poolMatches, rows.map((r: any) => r.club_member_id)),
-              matches: poolMatches,
-              stageRoundCount: rrStage?.schedule?.roundDates?.length,
-            });
-            return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)}${pc > 1 ? ` · ${poolName(gn, pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} group={pn} groupLabel={pc > 1 ? poolName(gn, pn) : getGroupLabel(champ, gn)} />;
-          })}
+          {(() => {
+            const poolViews = Array.from({ length: pc }, (_, i) => i + 1).map((pn) => {
+              const rows = getGroupStandings(gn, pc > 1 ? pn : null) as any[];
+              const pm = gm.filter((m: any) => pc <= 1 || resolvePoolNumber(m, gn) === pn);
+              if (!pm.length) return null;
+              // Partners resolve to their existing team row; display mapping only.
+              const byMember = new Map<string, string>();
+              rows.forEach((r: any) => {
+                byMember.set(r.club_member_id, r.club_member_id);
+                if (r.partner_member_id) byMember.set(r.partner_member_id, r.club_member_id);
+              });
+              const unit = (id: string | null | undefined) => id ? byMember.get(id) ?? id : null;
+              const poolMatches = pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: unit(m.player_a_member_id ?? m.bye_member_id), b: m.is_bye ? null : unit(m.player_b_member_id), winner: unit(m.winner_member_id), score: m.score, gameScores: m.game_scores, forfeitMemberId: unit(m.forfeit_member_id), status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by }));
+              const view = buildRoundRobinView({
+                players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })),
+                rankOrder: rows.map((r: any) => r.club_member_id),
+                seedOrder: rrSeedOrder(poolMatches, rows.map((r: any) => r.club_member_id)),
+                matches: poolMatches,
+                stageRoundCount: rrStage?.schedule?.roundDates?.length,
+              });
+              return { pn, view };
+            }).filter((p): p is { pn: number; view: RRPoolView } => !!p);
+            // Several pools share one set of colour-banded round tables; a single pool keeps its own view.
+            if (poolViews.length > 1) {
+              return <RoundRobinCombinedPilotView title={getGroupLabel(champ, gn)} pools={poolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: poolName(gn, p.pn) }))} calendar={renderCategoryCalendar(gn)} />;
+            }
+            return poolViews.map((p) => <RoundRobinPilotView key={p.pn} title={getGroupLabel(champ, gn)} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} group={p.pn} groupLabel={getGroupLabel(champ, gn)} />);
+          })()}
           {(() => {
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
             const ko = (matches as any[]).filter((m: any) => m.group_number === gn && m.stage === "ko");
@@ -1499,17 +1507,24 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>
               <span className="text-muted-foreground">Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings.</span>
             </div>
-            {laterPools.map((pn) => {
-              const pm = laterMatches.filter((m: any) => (resolvePoolNumber(m, gn) ?? 1) === pn);
-              const ids = [...new Set(pm.flatMap((m: any) => [m.player_a_member_id ?? m.bye_member_id, m.is_bye ? null : m.player_b_member_id]).filter(Boolean))] as string[];
-              const rankOrder = model.rows.map((r: any) => r.id).filter((id: string) => ids.includes(id));
-              const view = buildRoundRobinView({
-                players: ids.map((id) => ({ id, name: names[id] ?? "Unknown" })),
-                seedOrder: rankOrder,
-                matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
-              });
-              return <RoundRobinPilotView key={pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}${laterPools.length > 1 ? ` · Pool ${poolLabel(pn)}` : ""}`} view={view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />;
-            })}
+            {(() => {
+              const laterPoolViews = laterPools.map((pn) => {
+                const pm = laterMatches.filter((m: any) => (resolvePoolNumber(m, gn) ?? 1) === pn);
+                const ids = [...new Set(pm.flatMap((m: any) => [m.player_a_member_id ?? m.bye_member_id, m.is_bye ? null : m.player_b_member_id]).filter(Boolean))] as string[];
+                const rankOrder = model.rows.map((r: any) => r.id).filter((id: string) => ids.includes(id));
+                const view = buildRoundRobinView({
+                  players: ids.map((id) => ({ id, name: names[id] ?? "Unknown" })),
+                  seedOrder: rankOrder,
+                  matches: pm.map((m: any) => ({ id: m.id, round: m.round_number ?? null, a: m.player_a_member_id ?? m.bye_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id, score: m.score, gameScores: m.game_scores, forfeitMemberId: m.forfeit_member_id, status: m.status, isBye: !!m.is_bye, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, playBy: m.play_by })),
+                });
+                return { pn, view };
+              }).filter((p) => p.view.players.length > 0);
+              // Several pools share one set of colour-banded round tables; a single pool keeps its own view.
+              if (laterPoolViews.length > 1) {
+                return <RoundRobinCombinedPilotView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} pools={laterPoolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: `Pool ${poolLabel(p.pn)}` }))} calendar={renderCategoryCalendar(gn)} />;
+              }
+              return laterPoolViews.map((p) => <RoundRobinPilotView key={p.pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />);
+            })()}
           </div>
         ) : laterIsKO ? (
           <div className="mt-6 space-y-2" data-testid={`stage2-progression-${gn}`}>

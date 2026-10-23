@@ -170,7 +170,7 @@ export function RoundRobinCleanView({ view, group, groupLabel }: { view: RRPoolV
                 </th>
               </tr>
               <tr className="text-left text-[11px] text-muted-foreground">
-                <th className="w-8 px-2 py-1">Pos</th><th className="px-2">Player</th><th className="px-2">Day &amp; time · court</th><th className="px-2">Result</th>
+                <th className="w-8 px-2 py-1">Pos</th><th className="px-2">Player</th><th className="px-2 whitespace-nowrap">Day &amp; time · court</th><th className="px-2">Result</th>
               </tr>
             </thead>
             {rd.matches.map((m) => {

@@ -652,7 +652,7 @@ export default function BarCounter() {
   }
 
   function requestEndShift() {
-    if (serverChoices.length < 2) { void endShift(); return; }
+    // Always confirm whose shift ends, even with a single barman on this device.
     setEndingTokens([]);
     setEndShiftOpen(true);
   }

@@ -1279,7 +1279,7 @@ export default function BarCounter() {
                 onClick={() => setSettleOpen(true)}
               >
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
-                <span className="truncate">Settle my account now · {money(activeTab.total)}</span>
+                <span className="truncate">Settle customer's account now · {money(activeTab.total)}</span>
               </Button>
             )}
             {activeTab.status === "open" && activeTab.total <= 0 && (

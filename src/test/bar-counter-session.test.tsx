@@ -204,7 +204,7 @@ describe("counter personal PIN boundary", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it("uses the PIN owner's returned identity and token, and End shift requires another PIN", async () => {
+  it("uses the PIN owner's returned identity and token, and End shift always confirms whose shift ends", async () => {
     mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "bar_counter_unlock" ? { token: "verified-session", label: "Test server" } : name === "bar_counter_board" ? board : false, error: null }));
     mount("/s/river-menu/counter");
     fireEvent.change(screen.getByLabelText("Staff counter PIN"), { target: { value: "1234" } });
@@ -213,6 +213,9 @@ describe("counter personal PIN boundary", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_unlock", { _code: "river-menu", _pin: "1234" });
     expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_board", { _token: "verified-session", _club_id: null });
     fireEvent.click(screen.getByRole("button", { name: "End shift" }));
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_counter_end_shift")).toBe(false);
+    fireEvent.click(screen.getByRole("checkbox", { name: "End shift for Test server" }));
+    fireEvent.click(screen.getByRole("button", { name: "End selected shifts" }));
     await waitFor(() => expect(screen.getByLabelText("Staff counter PIN")).toHaveValue(""));
     expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBeNull();
   });

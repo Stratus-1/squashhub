@@ -12,13 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { isPayrollAmountInput, payrollAmount, payrollLineError, suggestedPay, type PayBasis } from "@/lib/bar/payroll";
+import { isPayrollAmountInput, payrollAmount, payrollLineError, suggestedPay, editPayrollReview, type PayrollReview, type PayBasis } from "@/lib/bar/payroll";
 import { StaffAttendanceLog } from "@/components/bar/StaffAttendanceLog";
 
 interface StaffPay { id: string; name: string; pay_basis: PayBasis; salary: number; shift_rate: number; hourly_rate: number; hours: number; shifts: number; earned: number; paid: number; remaining: number }
 interface PayrollLine { id: string; staff_id: string; name: string; salary: number; tips: number; pay_basis?: PayBasis; hours?: number; hourly_rate?: number; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }
 interface PendingRun { id: string; period: string; lines: PayrollLine[] }
-interface ConfirmedRun { id: string; period: string; confirmed_at: string; lines: { name: string; salary: number; tips: number; pay_basis?: PayBasis; hours?: number; hourly_rate?: number; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }[] }
+interface PayrollReviewSnapshot { approved?: { quantity: number; rate: number; salary: number; tips: number; total: number } }
+interface ConfirmedRun { id: string; period: string; confirmed_at: string; lines: { review?: PayrollReviewSnapshot; name: string; salary: number; tips: number; pay_basis?: PayBasis; hours?: number; hourly_rate?: number; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }[] }
 interface Overview { payday: number | null; opening?: string; shifts_since?: string; staff: StaffPay[]; pending_run: PendingRun | null; confirmed_runs: ConfirmedRun[] }
 
 const money = (n: number) => `R${Number(n).toFixed(2)}`;
@@ -30,7 +31,8 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
   const [opening, setOpening] = useState<string | null>(null);
   const [salaryEdits, setSalaryEdits] = useState<Record<string, string>>({});
   const [basisEdits, setBasisEdits] = useState<Record<string, PayBasis>>({});
-  const [lineEdits, setLineEdits] = useState<Record<string, { salary: string; tips: string }> | null>(null);
+  const [lineEdits, setLineEdits] = useState<Record<string, PayrollReview> | null>(null);
+  const [previewMonthEnd, setPreviewMonthEnd] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const { data, isLoading, error } = useQuery({
@@ -78,12 +80,15 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
     finally { setBusy(false); }
   }
 
-  const run = data?.pending_run ?? null;
-  const edits = useMemo(() => lineEdits ?? Object.fromEntries((run?.lines ?? []).map(l => [l.id, { salary: String(Number(l.salary).toFixed(2)), tips: String(Number(l.tips).toFixed(2)) }])), [lineEdits, run]);
+  const previewRun: PendingRun | null = data ? { id: "preview", period: new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Johannesburg", year: "numeric", month: "2-digit" }).format(new Date()) + "-01", lines: data.staff.map(p => ({ id: p.id, staff_id: p.id, name: p.name, pay_basis: p.pay_basis, hours: p.hours, shifts: p.shifts, hourly_rate: p.hourly_rate, shift_rate: p.shift_rate, salary: suggestedPay(p.pay_basis, p.salary, p.shift_rate, p.shifts, p.hourly_rate, p.hours), tips: Math.max(0, Number(p.remaining)), calculated_salary: suggestedPay(p.pay_basis, p.salary, p.shift_rate, p.shifts, p.hourly_rate, p.hours) })) } : null;
+  const run = previewMonthEnd ? previewRun : data?.pending_run ?? null;
+  const edits = useMemo(() => lineEdits ?? Object.fromEntries((run?.lines ?? []).map(l => [l.id, { quantity: String(Number(l.pay_basis === "hourly" ? l.hours ?? 0 : l.pay_basis === "shift" ? l.shifts ?? 0 : 1).toFixed(l.pay_basis === "shift" ? 0 : 2)), rate: Number(l.pay_basis === "hourly" ? l.hourly_rate ?? 0 : l.pay_basis === "shift" ? l.shift_rate ?? 0 : l.salary).toFixed(2), salary: Number(l.salary).toFixed(2), tips: Number(l.tips).toFixed(2), total: (Number(l.salary) + Number(l.tips)).toFixed(2) }])), [lineEdits, run]);
   const lineErrors = useMemo(() => Object.fromEntries((run?.lines ?? []).map(l => {
     const e = edits[l.id] ?? { salary: "0", tips: "0" };
     const maxTips = Number(data?.staff.find(s => s.id === l.staff_id)?.remaining ?? l.tips);
-    return [l.id, payrollLineError(e.salary, e.tips, Math.max(maxTips, Number(l.tips)))];
+    const review = edits[l.id];
+    const invalidQuantity = review && (!isPayrollAmountInput(review.quantity) || review.quantity === "" || (l.pay_basis === "shift" && !Number.isInteger(Number(review.quantity))));
+    return [l.id, invalidQuantity || (review && (!isPayrollAmountInput(review.rate) || review.rate === "")) ? "Enter valid hours, shifts and rate" : payrollLineError(e.salary, e.tips, maxTips)];
   })), [run, edits, data]);
   const totals = (run?.lines ?? []).reduce((acc, l) => {
     const e = edits[l.id] ?? { salary: "0", tips: "0" };
@@ -91,11 +96,11 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
   }, { salary: 0, tips: 0 });
 
   async function confirmRun() {
-    if (!run) return;
+    if (!run || previewMonthEnd) return;
     if (Object.values(lineErrors).some(Boolean)) { toast.error("Fix the highlighted amounts first"); return; }
     setBusy(true);
     try {
-      const lines = run.lines.map(l => ({ id: l.id, salary: payrollAmount(edits[l.id]?.salary ?? "0") || 0, tips: payrollAmount(edits[l.id]?.tips ?? "0") || 0 }));
+      const lines = run.lines.map(l => ({ id: l.id, salary: payrollAmount(edits[l.id]?.salary ?? "0") || 0, tips: payrollAmount(edits[l.id]?.tips ?? "0") || 0, quantity: Number(edits[l.id]?.quantity ?? 0), rate: payrollAmount(edits[l.id]?.rate ?? "0") || 0 }));
       const { error } = await supabase.rpc("bar_confirm_payroll_run" as any, { _run_id: run.id, _lines: lines });
       if (error) throw error;
       setLineEdits(null);
@@ -171,42 +176,46 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
       </Card>
 
       <StaffAttendanceLog clubId={clubId} />
+      <Button variant="outline" disabled={busy || !data} onClick={() => { setLineEdits(null); setPreviewMonthEnd(v => !v); }}>{previewMonthEnd ? "Close month-end preview" : "Run month end — preview"}</Button>
 
       {run && (
         <Card className="p-4 space-y-3 border-primary/40">
           <div>
-            <h3 className="text-sm font-semibold">Payout ready — {monthLabel(run.period)}</h3>
-            <p className="text-xs text-muted-foreground">Pay is worked out automatically (shifts × rate, or the monthly salary); you can override any amount before confirming. Confirming pays each person's outstanding tips with their salary and records both under Bar cost of sales (paid from the bank).</p>
+            <h3 className="text-sm font-semibold">{previewMonthEnd ? "Month-end preview" : "Payout ready"} — {monthLabel(run.period)}</h3>
+            <p className="text-xs text-muted-foreground">{previewMonthEnd ? "Check accrued pay and outstanding tips so far. No payout is prepared or processed." : "Review hours, rate, pay and tips before confirming the bank payout."}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead><tr className="border-b"><th className="text-left py-2">Staff</th><th className="text-right">Pay (R)</th><th className="text-right">Tips (R)</th><th className="text-right">Total</th></tr></thead>
+              <thead><tr className="border-b"><th className="text-left py-2">Staff</th><th className="text-right">Hours / shifts</th><th className="text-right">Rate (R)</th><th className="text-right">Pay (R)</th><th className="text-right">Tips (R)</th><th className="text-right">Total</th></tr></thead>
               <tbody>{run.lines.map(l => {
-                const e = edits[l.id] ?? { salary: "0", tips: "0" };
+                const e = edits[l.id];
+                if (!e) return null;
+                const change = (field: keyof PayrollReview, value: string) => { if (isPayrollAmountInput(value)) setLineEdits(prev => ({ ...(prev ?? edits), [l.id]: editPayrollReview((prev ?? edits)[l.id], field, value, l.pay_basis ?? "monthly") })); };
                 const err = lineErrors[l.id];
-                const total = (payrollAmount(e.salary) || 0) + (payrollAmount(e.tips) || 0);
                 return (
                   <tr className="border-b" key={l.id}>
                     <td className="py-2">{l.name}
                       <p className="text-muted-foreground text-[11px]">{l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h × ${money(Number(l.hourly_rate ?? 0))} = ${money(Number(l.calculated_salary ?? 0))}` : l.pay_basis === "shift" ? `${l.shifts ?? 0} shift${l.shifts === 1 ? "" : "s"} × ${money(Number(l.shift_rate ?? 0))} = ${money(Number(l.calculated_salary ?? 0))}` : "Monthly salary"}{l.calculated_salary != null && Math.abs((payrollAmount(e.salary) || 0) - Number(l.calculated_salary)) > 0.004 ? " · overridden" : ""}</p>
                       {err && <p className="text-destructive text-[11px]">{err}</p>}</td>
+                    <td className="text-right px-1">{l.pay_basis === "monthly" ? "—" : <Input aria-label={`${l.name} ${l.pay_basis === "shift" ? "shifts" : "hours"}`} inputMode="decimal" className="h-8 w-24 ml-auto text-right" value={e.quantity} disabled={busy} onChange={ev => change("quantity", ev.target.value)} />}</td>
+                    <td className="text-right px-1"><Input aria-label={`${l.name} payout rate`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.rate} disabled={busy} onChange={ev => change("rate", ev.target.value)} /></td>
                     <td className="text-right px-1"><Input aria-label={`${l.name} salary`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.salary} disabled={busy}
-                      onChange={ev => { if (isPayrollAmountInput(ev.target.value)) setLineEdits(prev => ({ ...(prev ?? edits), [l.id]: { ...(prev ?? edits)[l.id], salary: ev.target.value } })); }} /></td>
+                      onChange={ev => change("salary", ev.target.value)} /></td>
                     <td className="text-right px-1"><Input aria-label={`${l.name} tips`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.tips} disabled={busy}
-                      onChange={ev => { if (isPayrollAmountInput(ev.target.value)) setLineEdits(prev => ({ ...(prev ?? edits), [l.id]: { ...(prev ?? edits)[l.id], tips: ev.target.value } })); }} /></td>
-                    <td className="text-right tabular-nums px-1">{money(total)}</td>
+                      onChange={ev => change("tips", ev.target.value)} /></td>
+                    <td className="text-right px-1"><Input aria-label={`${l.name} payout total`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.total} disabled={busy} onChange={ev => change("total", ev.target.value)} /></td>
                   </tr>
                 );
               })}</tbody>
               <tfoot><tr>
-                <td className="py-2 font-semibold">Total payout</td>
+                <td colSpan={3} className="py-2 font-semibold">Total payout</td>
                 <td className="text-right tabular-nums px-1 font-semibold">{money(totals.salary)}</td>
                 <td className="text-right tabular-nums px-1 font-semibold">{money(totals.tips)}</td>
                 <td className="text-right tabular-nums px-1 font-semibold">{money(totals.salary + totals.tips)}</td>
               </tr></tfoot>
             </table>
           </div>
-          <Button onClick={confirmRun} disabled={busy || Object.values(lineErrors).some(Boolean)}>Confirm payout</Button>
+          {!previewMonthEnd && <Button onClick={confirmRun} disabled={busy || Object.values(lineErrors).some(Boolean)}>Confirm payout</Button>}
         </Card>
       )}
 
@@ -218,7 +227,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
               <summary className="text-xs font-medium cursor-pointer">{monthLabel(r.period)} — confirmed {new Date(r.confirmed_at).toLocaleDateString("en-ZA")}</summary>
               <table className="w-full text-xs mt-2">
                 <tbody>{r.lines.map((l, i) => (
-                  <tr className="border-b last:border-0" key={i}><td className="py-1">{l.name}</td><td className="text-right tabular-nums px-1">{l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h · ` : l.pay_basis === "shift" ? `${l.shifts ?? 0} shifts · ` : ""}Pay {money(l.salary)}</td><td className="text-right tabular-nums px-1">Tips {money(l.tips)}</td></tr>
+                  <tr className="border-b last:border-0" key={i}><td className="py-1">{l.name}</td><td className="text-right tabular-nums px-1">{l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h · ` : l.pay_basis === "shift" ? `${l.shifts ?? 0} shifts · ` : ""}Pay {money(l.salary)}{l.review?.approved && <p className="text-muted-foreground">Approved {l.review.approved.quantity} × {money(l.review.approved.rate)} · Total {money(l.review.approved.total)}</p>}</td><td className="text-right tabular-nums px-1">Tips {money(l.tips)}</td></tr>
                 ))}</tbody>
               </table>
             </details>

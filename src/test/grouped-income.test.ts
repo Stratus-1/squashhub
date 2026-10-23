@@ -25,6 +25,19 @@ describe("grouped income statement", () => {
     expect(report.generalExpenses).toBe(0);
     expect(report.divisions[1].directCosts).toBe(0);
   });
+  it("nets each person's tips received against paid into one outstanding row", () => {
+    const report = groupedIncome([
+      { account: "bar_income", debit: 0, credit: 900 },
+      { account: "bar_income", debit: 0, credit: 157, description: "Tip income — Aiden" },
+      { account: "bar_income", debit: 0, credit: 56, description: "Tip income — Wynand" },
+      { account: "bar_cost_of_sales", debit: 157, credit: 0, description: "Tips paid — Aiden" },
+    ], accounts, true, "cost_of_sales");
+    const bar = report.divisions[0];
+    expect(bar.tipIncome).toEqual([{ label: "Tips — Wynand", amount: 56, received: 56, paid: 0 }]);
+    expect(bar.allocated).toEqual([]);
+    expect(bar.sales).toBe(900);
+    expect(bar.profit).toBe(956);
+  });
   it("stores Cost of sales Bar as an expense classification on a named account", () => {
     expect(accountCategoryPatch("bar_cost_of_sales")).toEqual({ category: "Expense", reporting_category: "bar_cost_of_sales" });
     expect(accountCategoryPatch("Expense")).toEqual({ category: "Expense", reporting_category: null });

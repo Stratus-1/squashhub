@@ -20,6 +20,17 @@ export function payrollLineError(salary: string, tips: string, maxTips: number):
 
 export type PayBasis = "monthly" | "shift" | "hourly";
 
+export interface PayrollReview { quantity: string; rate: string; salary: string; tips: string; total: string }
+export function editPayrollReview(current: PayrollReview, field: keyof PayrollReview, value: string, basis: PayBasis): PayrollReview {
+  const next = { ...current, [field]: value };
+  if (field === "quantity" || field === "rate") {
+    next.salary = (basis === "monthly" ? Number(next.rate) : Math.round(Number(next.quantity) * Number(next.rate) * 100) / 100).toFixed(2);
+  }
+  if (field === "total") next.salary = (Math.round((Number(value) - Number(next.tips)) * 100) / 100).toFixed(2);
+  else next.total = (Number(next.salary) + Number(next.tips)).toFixed(2);
+  return next;
+}
+
 /** Pay suggested for a period: fixed monthly salary, or shift rate × shifts worked (rounded to cents). */
 export function suggestedPay(basis: PayBasis, monthlySalary: number, shiftRate: number, shifts: number, hourlyRate = 0, hours = 0): number {
   if (basis === "hourly") return Math.round(hourlyRate * Math.max(0, hours) * 100) / 100;

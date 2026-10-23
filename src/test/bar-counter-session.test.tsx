@@ -71,9 +71,25 @@ describe("counter personal PIN boundary", () => {
   it("End shift closes only the selected barman and continues with the other", async () => {
     await addSecondBarman();
     fireEvent.click(screen.getByRole("button", { name: "End shift" }));
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_counter_end_shift")).toBe(false);
+    fireEvent.click(screen.getByRole("checkbox", { name: "End shift for Second barman" }));
+    fireEvent.click(screen.getByRole("button", { name: "End selected shifts" }));
     await waitFor(() => expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBe("first-session"));
     expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_end_shift")).toEqual([["bar_counter_end_shift", { _token: "second-session" }]]);
     expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([{ token: "first-session", operator: "First barman" }]);
+  });
+
+  it("End shift can explicitly end both people and returns to personal PIN entry", async () => {
+    await addSecondBarman();
+    fireEvent.click(screen.getByRole("button", { name: "End shift" }));
+    expect(screen.getByRole("button", { name: "End selected shifts" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Both barmen" }));
+    fireEvent.click(screen.getByRole("button", { name: "End selected shifts" }));
+    await screen.findByLabelText("Staff counter PIN");
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_end_shift")).toEqual([
+      ["bar_counter_end_shift", { _token: "first-session" }], ["bar_counter_end_shift", { _token: "second-session" }],
+    ]);
+    expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([]);
   });
 
   it("confirmed device exit ends both retained people and clears all serving tokens", async () => {

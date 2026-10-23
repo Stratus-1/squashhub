@@ -29,6 +29,7 @@ import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { BarCounterOrders } from "@/components/bar/BarCounterOrders";
 import { BarOpenAndAlerts, playPing } from "@/components/bar/BarOpenAndAlerts";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +104,9 @@ export default function BarCounter() {
   const [switchOpen, setSwitchOpen] = useState(false);
   const [switchPin, setSwitchPin] = useState("");
   const [servers, setServers] = useState<CounterServer[]>(() => storedServers(code));
+  const [endShiftOpen, setEndShiftOpen] = useState(false);
+  const [endingTokens, setEndingTokens] = useState<string[]>([]);
+  const [endingShift, setEndingShift] = useState(false);
   const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -647,6 +651,34 @@ export default function BarCounter() {
     return true;
   }
 
+  function requestEndShift() {
+    if (serverChoices.length < 2) { void endShift(); return; }
+    setEndingTokens([]);
+    setEndShiftOpen(true);
+  }
+
+  async function endSelectedShifts() {
+    if (!endingTokens.length || endingShift) return;
+    setEndingShift(true);
+    let remaining = [...serverChoices];
+    try {
+      for (const server of serverChoices.filter(s => endingTokens.includes(s.token))) {
+        const { error } = await supabase.rpc("bar_counter_end_shift" as any, { _token: server.token });
+        if (error) { toast.error(error.message || "Could not end the shift"); return; }
+        remaining = remaining.filter(s => s.token !== server.token);
+        saveServers(remaining);
+        qc.removeQueries({ queryKey: ["bar-counter-board", server.token, clubId], exact: true });
+        qc.removeQueries({ queryKey: ["bar-counter-orders", server.token, clubId] });
+        setEndingTokens(current => current.filter(t => t !== server.token));
+      }
+      setEndShiftOpen(false);
+      toast.success("Selected working shifts ended");
+    } finally {
+      if (!remaining.some(s => s.token === token)) selectServer(remaining[0] ?? null);
+      setEndingShift(false);
+    }
+  }
+
   async function exitCounter() {
     if (serverChoices.length > 1) {
       if (!window.confirm("Exit this counter and end the working time of everyone signed in on this device? Other counters are unaffected.")) return;
@@ -821,7 +853,7 @@ export default function BarCounter() {
               size="sm"
               variant="outline"
               disabled={servingBusy}
-              onClick={endShift}
+              onClick={requestEndShift}
             >
               End shift
             </Button>
@@ -1496,6 +1528,23 @@ export default function BarCounter() {
           )}
         </div>
       )}
+
+      <Dialog open={endShiftOpen} onOpenChange={open => { if (!endingShift) setEndShiftOpen(open); }}>
+        <DialogContent className="max-w-sm" onEscapeKeyDown={e => { if (endingShift) e.preventDefault(); }} onInteractOutside={e => { if (endingShift) e.preventDefault(); }}>
+          <DialogHeader><DialogTitle>End whose shift?</DialogTitle><DialogDescription>Select the barmen to clock out on this counter.</DialogDescription></DialogHeader>
+          <label className="flex items-center gap-3 py-2 font-medium">
+            <Checkbox aria-label={serverChoices.length === 2 ? "Both barmen" : "All barmen"} disabled={endingShift} checked={endingTokens.length === serverChoices.length ? true : endingTokens.length ? "indeterminate" : false} onCheckedChange={checked => setEndingTokens(checked === true ? serverChoices.map(s => s.token) : [])} />
+            {serverChoices.length === 2 ? "Both barmen" : "All barmen"}
+          </label>
+          <div className="border-t pt-2 space-y-2">
+            {serverChoices.map(server => <label key={server.token} className="flex items-center gap-3 py-2 text-sm">
+              <Checkbox aria-label={`End shift for ${server.operator}`} disabled={endingShift} checked={endingTokens.includes(server.token)} onCheckedChange={checked => setEndingTokens(current => checked === true ? [...current.filter(t => t !== server.token), server.token] : current.filter(t => t !== server.token))} />
+              {server.operator}
+            </label>)}
+          </div>
+          <div className="flex gap-2"><Button variant="outline" disabled={endingShift} onClick={() => setEndShiftOpen(false)}>Cancel</Button><Button className="flex-1" disabled={endingShift || !endingTokens.length} onClick={endSelectedShifts}>{endingShift ? <Loader2 className="h-4 w-4 animate-spin" /> : "End selected shifts"}</Button></div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={switchOpen} onOpenChange={(o) => { if (o) setSwitchOpen(true); else setSwitchOpen(false); }}>
         <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>

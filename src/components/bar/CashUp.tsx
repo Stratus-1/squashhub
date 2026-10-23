@@ -33,8 +33,8 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
-  const working = useQuery({ queryKey: ["bar-working-shift", clubId, token], enabled: Boolean(token), queryFn: async () => {
-    const { data, error } = await supabase.rpc("bar_counter_shift_status" as any, { _token: token });
+  const working = useQuery({ queryKey: ["bar-working-shift", clubId, token], queryFn: async () => {
+    const { data, error } = await supabase.rpc("bar_work_shift_status" as any, { _club_id: clubId, _token: token });
     if (error) throw error;
     return data as unknown as { shift: { split_tips: boolean } | null };
   }});
@@ -76,7 +76,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const opening = Number(s?.cash_opening ?? 0);
   const cashShould = opening + gross("cash") - tipsOut;
   const cardActual = card ?? cardShould.toFixed(2);
-  const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid && !sharedOpen;
+  const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid && !sharedOpen && !working.error && !working.isLoading;
   const vCash = MONEY.test(counted) ? Number(counted) - cashShould : null;
   const vCard = MONEY.test(cardActual) ? Number(cardActual) - cardShould : 0;
   const variance = vCash === null ? null : Math.round((vCash + vCard) * 100) / 100;

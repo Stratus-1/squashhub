@@ -695,7 +695,7 @@ export default function BarCounter() {
   }
 
   if (attendance.isLoading || attendance.error) return <div className="p-6 space-y-3"><p role={attendance.error ? "alert" : undefined} className="text-sm">{attendance.error ? "Could not check your working shift." : "Checking your shift…"}</p><Button onClick={() => attendance.refetch()}>Retry</Button><Button variant="outline" onClick={exitCounter}>Exit counter mode</Button></div>;
-  if (attendance.data && !attendance.data.attendance) return <ShiftStartDialog token={token} status={attendance.data} onStarted={() => { attendance.refetch(); setSwitchOpen(false); }} onExit={exitCounter} />;
+  if (attendance.data && !attendance.data.attendance && !cashUpOpen) return <ShiftStartDialog token={token} status={attendance.data} onStarted={() => { attendance.refetch(); setSwitchOpen(false); }} onExit={exitCounter} />;
 
   // ---- Board ------------------------------------------------------------
   return (

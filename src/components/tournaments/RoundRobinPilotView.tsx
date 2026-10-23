@@ -295,7 +295,7 @@ export function RoundRobinCombinedCleanView({ pools }: { pools: { view: RRPoolVi
           ); })}
         </table></div>
       </section>
-      <TournamentInteractiveViewer title="Pools — fixtures & standings" inlineHeight={isMobile ? 150 : 520} compactMobileToolbar defaultFit="none" wheelZoom="direct" apiRef={api} frameRef={frame}>
+      <TournamentInteractiveViewer title="Pools — fixtures & standings" inlineHeight={isMobile ? 440 : 520} compactMobileToolbar defaultFit={isMobile ? "width" : "none"} wheelZoom="direct" apiRef={api} frameRef={frame}>
       <div ref={track} className="flex gap-3 cursor-grab" data-testid="rr-round-track">
       <section className="flex shrink-0 gap-3" data-testid="rr-clean-fixtures">
         {roundLabels.map((label, li) => {

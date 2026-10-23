@@ -1555,30 +1555,45 @@ export type Database = {
       }
       bar_payroll_run_lines: {
         Row: {
+          calculated_salary: number | null
           club_id: string
           id: string
+          pay_basis: string
           run_id: string
           salary: number
+          shift_rate: number | null
+          shifts: number | null
+          shifts_from: string | null
           staff_id: string
           staff_name: string
           tip_payout_id: string | null
           tips: number
         }
         Insert: {
+          calculated_salary?: number | null
           club_id: string
           id?: string
+          pay_basis?: string
           run_id: string
           salary?: number
+          shift_rate?: number | null
+          shifts?: number | null
+          shifts_from?: string | null
           staff_id: string
           staff_name: string
           tip_payout_id?: string | null
           tips?: number
         }
         Update: {
+          calculated_salary?: number | null
           club_id?: string
           id?: string
+          pay_basis?: string
           run_id?: string
           salary?: number
+          shift_rate?: number | null
+          shifts?: number | null
+          shifts_from?: string | null
           staff_id?: string
           staff_name?: string
           tip_payout_id?: string | null
@@ -1699,18 +1714,24 @@ export type Database = {
         Row: {
           club_id: string
           monthly_salary: number
+          pay_basis: string
+          shift_rate: number
           staff_id: string
           updated_at: string
         }
         Insert: {
           club_id: string
           monthly_salary?: number
+          pay_basis?: string
+          shift_rate?: number
           staff_id: string
           updated_at?: string
         }
         Update: {
           club_id?: string
           monthly_salary?: number
+          pay_basis?: string
+          shift_rate?: number
           staff_id?: string
           updated_at?: string
         }
@@ -19695,6 +19716,7 @@ export type Database = {
         Returns: string
       }
       _bar_order_json: { Args: { _order_id: string }; Returns: Json }
+      _bar_payroll_since: { Args: { _club_id: string }; Returns: string }
       _bar_prepare_payroll_runs: { Args: never; Returns: number }
       _bar_prepare_tip: {
         Args: {
@@ -19719,6 +19741,15 @@ export type Database = {
           _user: string
         }
         Returns: undefined
+      }
+      _bar_staff_shift_count: {
+        Args: {
+          _club_id: string
+          _from: string
+          _staff_id: string
+          _to: string
+        }
+        Returns: number
       }
       _bar_tab_sales: { Args: { _tab: string }; Returns: number }
       _bar_tip_authorise: {
@@ -20760,6 +20791,15 @@ export type Database = {
       bar_set_order_process: {
         Args: { _club_id: string; _enabled: boolean }
         Returns: Json
+      }
+      bar_set_staff_pay: {
+        Args: {
+          _amount: number
+          _basis: string
+          _club_id: string
+          _staff_id: string
+        }
+        Returns: undefined
       }
       bar_set_staff_payday: {
         Args: { _club_id: string; _day: number }

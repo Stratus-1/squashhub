@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import BarCounter from "@/pages/BarCounter";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: mocks }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { ...mocks, rpc: (name: string, args: unknown) => name === "bar_counter_shift_status" ? Promise.resolve({ data: { club_id: "riverside", opening: "16:00:00", attendance: { id: "logged-shift", paid_start: "2026-10-23T14:00Z" }, shift: { kind: "normal", split_tips: false } }, error: null }) : mocks.rpc(name, args) } }));
 vi.mock("@/contexts/ClubContext", () => ({ useClubContext: () => ({ club: { id: "riverside" } }) }));
 vi.mock("@/hooks/use-club", () => ({ useMyClub: () => ({ data: null }) }));
 vi.mock("@/components/SEO", () => ({ SEO: () => null }));
@@ -71,7 +71,8 @@ describe("counter personal PIN boundary", () => {
     await screen.findByText("Customer menu");
     expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBeNull();
     expect(localStorage.getItem("sh.barcounter.operator.river-menu")).toBeNull();
-    expect(mocks.rpc.mock.calls.every(([name]) => ["bar_counter_board", "bar_order_process_status", "bar_tip_config", "bar_shift_overview"].includes(name))).toBe(true);
+    expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_end_shift", { _token: "verified-session" });
+    expect(mocks.rpc.mock.calls.every(([name]) => ["bar_counter_board", "bar_order_process_status", "bar_tip_config", "bar_shift_overview", "bar_counter_end_shift"].includes(name))).toBe(true);
   });
 
   it("can leave the PIN screen without entering a PIN", async () => {
@@ -143,7 +144,7 @@ describe("counter personal PIN boundary", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_unlock", { _code: "river-menu", _pin: "1234" });
     expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_board", { _token: "verified-session", _club_id: null });
     fireEvent.click(screen.getByRole("button", { name: "End shift" }));
-    expect(screen.getByLabelText("Staff counter PIN")).toHaveValue("");
+    await waitFor(() => expect(screen.getByLabelText("Staff counter PIN")).toHaveValue(""));
     expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBeNull();
   });
 

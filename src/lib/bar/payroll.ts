@@ -18,10 +18,11 @@ export function payrollLineError(salary: string, tips: string, maxTips: number):
   return null;
 }
 
-export type PayBasis = "monthly" | "shift";
+export type PayBasis = "monthly" | "shift" | "hourly";
 
 /** Pay suggested for a period: fixed monthly salary, or shift rate × shifts worked (rounded to cents). */
-export function suggestedPay(basis: PayBasis, monthlySalary: number, shiftRate: number, shifts: number): number {
+export function suggestedPay(basis: PayBasis, monthlySalary: number, shiftRate: number, shifts: number, hourlyRate = 0, hours = 0): number {
+  if (basis === "hourly") return Math.round(hourlyRate * Math.max(0, hours) * 100) / 100;
   if (basis === "shift") return Math.round(shiftRate * Math.max(0, Math.floor(shifts)) * 100) / 100;
   return Math.round(monthlySalary * 100) / 100;
 }

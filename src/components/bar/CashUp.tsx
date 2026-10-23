@@ -33,6 +33,22 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const working = useQuery({ queryKey: ["bar-working-shift", clubId, token], queryFn: async () => {
+    const { data, error } = await supabase.rpc("bar_work_shift_status" as any, { _club_id: clubId, _token: token });
+    if (error) throw error;
+    return data as unknown as { shift: { split_tips: boolean } | null };
+  }});
+  const sharedOpen = Boolean(working.data?.shift?.split_tips);
+  async function finishHours() {
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("bar_close_work_shift" as any, { _club_id: clubId, _token: token });
+      if (error) throw error;
+      await Promise.all([working.refetch(), staff.refetch()]);
+      toast.success("Working hours closed — shared tips allocated");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not close working hours"); }
+    finally { setBusy(false); }
+  }
   const preview = useQuery({ queryKey: ["bar-cash-up", clubId, token], refetchInterval: 30000, queryFn: async () => {
     const { data, error } = await supabase.rpc("bar_cash_up_preview" as any, { _club_id: clubId, _token: token });
     if (error) throw error;
@@ -60,7 +76,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const opening = Number(s?.cash_opening ?? 0);
   const cashShould = opening + gross("cash") - tipsOut;
   const cardActual = card ?? cardShould.toFixed(2);
-  const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid;
+  const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid && !sharedOpen && !working.error && !working.isLoading;
   const vCash = MONEY.test(counted) ? Number(counted) - cashShould : null;
   const vCard = MONEY.test(cardActual) ? Number(cardActual) - cardShould : 0;
   const variance = vCash === null ? null : Math.round((vCash + vCard) * 100) / 100;
@@ -78,7 +94,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
       if (error) throw error;
       toast.success("Cash-up completed — a new shift has started");
       setCounted(""); setNote(""); setCard(null); setPayouts({}); setWriteOff(false); setRequestId(crypto.randomUUID());
-      await Promise.all(["bar-cash-up", "bar-cash-up-history", "bar-staff-tips", "income-statement"].map(k => qc.invalidateQueries({ queryKey: [k] })));
+      await Promise.all(["bar-cash-up", "bar-cash-up-history", "bar-staff-tips", "income-statement", "bar-working-shift", "bar-counter-attendance", "bar-staff-pay", "bar-attendance-log"].map(k => qc.invalidateQueries({ queryKey: [k] })));
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not complete cash-up"); }
     finally { setBusy(false); }
   }
@@ -92,6 +108,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   return <div className="space-y-5 text-xs">
     {preview.isLoading ? <p className="text-muted-foreground">Loading…</p> : preview.error ? <p role="alert" className="text-destructive">{(preview.error as Error).message || "Could not load cash-up."}</p> : s && <section className="space-y-3" aria-label="Current shift">
       <p className="text-muted-foreground">Shift from <strong>{when(s.period_start)}</strong> to now. Everything after this cash-up falls into the next shift.</p>
+      {sharedOpen && <div className="border rounded-md p-3 space-y-2"><p>Close everyone's working hours before paying shared tips.</p><Button disabled={busy} onClick={finishHours}>Close hours &amp; split tips</Button></div>}
 
       {tipsEnabled && owed.length > 0 && <div className="rounded-md border p-3 space-y-2">
         <h4 className="font-semibold">1. Tips to pay out in cash now</h4>

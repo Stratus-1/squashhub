@@ -1765,6 +1765,20 @@
       "when": 1792736943933,
       "tag": "0251_bar_staff_pay_per_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1792738641173,
+      "tag": "0252_bar_staff_hours_and_shared_tips",
+      "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1792738714589,
+      "tag": "0253_bar_shift_review_and_management_status",
+      "breakpoints": true
     }
   ]
 }

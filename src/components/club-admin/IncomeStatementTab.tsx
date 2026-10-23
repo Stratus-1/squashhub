@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, ChevronRight, ChevronDown } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -39,6 +39,12 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
   const today = new Date();
   const [from, setFrom] = useState<string>(format(startOfYear(today), "yyyy-MM-dd"));
   const [to, setTo] = useState<string>(format(today, "yyyy-MM-dd"));
+  const [expandedTips, setExpandedTips] = useState<Set<string>>(new Set());
+  const toggleTip = (key: string) => setExpandedTips(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
@@ -246,7 +252,28 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
               <thead><tr className="border-b"><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-right">Amount ({currencySymbol})</th></tr></thead>
               <tbody>
                 <tr className="border-b"><td className="px-3 py-2">Sales</td><td className="px-3 py-2 text-right tabular-nums">{money(row.sales)}</td></tr>
-                {row.tipIncome.map(tip => <tr key={tip.label} className="border-b"><td className="px-3 py-2">{tip.label}</td><td className="px-3 py-2 text-right tabular-nums">{money(tip.amount)}</td></tr>)}
+                {row.tipIncome.map(tip => {
+                  const key = `${row.division}:${tip.label}`;
+                  const open = expandedTips.has(key);
+                  return (
+                    <Fragment key={tip.label}>
+                      <tr className="border-b">
+                        <td className="px-3 py-2">
+                          <button type="button" onClick={() => toggleTip(key)} aria-expanded={open} className="inline-flex items-center gap-1 hover:text-primary">
+                            {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                            {tip.label}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{money(tip.amount)}</td>
+                      </tr>
+                      {open && (<>
+                        <tr className="border-b bg-muted/20 text-muted-foreground"><td className="px-3 py-1.5 pl-8">Received</td><td className="px-3 py-1.5 text-right tabular-nums">{money(tip.received)}</td></tr>
+                        <tr className="border-b bg-muted/20 text-muted-foreground"><td className="px-3 py-1.5 pl-8">Paid out</td><td className="px-3 py-1.5 text-right tabular-nums">{money(-tip.paid)}</td></tr>
+                        <tr className="border-b bg-muted/20 font-semibold"><td className="px-3 py-1.5 pl-8">Outstanding</td><td className="px-3 py-1.5 text-right tabular-nums">{money(tip.amount)}</td></tr>
+                      </>)}
+                    </Fragment>
+                  );
+                })}
                 <tr className="border-b"><td className="px-3 py-2">Less: {basis === "purchases" ? "Stock purchases" : "Cost of sales — Items"}</td><td className="px-3 py-2 text-right tabular-nums">{money(-row.tradingCost)}</td></tr>
                 {row.allocated.map(cost => <tr key={cost.label} className="border-b"><td className="px-3 py-2 break-words">Less: {cost.label}</td><td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(-cost.amount)}</td></tr>)}
                 <tr className="bg-muted/40 font-bold"><th className="px-3 py-2 text-left">Gross profit / (loss){row.margin === null ? "" : ` · ${row.margin.toFixed(1)}%`}</th><td className={cn("px-3 py-2 text-right tabular-nums whitespace-nowrap", row.profit < 0 && "text-destructive")}>{money(row.profit)}</td></tr>

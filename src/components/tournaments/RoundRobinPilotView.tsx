@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ListOrdered } from "lucide-react";
 import { WhenTag } from "@/components/tournaments/SwissPositionGrid";
 import type { RRPoolView, RRRound } from "@/lib/tournaments/round-robin-view";
 

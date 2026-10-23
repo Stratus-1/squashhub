@@ -1557,6 +1557,8 @@ export type Database = {
         Row: {
           calculated_salary: number | null
           club_id: string
+          hourly_rate: number | null
+          hours: number | null
           id: string
           pay_basis: string
           run_id: string
@@ -1572,6 +1574,8 @@ export type Database = {
         Insert: {
           calculated_salary?: number | null
           club_id: string
+          hourly_rate?: number | null
+          hours?: number | null
           id?: string
           pay_basis?: string
           run_id: string
@@ -1587,6 +1591,8 @@ export type Database = {
         Update: {
           calculated_salary?: number | null
           club_id?: string
+          hourly_rate?: number | null
+          hours?: number | null
           id?: string
           pay_basis?: string
           run_id?: string
@@ -1625,6 +1631,7 @@ export type Database = {
       }
       bar_payroll_runs: {
         Row: {
+          attendance_cutoff: string | null
           club_id: string
           confirmed_at: string | null
           confirmed_by: string | null
@@ -1634,6 +1641,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          attendance_cutoff?: string | null
           club_id: string
           confirmed_at?: string | null
           confirmed_by?: string | null
@@ -1643,6 +1651,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          attendance_cutoff?: string | null
           club_id?: string
           confirmed_at?: string | null
           confirmed_by?: string | null
@@ -1657,6 +1666,61 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_shift_tip_allocations: {
+        Row: {
+          amount: number
+          club_id: string
+          created_at: string
+          hours: number
+          id: string
+          staff_id: string
+          staff_name: string
+          tip_id: string
+        }
+        Insert: {
+          amount: number
+          club_id: string
+          created_at?: string
+          hours: number
+          id?: string
+          staff_id: string
+          staff_name: string
+          tip_id: string
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          created_at?: string
+          hours?: number
+          id?: string
+          staff_id?: string
+          staff_name?: string
+          tip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_shift_tip_allocations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_shift_tip_allocations_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_shift_tip_allocations_tip_id_fkey"
+            columns: ["tip_id"]
+            isOneToOne: false
+            referencedRelation: "bar_tips"
             referencedColumns: ["id"]
           },
         ]
@@ -1710,9 +1774,84 @@ export type Database = {
           },
         ]
       }
+      bar_staff_attendance: {
+        Row: {
+          club_id: string
+          corrected_by: string | null
+          correction_reason: string | null
+          corrections: Json
+          end_reason: string | null
+          ended_at: string | null
+          entered_at: string
+          id: string
+          paid_start: string
+          session_id: string
+          shift_id: string
+          staff_id: string
+        }
+        Insert: {
+          club_id: string
+          corrected_by?: string | null
+          correction_reason?: string | null
+          corrections?: Json
+          end_reason?: string | null
+          ended_at?: string | null
+          entered_at?: string
+          id?: string
+          paid_start: string
+          session_id: string
+          shift_id: string
+          staff_id: string
+        }
+        Update: {
+          club_id?: string
+          corrected_by?: string | null
+          correction_reason?: string | null
+          corrections?: Json
+          end_reason?: string | null
+          ended_at?: string | null
+          entered_at?: string
+          id?: string
+          paid_start?: string
+          session_id?: string
+          shift_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_staff_attendance_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_staff_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_staff_attendance_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "bar_work_shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_staff_attendance_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_staff_salaries: {
         Row: {
           club_id: string
+          hourly_rate: number
           monthly_salary: number
           pay_basis: string
           shift_rate: number
@@ -1721,6 +1860,7 @@ export type Database = {
         }
         Insert: {
           club_id: string
+          hourly_rate?: number
           monthly_salary?: number
           pay_basis?: string
           shift_rate?: number
@@ -1729,6 +1869,7 @@ export type Database = {
         }
         Update: {
           club_id?: string
+          hourly_rate?: number
           monthly_salary?: number
           pay_basis?: string
           shift_rate?: number
@@ -2241,6 +2382,7 @@ export type Database = {
           staff_name: string
           status: string
           tab_id: string | null
+          work_shift_id: string | null
         }
         Insert: {
           amount: number
@@ -2255,6 +2397,7 @@ export type Database = {
           staff_name: string
           status?: string
           tab_id?: string | null
+          work_shift_id?: string | null
         }
         Update: {
           amount?: number
@@ -2269,6 +2412,7 @@ export type Database = {
           staff_name?: string
           status?: string
           tab_id?: string | null
+          work_shift_id?: string | null
         }
         Relationships: [
           {
@@ -2297,6 +2441,13 @@ export type Database = {
             columns: ["tab_id"]
             isOneToOne: true
             referencedRelation: "bar_guest_tabs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tips_work_shift_id_fkey"
+            columns: ["work_shift_id"]
+            isOneToOne: false
+            referencedRelation: "bar_work_shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -2412,6 +2563,41 @@ export type Database = {
             columns: ["operator_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_work_shifts: {
+        Row: {
+          closed_at: string | null
+          club_id: string
+          id: string
+          kind: string
+          opened_at: string
+          split_tips: boolean
+        }
+        Insert: {
+          closed_at?: string | null
+          club_id: string
+          id?: string
+          kind: string
+          opened_at?: string
+          split_tips?: boolean
+        }
+        Update: {
+          closed_at?: string | null
+          club_id?: string
+          id?: string
+          kind?: string
+          opened_at?: string
+          split_tips?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_work_shifts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -4116,6 +4302,7 @@ export type Database = {
           created_at: string
           online_tips_ready: boolean
           shop_allow_member_debit: boolean
+          staff_normal_opening: string
           staff_payday: number | null
           tips_enabled: boolean
           updated_at: string
@@ -4131,6 +4318,7 @@ export type Database = {
           created_at?: string
           online_tips_ready?: boolean
           shop_allow_member_debit?: boolean
+          staff_normal_opening?: string
           staff_payday?: number | null
           tips_enabled?: boolean
           updated_at?: string
@@ -4146,6 +4334,7 @@ export type Database = {
           created_at?: string
           online_tips_ready?: boolean
           shop_allow_member_debit?: boolean
+          staff_normal_opening?: string
           staff_payday?: number | null
           tips_enabled?: boolean
           updated_at?: string
@@ -19295,6 +19484,19 @@ export type Database = {
           },
         ]
       }
+      bar_staff_tip_earnings: {
+        Row: {
+          amount: number | null
+          club_id: string | null
+          created_at: string | null
+          earned_at: string | null
+          id: string | null
+          staff_id: string | null
+          staff_name: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       club_access_public: {
         Row: {
           access_control_type: string | null
@@ -19683,6 +19885,7 @@ export type Database = {
       }
     }
     Functions: {
+      _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
       _bar_cash_up_reconcile_saved: {
         Args: { _id: string; _settle: boolean }
         Returns: undefined
@@ -19741,6 +19944,10 @@ export type Database = {
           _user: string
         }
         Returns: undefined
+      }
+      _bar_staff_hours: {
+        Args: { _club: string; _from: string; _staff: string; _to: string }
+        Returns: number
       }
       _bar_staff_shift_count: {
         Args: {
@@ -20370,6 +20577,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: Json
       }
+      bar_close_work_shift: {
+        Args: { _club_id: string; _token?: string }
+        Returns: undefined
+      }
       bar_club_use:
         | {
             Args: { _item: string; _qty: number; _reason: string }
@@ -20386,6 +20597,10 @@ export type Database = {
           }
       bar_confirm_payroll_run: {
         Args: { _lines: Json; _run_id: string }
+        Returns: undefined
+      }
+      bar_correct_staff_attendance: {
+        Args: { _end: string; _id: string; _reason: string; _start: string }
         Returns: undefined
       }
       bar_cost_of_sales: {
@@ -20469,6 +20684,7 @@ export type Database = {
         Args: { _token: string }
         Returns: string
       }
+      bar_counter_end_shift: { Args: { _token: string }; Returns: undefined }
       bar_counter_notify_ready: {
         Args: {
           _club_id?: string
@@ -20591,6 +20807,16 @@ export type Database = {
           _staff_id: string
           _tab_id: string
           _tip: number
+          _token: string
+        }
+        Returns: Json
+      }
+      bar_counter_shift_status: { Args: { _token: string }; Returns: Json }
+      bar_counter_start_shift: {
+        Args: {
+          _kind: string
+          _split?: boolean
+          _start?: string
           _token: string
         }
         Returns: Json
@@ -20788,6 +21014,10 @@ export type Database = {
         Args: { _cost_per_purchase_unit: number; _item: string; _note: string }
         Returns: number
       }
+      bar_set_normal_shift_opening: {
+        Args: { _club_id: string; _time: string }
+        Returns: undefined
+      }
       bar_set_order_process: {
         Args: { _club_id: string; _enabled: boolean }
         Returns: Json
@@ -20828,6 +21058,7 @@ export type Database = {
         Returns: Json
       }
       bar_special_available: { Args: { _special: string }; Returns: number }
+      bar_staff_attendance_log: { Args: { _club_id: string }; Returns: Json }
       bar_staff_can_serve: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean

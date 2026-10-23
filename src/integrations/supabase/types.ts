@@ -21000,6 +21000,7 @@ export type Database = {
           name: string
         }[]
       }
+      bar_review_shift_tips: { Args: { _club_id: string }; Returns: undefined }
       bar_search_members: {
         Args: { _club_id: string; _q: string }
         Returns: {
@@ -21135,6 +21136,10 @@ export type Database = {
           _sale: Database["public"]["Tables"]["bar_visitor_sales"]["Row"]
         }
         Returns: undefined
+      }
+      bar_work_shift_status: {
+        Args: { _club_id: string; _token?: string }
+        Returns: Json
       }
       bill_wifi_monthly: { Args: never; Returns: Json }
       booking_notice_data: {

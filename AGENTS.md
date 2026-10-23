@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Shared counters retain venue-scoped personal-PIN sessions with one active serving token, revalidated on selection; adding/selecting staff never ends attendance, End shift removes only that person and confirmed device exit ends local participants; why: concurrent staff need separate hours and authoritative sale attribution without changing cash-up or payroll.
 - Staff attendance is independent of PIN-session lifetime and cash reconciliation: club-scoped work shifts hold individual paid intervals, shared tips use immutable cent allocations and one staff-earnings read model, and payroll snapshots an attendance cutoff; why: concurrent staff, late-earned tips and delayed approval must not duplicate hours or payments.
 - Payday overrides are per-run review snapshots preserving original values; month-end preview uses read-only accruals and cannot confirm or prepare a run; why: checking pay must not rewrite attendance, future rates or financial records.
 - Swiss sequencing is a tournament-bound prospective policy minted only on fresh first-draw generation; existing Uitsig IDs are denied by shared writer/save guards and keep legacy projections. Use the pure weighted matching optimizer for enrolled new tournaments only; why: deployment and routine viewing/saving must never adopt new pairings for existing events.

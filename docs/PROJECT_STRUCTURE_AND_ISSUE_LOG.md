@@ -3822,3 +3822,6 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Added per-run hours/shift count, rate and total inputs alongside pay/tips. Quantity/rate recalculate pay; direct total edits change wages while retaining tips, preventing invented tip balances. Stored original and approved values on confirmation via migration 0254; underlying attendance and default staff rates unchanged.
 - Run month end — preview uses existing read-only accrued hours/pay/tips, allows hypothetical checks and has no confirmation/preparation action.
 - Verified 13 pure payroll tests, isolated PostgreSQL original/approved snapshots and unchanged default rate/EFT accounting, and signed-in fictional UI hours 8/rate 60/total 600 → pay 510; preview 10 hours → total 590 with no processing request or page errors. Preview build OK; no real payout or publication.
+
+## 23 October 2026 — Multiple barmen on one counter
+- Add barman verifies another personal PIN without ending the current person's attendance. Named serving choices select the original token and revalidate board/attendance; sale authority stays server-side. End shift closes only the selected person; confirmed device exit closes participants retained on that device. Existing shift joining, shared tips and all-counter cash-up remain unchanged; no schema or real financial changes.

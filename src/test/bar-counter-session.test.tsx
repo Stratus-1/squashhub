@@ -36,6 +36,46 @@ beforeEach(() => {
 });
 
 describe("counter personal PIN boundary", () => {
+  async function addSecondBarman() {
+    localStorage.setItem("sh.barcounter.token.river-menu", "first-session");
+    localStorage.setItem("sh.barcounter.operator.river-menu", "First barman");
+    mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "bar_counter_unlock" ? { token: "second-session", label: "Second barman" } : name === "bar_counter_board" ? board : false, error: null }));
+    mount("/s/river-menu/counter");
+    fireEvent.click(await screen.findByRole("button", { name: "Add barman" }));
+    fireEvent.change(screen.getByLabelText("Switch staff counter PIN"), { target: { value: "5678" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add barman", exact: true }));
+    await screen.findByRole("button", { name: "Second barman" });
+  }
+
+  it("adding a second personal PIN preserves the first person's attendance and session", async () => {
+    await addSecondBarman();
+    expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_unlock", { _code: "river-menu", _pin: "5678" });
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_counter_end_shift")).toBe(false);
+    expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([
+      { token: "first-session", operator: "First barman" }, { token: "second-session", operator: "Second barman" },
+    ]);
+  });
+
+  it("selects the original PIN token for sales without ending either person's hours", async () => {
+    await addSecondBarman();
+    fireEvent.click(screen.getByRole("button", { name: "First barman" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "First barman" })).toHaveAttribute("aria-pressed", "true"));
+    fireEvent.click(screen.getByRole("button", { name: /^Visitor$/ }));
+    fireEvent.change(screen.getByPlaceholderText("Visitor's name"), { target: { value: "Visitor" } });
+    fireEvent.change(screen.getByPlaceholderText("Cell number (required)"), { target: { value: "0000000000" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Tab$/ }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_counter_open_tab", expect.objectContaining({ _token: "first-session", _operator: "First barman" })));
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_counter_end_shift")).toBe(false);
+  });
+
+  it("End shift closes only the selected barman and continues with the other", async () => {
+    await addSecondBarman();
+    fireEvent.click(screen.getByRole("button", { name: "End shift" }));
+    await waitFor(() => expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBe("first-session"));
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_end_shift")).toEqual([["bar_counter_end_shift", { _token: "second-session" }]]);
+    expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([{ token: "first-session", operator: "First barman" }]);
+  });
+
   it("opens visitor tabs with the explicit six-argument member-aware function", async () => {
     localStorage.setItem("sh.barcounter.token.river-menu", "verified-session");
     localStorage.setItem("sh.barcounter.operator.river-menu", "Test server");

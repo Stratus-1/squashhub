@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Add another personal-PIN barman on the same counter, retain both attendance intervals and select the serving identity for sales; synthetic checks only, no publication.
+- [x] Shared counter Add barman + serving selector retain separate personal-PIN sessions and hours; individual End shift and confirmed device exit tested. Twenty-five focused checks and fictional PIN/join/serving attribution/exit browser flow pass, build OK. No hosted attendance, sales, payouts or publication; physical native devices not tested.
 - [x] Editable payday hours, rates and totals with original/approved history; 13 pure tests, isolated PostgreSQL and fictional signed-in browser checks pass; no real payout/publication.
 - [x] Run month end preview anytime from accrued pay/tips, with hypothetical edits and no preparation or confirmation; browser verified no processing.
 - [x] Hourly staff pay, configurable normal opening, normal/special attendance and history, shared tips by hours and all-participant cash-up closure implemented. 35 frontend checks and isolated PostgreSQL payroll/tip/permissions/EFT tests pass; signed-in Riverside read-only settings plus fictional intercepted hourly-save/special-entry/exit verified. No real attendance/payout, hardware or tournament writes; not published.

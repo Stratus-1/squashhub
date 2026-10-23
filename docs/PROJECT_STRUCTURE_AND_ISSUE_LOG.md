@@ -3825,3 +3825,4 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ## 23 October 2026 — Multiple barmen on one counter
 - Add barman verifies another personal PIN without ending the current person's attendance. Named serving choices select the original token and revalidate board/attendance; sale authority stays server-side. End shift closes only the selected person; confirmed device exit closes participants retained on that device. Existing shift joining, shared tips and all-counter cash-up remain unchanged; no schema or real financial changes.
+- Verified 25 focused tests and fictional browser PIN entry, same-shift joining, Alex-attributed tab, serving selection and Blake-only shift end with no page errors; preview build OK. Hosted writes intercepted, no publication or real attendance/sales/payouts; physical PWA/native devices not exercised.

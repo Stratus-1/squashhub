@@ -24,7 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
-- New membership availability uses the public boolean SLA-status RPC; signup and join writers refuse creating memberships at unsigned clubs while retaining existing-member linking; why: hiding a button alone cannot prevent unnoticed applications or expose private SLA details.
+- New membership availability uses the public boolean RPC for signed SLAs, unexpired active trials and explicit owner exceptions; signup/join writers enforce it while retaining existing-member linking; why: hiding a button alone cannot prevent unnoticed applications or expose private SLA details.
 - Shared counters retain venue-scoped personal-PIN sessions with one active serving token, revalidated on selection; adding/selecting staff never ends attendance, shared End shift requires explicit person/all selection and confirmed device exit ends local participants; why: concurrent staff need separate hours and authoritative sale attribution without changing cash-up or payroll.
 - Staff attendance is independent of PIN-session lifetime and cash reconciliation: club-scoped work shifts hold individual paid intervals and immutable own/hours/equal tip policies; shared tips use immutable cent allocations among staff with paid hours and one staff-earnings read model, and payroll snapshots an attendance cutoff; why: concurrent staff, late-earned tips and delayed approval must not duplicate hours or payments, and existing shift allocations must retain their original policy.
 - Payday overrides are per-run review snapshots preserving original values; month-end preview uses read-only accruals and cannot confirm or prepare a run; why: checking pay must not rewrite attendance, future rates or financial records.

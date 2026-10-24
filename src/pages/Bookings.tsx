@@ -3421,10 +3421,11 @@ export default function Bookings() {
           <div className="space-y-2">
             {myOpenChampMatches.map((m: any) => {
               const opp = m.player_a_member_id === activeMember?.id ? m.player_b?.name : m.player_a?.name;
+              const rn = uitsigLadiesBRoundFromDeadline(m.champ_id, m.group_number, m.play_by) ?? m.round_number;
               return (
                 <Button key={m.id} variant="outline" className="w-full justify-between h-auto py-3"
                   onClick={() => { setChampPickerOpen(false); setChampSlotMatch(m); }}>
-                  <span>vs {opp || "Opponent"}{m.round_number ? ` · Round ${m.round_number}` : ""}</span>
+                  <span>vs {opp || "Opponent"}{rn ? ` · Round ${rn}` : ""}</span>
                   {m.play_by && <span className="text-xs text-muted-foreground">Play by {String(m.play_by).slice(0, 10)}</span>}
                 </Button>
               );

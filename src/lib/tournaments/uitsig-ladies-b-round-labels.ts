@@ -11,6 +11,17 @@ export function allocationAfterDeadline(date?: string | null, deadline?: string 
   return !completed && !!date && !!deadline && date.slice(0, 10) > deadline.slice(0, 10);
 }
 
+/**
+ * Deadline → round label for the two member-facing lists that never see the builder spec
+ * (booking match picker, my-championships rows). Ladies B rounds have unique play-by dates,
+ * so the deadline identifies the round; anything else keeps its saved legacy number.
+ */
+export function uitsigLadiesBRoundFromDeadline(champId?: string | null, group?: number | null, playBy?: string | null): number | null {
+  if (champId !== "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" || group !== 6 || !playBy) return null;
+  const map: Record<string, number> = { "2026-10-22": 1, "2026-10-29": 2, "2026-11-05": 3 };
+  return map[playBy.slice(0, 10)] ?? null;
+}
+
 /** Labels only: the existing four-player pool projection, never a fixture update. */
 export function uitsigLadiesBRoundLabels(matches: Fixture[], champId: string, group: number, roundCount?: number): Map<string, number> {
   const labels = new Map<string, number>();

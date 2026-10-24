@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allocationAfterDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
+import { allocationAfterDeadline, uitsigLadiesBRoundFromDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 const champ = "f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
 const fixtures = [[1,2,1],[4,2,2],[1,3,2],[2,3,3],[1,4,4],[3,4,5]].map(([a,b,r]) => ({
   id: `${a}-${b}`, champ_id: champ, group_number: 6, pool_number: 2, stage: "group", round_number: r,

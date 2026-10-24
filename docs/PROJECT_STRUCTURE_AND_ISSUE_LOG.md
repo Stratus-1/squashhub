@@ -3861,3 +3861,5 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 ## 24 October 2026 — Remaining Ladies B Round 3 / 29 October heading
 - Owner screenshot exposed an incomplete fix in Tournaments' grouped games list. Its round helper now prefers the resolved fixture deadline (including linked-round fallback) before pool projection or historical round number; this also works without complete pools. Exact tournament/category scope retained.
 - Authenticated Uitsig live DOM verifies Lisa Rahman–Yolanda Coetsee now shares Round 2 / 29 October; no Round 3 / 29 October heading remains, Round 3 retains 5 November. Five focused tests and preview build pass. No saved fixtures/results/bookings or publication changed.
+
+- 25 Oct 2026 — Ladies B Lisa Rahman v Yolanda Coetsee wrongly shown as Round 2 · 29 Oct: the legacy round-3 row (self, 29 Oct) overrode the fixture's confirmed 5 Nov deadline in `resolveFixtureSchedule`. For Uitsig Ladies B, a fixture's own confirmed deadline (22 Oct / 29 Oct / 5 Nov) now wins over legacy round rows on every surface; matches the progression table (R3 by 5 Nov). Tests added; no data changed.

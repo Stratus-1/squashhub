@@ -45,3 +45,15 @@ describe("Ladies B fixture-list rounds", () => {
     expect(uitsigLadiesBRoundFromDeadline(champ, 6, null)).toBeNull();
   });
 });
+import { resolveFixtureSchedule as _resolve } from "@/lib/tournaments/stage-schedule";
+describe("Ladies B fixture deadline beats legacy round row", () => {
+  const rows = [{ id: "r3", round_number: 3, scheduling_mode: "self", play_by: "2026-10-29" }] as any[];
+  it("Lisa Rahman v Yolanda stays Round 3 by 5 Nov", () => {
+    const m = { champ_id: "f954222a-0f0a-4d8c-ac7b-9c74042cc69e", group_number: 6, round_id: "r3", round_number: 3, play_by: "2026-11-05" };
+    expect(_resolve(m, { rows }).playBy).toBe("2026-11-05");
+  });
+  it("other tournaments still follow the applied round row", () => {
+    const m = { champ_id: "other", group_number: 6, round_id: "r3", round_number: 3, play_by: "2026-11-05" };
+    expect(_resolve(m, { rows }).playBy).toBe("2026-10-29");
+  });
+});

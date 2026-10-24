@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Stop new-member applications for unsigned clubs and direct applicants to the club; preserve existing member access, verify without creating real applications.
 - [x] Special shifts offer own tips, hours-based sharing and equal sharing; existing shift policies/allocations preserved. Thirty-one focused checks, isolated PostgreSQL shares/history/idempotency checks and fictional counter selection/start/readback pass; preview build OK. No real attendance, sales, payouts or publication; physical native devices not tested.
 - [x] Shared End shift asks which barman or both before confirmation; 18 counter tests and fictional browser person-selection/end/readback pass, preview build OK. No real attendance changes or publication.
 - [ ] Investigate reported Start shift refusal: actual server error hidden by generic message; expose and test it without changing real attendance. Exact hosted refusal awaits retry evidence.

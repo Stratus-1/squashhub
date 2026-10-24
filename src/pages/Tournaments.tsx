@@ -1033,7 +1033,7 @@ export default function Tournaments() {
     // the deadline instead so players see one "Round 1 · Play by …" list.
     const sched = matchSchedule(m);
     if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}|r${String(Number(displayedRound(m)) || 1).padStart(3, "0")}`;
-    if (ladiesBRoundLabels.has(m.id)) return `Round ${displayedRound(m)}`;
+    if (ladiesBRoundLabels.has(m.id) || displayedRound(m) !== m.round_number) return `Round ${displayedRound(m)}`;
     const row = String(matchRoundRow(m)?.label || "").trim();
     if (row && !/^[A-Z]\d+\s+v(s)?\.?\s+[A-Z]\d+$/i.test(row)) return row;
     return roundMeta(m.champ_id, m.round_number).label || `Round ${Number(m.round_number) || 1}`;

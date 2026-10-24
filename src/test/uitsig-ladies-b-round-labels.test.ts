@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allocationAfterDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
+import { allocationAfterDeadline, uitsigLadiesBRoundFromDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 const champ = "f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
 const fixtures = [[1,2,1],[4,2,2],[1,3,2],[2,3,3],[1,4,4],[3,4,5]].map(([a,b,r]) => ({
   id: `${a}-${b}`, champ_id: champ, group_number: 6, pool_number: 2, stage: "group", round_number: r,
@@ -24,5 +24,14 @@ describe("Ladies B fixture-list rounds", () => {
     expect(uitsigLadiesBRoundLabels(fixtures, champ, 5, 3).size).toBe(0);
     expect(uitsigLadiesBRoundLabels(fixtures, "other", 6, 3).size).toBe(0);
     expect(uitsigLadiesBRoundLabels(fixtures, champ, 6, 5).size).toBe(0);
+  });
+  it("maps each unique play-by deadline to its round and keeps other fixtures on saved numbers", () => {
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-10-22")).toBe(1);
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-10-29")).toBe(2);
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-11-05")).toBe(3);
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-11-10")).toBeNull();
+    expect(uitsigLadiesBRoundFromDeadline(champ, 5, "2026-10-29")).toBeNull();
+    expect(uitsigLadiesBRoundFromDeadline("other", 6, "2026-10-29")).toBeNull();
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, null)).toBeNull();
   });
 });

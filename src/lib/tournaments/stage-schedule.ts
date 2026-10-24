@@ -6,7 +6,6 @@
  * tournament start. Round rows are matched by the fixture's own `round_id`, then by its `stage_key`;
  * a row from another stage (e.g. pool "Round 1", play by 6 Oct) is never borrowed.
  */
-import { uitsigLadiesBRoundFromDeadline } from "./uitsig-ladies-b-round-labels";
 
 export type StageRule = "fixed" | "play_by" | null;
 
@@ -130,7 +129,8 @@ export function resolveFixtureSchedule(
     bookable: false,
   });
   // Uitsig Ladies B: legacy round rows mix two confirmed deadlines, so each fixture's own confirmed deadline wins.
-  const ownConfirmed = uitsigLadiesBRoundFromDeadline(m.champ_id, m.group_number, m.play_by) != null;
+  const ownConfirmed = m.champ_id === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && m.group_number === 6 &&
+    ["2026-10-22", "2026-10-29", "2026-11-05"].includes(String(m.play_by ?? "").slice(0, 10));
   const applied = !ownConfirmed && m.round_id && opts.rows ? appliedRoundPlayBy(opts.rows.find((r) => r.id === m.round_id)) : null;
   if (applied) return { mode: "play_by", playBy: applied, bookable: true };
   if (st?.rule === "fixed") return scheduled();

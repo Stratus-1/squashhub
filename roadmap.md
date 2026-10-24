@@ -204,3 +204,5 @@
 - [x] Merged duplicate Danie Naude in Uitsig: kept #UITS3707 (Premium, registered, R163 owed, ladder 89); moved NSF0818 NSA affiliation and SportyHQ profile to it, removed ghost ranking-snapshot entry, six expired invites and the inactive league registration, marked the May-import person merged, deleted #NSF0818; audit history untouched.
 - [x] Round-robin round panels restyled to the Swiss table format (Pos | Player | Day & time · court | Result) — verified on Riverside AABB, build OK, tests pass. Preview only.
 - [x] Multi-pool round robin now renders one shared table per round and one shared standings table with per-pool colour bands and a Pool column (RoundRobinCombinedPilotView); single-pool categories unchanged. Verified on Riverside AABB, test added. Display only, not published.
+- [ ] Ladies B: answer who created the two 10 Nov bookings, cancel both, clear scheduled slots, keep Play by 5 Nov
+- [ ] Ladies B: fix remaining surfaces that label rounds from saved round_number (Bookings match picker, MyChampionships row labels)

@@ -3845,7 +3845,6 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 - Migration 0258 exposes only a public availability boolean, not signature/billing details; join and second-club writers refuse new applications, and signup skips new membership creation at unsigned clubs while retaining existing-record linking. Existing applications and SLA records are unchanged.
 - Nineteen focused frontend tests and disposable PostgreSQL signed/unsigned signup, join refusal, second-club refusal and imported-member activation tests pass. Fictional browser checks verify direct-link refusal, hidden landing signup, retained login/activation and signed application form; no page errors, preview build OK. No real applications created or publication; shared backend safeguards are applied immediately. Clubs have no saved website field, so the notice uses existing contact details rather than inventing a website.
 
-## 24 October 2026 — Trial clubs may accept applications; Ladies B fixtures audited read-only
 ## 24 October 2026 — Ladies B fixture-list round labels
 - Symptom: booking-list headings retained R4/R5 despite three configured RR rounds. Finding: pool progression already projected the complete four-player pools, but fixture lists read saved legacy numbers. Fix: reuse that pure projection for ID-to-round labels in both fixture lists. Guard: exact event/category/three-round scope; original fixture objects, results, bookings and deadlines remain unchanged. No hosted writes or publication.
 

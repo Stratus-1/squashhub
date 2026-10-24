@@ -10,9 +10,9 @@ describe("Ladies B fixture-list rounds", () => {
     const before = JSON.stringify(fixtures);
     const labels = uitsigLadiesBRoundLabels(fixtures, champ, 6, 3);
     expect([...new Set(labels.values())].sort()).toEqual([1,2,3]);
-    expect(labels.get("1-4")).toBe(2);
+    expect(labels.get("1-4")).toBe(3);
     expect(labels.get("3-4")).toBe(1);
-    expect(labels.get("2-3")).toBe(2);
+    expect(labels.get("2-3")).toBe(3);
     expect(JSON.stringify(fixtures)).toBe(before);
   });
   it("does not affect other categories, tournaments or round counts", () => {

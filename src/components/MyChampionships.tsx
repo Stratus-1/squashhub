@@ -363,7 +363,7 @@ export function MyChampionships() {
                       <span className="min-w-0 truncate">
                         <span className="font-medium">vs {opponent}</span>
                         {(m.stage_label || m.round_number) && (
-                          <span className="text-muted-foreground"> · {m.stage_label || `Round ${m.round_number}`}</span>
+                          <span className="text-muted-foreground"> · {m.stage_label || `Round ${uitsigLadiesBRoundFromDeadline(m.champ_id, m.group_number, m.play_by) ?? m.round_number}`}</span>
                         )}
                         {m.status === "in_progress" && <span className="text-primary"> · Live</span>}
                       </span>

@@ -1807,6 +1807,13 @@
       "when": 1792747131276,
       "tag": "0257_treasurer_member_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1792880535456,
+      "tag": "0258_unsigned_club_membership_applications",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,9 @@ describe("Ladies B fixture-list rounds", () => {
   it("uses confirmed deadlines with incomplete member lists rather than legacy round 3", () => {
     const match = { id: "one-member-game", champ_id: champ, group_number: 6, round_number: 3, play_by: "2026-10-29" };
     expect(uitsigLadiesBDisplayedRound(match, new Map())).toBe(2);
+    // A list can resolve the deadline from its linked round instead of a fixture override.
+    const withoutOverride = { ...match, play_by: null };
+    expect(uitsigLadiesBDisplayedRound({ ...withoutOverride, play_by: "2026-10-29" }, new Map([[match.id, 3]]))).toBe(2);
     expect(uitsigLadiesBDisplayedRound({ ...match, play_by: "2026-11-05" }, new Map())).toBe(3);
     expect(uitsigLadiesBDisplayedRound({ ...match, group_number: 1 }, new Map())).toBe(3);
     expect(uitsigLadiesBDisplayedRound({ ...match, champ_id: "other" }, new Map())).toBe(3);

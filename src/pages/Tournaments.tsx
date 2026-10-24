@@ -78,7 +78,7 @@ import { RiversideAllocationPreview } from "@/components/tournaments/RiversideAl
 import ClubChampsView from "@/pages/ClubChampsView";
 import { fixtureState, fixtureScoreDetails, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
-import { allocationAfterDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
+import { allocationAfterDeadline, uitsigLadiesBDisplayedRound, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -1022,7 +1022,7 @@ export default function Tournaments() {
     const stage = division?.stages?.find((s: any) => s.kind === "round_robin");
     for (const [id, round] of uitsigLadiesBRoundLabels(allMatches as any[], arch.id, 6, stage?.schedule?.roundDates?.length)) ladiesBRoundLabels.set(id, round);
   }
-  const displayedRound = (m: any) => ladiesBRoundLabels.get(m.id) ?? m.round_number;
+  const displayedRound = (m: any) => uitsigLadiesBDisplayedRound(m, ladiesBRoundLabels);
   const roundGroupKey = (m: any): string => {
     const koRound = pacedKnockoutRound(m);
     if (koRound != null) return `\u0001ko:${koRound}`;

@@ -1,11 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { allocationAfterDeadline, uitsigLadiesBRoundFromDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
+import { allocationAfterDeadline, uitsigLadiesBDisplayedRound, uitsigLadiesBRoundFromDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 const champ = "f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
 const fixtures = [[1,2,1],[4,2,2],[1,3,2],[2,3,3],[1,4,4],[3,4,5]].map(([a,b,r]) => ({
   id: `${a}-${b}`, champ_id: champ, group_number: 6, pool_number: 2, stage: "group", round_number: r,
   player_a_member_id: `p${a}`, player_b_member_id: `p${b}`, booking_id: `booking-${a}-${b}`, scheduled_date: "2026-11-10", score: "15-8",
 }));
 describe("Ladies B fixture-list rounds", () => {
+  it("uses confirmed deadlines with incomplete member lists rather than legacy round 3", () => {
+    const match = { id: "one-member-game", champ_id: champ, group_number: 6, round_number: 3, play_by: "2026-10-29" };
+    expect(uitsigLadiesBDisplayedRound(match, new Map())).toBe(2);
+    expect(uitsigLadiesBDisplayedRound({ ...match, play_by: "2026-11-05" }, new Map())).toBe(3);
+    expect(uitsigLadiesBDisplayedRound({ ...match, group_number: 1 }, new Map())).toBe(3);
+    expect(uitsigLadiesBDisplayedRound({ ...match, champ_id: "other" }, new Map())).toBe(3);
+  });
   it("flags 10 November allocations after the approved 5 November deadline without flagging played games", () => {
     expect(allocationAfterDeadline("2026-11-10", "2026-11-05")).toBe(true);
     expect(allocationAfterDeadline("2026-11-05", "2026-11-05")).toBe(false);

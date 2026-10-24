@@ -22,6 +22,15 @@ export function uitsigLadiesBRoundFromDeadline(champId?: string | null, group?: 
   return map[playBy.slice(0, 10)] ?? null;
 }
 
+/** Member lists can contain only one game: confirmed deadlines do not require a complete pool. */
+export function uitsigLadiesBDisplayedRound(
+  match: { id: string; champ_id?: string | null; group_number?: number | null; play_by?: string | null; round_number?: number | null },
+  labels: ReadonlyMap<string, number>,
+): number | null | undefined {
+  return uitsigLadiesBRoundFromDeadline(match.champ_id, match.group_number, match.play_by)
+    ?? labels.get(match.id) ?? match.round_number;
+}
+
 /** Labels only: the existing four-player pool projection, never a fixture update. */
 export function uitsigLadiesBRoundLabels(matches: Fixture[], champId: string, group: number, roundCount?: number): Map<string, number> {
   const labels = new Map<string, number>();

@@ -8,6 +8,7 @@ import { FixtureCalendar } from "@/components/tournaments/FixtureCalendar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WhenTag } from "@/components/tournaments/SwissPositionGrid";
 import type { RRPoolView, RRRound } from "@/lib/tournaments/round-robin-view";
+import { allocationAfterDeadline } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 
 /** Display bands only: caller supplies existing official order, independently per pool. */
 export function poolRankTone(index: number, count: number) {
@@ -234,6 +235,7 @@ function RrMatchRows({ m, tone }: { m: RRRound["matches"][number]; tone: number 
           {i === 0 ? (
             <td rowSpan={2} className="px-2 py-1 align-middle whitespace-nowrap">
               <WhenTag text={m.status === "bye" ? "Bye" : m.when || "To play"} />
+              {allocationAfterDeadline(m.date, m.playBy, m.status === "played") && <span className="block text-xs text-destructive">After play-by deadline</span>}
             </td>
           ) : null}
           <td className="px-2 whitespace-nowrap">{m.status === "played" ? (won ? "W" : lost ? "L" : "") : ""}{i === 0 && m.status === "played" && m.score ? <span className="ml-1 tabular-nums text-muted-foreground">{m.score}</span> : null}</td>

@@ -6,6 +6,11 @@ interface Fixture {
   player_a_member_id?: string | null; player_b_member_id?: string | null;
 }
 
+/** A late allocation is a conflict, not permission to change its court or time. */
+export function allocationAfterDeadline(date?: string | null, deadline?: string | null, completed = false): boolean {
+  return !completed && !!date && !!deadline && date.slice(0, 10) > deadline.slice(0, 10);
+}
+
 /** Labels only: the existing four-player pool projection, never a fixture update. */
 export function uitsigLadiesBRoundLabels(matches: Fixture[], champId: string, group: number, roundCount?: number): Map<string, number> {
   const labels = new Map<string, number>();

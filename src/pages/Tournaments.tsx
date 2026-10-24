@@ -78,7 +78,7 @@ import { RiversideAllocationPreview } from "@/components/tournaments/RiversideAl
 import ClubChampsView from "@/pages/ClubChampsView";
 import { fixtureState, fixtureScoreDetails, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
-import { uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
+import { allocationAfterDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -1631,6 +1631,7 @@ export default function Tournaments() {
               <CalendarClock className="w-3 h-3" /> {playByText}
             </span>
           )}
+          {allocationAfterDeadline(m.scheduled_date, playByDeadline, m.status === "completed") && <Badge variant="destructive">After play-by deadline</Badge>}
 
           <span className="font-medium text-xs sm:text-sm break-words basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
             {playoffHeading && (

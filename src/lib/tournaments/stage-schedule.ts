@@ -64,6 +64,7 @@ export function appliedRoundPlayBy(row: RoundRowLike | undefined | null): string
 }
 
 export interface FixtureLikeForSchedule {
+  champ_id?: string | null;
   round_id?: string | null;
   round_number?: number | null;
   group_number?: number | null;
@@ -127,7 +128,9 @@ export function resolveFixtureSchedule(
     playBy: null,
     bookable: false,
   });
-  const applied = m.round_id && opts.rows ? appliedRoundPlayBy(opts.rows.find((r) => r.id === m.round_id)) : null;
+  // Uitsig Ladies B: legacy round rows mix two confirmed deadlines, so each fixture's own confirmed deadline wins.
+  const ownConfirmed = uitsigLadiesBRoundFromDeadline(m.champ_id, m.group_number, m.play_by) != null;
+  const applied = !ownConfirmed && m.round_id && opts.rows ? appliedRoundPlayBy(opts.rows.find((r) => r.id === m.round_id)) : null;
   if (applied) return { mode: "play_by", playBy: applied, bookable: true };
   if (st?.rule === "fixed") return scheduled();
   const own = m.play_by ? String(m.play_by).slice(0, 10) : "";

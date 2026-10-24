@@ -87,7 +87,7 @@ export function rrWhen(m: Pick<RRMatchInput, "date" | "time" | "court" | "playBy
 }
 
 /** Project legacy pool rounds into the configured stage, never changing saved fixtures or slots. */
-function stageRoundProjection(players: RRPlayer[], matches: RRMatchInput[], count?: number): RRMatchInput[] {
+export function stageRoundProjection(players: RRPlayer[], matches: RRMatchInput[], count?: number): RRMatchInput[] {
   if (!count || !Number.isInteger(count)) return matches;
   const ids = players.map(p => p.id);
   const expected = ids.length % 2 ? ids.length : ids.length - 1;

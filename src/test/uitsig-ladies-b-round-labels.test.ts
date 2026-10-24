@@ -25,4 +25,13 @@ describe("Ladies B fixture-list rounds", () => {
     expect(uitsigLadiesBRoundLabels(fixtures, "other", 6, 3).size).toBe(0);
     expect(uitsigLadiesBRoundLabels(fixtures, champ, 6, 5).size).toBe(0);
   });
+  it("maps each unique play-by deadline to its round and keeps other fixtures on saved numbers", () => {
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-10-22")).toBe(1);
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-10-29")).toBe(2);
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-11-05")).toBe(3);
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, "2026-11-10")).toBeNull();
+    expect(uitsigLadiesBRoundFromDeadline(champ, 5, "2026-10-29")).toBeNull();
+    expect(uitsigLadiesBRoundFromDeadline("other", 6, "2026-10-29")).toBeNull();
+    expect(uitsigLadiesBRoundFromDeadline(champ, 6, null)).toBeNull();
+  });
 });

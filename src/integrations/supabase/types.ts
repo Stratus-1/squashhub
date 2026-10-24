@@ -21533,6 +21533,10 @@ export type Database = {
         Args: { p_match_id: string }
         Returns: string
       }
+      club_accepts_membership_applications: {
+        Args: { _club_id: string }
+        Returns: boolean
+      }
       club_affiliate_member_to_association: {
         Args: {
           _association_id: string

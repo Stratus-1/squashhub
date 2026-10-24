@@ -17,6 +17,8 @@ import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent } from "@/lib/club-rules";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { buildClubPublicUrl } from "@/lib/club-public-url";
+import { useMembershipAvailability } from "@/hooks/use-membership-availability";
+import { MembershipUnavailableNotice } from "@/components/auth/MembershipUnavailableNotice";
 
 
 
@@ -76,6 +78,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   });
 
   const club = hostClub ?? queriedClub;
+  const membership = useMembershipAvailability(club?.id);
   const loading = needsQuery && isLoading;
   const displaySubdomain = club?.subdomain ?? effectiveSubdomain;
 
@@ -341,7 +344,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                   <ArrowRight className="w-4 h-4" />
                 </Button>
 
-                <Button
+                {membership.allowed ? <Button
                   size="lg"
                   variant="outline"
                   className="w-full gap-2 rounded-full h-12 border-white/30 bg-white/5 text-white hover:bg-white/15 hover:text-white"
@@ -349,7 +352,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                 >
                   Sign up as a new member
                   <UserPlus className="w-4 h-4" />
-                </Button>
+                </Button> : <MembershipUnavailableNotice club={club} pending={membership.pending} failed={membership.failed} />}
 
                 {isNsaClub && (
                   <div className="pt-2">
@@ -364,7 +367,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   {[
                     { label: "Log in / register", url: signInUrl },
-                    { label: "New member sign-up", url: applyUrl },
+                    ...(membership.allowed ? [{ label: "New member sign-up", url: applyUrl }] : []),
                   ].map((q) => (
                     <div key={q.label} className="flex flex-col items-center gap-2">
                       <div className="rounded-xl bg-white p-2 shadow-sm">

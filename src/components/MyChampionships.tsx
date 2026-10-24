@@ -17,6 +17,7 @@ import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialo
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
 import { isCentrallyScheduled } from "@/lib/tournaments/fixture-scheduling";
+import { uitsigLadiesBRoundFromDeadline } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { useMyPersonMemberIds } from "@/hooks/use-my-person-member-ids";
 import { mySide, myRecord, myScheduleState, myFixturesHref, isUpcomingFixture } from "@/lib/tournaments/my-fixtures";

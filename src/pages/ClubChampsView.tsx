@@ -107,6 +107,7 @@ import { rrFinishStandings } from "@/lib/tournaments/swiss-rr-standings";
 import { swissRrDisplay } from "@/lib/tournaments/swiss-rr-display";
 import { hybridSwissTable, rrFinishOn, RR_FINISH_FROM_ROUND } from "@/lib/tournaments/swiss-rr-finish";
 import { rrFinalRanking } from "@/lib/tournaments/rr-final-ranking";
+import { uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 import { CategoryFixtureCalendar } from "@/components/tournaments/CategoryFixtureCalendar";
 import type { CategoryCalendarFixture } from "@/lib/tournaments/category-calendar";
 import { fixtureScoreDetails, fixtureState } from "@/lib/tournaments/club-fixtures";
@@ -4218,8 +4219,11 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           (!!swissStageFor(gn) || String(champAny?.scheduling_mode || "") === "self" ||
             !groupMatches.some((m: any) => m.scheduled_time));
         const buckets = new Map<string, { label: string; order: number; rows: any[] }>();
+        const rrDivision = arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn);
+        const rrStage = rrDivision?.stages?.find((s: any) => s.kind === "round_robin");
+        const roundLabels = uitsigLadiesBRoundLabels(matches as any[], champId ?? "", gn, rrStage?.schedule?.roundDates?.length);
         for (const m of groupMatches) {
-          const rn = roundGrouped ? (m as any).round_number : null;
+          const rn = roundGrouped ? roundLabels.get(m.id) ?? (m as any).round_number : null;
           const key = rn == null ? "all" : String(rn);
           if (!buckets.has(key)) buckets.set(key, { label: rn == null ? "" : `Round ${rn}`, order: rn ?? 0, rows: [] });
           buckets.get(key)!.rows.push(m);

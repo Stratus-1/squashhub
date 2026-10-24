@@ -78,6 +78,8 @@ import { RiversideAllocationPreview } from "@/components/tournaments/RiversideAl
 import ClubChampsView from "@/pages/ClubChampsView";
 import { fixtureState, fixtureScoreDetails, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
+import { uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
+import { divisionGroup } from "@/lib/tournaments/engine-service";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
@@ -1013,6 +1015,14 @@ export default function Tournaments() {
    * cross-league games carry seed slots there ("A1 v B1"), which are matchup info,
    * not rounds. Play-off/knockout games keep their stage name.
    */
+  const ladiesBRoundLabels = new Map<string, number>();
+  for (const arch of champArchRows as any[]) {
+    const spec = arch.builder_spec;
+    const division = spec?.divisions?.find((d: any) => divisionGroup(spec, d) === 6);
+    const stage = division?.stages?.find((s: any) => s.kind === "round_robin");
+    for (const [id, round] of uitsigLadiesBRoundLabels(allMatches as any[], arch.id, 6, stage?.schedule?.roundDates?.length)) ladiesBRoundLabels.set(id, round);
+  }
+  const displayedRound = (m: any) => ladiesBRoundLabels.get(m.id) ?? m.round_number;
   const roundGroupKey = (m: any): string => {
     const koRound = pacedKnockoutRound(m);
     if (koRound != null) return `\u0001ko:${koRound}`;
@@ -1022,7 +1032,8 @@ export default function Tournaments() {
     // not real rounds — every game shares the same booking deadline. Group by
     // the deadline instead so players see one "Round 1 · Play by …" list.
     const sched = matchSchedule(m);
-    if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}|r${String(Number(m.round_number) || 1).padStart(3, "0")}`;
+    if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}|r${String(Number(displayedRound(m)) || 1).padStart(3, "0")}`;
+    if (ladiesBRoundLabels.has(m.id)) return `Round ${displayedRound(m)}`;
     const row = String(matchRoundRow(m)?.label || "").trim();
     if (row && !/^[A-Z]\d+\s+v(s)?\.?\s+[A-Z]\d+$/i.test(row)) return row;
     return roundMeta(m.champ_id, m.round_number).label || `Round ${Number(m.round_number) || 1}`;
@@ -1036,7 +1047,7 @@ export default function Tournaments() {
     list.forEach((m) => {
       // A bye is not a game to play — it never appears in the games list.
       if (isByeFixture(m)) return;
-      const n = Number(m.round_number);
+      const n = Number(displayedRound(m));
       const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
       const key = num === 0 ? "\u0000pool" : roundGroupKey(m);
       if (!groups.has(key)) groups.set(key, []);
@@ -1091,7 +1102,7 @@ export default function Tournaments() {
           const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
             if (m.status === "placeholder" || isByeFixture(m) || !champsHere.has(m.champ_id)) return false;
-            const r = Number(m.round_number);
+            const r = Number(displayedRound(m));
             const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
             return isPool ? num === 0 : num !== 0 && roundGroupKey(m) === key;
           });

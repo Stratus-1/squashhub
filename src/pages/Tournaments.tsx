@@ -1314,7 +1314,7 @@ export default function Tournaments() {
       // (Round 1, Round 2, …) so players can see which round they are in.
       // Games with no real round number (empty slots) collect at the end.
       const roundOf = (m: any) => {
-        const n = Number(m.round_number);
+        const n = Number(displayedRound(m));
         return Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
       };
       if (schedule.some((m: any) => roundOf(m) > 0)) {

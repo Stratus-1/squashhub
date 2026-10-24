@@ -26,6 +26,8 @@ import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner"
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
 import { VisitorPassCard } from "@/components/VisitorPassCard";
+import { useMembershipAvailability } from "@/hooks/use-membership-availability";
+import { MembershipUnavailableNotice } from "@/components/auth/MembershipUnavailableNotice";
 import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -37,6 +39,7 @@ import {
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
   const { club, subdomain } = useClubContext();
+  const membership = useMembershipAvailability(club?.id);
   /**
    * Visitors are local guests. Players from another club register with their
    * own club and get invited to events, so the home-club field only shows for
@@ -684,6 +687,10 @@ export default function ClubAuth() {
 
   const handleNewMemberSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!membership.allowed) {
+      toast.error("New membership applications are unavailable here. Please contact the club directly.");
+      return;
+    }
     const name = newName.trim();
     const email = newEmail.trim();
     const phone = newPhone.trim();
@@ -1172,7 +1179,7 @@ export default function ClubAuth() {
           <TabsList className="sr-only">
             <TabsTrigger value="login">Log In</TabsTrigger>
             <TabsTrigger value="existing">Existing Member</TabsTrigger>
-            <TabsTrigger value="new">New Member</TabsTrigger>
+            {membership.allowed && <TabsTrigger value="new">New Member</TabsTrigger>}
             <TabsTrigger value="visitor">Visitor</TabsTrigger>
           </TabsList>
 
@@ -1238,16 +1245,15 @@ export default function ClubAuth() {
                       </button>
                     </p>
                   )}
-                  <p className="text-xs">
+                  {membership.allowed ? <p className="text-xs">
                     <span className="text-muted-foreground">Not a member yet? </span>
-                    <button
+                    <Button variant="link" className="h-auto p-0 text-xs"
                       type="button"
                       onClick={() => setActiveTab("new")}
-                      className="text-primary font-medium hover:underline"
                     >
                       Sign up as a new member
-                    </button>
-                  </p>
+                    </Button>
+                  </p> : <MembershipUnavailableNotice club={club} pending={membership.pending} failed={membership.failed} />}
                   <div className="pt-2 text-[11px] text-muted-foreground">
                     Visiting?{" "}
                     <button
@@ -1578,7 +1584,7 @@ export default function ClubAuth() {
 
           {/* ─── NEW MEMBER ─── */}
           <TabsContent value="new">
-            <Card className="p-6">
+            {!membership.allowed ? <Card className="p-6"><MembershipUnavailableNotice club={club} pending={membership.pending} failed={membership.failed} /></Card> : <Card className="p-6">
               {isNsaClub && (
                 <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
                   <p className="font-semibold text-foreground">Already an NSA league player?</p>
@@ -1689,7 +1695,7 @@ export default function ClubAuth() {
                   {loading ? "Creating account..." : "Register"}
                 </Button>
               </form>
-            </Card>
+            </Card>}
             <div className="mt-3 text-center">
               <button type="button" onClick={() => setActiveTab("login")} className="text-xs text-muted-foreground hover:text-primary hover:underline">
                 ← Back to Sign in

@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useMembershipAvailability } from "@/hooks/use-membership-availability";
+import { MembershipUnavailableNotice } from "@/components/auth/MembershipUnavailableNotice";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -25,6 +27,7 @@ import {
 export function NoClubAccess() {
   const { user, signOut } = useAuth();
   const { club } = useClubContext();
+  const membership = useMembershipAvailability(club?.id);
   const queryClient = useQueryClient();
   const clubName = club?.name || "this club";
 
@@ -43,6 +46,7 @@ export function NoClubAccess() {
   // Nothing is created until they confirm the warning dialog.
   const handleApply = async () => {
     if (!club?.id) { toast.error("Club not found"); return; }
+    if (!membership.allowed) { toast.error("Please apply directly to the club."); return; }
     setApplying(true);
     const { error } = await (supabase.rpc as any)("apply_to_club_as_existing_person", { p_club_id: club.id });
     if (error) {
@@ -155,9 +159,9 @@ export function NoClubAccess() {
             <p className="text-sm text-muted-foreground">
               Join {clubName} as a full member. You keep your {homeClub || "current club"} membership.
             </p>
-            <Button className="w-full" onClick={() => setConfirmApply(true)} disabled={applying || loading}>
+            {membership.allowed ? <Button className="w-full" onClick={() => setConfirmApply(true)} disabled={applying || loading}>
               Apply for membership
-            </Button>
+            </Button> : <MembershipUnavailableNotice club={club} pending={membership.pending} failed={membership.failed} />}
           </div>
         )}
         <div className="flex items-center gap-2 text-amber-600">
@@ -239,7 +243,7 @@ export function NoClubAccess() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={applying}>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={applying} onClick={(e) => { e.preventDefault(); handleApply(); }}>
+            <AlertDialogAction disabled={applying || !membership.allowed} onClick={(e) => { e.preventDefault(); handleApply(); }}>
               {applying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting…</> : `Yes, apply to ${clubName}`}
             </AlertDialogAction>
           </AlertDialogFooter>

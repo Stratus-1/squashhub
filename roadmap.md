@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Verify Uitsig Ladies B screenshot fixtures read-only; allow active-trial clubs alongside SLA-signed clubs and verify Uitsig/St Johns Harare eligibility.
 - [x] Stop unsigned-club applications: landing/auth/second-club notice plus shared backend writer safeguards; login/imported-member activation retained. Nineteen frontend and isolated PostgreSQL checks pass; fictional browser direct links and signed form verified, build OK. No real applications or publication; backend safeguards already applied.
 - [x] Special shifts offer own tips, hours-based sharing and equal sharing; existing shift policies/allocations preserved. Thirty-one focused checks, isolated PostgreSQL shares/history/idempotency checks and fictional counter selection/start/readback pass; preview build OK. No real attendance, sales, payouts or publication; physical native devices not tested.
 - [x] Shared End shift asks which barman or both before confirmation; 18 counter tests and fictional browser person-selection/end/readback pass, preview build OK. No real attendance changes or publication.

@@ -36,3 +36,21 @@ END $$;
 SET ROLE anon;
 SELECT public.club_accepts_membership_applications('00000000-0000-0000-0000-000000000001');
 RESET ROLE;
+-- Unexpired active trials accept applications without an SLA; expired/cancelled trials do not.
+INSERT INTO public.clubs VALUES
+ ('00000000-0000-0000-0000-000000000003','trial',null),
+ ('00000000-0000-0000-0000-000000000004','expired',null),
+ ('00000000-0000-0000-0000-000000000005','cancelled',null),
+ ('ec323faa-9b1f-4603-9b30-a0db787ada99','stjohns',null);
+INSERT INTO public.club_subscriptions VALUES
+ ('00000000-0000-0000-0000-000000000003','active',now()+interval '1 day'),
+ ('00000000-0000-0000-0000-000000000004','active',now()-interval '1 day'),
+ ('00000000-0000-0000-0000-000000000005','cancelled',now()+interval '1 day');
+DO $$ BEGIN
+ IF NOT public.club_accepts_membership_applications('00000000-0000-0000-0000-000000000003') THEN RAISE EXCEPTION 'Active trial blocked'; END IF;
+ IF public.club_accepts_membership_applications('00000000-0000-0000-0000-000000000004') THEN RAISE EXCEPTION 'Expired trial allowed'; END IF;
+ IF public.club_accepts_membership_applications('00000000-0000-0000-0000-000000000005') THEN RAISE EXCEPTION 'Cancelled trial allowed'; END IF;
+ IF NOT public.club_accepts_membership_applications('ec323faa-9b1f-4603-9b30-a0db787ada99') THEN RAISE EXCEPTION 'Owner-approved St Johns blocked'; END IF;
+ PERFORM public.apply_to_club_as_existing_person('00000000-0000-0000-0000-000000000003');
+ IF NOT EXISTS(SELECT 1 FROM public.club_members WHERE club_id='00000000-0000-0000-0000-000000000003' AND user_id=auth.uid() AND is_pending_approval) THEN RAISE EXCEPTION 'Trial application not saved'; END IF;
+END $$;

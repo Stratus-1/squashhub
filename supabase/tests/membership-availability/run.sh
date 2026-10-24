@@ -13,5 +13,6 @@ P=(psql -X -q -v ON_ERROR_STOP=1 -h "$D" -p 54428 -U lovable -d postgres)
 "${P[@]}" -f "$ROOT/supabase/migrations/20260922064218_30d6db3f-4e7c-4357-bfeb-db265d894225.sql"
 "${P[@]}" -f "$ROOT/drizzle/migrations/0125_migration.sql"
 "${P[@]}" -f "$ROOT/drizzle/migrations/0258_unsigned_club_membership_applications.sql"
+"${P[@]}" -f "$ROOT/drizzle/migrations/0259_membership_applications_active_trials.sql"
 "${P[@]}" -f "$HERE/test.sql"
 echo 'MEMBERSHIP AVAILABILITY TESTS PASSED'

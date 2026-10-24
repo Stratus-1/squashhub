@@ -6,6 +6,7 @@ CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current
 CREATE TYPE public.club_member_role AS ENUM ('member', 'admin');
 CREATE TYPE public.member_status AS ENUM ('active', 'resigned');
 CREATE TABLE public.clubs(id uuid PRIMARY KEY, subdomain text, sla_accepted_at timestamptz);
+CREATE TABLE public.club_subscriptions(club_id uuid, status text, trial_ends_at timestamptz);
 CREATE TABLE public.profiles(id uuid PRIMARY KEY, name text, email text, phone text);
 CREATE TABLE public.club_members(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), club_id uuid, user_id uuid, name text, email text, phone text, gender text, person_id uuid, role public.club_member_role DEFAULT 'member', status public.member_status DEFAULT 'active', is_pending_approval boolean, applied_at timestamptz, joined_at timestamptz DEFAULT now(), club_member_number text, plays_league boolean, updated_at timestamptz);
 CREATE TABLE public.member_league_registrations(club_member_id uuid, league_association_number text);

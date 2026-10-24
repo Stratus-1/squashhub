@@ -78,7 +78,7 @@ import { RiversideAllocationPreview } from "@/components/tournaments/RiversideAl
 import ClubChampsView from "@/pages/ClubChampsView";
 import { fixtureState, fixtureScoreDetails, gameScoreLine, timingOf, type ClubFixture } from "@/lib/tournaments/club-fixtures";
 import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
-import { allocationAfterDeadline, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
+import { allocationAfterDeadline, uitsigLadiesBDisplayedRound, uitsigLadiesBRoundLabels } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -1022,7 +1022,7 @@ export default function Tournaments() {
     const stage = division?.stages?.find((s: any) => s.kind === "round_robin");
     for (const [id, round] of uitsigLadiesBRoundLabels(allMatches as any[], arch.id, 6, stage?.schedule?.roundDates?.length)) ladiesBRoundLabels.set(id, round);
   }
-  const displayedRound = (m: any) => ladiesBRoundLabels.get(m.id) ?? m.round_number;
+  const displayedRound = (m: any) => uitsigLadiesBDisplayedRound({ ...m, play_by: matchPlayBy(m) }, ladiesBRoundLabels);
   const roundGroupKey = (m: any): string => {
     const koRound = pacedKnockoutRound(m);
     if (koRound != null) return `\u0001ko:${koRound}`;
@@ -1033,7 +1033,7 @@ export default function Tournaments() {
     // the deadline instead so players see one "Round 1 · Play by …" list.
     const sched = matchSchedule(m);
     if (sched.mode !== "scheduled" && sched.playBy) return `pb:${sched.playBy}|r${String(Number(displayedRound(m)) || 1).padStart(3, "0")}`;
-    if (ladiesBRoundLabels.has(m.id)) return `Round ${displayedRound(m)}`;
+    if (ladiesBRoundLabels.has(m.id) || displayedRound(m) !== m.round_number) return `Round ${displayedRound(m)}`;
     const row = String(matchRoundRow(m)?.label || "").trim();
     if (row && !/^[A-Z]\d+\s+v(s)?\.?\s+[A-Z]\d+$/i.test(row)) return row;
     return roundMeta(m.champ_id, m.round_number).label || `Round ${Number(m.round_number) || 1}`;

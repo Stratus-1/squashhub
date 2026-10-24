@@ -90,6 +90,7 @@ import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { isChampsReservation } from "@/lib/tournaments/self-schedule";
+import { uitsigLadiesBRoundFromDeadline } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
 import { championshipOnlyDay } from "@/lib/tournaments/reservation-day";
 import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
 import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";

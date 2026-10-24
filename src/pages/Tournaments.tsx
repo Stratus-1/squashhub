@@ -1022,7 +1022,7 @@ export default function Tournaments() {
     const stage = division?.stages?.find((s: any) => s.kind === "round_robin");
     for (const [id, round] of uitsigLadiesBRoundLabels(allMatches as any[], arch.id, 6, stage?.schedule?.roundDates?.length)) ladiesBRoundLabels.set(id, round);
   }
-  const displayedRound = (m: any) => uitsigLadiesBDisplayedRound(m, ladiesBRoundLabels);
+  const displayedRound = (m: any) => uitsigLadiesBDisplayedRound({ ...m, play_by: matchPlayBy(m) }, ladiesBRoundLabels);
   const roundGroupKey = (m: any): string => {
     const koRound = pacedKnockoutRound(m);
     if (koRound != null) return `\u0001ko:${koRound}`;

@@ -6,6 +6,7 @@
  * tournament start. Round rows are matched by the fixture's own `round_id`, then by its `stage_key`;
  * a row from another stage (e.g. pool "Round 1", play by 6 Oct) is never borrowed.
  */
+import { uitsigLadiesBRoundFromDeadline } from "./uitsig-ladies-b-round-labels";
 
 export type StageRule = "fixed" | "play_by" | null;
 

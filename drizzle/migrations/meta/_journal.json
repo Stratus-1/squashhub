@@ -1814,6 +1814,13 @@
       "when": 1792880535456,
       "tag": "0258_unsigned_club_membership_applications",
       "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1792880759438,
+      "tag": "0259_membership_applications_active_trials",
+      "breakpoints": true
     }
   ]
 }

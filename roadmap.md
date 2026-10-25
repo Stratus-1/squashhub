@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Allow safe admin category renaming with stable saved keys, retained players/pools/settings and name-only save regression checks.
 - [x] Restored timed organiser Playoffs step with per-category existing qualification/pairing controls; selected Structure rounds stay authoritative and pairing updates the relevant timeline without changing siblings. Courts shows 2 semifinal slots/46m + 1 final/23m. 23 checks and signed-in GW selection/return pass; build OK, no hosted writes/publication.
 - [ ] Arbitrary finals (such as A1 vs A2 within every pool) are not supported by the existing shared playoff mapper; require a separately scoped mapping extension before offering them as executable choices. Six-pool qualification remains unresolved, never inferred.
 - [x] Exposed Book courts now below day/court windows on Courts; six focused tests and signed-in GW Double Open intercepted reserve/readback confirm Courts 1/3/4, 31 Oct 09:00–17:00 show Booked, no page errors, preview build OK. No real booking, fixture change or publication; actual hosted reservation intentionally unverified.

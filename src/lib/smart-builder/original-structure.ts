@@ -2,6 +2,7 @@ import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
 import { rowStages, structureUnits, renameStructureKey, writeRowStages } from "./structure-rows";
 import { newStageId, type StageKind } from "./stage-plan";
 import { poolNamesFor } from "./category-pools";
+import { categoryDisplayName } from "./category-labels";
 
 /** Full original-screen snapshot stays local; only supported answers are mirrored. */
 export type OriginalStructure = Record<string, any>;
@@ -30,7 +31,7 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
     const id = String(i + 1), cat = key.split("::")[0];
     const s = rowStages(a, key)[0];
     const sc = a.scoringOverrides[key] ?? a.scoringOverrides[cat] ?? a.scoring;
-    out.group_labels[id] = key.includes("::") ? key.split("::")[1] : key;
+    out.group_labels[id] = a.categoryLabels?.[key] ?? (key.includes("::") ? key.split("::")[1] : key);
     out.expected_players[id] = Number(a.unitEntries[key]) || 0;
     out.league_formats[id] = saved.league_formats?.[id] === "double_round_robin" && (s.kind === "pools" || s.kind === "round_robin") ? "double_round_robin" : originalFormat(s.kind);
     out.swiss_pools[id] = s.pools ?? 1;
@@ -87,7 +88,14 @@ export function answersFromOriginalStructure(a: StepAnswers, input: OriginalStru
     const id = String(i), source = sourceKeys[i - 1];
     const name = String(raw.group_labels?.[id] || source?.split("::").at(-1) || `Division ${i}`).trim();
     let key = source;
-    if (source) {
+    if (source && a.createdTournamentId) {
+      // Saved unit keys index entries, stages and scheduling: never rename those identities.
+      const defaultName = source.includes("::") ? source.split("::")[1] : source;
+      const names = { ...(next.categoryLabels ?? {}) };
+      if (name !== defaultName) names[source] = name;
+      else delete names[source];
+      next.categoryLabels = names;
+    } else if (source) {
       const dest = source.includes("::") ? `${source.split("::")[0]}::${name}` : name;
       next = renameStructureKey(next, source, name);
       key = structureUnits(next).includes(dest) ? dest : source;

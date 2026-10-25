@@ -4,6 +4,7 @@ import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfir
 import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
+import { categoryDisplayName, categoryLabelOnlyChange } from "@/lib/smart-builder/category-labels";
 import { syncSwissRoundsToSpec } from "@/lib/smart-builder/sync-live-rounds";
 import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 import { roundCountCheck } from "@/lib/smart-builder/round-count-check";
@@ -15,7 +16,7 @@ import { assertTournamentPairingWritable, isFrozenUitsigTournament } from "@/lib
  * saved setup answers in step, otherwise reopening loads the older server copy and
  * the structure picks (e.g. planned play-offs) appear lost. Games/bookings untouched.
  */
-async function persistStructureAnswers(tid: string | null | undefined, answers: any) {
+async function persistStructureAnswers(tid: string | null | undefined, answers: any, nameOnly = false) {
   if (!tid || !answers) return;
   try {
     assertTournamentPairingWritable(tid);
@@ -23,6 +24,7 @@ async function persistStructureAnswers(tid: string | null | undefined, answers: 
     if (!cur) return;
     const plan = drawPlanOf(answers);
     await saveLifecycle(tid, { ...cur, answers, format_plan: plan });
+    if (nameOnly) return;
     const added = await attachTimelinePlayoffs(tid, plan);
     const n = await createPlannedPlayoffFixtures(tid, plan);
     if (added || n) toast.success(`Planned play-offs added to the running tournament${n ? ` — ${n} play-off fixtures created (players to be decided)` : ""}.`);
@@ -204,6 +206,8 @@ export type StepAnswers = {
   planId?: string;
   /** Local snapshot from the original alternate-builder screen; no live application. */
   originalStructure?: import("@/lib/smart-builder/original-structure").OriginalStructure;
+  /** Admin-editable names; established unit keys remain unchanged after tournament creation. */
+  categoryLabels?: Record<string, string>;
   /** Canvas layout only; semantic nodes/edges project the canonical categories and stage plans. */
   structureCanvas?: import("@/lib/smart-builder/structure-canvas").CanvasLayout;
   /** Per-category ordered stage plans (pilot stage planner); Stage 1 is mirrored to format/formatOverrides. */
@@ -593,7 +597,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Every place a player can end up: a subcategory, or the category itself when it has none. */
   const units = cats.flatMap((c) => {
     const subs = (a.subcats[c] ?? []).map((x) => x.trim()).filter(Boolean);
-    return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: `${c} › ${x}` })) : [{ key: c, base: c }];
+    return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, base: categoryDisplayName(a, `${c}::${x}`) })) : [{ key: c, base: categoryDisplayName(a, c) }];
   }).map((u) => {
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
     const catName = u.key.split("::")[0].trim().toLowerCase();
@@ -1644,7 +1648,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
 
           {cardStructure && cur === "Structure" && !serverReady && <p className="text-xs text-muted-foreground" role="status">Loading the saved tournament structure…</p>}
-          {cardStructure && cur === "Structure" && serverReady && <CardStructureEditor key={`structure-${tournamentId ?? "new"}`} clubId={clubId} answers={a} onSave={(next) => { setA(next); void persistStructureAnswers(tournamentId ?? a.createdTournamentId, next); void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
+          {cardStructure && cur === "Structure" && serverReady && <CardStructureEditor key={`structure-${tournamentId ?? "new"}`} clubId={clubId} answers={a} onSave={(next) => { const nameOnly = categoryLabelOnlyChange(a, next); setA(next); void persistStructureAnswers(tournamentId ?? a.createdTournamentId, next, nameOnly); if (!nameOnly) void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
           {cardStructure && cur === "StructureReview" && <CardStructureReview answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} dirty={rowStructureDirty} onEdit={() => go("Structure")} />}
           {isStruct && <>
             <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />

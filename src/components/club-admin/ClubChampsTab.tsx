@@ -10900,7 +10900,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       )}
 
   </>;
-  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={() => saveOriginalStructure()}>Save Structure</Button></div></div>;
+  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={() => saveOriginalStructure()}>Save Structure</Button></div>
+    <Dialog open={!!removeCategoryConfirm} onOpenChange={(open) => { if (!open) setRemoveCategoryConfirm(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove {removeCategoryConfirm?.label}?</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              {removeCategoryConfirm && removeCategoryConfirm.slots.length > 1 && <p>This removes the whole category, including all {removeCategoryConfirm.slots.length} pools and their settings.</p>}
+              {removeCategoryConfirm && removeCategoryConfirm.expected > 0 && <p>It currently shows {removeCategoryConfirm.expected} expected {removeCategoryConfirm.expected === 1 ? "entry" : "entries"}.</p>}
+              {removeCategoryConfirm?.saved && <p>Any players already entered in this category will no longer be part of the tournament draft. Saved games, results and bookings are not touched.</p>}
+              <p>Nothing is removed until you save the structure.</p>
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setRemoveCategoryConfirm(null)}>Cancel</Button>
+          <Button type="button" variant="destructive" onClick={confirmRemoveLeagueAt}>Remove category</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>;
 
   // ── LIST VIEW ──
   if (!showWizard) {

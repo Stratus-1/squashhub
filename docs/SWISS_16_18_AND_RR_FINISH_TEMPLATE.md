@@ -8,28 +8,30 @@ Companion documents: `docs/SWISS_24_PLAYER_TEMPLATE.md` (24-player model), `docs
 ## Source of truth
 
 - Models: `src/lib/tournaments/swiss-no-repeat.ts` — `SWISS_HALF_MODELS["18:10"]`, `["18:8"]`, `["16:8"]`, `preferredSwissTemplate(...)`, `strictSwissPlan(...)`, `swissHalves(...)`.
-- Round 1–2 base shape: `src/lib/tournaments/swiss-positional.ts` — `slotTemplate(n, round)` (fold; winners/losers halves folded).
+- Round 1–2 base shape: `src/lib/tournaments/swiss-positional.ts` — `slotTemplate(n, round)` (positional placing; winners/losers halves placed positionally).
 - Round-robin finish: `src/lib/tournaments/swiss-rr-finish.ts` — `RR_GROUP_SCHEDULE`, `rrFinishSplit`, `rrFinishRound`, `rrFinishIssues`, `TEN_REMAINDER_CHART`, `hybridSwissTable`; standings in `src/lib/tournaments/swiss-rr-standings.ts` — `rrFinishStandings`.
 - Tests: `src/test/swiss-no-repeat.test.ts`, `src/test/swiss-rr-finish.test.ts` (28 tests, all passing 25 Oct 2026).
 
 ## Shared rules (both field sizes)
 
+This is a **positional placing** system: the field is placed into a **top half and a bottom half** by current standing, and positions **rotate** each round to rank players effectively within the limited number of rounds.
+
 - Entrants seeded 1 (strongest) to N. **Positions = current standings after each completed round** — position numbers below always mean *current position*, never seed. A player never owns a position; the winner takes the better slot of each pair.
 - 5 rounds, no byes (even fields). Games per round: 18 → 9 (45 total), 16 → 8 (40 total).
 - The field splits into two halves that **never mix** from the split round onwards.
 - **18 players: halves are uneven — top 10 (positions 1–10) and bottom 8 (positions 11–18).** Because the halves are uneven they split early: fixed half pairings and no-repeat repair apply **from Round 2** (`swissStrictFromRound(18) = 2`).
-- **16 players: halves are even — 8 and 8.** Fixed half pairings and no-repeat repair apply **from Round 3** (`SWISS_NO_REPEAT_FROM_ROUND = 3`); Round 2 uses the standard winners-half/losers-half fold, which is the same mirror-within-halves shape.
+- **16 players: halves are even — 8 and 8.** Fixed half pairings and no-repeat repair apply **from Round 3** (`SWISS_NO_REPEAT_FROM_ROUND = 3`); Round 2 places the winners' half and losers' half positionally, which is the same placing-within-halves shape.
 - **No position pair repeats** across Rounds 1–5 (verified by test).
 - **No actual-opponent repeats**: if the players currently occupying paired positions have already met, `strictSwissPlan` repairs the unsaved round by swapping within the same half only. Saved/locked games are never rewritten. If no legal pairing exists the round fails closed with an explicit message — it never silently repeats opponents.
 - **Existing Uitsig tournaments are frozen**: these templates apply only to new tournaments that opt in prospectively (`swiss-sequencing-policy.ts`); saved fixtures are never regenerated.
 
 ## 18-player model (top 10 / bottom 8)
 
-### Round 1 — full fold (seed order), whole field
+### Round 1 — positional placing across the whole field (seed order)
 
 1v18, 2v17, 3v16, 4v15, 5v14, 6v13, 7v12, 8v11, 9v10.
 
-### Round 2 — mirror within each half (halves split here)
+### Round 2 — positional placing within each half (halves split here)
 
 | Top half (1–10) | Bottom half (11–18) |
 |---|---|
@@ -59,7 +61,7 @@ Companion documents: `docs/SWISS_24_PLAYER_TEMPLATE.md` (24-player model), `docs
 | 6 v 9 | 16 v 18 |
 | 8 v 10 | |
 
-### Round 5 — final neighbours (adjusted so no position pair repeats)
+### Round 5 — final positional placing (adjusted so no position pair repeats)
 
 | Top half (1–10) | Bottom half (11–18) |
 |---|---|
@@ -71,11 +73,11 @@ Companion documents: `docs/SWISS_24_PLAYER_TEMPLATE.md` (24-player model), `docs
 
 ## 16-player model (halves of 8)
 
-### Round 1 — full fold (seed order), whole field
+### Round 1 — positional placing across the whole field (seed order)
 
 1v16, 2v15, 3v14, 4v13, 5v12, 6v11, 7v10, 8v9.
 
-### Round 2 — mirror within each half
+### Round 2 — positional placing within each half
 
 | Top half (1–8) | Bottom half (9–16) |
 |---|---|
@@ -102,7 +104,7 @@ Companion documents: `docs/SWISS_24_PLAYER_TEMPLATE.md` (24-player model), `docs
 | 5 v 7 | 13 v 15 |
 | 6 v 8 | 14 v 16 |
 
-### Round 5 — final neighbours
+### Round 5 — final positional placing
 
 | Top half (1–8) | Bottom half (9–16) |
 |---|---|

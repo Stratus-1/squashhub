@@ -21,13 +21,15 @@ Companion document: `docs/TOURNAMENT_VIEW_TEMPLATES.md` (progression / standings
 
 ## Approved position pairings
 
-### Round 1 — full fold (seed order)
+This is a **positional placing** system: the field is placed into a **top half and a bottom half** by current standing, and positions **rotate** each round to rank players effectively within the limited number of rounds.
+
+### Round 1 — positional placing across the whole field (seed order)
 
 1v24, 2v23, 3v22, 4v21, 5v20, 6v19, 7v18, 8v17, 9v16, 10v15, 11v14, 12v13.
 
-Round 1 is a single fold across the whole field; the halves split from Round 2.
+Round 1 places the strongest seed against the weakest across the whole field; the halves split from Round 2.
 
-### Round 2 — mirror within each half
+### Round 2 — positional placing within each half
 
 | Top half (1–12) | Bottom half (13–24) |
 |---|---|
@@ -38,7 +40,7 @@ Round 1 is a single fold across the whole field; the halves split from Round 2.
 | 5 v 8 | 17 v 20 |
 | 6 v 7 | 18 v 19 |
 
-### Round 3 — groups of 6, folded
+### Round 3 — rotation of positions within each half
 
 | Top half (1–12) | Bottom half (13–24) |
 |---|---|
@@ -49,7 +51,7 @@ Round 1 is a single fold across the whole field; the halves split from Round 2.
 | 8 v 11 | 20 v 23 |
 | 9 v 10 | 21 v 22 |
 
-### Round 4 — sliding 1v3 model
+### Round 4 — rotation of positions within each half
 
 | Top half (1–12) | Bottom half (13–24) |
 |---|---|
@@ -60,7 +62,7 @@ Round 1 is a single fold across the whole field; the halves split from Round 2.
 | 9 v 11 | 21 v 23 |
 | 10 v 12 | 22 v 24 |
 
-### Round 5 — final neighbours (adjusted)
+### Round 5 — final positional placing (adjusted)
 
 | Top half (1–12) | Bottom half (13–24) |
 |---|---|

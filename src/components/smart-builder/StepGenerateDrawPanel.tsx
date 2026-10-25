@@ -641,6 +641,23 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     } finally { setBusy(false); }
   };
 
+  // Delete the whole draw without regenerating: server refuses played/started or court-booked games.
+  const deleteDraw = async () => {
+    if (!window.confirm(`Delete this draw? All ${existing.games} saved games and rounds are removed; entries and setup are kept, and you can generate a fresh draw afterwards. This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase as any).rpc("delete_tournament_draw", { p_champ_id: tournamentId });
+      if (error) throw new Error(error.message);
+      toast.success("Draw deleted — generate a fresh draw when you're ready");
+      setConfirmed(false); setRebuildOk(false);
+      await load();
+    } catch (e: any) {
+      toast.error(String(e.message ?? e).replace(/^.*?(no_draw|results_exist|bookings_exist):\s*/, ""));
+      await load();
+    } finally { setBusy(false); }
+  };
+
+
   if (loading) return <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading current entries…</div>;
 
   // Running tournament (any game played or started): setup never proposes, previews or creates fixtures again.
@@ -689,6 +706,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             <Button size="sm" variant="outline" onClick={() => setAskSend({ after: false })}>Send draw to players</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={placeOnCourts}>Place games on courts (as per setup)</Button>
             {existing.played === 0 && !rebuildOk && <Button size="sm" variant="destructive" onClick={() => setRebuildOk(true)}>Make a new draw (replace this one)</Button>}
+            {existing.played === 0 && !rebuildOk && <Button size="sm" variant="destructive" disabled={busy} onClick={deleteDraw}>Delete draw</Button>}
           </div>
           <p className="text-muted-foreground">Results are entered on the draw page as usual. Play-off stages you planned are kept as "Define later" and are set up from Manage stages once the first stage finishes.</p>
         </div>

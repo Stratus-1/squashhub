@@ -1,6 +1,6 @@
-## 2026-10-25 — Missing whole-tournament capacity on Courts
 ## 2026-10-25 — Specific leagues could not be unticked
 - The active league audience handler reselected its own mode. Deselecting now retains Everyone and/or Players I pick, with saved league IDs kept for later reselection; no fixture, booking, permission or hosted-data changes.
+- Nine focused tests pass; signed-in GW Double Open toggle changes true → false → true, Everyone retained and league list hides/reappears. Hosted writes intercepted; preview build OK, not published.
 
 ## 2026-10-25 — Missing whole-tournament capacity on Courts
 - Added a read-only capacity band above court inputs: available court-hours/whole slots, per-category stage and playoff game counts, slot minutes and required court-time. Reuses canonical stage capacity and deduplicates overlapping date/court windows; doubles count pairs, not individual players.

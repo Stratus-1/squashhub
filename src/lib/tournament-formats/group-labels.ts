@@ -8,10 +8,15 @@
  * `League {groupNumber}` when no label is configured.
  */
 export function getGroupLabel(
-  champ: { group_labels?: Record<string, string> | any | null } | null | undefined,
+  champ: { group_labels?: Record<string, string> | any | null; beta_lifecycle?: any } | null | undefined,
   groupNumber: number | null | undefined,
 ): string {
   if (groupNumber == null) return "";
+  const answers = champ?.beta_lifecycle?.answers;
+  const keys: string[] = answers?.originalStructure?._unit_keys ?? [];
+  const key = keys[groupNumber - 1];
+  const renamed = key ? answers?.categoryLabels?.[key] : undefined;
+  if (typeof renamed === "string" && renamed.trim()) return renamed.trim();
   const raw =
     champ && (champ as any).group_labels
       ? ((champ as any).group_labels as Record<string, string>)[String(groupNumber)]

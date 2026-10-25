@@ -30,7 +30,7 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
     const id = String(i + 1), cat = key.split("::")[0];
     const s = rowStages(a, key)[0];
     const sc = a.scoringOverrides[key] ?? a.scoringOverrides[cat] ?? a.scoring;
-    out.group_labels[id] = key.includes("::") ? key.split("::")[1] : key;
+    out.group_labels[id] = a.categoryLabels?.[key] ?? (key.includes("::") ? key.split("::")[1] : key);
     out.expected_players[id] = Number(a.unitEntries[key]) || 0;
     out.league_formats[id] = saved.league_formats?.[id] === "double_round_robin" && (s.kind === "pools" || s.kind === "round_robin") ? "double_round_robin" : originalFormat(s.kind);
     out.swiss_pools[id] = s.pools ?? 1;
@@ -80,6 +80,30 @@ export function mirrorPoolGroupSettings(raw: OriginalStructure): OriginalStructu
 
 export function answersFromOriginalStructure(a: StepAnswers, input: OriginalStructure): StepAnswers {
   const raw = mirrorPoolGroupSettings(input);
+  if (a.createdTournamentId) {
+    const previous = originalStructureFromAnswers(a);
+    const settings = (value: OriginalStructure) => {
+      const copy = structuredClone(value);
+      delete copy.group_labels;
+      delete copy.category_locks;
+      const stable = (v: any): any => Array.isArray(v) ? v.map(stable) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((key) => [key, stable(v[key])])) : v;
+      return JSON.stringify(stable(copy));
+    };
+    if (settings(previous) === settings(raw)) {
+      const next = structuredClone(a);
+      const labels = { ...(a.categoryLabels ?? {}) };
+      (previous._unit_keys as string[]).forEach((key, i) => {
+        const defaultName = key.includes("::") ? key.split("::")[1] : key;
+        const name = String(raw.group_labels?.[String(i + 1)] ?? "").trim();
+        if (!name || name.includes("::")) return;
+        if (name === defaultName) delete labels[key];
+        else labels[key] = name;
+      });
+      next.categoryLabels = labels;
+      next.originalStructure = { ...raw, _unit_keys: previous._unit_keys };
+      return next;
+    }
+  }
   let next = structuredClone(a);
   const sourceKeys: string[] = raw._unit_keys ?? [];
   const activeKeys: string[] = [];
@@ -87,7 +111,14 @@ export function answersFromOriginalStructure(a: StepAnswers, input: OriginalStru
     const id = String(i), source = sourceKeys[i - 1];
     const name = String(raw.group_labels?.[id] || source?.split("::").at(-1) || `Division ${i}`).trim();
     let key = source;
-    if (source) {
+    if (source && a.createdTournamentId) {
+      // Saved unit keys index entries, stages and scheduling: never rename those identities.
+      const defaultName = source.includes("::") ? source.split("::")[1] : source;
+      const names = { ...(next.categoryLabels ?? {}) };
+      if (name !== defaultName) names[source] = name;
+      else delete names[source];
+      next.categoryLabels = names;
+    } else if (source) {
       const dest = source.includes("::") ? `${source.split("::")[0]}::${name}` : name;
       next = renameStructureKey(next, source, name);
       key = structureUnits(next).includes(dest) ? dest : source;

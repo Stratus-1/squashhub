@@ -2,10 +2,32 @@ import { describe, expect, it } from "vitest";
 import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
 import { originalStructureFromAnswers, answersFromOriginalStructure, structurePoolGroups } from "@/lib/smart-builder/original-structure";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
+import { categoryDisplayName } from "@/lib/smart-builder/category-labels";
 
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it("renames a saved category without changing its player, pool, playoff or scheduling links", () => {
+    const a = base();
+    a.createdTournamentId = "existing";
+    a.picks = { player: ["Men"] };
+    a.fee = { has: true, amount: "50", varies: true, perUnit: { Men: "50" }, doublesBasis: "player", doublesCover: null };
+    a.courtRules = [{ key: "Men", courts: [20] }] as unknown as StepAnswers["courtRules"];
+    const raw = originalStructureFromAnswers(a);
+    raw.group_labels["1"] = "Doubles Open renamed";
+    const b = answersFromOriginalStructure(a, raw);
+    expect(b.categories).toEqual(["Men"]);
+    expect(b.picks).toEqual({ player: ["Men"] });
+    expect(b.fee).toEqual(a.fee);
+    expect(b.courtRules).toEqual(a.courtRules);
+    expect(b.stagePlans).toEqual(a.stagePlans);
+    expect(b.stages).toEqual(a.stages);
+    expect(b.days).toEqual(a.days);
+    expect(categoryDisplayName(b, "Men")).toBe("Doubles Open renamed");
+    const reopened = originalStructureFromAnswers(JSON.parse(JSON.stringify(b)));
+    expect(reopened._unit_keys).toEqual(["Men"]);
+    expect(reopened.group_labels["1"]).toBe("Doubles Open renamed");
+  });
   it.each(["even_odd", "by_position", "second_server"] as const)("retains Bells doubles serving %s on save and reload", (method) => {
     const a = base();
     a.disc.Men = "doubles";

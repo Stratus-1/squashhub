@@ -1,3 +1,6 @@
+## 2026-10-25 — Saved category name unnecessarily locked
+- Saved builder categories now retain established unit keys while storing admin-editable display names separately in the existing answers snapshot. Category safety locks remain; name-only saves skip playoff/fixture work. No hosted tournament records changed during implementation.
+
 ## 2026-10-25 — Play-off pairing step hidden by merged structure
 - Restored the timed tournament Playoffs step and direct navigation, with per-category existing qualification/pairing controls including single-category events. Courts now breaks out semifinal/final slots and minutes. Uneven six-pool qualification is explicitly unresolved; no inferred qualifiers or new pairing engine.
 - No hosted tournament, booking, fixture, provider or native changes; preview only.

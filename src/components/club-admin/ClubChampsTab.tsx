@@ -9487,9 +9487,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 text-[11px]"
-                                disabled={identityLocked || !!poolGroup}
                                 onClick={() => duplicateLeagueAt(gn)}
-                                title="Create another division with exactly these settings"
+                                title="Create another category with exactly these settings (players are not copied)"
                               >
                                 <Copy className="h-3.5 w-3.5 mr-1" />
                                 Duplicate
@@ -9500,9 +9499,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                disabled={identityLocked || !!poolGroup}
-                                onClick={() => removeLeagueAt(gn)}
-                                title="Remove league"
+                                onClick={() => requestRemoveLeagueAt(gn)}
+                                title="Remove this category (asks first)"
                               >
                                 <X className="h-4 w-4" />
                               </Button>

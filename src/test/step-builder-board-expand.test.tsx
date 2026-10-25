@@ -32,8 +32,7 @@ const seed = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
 }));
 
 async function openBoard() {
-  render(<StepByStepBuilder clubId="c1" clubName="Riverside" />);
-  fireEvent.click(await screen.findByRole("button", { name: /allocate|pick players/i }));
+  render(<StepByStepBuilder clubId="c1" clubName="Riverside" initialStep="Pick" />);
   await screen.findByTestId("pick-board");
 }
 

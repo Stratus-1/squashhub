@@ -6,6 +6,12 @@ const unit: CourtsCapacityUnit = { key: "Open", label: "Open", entrants: 24, dou
 const day = { date: "2026-10-31", courts: "3", courtIds: ["1", "3", "4"], windows: [{ from: "09:00", to: "17:00" }] };
 
 describe("Courts capacity", () => {
+  it("shows two semifinal slots and one final slot separately at 23 minutes", () => {
+    const c = courtsCapacity(answers, [day], [{ ...unit, playoffRounds: 2 }]);
+    expect(c.rows[0].playoffSlots).toEqual([{ label: "Semifinals", matches: 2, minutes: 46 }, { label: "Final", matches: 1, minutes: 23 }]);
+    expect(c.rows[0].playoffMinutes).toBe(69);
+    expect(c.games).toBe(39);
+  });
   it("costs six four-pair RR pools and semifinals/final against three eight-hour courts", () => {
     const c = courtsCapacity(answers, [day], [unit]);
     expect(c.rows[0].poolGames).toBe(36);

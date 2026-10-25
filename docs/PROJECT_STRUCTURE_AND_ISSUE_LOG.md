@@ -1,3 +1,7 @@
+## 2026-10-25 — Play-off pairing step hidden by merged structure
+- Restored the timed tournament Playoffs step and direct navigation, with per-category existing qualification/pairing controls including single-category events. Courts now breaks out semifinal/final slots and minutes. Uneven six-pool qualification is explicitly unresolved; no inferred qualifiers or new pairing engine.
+- No hosted tournament, booking, fixture, provider or native changes; preview only.
+
 ## 2026-10-25 — Day-based Courts page missing reservation action
 - Courts rendered day availability but the existing reservation action only consumed the separate stage timeline. Added the shared Book courts now control for day-based court windows, unioning overlaps per date/court and retaining gaps with stable IDs in a separate `:days` namespace. Existing clash checks and explicit booking/release actions reused; GoBook-managed clubs retain their provider booking path.
 - Viewing remains read-only; no game generation, scheduling, permission, provider or native changes. Verification uses intercepted booking writes; no live reservations or publication.

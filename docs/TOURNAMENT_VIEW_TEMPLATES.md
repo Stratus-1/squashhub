@@ -7,6 +7,7 @@ owner approval. All views are **display-only**: they read saved fixtures, result
 and standings and never write tournament data, create bookings or send notices.
 
 Source of truth files:
+- `src/pages/ClubChampsView.tsx` — composition layer (pool views, stage routing, classic standings fallback)
 - `src/components/tournaments/viewer/TournamentInteractiveViewer.tsx` — shared viewer shell
 - `src/components/tournaments/RoundRobinPilotView.tsx` — RR clean/combined/matrix views
 - `src/components/tournaments/SwissProgressionPilotView.tsx` — Swiss grid/log/calendar tabs

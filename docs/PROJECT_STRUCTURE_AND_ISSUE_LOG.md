@@ -1,3 +1,6 @@
+## 2026-10-25 — RR placement preview labels and ordering
+- Saved placement play now previews A1 v B1, A2 v B2 etc. using the saved per-pool qualifier count rather than a stale seeded championship timeline. Play-offs stay below active round robins and move above them only when pools finish/play-offs start. Display only; no fixture, setup or scheduling writes.
+
 ## 2026-10-25 — Delete draw action for organisers
 - Added a "Delete draw" button on Generate draw (unplayed draws only) backed by the new authenticated `delete_tournament_draw` RPC: manage-permission check, tournament row lock, refusal when any game is played/started or court-booked, removal of fixtures/rounds/divisions plus linked result notifications, disputes and correction requests, entries and builder_spec retained, one audit event per deletion.
 - Redraw path unchanged (step_prepare_draw still replaces in one step); no hosted fixtures deleted during implementation.

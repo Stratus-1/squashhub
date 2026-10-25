@@ -177,7 +177,14 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const uKey = unitKeyOf(label);
       const sc = ans?.scoringOverrides?.[uKey] ?? ans?.scoringOverrides?.[uKey.split("::")[0]] ?? ans?.scoring
         ?? (plan?.divisions ?? []).find((dv: any) => dv?.label === label)?.scoring;
-      const scoringText = sc ? `${sc.mode === "time_capped_points" ? "Time-capped points" : `PAR ${sc.pointsPerGame ?? 11}`} · ${sc.playAllGames ? `Play all ${sc.bestOf} games` : `Best of ${sc.bestOf}`}` : null;
+      const scoringText = !sc ? null : sc.mode === "time_capped_points"
+        ? (() => {
+            const play = Number(sc.timeCapPlay || sc.timeCapMinutes) || 0;
+            const brk = Number(sc.timeCapBreak) || 0;
+            if (!play) return "Time cap · playing time not set";
+            return `Time cap · ${play} min playing + ${brk} min break = ${play + brk} min slot`;
+          })()
+        : `PAR ${sc.pointsPerGame ?? 11} · ${sc.playAllGames ? `Play all ${sc.bestOf} games` : `Best of ${sc.bestOf}`}`;
       list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs, playoffPlans: p.playoffPlans, poolReview: review.mode === "none" && !review.warnings.length ? null : review, poolAccepted: review.mode === "auto", scoringText, poolNames: (() => { try { return rowStages(ans, uKey)[0]?.poolNames ?? null; } catch { return null; } })(), bottomHalf: !!ans?.originalStructure?.league_playoff_bottom_half?.[String(g)],
         poolQualifiers: (() => { const r = poolPlanOf(plan, unitKeyOf(label)); const q = poolQualificationOf(plan, unitKeyOf(label)); return r && r.mode !== "none" ? { perPool: Number(q.perPool) || null, runnersUp: Number(q.runnersUp) || 0 } : null; })() });
     }

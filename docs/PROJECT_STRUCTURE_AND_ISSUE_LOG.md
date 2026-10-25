@@ -1,3 +1,7 @@
+## 2026-10-25 — Day-based Courts page missing reservation action
+- Courts rendered day availability but the existing reservation action only consumed the separate stage timeline. Added the shared Book courts now control for day-based court windows, unioning overlaps per date/court and retaining gaps with stable IDs in a separate `:days` namespace. Existing clash checks and explicit booking/release actions reused; GoBook-managed clubs retain their provider booking path.
+- Viewing remains read-only; no game generation, scheduling, permission, provider or native changes. Verification uses intercepted booking writes; no live reservations or publication.
+
 ## 2026-10-25 — Bells doubles serving selector missing
 - Moved the existing per-category serving choices outside the Standard-only scoring branch so Bells doubles also expose Even / Odd, By position, Second server and Not set / Manual. Existing category locks and marker rules retained; adapter now clears stale methods when Manual is chosen. No live tournament writes or publication.
 - 43 serving/adapter checks pass, preview build OK. Signed-in read-only browser navigation did not expose the category card, so on-screen selector and real saved readback remain unverified.

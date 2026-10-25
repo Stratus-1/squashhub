@@ -87,6 +87,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { adminCanOverride, adminPlacementAllowed } from "@/lib/smart-builder/admin-allocation";
+import { withoutLeagueChoice } from "@/lib/smart-builder/eligibility-choice";
 import { Switch } from "@/components/ui/switch";
 import { matchEntries, parseEntryCsv } from "@/lib/smart-builder/pick-import";
 import { inferCategory } from "@/lib/leagues/category";
@@ -1768,15 +1769,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                           // All three options can be combined: Everyone (alsoEveryone), leagues + Players I pick (alsoPick).
                           const on = e.mode === m || (m === "manual" && e.mode === "leagues" && !!e.alsoPick) || (m === "everyone" && e.mode !== "everyone" && !!e.alsoEveryone);
                            const click = () => {
-                            if (m === "everyone" && e.mode !== "everyone") setElig(u.key, { alsoEveryone: !e.alsoEveryone });
+                            if (m === "leagues" && e.mode === "leagues") setElig(u.key, withoutLeagueChoice(e));
+                            else if (m === "everyone" && e.mode !== "everyone") setElig(u.key, { alsoEveryone: !e.alsoEveryone });
                             else if (m === "manual" && e.mode === "leagues") setElig(u.key, { alsoPick: !e.alsoPick });
                             else if (m === "leagues" && e.mode === "manual") setElig(u.key, { mode: "leagues", alsoPick: true });
                             else if (e.mode === "everyone" && m !== "everyone") setElig(u.key, { mode: m, alsoEveryone: true, alsoPick: m === "leagues" ? e.alsoPick : false });
                             else setElig(u.key, { mode: m, alsoPick: false, alsoEveryone: false });
                           };
-                          return <button key={m} type="button" aria-pressed={on} onClick={click} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
+                          return <Button key={m} type="button" variant="outline" aria-pressed={on} onClick={click} className={cn("h-auto rounded-full px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground" : "border-border text-muted-foreground")}>
                             {m === "everyone" ? "Everyone" : m === "leagues" ? "Specific league(s)" : "Players I pick"}
-                          </button>;
+                          </Button>;
                         })}
                       </div>
                        {e.mode !== "everyone" && e.alsoEveryone && <p className="text-xs text-muted-foreground">Everyone may enter. Members of the chosen leagues are placed in their group automatically, and you can add or move any player yourself on Pick players.</p>}

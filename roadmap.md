@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Fix Specific league(s) untick on Who may enter, preserving other selected audiences and saved league IDs; verify without hosted writes.
 - [x] Show read-only whole-tournament capacity on Courts: ten focused tests pass; signed-in GW Double Open displays 24 court-hours / 60 slots, 36 RR + 3 provisional playoff games / 14h57m. Qualification remains unresolved, so no unconditional fit claim. Preview only; no tournament writes/publication.
 - [ ] GW Double Open ranked Snake allocation: owner chose Regional rankings; awaiting the regional ranking list/order before assigning the 24 pairs to six pools. Never substitute club points or ladder.
 - [x] Added read-only six-pool preview using reciprocal doubles pairs, combined ranking points and Snake; individual Rankings board no longer sorts by ladder. Forty focused checks pass, preview build OK; GW Double Open has six pools/24 pairs/48 entries saved and zero fixtures. Its scope is Regional and regional ranking data is unavailable: allocation explicitly blocks rather than substituting club ladder. Saved-setup browser navigation did not reach Pick; no live writes/publication.

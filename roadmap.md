@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] CSIR Thursday social: isolate weekly RSVPs, actionable invitations and selected-channel delivery; verify without sending unsolicited member messages.
+- [ ] CSIR Thursday social: isolate weekly RSVPs, actionable invitations and selected-channel delivery; clear the three September-carried confirmations for future weeks without touching genuine weekly replies; verify without sending unsolicited member messages.
 - [x] Rachel/authorised treasurer zero-outstanding open-tab removal: existing Rachel permissions confirmed, locked audited closure with tips and protected nonzero tabs; disposable SQL and three cart tests pass, signed-in fictional NSC confirmation/removal/readback verified. Build OK; no real tabs removed or publication.
 - [x] Correct screenshot's remaining Tournaments heading using its resolved Ladies B deadline before legacy/pool labels; authenticated Uitsig DOM confirms Lisa Rahman–Yolanda under R2 29 Oct, no R3 29 Oct heading. Five tests pass, build OK; no tournament writes/publication.
 - [x] Align Ladies B to latest setup screenshot: R1 22 October, R2 29 October, R3 5 November; stage, fixture deadlines and legacy linked round overrides audited/saved. Four fixtures per deadline, four results retained; protected-field fingerprints identical. Seven tests and signed-in fixture screenshots pass, preview build OK; no publication.

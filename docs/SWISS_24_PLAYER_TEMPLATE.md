@@ -23,12 +23,9 @@ Companion document: `docs/TOURNAMENT_VIEW_TEMPLATES.md` (progression / standings
 
 ### Round 1 — full fold (seed order)
 
-| Top half | Bottom half |
-|---|---|
-| 1 v 24 | 13 v 12† |
+1v24, 2v23, 3v22, 4v21, 5v20, 6v19, 7v18, 8v17, 9v16, 10v15, 11v14, 12v13.
 
-Full list: 1v24, 2v23, 3v22, 4v21, 5v20, 6v19, 7v18, 8v17, 9v16, 10v15, 11v14, 12v13.
-(† Round 1 is a single fold across the whole field; the halves split from Round 2.)
+Round 1 is a single fold across the whole field; the halves split from Round 2.
 
 ### Round 2 — mirror within each half
 

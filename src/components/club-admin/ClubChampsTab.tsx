@@ -1775,6 +1775,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     copy(setLeagueSeedingPlans as any);
     copy(setLeagueFollowUpSeeding as any);
     copy(setMonradRounds as any);
+    // A pooled category is stored as one slot per pool; the copy is a normal
+    // pooled category with the same pool count and total expected entries.
+    const pg = structureOnly?.initial._pool_groups?.find((group: { slots: number[] }) => group.slots.includes(gn)) as { slots: number[] } | undefined;
+    if (pg) {
+      setSwissPools((m) => ({ ...m, [to]: pg.slots.length }));
+      setExpectedPlayers((m) => ({ ...m, [to]: pg.slots.reduce((n, s) => n + Number(expectedPlayers[String(s)] || 0), 0) }));
+    }
     // The copy keeps the rules but NOT the entrants — the organiser picks the
     // leagues/players for the new division, which is the whole point of it.
     setSourceForLeague(Number(to), { mode: "all", leagueIds: [] });

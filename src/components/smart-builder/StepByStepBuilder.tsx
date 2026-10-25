@@ -117,6 +117,7 @@ import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
 import { dayCourtStages } from "@/lib/smart-builder/day-court-bookings";
+import { choosePlayoffPairing } from "@/lib/smart-builder/playoff-pairing-choice";
 import { formatSource, setCategoryFormat, resetCategoryFormat, unsetCategories } from "@/lib/smart-builder/format-default";
 import { StructureGuidePanel, RecommendationCard, guideRecommendations } from "./StructureGuidePanel";
 import { guideEntryCounts, guideCountText } from "./guide-entry-counts";
@@ -647,7 +648,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const setPlayoffOverride = (key: string, patch: Partial<PlayoffPlan> | null) => {
     const next = { ...(a.playoffOverrides ?? {}) };
     if (patch === null) delete next[key]; else next[key] = { ...playoffFor(key), ...patch };
-    setA({ ...a, playoffOverrides: next });
+    setA({ ...a, playoffOverrides: next, ...(patch?.pairing ? { stages: choosePlayoffPairing(a.stages, key, units.map((u) => u.key), patch.pairing) as ClubStage[] } : {}) });
   };
   const { data: swissPilot = false } = useClubBetaFeature(clubId, "tournament_swiss_category_rounds");
   const { data: savedStagePlannerFlag = false } = useClubBetaFeature(clubId, "tournament_stage_planner");
@@ -2717,7 +2718,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 const places = 2 ** p.rounds;
                 return <section key={u.key} aria-label={`Play-offs for ${u.base}`} className="space-y-3 border-b border-border py-3">
                   <h3 className="text-sm font-semibold">{u.base} · {pools} pool{pools === 1 ? "" : "s"}</h3>
-                  <PlayoffFields value={p} onChange={(patch) => setPlayoffOverride(u.key, patch)} format={formatFor(u.key).kind} />
+                  <PlayoffFields value={p} onChange={(patch) => setPlayoffOverride(u.key, patch)} format={formatFor(u.key).kind} roundsLocked={!!structurePlayoffs} />
                   {pools > 1 && p.choice === "playoffs" && <div className="space-y-2 text-xs">
                     <label className="flex flex-wrap items-center gap-2"><span>Qualifiers from each pool</span><Input type="number" min={1} className="h-8 w-20" aria-label={`Qualifiers per pool for ${u.base}`} value={q.perPool ?? ""} placeholder="Not set" onChange={(e) => setPoolQualification(u.key, { perPool: e.target.value })} /></label>
                     <p>{pools} pools · {places} places in {playoffText(p)}{Number(q.perPool) > 0 ? ` · ${pools * Number(q.perPool)} qualifiers selected` : " · qualification not confirmed"}.</p>
@@ -3017,7 +3018,7 @@ function SectionHead({ children }: { children: React.ReactNode }) {
 function Q({ t, h }: { t: string; h: string }) {
   return <div className="space-y-2"><h3 className="text-lg font-semibold leading-snug text-foreground">{t}</h3><p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{h}</p></div>;
 }
-function PlayoffFields({ value, onChange, format }: { value: PlayoffPlan; onChange: (patch: Partial<PlayoffPlan>) => void; format: CompKind | null }) {
+function PlayoffFields({ value, onChange, format, roundsLocked = false }: { value: PlayoffPlan; onChange: (patch: Partial<PlayoffPlan>) => void; format: CompKind | null; roundsLocked?: boolean }) {
   if (format === "knockout") return <p className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">A knockout already has its own rounds (e.g. quarterfinals, semifinals, final), so no separate playoffs are planned here.</p>;
   const sel = "mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
   const noneLabel = format === "swiss" ? "Finish on Swiss standings" : format === "cross" ? "Finish on standings" : "No playoffs";
@@ -3030,7 +3031,7 @@ function PlayoffFields({ value, onChange, format }: { value: PlayoffPlan; onChan
     </div>
     {value.choice === "playoffs" && <div className="space-y-3 rounded-lg border border-border p-3">
       {poolish && <div><Label>Type of playoffs</Label><select aria-label="Type of playoffs" className={sel} value={value.style ?? "later"} onChange={(e) => onChange({ style: e.target.value as PlayoffPlan["style"] })}><option value="later">Decide later</option><option value="championship">Championship playoffs (find one winner)</option><option value="placement">Placement play (rank every position)</option></select></div>}
-      {!(poolish && value.style === "placement") && <div><Label>Stages</Label><div className="mt-2 flex flex-wrap gap-2">{([1, 2, 3] as const).map((rounds) => <Button key={rounds} type="button" size="sm" variant={value.rounds === rounds ? "default" : "outline"} aria-pressed={value.rounds === rounds} onClick={() => onChange({ rounds })}>{playoffText({ ...value, rounds })}</Button>)}</div></div>}
+      {!(poolish && value.style === "placement") && <div><Label>Stages</Label>{roundsLocked ? <div className="mt-2 text-sm">{playoffText(value)} · selected in Tournament structure</div> : <div className="mt-2 flex flex-wrap gap-2">{([1, 2, 3] as const).map((rounds) => <Button key={rounds} type="button" size="sm" variant={value.rounds === rounds ? "default" : "outline"} aria-pressed={value.rounds === rounds} onClick={() => onChange({ rounds })}>{playoffText({ ...value, rounds })}</Button>)}</div>}</div>}
       {poolish && value.style === "placement" && <p className="text-xs text-muted-foreground">e.g. A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th. Exact placement games are set once the final format is confirmed.</p>}
       {!(poolish && value.style === "placement") && <>
         <div><Label>Who qualifies?</Label><select aria-label="Who qualifies for playoffs" className={sel} value={value.qualification} onChange={(e) => onChange({ qualification: e.target.value as PlayoffPlan["qualification"] })}><option value="later">Decide qualification later</option><option value="top_pools">{format === "swiss" ? "Top players/pairs on standings" : "Top players/pairs from pools"}</option><option value="seeded">Highest-ranked entrants</option></select></div>

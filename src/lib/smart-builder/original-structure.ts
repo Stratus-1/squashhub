@@ -150,7 +150,7 @@ export function answersFromOriginalStructure(a: StepAnswers, input: OriginalStru
   }
   // Deletions are draft-only; retain parent categories while any child remains.
   next.categories = next.categories.filter((cat) => activeKeys.includes(cat) || activeKeys.some((k) => k.startsWith(`${cat}::`)));
-  next.subcats = Object.fromEntries(Object.entries(next.subcats).map(([cat, subs]) => [cat, subs.filter((sub) => activeKeys.includes(`${cat}::${sub}`))]));
+  next.subcats = Object.fromEntries(Object.entries(next.subcats).map(([cat, subs]) => [cat, subs.filter((sub) => activeKeys.includes(`${cat}::${sub}`))] as [string, string[]]).filter(([, subs]) => subs.length > 0));
   const ds = activeKeys.map((key) => next.disc[key]);
   next.playType = ds.every((d) => d === "doubles") ? "doubles" : ds.every((d) => d === "singles") ? "singles" : "both";
   next.scoring = next.scoring ?? next.scoringOverrides[activeKeys[0]] ?? null;

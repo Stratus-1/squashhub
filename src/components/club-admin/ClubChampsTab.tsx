@@ -1624,6 +1624,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setCollapsedLeagues((m) => ({ ...m, [String(gn)]: false }));
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
+    // A new category must never be nameless: an empty name blocks saving with
+    // a confusing error, so seed a renameable default immediately.
+    setGroupLabels((m) => ({ ...m, [String(gn)]: (m[String(gn)] ?? "").trim() || `Category ${gn}` }));
     // New leagues inherit the current category as their starting point.
     setLeagueGenders((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? gender }));
     setLeagueMatchTypes((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? matchType }));
@@ -1775,6 +1778,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     copy(setLeagueSeedingPlans as any);
     copy(setLeagueFollowUpSeeding as any);
     copy(setMonradRounds as any);
+    // A pooled category is stored as one slot per pool; the copy is a normal
+    // pooled category with the same pool count and total expected entries.
+    const pg = structureOnly?.initial._pool_groups?.find((group: { slots: number[] }) => group.slots.includes(gn)) as { slots: number[] } | undefined;
+    if (pg) {
+      setSwissPools((m) => ({ ...m, [to]: pg.slots.length }));
+      setExpectedPlayers((m) => ({ ...m, [to]: pg.slots.reduce((n, s) => n + Number(expectedPlayers[String(s)] || 0), 0) }));
+    }
     // The copy keeps the rules but NOT the entrants — the organiser picks the
     // leagues/players for the new division, which is the whole point of it.
     setSourceForLeague(Number(to), { mode: "all", leagueIds: [] });
@@ -1848,6 +1858,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueWinConditions(shift);
     setLeagueServingMethods(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
+  };
+  /**
+   * Deleting a category always asks first. A pooled category is stored as one
+   * slot per pool, so removing it removes every pool slot (highest first, so
+   * the positional shift stays correct). Entered players of a removed category
+   * drop out of the draft — the handover only accepts keys that still exist.
+   */
+  const [removeCategoryConfirm, setRemoveCategoryConfirm] = useState<{ label: string; slots: number[]; expected: number; saved: boolean } | null>(null);
+  const requestRemoveLeagueAt = (gn: number) => {
+    const pg = structureOnly?.initial._pool_groups?.find((group: { slots: number[] }) => group.slots.includes(gn)) as { label?: string; slots: number[] } | undefined;
+    const slots = pg ? [...pg.slots].sort((a, b) => b - a) : [gn];
+    const expected = slots.reduce((n, s) => n + Number(expectedPlayers[String(s)] || 0), 0);
+    const label = String(pg?.label ?? groupLabels[String(gn)] ?? `Category ${gn}`).trim();
+    setRemoveCategoryConfirm({ label, slots, expected, saved: !!structureOnly?.initial._identity_locked });
+  };
+  const confirmRemoveLeagueAt = () => {
+    const c = removeCategoryConfirm;
+    if (!c) return;
+    c.slots.forEach((slot) => removeLeagueAt(slot));
+    setRemoveCategoryConfirm(null);
+    toast.success(`${c.label} removed — save the structure to apply`);
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
@@ -9107,7 +9138,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const saveOriginalStructure = (locks = categoryLocks, validateSlots?: number[]) => {
     if (!structureOnly) return;
     const names = Array.from({ length: numGroups }, (_, i) => String(groupLabels[String(i + 1)] ?? "").trim());
-    if (names.some((name) => !name || name.includes("::"))) { toast.error("Each category needs a name without ::."); return; }
+    const badName = names.findIndex((name) => !name || name.includes("::"));
+    if (badName >= 0) { toast.error(names[badName] ? `Category ${badName + 1}: the name must not contain ::.` : `Category ${badName + 1} needs a name.`); return; }
     if (new Set(names.map((name) => name.toLowerCase())).size !== names.length) { toast.error("Category names must be unique."); return; }
     const finalMonradRounds = { ...monradRounds };
     for (let i = 1; i <= numGroups; i++) {
@@ -9317,7 +9349,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         const lockKey = categoryLockKey(originalKeysRef.current[gn - 1] ?? key, poolGroup?.parent);
                         const categoryLocked = !!structureOnly && categoryLocks[lockKey] === true;
                         const poolIndex = poolGroup ? poolGroup.slots.indexOf(gn) + 1 : 0;
-                        const identityLocked = !!structureOnly?.initial._identity_locked;
                         const displayCategory = gn - (structureOnly?.initial._pool_groups ?? []).reduce((n: number, group: { slots: number[] }) => n + group.slots.filter((slot) => slot < gn && slot !== group.slots[0]).length, 0);
                         // One category card only: legacy numbered pool slots share the first pool's settings.
                         if (poolGroup && poolIndex > 1) return null;
@@ -9459,9 +9490,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 text-[11px]"
-                                disabled={identityLocked || !!poolGroup}
                                 onClick={() => duplicateLeagueAt(gn)}
-                                title="Create another division with exactly these settings"
+                                title="Create another category with exactly these settings (players are not copied)"
                               >
                                 <Copy className="h-3.5 w-3.5 mr-1" />
                                 Duplicate
@@ -9472,9 +9502,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                disabled={identityLocked || !!poolGroup}
-                                onClick={() => removeLeagueAt(gn)}
-                                title="Remove league"
+                                onClick={() => requestRemoveLeagueAt(gn)}
+                                title="Remove this category (asks first)"
                               >
                                 <X className="h-4 w-4" />
                               </Button>
@@ -10874,7 +10903,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       )}
 
   </>;
-  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={() => saveOriginalStructure()}>Save Structure</Button></div></div>;
+  if (structureOnly) return <div className="tournament-admin original-structure-screen space-y-3" data-testid="original-structure-screen">{renderOriginalStructure()}<div className="flex justify-end"><Button onClick={() => saveOriginalStructure()}>Save Structure</Button></div>
+    <Dialog open={!!removeCategoryConfirm} onOpenChange={(open) => { if (!open) setRemoveCategoryConfirm(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove {removeCategoryConfirm?.label}?</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              {removeCategoryConfirm && removeCategoryConfirm.slots.length > 1 && <p>This removes the whole category, including all {removeCategoryConfirm.slots.length} pools and their settings.</p>}
+              {removeCategoryConfirm && removeCategoryConfirm.expected > 0 && <p>It currently shows {removeCategoryConfirm.expected} expected {removeCategoryConfirm.expected === 1 ? "entry" : "entries"}.</p>}
+              {removeCategoryConfirm?.saved && <p>Any players already entered in this category will no longer be part of the tournament draft. Saved games, results and bookings are not touched.</p>}
+              <p>Nothing is removed until you save the structure.</p>
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setRemoveCategoryConfirm(null)}>Cancel</Button>
+          <Button type="button" variant="destructive" onClick={confirmRemoveLeagueAt}>Remove category</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>;
 
   // ── LIST VIEW ──
   if (!showWizard) {

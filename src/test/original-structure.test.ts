@@ -184,3 +184,73 @@ describe("original alternate screen local adapter", () => {
     expect(rowStages(b, "Men")[0].id).toBe("initial");
   });
 });
+describe("category duplicate and remove", () => {
+  const stripSlot = (raw: any, slot: number) => {
+    raw._unit_keys = (raw._unit_keys as string[]).filter((_, i) => i !== slot - 1);
+    raw.num_groups = (raw.num_groups as number) - 1;
+    for (const map of ["group_labels", "expected_players", "league_formats", "swiss_pools", "swiss_rounds", "league_genders", "league_match_types", "league_scoring_modes"]) {
+      if (!raw[map]) continue;
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(raw[map] as Record<string, unknown>)) {
+        const n = Number(k);
+        if (!Number.isFinite(n) || n < slot) out[k] = v;
+        else if (n > slot) out[String(n - 1)] = v;
+      }
+      raw[map] = out;
+    }
+    return raw;
+  };
+
+  it("removes an empty second category without touching the first category's settings or players", () => {
+    const a = base();
+    a.categories = ["Men", "League 2"];
+    a.unitEntries["League 2"] = "8";
+    a.stagePlans["League 2"] = [{ id: "l2", kind: "round_robin", pools: 1 }];
+    a.picks = { p1: ["Men"], p2: ["Men", "League 2"] };
+    const raw = stripSlot(originalStructureFromAnswers(a), 2);
+    const b = answersFromOriginalStructure(a, raw);
+    expect(b.categories).toEqual(["Men"]);
+    expect(b.subcats).toEqual({});
+    expect(rowStages(b, "Men")[0].id).toBe("initial");
+    expect(b.unitEntries.Men).toBe("16");
+    // Picks stay draft-local; the handover only accepts keys that still exist.
+    expect(b.picks.p1).toEqual(["Men"]);
+  });
+
+  it("removes a whole pooled category when all its pool slots are removed", () => {
+    const a = base();
+    a.categories = ["Open"];
+    a.subcats = { Open: ["1", "2"] };
+    a.unitEntries = { "Open::1": "6", "Open::2": "6" };
+    a.stagePlans = { "Open::1": [{ id: "p1", kind: "round_robin", pools: 1 }], "Open::2": [{ id: "p2", kind: "round_robin", pools: 1 }] };
+    const raw = originalStructureFromAnswers(a);
+    expect(raw._pool_groups).toEqual([{ parent: "Open", label: "Open", slots: [1, 2] }]);
+    stripSlot(raw, 2);
+    stripSlot(raw, 1);
+    const b = answersFromOriginalStructure(a, raw);
+    expect(b.categories).toEqual([]);
+    expect(b.subcats).toEqual({});
+  });
+
+  it("duplicates a pooled category as a new category with the same pool count and no players", () => {
+    const a = base();
+    a.categories = ["Open"];
+    a.subcats = { Open: ["1", "2"] };
+    a.unitEntries = { "Open::1": "6", "Open::2": "6" };
+    a.stagePlans = { "Open::1": [{ id: "p1", kind: "round_robin", pools: 1 }], "Open::2": [{ id: "p2", kind: "round_robin", pools: 1 }] };
+    a.picks = { p1: ["Open::1"] };
+    const raw = originalStructureFromAnswers(a);
+    raw.num_groups = 3;
+    raw._unit_keys = [...raw._unit_keys, ""];
+    raw.group_labels["3"] = "Open (copy)";
+    raw.expected_players["3"] = 12;
+    raw.league_formats["3"] = raw.league_formats["1"];
+    raw.swiss_pools["3"] = 2;
+    const b = answersFromOriginalStructure(a, raw);
+    expect(b.categories).toEqual(["Open", "Open (copy)"]);
+    expect(b.subcats.Open).toEqual(["1", "2"]);
+    expect(rowStages(b, "Open (copy)")[0].kind).toBe("round_robin");
+    expect(rowStages(b, "Open (copy)")[0].pools).toBe(2);
+    expect(b.picks).toEqual({ p1: ["Open::1"] });
+  });
+});

@@ -1,3 +1,8 @@
+## 2026-10-25 — Treasurer removal of zero-outstanding open tabs
+- Added Remove tab with confirmation in Bar / POS → Reports → Open tabs. Rachel's existing NSC bar/finance authorizations verified true; no unrelated admin grants.
+- Authenticated club-scoped RPC locks the tab, rejects non-open/nonzero totals including tips, closes instead of cascading deletion, retains sales/reversals and appends one actor-stamped audit event. Retries are safe; item additions now lock the same parent. Open-tab totals include tips and finance readers use existing scoped permissions.
+- Disposable SQL checks pass for finance access, zero/reversed sales, retained history, retry, R0.01, R10 tip, wrong club and signed-out/anonymous denial; three existing cart tests pass. Signed-in NSC fictional intercepted confirmation/removal/readback verified. Build OK. No real tabs removed, no publication; shared web/PWA/native UI, no native/hardware changes.
+
 ## 2026-10-23 — Compact mobile round-robin pools
 - Phone pool frames reduced from 520px to 150px; phone-only single-row zoom/fit/expand controls and standings icon replace the separate standings button. Desktop and expanded views retain their sizing, saved fixtures/results and ranking logic unchanged. Verification recorded in the roadmap.
 

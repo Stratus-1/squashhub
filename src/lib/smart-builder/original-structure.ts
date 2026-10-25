@@ -86,7 +86,8 @@ export function answersFromOriginalStructure(a: StepAnswers, input: OriginalStru
       const copy = structuredClone(value);
       delete copy.group_labels;
       delete copy.category_locks;
-      return JSON.stringify(copy);
+      const stable = (v: any): any => Array.isArray(v) ? v.map(stable) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((key) => [key, stable(v[key])])) : v;
+      return JSON.stringify(stable(copy));
     };
     if (settings(previous) === settings(raw)) {
       const next = structuredClone(a);

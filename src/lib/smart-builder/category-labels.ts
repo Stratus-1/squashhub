@@ -5,6 +5,7 @@ export function categoryDisplayName(a: { categoryLabels?: Record<string, string>
 }
 
 export function categoryLabelOnlyChange(before: Record<string, any>, after: Record<string, any>): boolean {
+  const stable = (value: any): any => Array.isArray(value) ? value.map(stable) : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])])) : value;
   const comparable = (a: Record<string, any>) => {
     const copy = structuredClone(a);
     delete copy.categoryLabels;
@@ -12,7 +13,7 @@ export function categoryLabelOnlyChange(before: Record<string, any>, after: Reco
       delete copy.originalStructure.group_labels;
       delete copy.originalStructure.category_locks;
     }
-    return JSON.stringify(copy);
+    return JSON.stringify(stable(copy));
   };
   return JSON.stringify(before.categoryLabels ?? {}) !== JSON.stringify(after.categoryLabels ?? {}) && comparable(before) === comparable(after);
 }

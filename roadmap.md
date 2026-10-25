@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Enable Rachel/authorised treasurer removal of zero-outstanding open tabs, preserving sales/audit and rejecting nonzero tabs; verify permissions, tests and signed-in flow.
 - [x] Correct screenshot's remaining Tournaments heading using its resolved Ladies B deadline before legacy/pool labels; authenticated Uitsig DOM confirms Lisa Rahman–Yolanda under R2 29 Oct, no R3 29 Oct heading. Five tests pass, build OK; no tournament writes/publication.
 - [x] Align Ladies B to latest setup screenshot: R1 22 October, R2 29 October, R3 5 November; stage, fixture deadlines and legacy linked round overrides audited/saved. Four fixtures per deadline, four results retained; protected-field fingerprints identical. Seven tests and signed-in fixture screenshots pass, preview build OK; no publication.
 - [ ] Two Ladies B 10 November allocations remain after R3's 5 November deadline; preserved and visibly flagged, awaiting owner-approved replacement slots before moving.

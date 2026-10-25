@@ -21564,6 +21564,14 @@ export type Database = {
           units_submitted: number
         }[]
       }
+      club_bookable_visitors: {
+        Args: { p_club_id: string }
+        Returns: {
+          home_club_name: string
+          member_id: string
+          name: string
+        }[]
+      }
       club_cancel_subscription: {
         Args: { _club_id: string; _reason?: string }
         Returns: Json

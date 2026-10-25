@@ -1821,6 +1821,13 @@
       "when": 1792880759438,
       "tag": "0259_membership_applications_active_trials",
       "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1792913749342,
+      "tag": "0260_club_bookable_visitors",
+      "breakpoints": true
     }
   ]
 }

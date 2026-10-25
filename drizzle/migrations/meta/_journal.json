@@ -1828,6 +1828,13 @@
       "when": 1792913749342,
       "tag": "0260_club_bookable_visitors",
       "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1792916575828,
+      "tag": "0261_bar_admin_remove_zero_tab",
+      "breakpoints": true
     }
   ]
 }

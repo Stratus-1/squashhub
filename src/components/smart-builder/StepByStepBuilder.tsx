@@ -23,7 +23,7 @@ async function persistStructureAnswers(tid: string | null | undefined, answers: 
     const cur = await loadLifecycle(tid);
     if (!cur) return;
     const plan = drawPlanOf(answers);
-    await saveLifecycle(tid, { ...cur, answers, format_plan: plan });
+    await saveLifecycle(tid, { ...cur, answers, format_plan: nameOnly ? cur.format_plan : plan });
     if (nameOnly) return;
     const added = await attachTimelinePlayoffs(tid, plan);
     const n = await createPlannedPlayoffFixtures(tid, plan);
@@ -1501,7 +1501,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         categoryTypes: units.map((u) => { const t = String(u.categoryType ?? "open").toLowerCase(); return t === "men" ? "mens" : (["mens", "ladies", "mixed", "open"].includes(t) ? t : "open"); }),
-        divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
+        divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: `${u.key.split("::").join(" › ")} · ${u.disc ? PLAY_LABEL[u.disc] : "Singles or Doubles?"}`, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
       });
       const prev = loadHandover(clubId, tid);
       saveHandover({
@@ -2822,7 +2822,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
                   const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
-                  return <li key={i}>{c}{subs.length > 0 ? <span className="text-muted-foreground"> — {subs.map((x) => `${x} ${discText(`${c}::${x}`)}`).join(", ")}</span> : <span className="text-muted-foreground"> — {discText(c)}</span>}</li>;
+                  return <li key={i}>{categoryDisplayName(a, c)}{subs.length > 0 ? <span className="text-muted-foreground"> — {subs.map((x) => `${x} ${discText(`${c}::${x}`)}`).join(", ")}</span> : <span className="text-muted-foreground"> — {discText(c)}</span>}</li>;
                 })}</ul>
               </SummaryRow>
               {dblUnits.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label="Doubles partners" onEdit={() => go("Partners")}>
@@ -2963,7 +2963,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
                     return (
                       <TreeLeaf key={i}>
-                        <button type="button" onClick={() => go("Subcategories")} className="rounded px-1 hover:bg-muted">{c}{subs.length === 0 && <span className="text-muted-foreground"> · {discText(c)}</span>}</button>
+                        <button type="button" onClick={() => go("Subcategories")} className="rounded px-1 hover:bg-muted">{categoryDisplayName(a, c)}{subs.length === 0 && <span className="text-muted-foreground"> · {discText(c)}</span>}</button>
                         {subs.length > 0 && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
                             {subs.map((s, j) => <TreeLeaf key={j}>{s} <span className="text-muted-foreground">{discText(`${c}::${s}`)}</span></TreeLeaf>)}

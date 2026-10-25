@@ -15,5 +15,6 @@ export function categoryLabelOnlyChange(before: Record<string, any>, after: Reco
     }
     return JSON.stringify(stable(copy));
   };
-  return JSON.stringify(before.categoryLabels ?? {}) !== JSON.stringify(after.categoryLabels ?? {}) && comparable(before) === comparable(after);
+  // Unlock/relock is also presentation-only; it must not run fixture reconciliation.
+  return comparable(before) === comparable(after);
 }

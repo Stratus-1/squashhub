@@ -9106,6 +9106,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   }, [structureOnly]);
   const saveOriginalStructure = (locks = categoryLocks, validateSlots?: number[]) => {
     if (!structureOnly) return;
+    const names = Array.from({ length: numGroups }, (_, i) => String(groupLabels[String(i + 1)] ?? "").trim());
+    if (names.some((name) => !name || name.includes("::"))) { toast.error("Each category needs a name without ::."); return; }
+    if (new Set(names.map((name) => name.toLowerCase())).size !== names.length) { toast.error("Category names must be unique."); return; }
     const finalMonradRounds = { ...monradRounds };
     for (let i = 1; i <= numGroups; i++) {
       if (validateSlots && !validateSlots.includes(i)) continue;

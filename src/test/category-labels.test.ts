@@ -12,6 +12,7 @@ describe("saved category name identity", () => {
     const before = { categories: ["Open"], stagePlans: { Open: [{ id: "s", pools: 6 }] }, originalStructure: { group_labels: { "1": "Open" }, category_locks: {} } };
     const after = { ...before, categoryLabels: { Open: "GW Doubles" }, originalStructure: { ...before.originalStructure, group_labels: { "1": "GW Doubles" }, category_locks: { Open: true } } };
     expect(categoryLabelOnlyChange(before, after)).toBe(true);
+    expect(categoryLabelOnlyChange(before, { ...before, originalStructure: { ...before.originalStructure, category_locks: { Open: true } } })).toBe(true);
     expect(categoryLabelOnlyChange(before, { ...after, stagePlans: { Open: [{ id: "s", pools: 1 }] } })).toBe(false);
   });
   it("retains sibling labels and legacy fallback", () => {

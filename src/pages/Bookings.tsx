@@ -1048,7 +1048,7 @@ export default function Bookings() {
       // (active, in-window) day / 3-day / month visitor pass.
       const { data: passVisitors } = await (supabase as any)
         .rpc("club_bookable_visitors", { p_club_id: bookingClubId });
-      const livePassHolderIds = new Set((passVisitors || []).map((r: any) => String(r.member_id)));
+      const livePassHolderIds = new Set<string>((passVisitors || []).map((r: any) => String(r.member_id)));
 
       // Also get profiles for display names
       const userIds = (members || []).map((m: any) => m.user_id).filter(Boolean);

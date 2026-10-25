@@ -349,15 +349,19 @@ export async function generateStructuredTournament(db: Db, tid: string) {
   if (t?.builder_architecture !== "structured" || !t.builder_spec) throw new IntegrityError("not_structured", "Tournament has no structured specification.");
   const existing = await db.select("club_champs_matches", { champ_id: tid });
   if (existing.length) throw new IntegrityError("exists", "Games already exist. Use rebuild instead.");
-  const spec = await loadEntrants(db, tid, t.builder_spec as TournamentSpec);
-  const policy = prospectiveSwissPolicy(tid, String(t.created_at ?? ""));
+  const savedSpec = t.builder_spec as TournamentSpec;
+  const spec = await loadEntrants(db, tid, savedSpec);
+  const policy = spec.divisions.some((d) => d.stages.some((s) => s.kind === "swiss"))
+    ? prospectiveSwissPolicy(tid, String(t.created_at ?? "")) : undefined;
   if (policy) spec.swissSequencing = policy;
   for (const d of spec.divisions) {
     const errs = contractIssues(d).filter((i) => i.level === "error");
     if (errs.length) throw new IntegrityError("contract", `${d.label}: ${errs.map((e) => e.message).join("; ")}`);
     if (d.entrants.length < 2) throw new IntegrityError("entrants", `${d.label}: needs at least 2 entries before games can be generated.`);
   }
-  if (policy) await db.update("tournaments", { id: tid }, { builder_spec: spec });
+  // Entrants and inherited dates are generation-only projections. Persisting them
+  // changes saved stage objects and violates structured_commit's append-only guard.
+  if (policy) await db.update("tournaments", { id: tid }, { builder_spec: { ...savedSpec, swissSequencing: policy } });
   const ids = await persistStructure(db, tid, spec);
   const fixtures = generateFromSpec(spec, tid);
   return insertFixtures(db, tid, spec, ids, fixtures);

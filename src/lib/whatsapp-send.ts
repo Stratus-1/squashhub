@@ -40,7 +40,7 @@ export type SendWhatsAppOptions = {
    * whatsapp-inbound webhook.
    */
   interaction?: {
-    kind: "event_rsvp" | "champ_entry" | "generic";
+    kind: "event_rsvp" | "event_instance_rsvp" | "champ_entry" | "generic";
     targetId?: string | null;
     prompt?: string | null;
   };

@@ -1835,6 +1835,13 @@
       "when": 1792916575828,
       "tag": "0261_bar_admin_remove_zero_tab",
       "breakpoints": true
+    },
+    {
+      "idx": 262,
+      "version": "7",
+      "when": 1792921265574,
+      "tag": "0262_weekly_event_invitation_scope",
+      "breakpoints": true
     }
   ]
 }

@@ -9,9 +9,11 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, Check, X } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useMemo } from "react";
+import { eventInvitationScope } from "@/lib/events/invitation-scope";
+import { fromExt } from "@/lib/supabase-ext";
 
 type ClubEventRow = {
   id: string;
@@ -41,6 +43,8 @@ function localDate(date: string, time: string | null) {
 
 export default function EventDetail() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const addressedInstanceId = searchParams.get("instance");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -67,16 +71,18 @@ export default function EventDetail() {
   });
 
   // Next upcoming occurrence for recurring events.
-  const { data: nextInstance } = useQuery({
-    queryKey: ["club-event-next-instance", id],
+  const { data: nextInstance, isSuccess: instanceLoaded } = useQuery({
+    queryKey: ["club-event-next-instance", id, addressedInstanceId],
     queryFn: async () => {
       if (!id) return null;
-      const today = new Date().toISOString().slice(0, 10);
-      const { data, error } = await supabase
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+      let query = supabase
         .from("club_event_instances")
         .select("id,instance_date,status")
         .eq("event_id", id)
-        .gte("instance_date", today)
+        .eq("status", "scheduled");
+      query = addressedInstanceId ? query.eq("id", addressedInstanceId) : query.gte("instance_date", today);
+      const { data, error } = await query
         .order("instance_date", { ascending: true })
         .limit(1);
       if (error) throw error;
@@ -86,28 +92,28 @@ export default function EventDetail() {
   });
 
   const { data: rsvps = [] } = useQuery({
-    queryKey: ["club-event-rsvps-data", id, memberIds.join(",")],
+    queryKey: ["club-event-rsvps-data", id, nextInstance?.id, memberIds.join(",")],
     queryFn: async () => {
       if (!id || memberIds.length === 0) return [] as RsvpRow[];
-      const { data, error } = await supabase
-        .from("club_event_rsvps")
-        .select("id,event_id,club_member_id,status")
-        .eq("event_id", id)
+      const scope = eventInvitationScope(nextInstance?.id);
+      const { data, error } = await fromExt(scope.table)
+        .select("id,club_member_id,status")
+        .eq(scope.column, scope.id || id)
         .in("club_member_id", memberIds);
       if (error) throw error;
       return (data || []) as unknown as RsvpRow[];
     },
-    enabled: !!id && !!event && memberIds.length > 0,
+    enabled: !!id && !!event && memberIds.length > 0 && instanceLoaded && (event.recurrence === "once" || !!nextInstance),
   });
 
   const { data: counts } = useQuery({
-    queryKey: ["club-event-rsvp-counts", id],
+    queryKey: ["club-event-rsvp-counts", id, nextInstance?.id],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase
-        .from("club_event_rsvps")
+      const scope = eventInvitationScope(nextInstance?.id);
+      const { data, error } = await fromExt(scope.table)
         .select("status")
-        .eq("event_id", id);
+        .eq(scope.column, scope.id || id);
       if (error) throw error;
       const rows = (data || []) as { status: string }[];
       return {
@@ -116,13 +122,12 @@ export default function EventDetail() {
         declined: rows.filter((r) => String(r.status).toLowerCase() === "declined").length,
       };
     },
-    enabled: !!id && !!event,
+    enabled: !!id && !!event && instanceLoaded && (event.recurrence === "once" || !!nextInstance),
   });
 
   const respond = useMutation({
     mutationFn: async ({ rsvpId, status }: { rsvpId: string; status: string }) => {
-      const { error } = await supabase
-        .from("club_event_rsvps")
+      const { error } = await fromExt(eventInvitationScope(nextInstance?.id).table)
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", rsvpId);
       if (error) throw error;

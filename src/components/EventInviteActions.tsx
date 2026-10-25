@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { eventInvitationScope, isOccurrenceInvitation } from "@/lib/events/invitation-scope";
 
 type NotificationLike = {
   id: string;
@@ -42,6 +43,7 @@ export function isEventInviteNotification(notification?: NotificationLike | null
   if (!notification) return false;
   const data = getNotificationData(notification);
   if (!data.event_id) return false;
+  if (isOccurrenceInvitation({ ...notification, data })) return true;
   // Reminder / cancellation notifications are informational only.
   if ((notification.type || "") !== "booking") return false;
   // RSVP-change notifications to the organiser carry rsvp_status.
@@ -67,6 +69,7 @@ export function EventInviteActions({
   const qc = useQueryClient();
   const { linkedMembers } = useMemberContext();
   const eventId = String(getNotificationData(notification).event_id || "");
+  const addressedInstanceId = String(getNotificationData(notification).instance_id || "");
   const hasClosedAnsweredNotification = useRef(false);
 
   const memberIds = useMemo(() => {
@@ -80,7 +83,7 @@ export function EventInviteActions({
     queryKey: ["event-invite-event", eventId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_events")
-        .select("id, title, start_date, start_time, end_time, status")
+        .select("id, title, start_date, start_time, end_time, status, recurrence")
         .eq("id", eventId)
         .maybeSingle();
       if (error) throw error;
@@ -89,22 +92,38 @@ export function EventInviteActions({
     enabled: !!eventId,
   });
 
-  const { data: rsvps = [], isLoading } = useQuery({
-    queryKey: ["event-invite-rsvps", eventId, memberIds.join(",")],
+  const { data: instance, isSuccess: instanceLoaded } = useQuery({
+    queryKey: ["event-invite-instance", eventId, addressedInstanceId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_event_rsvps")
+      let query = fromExt("club_event_instances")
+        .select("id, instance_date, status").eq("event_id", eventId);
+      query = addressedInstanceId
+        ? query.eq("id", addressedInstanceId)
+        : query.eq("status", "scheduled").gte("instance_date", new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" }));
+      const { data, error } = await query.order("instance_date", { ascending: true }).limit(1);
+      if (error) throw error;
+      return (data || [])[0] || null;
+    },
+    enabled: !!eventId && !!event,
+  });
+
+  const { data: rsvps = [], isLoading } = useQuery({
+    queryKey: ["event-invite-rsvps", eventId, instance?.id, memberIds.join(",")],
+    queryFn: async () => {
+      const scope = eventInvitationScope(instance?.id);
+      const { data, error } = await fromExt(scope.table)
         .select("id, status, club_member_id")
-        .eq("event_id", eventId)
+        .eq(scope.column, scope.id || eventId)
         .in("club_member_id", memberIds);
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!eventId && memberIds.length > 0,
+    enabled: !!eventId && memberIds.length > 0 && instanceLoaded && (event?.recurrence === "once" || !!instance),
   });
 
   const respond = useMutation({
     mutationFn: async ({ rsvpId, status }: { rsvpId: string; status: string }) => {
-      const { error } = await fromExt("club_event_rsvps")
+      const { error } = await fromExt(eventInvitationScope(instance?.id).table)
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", rsvpId);
       if (error) throw error;
@@ -118,6 +137,7 @@ export function EventInviteActions({
       qc.invalidateQueries({ queryKey: ["event-invite-rsvps"] });
       qc.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
       qc.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      qc.invalidateQueries({ queryKey: ["club-event-rsvp-counts"] });
       qc.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
       qc.invalidateQueries({ queryKey: ["notifications"] });
       qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
@@ -156,8 +176,8 @@ export function EventInviteActions({
 
   const cancelled = String(event?.status || "").toLowerCase() === "cancelled";
   const when =
-    event?.start_date
-      ? `${format(new Date(`${event.start_date}T00:00:00`), "EEE d MMM")} · ${String(event.start_time || "").slice(0, 5)}`
+    (instance?.instance_date || event?.start_date)
+      ? `${format(new Date(`${instance?.instance_date || event.start_date}T00:00:00`), "EEE d MMM")} · ${String(event?.start_time || "").slice(0, 5)}`
       : "";
 
   return (

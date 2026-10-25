@@ -1,3 +1,7 @@
+## 2026-10-25 — Delete draw action for organisers
+- Added a "Delete draw" button on Generate draw (unplayed draws only) backed by the new authenticated `delete_tournament_draw` RPC: manage-permission check, tournament row lock, refusal when any game is played/started or court-booked, removal of fixtures/rounds/divisions plus linked result notifications, disputes and correction requests, entries and builder_spec retained, one audit event per deletion.
+- Redraw path unchanged (step_prepare_draw still replaces in one step); no hosted fixtures deleted during implementation.
+
 ## 2026-10-25 — Six-pool initial draw refused by stage protection
 - Initial generation wrote date-hydrated stages back when adding prospective Swiss metadata, including to non-Swiss events. The append-only guard correctly refused those changed stages. Non-Swiss draws now leave the saved spec untouched; new Swiss metadata is added to the raw saved spec, preserving every stage. Guard unchanged; no hosted fixtures or scheduling changed.
 

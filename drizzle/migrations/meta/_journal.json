@@ -1842,6 +1842,13 @@
       "when": 1792921265574,
       "tag": "0262_weekly_event_invitation_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1792931511829,
+      "tag": "0263_delete_tournament_draw",
+      "breakpoints": true
     }
   ]
 }

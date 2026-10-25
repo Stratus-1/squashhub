@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Correct Bells accumulated-points standings and remove win/loss/game-difference emphasis from the round-robin tables; verify standard scoring unchanged.
 - [x] Place play-offs below active RR panels and display saved placement finals A1–B1 through A4–B4 (saved four qualifiers per pool). 28 focused tests and signed-in read-only Riverside category check pass; preview build OK. No setup/fixture writes or publication; deferred placement fixture creation remains separate.
 - [x] Correct initial draw spec rewrite: 67 focused tests pass, including 36 doubles games in six pools (two per pool per round) and unchanged Swiss stages. Preview build OK; local automatic-progression bundle refreshed, not deployed. Signed-in browser redirected to member home, so actual Generate button flow remains unverified. No live fixtures, bookings or publication.
 - [x] Safe admin category renaming retains saved unit keys and group numbers; 40 focused checks and signed-in intercepted save/reopen verify players, six pools, stages and dates unchanged. No real tournament writes or publication; physical native devices not tested.

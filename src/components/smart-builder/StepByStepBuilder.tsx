@@ -124,6 +124,9 @@ import { evaluateStructures, materiallyDifferent, type GuideAnswers, type Struct
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
+import { pickPoolPreview } from "@/lib/smart-builder/pick-pool-preview";
+import { PickPoolPreview } from "./PickPoolPreview";
+import { rowStages } from "@/lib/smart-builder/structure-rows";
 import { attachTimelinePlayoffs, createPlannedPlayoffFixtures } from "@/lib/smart-builder/attach-timeline-playoffs";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { FeeBasisQuestion } from "./FeeBasisQuestion";
@@ -493,7 +496,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   }, [clubId]);
   const courtNames = (d: DayAvail) => clubCourts.filter((c) => d.courtIds?.includes(c.id)).map((c) => c.name).join(", ");
 
-  const [members, setMembers] = useState<{ id: string; name: string; ladder?: number | null }[]>([]);
+  const [members, setMembers] = useState<{ id: string; name: string; ladder?: number | null; points?: number | null }[]>([]);
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [leaguesByMember, setLeaguesByMember] = useState<Map<string, string[]>>(new Map());
   const [genderByMember, setGenderByMember] = useState<Map<string, string | null>>(new Map());
@@ -520,12 +523,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;
     (async () => {
-      const PAGE = 1000; const all: { id: string; name: string; ladder?: number | null }[] = []; const genders = new Map<string, string | null>(); const contactMap = new Map<string, { email: string | null; phone: string | null }>();
+      const PAGE = 1000; const all: { id: string; name: string; ladder?: number | null; points?: number | null }[] = []; const genders = new Map<string, string | null>(); const contactMap = new Map<string, { email: string | null; phone: string | null }>();
       for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabase.from("club_members").select("id, name, gender, email, phone, ladder_position").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
+        const { data, error } = await supabase.from("club_members").select("id, name, gender, email, phone, ladder_position, ranking_points").eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
           .order("name").order("id").range(from, from + PAGE - 1);
         if (error || !data) break;
-        all.push(...(data as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member", ladder: m.ladder_position ?? null })));
+        all.push(...(data as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member", ladder: m.ladder_position ?? null, points: m.ranking_points ?? null })));
         (data as any[]).forEach((m) => { genders.set(String(m.id), m.gender ?? null); contactMap.set(String(m.id), { email: m.email ?? null, phone: m.phone ?? null }); });
         if (data.length < PAGE) break;
       }
@@ -1923,8 +1926,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const ladderOf = (id: string) => members.find((m) => m.id === id)?.ladder ?? 1e9;
                     const orderFor = (k: string) => {
                       const saved = a.seedOrder?.[k] ?? []; const r = (id: string) => { const i = saved.indexOf(id); return i < 0 ? 1e9 : i; };
-                      const bySeed = seedFor(k) === "ladder" || seedFor(k) === "ranking";
-                      return pickIds.filter((id) => placesFor(id).includes(k)).sort((x, y) => (r(x) - r(y)) || (bySeed ? ladderOf(x) - ladderOf(y) : 0) || memberName(x).localeCompare(memberName(y)));
+                      const method = seedFor(k);
+                      const seedRank = (id: string) => method === "ranking" ? -(members.find((m) => m.id === id)?.points ?? 0) : method === "ladder" ? ladderOf(id) : 0;
+                      return pickIds.filter((id) => placesFor(id).includes(k)).sort((x, y) => (r(x) - r(y)) || seedRank(x) - seedRank(y) || memberName(x).localeCompare(memberName(y)));
                     };
                     const withOrder = (picks: typeof a.picks, k: string, list: string[]) => setA({ ...a, picks, seedOrder: { ...(a.seedOrder ?? {}), [k]: list } });
                     const lockedSet = new Set(a.lockedIds ?? []);
@@ -1946,14 +1950,23 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const onDrop = (e: React.DragEvent, to: string, beforeId?: string) => { e.preventDefault(); e.stopPropagation(); const [id, from] = e.dataTransfer.getData("text/plain").split("|"); if (id) move(id, from ?? "", to, beforeId); };
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
                     const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...pickUnits.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
-                    const board = (
+                    const poolPreviews = pickUnits.flatMap((u) => {
+                      const stage = rowStages(a, u.key)[0];
+                      const pools = Number(stage?.pools ?? formatFor(u.key).pools) || 1;
+                      if (pools <= 1 || !["round_robin", "pools", "knockout"].includes(stage?.kind ?? "")) return [];
+                      const group = units.findIndex((x) => x.key === u.key) + 1;
+                      const mode = stage?.poolAllocation ?? a.originalStructure?.league_pool_placement?.[String(group)] ?? "snake";
+                      const preview = pickPoolPreview({ ids: pickIds.filter((id) => inUnit(id, u.key)), pairs: pairsFor(u.key), registrations: entrySnapshot.owner === entryOwner ? entrySnapshot.rows : [], group, groups: units.length, doubles: u.disc === "doubles", pools, seeding: seedFor(u.key), scope: a.scope, points: new Map(members.map((m) => [m.id, m.points ?? null])), ladder: new Map(members.map((m) => [m.id, m.ladder ?? null])), order: a.seedOrder?.[u.key], mode });
+                      return [<PickPoolPreview key={u.key} label={u.label} names={stage?.poolNames} preview={preview} memberName={memberName} method={`${seedFor(u.key) === "ranking" ? "Rankings" : seedFor(u.key) === "ladder" ? "Club ladder" : "Entry order"} · ${mode === "banded" ? "Strength band" : "Snake"}`} />];
+                    });
+                    const board = (<div className="space-y-4">{poolPreviews}
                       <div className={cn("grid gap-2 pb-2", boardFull ? "player-board-full" : "sm:grid-cols-2 lg:grid-cols-3")} data-testid="pick-board" style={boardFull ? { zoom: boardZoom / 100, "--player-board-zoom": boardZoom / 100 } as CSSProperties : undefined}>
                         {cols.map((c) => (
                           <div key={c.key || "none"} className={cn("flex min-w-0 flex-col rounded-md border", c.key ? "border-border" : "border-destructive/50 bg-destructive/5")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key)}>
 
                             <div className="sticky top-0 flex items-center justify-between border-b border-border bg-muted/60 px-2 py-1.5">
                               <span className="min-w-0 flex-1 truncate text-sm font-semibold" title={c.label}>{c.label}</span>
-                              <span className="ml-2 shrink-0 text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key)!]}` : ""}</span>
+                              <span className="ml-2 shrink-0 text-xs text-muted-foreground">{c.ids.length}{c.key && seedFor(c.key) ? ` · ${SEED_LABEL[seedFor(c.key) ?? "none"]}` : ""}</span>
                             </div>
                             <ol className={cn("min-h-[4rem] space-y-1 p-1", !boardFull && "max-h-[32rem] overflow-auto")}>
                               {c.ids.map((id, i) => {
@@ -2020,7 +2033,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             })()}
                           </div>
                         ))}
-                      </div>);
+                      </div></div>);
                     return boardFull ? createPortal(
                       <div className="dark player-board-dialog fixed inset-0 z-50 flex flex-col gap-2 overflow-hidden bg-background p-3" role="dialog" aria-modal="true" aria-label="Player categories — full screen">
                         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">

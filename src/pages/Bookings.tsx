@@ -88,6 +88,7 @@ import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
 import { projectCourtFixtures } from "@/lib/tournaments/projected-court-fixtures";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
+import { isVisitorWithoutLivePass } from "@/lib/booking-visible-players";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { isChampsReservation } from "@/lib/tournaments/self-schedule";
 import { uitsigLadiesBRoundFromDeadline } from "@/lib/tournaments/uitsig-ladies-b-round-labels";
@@ -1039,9 +1040,15 @@ export default function Bookings() {
       // Get club members (scoped to current club) with their ladder rank
       const { data: members, error: membersError } = await (supabase as any)
         .from("club_members")
-        .select("id, name, user_id, email, ladder_position")
+        .select("id, name, user_id, email, ladder_position, role")
         .eq("club_id", bookingClubId);
       if (membersError) throw membersError;
+
+      // Visitors only feature in booking pickers while they hold a live
+      // (active, in-window) day / 3-day / month visitor pass.
+      const { data: passVisitors } = await (supabase as any)
+        .rpc("club_bookable_visitors", { p_club_id: bookingClubId });
+      const livePassHolderIds = new Set<string>((passVisitors || []).map((r: any) => String(r.member_id)));
 
       // Also get profiles for display names
       const userIds = (members || []).map((m: any) => m.user_id).filter(Boolean);
@@ -1060,6 +1067,7 @@ export default function Bookings() {
       for (const m of (members || [])) {
         const key = m.user_id || m.id;
         if (seen.has(key)) continue;
+        if (isVisitorWithoutLivePass(m.role, String(m.id), livePassHolderIds)) continue;
         seen.add(key);
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
         // The club roster is the source of truth for names — login profiles are
@@ -1078,15 +1086,17 @@ export default function Bookings() {
     enabled: !!user && !!bookingClubId,
   });
 
+  // Registered visitors only appear here while they hold a live (active,
+  // in-window, paid or club-approved free) day / 3-day / month visitor pass —
+  // the server-side club_bookable_visitors RPC is the authority.
   const { data: clubVisitors = [] } = useQuery({
     queryKey: ["club-visitors-booking", bookingClubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_visitors")
-        .select("id, first_name, last_name, home_club_name, category")
-        .eq("club_id", bookingClubId!)
-        .order("first_name");
+      const { data, error } = await (supabase as any)
+        .rpc("club_bookable_visitors", { p_club_id: bookingClubId });
       if (error) throw error;
-      return (data || []) as Array<{ id: string; first_name: string; last_name: string; home_club_name: string; category: string }>;
+      return ((data || []) as Array<{ member_id: string; name: string; home_club_name: string | null }>)
+        .map((r) => ({ id: r.member_id, name: r.name || "Visitor", home_club_name: r.home_club_name || "" }));
     },
     enabled: !!bookingClubId,
   });
@@ -3013,25 +3023,23 @@ export default function Bookings() {
                       <Command className="[&_[cmdk-item]]:py-2.5">
                         <CommandInput placeholder="Search visitor..." />
                         <CommandList className="max-h-[min(55vh,420px)] overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
-                          <CommandEmpty>No visitors registered yet.</CommandEmpty>
+                          <CommandEmpty>No visitors with an active pass.</CommandEmpty>
                           <CommandGroup>
                             {clubVisitors.map((v) => {
                               const home = (v.home_club_name || "").trim();
                               const showHome = showVisitorHomeClub && home && home.toLowerCase() !== "visitor";
-                              const val = showHome
-                                ? `${v.first_name} ${v.last_name} (${home})`
-                                : `${v.first_name} ${v.last_name}`;
+                              const val = showHome ? `${v.name} (${home})` : v.name;
                               return (
                                 <CommandItem
                                   key={v.id}
-                                  value={`${v.first_name} ${v.last_name} ${showHome ? home : ""}`}
+                                  value={`${v.name} ${showHome ? home : ""}`}
                                   onSelect={() => {
                                     setBookingDialog((s) => (s ? { ...s, guestName: val } : s));
                                     setVisitorSearchOpen(false);
                                   }}
                                 >
                                   <Check className={cn("mr-2 h-4 w-4", bookingDialog.guestName === val ? "opacity-100" : "opacity-0")} />
-                                  {v.first_name} {v.last_name}{showHome ? ` · ${home}` : ""}
+                                  {v.name}{showHome ? ` · ${home}` : ""}
                                 </CommandItem>
                               );
                             })}

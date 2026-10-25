@@ -1856,6 +1856,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueServingMethods(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
+  /**
+   * Deleting a category always asks first. A pooled category is stored as one
+   * slot per pool, so removing it removes every pool slot (highest first, so
+   * the positional shift stays correct). Entered players of a removed category
+   * drop out of the draft — the handover only accepts keys that still exist.
+   */
+  const [removeCategoryConfirm, setRemoveCategoryConfirm] = useState<{ label: string; slots: number[]; expected: number; saved: boolean } | null>(null);
+  const requestRemoveLeagueAt = (gn: number) => {
+    const pg = structureOnly?.initial._pool_groups?.find((group: { slots: number[] }) => group.slots.includes(gn)) as { label?: string; slots: number[] } | undefined;
+    const slots = pg ? [...pg.slots].sort((a, b) => b - a) : [gn];
+    const expected = slots.reduce((n, s) => n + Number(expectedPlayers[String(s)] || 0), 0);
+    const label = String(pg?.label ?? groupLabels[String(gn)] ?? `Category ${gn}`).trim();
+    setRemoveCategoryConfirm({ label, slots, expected, saved: !!structureOnly?.initial._identity_locked });
+  };
+  const confirmRemoveLeagueAt = () => {
+    const c = removeCategoryConfirm;
+    if (!c) return;
+    c.slots.forEach((slot) => removeLeagueAt(slot));
+    setRemoveCategoryConfirm(null);
+    toast.success(`${c.label} removed — save the structure to apply`);
+  };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   // Prune any selected court IDs that no longer exist in the club's courts

@@ -1,3 +1,7 @@
+## 2026-10-25 — Bells doubles serving selector missing
+- Moved the existing per-category serving choices outside the Standard-only scoring branch so Bells doubles also expose Even / Odd, By position, Second server and Not set / Manual. Existing category locks and marker rules retained; adapter now clears stale methods when Manual is chosen. No live tournament writes or publication.
+- 43 serving/adapter checks pass, preview build OK. Signed-in read-only browser navigation did not expose the category card, so on-screen selector and real saved readback remain unverified.
+
 ## 2026-10-25 — Specific leagues could not be unticked
 - The active league audience handler reselected its own mode. Deselecting now retains Everyone and/or Players I pick, with saved league IDs kept for later reselection; no fixture, booking, permission or hosted-data changes.
 - Nine focused tests pass; signed-in GW Double Open toggle changes true → false → true, Everyone retained and league list hides/reappears. Hosted writes intercepted; preview build OK, not published.

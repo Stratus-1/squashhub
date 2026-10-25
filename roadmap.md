@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Fix initial six-pool draw refusal without rewriting saved stages; verify 36 doubles games and protected existing specs, no live fixtures or publication.
 - [x] Safe admin category renaming retains saved unit keys and group numbers; 40 focused checks and signed-in intercepted save/reopen verify players, six pools, stages and dates unchanged. No real tournament writes or publication; physical native devices not tested.
 - [x] Restored timed organiser Playoffs step with per-category existing qualification/pairing controls; selected Structure rounds stay authoritative and pairing updates the relevant timeline without changing siblings. Courts shows 2 semifinal slots/46m + 1 final/23m. 23 checks and signed-in GW selection/return pass; build OK, no hosted writes/publication.
 - [ ] Arbitrary finals (such as A1 vs A2 within every pool) are not supported by the existing shared playoff mapper; require a separately scoped mapping extension before offering them as executable choices. Six-pool qualification remains unresolved, never inferred.

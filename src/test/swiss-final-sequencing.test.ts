@@ -134,6 +134,7 @@ describe("Existing Uitsig and prospective tournament guardrails", () => {
       const db:any={select:async(t:string,f:Record<string,unknown>)=>(tables[t]??[]).filter((r)=>Object.entries(f).every(([k,v])=>r[k]===v)),update:async(t:string,f:any,p:any)=>{patches.push(p);Object.assign(tables[t][0],p);},insert:async(t:string,rs:any[])=>{const out=rs.map((r,i)=>({id:`${t}-${i}`,...r}));(tables[t]??=[]).push(...out);return out;}};
       await generateStructuredTournament(db,"new-test");
       expect(tables.club_champs_matches).toHaveLength(3);
+      expect(tables.tournaments[0].builder_spec.divisions[0].stages).toEqual(d.stages);
       expect(!!tables.tournaments[0].builder_spec.swissSequencing).toBe(createdAt.startsWith("2026-10-23"));
       const before=JSON.stringify(tables); const count=patches.length;
       await expect(generateStructuredTournament(db,"new-test")).rejects.toThrow(/already exist/);

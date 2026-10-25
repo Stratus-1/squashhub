@@ -70,6 +70,8 @@ export function PartnerFeeOptions({ registrationId, token, verify, ready = true,
 
   if (!data?.ok || !data.enabled) return null;
   const fee = data.fee_cents ?? 0;
+  // No fee → no partner payment card at all (the tournament charges nothing to settle).
+  if (fee <= 0) return null;
   const name = data.partner_name || "your partner";
   if (!data.partner_owes) {
     return (

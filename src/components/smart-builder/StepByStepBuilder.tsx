@@ -126,6 +126,7 @@ import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { pickPoolPreview } from "@/lib/smart-builder/pick-pool-preview";
 import { PickPoolPreview } from "./PickPoolPreview";
+import { CourtsCapacitySummary } from "./CourtsCapacitySummary";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
 import { attachTimelinePlayoffs, createPlannedPlayoffFixtures } from "@/lib/smart-builder/attach-timeline-playoffs";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
@@ -2354,6 +2355,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "Courts" && (
             <>
               <Q t="Where and when are courts available?" h="Each day can be different — e.g. Friday evening only, Saturday all day." />
+              <CourtsCapacitySummary answers={a} days={a.days} units={units.map((u) => {
+                const players = guideCounts[u.key]?.total ?? 0;
+                const p = playoffFor(u.key);
+                const sc = scoringFor(u.key) ?? scoring;
+                const savedMinutes = Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"] || structureMinutes(u.disc === "doubles" ? "doubles" : "singles"));
+                return { key: u.key, label: u.base, entrants: players > 0 ? (u.disc === "doubles" ? Math.ceil(players / 2) : players) : Number(a.unitEntries?.[u.key]) || (units.length === 1 ? Number(a.entries) || 0 : 0), doubles: u.disc === "doubles", estimated: players === 0,
+                  slotMinutes: sc?.mode === "time_capped_points" ? slotMinutes(sc) : savedMinutes,
+                  playoffGames: p.choice === "playoffs" ? 2 ** p.rounds - 1 : 0,
+                  playoffUnresolved: p.choice === "later" || (p.choice === "playoffs" && (p.qualification === "later" || p.pairing === "later" || p.style === "placement")) };
+              })} />
               <div className="space-y-3">
                 {a.days.map((d, i) => (
                   <div key={i} className="space-y-3 rounded-lg border border-border p-3">

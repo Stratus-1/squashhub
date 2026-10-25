@@ -1,7 +1,7 @@
-import type { ReturnTypeOfPickPreview } from "./pick-pool-preview-types";
+import type { pickPoolPreview } from "@/lib/smart-builder/pick-pool-preview";
 
 export function PickPoolPreview({ label, names, preview, memberName, method }: {
-  label: string; names?: string[]; preview: ReturnTypeOfPickPreview;
+  label: string; names?: string[]; preview: ReturnType<typeof pickPoolPreview>;
   memberName: (id: string) => string; method: string;
 }) {
   return <section className="space-y-2" aria-label={`${label} planned pools`}>

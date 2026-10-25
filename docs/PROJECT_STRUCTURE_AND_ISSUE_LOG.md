@@ -1,3 +1,7 @@
+## 2026-10-25 — Missing whole-tournament capacity on Courts
+- Added a read-only capacity band above court inputs: available court-hours/whole slots, per-category stage and playoff game counts, slot minutes and required court-time. Reuses canonical stage capacity and deduplicates overlapping date/court windows; doubles count pairs, not individual players.
+- Unresolved formats/qualification remain provisional, with no implied feasible timetable. No saved tournament, fixture, booking, notification, native or provider changes; preview only.
+
 ## 2026-10-25 — Treasurer removal of zero-outstanding open tabs
 - Added Remove tab with confirmation in Bar / POS → Reports → Open tabs. Rachel's existing NSC bar/finance authorizations verified true; no unrelated admin grants.
 - Authenticated club-scoped RPC locks the tab, rejects non-open/nonzero totals including tips, closes instead of cascading deletion, retains sales/reversals and appends one actor-stamped audit event. Retries are safe; item additions now lock the same parent. Open-tab totals include tips and finance readers use existing scoped permissions.

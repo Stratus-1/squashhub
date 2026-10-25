@@ -19,6 +19,7 @@ vi.mock("@/hooks/use-association-tenant", () => ({ useAssociationTenant: () => (
 vi.mock("@/hooks/use-club-beta-feature", () => ({ useClubBetaFeature: () => ({ data: false, isLoading: false }) }));
 
 import { StepByStepBuilder } from "@/components/smart-builder/StepByStepBuilder";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const SCORING = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
 
@@ -32,7 +33,7 @@ const seed = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
 }));
 
 async function openBoard() {
-  render(<StepByStepBuilder clubId="c1" clubName="Riverside" initialStep="Pick" />);
+  render(<TooltipProvider><StepByStepBuilder clubId="c1" clubName="Riverside" initialStep="Pick" /></TooltipProvider>);
   await screen.findByTestId("pick-board");
 }
 

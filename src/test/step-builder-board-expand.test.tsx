@@ -16,8 +16,10 @@ function chain(table: string): any {
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (t: string) => chain(t), rpc: () => chain("rpc") } }));
 vi.mock("@/hooks/use-tournament-eligibility", () => ({ useOrgHierarchyLite: () => ({ data: null, isLoading: false }) }));
 vi.mock("@/hooks/use-association-tenant", () => ({ useAssociationTenant: () => ({ isAssociation: false, orgId: null }) }));
+vi.mock("@/hooks/use-club-beta-feature", () => ({ useClubBetaFeature: () => ({ data: false, isLoading: false }) }));
 
 import { StepByStepBuilder } from "@/components/smart-builder/StepByStepBuilder";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const SCORING = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
 
@@ -31,8 +33,7 @@ const seed = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
 }));
 
 async function openBoard() {
-  render(<StepByStepBuilder clubId="c1" clubName="Riverside" />);
-  fireEvent.click(await screen.findByRole("button", { name: /allocate|pick players/i }));
+  render(<TooltipProvider><StepByStepBuilder clubId="c1" clubName="Riverside" initialStep="Pick" /></TooltipProvider>);
   await screen.findByTestId("pick-board");
 }
 
@@ -51,7 +52,7 @@ describe("Step-by-Step: category board full-screen expand", () => {
     for (let i = 0; i < 5; i++) fireEvent.click(zoomOut);
     expect(within(dlg).getByLabelText("Player board zoom level")).toHaveTextContent("75%");
     expect(zoomOut).toBeDisabled();
-    expect(board.style.getPropertyValue("zoom")).toBe("0.75");
+    expect(board.style.getPropertyValue("--player-board-zoom")).toBe("0.75");
     expect(dlg.style.getPropertyValue("zoom")).toBe("");
     expect(board.innerHTML).toBe(initialRows);
     fireEvent.change(within(dlg).getByRole("textbox", { name: "Search players" }), { target: { value: "Anna" } });
@@ -60,7 +61,7 @@ describe("Step-by-Step: category board full-screen expand", () => {
     expect(within(dlg).getByLabelText("Player board zoom level")).toHaveTextContent("125%");
     expect(zoomIn).toBeDisabled();
     fireEvent.click(within(dlg).getByRole("button", { name: "Reset player board zoom to 100%" }));
-    expect(board.style.getPropertyValue("zoom")).toBe("1");
+    expect(board.style.getPropertyValue("--player-board-zoom")).toBe("1");
     expect(within(board).getByText("Anna")).toHaveAttribute("tabindex", "0");
     fireEvent.click(within(dlg).getByRole("button", { name: /exit full screen/i }));
     expect(screen.getByTestId("pick-board").style.getPropertyValue("zoom")).toBe("");

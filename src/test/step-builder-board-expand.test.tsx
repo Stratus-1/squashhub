@@ -52,7 +52,7 @@ describe("Step-by-Step: category board full-screen expand", () => {
     for (let i = 0; i < 5; i++) fireEvent.click(zoomOut);
     expect(within(dlg).getByLabelText("Player board zoom level")).toHaveTextContent("75%");
     expect(zoomOut).toBeDisabled();
-    expect(board.style.getPropertyValue("zoom")).toBe("0.75");
+    expect(board.style.getPropertyValue("--player-board-zoom")).toBe("0.75");
     expect(dlg.style.getPropertyValue("zoom")).toBe("");
     expect(board.innerHTML).toBe(initialRows);
     fireEvent.change(within(dlg).getByRole("textbox", { name: "Search players" }), { target: { value: "Anna" } });
@@ -61,7 +61,7 @@ describe("Step-by-Step: category board full-screen expand", () => {
     expect(within(dlg).getByLabelText("Player board zoom level")).toHaveTextContent("125%");
     expect(zoomIn).toBeDisabled();
     fireEvent.click(within(dlg).getByRole("button", { name: "Reset player board zoom to 100%" }));
-    expect(board.style.getPropertyValue("zoom")).toBe("1");
+    expect(board.style.getPropertyValue("--player-board-zoom")).toBe("1");
     expect(within(board).getByText("Anna")).toHaveAttribute("tabindex", "0");
     fireEvent.click(within(dlg).getByRole("button", { name: /exit full screen/i }));
     expect(screen.getByTestId("pick-board").style.getPropertyValue("zoom")).toBe("");

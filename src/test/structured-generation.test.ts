@@ -236,6 +236,29 @@ const sendTo = (db: Db, log: CommitOp[][]) => async (_tid: string, ops: CommitOp
 const finish = (rows: any[], pick: (m: any) => string) => rows.forEach((m) => { m.winner_member_id = pick(m); m.status = "completed"; });
 
 describe("all-or-nothing commit", () => {
+  it("a new six-pool doubles draw preserves saved stages and creates 36 games without a spec rewrite", async () => {
+    const spec = specFromDefinition(DefinitionSchema.parse({
+      name: "Six pools", divisions: [{ id: "open", name: "Doubles Open", entry: "pairs",
+        sections: [{ id: "main", name: "Main", stages: [{ id: "pools", name: "Pools",
+          kind: "round_robin", groups: 6, groupSize: 4, input: { entrants: 24 },
+          schedule: { mode: "fixed", roundDates: ["2026-10-31"] },
+        }] }],
+      }],
+    }));
+    env.t.tournaments[0] = { id: TID, created_at: "2026-10-25T10:01:45Z", start_date: "2026-10-31", end_date: "2026-10-31", builder_architecture: "structured", builder_spec: spec };
+    env.t.club_champs_entries = Array.from({ length: 24 }, (_, i) => ({ champ_id: TID, club_member_id: `a${i}`, partner_member_id: `b${i}`, group_number: 1, order_index: i }));
+    const saved = JSON.stringify(spec);
+    const log: CommitOp[][] = [];
+    await atomically(env.db, TID, sendTo(env.db, log), (db) => generateStructuredTournament(db, TID));
+    expect(log[0].some((op) => op.op === "set_spec")).toBe(false);
+    expect(JSON.stringify(env.t.tournaments[0].builder_spec)).toBe(saved);
+    expect(matches()).toHaveLength(36);
+    expect(env.t.tournament_pools).toHaveLength(6);
+    for (let pool = 1; pool <= 6; pool++) {
+      expect(matches().filter((m) => m.pool_number === pool)).toHaveLength(6);
+      for (let round = 1; round <= 3; round++) expect(matches().filter((m) => m.pool_number === pool && m.round_number === round)).toHaveLength(2);
+    }
+  });
   it("a failing generation sends nothing", async () => {
     const log: CommitOp[][] = [];
     env.t.club_champs_entries = [];

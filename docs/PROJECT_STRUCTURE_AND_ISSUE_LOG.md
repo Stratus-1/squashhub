@@ -1,3 +1,6 @@
+## 2026-10-25 — Six-pool initial draw refused by stage protection
+- Initial generation wrote date-hydrated stages back when adding prospective Swiss metadata, including to non-Swiss events. The append-only guard correctly refused those changed stages. Non-Swiss draws now leave the saved spec untouched; new Swiss metadata is added to the raw saved spec, preserving every stage. Guard unchanged; no hosted fixtures or scheduling changed.
+
 ## 2026-10-25 — Saved category name unnecessarily locked
 - Saved builder categories now retain established unit keys while storing admin-editable display names separately in the existing answers snapshot. Category safety locks remain; name-only saves skip playoff/fixture work. No hosted tournament records changed during implementation.
 

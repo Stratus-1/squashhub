@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Place play-offs below active RR panels and display the saved category-specific positional final pairing without modifying fixtures or setup.
 - [x] Correct initial draw spec rewrite: 67 focused tests pass, including 36 doubles games in six pools (two per pool per round) and unchanged Swiss stages. Preview build OK; local automatic-progression bundle refreshed, not deployed. Signed-in browser redirected to member home, so actual Generate button flow remains unverified. No live fixtures, bookings or publication.
 - [x] Safe admin category renaming retains saved unit keys and group numbers; 40 focused checks and signed-in intercepted save/reopen verify players, six pools, stages and dates unchanged. No real tournament writes or publication; physical native devices not tested.
 - [x] Restored timed organiser Playoffs step with per-category existing qualification/pairing controls; selected Structure rounds stay authoritative and pairing updates the relevant timeline without changing siblings. Courts shows 2 semifinal slots/46m + 1 final/23m. 23 checks and signed-in GW selection/return pass; build OK, no hosted writes/publication.

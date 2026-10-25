@@ -116,6 +116,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
+import { dayCourtStages } from "@/lib/smart-builder/day-court-bookings";
 import { formatSource, setCategoryFormat, resetCategoryFormat, unsetCategories } from "@/lib/smart-builder/format-default";
 import { StructureGuidePanel, RecommendationCard, guideRecommendations } from "./StructureGuidePanel";
 import { guideEntryCounts, guideCountText } from "./guide-entry-counts";
@@ -2415,6 +2416,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   </div>
                 ))}
               </div>
+              {a.planId && !usesGoBook && <StageCourtBookings clubId={clubId} planId={`${a.planId}:days`} label={a.name?.trim() || "Tournament"} stages={dayCourtStages(a.days)} courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} />}
               <div className="space-y-3 rounded-lg border border-border p-3" aria-label="Scheduling assumptions">
                 <div><div className="font-semibold">Scheduling assumptions</div>
                   <p className="text-xs text-muted-foreground">Used by "Assign courts &amp; times" to draft the timetable. These are court-time estimates for planning only — they don't change scoring or time-capped rules.</p></div>

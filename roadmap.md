@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Expose doubles serving selector for Bells as well as Standard categories; retain category locks and save/reload including manual clearing, verify without live writes.
+- [x] Expose doubles serving selector for Bells as well as Standard categories; category locks retained and manual clearing repaired. 43 serving/adapter checks pass, preview build OK; no live writes/publication. On-screen check remains unverified because read-only browser navigation did not expose the category card.
 - [x] Fix Specific league(s) untick on Who may enter: nine focused tests and signed-in GW Double Open off/on check pass, other audiences retained. Build OK; no hosted writes/publication.
 - [x] Show read-only whole-tournament capacity on Courts: ten focused tests pass; signed-in GW Double Open displays 24 court-hours / 60 slots, 36 RR + 3 provisional playoff games / 14h57m. Qualification remains unresolved, so no unconditional fit claim. Preview only; no tournament writes/publication.
 - [ ] GW Double Open ranked Snake allocation: owner chose Regional rankings; awaiting the regional ranking list/order before assigning the 24 pairs to six pools. Never substitute club points or ladder.

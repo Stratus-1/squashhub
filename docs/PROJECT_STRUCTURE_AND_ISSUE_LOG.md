@@ -1,3 +1,6 @@
+## 2026-10-25 — Category Bells standings incorrectly ranked by wins
+- Standings ignored saved category scoring and fell through to structured wins-first ranking. Category Bells now uses the existing accumulated-points strategy; clean RR tables show Total points / Points against instead of W/L/Games/GD. Completed drawn Bells scores count in read-only totals. No results, fixtures, setup or deferred progression configuration changed.
+
 ## 2026-10-25 — RR placement preview labels and ordering
 - Saved placement play now previews A1 v B1, A2 v B2 etc. using the saved per-pool qualifier count rather than a stale seeded championship timeline. Play-offs stay below active round robins and move above them only when pools finish/play-offs start. Display only; no fixture, setup or scheduling writes.
 

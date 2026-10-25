@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 type TabLine = { name: string | null; quantity: number; total: number; operator?: string | null; operator_id?: string | null };
 type OpenTab = {
@@ -29,6 +31,21 @@ function fmtWhen(iso: string) {
 
 export function OpenTabsTab({ clubId }: { clubId: string }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<OpenTab | null>(null);
+  const qc = useQueryClient();
+  const removeTab = useMutation({
+    mutationFn: async (tabId: string) => {
+      const { error } = await supabase.rpc("bar_admin_remove_zero_tab", { _club_id: clubId, _tab_id: tabId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setRemoving(null);
+      toast.success("Zero-outstanding tab removed");
+      qc.invalidateQueries({ queryKey: ["bar-open-tabs", clubId] });
+      qc.invalidateQueries({ queryKey: ["bar-counter-board"] });
+    },
+    onError: (error: Error) => toast.error(error.message || "Could not remove tab"),
+  });
 
   const { data: tabs = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["bar-open-tabs", clubId],
@@ -118,16 +135,36 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
                       ))}
                     </div>
                   )}
+                  {t.status === "open" && Number(t.total) === 0 && (
+                    <div className="mt-2 flex justify-end">
+                      <Button variant="outline" size="sm" aria-label={`Remove zero-outstanding tab for ${t.guest_name}`} onClick={() => setRemoving(t)} disabled={removeTab.isPending}>
+                        <Trash2 className="mr-1 h-4 w-4" /> Remove tab
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
           <p className="text-xs text-muted-foreground">
-            Tabs are settled at the bar counter (Counter mode). If a tab should be written off, an admin can remove it
-            from the guest tabs list.
+            Only open tabs with R0.00 outstanding can be removed. Sales and payment history are retained.
           </p>
         </>
       )}
+      <AlertDialog open={removing !== null} onOpenChange={open => { if (!open && !removeTab.isPending) setRemoving(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove zero-outstanding tab?</AlertDialogTitle>
+            <AlertDialogDescription>{removing?.guest_name} · R0.00 outstanding. Sales and payment history will be retained.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeTab.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={removeTab.isPending} onClick={event => { event.preventDefault(); if (removing) removeTab.mutate(removing.tab_id); }}>
+              {removeTab.isPending ? "Removing…" : "Remove tab"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

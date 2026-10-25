@@ -20376,6 +20376,10 @@ export type Database = {
           shop_gated: boolean
         }[]
       }
+      bar_admin_remove_zero_tab: {
+        Args: { _club_id: string; _tab_id: string }
+        Returns: undefined
+      }
       bar_allow_negative_stock: { Args: { _club: string }; Returns: boolean }
       bar_can_manage_pins: {
         Args: { _club_id: string; _user_id: string }

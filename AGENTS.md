@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Recurring social-event attendance is occurrence-scoped across notification actions, event detail, cards and WhatsApp; series rows are invite membership only, selected channels are enforced before notification delivery and reminder email uses one explicit outbox path; why: prior answers and generic notification bridges must never imply weekly attendance or bypass switches.
 - Zero-outstanding management tab removal uses an authenticated club-scoped RPC with a locked balance recheck including tips and auditable closure, never cascading deletion; tab additions lock the same parent row to prevent concurrent removal/sales races.
 - New membership availability uses the public boolean RPC for signed SLAs, unexpired active trials and explicit owner exceptions; signup/join writers enforce it while retaining existing-member linking; why: hiding a button alone cannot prevent unnoticed applications or expose private SLA details.
 - Shared counters retain venue-scoped personal-PIN sessions with one active serving token, revalidated on selection; adding/selecting staff never ends attendance, shared End shift requires explicit person/all selection and confirmed device exit ends local participants; why: concurrent staff need separate hours and authoritative sale attribution without changing cash-up or payroll.

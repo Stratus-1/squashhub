@@ -83,13 +83,28 @@ export function EventInviteActions({
     queryKey: ["event-invite-event", eventId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_events")
-        .select("id, title, start_date, start_time, end_time, status")
+        .select("id, title, start_date, start_time, end_time, status, recurrence")
         .eq("id", eventId)
         .maybeSingle();
       if (error) throw error;
       return data as any;
     },
     enabled: !!eventId,
+  });
+
+  const { data: instance, isSuccess: instanceLoaded } = useQuery({
+    queryKey: ["event-invite-instance", eventId, addressedInstanceId],
+    queryFn: async () => {
+      let query = fromExt("club_event_instances")
+        .select("id, instance_date, status").eq("event_id", eventId);
+      query = addressedInstanceId
+        ? query.eq("id", addressedInstanceId)
+        : query.eq("status", "scheduled").gte("instance_date", new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" }));
+      const { data, error } = await query.order("instance_date", { ascending: true }).limit(1);
+      if (error) throw error;
+      return (data || [])[0] || null;
+    },
+    enabled: !!eventId && !!event,
   });
 
   const { data: rsvps = [], isLoading } = useQuery({
@@ -103,7 +118,7 @@ export function EventInviteActions({
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!eventId && memberIds.length > 0 && instanceLoaded,
+    enabled: !!eventId && memberIds.length > 0 && instanceLoaded && (event?.recurrence === "once" || !!instance),
   });
 
   const respond = useMutation({

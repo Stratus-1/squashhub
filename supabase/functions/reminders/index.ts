@@ -87,9 +87,10 @@ async function sendReminder(args: {
 
   const { error } = await supabaseAdmin.from("notifications").insert({
     user_id: args.user_id,
+    club_member_id: args.data?.club_member_id ?? null,
     title: args.title,
     message: args.message,
-    type: "reminder",
+    type: args.kind === "event_instance_reminder" ? "booking" : "reminder",
     url: args.url,
     data: { kind: args.kind, ref_table: args.ref_table, ref_id: args.ref_id, ...(args.data || {}) },
   } as any);
@@ -403,7 +404,8 @@ Deno.serve(async (req) => {
 
       for (const ev of activeEvents || []) {
         if (!(await capOn((ev as any).club_id, "events"))) continue;
-        const reminderHours = (ev as any).reminder_hours || 48;
+        const reminderHours = (ev as any).reminder_hours ?? 48;
+        if (!(reminderHours > 0)) continue;
         const reminderCutoff = new Date(Date.now() + reminderHours * 60 * 60 * 1000);
         const reminderCutoffDate = isoDateInTz(reminderCutoff, timeZone);
 
@@ -417,6 +419,8 @@ Deno.serve(async (req) => {
           .limit(100);
 
         for (const inst of instances || []) {
+          const startsAt = bookingStartMs(String((inst as any).instance_date), String((ev as any).start_time));
+          if (!Number.isFinite(startsAt) || now.getTime() < startsAt - reminderHours * 3600000 || now.getTime() >= startsAt) continue;
           // Invite list: instance-level RSVPs first; fall back to the
           // event-level list when an instance carries none (older events).
           // Every invitee is asked again for each occurrence — a "No" for one
@@ -451,14 +455,14 @@ Deno.serve(async (req) => {
 
           const startTime = String((ev as any).start_time || "").slice(0, 5);
           const eventType = String((ev as any).event_type || "event");
-          const title = `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Event Reminder`;
+          const title = `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Event Invitation`;
           const instanceDate = String((inst as any).instance_date);
           const niceDate = new Date(`${instanceDate}T12:00:00Z`).toLocaleDateString("en-ZA", {
             weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
           });
           const question = `Are you joining "${(ev as any).title}" on ${niceDate} at ${startTime}?`;
           const message = `${question} Please confirm whether you're in or decline.`;
-          const appUrl = `/events/${String((ev as any).id)}`;
+          const appUrl = `/events/${String((ev as any).id)}?instance=${String((inst as any).id)}`;
           const waDetails = "Reply YES if you're in, or NO to decline.";
 
           for (const mu of memberUsers || []) {
@@ -477,7 +481,12 @@ Deno.serve(async (req) => {
               title,
               message,
               url: appUrl,
-              data: { event_id: String((ev as any).id), instance_id: String((inst as any).id) },
+              data: {
+                event_id: String((ev as any).id), instance_id: String((inst as any).id),
+                club_id: String((ev as any).club_id), club_member_id: String((mu as any).id),
+                suppress_email: "true", // Only the explicit event outbox below sends email.
+                suppress_push: (ev as any).notify_push ? "false" : "true",
+              },
             });
             if (!ok) { skipped += 1; continue; }
             sent += 1;

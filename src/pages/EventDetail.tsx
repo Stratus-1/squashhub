@@ -13,6 +13,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner";
 import { useMemo } from "react";
 import { eventInvitationScope } from "@/lib/events/invitation-scope";
+import { fromExt } from "@/lib/supabase-ext";
 
 type ClubEventRow = {
   id: string;
@@ -95,8 +96,7 @@ export default function EventDetail() {
     queryFn: async () => {
       if (!id || memberIds.length === 0) return [] as RsvpRow[];
       const scope = eventInvitationScope(nextInstance?.id);
-      const { data, error } = await supabase
-        .from(scope.table)
+      const { data, error } = await fromExt(scope.table)
         .select("id,club_member_id,status")
         .eq(scope.column, scope.id || id)
         .in("club_member_id", memberIds);
@@ -111,8 +111,7 @@ export default function EventDetail() {
     queryFn: async () => {
       if (!id) return null;
       const scope = eventInvitationScope(nextInstance?.id);
-      const { data, error } = await supabase
-        .from(scope.table)
+      const { data, error } = await fromExt(scope.table)
         .select("status")
         .eq(scope.column, scope.id || id);
       if (error) throw error;
@@ -128,8 +127,7 @@ export default function EventDetail() {
 
   const respond = useMutation({
     mutationFn: async ({ rsvpId, status }: { rsvpId: string; status: string }) => {
-      const { error } = await supabase
-        .from(eventInvitationScope(nextInstance?.id).table)
+      const { error } = await fromExt(eventInvitationScope(nextInstance?.id).table)
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", rsvpId);
       if (error) throw error;

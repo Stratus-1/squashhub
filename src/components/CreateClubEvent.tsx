@@ -369,7 +369,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .in("event_id", eventIds);
       if (error) throw error;
       const weekly = await nextInstanceStatuses(eventIds);
-      for (const r of (data || []) as any[]) { const w = weekly.get(`${r.event_id}:${r.club_member_id}`); if (w && r.status !== "left") r.status = w.status; }
+      for (const r of (data || []) as any[]) {
+        const w = weekly.get(`${r.event_id}:${r.club_member_id}`);
+        const recurring = upcomingEvents.find((e: any) => e.id === r.event_id)?.recurrence !== "once";
+        if (r.status !== "left") r.status = w?.status ?? (recurring ? "invited" : r.status);
+      }
       const counts: Record<string, { invited: number; confirmed: number; declined: number }> = {};
       const confirmedMemberIds: Record<string, string[]> = {};
       const declinedMemberIds: Record<string, string[]> = {};
@@ -495,7 +499,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         if (!map[r.event_id]) map[r.event_id] = [];
         const member = linkedMembers.find(m => m.id === r.club_member_id);
         const w = r.status !== "left" ? weekly.get(`${r.event_id}:${r.club_member_id}`) : undefined;
-        map[r.event_id].push({ id: r.id, status: w?.status ?? r.status, instanceRsvpId: w?.rsvpId, club_member_id: r.club_member_id, memberName: member?.name || "Unknown" });
+        const recurring = upcomingEvents.find((e: any) => e.id === r.event_id)?.recurrence !== "once";
+        map[r.event_id].push({ id: r.id, status: w?.status ?? (recurring && r.status !== "left" ? "invited" : r.status), instanceRsvpId: w?.rsvpId, club_member_id: r.club_member_id, memberName: member?.name || "Unknown" });
       }
       return map;
     },
@@ -965,6 +970,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             const detailsText = form.recurrence === "once"
               ? "Reply YES to confirm or NO to decline. Changed your mind later? Just reply NO any time before the event to withdraw."
               : "Reply YES to confirm or NO to decline. Changed your mind later? Just reply NO any time before the event to withdraw. (Weekly event — we'll ask again before each one.)";
+            const { data: occurrence } = await fromExt("club_event_instances").select("id")
+              .eq("event_id", eventId).eq("instance_date", form.event_date).eq("status", "scheduled").maybeSingle();
+            if (!occurrence?.id) throw new Error("No occurrence found for this invitation");
             await sendWhatsApp({
               clubId,
               recipients: inviteeIds.map((id) => ({ member_id: id })),
@@ -977,8 +985,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               },
               body: `${questionText}\n\n${detailsText}`,
               interaction: {
-                kind: "event_rsvp",
-                targetId: eventId,
+                kind: "event_instance_rsvp",
+                targetId: occurrence.id,
                 prompt: `RSVP for ${form.title}`,
               },
             });
@@ -1650,6 +1658,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           try {
             const questionText = `CHANGED TIME — are you joining "${form.title.trim()}" on ${whenText}?`;
             const detailsText = "Please reply again: YES to confirm or NO to decline. (Your earlier answer was for the old time.)";
+            const { data: occurrence } = await fromExt("club_event_instances").select("id")
+              .eq("event_id", editingEventId).eq("instance_date", form.event_date).eq("status", "scheduled").maybeSingle();
+            if (!occurrence?.id) throw new Error("No occurrence found for this invitation");
             await sendWhatsApp({
               clubId,
               recipients: inviteeIds.map((id) => ({ member_id: id })),
@@ -1659,8 +1670,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               templateVariables: { question: questionText, details: detailsText },
               body: `${questionText}\n\n${detailsText}`,
               interaction: {
-                kind: "event_rsvp",
-                targetId: editingEventId,
+                kind: "event_instance_rsvp",
+                targetId: occurrence.id,
                 prompt: `RSVP for ${form.title.trim()}`,
               },
             });

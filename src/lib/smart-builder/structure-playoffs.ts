@@ -48,6 +48,11 @@ export function syncPlayoffStages<T extends PlayoffStageLike>(stages: T[], plann
     const shared = existing.find((s) => !s.unit);
     const template = shared ?? existing[0];
     if (need.length === units.length && units.length > 1) {
+      const ownPairings = new Set(existing.filter((s) => s.unit).map((s) => String(s.pairing ?? "")));
+      if (ownPairings.size > 1) {
+        need.forEach((unit) => { const own = existing.find((s) => s.unit === unit); result.push(own ?? (template ? { ...template, id: `${template.id}:${unit}`, unit } : make(name, unit))); });
+        continue;
+      }
       result.push(shared ? shared : template ? { ...template, unit: "" } : make(name, ""));
       continue;
     }

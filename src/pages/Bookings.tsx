@@ -1039,9 +1039,15 @@ export default function Bookings() {
       // Get club members (scoped to current club) with their ladder rank
       const { data: members, error: membersError } = await (supabase as any)
         .from("club_members")
-        .select("id, name, user_id, email, ladder_position")
+        .select("id, name, user_id, email, ladder_position, role")
         .eq("club_id", bookingClubId);
       if (membersError) throw membersError;
+
+      // Visitors only feature in booking pickers while they hold a live
+      // (active, in-window) day / 3-day / month visitor pass.
+      const { data: passVisitors } = await (supabase as any)
+        .rpc("club_bookable_visitors", { p_club_id: bookingClubId });
+      const livePassHolderIds = new Set((passVisitors || []).map((r: any) => String(r.member_id)));
 
       // Also get profiles for display names
       const userIds = (members || []).map((m: any) => m.user_id).filter(Boolean);

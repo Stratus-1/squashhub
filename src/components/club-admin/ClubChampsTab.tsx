@@ -1624,6 +1624,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setCollapsedLeagues((m) => ({ ...m, [String(gn)]: false }));
     setNumGroups(gn);
     setLeagueFormats((m) => ({ ...m, [String(gn)]: fmt }));
+    // A new category must never be nameless: an empty name blocks saving with
+    // a confusing error, so seed a renameable default immediately.
+    setGroupLabels((m) => ({ ...m, [String(gn)]: (m[String(gn)] ?? "").trim() || `Category ${gn}` }));
     // New leagues inherit the current category as their starting point.
     setLeagueGenders((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? gender }));
     setLeagueMatchTypes((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? matchType }));
@@ -9135,7 +9138,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const saveOriginalStructure = (locks = categoryLocks, validateSlots?: number[]) => {
     if (!structureOnly) return;
     const names = Array.from({ length: numGroups }, (_, i) => String(groupLabels[String(i + 1)] ?? "").trim());
-    if (names.some((name) => !name || name.includes("::"))) { toast.error("Each category needs a name without ::."); return; }
+    const badName = names.findIndex((name) => !name || name.includes("::"));
+    if (badName >= 0) { toast.error(names[badName] ? `Category ${badName + 1}: the name must not contain ::.` : `Category ${badName + 1} needs a name.`); return; }
     if (new Set(names.map((name) => name.toLowerCase())).size !== names.length) { toast.error("Category names must be unique."); return; }
     const finalMonradRounds = { ...monradRounds };
     for (let i = 1; i <= numGroups; i++) {

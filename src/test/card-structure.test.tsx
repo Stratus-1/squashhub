@@ -29,6 +29,10 @@ describe("replacement card structure", () => {
     expect(dropCardStructureSeedingStep(merged)).toEqual(["Type", "Basics", "Structure", "Fees", "Schedule", "Dates", "Courts", "Summary"]);
     expect(dropCardStructureSeedingStep(["Type", "Seeding", "Fees"])).toEqual(["Type", "Fees"]);
   });
+  it("retains the organiser playoff decision step after structure and courts", () => {
+    const merged = mergeCardStructureSteps(["Basics", "Categories", "Format", "Dates", "Courts", "Playoffs", "Summary"], "Structure");
+    expect(dropCardStructureSeedingStep(merged)).toEqual(["Basics", "Structure", "Dates", "Courts", "Playoffs", "Summary"]);
+  });
   it("round-trips independent subdivisions and named pools without altering scheduling", () => {
     const original = base();
     let a = addCardDivision(original, "round_robin").answers;

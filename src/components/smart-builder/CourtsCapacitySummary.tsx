@@ -20,6 +20,14 @@ export function CourtsCapacitySummary({ answers, days, units }: { answers: PlanA
       <thead className="text-muted-foreground"><tr><th className="py-2 pr-3">Category</th><th className="pr-3">Field</th><th className="pr-3">Stages</th><th className="pr-3">Play-offs</th><th className="pr-3">Slot</th><th>Court time</th></tr></thead>
       <tbody>{c.rows.map((r) => <tr key={r.key} className="border-t border-border"><td className="py-2 pr-3 font-medium">{r.label}{r.incomplete && <span className="block font-normal text-muted-foreground">Unresolved setup</span>}</td><td className="pr-3">{r.entrants} {r.doubles ? "pairs" : "players"}{r.estimated ? " (estimated)" : ""}</td><td className="pr-3">{r.stages.map((s, i) => <div key={i}>{s.label}: {s.matches ?? "?"} games</div>)}</td><td className="pr-3">{r.playoffs}{r.playoffUnresolved ? " · provisional" : ""}</td><td className="pr-3">{r.slotMinutes > 0 ? `${r.slotMinutes} min` : "Not set"}</td><td>{formatCourtMinutes(r.requiredMinutes)}</td></tr>)}</tbody>
     </table></div>
+    {c.rows.some((r) => r.playoffs > 0) && <div className="space-y-2 border-t border-border pt-3" aria-label="Play-off court slots">
+      <h4 className="text-sm font-semibold">Play-off court slots</h4>
+      {c.rows.filter((r) => r.playoffs > 0).map((r) => <div key={r.key} className="space-y-1">
+        <div className="font-medium">{r.label} · {r.playoffs} slots · {formatCourtMinutes(r.playoffMinutes)} court time{r.playoffUnresolved ? " · provisional" : ""}</div>
+        {r.playoffSlots.map((s) => <div key={s.label} className="text-muted-foreground">{s.label}: {s.matches} slot{s.matches === 1 ? "" : "s"} × {r.slotMinutes} min = {formatCourtMinutes(s.minutes)}</div>)}
+        {r.playoffUnresolved && <p className="text-muted-foreground">Qualification / pairing not confirmed.</p>}
+      </div>)}
+    </div>}
     {c.availableSlots != null && <p className="text-muted-foreground">Each court window ÷ {c.slotMinutes} minutes, rounded down separately = {c.availableSlots} whole match slots.</p>}
     <p className="text-muted-foreground">Court-time estimate only; rest, play-off gaps, court restrictions and shared players still need a timetable check. Undecided stages and qualification are not assumed.</p>
   </section>;

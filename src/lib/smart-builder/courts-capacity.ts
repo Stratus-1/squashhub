@@ -9,6 +9,7 @@ export interface CourtsCapacityUnit {
   estimated: boolean;
   slotMinutes: number;
   playoffGames: number;
+  playoffRounds?: number;
   playoffUnresolved: boolean;
 }
 export interface CourtsCapacityDay {
@@ -52,7 +53,12 @@ export function courtsCapacity(answers: PlanAnswers, days: CourtsCapacityDay[], 
     const playoffs = stages.some((s) => s.kind === "knockout") ? 0 : u.playoffGames;
     const games = cap.matches + playoffs;
     const incomplete = unsupported || cap.undecided > 0 || u.entrants < 2 || u.slotMinutes <= 0 || u.playoffUnresolved;
-    return { ...u, stages: cap.stages, poolGames: cap.matches, playoffs, games, requiredMinutes: games * u.slotMinutes, incomplete };
+    const playoffSlots = playoffs > 0 && u.playoffRounds ? Array.from({ length: u.playoffRounds }, (_, i) => {
+      const matches = 2 ** (u.playoffRounds - i - 1);
+      const label = matches === 4 ? "Quarterfinals" : matches === 2 ? "Semifinals" : "Final";
+      return { label, matches, minutes: matches * u.slotMinutes };
+    }) : [];
+    return { ...u, stages: cap.stages, poolGames: cap.matches, playoffs, playoffSlots, playoffMinutes: playoffs * u.slotMinutes, games, requiredMinutes: games * u.slotMinutes, incomplete };
   });
   const requiredMinutes = rows.reduce((sum, r) => sum + r.requiredMinutes, 0);
   const games = rows.reduce((sum, r) => sum + r.games, 0);

@@ -1205,13 +1205,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     // Structure review step removed: it only re-displayed the saved structure.
     // Seeding is chosen per category on the structure page, so the separate
     // Seeding step is no longer part of this pilot's flow.
-    steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact).filter((k) => k !== "Entries" && k !== "Playoffs"));
-    // Playoffs are planned per category on the structure page, so the separate Playoffs step is dropped too.
+    steps.splice(0, steps.length, ...dropCardStructureSeedingStep(compact).filter((k) => k !== "Entries"));
+    // Structure selects rounds; qualification and pairing still need their own reachable controls.
   }
   const cur = steps[Math.min(step, steps.length - 1)];
   const isStruct = cur === "Structure" && !cardStructure;
   // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
-  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && (MERGED_STRUCTURE_STEPS.includes(t) || t === "Seeding" || t === "Playoffs") ? "Structure" : cardStructure && t === "Entries" ? "Eligibility" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
+  const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && (MERGED_STRUCTURE_STEPS.includes(t) || t === "Seeding") ? "Structure" : cardStructure && t === "Entries" ? "Eligibility" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
 
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;
@@ -2366,6 +2366,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 return { key: u.key, label: u.base, entrants: players > 0 ? (u.disc === "doubles" ? Math.ceil(players / 2) : players) : Number(a.unitEntries?.[u.key]) || (units.length === 1 ? Number(a.entries) || 0 : 0), doubles: u.disc === "doubles", estimated: players === 0,
                   slotMinutes: sc?.mode === "time_capped_points" ? slotMinutes(sc) : savedMinutes,
                   playoffGames: p.choice === "playoffs" ? 2 ** p.rounds - 1 : 0,
+                  playoffRounds: p.choice === "playoffs" ? p.rounds : 0,
                   playoffUnresolved: p.choice === "later" || (p.choice === "playoffs" && (p.qualification === "later" || p.pairing === "later" || p.style === "placement")) };
               })} />
               <div className="space-y-3">
@@ -2708,9 +2709,24 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "Playoffs" && (
             <>
               <Q t="Will there be playoffs?" h="Playoffs follow your planned format. Categories inherit the tournament plan unless you choose an exception below. Planning only — no draw or fixtures are made, and this is revisited at Confirm final format." />
-              <PlayoffFields value={playoff} onChange={setPlayoff} format={format.kind} />
+              {!cardStructure && <PlayoffFields value={playoff} onChange={setPlayoff} format={format.kind} />}
+              {cardStructure && units.map((u) => {
+                const p = playoffFor(u.key);
+                const pools = rowStages(a, u.key)[0]?.pools ?? 1;
+                const q = poolQualification(u.key);
+                const places = 2 ** p.rounds;
+                return <section key={u.key} aria-label={`Play-offs for ${u.base}`} className="space-y-3 border-b border-border py-3">
+                  <h3 className="text-sm font-semibold">{u.base} · {pools} pool{pools === 1 ? "" : "s"}</h3>
+                  <PlayoffFields value={p} onChange={(patch) => setPlayoffOverride(u.key, patch)} format={formatFor(u.key).kind} />
+                  {pools > 1 && p.choice === "playoffs" && <div className="space-y-2 text-xs">
+                    <label className="flex flex-wrap items-center gap-2"><span>Qualifiers from each pool</span><Input type="number" min={1} className="h-8 w-20" aria-label={`Qualifiers per pool for ${u.base}`} value={q.perPool ?? ""} placeholder="Not set" onChange={(e) => setPoolQualification(u.key, { perPool: e.target.value })} /></label>
+                    <p>{pools} pools · {places} places in {playoffText(p)}{Number(q.perPool) > 0 ? ` · ${pools * Number(q.perPool)} qualifiers selected` : " · qualification not confirmed"}.</p>
+                    {(Number(q.perPool) > 0 ? pools * Number(q.perPool) !== places : places % pools !== 0) && <p className="text-destructive">Equal qualification from {pools} pools does not fill this {places}-place bracket. Review the play-off structure; no pool positions will be chosen automatically.</p>}
+                  </div>}
+                </section>;
+              })}
               <TieBreakFields value={a.tieBreaks} onChange={(v) => setA((prev) => ({ ...prev, tieBreaks: v }))} />
-              {units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
+              {!cardStructure && units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
                 <div className="text-sm font-semibold">Category and subcategory exceptions</div>
                 <p className="text-xs text-muted-foreground">Leave a group on the tournament plan, or give it its own playoff structure.</p>
                 {cats.map((cat) => {

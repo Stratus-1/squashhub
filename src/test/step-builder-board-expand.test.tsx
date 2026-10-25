@@ -16,6 +16,7 @@ function chain(table: string): any {
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (t: string) => chain(t), rpc: () => chain("rpc") } }));
 vi.mock("@/hooks/use-tournament-eligibility", () => ({ useOrgHierarchyLite: () => ({ data: null, isLoading: false }) }));
 vi.mock("@/hooks/use-association-tenant", () => ({ useAssociationTenant: () => ({ isAssociation: false, orgId: null }) }));
+vi.mock("@/hooks/use-club-beta-feature", () => ({ useClubBetaFeature: () => ({ data: false, isLoading: false }) }));
 
 import { StepByStepBuilder } from "@/components/smart-builder/StepByStepBuilder";
 

@@ -749,6 +749,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
 
 
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
+    const tournamentFormat = getTournamentFormat((champForScoring as any)?.league_scoring_modes?.[String(groupNum)] ?? (champ as any)?.scoring_mode);
+    const isBells = tournamentFormat.key === "time_capped_points";
     // Per-division doubles: a "Doubles Bells" league must list both names.
     const isDoubles = isDoublesLeague(groupNum);
     let groupEntries = standingsEntries.filter((e: any) => e.group_number === groupNum);
@@ -854,7 +856,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         // Standard tournament points: 1 point per game (set) won.
         // e.g. 2-1 win → winner 2 pts / loser 1 pt; 3-0 win → 3 / 0.
         // Byes handled as walkover wins get a full 3-game credit.
-        points: stats.gamesWon + byeWins * 3,
+        points: isBells ? stats.pointsFor : stats.gamesWon + byeWins * 3,
 
       };
     };
@@ -975,7 +977,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     // table can never show a different order from the one the next stage is built from.
     const spec = isStructured ? arch?.builder_spec : null;
     const sdiv = spec && !mu && !isCrossLeague ? (spec.divisions ?? []).find((d: any) => divisionGroup(spec, d) === groupNum) : null;
-    if (sdiv) {
+    if (sdiv && !isBells) {
       const keyOf = (r: any) => (isDoubles && r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id);
       const byMember = new Map<string, string>();
       rows.forEach((r: any) => { byMember.set(r.club_member_id, keyOf(r)); if (r.partner_member_id) byMember.set(r.partner_member_id, keyOf(r)); });
@@ -1296,6 +1298,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     const gm = (matches as any[]).filter((m: any) => m.group_number === gn && (m.stage || "group") === "group");
     const rrDivision = isStructured ? arch?.builder_spec?.divisions?.find((d: any) => divisionGroup(arch.builder_spec, d) === gn) : null;
     const rrStage = rrDivision?.stages?.find((s: any) => s.kind === "round_robin");
+    const bells = ((champForScoring as any)?.league_scoring_modes?.[String(gn)] ?? (champ as any)?.scoring_mode) === "time_capped_points";
     if (!gm.length) return null;
     // Round robin finished (or play-offs running): play-offs go on top, pool results move below.
     const rrDone = gm.every((m: any) => m.is_bye || !!m.winner_member_id || m.status === "completed") || (matches as any[]).some((m: any) => m.group_number === gn && (m.stage || "group") !== "group");
@@ -1321,6 +1324,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                 seedOrder: rrSeedOrder(poolMatches, rows.map((r: any) => r.club_member_id)),
                 matches: poolMatches,
                 stageRoundCount: rrStage?.schedule?.roundDates?.length,
+                pointsScoring: bells,
               });
               return { pn, view };
             }).filter((p): p is { pn: number; view: RRPoolView } => !!p);

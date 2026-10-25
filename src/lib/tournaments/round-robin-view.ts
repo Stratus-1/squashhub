@@ -23,7 +23,7 @@ export interface RRCell { matchId: string; round: number | null; result: "W" | "
 export interface RRRoundMatch { id: string; a: string | null; b: string | null; aName: string; bName: string; posA: number | null; posB: number | null; winner: string | null; score: string | null; status: RRStatus; when: string; date?: string | null; time?: string | null; court?: string | null; playBy?: string | null }
 export interface RRRound { round: number | null; label: string; matches: RRRoundMatch[]; sittingOut: string[]; status: "complete" | "in_progress" | "not_started" }
 export interface RRTotals { played: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number; pointsKnown: boolean; gamesFor: number; gamesAgainst: number }
-export interface RRPoolView { players: RRPlayer[]; matrix: Record<string, Record<string, RRCell | null>>; totals: Record<string, RRTotals>; rank: Record<string, number>; complete: boolean; rounds: RRRound[]; issues: string[] }
+export interface RRPoolView { pointsScoring?: boolean; players: RRPlayer[]; matrix: Record<string, Record<string, RRCell | null>>; totals: Record<string, RRTotals>; rank: Record<string, number>; complete: boolean; rounds: RRRound[]; issues: string[] }
 
 const isPlayed = (m: RRMatchInput) => m.status === "completed";
 
@@ -121,7 +121,7 @@ export function stageRoundProjection(players: RRPlayer[], matches: RRMatchInput[
   return matches.map(m => ({ ...m, round: roundOf.get(m.id) ?? m.round }));
 }
 
-export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMatchInput[]; rankOrder?: string[]; seedOrder?: string[]; stageRoundCount?: number }): RRPoolView {
+export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMatchInput[]; rankOrder?: string[]; seedOrder?: string[]; stageRoundCount?: number; pointsScoring?: boolean }): RRPoolView {
   const issues: string[] = [];
   // Rows stay in fixed draw order (seedOrder) so games never jump boxes; rank is shown separately.
   const order = input.seedOrder?.length ? input.seedOrder : input.rankOrder?.length ? input.rankOrder : input.players.map((p) => p.id);
@@ -159,10 +159,10 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
     });
     matrix[m.a][m.b] = cell(m.a, m.b, false);
     matrix[m.b][m.a] = cell(m.b, m.a, true);
-    if (played && m.winner) {
+    if (played && (m.winner || input.pointsScoring)) {
       for (const [me, flip] of [[m.a, false], [m.b, true]] as const) {
         const t = totals[me]; t.played++;
-        if (m.winner === me) t.wins++; else t.losses++;
+        if (m.winner === me) t.wins++; else if (m.winner) t.losses++;
         if (sets?.length && !walkover) for (const st of sets) { const mine = flip ? st.b : st.a, theirs = flip ? st.a : st.b; if (mine > theirs) t.gamesFor++; else if (theirs > mine) t.gamesAgainst++; }
         if (rallyPoints) { t.pointsFor += flip ? rallyPoints[1] : rallyPoints[0]; t.pointsAgainst += flip ? rallyPoints[0] : rallyPoints[1]; }
         else if (!walkover) t.pointsKnown = false;
@@ -197,7 +197,7 @@ export function buildRoundRobinView(input: { players: RRPlayer[]; matches: RRMat
   const rank = Object.fromEntries(rankIds.map((id, i) => [id, i + 1]));
   const live = input.matches.filter((m) => !m.isBye && m.a && m.b && !isVoidResult({ score: m.score }));
   const complete = live.length > 0 && live.every((m) => isPlayed(m));
-  return { players, matrix, totals, rank, complete, rounds, issues };
+  return { players, matrix, totals, rank, complete, rounds, issues, pointsScoring: input.pointsScoring };
 }
 
 /** Fixed draw order from Round 1 pairings (circle method: 1vN, 2vN-1 …), independent of results. */

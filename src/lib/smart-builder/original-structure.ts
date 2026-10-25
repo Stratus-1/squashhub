@@ -2,7 +2,6 @@ import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
 import { rowStages, structureUnits, renameStructureKey, writeRowStages } from "./structure-rows";
 import { newStageId, type StageKind } from "./stage-plan";
 import { poolNamesFor } from "./category-pools";
-import { categoryDisplayName } from "./category-labels";
 
 /** Full original-screen snapshot stays local; only supported answers are mirrored. */
 export type OriginalStructure = Record<string, any>;
@@ -81,6 +80,29 @@ export function mirrorPoolGroupSettings(raw: OriginalStructure): OriginalStructu
 
 export function answersFromOriginalStructure(a: StepAnswers, input: OriginalStructure): StepAnswers {
   const raw = mirrorPoolGroupSettings(input);
+  if (a.createdTournamentId) {
+    const previous = originalStructureFromAnswers(a);
+    const settings = (value: OriginalStructure) => {
+      const copy = structuredClone(value);
+      delete copy.group_labels;
+      delete copy.category_locks;
+      return JSON.stringify(copy);
+    };
+    if (settings(previous) === settings(raw)) {
+      const next = structuredClone(a);
+      const labels = { ...(a.categoryLabels ?? {}) };
+      (previous._unit_keys as string[]).forEach((key, i) => {
+        const defaultName = key.includes("::") ? key.split("::")[1] : key;
+        const name = String(raw.group_labels?.[String(i + 1)] ?? "").trim();
+        if (!name || name.includes("::")) return;
+        if (name === defaultName) delete labels[key];
+        else labels[key] = name;
+      });
+      next.categoryLabels = labels;
+      next.originalStructure = { ...raw, _unit_keys: previous._unit_keys };
+      return next;
+    }
+  }
   let next = structuredClone(a);
   const sourceKeys: string[] = raw._unit_keys ?? [];
   const activeKeys: string[] = [];

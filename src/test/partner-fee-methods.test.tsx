@@ -28,4 +28,9 @@ describe("partner fee payment methods", () => {
     await waitFor(() => expect(screen.getByTestId("partner-fee-settled")).toBeTruthy());
     expect(screen.queryByText(/to my account/)).toBeNull();
   });
+  it("no entry fee → the whole partner fee card never renders", async () => {
+    mount({ ...opts, fee_cents: 0 });
+    await waitFor(() => expect(screen.queryByTestId("partner-fee-options")).toBeNull());
+    expect(screen.queryByText(/owes their/)).toBeNull();
+  });
 });

@@ -16,6 +16,8 @@ const money = (cents: number) => `R${(cents / 100).toFixed(cents % 100 ? 2 : 0)}
 /** Which partner-payment choices to offer (pure; the server re-checks everything at checkout/charge). */
 export function partnerPayChoices(o: PartnerPayOptions | null | undefined): PartnerPayScope[] {
   if (!o?.ok || !o.enabled || !o.partner_owes) return [];
+  // A tournament with no entry fee has nothing to pay on anyone's behalf — never offer partner fees.
+  if ((o.fee_cents ?? 0) <= 0) return [];
   return o.me_owes ? ["partner", "both"] : ["partner"];
 }
 
@@ -68,6 +70,8 @@ export function PartnerFeeOptions({ registrationId, token, verify, ready = true,
 
   if (!data?.ok || !data.enabled) return null;
   const fee = data.fee_cents ?? 0;
+  // No fee → no partner payment card at all (the tournament charges nothing to settle).
+  if (fee <= 0) return null;
   const name = data.partner_name || "your partner";
   if (!data.partner_owes) {
     return (

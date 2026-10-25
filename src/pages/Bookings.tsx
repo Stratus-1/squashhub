@@ -88,6 +88,7 @@ import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
 import { projectCourtFixtures } from "@/lib/tournaments/projected-court-fixtures";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
+import { isVisitorWithoutLivePass } from "@/lib/booking-visible-players";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { isChampsReservation } from "@/lib/tournaments/self-schedule";
 import { uitsigLadiesBRoundFromDeadline } from "@/lib/tournaments/uitsig-ladies-b-round-labels";

@@ -18,7 +18,8 @@ Source of truth files:
 - `src/components/tournaments/ParentCategoryProgression.tsx` — grouped progression block
 - Data/pure logic: `src/lib/tournaments/round-robin-view.ts`,
   `src/lib/tournaments/swiss-progression-view.ts`, `src/lib/tournaments/swiss-rr-finish.ts`
-  (`hybridSwissTable`), `src/lib/tournaments/rr-final-ranking.ts`,
+  (`hybridSwissTable`), `src/lib/tournaments/swiss-rr-standings.ts`,
+  `src/lib/tournaments/rr-final-ranking.ts`, `src/lib/tournaments/overall-standings.ts`,
   `src/lib/tournaments/planned-playoff-bracket.ts`
 - Colour tokens: `src/index.css` (`--round-*`, `--rr-g*`, `--matrix-final*`)
 
@@ -63,7 +64,8 @@ category highlighted green.
 2. **Round track** (horizontal, draggable, inside the viewer): one panel per round,
    320 px wide, self-start. Header: `{Group label} · {Round label}` + status pill
    (Complete / In progress / Not started) with a coloured dot; `Bye: names` line
-   when players sit out.
+   when players sit out. Every saved round is labelled, including
+   `Unassigned round` for fixtures with no round number.
    - Column headers: **Pos | Player | Day & time · court | Result** — the same
      table format as the Swiss round panels, reusing `WhenTag`.
    - Each match is a 2-row block (one row per player) separated by a 3 px top
@@ -95,6 +97,9 @@ category highlighted green.
   bye/walkover awards. Shows `—` when point detail is incomplete.
 - `Final standing` table (Rank / Player / W-L) appears once the pool is complete.
 - Order-of-play panels below use the same round-panel format as 2.2.
+- The classic matrix's rank column may use the five-band green→rose rank heatmap
+  (`poolRankTone`, softened before results); the clean view's bands are fixed
+  pool-identity colours and are never a changing rank heatmap.
 
 ### 2.5 Standings rules (RR)
 - Pos = fixed draw position, immutable; Rank = live, updates per result, computed
@@ -191,6 +196,8 @@ visible; selected category green.
   (`A1 1st v A2 2nd`). Final column card has an amber border and 🏆.
 - Winner card: `🏆 {champion}` in amber when decided, dashed `Winner {Final id}`
   otherwise.
+- Once play-offs finish, the `OverallStandingsPanel` shows the post-play-off
+  overall standings (`src/lib/tournaments/overall-standings.ts`).
 - Connector lines: smooth curves measured from the rendered layout (survive
   zoom), pool-coloured from pool slots, primary between games; **dashed until
   the bracket is confirmed**, solid after.
@@ -245,12 +252,20 @@ visible; selected category green.
 
 1. Display-only: no writes, bookings, notices or regeneration from any view.
 2. Pos never moves; Rank is live and follows saved scoring/tiebreak rules.
-3. Round/stage headings appear only when the admin set up rounds (play-by dates,
-   real labels or self-scheduled); pre-planned timed events render one flat
-   chronological schedule.
+3. Games-list rule (`src/pages/Tournaments.tsx`, `renderMatchList`): round/stage
+   headings appear only when the admin set up rounds (play-by dates, real labels
+   or self-scheduled); pre-planned timed events render one flat chronological
+   schedule. The champs fixture tab (`ClubChampsView.tsx:4215-4230`) groups by
+   round when scoring is not time-capped, matches carry round numbers, and the
+   category is Swiss, self-scheduled or untimed. RR/Swiss progression round
+   panels always label their rounds (see 2.2).
 4. Proposed/projected content is always labelled (PREVIEW, proposed, projected,
-   dashed) and separated from factual saved games.
+   dashed) and separated from factual saved games; standard Upcoming/Results
+   panels exclude provisional Swiss slots.
 5. The dense views render inside `TournamentInteractiveViewer`; drag/zoom are
    navigation only and never mutate data or intercept standings actions.
-6. Existing Uitsig approved exact display charts and the Riverside pilot gating
-   (`club_beta_features`, set from Super Admin) remain separate exceptions.
+6. Gating: the clean round-robin view is app-wide and not beta-gated. The
+   enhanced Swiss grid requires the `club_beta_features` viewer and
+   Swiss-progression switches (set from Super Admin, never migration-seeded) and
+   excludes doubles. Approved Uitsig exact display charts remain separate
+   exceptions.

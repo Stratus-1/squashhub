@@ -1355,7 +1355,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                 return { pool: L, title: pc > 1 ? poolName(gn, i + 1) : getGroupLabel(champ, gn), names, qualifiers: pairingSet ? perPoolMax(L) : fallbackQ };
               });
               return (
-                <div className={cn("order-first space-y-2 rounded-lg border p-3", rrDone ? "border-primary" : "border-border")} data-testid={`planned-playoffs-${gn}`}>
+                <div className={cn("space-y-2 rounded-lg border p-3", rrDone && "order-first", rrDone ? "border-primary" : "border-border")} data-testid={`planned-playoffs-${gn}`}>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-sm font-semibold">{getGroupLabel(champ, gn)} · Play-offs</div>
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", done ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>{done ? "Pool games complete" : "Pools in progress"}</span>
@@ -1379,7 +1379,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const rank = (l: string) => { const x = l.toLowerCase(); return x.includes("16") ? 0 : x.includes("quarter") ? 1 : x.includes("semi") ? 2 : x.includes("final") ? 3 : 4; };
             const order = [...new Set(ko.map((m: any) => m.stage_label ?? "Play-offs"))].sort((a: any, b: any) => rank(a) - rank(b));
             return (
-              <div className={cn("space-y-2 order-first")} data-testid={`pool-playoffs-${gn}`}>
+              <div className={cn("space-y-2", rrDone && "order-first")} data-testid={`pool-playoffs-${gn}`}>
                 <div className="text-xs text-muted-foreground">Play-offs — from the final pool standings. Winners move on until the final.</div>
                 <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · Play-offs — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
                   <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · Play-offs`} names={koNames} seedOf={() => null}

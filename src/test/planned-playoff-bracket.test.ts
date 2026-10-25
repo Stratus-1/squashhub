@@ -5,6 +5,25 @@ const plan = { stages: [
   { name: "Final", unit: "Mens A", phase: "playoff", mode: "scheduled", date: "2026-11-15", from: "11:00", to: "17:00", pairing: "winners" },
 ] };
 describe("planned play-off bracket", () => {
+  const placementPlan = {
+    playoffOverrides: { Open: { choice: "playoffs", style: "placement", pairing: "seeded" } },
+    playoffPoolQualifiers: { Open: { perPool: 4 } },
+    stages: [{ unit: "Open", phase: "playoff", name: "Final", pairing: "seeded" }],
+  };
+  it("saved placement play shows A1 v B1 through A4 v B4, not generic seeds", () => {
+    const r = plannedPlayoffBracket(placementPlan, "Open", 2, null);
+    expect(r.map((g) => g.text)).toEqual(["A1 v B1", "A2 v B2", "A3 v B3", "A4 v B4"]);
+    expect(r[0].sides.map((s) => [s.pool, s.rank, s.name])).toEqual([["A", 1, null], ["B", 1, null]]);
+    expect(r.map((g) => g.id)).toEqual(["Final", "Places 3/4", "Places 5/6", "Places 7/8"]);
+  });
+  it("placement names resolve only from supplied final standings, without changing the saved plan", () => {
+    const before = JSON.stringify(placementPlan);
+    const r = plannedPlayoffBracket(placementPlan, "Open", 2, [["Ann", "Bob", "Eve", "Flo"], ["Cid", "Dan", "Gus", "Hal"]]);
+    expect(r[0].text).toBe("Ann (A1) v Cid (B1)");
+    expect(r[1].text).toBe("Bob (A2) v Dan (B2)");
+    expect(JSON.stringify(placementPlan)).toBe(before);
+    expect(plannedPlayoffBracket(placementPlan, "Other", 2, null)).toEqual([]);
+  });
   it("shows positions while the round robin is running", () => {
     const r = plannedPlayoffBracket(plan, "Mens A", 2, null);
     expect(r.map((x) => `${x.id} ${x.text}`)).toEqual(["SF1 A1 v B2", "SF2 B1 v A2", "Final Winner SF1 v Winner SF2"]);

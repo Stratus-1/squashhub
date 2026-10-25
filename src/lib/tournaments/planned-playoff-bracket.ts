@@ -24,12 +24,20 @@ function whenOf(s: any): string | null {
  * @param standings pool index (0 = Pool A) → member names in finishing order; pass only when the qualifying stage is complete.
  */
 export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number, standings: string[][] | null): PlannedPlayoffRow[] {
-  const games = provisionalPlayoffs(plan, unitKey, Math.max(1, pools));
   const timeline = ((plan?.stages ?? []) as any[]).filter((s) => s?.phase === "playoff" && (!s.unit || s.unit === unitKey || s.unit === unitKey.split("::")[0]));
   if (!timeline.length) return [];
+  const choice = plan?.playoffOverrides?.[unitKey] ?? plan?.playoffOverrides?.[unitKey.split("::")[0]] ?? plan?.playoff;
+  // Placement play is a saved positional choice, not a seeded championship.
+  // Project it only here: do not change scheduling or fixture generation.
+  const placement = choice?.style === "placement" && pools === 2;
+  const games = placement
+    ? provisionalPlayoffs({ ...plan, stages: [] }, unitKey, pools).map((g, i) => ({
+      ...g, stage: "Placement", label: `${i === 0 ? "Final" : `Places ${2 * i + 1}/${2 * i + 2}`}: ${g.label.replace(/ \(\d+\/\d+ place\)$/, "")}`,
+    }))
+    : provisionalPlayoffs(plan, unitKey, Math.max(1, pools));
   const name = (pool: string, pos: number) => standings?.[pool.charCodeAt(0) - 65]?.[pos - 1] ?? null;
   return games
-    .filter((g) => ORDER.includes(g.stage))
+    .filter((g) => placement || ORDER.includes(g.stage))
     .sort((a, b) => ORDER.indexOf(a.stage) - ORDER.indexOf(b.stage))
     .map((g) => {
       const [id, ...rest] = g.label.split(": ");
@@ -46,7 +54,7 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
         if (sm) { const rank = Number(sm[1]); return { label: ord(rank), name: name("A", rank), pool: null, rank }; }
         return { label: raw, name: null, pool: null, rank: null };
       });
-      return { sides: [sides[0], sides[1] ?? { label: "Bye", name: null, pool: null, rank: null }] as [PlannedSide, PlannedSide], key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === g.stage)) };
+      return { sides: [sides[0], sides[1] ?? { label: "Bye", name: null, pool: null, rank: null }] as [PlannedSide, PlannedSide], key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === (placement ? "Final" : g.stage))) };
     });
 }
 

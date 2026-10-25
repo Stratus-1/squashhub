@@ -9345,7 +9345,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         const lockKey = categoryLockKey(originalKeysRef.current[gn - 1] ?? key, poolGroup?.parent);
                         const categoryLocked = !!structureOnly && categoryLocks[lockKey] === true;
                         const poolIndex = poolGroup ? poolGroup.slots.indexOf(gn) + 1 : 0;
-                        const lockKey = categoryLockKey(originalKeysRef.current[gn - 1] ?? key, poolGroup?.parent);
                         const displayCategory = gn - (structureOnly?.initial._pool_groups ?? []).reduce((n: number, group: { slots: number[] }) => n + group.slots.filter((slot) => slot < gn && slot !== group.slots[0]).length, 0);
                         // One category card only: legacy numbered pool slots share the first pool's settings.
                         if (poolGroup && poolIndex > 1) return null;

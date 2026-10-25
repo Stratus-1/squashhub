@@ -1,4 +1,5 @@
 # Step-by-Step Beta builder rules
+- Doubles serving selection is shared by Standard and Bells categories in the original structure screen, retaining category locks and the existing marker method; why: scoring mode must not hide serving rules.
 - Eligibility audience toggles preserve other selected audiences and retained league IDs when leagues are deselected; why: removing automatic league placement must not remove manual picks or widen a manual-only audience.
 - Step-by-Step Beta match scoring is device-local, with tournament default and category/subcategory overrides resolved only for planning; why: guided choices must not alter live competition rules before creation is supported.
 - Step-by-Step Beta planned competition format (pools/knockout/swiss/cross-league/later) is device-local and provisional with category/subcategory overrides; playoffs derive from it and a "Confirm final format" checkpoint is required before any generation; why: format must never be fixed before real entries are known.

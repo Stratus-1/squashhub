@@ -110,7 +110,9 @@ export function answersFromOriginalStructure(a: StepAnswers, input: OriginalStru
     const poolNames = pools > 1 ? poolNamesFor({ pools, poolNames: savedNames }) : undefined;
     next = writeRowStages(next, key, [{ ...plan[0], id: plan[0]?.id ?? newStageId(), kind, pools, poolNames, rounds: kind === "swiss" ? Number(raw.swiss_rounds?.[id]) || 5 : kind === "monrad" ? Number(raw.monrad_rounds?.[id]) || null : null, endAfterRound: kind === "swiss" ? Number(raw.swiss_rounds?.[id]) || 5 : null, rrFinish: kind === "swiss" ? raw.swiss_rr_finish?.[id] ?? null : null }, ...plan.slice(1)]);
     next.scoringOverrides[key] = { mode: raw.league_scoring_modes?.[id] ?? "standard", pointsPerGame: raw.league_points_per_game?.[id] === 15 ? 15 : 11, bestOf: raw.league_best_of?.[id] === 3 ? 3 : 5, playAllGames: !!raw.league_play_all_games?.[id], winCondition: raw.league_win_conditions?.[id] ?? "win_by_2", timeCapPlay: String(raw.group_durations?.[id] ?? ""), timeCapBreak: String(raw.group_break_minutes?.[id] ?? ""), timeCapMinutes: "" };
-    if (raw.league_doubles_serving_methods?.[id]) next.serving = { ...next.serving, [key]: raw.league_doubles_serving_methods[id] };
+    next.serving = { ...next.serving };
+    if (raw.league_doubles_serving_methods?.[id]) next.serving[key] = raw.league_doubles_serving_methods[id];
+    else delete next.serving[key];
     const seed = raw.league_seeding_plans?.[id];
     if (["ranking", "ladder", "manual", "random", "none", "later"].includes(seed)) next.seedingOverrides = { ...(next.seedingOverrides ?? {}), [key]: seed };
     if (raw.league_playoffs?.[id] !== undefined) next.playoffOverrides[key] = { ...(next.playoffOverrides[key] ?? next.playoff ?? { rounds: 2, qualification: "later", pairing: "later" }), choice: raw.league_playoffs[id] ? "playoffs" : "none" };

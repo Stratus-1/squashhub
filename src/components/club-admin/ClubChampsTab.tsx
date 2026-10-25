@@ -9953,23 +9953,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     ]}
                                     onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
                                   />
-                                  {matchTypeForLeague(gn) === "doubles" && (
-                                    <SegRow
-                                      label="Doubles serving method"
-                                      value={leagueServingMethods[String(gn)] ?? "none"}
-                                      color="cyan"
-                                      options={[
-                                        { v: "none", l: "Not set", hint: "No method saved for this group." },
-                                        ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label, hint: m.brief })),
-                                      ]}
-                                      onChange={(v) => setLeagueServingMethods((m) => {
-                                        const next = { ...m };
-                                        const parsed = parseServingMethod(v);
-                                        if (parsed) next[String(gn)] = parsed; else delete next[String(gn)];
-                                        return next;
-                                      })}
-                                    />
-                                  )}
                                   <SegRow
                                     label="Bye handling"
                                     value={byeForLeague(gn)}
@@ -10045,6 +10028,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     />
                                   </div>
                                 </div>
+                              )}
+                              {stageOf(key) >= 4 && matchTypeForLeague(gn) === "doubles" && (
+                                <SegRow
+                                  label="Doubles serving method"
+                                  value={leagueServingMethods[key] ?? "none"}
+                                  color="cyan"
+                                  options={[
+                                    { v: "none", l: "Not set / Manual", hint: "The marker chooses the server and box manually." },
+                                    ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label, hint: m.brief })),
+                                  ]}
+                                  onChange={(v) => setLeagueServingMethods((m) => {
+                                    const next = { ...m };
+                                    const parsed = parseServingMethod(v);
+                                    if (parsed) next[key] = parsed; else delete next[key];
+                                    return next;
+                                  })}
+                                />
                               )}
                               {stageOf(key) >= 4 && scoringForLeague(gn) === "time_capped_points" && (
                                 <SegRow

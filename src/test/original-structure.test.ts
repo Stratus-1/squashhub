@@ -6,6 +6,26 @@ import { rowStages } from "@/lib/smart-builder/structure-rows";
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it.each(["even_odd", "by_position", "second_server"] as const)("retains Bells doubles serving %s on save and reload", (method) => {
+    const a = base();
+    a.disc.Men = "doubles";
+    a.scoringOverrides.Men = { ...a.scoringOverrides.Men, ...a.scoring, mode: "time_capped_points" } as NonNullable<StepAnswers["scoring"]>;
+    const raw = originalStructureFromAnswers(a);
+    raw.league_doubles_serving_methods["1"] = method;
+    const restored = answersFromOriginalStructure(a, raw);
+    expect(restored.serving?.Men).toBe(method);
+    expect(originalStructureFromAnswers(JSON.parse(JSON.stringify(restored))).league_doubles_serving_methods["1"]).toBe(method);
+    expect(restored.days).toEqual(a.days);
+  });
+  it("clears an existing doubles method when Not set / Manual is selected", () => {
+    const a = base();
+    a.serving = { Men: "second_server" };
+    const raw = originalStructureFromAnswers(a);
+    delete raw.league_doubles_serving_methods["1"];
+    const restored = answersFromOriginalStructure(a, raw);
+    expect(restored.serving?.Men).toBeUndefined();
+    expect(originalStructureFromAnswers(restored).league_doubles_serving_methods["1"]).toBeUndefined();
+  });
   it("round trips per-category RR finish through the reachable original screen without changing manual rounds", () => {
     const a = base();
     a.stagePlans = { Men: [{ id: "s", kind: "swiss", rounds: 4, endAfterRound: 4 }] };

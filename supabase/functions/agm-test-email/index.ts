@@ -37,8 +37,13 @@ Deno.serve(async (req) => {
     const sigHtml = String(club?.email_signature_html ?? '');
     const logo = sigHtml.match(/<img[^>]+src="(https:[^"]+)"/i)?.[1];
     const lines = [...sigHtml.matchAll(/<div[^>]*>([\s\S]*?)<\/div>/gi)].map((m) => m[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const rawToken = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
+    const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawToken)));
+    const { error: te } = await admin.from('agm_preview_tokens').insert({ token_hash: '\\x' + Array.from(hash, (b) => b.toString(16).padStart(2, '0')).join(''), ballot_id: input.ballot_id, club_member_id: member.id });
+    if (te) return json({ error: 'Could not create preview links' }, 500);
+    const origin = /^https:\/\/[a-z0-9.-]+$/i.test(req.headers.get('Origin') ?? '') ? req.headers.get('Origin') : 'https://squashhub.co.za';
     const result = await sendTemplateEmail('agm-invite-test', to, {
-      templateData: { title: ballot.title, memberName: member.name, meeting: ballot.meeting_at ? format(ballot.meeting_at) : undefined, venue: ballot.meeting_venue, details: ballot.meeting_details, deadline: format(ballot.deadline), documents, signature: { logo, lines }, disclaimer: club?.email_disclaimer ?? undefined },
+      templateData: { title: ballot.title, memberName: member.name, meeting: ballot.meeting_at ? format(ballot.meeting_at) : undefined, venue: ballot.meeting_venue, details: ballot.meeting_details, deadline: format(ballot.deadline), documents, inviteUrl: `${origin}/agm/${rawToken}`, voteUrl: `${origin}/vote/${rawToken}`, signature: { logo, lines }, disclaimer: club?.email_disclaimer ?? undefined },
       idempotencyKey: `agm-test-${auth.user.id}-${input.ballot_id}-${input.request_id}`,
     });
     return json(result);

@@ -3935,3 +3935,7 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 
 ## 2026-10-26 — Joining fee no longer raised on member edit
 - Removed the auto pro-rata joining-fee raise from the admin Edit Member save (MembersTab.tsx); it fired for existing members (e.g. Zach Wiid R1,925) who had no club-fee row. Genuine new-application approvals (PendingApplicationsPanel) still raise the joining fee.
+
+## 26 October 2026 — Three new Uitsig members added + activation emails
+- Added Melinda Marais (UIT0024), Christian Reeve (UIT0025), Elmien Brink (UIT0026) via the app's own Add Member flow (signed in as owner, Uitsig): Premium category, gender groups, +27 phones, 2026 club fee rows marked paid per owner instruction. Activation emails sent via Members > Activation links; comms_deliveries shows status sent, no errors; personal invite tokens valid 14 days.
+- Ledger quirk found: trg_journal_fee_assessment posts the debtors/income pair on INSERT even when the fee row is inserted paid=true, while trg_journal_fee_payment_received only fires on a later paid false->true UPDATE — so admin-added members showed R2,500 owed. Posted the standard "Fee paid" settlement pairs (Dr bank_current / Cr debtors) for the three fee rows with the function's own idempotency guard; balances now R0, bank +R7,500. The trigger behaviour itself is unchanged (pre-existing; also affects some Champs entry fees marked paid) — candidate for a trigger fix on owner approval.

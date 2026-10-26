@@ -1,5 +1,4 @@
 import { computeJoinFee } from "@/lib/fee-proration";
-import { ensureJoiningClubFee } from "@/lib/joining-fee";
 import { useState, useRef, useEffect } from "react";
 import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
 import { useClubMembers, useFeeCategories, useLeagueAssociations, useNationalBodyFees, useMyClub, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";

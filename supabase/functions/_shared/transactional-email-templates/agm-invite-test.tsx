@@ -20,10 +20,10 @@ const AgmInviteTest = ({ title = 'AGM invitation', memberName = 'Member', meetin
       <Container style={container}>
         <Text style={notice}>TEST EMAIL — PREVIEW ONLY</Text>
         <Heading style={heading}>{title}</Heading>
-        <Text>Dear {memberName},</Text>
+        {details && /\{\s*member[ _]name\s*\}/i.test(details) ? null : <Text>Dear {memberName},</Text>}
+        {details ? <Text>{details.replace(/\{\s*member[ _]name\s*\}/gi, memberName).split('\n').map((line, i) => <React.Fragment key={i}>{i > 0 ? <br /> : null}{line}</React.Fragment>)}</Text> : null}
         <Text>You are invited to the Annual General Meeting.</Text>
         <Text><strong>{meeting}</strong>{venue ? <><br />{venue}</> : null}</Text>
-        {details ? <Text>{details.split('\n').map((line, i) => <React.Fragment key={i}>{i > 0 ? <br /> : null}{line}</React.Fragment>)}</Text> : null}
         <Section><Text style={action}>View invitation &amp; confirm attendance</Text></Section>
         <Text>Attendance choices: I confirm attendance / Apologies — not attending.</Text>
         {documents.map((doc, i) => <Text key={i}><Link href={doc.url}>{doc.name}</Link></Text>)}

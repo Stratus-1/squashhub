@@ -86,7 +86,8 @@ export function AgmMeetingCard({ clubId, ballot }: { clubId: string; ballot: any
           <Input value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="e.g. Clubhouse" /></label>
       </div>
       <label className="text-xs space-y-1 block"><span className="text-muted-foreground">Invitation message (optional)</span>
-        <Textarea rows={3} value={details} onChange={(e) => setDetails(e.target.value)} /></label>
+        <Textarea rows={3} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Dear {member name}, ..." />
+        <span className="text-[11px] text-muted-foreground">Type <code>{"{member name}"}</code> to insert each member's name.</span></label>
 
       <div className="space-y-1">
         <p className="text-xs font-semibold">Documents (agenda, minutes, financials…)</p>

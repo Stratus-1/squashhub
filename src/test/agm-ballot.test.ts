@@ -33,3 +33,13 @@ describe("AGM ballot helpers", () => {
     expect(r).toEqual({ a: 2, abstain: 1 });
   });
 });
+
+import { buildInviteLink, meetingLine } from "@/lib/agm/ballot";
+describe("AGM invitation helpers", () => {
+  it("builds invitation links on the main domain", () => {
+    expect(buildInviteLink("abc", "https://uit.squashhub.co.za")).toBe("https://squashhub.co.za/agm/abc");
+  });
+  it("shows the meeting in Johannesburg time with venue", () => {
+    expect(meetingLine("2026-11-05T16:00:00Z", "Clubhouse")).toMatch(/18:00 at Clubhouse$/);
+  });
+});

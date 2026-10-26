@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Printer, Send, Vote, Plus } from "lucide-react";
 import { sendComms } from "@/lib/comms/send";
+import { AgmMeetingCard } from "./AgmMeetingCard";
 import {
-  buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts,
+  buildInviteLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts,
 } from "@/lib/agm/ballot";
 
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as any, args as any);
@@ -77,6 +78,7 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
           })}
         </div>
       </Card>
+      {ballot && <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />}
       {ballot && (ballot.status === "draft"
         ? <DraftEditor key={ballot.id} clubId={clubId} ballot={ballot} />
         : <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />)}
@@ -147,32 +149,50 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     mutationFn: async () => {
       const ch = (Object.keys(channels) as ("email" | "whatsapp")[]).filter((k) => channels[k]);
       if (!ch.length) throw new Error("Tick at least one channel");
+      if (!ballot.meeting_at) throw new Error("Add and save the meeting date & time first");
       await save();
       const { data, error } = await rpc("agm_open_ballot", { p_ballot_id: ballot.id, p_member_ids: [...chosen] });
       if (error) throw error;
       const rows = data as { club_member_id: string; token: string }[];
-      const memberVars: Record<string, Record<string, string>> = {};
-      for (const r of rows) memberVars[r.club_member_id] = { vote_link: buildVoteLink(r.token, window.location.origin) };
+      // Invitation goes to every active member; only eligible voters also get a voting link.
+      const { data: inv, error: ie } = await rpc("agm_issue_invites", { p_ballot_id: ballot.id, p_member_ids: voters.map((v) => v.club_member_id) });
+      if (ie) throw ie;
+      const voteTok: Record<string, string> = Object.fromEntries(rows.map((r) => [r.club_member_id, r.token]));
+      const origin = window.location.origin;
+      const varsV: Record<string, Record<string, string>> = {};
+      const varsI: Record<string, Record<string, string>> = {};
+      for (const r of inv as { club_member_id: string; token: string }[]) {
+        const invite_link = buildInviteLink(r.token, origin);
+        if (voteTok[r.club_member_id]) varsV[r.club_member_id] = { invite_link, vote_link: buildVoteLink(voteTok[r.club_member_id], origin) };
+        else varsI[r.club_member_id] = { invite_link };
+      }
       const when = fmt(new Date(deadline).toISOString());
-      await sendComms({
-        clubId, name: title, channels: ch,
-        audience: { type: "selected", memberIds: rows.map((r) => r.club_member_id) },
-        memberVars, meta: { purpose: "agm_ballot", ballot_id: ballot.id },
+      const meet = meetingLine(ballot.meeting_at, ballot.meeting_venue);
+      const docs = (ballot.documents ?? []).length ? " The agenda, minutes and other meeting documents are on your invitation page." : "";
+      const inviteHtml = `<p>Dear {{first_name}},</p><p>You are invited to the <strong>${title}</strong> Annual General Meeting: <strong>${meet}</strong>.${docs}</p><p><a href="{{invite_link}}">View invitation &amp; confirm attendance</a></p>`;
+      const meta = { purpose: "agm_ballot", ballot_id: ballot.id };
+      if (Object.keys(varsV).length) await sendComms({
+        clubId, name: title, channels: ch, audience: { type: "selected", memberIds: Object.keys(varsV) }, memberVars: varsV, meta,
         content: {
           email: {
-            subject: `${title} — your personal voting link`,
-            body: `<p>Dear {{first_name}},</p><p>Voting for the ${title} is now open. Please use your personal link below to cast your secret ballot. The link works once and only for you.</p><p><a href="{{vote_link}}">Vote now</a></p><p>Voting closes <strong>${when}</strong>.</p><p>Your choices are confidential — nobody, including the committee, can see how you voted.</p>`,
+            subject: `${title} — AGM invitation and your personal voting link`,
+            body: `${inviteHtml}<p>Committee voting is open. Please use your personal link below to cast your secret ballot. The link works once and only for you.</p><p><a href="{{vote_link}}">Vote now</a></p><p>Voting closes <strong>${when}</strong>. Your choices are confidential — nobody, including the committee, can see how you voted.</p>`,
           },
-          whatsapp: {
-            body: `Hi {{first_name}}, voting for the ${title} is open. Your personal, one-time voting link: {{vote_link}} — closes ${when}. Your vote is secret.`,
-          },
+          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title} AGM: ${meet}. Documents & confirm attendance: {{invite_link}} . Your personal one-time voting link: {{vote_link}} — closes ${when}. Your vote is secret.` },
+        },
+      });
+      if (Object.keys(varsI).length) await sendComms({
+        clubId, name: `${title} — invitation`, channels: ch, audience: { type: "selected", memberIds: Object.keys(varsI) }, memberVars: varsI, meta,
+        content: {
+          email: { subject: `${title} — AGM invitation`, body: inviteHtml },
+          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title} AGM: ${meet}. Documents & confirm attendance: {{invite_link}}` },
         },
       });
       return rows.length;
     },
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["agm-ballots", clubId] });
-      toast({ title: "Voting opened", description: `${n} personal voting links are being sent.` });
+      toast({ title: "Voting opened", description: `Invitations sent to all active members; ${n} include a personal voting link.` });
     },
     onError: (e: any) => toast({ title: "Could not open voting", description: e.message, variant: "destructive" }),
   });
@@ -227,8 +247,8 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       <div className="flex gap-2 justify-end">
         <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save draft</Button>
         <Button size="sm" disabled={openMut.isPending}
-          onClick={() => { if (confirm(`Open voting and send ${chosen.size} personal links? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
-          <Send className="w-3.5 h-3.5 mr-1" />Open voting & send links
+          onClick={() => { if (confirm(`Send the AGM invitation to all ${voters.length} active members and open voting for ${chosen.size} eligible voters? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
+          <Send className="w-3.5 h-3.5 mr-1" />Send invitations & open voting
         </Button>
       </div>
     </Card>

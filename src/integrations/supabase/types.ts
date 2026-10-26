@@ -322,8 +322,12 @@ export type Database = {
           created_by: string | null
           deadline: string
           declaration: string
+          documents: Json
           eligible_count: number
           id: string
+          meeting_at: string | null
+          meeting_details: string | null
+          meeting_venue: string | null
           opened_at: string | null
           status: string
           title: string
@@ -334,8 +338,12 @@ export type Database = {
           created_by?: string | null
           deadline: string
           declaration?: string
+          documents?: Json
           eligible_count?: number
           id?: string
+          meeting_at?: string | null
+          meeting_details?: string | null
+          meeting_venue?: string | null
           opened_at?: string | null
           status?: string
           title: string
@@ -346,8 +354,12 @@ export type Database = {
           created_by?: string | null
           deadline?: string
           declaration?: string
+          documents?: Json
           eligible_count?: number
           id?: string
+          meeting_at?: string | null
+          meeting_details?: string | null
+          meeting_venue?: string | null
           opened_at?: string | null
           status?: string
           title?: string
@@ -358,6 +370,51 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_invitees: {
+        Row: {
+          ballot_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          rsvp: string | null
+          rsvp_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          ballot_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          rsvp?: string | null
+          rsvp_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          ballot_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          rsvp?: string | null
+          rsvp_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_invitees_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_invitees_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -20438,6 +20495,14 @@ export type Database = {
         Args: { p_ballot_id: string; p_deadline: string }
         Returns: undefined
       }
+      agm_invite_for_token: { Args: { p_token: string }; Returns: Json }
+      agm_issue_invites: {
+        Args: { p_ballot_id: string; p_member_ids: string[] }
+        Returns: {
+          club_member_id: string
+          token: string
+        }[]
+      }
       agm_open_ballot: {
         Args: { p_ballot_id: string; p_member_ids: string[] }
         Returns: {
@@ -20448,6 +20513,20 @@ export type Database = {
       agm_reissue_token: {
         Args: { p_ballot_id: string; p_member_id: string }
         Returns: string
+      }
+      agm_rsvp: {
+        Args: { p_response: string; p_token: string }
+        Returns: undefined
+      }
+      agm_update_meeting: {
+        Args: {
+          p_ballot_id: string
+          p_details: string
+          p_documents: Json
+          p_meeting_at: string
+          p_venue: string
+        }
+        Returns: undefined
       }
       agm_voter_candidates: {
         Args: { p_club_id: string }

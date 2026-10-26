@@ -41,6 +41,20 @@ export function buildVoteLink(token: string, origin: string): string {
   return `${isPreview ? origin : "https://squashhub.co.za"}/vote/${token}`;
 }
 
+/** Public AGM invitation / attendance link. */
+export function buildInviteLink(token: string, origin: string): string {
+  return buildVoteLink(token, origin).replace("/vote/", "/agm/");
+}
+
+export type AgmDocument = { name: string; path: string };
+
+/** One-line meeting summary for messages, Johannesburg time. */
+export function meetingLine(meetingAt: string | null, venue: string | null): string {
+  if (!meetingAt) return venue ? `Venue: ${venue}` : "";
+  const when = new Date(meetingAt).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "full", timeStyle: "short" });
+  return venue ? `${when} at ${venue}` : when;
+}
+
 export type TallyRow = { candidate_id: string; name: string; votes: number };
 
 /** Winner(s) of a position; more than one name means a tie. Empty when no votes. */

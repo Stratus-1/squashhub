@@ -1898,6 +1898,13 @@
       "when": 1793021077398,
       "tag": "0270_require_fee_category_on_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1793021717838,
+      "tag": "0271_agm_rsvp_online_in_person",
+      "breakpoints": true
     }
   ]
 }

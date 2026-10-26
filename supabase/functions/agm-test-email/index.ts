@@ -7,7 +7,7 @@ import { testRecipient } from './policy.ts';
 
 const schema = z.object({ ballot_id: z.string().uuid(), member_id: z.string().uuid(), destination: z.enum(['self', 'member']), request_id: z.string().uuid() }).strict();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-const format = (iso: string) => new Date(iso).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', dateStyle: 'medium', timeStyle: 'short' }) + ' (Johannesburg)';
+const format = (iso: string) => new Date(iso).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', dateStyle: 'medium', timeStyle: 'short' });
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -33,8 +33,12 @@ Deno.serve(async (req) => {
       if (error) return json({ error: 'Could not prepare a meeting document' }, 500);
       if (data?.signedUrl) documents.push({ name: String(doc.name || 'Meeting document'), url: data.signedUrl });
     }
+    const { data: club } = await admin.from('clubs').select('email_signature_html,email_disclaimer').eq('id', ballot.club_id).maybeSingle();
+    const sigHtml = String(club?.email_signature_html ?? '');
+    const logo = sigHtml.match(/<img[^>]+src="(https:[^"]+)"/i)?.[1];
+    const lines = [...sigHtml.matchAll(/<div[^>]*>([\s\S]*?)<\/div>/gi)].map((m) => m[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()).filter(Boolean);
     const result = await sendTemplateEmail('agm-invite-test', to, {
-      templateData: { title: ballot.title, memberName: member.name, meeting: ballot.meeting_at ? format(ballot.meeting_at) : undefined, venue: ballot.meeting_venue, details: ballot.meeting_details, deadline: format(ballot.deadline), documents },
+      templateData: { title: ballot.title, memberName: member.name, meeting: ballot.meeting_at ? format(ballot.meeting_at) : undefined, venue: ballot.meeting_venue, details: ballot.meeting_details, deadline: format(ballot.deadline), documents, signature: { logo, lines }, disclaimer: club?.email_disclaimer ?? undefined },
       idempotencyKey: `agm-test-${auth.user.id}-${input.ballot_id}-${input.request_id}`,
     });
     return json(result);

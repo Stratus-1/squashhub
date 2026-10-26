@@ -12,8 +12,9 @@ import { Printer, Send, Vote, Plus } from "lucide-react";
 import { sendComms } from "@/lib/comms/send";
 import { AgmMeetingCard } from "./AgmMeetingCard";
 import { AgmTestEmail } from "./AgmTestEmail";
+import { AgmNominationsCard } from "./AgmNominationsCard";
 import {
-  buildInviteLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
+  buildInviteLink, buildNominationLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
 } from "@/lib/agm/ballot";
 
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as any, args as any);
@@ -80,6 +81,7 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
         </div>
       </Card>
       {ballot && <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />}
+      {ballot && ballot.status === "draft" && ballot.nominations_status !== "none" && <AgmNominationsCard key={`n-${ballot.id}`} clubId={clubId} ballot={ballot} />}
       {ballot && (ballot.status === "draft"
         ? <DraftEditor key={ballot.id} clubId={clubId} ballot={ballot} />
         : <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />)}
@@ -96,6 +98,9 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
   const [text, setText] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string> | null>(null);
   const [channels, setChannels] = useState({ email: true, whatsapp: false });
+  const nomStage: "none" | "open" | "closed" = ballot.nominations_status ?? "none";
+  const positionsLocked = nomStage !== "none";
+  const [nomClose, setNomClose] = useState(toLocalInput(ballot.nominations_close_at ?? new Date(Date.now() + 7 * 864e5).toISOString()));
 
   const { data: positions } = useQuery({
     queryKey: ["agm-positions", ballot.id],
@@ -124,15 +129,17 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
   const noFeeRecords = voters.length > 0 && !voters.some((v) => v.has_fee_record);
 
   const save = async () => {
-    const parsed = parseBallotText(ballotText);
+    const parsed = positionsLocked ? [] : parseBallotText(ballotText, { allowEmpty: true });
     const { error } = await db("agm_ballots").update({
       title: title.trim(), declaration: declaration.trim(), deadline: new Date(deadline).toISOString(),
     }).eq("id", ballot.id);
     if (error) throw error;
+    if (positionsLocked) return;
     await db("agm_ballot_positions").delete().eq("ballot_id", ballot.id);
     for (const [i, p] of parsed.entries()) {
       const { data, error: pe } = await db("agm_ballot_positions").insert({ ballot_id: ballot.id, title: p.title, sort: i, max_choices: p.maxChoices ?? 1 }).select("id").single();
       if (pe) throw pe;
+      if (!p.nominees.length) continue;
       const { error: ce } = await db("agm_ballot_candidates").insert(p.nominees.map((name, j) => ({ position_id: data.id, name, sort: j })));
       if (ce) throw ce;
     }
@@ -205,6 +212,38 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     onError: (e: any) => toast({ title: "Could not open voting", description: e.message, variant: "destructive" }),
   });
 
+  const nomMut = useMutation({
+    mutationFn: async () => {
+      const ch = (Object.keys(channels) as ("email" | "whatsapp")[]).filter((k) => channels[k]);
+      if (!ch.length) throw new Error("Tick at least one channel");
+      await save();
+      const closeIso = new Date(nomClose).toISOString();
+      const { data, error } = await rpc("agm_open_nominations", { p_ballot_id: ballot.id, p_member_ids: [...chosen], p_close_at: closeIso });
+      if (error) throw error;
+      const rows = data as { club_member_id: string; token: string }[];
+      const origin = window.location.origin;
+      const vars = Object.fromEntries(rows.map((r) => [r.club_member_id, { nomination_link: buildNominationLink(r.token, origin) }]));
+      const closes = fmt(closeIso);
+      await sendComms({
+        clubId, name: `${title} — call for nominations`, channels: ch, audience: { type: "selected", memberIds: Object.keys(vars) }, memberVars: vars,
+        meta: { purpose: "agm_nominations", ballot_id: ballot.id },
+        content: {
+          email: {
+            subject: `${title} — nominations for the committee`,
+            body: `<p>Dear {{name}},</p><p>Nominations are open for next year's committee. You can nominate yourself and/or other members for each position.</p><p><a href="{{nomination_link}}">Make your nominations</a></p><p>Members nominated by someone else are asked on the same page to accept or decline. Only accepted nominations go onto the ballot.</p><p>Nominations close <strong>${closes}</strong>.</p>`,
+          },
+          whatsapp: { body: `Hi {{first_name}}, nominations for the ${title} committee are open until ${closes}. Nominate yourself or others, and accept nominations you receive: {{nomination_link}}` },
+        },
+      });
+      return rows.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["agm-ballots", clubId] });
+      toast({ title: "Nominations opened", description: `Nomination links sent to ${n} eligible members.` });
+    },
+    onError: (e: any) => toast({ title: "Could not open nominations", description: e.message, variant: "destructive" }),
+  });
+
   const toggle = (id: string) => {
     const s = new Set(chosen);
     s.has(id) ? s.delete(id) : s.add(id);
@@ -221,7 +260,10 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       </div>
       <label className="text-xs space-y-1 block">
         <span className="text-muted-foreground">Positions and accepted nominees — one line per position: <em>Position: Name, Name</em>. To let members pick more than one, add the number in brackets, e.g. <em>General Member (3): Name, Name</em></span>
-        <Textarea rows={6} value={ballotText} onChange={(e) => setText(e.target.value)} className="font-mono text-xs" />
+        <Textarea rows={6} value={ballotText} readOnly={positionsLocked} onChange={(e) => setText(e.target.value)} className="font-mono text-xs" />
+        {positionsLocked
+          ? <span className="text-[11px] text-muted-foreground block">{nomStage === "open" ? "Nominations are open — positions are locked. Accepted nominees are added here automatically when nominations close." : "Filled in from accepted nominations."}</span>
+          : <span className="text-[11px] text-muted-foreground block">To run nominations first, list only the positions (e.g. <em>Chairperson</em>) and use <strong>Send call for nominations</strong> below.</span>}
       </label>
       <label className="text-xs space-y-1 block"><span className="text-muted-foreground">Membership declaration voters must tick</span>
         <Textarea rows={3} value={declaration} onChange={(e) => setDeclaration(e.target.value)} /></label>
@@ -252,9 +294,21 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         <label className="flex items-center gap-1"><Checkbox checked={channels.whatsapp} onCheckedChange={(v) => setChannels((c) => ({ ...c, whatsapp: v === true }))} />WhatsApp</label>
       </div>
 
+      {nomStage === "none" && (
+        <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
+          <label className="text-xs space-y-1"><span className="text-muted-foreground">Nominations close (your local time)</span>
+            <Input type="datetime-local" value={nomClose} onChange={(e) => setNomClose(e.target.value)} /></label>
+          <Button size="sm" variant="secondary" disabled={nomMut.isPending}
+            onClick={() => { if (confirm(`Send the call for nominations to the ${chosen.size} ticked members? Positions cannot be changed afterwards.`)) nomMut.mutate(); }}>
+            <Send className="w-3.5 h-3.5 mr-1" />Send call for nominations
+          </Button>
+          <span className="text-[11px] text-muted-foreground basis-full">Step 1: the ticked members can nominate themselves or others and be nominated. Step 2, after nominations close: send invitations & open voting.</span>
+        </div>
+      )}
+
       <div className="flex gap-2 justify-end">
         <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save draft</Button>
-        <Button size="sm" disabled={openMut.isPending}
+        <Button size="sm" disabled={openMut.isPending || nomStage === "open"}
           onClick={() => { if (confirm(`Send the AGM invitation to all ${voters.length} active members and open voting for ${chosen.size} eligible voters? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
           <Send className="w-3.5 h-3.5 mr-1" />Send invitations & open voting
         </Button>

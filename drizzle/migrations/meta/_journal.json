@@ -1905,6 +1905,13 @@
       "when": 1793021717838,
       "tag": "0271_agm_rsvp_online_in_person",
       "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1793023910168,
+      "tag": "0272_agm_nominations",
+      "breakpoints": true
     }
   ]
 }

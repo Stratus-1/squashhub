@@ -1,0 +1,144 @@
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Lock, Search, UserPlus } from "lucide-react";
+
+type Pos = { id: string; title: string; max_choices: number };
+type Data = {
+  state: "invalid" | "ok";
+  club_name?: string; title?: string; name?: string; member_id?: string;
+  close_at?: string; closed?: boolean; positions?: Pos[];
+  made?: { id: string; position_id: string; nominee: string; status: string }[];
+  received?: { id: string; position_id: string; by: string; self: boolean; status: string }[];
+};
+
+const fmt = (d?: string) =>
+  d ? new Date(d).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "full", timeStyle: "short" }) : "";
+const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as any, args as any);
+
+export default function AgmNominate() {
+  const { token = "" } = useParams();
+  const [data, setData] = useState<Data | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    rpc("agm_nomination_for_token", { p_token: token }).then(({ data, error }) =>
+      setData(error ? { state: "invalid" } : (data as Data)));
+  }, [token]);
+  useEffect(() => { document.documentElement.classList.add("dark"); load(); }, [load]);
+
+  const act = async (fn: string, args: Record<string, unknown>) => {
+    setBusy(true); setError(null);
+    const { error } = await rpc(fn, { p_token: token, ...args });
+    setBusy(false);
+    if (error) setError(error.message); else load();
+  };
+
+  if (!data) return <div className="min-h-screen grid place-items-center"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (data.state !== "ok") return (
+    <div className="min-h-screen bg-background text-foreground px-4 py-8">
+      <Card className="max-w-xl mx-auto p-6 text-center space-y-2">
+        <Lock className="w-8 h-8 mx-auto text-muted-foreground" />
+        <h1 className="text-lg font-semibold">This nomination link is not valid</h1>
+        <p className="text-xs text-muted-foreground">It may have been replaced by a newer link. Please contact the club.</p>
+      </Card>
+    </div>
+  );
+
+  const pending = (data.received ?? []).filter((r) => !r.self);
+  const posTitle = (id: string) => data.positions?.find((p) => p.id === id)?.title ?? "";
+
+  return (
+    <div className="min-h-screen bg-background text-foreground px-4 py-8">
+      <div className="max-w-xl mx-auto space-y-4">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{data.club_name}</p>
+          <h1 className="text-xl font-semibold">Committee nominations: {data.title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Dear {data.name}, {data.closed ? "nominations are now closed." : <>nominate yourself or other members for next year's committee. Nominations close <strong>{fmt(data.close_at)}</strong>.</>}
+          </p>
+        </div>
+
+        {pending.length > 0 && (
+          <Card className="p-4 space-y-2">
+            <p className="text-sm font-semibold">You have been nominated</p>
+            {pending.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center gap-2 text-sm border border-border rounded p-2">
+                <span className="flex-1"><strong>{posTitle(r.position_id)}</strong> <span className="text-muted-foreground">— by {r.by}</span></span>
+                {r.status === "pending" && !data.closed ? (
+                  <>
+                    <Button size="sm" disabled={busy} onClick={() => act("agm_respond_nomination", { p_nomination_id: r.id, p_accept: true })}>Accept</Button>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => act("agm_respond_nomination", { p_nomination_id: r.id, p_accept: false })}>Decline</Button>
+                  </>
+                ) : (
+                  <>
+                    <Badge variant={r.status === "accepted" ? "default" : "secondary"}>{r.status}</Badge>
+                    {!data.closed && <Button size="sm" variant="ghost" disabled={busy} onClick={() => act("agm_respond_nomination", { p_nomination_id: r.id, p_accept: r.status !== "accepted" })}>Change</Button>}
+                  </>
+                )}
+              </div>
+            ))}
+            <p className="text-[11px] text-muted-foreground">Only accepted nominations go onto the ballot.</p>
+          </Card>
+        )}
+
+        {(data.positions ?? []).map((p) => (
+          <PositionCard key={p.id} pos={p} token={token} me={data.member_id!} name={data.name ?? ""} closed={!!data.closed} busy={busy}
+            made={(data.made ?? []).filter((m) => m.position_id === p.id)}
+            onNominate={(id) => act("agm_nominate", { p_position_id: p.id, p_nominee_id: id })} />
+        ))}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function PositionCard({ pos, token, me, name, closed, busy, made, onNominate }: {
+  pos: Pos; token: string; me: string; name: string; closed: boolean; busy: boolean;
+  made: { id: string; nominee: string; status: string }[]; onNominate: (id: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<{ club_member_id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (q.trim().length < 2) { setHits([]); return; }
+    const t = setTimeout(() => {
+      rpc("agm_search_nominees", { p_token: token, p_query: q }).then(({ data }) => setHits((data as any[]) ?? []));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, token]);
+  const selfDone = made.some((m) => m.nominee === name);
+
+  return (
+    <Card className="p-4 space-y-2">
+      <p className="text-sm font-semibold">{pos.title}{pos.max_choices > 1 && <span className="font-normal text-muted-foreground"> · {pos.max_choices} places</span>}</p>
+      {made.map((m) => (
+        <p key={m.id} className="text-xs flex items-center gap-2">
+          <span className="flex-1">You nominated <strong>{m.nominee}</strong></span>
+          <Badge variant={m.status === "accepted" ? "default" : "secondary"} className="text-[10px]">{m.status === "pending" ? "awaiting acceptance" : m.status}</Badge>
+        </p>
+      ))}
+      {!closed && (
+        <>
+          {!selfDone && <Button size="sm" variant="outline" disabled={busy} onClick={() => onNominate(me)}><UserPlus className="w-3.5 h-3.5 mr-1" />Nominate myself</Button>}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-muted-foreground" />
+            <Input className="pl-7" placeholder="Search a member's name to nominate them" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          {hits.filter((h) => h.club_member_id !== me).map((h) => (
+            <button key={h.club_member_id} disabled={busy}
+              onClick={() => { onNominate(h.club_member_id); setQ(""); }}
+              className="w-full text-left text-sm border border-border rounded px-3 py-1.5 hover:border-primary">
+              Nominate {h.name}
+            </button>
+          ))}
+          {q.trim().length >= 2 && !hits.length && <p className="text-[11px] text-muted-foreground">No eligible member found.</p>}
+        </>
+      )}
+    </Card>
+  );
+}

@@ -171,7 +171,11 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       const when = fmt(new Date(deadline).toISOString());
       const meet = meetingLine(ballot.meeting_at, ballot.meeting_venue);
       const docs = (ballot.documents ?? []).length ? " The agenda, minutes and other meeting documents are on your invitation page." : "";
-      const inviteHtml = `<p>Dear {{first_name}},</p><p>You are invited to the <strong>${title}</strong> Annual General Meeting: <strong>${meet}</strong>.${docs}</p><p><a href="{{invite_link}}">View invitation &amp; confirm attendance</a></p>`;
+      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const customMsg = (ballot.meeting_details ?? "").trim();
+      const detailsHtml = customMsg ? `<p>${esc(customMsg).replace(/\{\s*member[ _]name\s*\}/gi, "{{name}}").replace(/\n/g, "<br/>")}</p>` : "";
+      const greeting = /\{\s*member[ _]name\s*\}/i.test(customMsg) ? "" : "<p>Dear {{name}},</p>";
+      const inviteHtml = `${greeting}${detailsHtml}<p>You are invited to the <strong>${title}</strong> Annual General Meeting: <strong>${meet}</strong>.${docs}</p><p><a href="{{invite_link}}">View invitation &amp; confirm attendance</a></p>`;
       const meta = { purpose: "agm_ballot", ballot_id: ballot.id };
       if (Object.keys(varsV).length) await sendComms({
         clubId, name: title, channels: ch, audience: { type: "selected", memberIds: Object.keys(varsV) }, memberVars: varsV, meta,

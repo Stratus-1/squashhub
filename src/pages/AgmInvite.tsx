@@ -11,7 +11,7 @@ type Invite = {
   preview?: boolean;
   title?: string; club_name?: string; name?: string;
   meeting_at?: string | null; venue?: string | null; details?: string | null;
-  documents?: AgmDocument[]; vote_deadline?: string; rsvp?: "attending" | "apologies" | null; locked?: boolean;
+  documents?: AgmDocument[]; vote_deadline?: string; rsvp?: Rsvp | null; locked?: boolean;
 };
 
 const fmt = (d?: string | null) =>
@@ -36,7 +36,7 @@ export default function AgmInvite() {
     else window.open(data.signedUrl, "_blank", "noopener");
   };
 
-  const respond = async (r: "attending" | "apologies") => {
+  const respond = async (r: Rsvp) => {
     setBusy(true); setError(null);
     const { error } = await supabase.rpc("agm_rsvp" as any, { p_token: token, p_response: r });
     setBusy(false);
@@ -85,24 +85,24 @@ export default function AgmInvite() {
               <p className="text-sm font-semibold">Will you attend?</p>
               {invite.rsvp && (
                 <p className="text-sm flex items-center gap-2">
-                  {invite.rsvp === "attending" ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <XCircle className="w-4 h-4 text-muted-foreground" />}
-                  Your reply: <strong>{invite.rsvp === "attending" ? "Attending" : "Apologies — not attending"}</strong>
+                  {invite.rsvp !== "apologies" ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <XCircle className="w-4 h-4 text-muted-foreground" />}
+                  Your reply: <strong>{RSVP_LABEL[invite.rsvp]}</strong>
                 </p>
               )}
               {invite.preview ? (
                 <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button disabled variant="outline">I confirm attendance</Button>
-                    <Button disabled variant="outline">Apologies — not attending</Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {RSVP_CHOICES.map((c) => <Button key={c} disabled variant="outline">{RSVP_LABEL[c]}</Button>)}
                   </div>
                   <p className="text-xs text-muted-foreground">Test preview — these buttons are switched off and no reply is saved.</p>
                 </>
               ) : invite.locked ? (
                 <p className="text-xs text-muted-foreground">The meeting has started; replies are closed.</p>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <Button disabled={busy} variant={invite.rsvp === "attending" ? "default" : "outline"} onClick={() => respond("attending")}>I confirm attendance</Button>
-                  <Button disabled={busy} variant={invite.rsvp === "apologies" ? "default" : "outline"} onClick={() => respond("apologies")}>Apologies — not attending</Button>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {RSVP_CHOICES.map((c) => (
+                    <Button key={c} disabled={busy} variant={invite.rsvp === c ? "default" : "outline"} onClick={() => respond(c)}>{RSVP_LABEL[c]}</Button>
+                  ))}
                 </div>
               )}
               {invite.rsvp && !invite.locked && <p className="text-[11px] text-muted-foreground">You can change your reply until the meeting starts.</p>}

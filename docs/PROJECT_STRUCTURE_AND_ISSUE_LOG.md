@@ -3939,3 +3939,10 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ## 26 October 2026 — Three new Uitsig members added + activation emails
 - Added Melinda Marais (UIT0024), Christian Reeve (UIT0025), Elmien Brink (UIT0026) via the app's own Add Member flow (signed in as owner, Uitsig): Premium category, gender groups, +27 phones, 2026 club fee rows marked paid per owner instruction. Activation emails sent via Members > Activation links; comms_deliveries shows status sent, no errors; personal invite tokens valid 14 days.
 - Ledger quirk found: trg_journal_fee_assessment posts the debtors/income pair on INSERT even when the fee row is inserted paid=true, while trg_journal_fee_payment_received only fires on a later paid false->true UPDATE — so admin-added members showed R2,500 owed. Posted the standard "Fee paid" settlement pairs (Dr bank_current / Cr debtors) for the three fee rows with the function's own idempotency guard; balances now R0, bank +R7,500. The trigger behaviour itself is unchanged (pre-existing; also affects some Champs entry fees marked paid) — candidate for a trigger fix on owner approval.
+
+## 26 October 2026 — Member statement showed "No transactions" while loading
+- Symptom (Nelspruit treasurer Rachel Gates): opening a member's account from Members (balance "i" → Club Finance statement) showed no transactions and zero values.
+- Investigated signed in as Rachel on preview and the published site: her Treasurer permission role grants `finance`, the journal-entries request returns 200, and Zach Wiid's statement renders fully (Total Billed R2,120 / Payments R120 / Net R2,000, 4 rows). Not a permission/RLS issue.
+- Actual cause: the statement renders `(journalEntries || [])`, so while the club's journal query is still loading it shows "No transactions for this member." and R0.00 totals — on a slow connection this reads as empty/broken.
+- Fix (FinanceTab.tsx): while the journal query is loading, the statement shows "Loading statement…" instead of the empty state and zeroed totals.
+- Verified signed in as Rachel: statement still loads correctly with all rows and totals after the change.

@@ -1912,6 +1912,13 @@
       "when": 1793023910168,
       "tag": "0272_agm_nominations",
       "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1793047950834,
+      "tag": "0273_fix_agm_issue_invites_ambiguous",
+      "breakpoints": true
     }
   ]
 }

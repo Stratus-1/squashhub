@@ -10,12 +10,13 @@ export const DEFAULT_DECLARATION = (clubName: string) =>
   `I confirm that I am a paid-up member of ${clubName}, aged 18 years or older, and entitled to vote in accordance with the Club Constitution. I confirm that I will submit only one ballot.`;
 
 /** "Chairperson: A, B" per line → positions. Blank/duplicate nominees are dropped. */
-export function parseBallotText(text: string): BallotPositionDraft[] {
+export function parseBallotText(text: string, opts: { allowEmpty?: boolean } = {}): BallotPositionDraft[] {
   const out: BallotPositionDraft[] = [];
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
     const idx = line.indexOf(":");
+    if (opts.allowEmpty && idx < 0 && line) { out.push(...parseBallotText(`${line}:`, opts)); continue; }
     if (idx <= 0) throw new Error(`Line "${line}" needs "Position: nominee, nominee"`);
     let title = line.slice(0, idx).trim();
     // "General Member (3): ..." → members may pick up to 3.
@@ -32,22 +33,27 @@ export function parseBallotText(text: string): BallotPositionDraft[] {
       .split(",")
       .map((n) => n.trim())
       .filter((n) => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase()));
-    if (!nominees.length) throw new Error(`"${title}" needs at least one nominee`);
+    if (!nominees.length && !opts.allowEmpty) throw new Error(`"${title}" needs at least one nominee`);
     if (out.some((p) => p.title.toLowerCase() === title.toLowerCase())) throw new Error(`"${title}" is listed twice`);
-    if (maxChoices > nominees.length) throw new Error(`"${title}" allows ${maxChoices} choices but has only ${nominees.length} nominee(s)`);
+    if (nominees.length && maxChoices > nominees.length) throw new Error(`"${title}" allows ${maxChoices} choices but has only ${nominees.length} nominee(s)`);
     out.push({ title, nominees, maxChoices });
   }
   return out;
 }
 
 export function formatBallotText(positions: BallotPositionDraft[]): string {
-  return positions.map((p) => `${p.title}${(p.maxChoices ?? 1) > 1 ? ` (${p.maxChoices})` : ""}: ${p.nominees.join(", ")}`).join("\n");
+  return positions.map((p) => `${p.title}${(p.maxChoices ?? 1) > 1 ? ` (${p.maxChoices})` : ""}:${p.nominees.length ? " " + p.nominees.join(", ") : ""}`).join("\n");
 }
 
 /** Public voting link. Production links use the main domain. */
 export function buildVoteLink(token: string, origin: string): string {
   const isPreview = /localhost|lovable|127\.0\.0\.1/.test(origin);
   return `${isPreview ? origin : "https://squashhub.co.za"}/vote/${token}`;
+}
+
+/** Public nomination link. */
+export function buildNominationLink(token: string, origin: string): string {
+  return buildVoteLink(token, origin).replace("/vote/", "/nominate/");
 }
 
 /** Public AGM invitation / attendance link. */

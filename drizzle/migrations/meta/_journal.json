@@ -1891,6 +1891,13 @@
       "when": 1793020562135,
       "tag": "0269_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1793021077398,
+      "tag": "0270_require_fee_category_on_approval",
+      "breakpoints": true
     }
   ]
 }

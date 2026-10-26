@@ -96,6 +96,7 @@ export default function AgmVote() {
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{ballot.club_name}</p>
         <h1 className="text-xl font-semibold">{ballot.title}</h1>
         <p className="text-xs text-muted-foreground mt-1">Voting closes {fmt(ballot.deadline)}. Your vote is secret.</p>
+        {ballot.preview && <p className="mt-2 rounded border border-primary/40 bg-primary/10 px-3 py-2 text-xs">TEST PREVIEW — you can look around and tick options, but nothing can be submitted.</p>}
       </div>
 
       <Card className="p-4 space-y-3">
@@ -133,9 +134,10 @@ export default function AgmVote() {
             </Card>
           ))}
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button className="w-full" onClick={submit} disabled={busy}>
+          <Button className="w-full" onClick={submit} disabled={busy || !!ballot.preview}>
             {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Submit my ballot
           </Button>
+          {ballot.preview && <p className="text-xs text-muted-foreground text-center">Test preview — submitting is switched off and no vote is recorded.</p>}
         </>
       )}
     </>,

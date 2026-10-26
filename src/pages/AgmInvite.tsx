@@ -88,7 +88,15 @@ export default function AgmInvite() {
                   Your reply: <strong>{invite.rsvp === "attending" ? "Attending" : "Apologies — not attending"}</strong>
                 </p>
               )}
-              {invite.locked ? (
+              {invite.preview ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button disabled variant="outline">I confirm attendance</Button>
+                    <Button disabled variant="outline">Apologies — not attending</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Test preview — these buttons are switched off and no reply is saved.</p>
+                </>
+              ) : invite.locked ? (
                 <p className="text-xs text-muted-foreground">The meeting has started; replies are closed.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-2">

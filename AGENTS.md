@@ -39,7 +39,7 @@
 - Counter tab-opening requests supply all six named arguments, with an explicit null member ID for visitors; why: older defaulted RPC overloads otherwise make visitor requests ambiguous.
 - Booking grid uses saved tournament duration, not historical booking lengths, inside reserved evenings; fixture slots preserve that interval, other courts keep club slots, overlaps stay separate; why: setup changes must not retain stale short rows or move bookings.
 - Booking writes enforce scheduled, unlinked championship allocations through `guard_scheduled_championship_booking`, using saved fixture duration without an admin bypass; why: capacity holds must not conceal already assigned games.
-- Scope Club Admin steps/contrast locally (portals too); why: shared member/association UI must stay unchanged.
+- Scope Club Admin steps/contrast locally (portals too); why: shared UI stays unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.
 - Competition state (draws, rounds, pools, progression, marker locks, lineups, results, rankings) are state machines with cross-table invariants: reuse `src/lib/tournaments/`, `src/lib/tournament-formats/`, `src/lib/leagues/`; never recreate rules in pages; add tests before changing them.
@@ -59,12 +59,11 @@
 
 ## Done checklist
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
-- Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
-- Court grids share P/peak logic; why: one rule set.
+- Peak late-cancel limits/penalties are separate opt-in switches (OFF/0), shared by all court grids; penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 
-- Menu prefs apply after permission filtering; why: never grant access.
+- Menu prefs apply after permission filtering (never grant access).
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- Clean round-robin tracks use pointer-captured mouse drag scrolling and native touch scrolling, excluding interactive controls; why: fixture/result navigation must never mutate tournament data or intercept standings actions.
+- Clean RR tracks drag-scroll (mouse pointer capture, native touch), excluding controls; why: navigation must never mutate data or block standings actions.
 - Standalone round-robin presentation uses the shared clean view across clubs without pilot flags; format-specific projections and viewer zoom gates remain separate because a display rollout must not alter competition rules or permissions.
 - Clean round-robin pool viewers use compact phone frames and opt-in compact viewer controls, keeping desktop sizes and expanded zoom/pan unchanged; why: stacked pools must remain discoverable without empty frame space.
 - Standalone RR round panels read the structured stage's round-date count; the pure view compacts balanced legacy labels and uniquely partitions complete four-player pools, retaining every saved fixture/result/slot without writes; ambiguous or incomplete schedules stay factual because display must never invent pairings.
@@ -74,3 +73,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - The till cash-up history exposes the existing management report for signed-in platform admins; edits require server authorization and a reason, and counter PIN authorization stays unchanged; why: platform admins need direct access to corrections without granting anonymous management access.
 - Club-sponsored stock shares private `_bar_club_use_post` between bar-authorised signed-in entries and atomic personal-PIN counter baskets; counter club/staff identity comes only from a locked valid session and private request rows enforce idempotency; why: one stock/accounting path, no admin bypass, customer tab, sale or duplicate deduction.
 - Member "Available to spend" reuses the booking/bar gate inputs (allowance = recurring-plan fees + approved credit, minus owing) via existing read-only RPCs; why: the dashboard must never disagree with what the till or booking screen allows.
+- AGM ballots: secrecy, one vote, deadline and post-close results live in security-definer RPCs; votes never reference members; why: UI can't secure a secret ballot.

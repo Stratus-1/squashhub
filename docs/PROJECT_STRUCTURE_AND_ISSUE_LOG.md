@@ -1,3 +1,9 @@
+## 2026-10-26 — Single-barman end-shift dialog misleadingly selects All barmen
+- Symptom: Deon selecting his own name also checked All barmen, causing concern that Wynand's attendance would end.
+- Finding: the aggregate checkbox reflected only this device's retained PIN sessions; with one session it duplicated the individual checkbox. It did not represent staff on other counters.
+- Fix: show the aggregate choice only when multiple barmen are retained and label it explicitly as on this counter. Individual end-shift requests remain unchanged.
+- Guard: focused counter-session tests check single-person requests and clearing the aggregate before ending just one shared-counter participant. No live attendance, cash-up, payroll or club data changed; shared web/PWA/native presentation only.
+
 ## 2026-10-26 — Uitsig specials hidden by expired dates
 - All seven specials remained active, sellable and unarchived with intact recipes and available component stock; saved expiry dates (23 October, 5 October or 30 September) hid them from member/counter menus.
 - At Willem's request, removed only their expiry dates. Prices, stock, recipes, start dates and day/time restrictions retained; other clubs unchanged. Readback confirms seven null expiry dates. Added a focused menu-availability regression for the three former expiry dates.

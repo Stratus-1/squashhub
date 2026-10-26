@@ -69,3 +69,19 @@ describe("multi-choice positions", () => {
       .toEqual({ a: 1, b: 1, abstain: 1 });
   });
 });
+
+import { buildNominationLink } from "@/lib/agm/ballot";
+describe("AGM nominations", () => {
+  it("allows positions without nominees while nominations run", () => {
+    expect(parseBallotText("Chairperson\nGeneral Member (3):", { allowEmpty: true })).toEqual([
+      { title: "Chairperson", nominees: [], maxChoices: 1 },
+      { title: "General Member", nominees: [], maxChoices: 3 },
+    ]);
+  });
+  it("still requires nominees for the final ballot", () => {
+    expect(() => parseBallotText("Chairperson:")).toThrow();
+  });
+  it("builds nomination links on the main domain", () => {
+    expect(buildNominationLink("abc", "https://riv.squashhub.co.za")).toBe("https://squashhub.co.za/nominate/abc");
+  });
+});

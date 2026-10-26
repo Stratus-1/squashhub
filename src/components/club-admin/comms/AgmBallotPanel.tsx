@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { Printer, Send, Vote, Plus } from "lucide-react";
 import { sendComms } from "@/lib/comms/send";
 import { AgmMeetingCard } from "./AgmMeetingCard";
+import { AgmTestEmail } from "./AgmTestEmail";
 import {
   buildInviteLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts,
 } from "@/lib/agm/ballot";
@@ -82,6 +83,7 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
       {ballot && (ballot.status === "draft"
         ? <DraftEditor key={ballot.id} clubId={clubId} ballot={ballot} />
         : <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />)}
+      {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballotId={ballot.id} />}
     </div>
   );
 }

@@ -3927,3 +3927,8 @@ See follow-up: owner approved live Riverside planning tests; initial preview iso
 
 ## 2026-10-26 AGM secret ballot
 Added Communications > AGM voting: draft ballot, voter list, personal one-time links (/vote/:token), turnout, results after deadline with anonymous receipts. Uitsig 2026 ballot seeded as draft.
+
+## 26 October 2026 — League info save blocked for members-permission holders
+- Symptom (Nelspruit, edit member Zach Wiid): "League info: new row violates row-level security policy for table member_association_affiliations". Cause: club_members UPDATE allows `has_club_permission(auth.uid(), club_id, 'members')` holders (e.g. Raymond Gates), but member_association_affiliations policies only allowed the member themselves or `is_club_admin`, so the affiliation insert/update in MembersTab failed after the member row saved.
+- Fix: migration 0265 adds SELECT/INSERT/UPDATE/DELETE policies on member_association_affiliations for members-permission holders, mirroring the club_members "Members-permission holders" policy. Existing member/admin policies unchanged; affiliation numbers remain permanent (never deleted by app flows).
+- Verified signed in as Raymond Gates: upsert (as the app sends), update and read all succeed; Zach Wiid's affiliation (number 168, active) unchanged. Backend fix is live immediately; no frontend change or publication needed.

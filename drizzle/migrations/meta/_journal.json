@@ -1884,6 +1884,13 @@
       "when": 1793019281269,
       "tag": "0268_agm_multi_choice_positions",
       "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1793020562135,
+      "tag": "0269_migration",
+      "breakpoints": true
     }
   ]
 }

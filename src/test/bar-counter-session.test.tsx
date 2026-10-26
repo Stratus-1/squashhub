@@ -92,6 +92,34 @@ describe("counter personal PIN boundary", () => {
     expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([]);
   });
 
+  it("ending Deon's single-device shift does not submit an end request for Wynand on another counter", async () => {
+    localStorage.setItem("sh.barcounter.token.river-menu", "deon-session");
+    localStorage.setItem("sh.barcounter.operator.river-menu", "Deon Groenewald");
+    mount("/s/river-menu/counter");
+    fireEvent.click(await screen.findByRole("button", { name: "End shift" }));
+    expect(screen.queryByRole("checkbox", { name: "All barmen" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "End shift for Deon Groenewald" }));
+    fireEvent.click(screen.getByRole("button", { name: "End selected shifts" }));
+    await screen.findByLabelText("Staff counter PIN");
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_end_shift")).toEqual([
+      ["bar_counter_end_shift", { _token: "deon-session" }],
+    ]);
+  });
+
+  it("can clear both selection and then end only one barman", async () => {
+    await addSecondBarman();
+    fireEvent.click(screen.getByRole("button", { name: "End shift" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Both barmen" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Both barmen" }));
+    expect(screen.getByRole("button", { name: "End selected shifts" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "End shift for Second barman" }));
+    fireEvent.click(screen.getByRole("button", { name: "End selected shifts" }));
+    await waitFor(() => expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBe("first-session"));
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_end_shift")).toEqual([
+      ["bar_counter_end_shift", { _token: "second-session" }],
+    ]);
+  });
+
   it("confirmed device exit ends both retained people and clears all serving tokens", async () => {
     await addSecondBarman();
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);

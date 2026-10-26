@@ -1532,10 +1532,10 @@ export default function BarCounter() {
       <Dialog open={endShiftOpen} onOpenChange={open => { if (!endingShift) setEndShiftOpen(open); }}>
         <DialogContent className="max-w-sm" onEscapeKeyDown={e => { if (endingShift) e.preventDefault(); }} onInteractOutside={e => { if (endingShift) e.preventDefault(); }}>
           <DialogHeader><DialogTitle>End whose shift?</DialogTitle><DialogDescription>Select the barmen to clock out on this counter.</DialogDescription></DialogHeader>
-          <label className="flex items-center gap-3 py-2 font-medium">
+          {serverChoices.length > 1 && <label className="flex items-center gap-3 py-2 font-medium">
             <Checkbox aria-label={serverChoices.length === 2 ? "Both barmen" : "All barmen"} disabled={endingShift} checked={endingTokens.length === serverChoices.length ? true : endingTokens.length ? "indeterminate" : false} onCheckedChange={checked => setEndingTokens(checked === true ? serverChoices.map(s => s.token) : [])} />
-            {serverChoices.length === 2 ? "Both barmen" : "All barmen"}
-          </label>
+            {serverChoices.length === 2 ? "Both barmen on this counter" : "All barmen on this counter"}
+          </label>}
           <div className="border-t pt-2 space-y-2">
             {serverChoices.map(server => <label key={server.token} className="flex items-center gap-3 py-2 text-sm">
               <Checkbox aria-label={`End shift for ${server.operator}`} disabled={endingShift} checked={endingTokens.includes(server.token)} onCheckedChange={checked => setEndingTokens(current => checked === true ? [...current.filter(t => t !== server.token), server.token] : current.filter(t => t !== server.token))} />

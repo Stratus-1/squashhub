@@ -1594,6 +1594,12 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     })
                     .reverse();
 
+                  // While the club's journal entries are still loading the filtered
+                  // list is empty — show a loading state instead of "No transactions"
+                  // and zeroed totals, which reads as a permission/data problem.
+                  if (isLoading) {
+                    return <p className="text-sm text-muted-foreground">Loading statement…</p>;
+                  }
                   return (
                     <>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

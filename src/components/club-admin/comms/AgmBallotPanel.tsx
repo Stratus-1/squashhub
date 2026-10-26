@@ -161,12 +161,13 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       if (!ch.length) throw new Error("Tick at least one channel");
       if (!ballot.meeting_at) throw new Error("Add and save the meeting date & time first");
       await save();
+      // Invitation goes to every active member; only eligible voters also get a voting link.
+      // Issue invites first so a failure never leaves the ballot half-opened.
+      const { data: inv, error: ie } = await rpc("agm_issue_invites", { p_ballot_id: ballot.id, p_member_ids: voters.map((v) => v.club_member_id) });
+      if (ie) throw ie;
       const { data, error } = await rpc("agm_open_ballot", { p_ballot_id: ballot.id, p_member_ids: [...chosen] });
       if (error) throw error;
       const rows = data as { club_member_id: string; token: string }[];
-      // Invitation goes to every active member; only eligible voters also get a voting link.
-      const { data: inv, error: ie } = await rpc("agm_issue_invites", { p_ballot_id: ballot.id, p_member_ids: voters.map((v) => v.club_member_id) });
-      if (ie) throw ie;
       const voteTok: Record<string, string> = Object.fromEntries(rows.map((r) => [r.club_member_id, r.token]));
       const origin = window.location.origin;
       const varsV: Record<string, Record<string, string>> = {};

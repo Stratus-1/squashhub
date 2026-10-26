@@ -14,6 +14,7 @@ import { CommsTemplatesPanel } from "./comms/CommsTemplatesPanel";
 import { CommsCampaignsPanel } from "./comms/CommsCampaignsPanel";
 import { CommsCampaignWizard } from "./comms/CommsCampaignWizard";
 import { CommsDeliveryLog } from "./comms/CommsDeliveryLog";
+import { AgmBallotPanel } from "./comms/AgmBallotPanel";
 
 /**
  * Communications module — one engine for every SquashHub message.
@@ -63,6 +64,7 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="queue">Scheduled & drafts</TabsTrigger>
           <TabsTrigger value="log">Delivery log</TabsTrigger>
+          <TabsTrigger value="agm">AGM voting</TabsTrigger>
         </TabsList>
 
         <TabsContent value="templates" className="mt-3">
@@ -86,6 +88,10 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
 
         <TabsContent value="log" className="mt-3">
           <CommsDeliveryLog clubId={clubId} />
+        </TabsContent>
+
+        <TabsContent value="agm" className="mt-3">
+          <AgmBallotPanel clubId={clubId} clubName={club?.name ?? "the club"} />
         </TabsContent>
       </Tabs>
 

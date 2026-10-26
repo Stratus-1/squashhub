@@ -28,7 +28,7 @@ Matches the Google Form section, but filled in from the personal link so members
 - The ballot only opens after ticking it. The declaration is stored with the "has voted" record, never with the choices.
 
 ## Admin screens (Communications)
-- **Create ballot:** positions, nominees, deadline, eligibility preview.
+- **Create ballot:** positions, nominees, eligibility preview, and the **voting deadline (date + time, Johannesburg)** set by the admin. The deadline is shown in the invitation message, on the voting page with a countdown, and in reminders. It can be extended while the ballot is open but never shortened or reopened after closing.
 - **Send:** via the existing Communications campaign (email + in-app; WhatsApp only if switched on), with a reminder option.
 - **Live turnout** while open (count only, no results) — results unlock after the deadline, admin-only.
 - **Results:** per-position tallies, winner, turnout, receipt list, print.

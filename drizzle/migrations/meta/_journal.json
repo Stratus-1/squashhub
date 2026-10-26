@@ -1863,6 +1863,13 @@
       "when": 1793008735079,
       "tag": "0265_affiliations_members_permission_holders",
       "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1793013421689,
+      "tag": "0266_migration",
+      "breakpoints": true
     }
   ]
 }

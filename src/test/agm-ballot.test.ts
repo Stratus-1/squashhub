@@ -5,8 +5,8 @@ describe("AGM ballot helpers", () => {
   it("parses one line per position and drops duplicate nominees", () => {
     const p = parseBallotText("Chairperson: Bradley Hunt, Reinhardt Falke, bradley hunt\n\nTreasurer: Hanno Kamfer");
     expect(p).toEqual([
-      { title: "Chairperson", nominees: ["Bradley Hunt", "Reinhardt Falke"] },
-      { title: "Treasurer", nominees: ["Hanno Kamfer"] },
+      { title: "Chairperson", nominees: ["Bradley Hunt", "Reinhardt Falke"], maxChoices: 1 },
+      { title: "Treasurer", nominees: ["Hanno Kamfer"], maxChoices: 1 },
     ]);
   });
 

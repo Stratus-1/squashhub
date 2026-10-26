@@ -21,6 +21,12 @@ One choice per position (or abstain). Nominees standing for several positions ap
 4. **Confidential** — the system records *that* a member voted separately from *what* was chosen. Ballots have no member name attached, so not even admins can link a choice to a person.
 5. **Verifiable** — each voter receives a private receipt code after voting. At the AGM the results page shows totals per position, turnout (voted / eligible), and the full list of anonymous receipt codes with their choices, so any member can check their own vote was counted, and totals can be recounted by anyone. A printable/PDF result sheet for the AGM.
 
+## Voter verification step (before the ballot)
+Matches the Google Form section, but filled in from the personal link so members can't mistype:
+- Full name and surname, membership number and registered email shown pre-filled and read-only (checked against the club's member record, not typed).
+- Required checkbox: "I confirm that I am a paid-up member of Uitsig Squash Club, aged 18 years or older, and entitled to vote in accordance with the Club Constitution. I confirm that I will submit only one ballot."
+- The ballot only opens after ticking it. The declaration is stored with the "has voted" record, never with the choices.
+
 ## Admin screens (Communications)
 - **Create ballot:** positions, nominees, deadline, eligibility preview.
 - **Send:** via the existing Communications campaign (email + in-app; WhatsApp only if switched on), with a reminder option.

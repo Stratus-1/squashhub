@@ -29,8 +29,10 @@ import { template as familyMemberInvite } from './family-member-invite.tsx'
 import { template as chooseYourClub } from './choose-your-club.tsx'
 import { template as memberSuspension } from './member-suspension.tsx'
 import { template as memberApproved } from './member-approved.tsx'
+import { template as agmInviteTest } from './agm-invite-test.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
+  'agm-invite-test': agmInviteTest,
   'new-club-registered': newClubRegistered,
   'stitch-onboarding-application': stitchOnboardingApplication,
   'support-new-message': supportNewMessage,

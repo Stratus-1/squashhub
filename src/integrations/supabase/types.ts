@@ -419,6 +419,38 @@ export type Database = {
           },
         ]
       }
+      agm_preview_tokens: {
+        Row: {
+          ballot_id: string
+          club_member_id: string
+          created_at: string
+          expires_at: string
+          token_hash: string
+        }
+        Insert: {
+          ballot_id: string
+          club_member_id: string
+          created_at?: string
+          expires_at?: string
+          token_hash: string
+        }
+        Update: {
+          ballot_id?: string
+          club_member_id?: string
+          created_at?: string
+          expires_at?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_preview_tokens_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_assist_interactions: {
         Row: {
           action_args: Json | null

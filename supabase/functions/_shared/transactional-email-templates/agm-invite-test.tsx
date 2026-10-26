@@ -1,5 +1,5 @@
 import * as React from 'npm:react@18.3.1';
-import { Body, Container, Head, Heading, Html, Preview, Text, Link, Section } from 'npm:@react-email/components@0.0.22';
+import { Body, Button, Container, Head, Heading, Html, Preview, Text, Link, Section } from 'npm:@react-email/components@0.0.22';
 import type { TemplateEntry } from './registry.ts';
 
 interface Props {
@@ -12,9 +12,11 @@ interface Props {
   documents?: { name: string; url: string }[];
   signature?: { logo?: string; lines: string[] };
   disclaimer?: string;
+  inviteUrl?: string;
+  voteUrl?: string;
 }
 
-const AgmInviteTest = ({ title = 'AGM invitation', memberName = 'Member', meeting = 'Meeting date not saved yet', venue, details, deadline, documents = [], signature, disclaimer }: Props) => {
+const AgmInviteTest = ({ title = 'AGM invitation', memberName = 'Member', meeting = 'Meeting date not saved yet', venue, details, deadline, documents = [], signature, disclaimer, inviteUrl, voteUrl }: Props) => {
   const body = (details ?? '').replace(/^\s*dear[^\n]*\n/i, '').trim().replace(/\{\s*member[ _]name\s*\}/gi, memberName);
   return (
   <Html lang="en" dir="ltr">
@@ -28,9 +30,9 @@ const AgmInviteTest = ({ title = 'AGM invitation', memberName = 'Member', meetin
         <Text>You are invited to the {title}: <strong>{meeting}</strong>{venue ? ` at ${venue}` : ''}.</Text>
         {body ? <Text>{body.split('\n').map((line, i) => <React.Fragment key={i}>{i > 0 ? <br /> : null}{line}</React.Fragment>)}</Text> : null}
         {documents.map((doc, i) => <Text key={i}><Link href={doc.url}>{doc.name}</Link></Text>)}
-        <Section><Text style={action}>View invitation &amp; confirm attendance</Text></Section>
-        <Text>Your personal voting link works once and only for you (included in the live email for eligible voters).</Text>
-        <Section><Text style={action}>Vote now</Text></Section>
+        <Section>{inviteUrl ? <Button href={inviteUrl} style={action}>View invitation &amp; confirm attendance</Button> : <Text style={action}>View invitation &amp; confirm attendance</Text>}</Section>
+        <Text>Your personal voting link works once and only for you.</Text>
+        <Section>{voteUrl ? <Button href={voteUrl} style={action}>Vote now</Button> : <Text style={action}>Vote now</Text>}</Section>
         {!body && deadline ? <Text>Voting closes <strong>{deadline}</strong>.</Text> : null}
         <Text>Your choices are confidential — nobody, including the committee, can see how you voted.</Text>
         {signature && (signature.logo || signature.lines.length) ? (
@@ -40,7 +42,7 @@ const AgmInviteTest = ({ title = 'AGM invitation', memberName = 'Member', meetin
           </Section>
         ) : null}
         {disclaimer ? <Text style={footer}>{disclaimer}</Text> : null}
-        <Text style={notice}>This preview has no active voting or attendance buttons. No voting links were issued and voting was not opened.</Text>
+        <Text style={notice}>Test links open preview pages only: attendance replies and votes cannot be submitted, and voting was not opened.</Text>
       </Container>
     </Body>
   </Html>

@@ -8,6 +8,7 @@ import { Loader2, Lock, CheckCircle2 } from "lucide-react";
 
 type Ballot = {
   state: "invalid" | "open" | "voted" | "closed";
+  preview?: boolean;
   title?: string;
   declaration?: string;
   deadline?: string;

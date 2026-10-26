@@ -8,6 +8,7 @@ import type { AgmDocument } from "@/lib/agm/ballot";
 
 type Invite = {
   state: "invalid" | "ok";
+  preview?: boolean;
   title?: string; club_name?: string; name?: string;
   meeting_at?: string | null; venue?: string | null; details?: string | null;
   documents?: AgmDocument[]; vote_deadline?: string; rsvp?: "attending" | "apologies" | null; locked?: boolean;

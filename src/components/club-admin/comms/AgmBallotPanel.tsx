@@ -173,25 +173,26 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       const docs = (ballot.documents ?? []).length ? " The agenda, minutes and other meeting documents are on your invitation page." : "";
       const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const customMsg = (ballot.meeting_details ?? "").trim();
-      const detailsHtml = customMsg ? `<p>${esc(customMsg).replace(/\{\s*member[ _]name\s*\}/gi, "{{name}}").replace(/\n/g, "<br/>")}</p>` : "";
-      const greeting = /\{\s*member[ _]name\s*\}/i.test(customMsg) ? "" : "<p>Dear {{name}},</p>";
-      const inviteHtml = `${greeting}${detailsHtml}<p>You are invited to the <strong>${title}</strong> Annual General Meeting: <strong>${meet}</strong>.${docs}</p><p><a href="{{invite_link}}">View invitation &amp; confirm attendance</a></p>`;
+      // Our greeting is always first; drop any "Dear ..." opening line from the custom message so it isn't repeated.
+      const bodyMsg = customMsg.replace(/^\s*dear[^\n]*\n/i, "").trim();
+      const detailsHtml = bodyMsg ? `<p>${esc(bodyMsg).replace(/\{\s*member[ _]name\s*\}/gi, "{{name}}").replace(/\n/g, "<br/>")}</p>` : "";
+      const inviteHtml = `<p>Dear {{name}},</p><p>You are invited to the <strong>${title}</strong>: <strong>${meet}</strong>.${docs}</p>${detailsHtml}<p><a href="{{invite_link}}">View invitation &amp; confirm attendance</a></p>`;
       const meta = { purpose: "agm_ballot", ballot_id: ballot.id };
       if (Object.keys(varsV).length) await sendComms({
         clubId, name: title, channels: ch, audience: { type: "selected", memberIds: Object.keys(varsV) }, memberVars: varsV, meta,
         content: {
           email: {
-            subject: `${title} — AGM invitation and your personal voting link`,
-            body: `${inviteHtml}<p>Committee voting is open. Please use your personal link below to cast your secret ballot. The link works once and only for you.</p><p><a href="{{vote_link}}">Vote now</a></p><p>Voting closes <strong>${when}</strong>. Your choices are confidential — nobody, including the committee, can see how you voted.</p>`,
+            subject: title,
+            body: `${inviteHtml}<p>Your personal voting link works once and only for you: <a href="{{vote_link}}">Vote now</a></p>${bodyMsg ? "" : `<p>Voting closes <strong>${when}</strong>.</p>`}<p>Your choices are confidential — nobody, including the committee, can see how you voted.</p>`,
           },
-          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title} AGM: ${meet}. Documents & confirm attendance: {{invite_link}} . Your personal one-time voting link: {{vote_link}} — closes ${when}. Your vote is secret.` },
+          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title}: ${meet}. Documents & confirm attendance: {{invite_link}} . Your personal one-time voting link: {{vote_link}} — closes ${when}. Your vote is secret.` },
         },
       });
       if (Object.keys(varsI).length) await sendComms({
         clubId, name: `${title} — invitation`, channels: ch, audience: { type: "selected", memberIds: Object.keys(varsI) }, memberVars: varsI, meta,
         content: {
-          email: { subject: `${title} — AGM invitation`, body: inviteHtml },
-          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title} AGM: ${meet}. Documents & confirm attendance: {{invite_link}}` },
+          email: { subject: title, body: inviteHtml },
+          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title}: ${meet}. Documents & confirm attendance: {{invite_link}}` },
         },
       });
       return rows.length;

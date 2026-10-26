@@ -182,18 +182,21 @@ export type Database = {
         Row: {
           ballot_id: string
           id: string
+          max_choices: number
           sort: number
           title: string
         }
         Insert: {
           ballot_id: string
           id?: string
+          max_choices?: number
           sort?: number
           title: string
         }
         Update: {
           ballot_id?: string
           id?: string
+          max_choices?: number
           sort?: number
           title?: string
         }
@@ -20198,6 +20201,7 @@ export type Database = {
         Args: { _ballot: string; _draft_only: boolean }
         Returns: boolean
       }
+      _agm_positions_json: { Args: { p_ballot_id: string }; Returns: Json }
       _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
       _bar_cash_up_reconcile_saved: {
         Args: { _id: string; _settle: boolean }

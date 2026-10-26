@@ -5,8 +5,8 @@ describe("AGM ballot helpers", () => {
   it("parses one line per position and drops duplicate nominees", () => {
     const p = parseBallotText("Chairperson: Bradley Hunt, Reinhardt Falke, bradley hunt\n\nTreasurer: Hanno Kamfer");
     expect(p).toEqual([
-      { title: "Chairperson", nominees: ["Bradley Hunt", "Reinhardt Falke"] },
-      { title: "Treasurer", nominees: ["Hanno Kamfer"] },
+      { title: "Chairperson", nominees: ["Bradley Hunt", "Reinhardt Falke"], maxChoices: 1 },
+      { title: "Treasurer", nominees: ["Hanno Kamfer"], maxChoices: 1 },
     ]);
   });
 
@@ -21,8 +21,8 @@ describe("AGM ballot helpers", () => {
   });
 
   it("reports ties and no-vote positions", () => {
-    expect(positionWinners([{ candidate_id: "a", name: "A", votes: 3 }, { candidate_id: "b", name: "B", votes: 3 }])).toEqual(["A", "B"]);
-    expect(positionWinners([{ candidate_id: "a", name: "A", votes: 0 }])).toEqual([]);
+    expect(positionWinners([{ candidate_id: "a", name: "A", votes: 3 }, { candidate_id: "b", name: "B", votes: 3 }])).toEqual({ elected: [], tie: ["A", "B"] });
+    expect(positionWinners([{ candidate_id: "a", name: "A", votes: 0 }])).toEqual({ elected: [], tie: [] });
   });
 
   it("recounts a position from anonymous receipts", () => {
@@ -41,5 +41,31 @@ describe("AGM invitation helpers", () => {
   });
   it("shows the meeting in Johannesburg time with venue", () => {
     expect(meetingLine("2026-11-05T16:00:00Z", "Clubhouse")).toMatch(/18:00 at Clubhouse$/);
+  });
+});
+
+describe("multi-choice positions", () => {
+  it("reads the number of choices from the position title", () => {
+    const [p] = parseBallotText("General Member (3): A, B, C, D");
+    expect(p.title).toBe("General Member");
+    expect(p.maxChoices).toBe(3);
+  });
+  it("defaults to one choice", () => {
+    expect(parseBallotText("Chairperson: A, B")[0].maxChoices).toBe(1);
+  });
+  it("rejects more choices than nominees", () => {
+    expect(() => parseBallotText("General Member (3): A, B")).toThrow();
+  });
+  it("elects the top three for three places", () => {
+    const t = [5, 4, 3, 1].map((v, i) => ({ candidate_id: String(i), name: "ABCD"[i], votes: v }));
+    expect(positionWinners(t, 3)).toEqual({ elected: ["A", "B", "C"], tie: [] });
+  });
+  it("flags a tie at the last place", () => {
+    const t = [5, 3, 3, 3].map((v, i) => ({ candidate_id: String(i), name: "ABCD"[i], votes: v }));
+    expect(positionWinners(t, 3)).toEqual({ elected: ["A"], tie: ["B", "C", "D"] });
+  });
+  it("recounts every pick on a multi-choice receipt", () => {
+    expect(recountFromReceipts([{ code: "X", choices: { p: ["a", "b"] } }, { code: "Y", choices: { p: null } }], "p"))
+      .toEqual({ a: 1, b: 1, abstain: 1 });
   });
 });

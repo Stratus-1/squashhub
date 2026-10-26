@@ -14,7 +14,7 @@ type Ballot = {
   deadline?: string;
   club_name?: string;
   voter?: { name: string | null; member_number: string | null; email: string | null };
-  positions?: { id: string; title: string; candidates: { id: string; name: string }[] }[];
+  positions?: { id: string; title: string; max_choices?: number; candidates: { id: string; name: string }[] }[];
 };
 
 const fmt = (d?: string) =>
@@ -24,7 +24,7 @@ export default function AgmVote() {
   const { token = "" } = useParams();
   const [ballot, setBallot] = useState<Ballot | null>(null);
   const [declared, setDeclared] = useState(false);
-  const [choices, setChoices] = useState<Record<string, string>>({});
+  const [choices, setChoices] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
@@ -40,15 +40,15 @@ export default function AgmVote() {
   const submit = async () => {
     setError(null);
     const positions = ballot?.positions ?? [];
-    const missing = positions.filter((p) => !(p.id in choices));
+    const missing = positions.filter((p) => !choices[p.id]?.length);
     if (missing.length) {
       setError(`Please choose (or abstain) for: ${missing.map((m) => m.title).join(", ")}`);
       return;
     }
     if (!confirm("Submit your ballot? Votes cannot be changed afterwards.")) return;
     setBusy(true);
-    const payload: Record<string, string | null> = {};
-    for (const [k, v] of Object.entries(choices)) payload[k] = v === "abstain" ? null : v;
+    const payload: Record<string, string[] | null> = {};
+    for (const [k, v] of Object.entries(choices)) payload[k] = v.includes("abstain") ? null : v;
     const { data, error } = await supabase.rpc("agm_cast_vote" as any, {
       p_token: token, p_declared: declared, p_choices: payload,
     });
@@ -116,24 +116,45 @@ export default function AgmVote() {
 
       {declared && (
         <>
-          {(ballot.positions ?? []).map((p, i) => (
-            <Card key={p.id} className="p-4 space-y-2">
-              <p className="text-sm font-semibold">{i + 2}. {p.title}</p>
-              <div className="space-y-1">
-                {[...p.candidates, { id: "abstain", name: "Abstain" }].map((c) => (
-                  <label key={c.id} className={`flex items-center gap-2 rounded border px-3 py-2 text-sm cursor-pointer ${choices[p.id] === c.id ? "border-primary bg-primary/10" : "border-border"}`}>
-                    <input
-                      type="radio"
-                      name={p.id}
-                      checked={choices[p.id] === c.id}
-                      onChange={() => setChoices((s) => ({ ...s, [p.id]: c.id }))}
-                    />
-                    <span className={c.id === "abstain" ? "text-muted-foreground" : ""}>{c.name}</span>
-                  </label>
-                ))}
-              </div>
-            </Card>
-          ))}
+          {(ballot.positions ?? []).map((p, i) => {
+            const max = p.max_choices ?? 1;
+            const sel = choices[p.id] ?? [];
+            const toggle = (id: string) =>
+              setChoices((s) => {
+                const cur = s[p.id] ?? [];
+                if (max === 1 || id === "abstain") return { ...s, [p.id]: [id] };
+                const base = cur.filter((c) => c !== "abstain");
+                if (base.includes(id)) return { ...s, [p.id]: base.filter((c) => c !== id) };
+                if (base.length >= max) return s;
+                return { ...s, [p.id]: [...base, id] };
+              });
+            return (
+              <Card key={p.id} className="p-4 space-y-2">
+                <p className="text-sm font-semibold">{i + 2}. {p.title}</p>
+                {max > 1 && (
+                  <p className="text-xs text-muted-foreground">Choose up to {max} ({sel.filter((c) => c !== "abstain").length} of {max} chosen).</p>
+                )}
+                <div className="space-y-1">
+                  {[...p.candidates, { id: "abstain", name: "Abstain" }].map((c) => {
+                    const on = sel.includes(c.id);
+                    const full = max > 1 && !on && c.id !== "abstain" && sel.filter((x) => x !== "abstain").length >= max;
+                    return (
+                      <label key={c.id} className={`flex items-center gap-2 rounded border px-3 py-2 text-sm ${full ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${on ? "border-primary bg-primary/10" : "border-border"}`}>
+                        <input
+                          type={max > 1 ? "checkbox" : "radio"}
+                          name={p.id}
+                          checked={on}
+                          disabled={full}
+                          onChange={() => toggle(c.id)}
+                        />
+                        <span className={c.id === "abstain" ? "text-muted-foreground" : ""}>{c.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button className="w-full" onClick={submit} disabled={busy || !!ballot.preview}>
             {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Submit my ballot

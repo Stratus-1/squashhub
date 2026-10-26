@@ -13,7 +13,7 @@ import { sendComms } from "@/lib/comms/send";
 import { AgmMeetingCard } from "./AgmMeetingCard";
 import { AgmTestEmail } from "./AgmTestEmail";
 import {
-  buildInviteLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts,
+  buildInviteLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
 } from "@/lib/agm/ballot";
 
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as any, args as any);
@@ -101,10 +101,11 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     queryKey: ["agm-positions", ballot.id],
     queryFn: async () => {
       const { data, error } = await db("agm_ballot_positions")
-        .select("id,title,sort,agm_ballot_candidates(name,sort)").eq("ballot_id", ballot.id).order("sort");
+        .select("id,title,sort,max_choices,agm_ballot_candidates(name,sort)").eq("ballot_id", ballot.id).order("sort");
       if (error) throw error;
       return (data as any[]).map((p) => ({
         title: p.title,
+        maxChoices: p.max_choices ?? 1,
         nominees: [...p.agm_ballot_candidates].sort((a: any, b: any) => a.sort - b.sort).map((c: any) => c.name),
       }));
     },
@@ -130,7 +131,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     if (error) throw error;
     await db("agm_ballot_positions").delete().eq("ballot_id", ballot.id);
     for (const [i, p] of parsed.entries()) {
-      const { data, error: pe } = await db("agm_ballot_positions").insert({ ballot_id: ballot.id, title: p.title, sort: i }).select("id").single();
+      const { data, error: pe } = await db("agm_ballot_positions").insert({ ballot_id: ballot.id, title: p.title, sort: i, max_choices: p.maxChoices ?? 1 }).select("id").single();
       if (pe) throw pe;
       const { error: ce } = await db("agm_ballot_candidates").insert(p.nominees.map((name, j) => ({ position_id: data.id, name, sort: j })));
       if (ce) throw ce;
@@ -219,7 +220,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
           <Input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
       </div>
       <label className="text-xs space-y-1 block">
-        <span className="text-muted-foreground">Positions and accepted nominees — one line per position: <em>Position: Name, Name</em></span>
+        <span className="text-muted-foreground">Positions and accepted nominees — one line per position: <em>Position: Name, Name</em>. To let members pick more than one, add the number in brackets, e.g. <em>General Member (3): Name, Name</em></span>
         <Textarea rows={6} value={ballotText} onChange={(e) => setText(e.target.value)} className="font-mono text-xs" />
       </label>
       <label className="text-xs space-y-1 block"><span className="text-muted-foreground">Membership declaration voters must tick</span>
@@ -354,16 +355,17 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
       {closed && results && (
         <div className="space-y-3">
           {results.positions.map((p: any) => {
-            const winners = positionWinners(p.tally);
+            const seats = p.max_choices ?? 1;
+            const { elected, tie } = positionWinners(p.tally, seats);
             const recount = recountFromReceipts(results.receipts, p.id);
             const recountOk = p.tally.every((t: any) => (recount[t.candidate_id] ?? 0) === t.votes) && (recount.abstain ?? 0) === p.abstain;
             return (
               <div key={p.id} className="border border-border rounded p-2">
-                <p className="text-sm font-semibold">{p.title}</p>
+                <p className="text-sm font-semibold">{p.title}{seats > 1 && <span className="font-normal text-muted-foreground"> · {seats} places</span>}</p>
                 <table className="w-full text-xs mt-1">
                   <tbody>
                     {[...p.tally].sort((a: any, b: any) => b.votes - a.votes).map((t: any) => (
-                      <tr key={t.candidate_id} className={winners.includes(t.name) ? "font-semibold text-primary" : ""}>
+                      <tr key={t.candidate_id} className={elected.includes(t.name) ? "font-semibold text-primary" : ""}>
                         <td className="py-0.5">{t.name}</td><td className="text-right">{t.votes}</td>
                       </tr>
                     ))}
@@ -371,7 +373,7 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
                   </tbody>
                 </table>
                 <p className="text-[11px] mt-1">
-                  {winners.length === 1 ? `Elected: ${winners[0]}` : winners.length > 1 ? `Tie: ${winners.join(", ")} — decide at the AGM` : "No votes cast"}
+                  {elected.length ? `Elected: ${elected.join(", ")}` : ""}{tie.length ? `${elected.length ? " · " : ""}Tie: ${tie.join(", ")} — decide at the AGM` : ""}{!elected.length && !tie.length ? "No votes cast" : ""}
                   {" · "}<span className={recountOk ? "text-muted-foreground" : "text-destructive"}>{recountOk ? "Recount from receipts matches" : "Recount mismatch — investigate"}</span>
                 </p>
               </div>
@@ -385,7 +387,7 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
                 {results.receipts.map((r: any) => (
                   <tr key={r.code} className="border-t border-border">
                     <td className="font-mono py-0.5">{r.code}</td>
-                    {results.positions.map((p: any) => <td key={p.id}>{r.choices?.[p.id] ? candidateName[r.choices[p.id]] : "Abstain"}</td>)}
+                    {results.positions.map((p: any) => <td key={p.id}>{receiptPicks(r.choices?.[p.id]).map((c) => candidateName[c]).join(", ") || "Abstain"}</td>)}
                   </tr>
                 ))}
               </tbody>

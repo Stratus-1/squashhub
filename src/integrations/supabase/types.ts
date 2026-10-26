@@ -331,6 +331,8 @@ export type Database = {
           meeting_at: string | null
           meeting_details: string | null
           meeting_venue: string | null
+          nominations_close_at: string | null
+          nominations_status: string
           opened_at: string | null
           status: string
           title: string
@@ -347,6 +349,8 @@ export type Database = {
           meeting_at?: string | null
           meeting_details?: string | null
           meeting_venue?: string | null
+          nominations_close_at?: string | null
+          nominations_status?: string
           opened_at?: string | null
           status?: string
           title: string
@@ -363,6 +367,8 @@ export type Database = {
           meeting_at?: string | null
           meeting_details?: string | null
           meeting_venue?: string | null
+          nominations_close_at?: string | null
+          nominations_status?: string
           opened_at?: string | null
           status?: string
           title?: string
@@ -415,6 +421,107 @@ export type Database = {
           },
           {
             foreignKeyName: "agm_invitees_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_nominations: {
+        Row: {
+          ballot_id: string
+          created_at: string
+          id: string
+          nominated_by: string
+          nominee_member_id: string
+          position_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          ballot_id: string
+          created_at?: string
+          id?: string
+          nominated_by: string
+          nominee_member_id: string
+          position_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          ballot_id?: string
+          created_at?: string
+          id?: string
+          nominated_by?: string
+          nominee_member_id?: string
+          position_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_nominations_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_nominations_nominated_by_fkey"
+            columns: ["nominated_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_nominations_nominee_member_id_fkey"
+            columns: ["nominee_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_nominations_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballot_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_nominators: {
+        Row: {
+          ballot_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          token_hash: string
+        }
+        Insert: {
+          ballot_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          token_hash: string
+        }
+        Update: {
+          ballot_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_nominators_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_nominators_club_member_id_fkey"
             columns: ["club_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
@@ -20201,6 +20308,26 @@ export type Database = {
         Args: { _ballot: string; _draft_only: boolean }
         Returns: boolean
       }
+      _agm_finalize_nominations: {
+        Args: { _ballot: string }
+        Returns: undefined
+      }
+      _agm_nominator: {
+        Args: { _token: string }
+        Returns: {
+          ballot_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          token_hash: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agm_nominators"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _agm_positions_json: { Args: { p_ballot_id: string }; Returns: Json }
       _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
       _bar_cash_up_reconcile_saved: {
@@ -20531,6 +20658,10 @@ export type Database = {
         Args: { p_ballot_id: string; p_deadline: string }
         Returns: undefined
       }
+      agm_finalize_nominations: {
+        Args: { p_ballot_id: string }
+        Returns: undefined
+      }
       agm_invite_for_token: { Args: { p_token: string }; Returns: Json }
       agm_issue_invites: {
         Args: { p_ballot_id: string; p_member_ids: string[] }
@@ -20539,6 +20670,11 @@ export type Database = {
           token: string
         }[]
       }
+      agm_nominate: {
+        Args: { p_nominee_id: string; p_position_id: string; p_token: string }
+        Returns: undefined
+      }
+      agm_nomination_for_token: { Args: { p_token: string }; Returns: Json }
       agm_open_ballot: {
         Args: { p_ballot_id: string; p_member_ids: string[] }
         Returns: {
@@ -20546,13 +20682,39 @@ export type Database = {
           token: string
         }[]
       }
+      agm_open_nominations: {
+        Args: {
+          p_ballot_id: string
+          p_close_at: string
+          p_member_ids: string[]
+        }
+        Returns: {
+          club_member_id: string
+          token: string
+        }[]
+      }
+      agm_reissue_nomination_token: {
+        Args: { p_ballot_id: string; p_member_id: string }
+        Returns: string
+      }
       agm_reissue_token: {
         Args: { p_ballot_id: string; p_member_id: string }
         Returns: string
       }
+      agm_respond_nomination: {
+        Args: { p_accept: boolean; p_nomination_id: string; p_token: string }
+        Returns: undefined
+      }
       agm_rsvp: {
         Args: { p_response: string; p_token: string }
         Returns: undefined
+      }
+      agm_search_nominees: {
+        Args: { p_query: string; p_token: string }
+        Returns: {
+          club_member_id: string
+          name: string
+        }[]
       }
       agm_update_meeting: {
         Args: {

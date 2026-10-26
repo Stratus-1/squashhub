@@ -149,6 +149,219 @@ export type Database = {
         }
         Relationships: []
       }
+      agm_ballot_candidates: {
+        Row: {
+          id: string
+          name: string
+          position_id: string
+          sort: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          position_id: string
+          sort?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          position_id?: string
+          sort?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_ballot_candidates_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballot_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_ballot_positions: {
+        Row: {
+          ballot_id: string
+          id: string
+          sort: number
+          title: string
+        }
+        Insert: {
+          ballot_id: string
+          id?: string
+          sort?: number
+          title: string
+        }
+        Update: {
+          ballot_id?: string
+          id?: string
+          sort?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_ballot_positions_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_ballot_receipts: {
+        Row: {
+          ballot_id: string
+          id: string
+          receipt_code: string
+        }
+        Insert: {
+          ballot_id: string
+          id?: string
+          receipt_code: string
+        }
+        Update: {
+          ballot_id?: string
+          id?: string
+          receipt_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_ballot_receipts_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_ballot_voters: {
+        Row: {
+          ballot_id: string
+          club_member_id: string
+          declared_at: string | null
+          id: string
+          token_hash: string
+          voted_at: string | null
+        }
+        Insert: {
+          ballot_id: string
+          club_member_id: string
+          declared_at?: string | null
+          id?: string
+          token_hash: string
+          voted_at?: string | null
+        }
+        Update: {
+          ballot_id?: string
+          club_member_id?: string
+          declared_at?: string | null
+          id?: string
+          token_hash?: string
+          voted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_ballot_voters_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_ballot_voters_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_ballot_votes: {
+        Row: {
+          candidate_id: string | null
+          position_id: string
+          receipt_id: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          position_id: string
+          receipt_id: string
+        }
+        Update: {
+          candidate_id?: string | null
+          position_id?: string
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_ballot_votes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballot_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_ballot_votes_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballot_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_ballot_votes_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballot_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agm_ballots: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          deadline: string
+          declaration: string
+          eligible_count: number
+          id: string
+          opened_at: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          deadline: string
+          declaration?: string
+          eligible_count?: number
+          id?: string
+          opened_at?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string
+          declaration?: string
+          eligible_count?: number
+          id?: string
+          opened_at?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_ballots_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_assist_interactions: {
         Row: {
           action_args: Json | null
@@ -19891,6 +20104,11 @@ export type Database = {
       }
     }
     Functions: {
+      _agm_age_from_sa_id: { Args: { _id: string }; Returns: number }
+      _agm_ballot_admin: {
+        Args: { _ballot: string; _draft_only: boolean }
+        Returns: boolean
+      }
       _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
       _bar_cash_up_reconcile_saved: {
         Args: { _id: string; _settle: boolean }
@@ -20202,6 +20420,48 @@ export type Database = {
         Returns: Json
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      agm_ballot_for_token: { Args: { p_token: string }; Returns: Json }
+      agm_ballot_results: { Args: { p_ballot_id: string }; Returns: Json }
+      agm_ballot_turnout: {
+        Args: { p_ballot_id: string }
+        Returns: {
+          club_member_id: string
+          name: string
+          voted: boolean
+        }[]
+      }
+      agm_cast_vote: {
+        Args: { p_choices: Json; p_declared: boolean; p_token: string }
+        Returns: string
+      }
+      agm_extend_deadline: {
+        Args: { p_ballot_id: string; p_deadline: string }
+        Returns: undefined
+      }
+      agm_open_ballot: {
+        Args: { p_ballot_id: string; p_member_ids: string[] }
+        Returns: {
+          club_member_id: string
+          token: string
+        }[]
+      }
+      agm_reissue_token: {
+        Args: { p_ballot_id: string; p_member_id: string }
+        Returns: string
+      }
+      agm_voter_candidates: {
+        Args: { p_club_id: string }
+        Returns: {
+          age: number
+          annual_fee_paid: boolean
+          club_member_id: string
+          email: string
+          has_fee_record: boolean
+          member_number: string
+          name: string
+          suggested: boolean
+        }[]
+      }
       ai_apply_champ_repair: {
         Args: { p_champ: string; p_changes: Json }
         Returns: Json

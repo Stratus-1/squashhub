@@ -39,7 +39,7 @@
 - Counter tab-opening requests supply all six named arguments, with an explicit null member ID for visitors; why: older defaulted RPC overloads otherwise make visitor requests ambiguous.
 - Booking grid uses saved tournament duration, not historical booking lengths, inside reserved evenings; fixture slots preserve that interval, other courts keep club slots, overlaps stay separate; why: setup changes must not retain stale short rows or move bookings.
 - Booking writes enforce scheduled, unlinked championship allocations through `guard_scheduled_championship_booking`, using saved fixture duration without an admin bypass; why: capacity holds must not conceal already assigned games.
-- Scope Club Admin steps/contrast locally (portals too); why: shared member/association UI must stay unchanged.
+- Scope Club Admin steps/contrast locally (portals too); why: shared UI stays unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.
 - Competition state (draws, rounds, pools, progression, marker locks, lineups, results, rankings) are state machines with cross-table invariants: reuse `src/lib/tournaments/`, `src/lib/tournament-formats/`, `src/lib/leagues/`; never recreate rules in pages; add tests before changing them.
@@ -61,7 +61,7 @@
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
 - Peak late-cancel limits/penalties are separate opt-in switches (OFF/0), shared by all court grids; penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 
-- Menu prefs apply after permission filtering; why: never grant access.
+- Menu prefs apply after permission filtering (never grant access).
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
 - Clean RR tracks drag-scroll (mouse pointer capture, native touch), excluding controls; why: navigation must never mutate data or block standings actions.
 - Standalone round-robin presentation uses the shared clean view across clubs without pilot flags; format-specific projections and viewer zoom gates remain separate because a display rollout must not alter competition rules or permissions.

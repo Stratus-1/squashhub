@@ -73,7 +73,8 @@ export function AgmMeetingCard({ clubId, ballot }: { clubId: string; ballot: any
     enabled: ballot.status !== "draft",
     refetchInterval: 30_000,
   });
-  const attending = invitees.filter((i) => i.rsvp === "attending");
+  const inPerson = invitees.filter((i) => i.rsvp === "attending_in_person" || i.rsvp === "attending");
+  const online = invitees.filter((i) => i.rsvp === "attending_online");
   const apologies = invitees.filter((i) => i.rsvp === "apologies");
 
   return (
@@ -110,14 +111,14 @@ export function AgmMeetingCard({ clubId, ballot }: { clubId: string; ballot: any
       {ballot.status !== "draft" && (
         <details className="text-xs">
           <summary className="cursor-pointer">
-            Attendance: <strong>{attending.length}</strong> attending · {apologies.length} apologies · {invitees.length - attending.length - apologies.length} no reply ({invitees.length} invited)
+            Attendance: <strong>{inPerson.length}</strong> in person · <strong>{online.length}</strong> online · {apologies.length} apologies · {invitees.length - inPerson.length - online.length - apologies.length} no reply ({invitees.length} invited)
           </summary>
           <div className="mt-2 max-h-64 overflow-auto divide-y divide-border border border-border rounded">
             {[...invitees].sort((a, b) => (a.club_members?.name ?? "").localeCompare(b.club_members?.name ?? "")).map((i) => (
               <div key={i.club_member_id} className="flex items-center gap-2 px-2 py-1">
                 <span className="flex-1">{i.club_members?.name}</span>
-                <Badge variant={i.rsvp === "attending" ? "default" : "secondary"} className="text-[10px]">
-                  {i.rsvp === "attending" ? "attending" : i.rsvp === "apologies" ? "apologies" : "no reply"}
+                <Badge variant={i.rsvp && i.rsvp !== "apologies" ? "default" : "secondary"} className="text-[10px]">
+                  {i.rsvp === "attending_online" ? "online" : i.rsvp === "attending_in_person" || i.rsvp === "attending" ? "in person" : i.rsvp === "apologies" ? "apologies" : "no reply"}
                 </Badge>
               </div>
             ))}

@@ -112,3 +112,6 @@ verify_jwt = false
 
 [functions.match-day-qr]
 verify_jwt = false
+
+[functions.agm-test-email]
+verify_jwt = true

@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Lock, CalendarDays, MapPin, FileText, CheckCircle2, XCircle } from "lucide-react";
 import type { AgmDocument } from "@/lib/agm/ballot";
 
+type Rsvp = "attending_in_person" | "attending_online" | "apologies" | "attending";
+const RSVP_CHOICES = ["attending_in_person", "attending_online", "apologies"] as const;
+const RSVP_LABEL: Record<Rsvp, string> = {
+  attending_in_person: "Attending in person",
+  attending_online: "Will attend online",
+  apologies: "Apologies, cannot attend",
+  attending: "Attending",
+};
+
 type Invite = {
   state: "invalid" | "ok";
   preview?: boolean;

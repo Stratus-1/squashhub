@@ -63,7 +63,7 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
-- Clean round-robin tracks use pointer-captured mouse drag scrolling and native touch scrolling, excluding interactive controls; why: fixture/result navigation must never mutate tournament data or intercept standings actions.
+- Clean RR tracks drag-scroll (mouse pointer capture, native touch), excluding controls; why: navigation must never mutate data or block standings actions.
 - Standalone round-robin presentation uses the shared clean view across clubs without pilot flags; format-specific projections and viewer zoom gates remain separate because a display rollout must not alter competition rules or permissions.
 - Clean round-robin pool viewers use compact phone frames and opt-in compact viewer controls, keeping desktop sizes and expanded zoom/pan unchanged; why: stacked pools must remain discoverable without empty frame space.
 - Standalone RR round panels read the structured stage's round-date count; the pure view compacts balanced legacy labels and uniquely partitions complete four-player pools, retaining every saved fixture/result/slot without writes; ambiguous or incomplete schedules stay factual because display must never invent pairings.

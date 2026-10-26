@@ -1856,6 +1856,13 @@
       "when": 1793004877065,
       "tag": "0264_agm_secret_ballot",
       "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1793008735079,
+      "tag": "0265_affiliations_members_permission_holders",
+      "breakpoints": true
     }
   ]
 }

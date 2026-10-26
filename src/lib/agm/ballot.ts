@@ -13,10 +13,10 @@ export const DEFAULT_DECLARATION = (clubName: string) =>
 export function parseBallotText(text: string, opts: { allowEmpty?: boolean } = {}): BallotPositionDraft[] {
   const out: BallotPositionDraft[] = [];
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
+    const t0 = raw.trim();
+    const line = opts.allowEmpty && t0 && !t0.includes(":") ? `${t0}:` : t0;
     if (!line) continue;
     const idx = line.indexOf(":");
-    if (opts.allowEmpty && idx < 0 && line) { out.push(...parseBallotText(`${line}:`, opts)); continue; }
     if (idx <= 0) throw new Error(`Line "${line}" needs "Position: nominee, nominee"`);
     let title = line.slice(0, idx).trim();
     // "General Member (3): ..." → members may pick up to 3.

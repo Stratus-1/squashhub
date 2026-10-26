@@ -47,6 +47,14 @@ describe("made-to-order food", () => {
 });
 
 describe("specials", () => {
+  it("restores Uitsig specials after removing their October expiry dates", () => {
+    const at = new Date("2026-10-26T17:02:00Z");
+    for (const expiry of ["2026-10-23", "2026-10-05", "2026-09-30"]) {
+      const special = base({ item_kind: "special", valid_from: "2026-09-28", valid_to: expiry, active: true, sellable: true });
+      expect(onMenu(special, at)).toBe(false);
+      expect(onMenu({ ...special, valid_to: null }, at)).toBe(true);
+    }
+  });
   it("deduct components from the underlying stock", () => {
     const need = stockRequirement(fri, 1, byId, comps);
     expect(need.get("b")).toBe(4);

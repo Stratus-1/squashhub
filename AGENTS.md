@@ -59,8 +59,7 @@
 
 ## Done checklist
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
-- Peak late-cancel limits and penalties are separate opt-in switches (OFF/0); penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
-- Court grids share P/peak logic; why: one rule set.
+- Peak late-cancel limits/penalties are separate opt-in switches (OFF/0), shared by all court grids; penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 
 - Menu prefs apply after permission filtering; why: never grant access.
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
@@ -74,4 +73,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - The till cash-up history exposes the existing management report for signed-in platform admins; edits require server authorization and a reason, and counter PIN authorization stays unchanged; why: platform admins need direct access to corrections without granting anonymous management access.
 - Club-sponsored stock shares private `_bar_club_use_post` between bar-authorised signed-in entries and atomic personal-PIN counter baskets; counter club/staff identity comes only from a locked valid session and private request rows enforce idempotency; why: one stock/accounting path, no admin bypass, customer tab, sale or duplicate deduction.
 - Member "Available to spend" reuses the booking/bar gate inputs (allowance = recurring-plan fees + approved credit, minus owing) via existing read-only RPCs; why: the dashboard must never disagree with what the till or booking screen allows.
-- AGM ballots: voter tokens (hashed) record only who voted; anonymous receipts/votes carry no member reference or timestamps; casting, deadline, extend-only and results-after-close are enforced in security-definer RPCs; why: secret, one-time, verifiable voting cannot rely on UI checks.
+- AGM ballots: secrecy, one vote, deadline and post-close results live in security-definer RPCs; votes never reference members; why: UI checks can't secure a secret ballot.

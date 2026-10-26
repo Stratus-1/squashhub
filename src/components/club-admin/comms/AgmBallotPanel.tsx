@@ -185,14 +185,14 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
             subject: title,
             body: `${inviteHtml}<p>Your personal voting link works once and only for you: <a href="{{vote_link}}">Vote now</a></p>${bodyMsg ? "" : `<p>Voting closes <strong>${when}</strong>.</p>`}<p>Your choices are confidential — nobody, including the committee, can see how you voted.</p>`,
           },
-          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title} AGM: ${meet}. Documents & confirm attendance: {{invite_link}} . Your personal one-time voting link: {{vote_link}} — closes ${when}. Your vote is secret.` },
+          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title}: ${meet}. Documents & confirm attendance: {{invite_link}} . Your personal one-time voting link: {{vote_link}} — closes ${when}. Your vote is secret.` },
         },
       });
       if (Object.keys(varsI).length) await sendComms({
         clubId, name: `${title} — invitation`, channels: ch, audience: { type: "selected", memberIds: Object.keys(varsI) }, memberVars: varsI, meta,
         content: {
           email: { subject: title, body: inviteHtml },
-          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title} AGM: ${meet}. Documents & confirm attendance: {{invite_link}}` },
+          whatsapp: { body: `Hi {{first_name}}, you're invited to the ${title}: ${meet}. Documents & confirm attendance: {{invite_link}}` },
         },
       });
       return rows.length;

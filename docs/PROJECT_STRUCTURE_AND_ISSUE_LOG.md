@@ -3946,3 +3946,8 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Actual cause: the statement renders `(journalEntries || [])`, so while the club's journal query is still loading it shows "No transactions for this member." and R0.00 totals — on a slow connection this reads as empty/broken.
 - Fix (FinanceTab.tsx): while the journal query is loading, the statement shows "Loading statement…" instead of the empty state and zeroed totals.
 - Verified signed in as Rachel: statement still loads correctly with all rows and totals after the change.
+
+## 2026-10-26 — Uitsig new-member numbers and pro-rata fee correction
+- Request (Willem): the three members added 26 Oct (Melinda Marais, Christian Reeve, Elmien Brink) must carry the spreadsheet member numbers (column E) and pro-rated Premium fees raised on their spreadsheet "Date of Entry".
+- Data correction (no code change): member numbers set to UIT3864 / UIT3894 / UIT3895; joined_at set to 2026-09-16 (Marais) and 2026-10-06 (Reeve, Brink). Fee rows changed from R2,500 full-year to computeJoinFee pro-rata against the 1 Jan renewal: Marais R833.33 (4 months), Reeve and Brink R625.00 (3 months each), labels "Club Membership (Premium) — Pro-rated N months", paid_at backdated to join date.
+- Ledger: original 26 Oct journal rows re-dated to join dates; balanced adjustment pairs appended (Dr membership_income / Cr debtors and Dr debtors / Cr bank_current) for the R1,666.67 / R1,875 / R1,875 differences. Verified net per member: debtors R0, bank and income equal the pro-rated fee.

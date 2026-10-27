@@ -440,6 +440,33 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
     onError: (e: any) => toast({ title: "Could not resend", description: e.message, variant: "destructive" }),
   });
 
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const downloadPdf = async () => {
+    setPdfBusy(true);
+    try {
+      const [{ data: club }, { data: inv, error: ie }] = await Promise.all([
+        supabase.from("clubs").select("name,logo_url").eq("id", clubId).maybeSingle(),
+        (supabase as any).from("agm_invitees").select("rsvp,club_members(name)").eq("ballot_id", ballot.id),
+      ]);
+      if (ie) throw ie;
+      const list = (inv ?? []) as any[];
+      const names = (pred: (r: string | null) => boolean) => list.filter((i) => pred(i.rsvp)).map((i) => i.club_members?.name ?? "Member").sort();
+      const inPerson = names((r) => r === "attending_in_person" || r === "attending");
+      const online = names((r) => r === "attending_online");
+      const apologies = names((r) => r === "apologies");
+      const { buildAgmResultsPdf } = await import("@/lib/agm/results-pdf");
+      const doc = await buildAgmResultsPdf({
+        clubName: (club as any)?.name ?? "Club", clubLogoUrl: (club as any)?.logo_url, title: ballot.title, closedAt: ballot.deadline,
+        turnout: { voted, eligible: turnout.length },
+        attendance: { inPerson, online, apologies, noReply: list.length - inPerson.length - online.length - apologies.length },
+        results,
+      });
+      doc.save(`${ballot.title.replace(/[^\w\- ]+/g, "")} - results.pdf`);
+    } catch (e: any) {
+      toast({ title: "Could not create PDF", description: e.message, variant: "destructive" });
+    } finally { setPdfBusy(false); }
+  };
+
   const candidateName = useMemo(() => {
     const m: Record<string, string> = {};
     for (const p of results?.positions ?? []) for (const t of p.tally) m[t.candidate_id] = t.name;
@@ -451,7 +478,8 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold flex-1">{ballot.title}</p>
         <span className="text-xs text-muted-foreground">{closed ? "Closed" : "Closes"} {fmt(ballot.deadline)}</span>
-        {closed && <Button size="sm" variant="outline" onClick={() => window.print()} className="print:hidden"><Printer className="w-3.5 h-3.5 mr-1" />Print</Button>}
+        {closed && <Button size="sm" variant="outline" disabled={!results || pdfBusy} onClick={downloadPdf} className="print:hidden">
+          {pdfBusy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}Results PDF</Button>}
       </div>
       <p className="text-sm">Turnout: <strong>{voted}</strong> of {turnout.length} eligible voters ({turnout.length ? Math.round((voted / turnout.length) * 100) : 0}%)</p>
 

@@ -69,6 +69,7 @@
 - Club-sponsored stock uses `bar_club_use` (bar permission): a `club_use` movement via `bar_stock_apply` plus a journal moving cost from the item's division purchase expense to `club_stock_expense`; why: giveaways must cut stock without touching sales, cash-ups or tips.
 
 ## Bar, counter and cash-up (moved from root)
+- Cash-up writers and shared-hour closing enforce the final working staff member under the club cash-up lock; personal exits remain attendance-only and historical cash-ups stay intact. Why: inspection visits must not reconcile the till or end another person's working time.
 - Cash-up summaries include all in-period cash-ledger movements, net of already counted cash sales/tips/payouts and excluding cash-up reconciliation journals; saved corrections retain the movement snapshot. Why: manual club cash expenses must reduce till expectations exactly once without rewriting sales or double-counting reconciliation.
 - Zero-outstanding management tab removal uses an authenticated club-scoped RPC with a locked balance recheck including tips and auditable closure, never cascading deletion; tab additions lock the same parent row to prevent concurrent removal/sales races.
 - Shared counters retain venue-scoped personal-PIN sessions with one active serving token, revalidated on selection; adding/selecting staff never ends attendance, shared End shift requires explicit person/all selection and confirmed device exit ends local participants; why: concurrent staff need separate hours and authoritative sale attribution without changing cash-up or payroll.

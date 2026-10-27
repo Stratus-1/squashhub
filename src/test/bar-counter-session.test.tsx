@@ -77,6 +77,7 @@ describe("counter personal PIN boundary", () => {
     await waitFor(() => expect(localStorage.getItem("sh.barcounter.token.river-menu")).toBe("first-session"));
     expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_end_shift")).toEqual([["bar_counter_end_shift", { _token: "second-session" }]]);
     expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([{ token: "first-session", operator: "First barman" }]);
+    expect(mocks.rpc.mock.calls.filter(([name]) => ["bar_cash_up_close", "bar_cash_up_close_v2", "bar_close_work_shift"].includes(name))).toEqual([]);
   });
 
   it("End shift can explicitly end both people and returns to personal PIN entry", async () => {
@@ -90,6 +91,7 @@ describe("counter personal PIN boundary", () => {
       ["bar_counter_end_shift", { _token: "first-session" }], ["bar_counter_end_shift", { _token: "second-session" }],
     ]);
     expect(JSON.parse(localStorage.getItem("sh.barcounter.servers.river-menu") ?? "[]")).toEqual([]);
+    expect(mocks.rpc.mock.calls.filter(([name]) => ["bar_cash_up_close", "bar_cash_up_close_v2", "bar_close_work_shift"].includes(name))).toEqual([]);
   });
 
   it("ending Deon's single-device shift does not submit an end request for Wynand on another counter", async () => {

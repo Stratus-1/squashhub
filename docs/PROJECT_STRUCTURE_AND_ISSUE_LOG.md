@@ -1,3 +1,8 @@
+## 2026-10-27 — Cash-up restricted to final working barman
+- Personal End shift and exit already only close attendance and revoke the selected PIN; no attendance/session trigger creates cash-ups. Deon's existing zero-sales record is a saved cash-up, not an attendance-only summary; history remains untouched.
+- Both cash-up writers and shared-hour closure now reject other ongoing staff attendance across the entire club under the existing shared lock. Cash-up displays the blocking state; opening/viewing and personal exits create no reconciliation. Explicit final-worker submission stays required.
+- Focused tests cover individual/all exits without cash-up calls and a disabled submission while another barman is working.
+
 ## 2026-10-27 — Manual cash expense omitted from bar cash-up
 - Uitsig's R230 Cleaning Material expense correctly reduced the cash ledger on 26 October, but the 27 October cash-up expected R250 instead of the R20 counted: opening R230 + cash sales R20 omitted the R230 expense. No write-off was posted.
 - Shared cash summary now includes net in-period cash journal movements, subtracting already counted sales/tips/payouts and excluding cash-up reconciliation journals. Saved-edit reconciliation retains the movement snapshot; current cash-up, running totals and report show other cash received/paid out separately. All club cash remains the approved source; no separate petty cash account.

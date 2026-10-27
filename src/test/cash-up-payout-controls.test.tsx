@@ -18,6 +18,16 @@ function open() {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CashUp clubId="riverside" tipsEnabled /></QueryClientProvider>);
 }
 describe("cash-up payout and edit controls", () => {
+  it("does not complete cash-up while another barman is working", async () => {
+    const original = mocks.rpc.getMockImplementation();
+    mocks.rpc.mockImplementation(async (name: string, args: unknown) => name === "bar_work_shift_status" ? { error: null, data: { shift: null, can_cash_up: false } } : original?.(name, args));
+    open();
+    const counted = await screen.findByRole("textbox", { name: "Cash counted" });
+    fireEvent.change(counted, { target: { value: "230" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Complete cash-up" })).toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "Complete cash-up" }));
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_cash_up_close_v2")).toEqual([]);
+  });
   it("starts paid tips at zero, rejects negative R56 input and submits positive R56", async () => {
     open();
     const tips = await screen.findByRole("textbox", { name: "Tips paid to Test staff" });

@@ -36,9 +36,10 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const working = useQuery({ queryKey: ["bar-working-shift", clubId, token], queryFn: async () => {
     const { data, error } = await supabase.rpc("bar_work_shift_status" as any, { _club_id: clubId, _token: token });
     if (error) throw error;
-    return data as unknown as { shift: { split_tips: boolean } | null };
+    return data as unknown as { shift: { split_tips: boolean } | null; can_cash_up?: boolean };
   }});
   const sharedOpen = Boolean(working.data?.shift?.split_tips);
+  const otherStaffWorking = working.data?.can_cash_up === false;
   async function finishHours() {
     setBusy(true);
     try {
@@ -77,7 +78,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const movements = Number(s?.cash_movements ?? 0);
   const cashShould = opening + gross("cash") - tipsOut + movements;
   const cardActual = card ?? cardShould.toFixed(2);
-  const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid && !sharedOpen && !working.error && !working.isLoading;
+  const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid && !sharedOpen && !otherStaffWorking && !working.error && !working.isLoading;
   const vCash = MONEY.test(counted) ? Number(counted) - cashShould : null;
   const vCard = MONEY.test(cardActual) ? Number(cardActual) - cardShould : 0;
   const variance = vCash === null ? null : Math.round((vCash + vCard) * 100) / 100;
@@ -109,7 +110,8 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   return <div className="space-y-5 text-xs">
     {preview.isLoading ? <p className="text-muted-foreground">Loading…</p> : preview.error ? <p role="alert" className="text-destructive">{(preview.error as Error).message || "Could not load cash-up."}</p> : s && <section className="space-y-3" aria-label="Current shift">
       <p className="text-muted-foreground">Shift from <strong>{when(s.period_start)}</strong> to now. Everything after this cash-up falls into the next shift.</p>
-      {sharedOpen && <div className="border rounded-md p-3 space-y-2"><p>Close everyone's working hours before paying shared tips.</p><Button disabled={busy} onClick={finishHours}>Close hours &amp; split tips</Button></div>}
+      {otherStaffWorking && <p role="alert" className="text-destructive">Other barmen are still working. They must end their own shifts before the last barman completes cash-up.</p>}
+      {sharedOpen && <div className="border rounded-md p-3 space-y-2"><p>Close everyone's working hours before paying shared tips.</p><Button disabled={busy || otherStaffWorking} onClick={finishHours}>Close hours &amp; split tips</Button></div>}
 
       {tipsEnabled && owed.length > 0 && <div className="rounded-md border p-3 space-y-2">
         <h4 className="font-semibold">1. Tips to pay out in cash now</h4>

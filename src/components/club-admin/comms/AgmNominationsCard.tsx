@@ -90,7 +90,7 @@ export function AgmNominationsCard({ clubId, ballot }: { clubId: string; ballot:
             {!list.length && <p className="text-xs text-muted-foreground">No nominations yet.</p>}
             {list.map((n) => (
               <div key={n.id} className="flex items-center gap-2 text-xs py-0.5">
-                <span className="flex-1">{n.nominee?.name}<span className="text-muted-foreground"> — {n.nominee_member_id === n.nominated_by ? "self-nominated" : `nominated by ${n.by?.name}`}</span></span>
+                <span className="flex-1">{n.nominee?.name}<span className="text-muted-foreground"> — {n.nominee_member_id === n.nominated_by && n.supporters.length <= 1 ? "self-nominated" : `nominated by ${n.supporters.join(", ")}`}{n.supporters.length > 1 && <strong className="text-foreground"> · {n.supporters.length} nominations</strong>}</span></span>
                 <Badge variant={n.status === "accepted" ? "default" : "secondary"} className="text-[10px]">{n.status}</Badge>
               </div>
             ))}

@@ -13,7 +13,7 @@ type Data = {
   state: "invalid" | "ok";
   club_name?: string; logo_url?: string | null; title?: string; name?: string; member_id?: string; allow_self?: boolean;
   close_at?: string; closed?: boolean; positions?: Pos[];
-  made?: { id: string; position_id: string; nominee: string; status: string }[];
+  made?: { id: string; position_id: string; nominee: string; status: string; supporters?: number }[];
   received?: { id: string; position_id: string; by: string; self: boolean; status: string }[];
 };
 
@@ -33,12 +33,13 @@ export default function AgmNominate() {
   }, [token]);
   useEffect(() => { document.documentElement.classList.add("dark"); load(); }, [load]);
 
-  const act = async (fn: string, args: Record<string, unknown>) => {
-    setBusy(true); setError(null);
-    const { error } = await rpc(fn, { p_token: token, ...args });
+  const [notice, setNotice] = useState<string | null>(null);
+  const act = async (fn: string, args: Record<string, unknown>): Promise<string | false> => {
+    setBusy(true); setError(null); setNotice(null);
+    const { data: res, error } = await rpc(fn, { p_token: token, ...args });
     setBusy(false);
     if (error) setError(error.message); else load();
-    return !error;
+    return error ? false : String(res ?? "ok");
   };
 
   // The link usually opens in its own tab from an email, so closing means

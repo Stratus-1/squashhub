@@ -8,6 +8,7 @@
 - [x] First generation run: Men's C R3/R4 certified fixtures + Men's B 2 created; Men's D correctly nothing (unsettled); walkover trigger auto-completed Tarryn v Brett (Brett withdrawn)
 - [ ] BLOCKED on Willem: Men's C/D Round 5 is configured "club"-scheduled (not play-by) with same date as R4 (12 Nov) — pre-existing since 21 Oct; needs decision before R5 fixtures generate
 - [ ] Verify published site shows the corrected progression log
+- [ ] AGM ballot (Uitsig, OPEN): set "CLAP manager" position max_choices to 3 (like General Member)
 - [ ] Partial Swiss fixture generation: certified settled pairs + full RR block (Rounds 3–5) once post-R2 positions provably final; remainder stays incremental
 - [ ] Enable `tournament_swiss_partial_rounds` flag for Uitsig club; rebuild + deploy auto-progress engine; generate & verify Men's C/D R3–5 fixtures with play-by deadlines, no auto court bookings
 - [ ] Update freeze memory + issue log; run tests

@@ -9,6 +9,7 @@ import { Loader2, Lock, CheckCircle2 } from "lucide-react";
 type Ballot = {
   state: "invalid" | "open" | "voted" | "closed";
   preview?: boolean;
+  runoff?: boolean;
   title?: string;
   declaration?: string;
   deadline?: string;
@@ -96,6 +97,7 @@ export default function AgmVote() {
       <div>
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{ballot.club_name}</p>
         <h1 className="text-xl font-semibold">{ballot.title}</h1>
+        {ballot.runoff && <p className="text-sm mt-2">Second ballot: tied candidates only. Previously elected candidates remain elected. You may vote once in this round.</p>}
         <p className="text-xs text-muted-foreground mt-1">Voting closes {fmt(ballot.deadline)}. Your vote is secret.</p>
         {ballot.preview && <p className="mt-2 rounded border border-primary/40 bg-primary/10 px-3 py-2 text-xs">TEST PREVIEW — you can look around and tick options, but nothing can be submitted.</p>}
       </div>

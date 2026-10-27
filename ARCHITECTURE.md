@@ -54,6 +54,8 @@ The application serves multiple shells:
 
 ## Identity and authorization
 
+AGM run-offs use `agm_ballots.runoff_parent_id` with a unique direct-child index and an admin-only creation RPC. The server computes candidates tied at the remaining-seat cut-off after the parent deadline; separate child voter/receipt rows preserve all parent records. Public links resolve through the child chain, locking the resolved voter on submission and rejecting stale position payloads. Results stay ballot-scoped and post-deadline; run-off messages use the Communications engine only on an explicit send action.
+
 Club-sponsored stock uses a private shared posting helper for authenticated bar-permission entries and a separate personal-PIN basket RPC. Counter sessions authoritatively determine club/device/name and are locked against revocation during posting. The whole basket is atomic and request-stamped in an RLS-locked service-only audit table; retries return the same result. Stock uses `bar_stock_apply`; cost moves from the item's trading expense to `club_stock_expense`, never through customer tabs, cash, sales or tips.
 
 `AuthContext` owns the Supabase user and session. `ClubContext` resolves the active public and restricted club context. `MemberContext` resolves member records and the user's relationship to the club.

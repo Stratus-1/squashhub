@@ -1,3 +1,8 @@
+## 2026-10-27 — Secret AGM run-off ballots
+- Closed tied seats now offer an explicit admin-opened run-off deadline; only server-computed candidates tied across the remaining seat cut-off are copied. Already elected candidates and original anonymous receipts remain intact. Each child uses separate voter/receipt records and preserves the self-vote setting; existing personal links resolve to child rounds, with fresh one-vote and deadline enforcement. Repeated opening is idempotent; repeated ties can have another child round.
+- Admin can separately send run-off emails through Communications; opening alone sends nothing. Original and run-off results/PDFs remain separately accessible after closing. Shared web/PWA/native pages, no native integration changes.
+- 21 focused helper tests passed. Signed-in Riverside-only temporary test verified opening in UI, original-link voting, duplicate rejection, deadline rejection, result recount and unchanged parent totals; temporary ballots removed. Uitsig untouched; no messages sent; frontend not published.
+
 ## 2026-10-27 — AGM attached document downloads
 - Attached Uitsig's agenda/voting rules and constitution through the existing admin upload, retaining the poster and live voting/attendance settings. Corrected only the agenda's voting-date line to 26 Oct 15:00–28 Oct 22:00 as approved.
 - Anonymous signed URL checks originally returned Object not found because attachment storage SELECT queried ballot rows under their RLS. Replaced only that predicate with a boolean exact-path definer check; the bucket remains private and unattached paths remain denied. Both saved PDF downloads verified anonymously (2/4 pages).

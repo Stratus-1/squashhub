@@ -8420,11 +8420,12 @@ function buildProposedSwissGrid(model, opts = {}) {
     })() : null;
     const certifiedPos = new Set;
     if (opts.partialGeneration && unsettled) {
-      for (let g = 0;g < (model.rrFinish?.groups ?? 0); g++) {
-        const ids = snapshot.slice(g * 4, g * 4 + 4);
-        if (ids.length === 4 && ids.every((id) => unsettled.has(id)))
-          for (let p = g * 4 + 1;p <= g * 4 + 4; p++)
-            certifiedPos.add(p);
+      const groupSlots = (model.rrFinish?.groups ?? 0) * 4;
+      const provisional = new Map(snapshot.map((id, i) => [id, i + 1]));
+      for (const [id, finalRank] of unsettled) {
+        const p = provisional.get(id);
+        if (p != null && p === finalRank && p <= groupSlots)
+          certifiedPos.add(p);
       }
     }
     return { issues, ...sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}, rounds: saved.map((rd) => {

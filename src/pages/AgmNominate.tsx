@@ -38,6 +38,7 @@ export default function AgmNominate() {
     const { error } = await rpc(fn, { p_token: token, ...args });
     setBusy(false);
     if (error) setError(error.message); else load();
+    return !error;
   };
 
   // The link usually opens in its own tab from an email, so closing means

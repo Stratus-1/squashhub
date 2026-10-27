@@ -106,8 +106,11 @@ Deno.serve(async (req) => {
 
     // The gateway is checked first: a payment that already went through is never
     // undone. Otherwise a customer/staff "Cancel card payment" releases it.
+    // A Yoco/Stitch checkout still unpaid after 15 minutes is released, like PayFast,
+    // so a struggling payer's tab unlocks and they can simply try again.
+    const staleCard = sale.payment_status === "pending" && Date.now() - new Date(sale.created_at).getTime() > 15 * 60 * 1000;
     const failed = ["EXPIRED", "CANCELLED", "CANCELED", "FAILED", "PAYMENTINITIATIONREQUESTCANCELLED", "PAYMENTINITIATIONREQUESTEXPIRED"].includes(state)
-      || (cancelled && !paid);
+      || ((cancelled || staleCard) && !paid);
 
     const next = paid ? "paid" : failed ? "failed" : "pending";
     if (next !== sale.payment_status) {

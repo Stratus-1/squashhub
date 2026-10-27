@@ -75,7 +75,10 @@ export default function AgmInvite() {
             <Card className="p-4 space-y-2 text-sm">
               {invite.meeting_at && <p className="flex gap-2"><CalendarDays className="w-4 h-4 text-primary shrink-0 mt-0.5" />{fmt(invite.meeting_at)}</p>}
               {invite.venue && <p className="flex gap-2"><MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />{invite.venue}</p>}
-              {invite.details && <p className="whitespace-pre-wrap text-muted-foreground">{invite.details}</p>}
+              {invite.details && <p className="whitespace-pre-wrap text-muted-foreground">{
+                // The page already greets the member by name, so drop a leading "Dear {member name}," and fill any other merge fields.
+                invite.details.replace(/^\s*Dear\s*\{member name\}\s*,?\s*/i, "").replace(/\{member name\}/gi, invite.name ?? "member")
+              }</p>}
               {!invite.meeting_at && !invite.venue && !invite.details && <p className="text-muted-foreground">Meeting details will follow.</p>}
             </Card>
 

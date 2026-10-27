@@ -88,7 +88,7 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
             <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />
             <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />
           </>)}
-      {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballot={ballot} />}
+      {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballotId={ballot.id} />}
     </div>
   );
 }

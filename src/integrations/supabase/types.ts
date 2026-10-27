@@ -22192,16 +22192,28 @@ export type Database = {
         Returns: number
       }
       court_display_board: { Args: { _token: string }; Returns: Json }
-      create_decided_swiss_game: {
-        Args: {
-          p_a: string
-          p_b: string
-          p_group: number
-          p_round: number
-          p_tid: string
-        }
-        Returns: string
-      }
+      create_decided_swiss_game:
+        | {
+            Args: {
+              p_a: string
+              p_b: string
+              p_group: number
+              p_round: number
+              p_tid: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_a: string
+              p_b: string
+              p_group: number
+              p_round: number
+              p_rr_finish_block?: boolean
+              p_tid: string
+            }
+            Returns: string
+          }
       create_family_doubles_pair: {
         Args: {
           p_champ_id: string

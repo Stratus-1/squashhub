@@ -124,9 +124,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
   const positionsLocked = nomStage !== "none";
   const [nomClose, setNomClose] = useState(toLocalInput(ballot.nominations_close_at ?? new Date(Date.now() + 7 * 864e5).toISOString()));
 
-  const { data: positions } = useQuery({
-    queryKey: ["agm-positions", ballot.id],
-    queryFn: async () => {
+  const loadPositions = async () => {
       const { data, error } = await db("agm_ballot_positions")
         .select("id,title,sort,max_choices,agm_ballot_candidates(name,sort)").eq("ballot_id", ballot.id).order("sort");
       if (error) throw error;
@@ -135,8 +133,8 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         maxChoices: p.max_choices ?? 1,
         nominees: [...p.agm_ballot_candidates].sort((a: any, b: any) => a.sort - b.sort).map((c: any) => c.name),
       }));
-    },
-  });
+  };
+  const { data: positions } = useQuery({ queryKey: ["agm-positions", ballot.id], queryFn: loadPositions });
   const SAMPLE_POSITIONS = "Chairperson:\nVice-Chairperson:\nSecretary:\nTreasurer:\nClub Manager:\nGeneral Member (3):";
   // Sample positions are real, editable text (not a placeholder) so an untouched draft still saves them.
   const ballotText = text ?? (positions ? (positions.length ? formatBallotText(positions) : (ballot.status === "draft" ? SAMPLE_POSITIONS : "")) : "");
@@ -196,7 +194,9 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       if (!ch.length) throw new Error("Tick at least one channel");
       if (!ballot.meeting_at) throw new Error("Add and save the meeting date & time first");
       await save();
-      const empty = (positions ?? []).filter((p) => !p.nominees.length).map((p) => p.title);
+      // Check what was just saved, not the positions loaded before this click.
+      const saved = await qc.fetchQuery({ queryKey: ["agm-positions", ballot.id], queryFn: loadPositions, staleTime: 0 });
+      const empty = saved.filter((p) => !p.nominees.length).map((p) => p.title);
       if (empty.length) throw new Error(`These positions have no accepted nominees yet: ${empty.join(", ")}. Add a nominee or remove the position before opening voting.`);
       if (!chosen.size) throw new Error("Tick at least one member");
       // Invitation and voting link go only to the members ticked in step 1.

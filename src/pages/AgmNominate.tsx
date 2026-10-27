@@ -133,7 +133,7 @@ export default function AgmNominate() {
 
 function PositionCard({ pos, token, me, name, allowSelf, closed, busy, made, onNominate }: {
   pos: Pos; token: string; me: string; name: string; allowSelf: boolean; closed: boolean; busy: boolean;
-  made: { id: string; nominee: string; status: string }[]; onNominate: (id: string) => void;
+  made: { id: string; nominee: string; status: string; supporters?: number }[]; onNominate: (id: string) => void;
 }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<{ club_member_id: string; name: string }[]>([]);

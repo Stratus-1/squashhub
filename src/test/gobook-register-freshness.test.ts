@@ -8,6 +8,7 @@ import { champsSlotStarts } from "../lib/tournaments/self-schedule";
 // Execute the real edge handler with fake provider/database boundaries; no live services.
 const source = readFileSync("supabase/functions/gobook-api/index.ts", "utf8")
   .replace(/^import .*https:\/\/esm\.sh\/.*;$/m, "")
+  .replace(/^import .*gobook-balance.*;$/m, "")
   .replace(/^import .*champ-hold-release.*;$/m, "");
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
 type Mirror = { id: string; external_id: string; date: string; status: string; external_booker_name?: string; club_member_id?: string; court_id?: string; start_time?: string; end_time?: string };

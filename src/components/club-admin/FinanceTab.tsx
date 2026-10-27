@@ -46,7 +46,7 @@ type GLAccount =
   | "opening_balance_equity" | "member_credits" | "association_payable"
   | "fee_income" | "shop_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income" | "bar_stock_gain"
   | "shop_expense" | "bar_expense" | "bar_cost_of_sales" | "shop_cost_of_sales" | "league_fees_expense" | "national_body_expense" | "bar_stock_loss" | "club_stock_expense"
-  | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "cleaning_services" | "security" | "general_expense";
+  | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "cleaning_services" | "security" | "squashhub_subscription" | "general_expense";
 
 interface AccountMeta {
   label: string;
@@ -92,6 +92,7 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   bank_charges:            { label: "Bank Charges",              type: "IS", category: "Expense", normal: "Dr" },
   gateway_fees:            { label: "Payment Gateway Fees",      type: "IS", category: "Expense", normal: "Dr" },
   cleaning_services:       { label: "Cleaning Services",         type: "IS", category: "Expense", normal: "Dr" },
+  squashhub_subscription:  { label: "SquashHub Subscription",    type: "IS", category: "Expense", normal: "Dr" },
   security:                { label: "Security",                  type: "IS", category: "Expense", normal: "Dr" },
   general_expense:         { label: "General Expenses",          type: "IS", category: "Expense", normal: "Dr" },
 };

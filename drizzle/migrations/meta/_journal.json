@@ -1961,6 +1961,13 @@
       "when": 1793091941598,
       "tag": "0279_agm_self_actions_option",
       "breakpoints": true
+    },
+    {
+      "idx": 280,
+      "version": "7",
+      "when": 1793095156420,
+      "tag": "0280_squashhub_subscription_expense",
+      "breakpoints": true
     }
   ]
 }

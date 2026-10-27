@@ -70,7 +70,7 @@ export default function AgmNominate() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             {data.logo_url ? (
-              <img src={data.logo_url} alt={`${data.club_name} logo`} className="h-12 w-12 shrink-0 rounded-2xl object-contain shadow-lg ring-1 ring-border" />
+              <img src={data.logo_url} alt={`${data.club_name} logo`} className="h-14 w-14 shrink-0 rounded-xl object-contain shadow-lg ring-1 ring-border" />
             ) : (
               <img src={shLogoFull} alt="SquashHub logo" className="h-9 w-auto shrink-0 object-contain" />
             )}

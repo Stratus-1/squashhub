@@ -94,10 +94,10 @@ describe("General prospective Swiss final sequencing", () => {
 });
 
 describe("Existing Uitsig and prospective tournament guardrails", () => {
-  const frozen="f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
-  it("denies a policy for the frozen Uitsig ID even with a forged future timestamp", () => {
-    expect(swissSequencingEnabled({ version:1,tournamentId:frozen,createdAt:"2030-01-01" },frozen)).toBe(false);
-    expect(()=>assertTournamentPairingWritable(frozen)).toThrow(/protected/);
+  const uitsig="f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
+  it("the Uitsig freeze is lifted: pairing writers are no longer blocked by the tournament ID", () => {
+    expect(isFrozenUitsigTournament(uitsig)).toBe(false);
+    expect(()=>assertTournamentPairingWritable(uitsig)).not.toThrow();
   });
   it("rejects old tournaments, missing policies and copied tournament identities", () => {
     expect(prospectiveSwissPolicy("old","2026-10-06")).toBeUndefined();

@@ -145,7 +145,17 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       return data as any[];
     },
   });
-  const chosen = selected ?? new Set(voters.filter((v) => v.suggested).map((v) => v.club_member_id));
+  // Once nominations were sent, the ticked list defaults to the members who got nomination links.
+  const { data: nominatorIds } = useQuery({
+    queryKey: ["agm-nominator-ids", ballot.id],
+    enabled: nomStage !== "none",
+    queryFn: async () => {
+      const { data, error } = await db("agm_nominators").select("club_member_id").eq("ballot_id", ballot.id);
+      if (error) throw error;
+      return (data as any[]).map((r) => r.club_member_id as string);
+    },
+  });
+  const chosen = selected ?? (nominatorIds?.length ? new Set(nominatorIds) : new Set(voters.filter((v) => v.suggested).map((v) => v.club_member_id)));
   const noFeeRecords = voters.length > 0 && !voters.some((v) => v.has_fee_record);
 
   const save = async () => {

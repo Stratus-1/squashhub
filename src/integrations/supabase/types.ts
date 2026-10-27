@@ -437,6 +437,52 @@ export type Database = {
           },
         ]
       }
+      agm_nomination_supporters: {
+        Row: {
+          ballot_id: string
+          created_at: string
+          id: string
+          nomination_id: string
+          supporter_member_id: string
+        }
+        Insert: {
+          ballot_id: string
+          created_at?: string
+          id?: string
+          nomination_id: string
+          supporter_member_id: string
+        }
+        Update: {
+          ballot_id?: string
+          created_at?: string
+          id?: string
+          nomination_id?: string
+          supporter_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_nomination_supporters_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_nomination_supporters_nomination_id_fkey"
+            columns: ["nomination_id"]
+            isOneToOne: false
+            referencedRelation: "agm_nominations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_nomination_supporters_supporter_member_id_fkey"
+            columns: ["supporter_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agm_nominations: {
         Row: {
           ballot_id: string
@@ -20694,7 +20740,7 @@ export type Database = {
       }
       agm_nominate: {
         Args: { p_nominee_id: string; p_position_id: string; p_token: string }
-        Returns: undefined
+        Returns: string
       }
       agm_nomination_for_token: { Args: { p_token: string }; Returns: Json }
       agm_open_ballot: {

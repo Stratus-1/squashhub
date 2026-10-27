@@ -13,7 +13,7 @@ type Data = {
   state: "invalid" | "ok";
   club_name?: string; logo_url?: string | null; title?: string; name?: string; member_id?: string; allow_self?: boolean;
   close_at?: string; closed?: boolean; positions?: Pos[];
-  made?: { id: string; position_id: string; nominee: string; status: string }[];
+  made?: { id: string; position_id: string; nominee: string; status: string; supporters?: number }[];
   received?: { id: string; position_id: string; by: string; self: boolean; status: string }[];
 };
 
@@ -33,12 +33,13 @@ export default function AgmNominate() {
   }, [token]);
   useEffect(() => { document.documentElement.classList.add("dark"); load(); }, [load]);
 
-  const act = async (fn: string, args: Record<string, unknown>) => {
-    setBusy(true); setError(null);
-    const { error } = await rpc(fn, { p_token: token, ...args });
+  const [notice, setNotice] = useState<string | null>(null);
+  const act = async (fn: string, args: Record<string, unknown>): Promise<string | false> => {
+    setBusy(true); setError(null); setNotice(null);
+    const { data: res, error } = await rpc(fn, { p_token: token, ...args });
     setBusy(false);
     if (error) setError(error.message); else load();
-    return !error;
+    return error ? false : String(res ?? "ok");
   };
 
   // The link usually opens in its own tab from an email, so closing means
@@ -116,11 +117,14 @@ export default function AgmNominate() {
           <PositionCard key={p.id} pos={p} token={token} me={data.member_id!} name={data.name ?? ""} allowSelf={!!data.allow_self} closed={!!data.closed} busy={busy}
             made={(data.made ?? []).filter((m) => m.position_id === p.id)}
             onNominate={async (id) => {
-              const ok = await act("agm_nominate", { p_position_id: p.id, p_nominee_id: id });
-              // Tell the nominee (email + in-app notice) so they can accept or decline.
-              if (ok && id !== data.member_id) supabase.functions.invoke("agm-nominee-notify", { body: { token, position_id: p.id, nominee_id: id } }).catch(() => {});
+              const res = await act("agm_nominate", { p_position_id: p.id, p_nominee_id: id });
+              // Only a brand-new nomination asks the nominee to accept; repeat nominations are recorded as support.
+              if (res === "created" && id !== data.member_id) supabase.functions.invoke("agm-nominee-notify", { body: { token, position_id: p.id, nominee_id: id } }).catch(() => {});
+              if (res === "supported") setNotice(`This member was already nominated for ${p.title} — your support has been added. They won't be asked to accept again.`);
+              if (res === "already") setNotice(`You have already nominated this member for ${p.title}.`);
             }} />
         ))}
+        {notice && <p className="text-sm text-primary">{notice}</p>}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </div>
@@ -129,7 +133,7 @@ export default function AgmNominate() {
 
 function PositionCard({ pos, token, me, name, allowSelf, closed, busy, made, onNominate }: {
   pos: Pos; token: string; me: string; name: string; allowSelf: boolean; closed: boolean; busy: boolean;
-  made: { id: string; nominee: string; status: string }[]; onNominate: (id: string) => void;
+  made: { id: string; nominee: string; status: string; supporters?: number }[]; onNominate: (id: string) => void;
 }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<{ club_member_id: string; name: string }[]>([]);
@@ -147,7 +151,7 @@ function PositionCard({ pos, token, me, name, allowSelf, closed, busy, made, onN
       <p className="text-sm font-semibold">{pos.title}{pos.max_choices > 1 && <span className="font-normal text-muted-foreground"> · {pos.max_choices} places</span>}</p>
       {made.map((m) => (
         <p key={m.id} className="text-xs flex items-center gap-2">
-          <span className="flex-1">You nominated <strong>{m.nominee}</strong></span>
+          <span className="flex-1">You nominated <strong>{m.nominee}</strong>{(m.supporters ?? 1) > 1 && <span className="text-muted-foreground"> · {m.supporters} nominations</span>}</span>
           <Badge variant={m.status === "accepted" ? "default" : "secondary"} className="text-[10px]">{m.status === "pending" ? "awaiting acceptance" : m.status}</Badge>
         </p>
       ))}

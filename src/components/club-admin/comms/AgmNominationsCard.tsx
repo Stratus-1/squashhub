@@ -32,13 +32,18 @@ export function AgmNominationsCard({ clubId, ballot }: { clubId: string; ballot:
   const { data } = useQuery({
     queryKey: ["agm-nominations", ballot.id],
     queryFn: async () => {
-      const [{ data: pos, error: pe }, { data: noms, error: ne }, { data: list, error: le }] = await Promise.all([
+      const [{ data: pos, error: pe }, { data: noms, error: ne }, { data: list, error: le }, { data: sup, error: se }] = await Promise.all([
         db("agm_ballot_positions").select("id,title,sort").eq("ballot_id", ballot.id).order("sort"),
         db("agm_nominations").select("id,position_id,status,nominee_member_id,nominated_by,nominee:club_members!agm_nominations_nominee_member_id_fkey(name,email),by:club_members!agm_nominations_nominated_by_fkey(name)").eq("ballot_id", ballot.id).order("created_at"),
         db("agm_nominators").select("club_member_id").eq("ballot_id", ballot.id),
+        db("agm_nomination_supporters").select("nomination_id,supporter_member_id,created_at,m:club_members(name)").eq("ballot_id", ballot.id).order("created_at"),
       ]);
-      if (pe || ne || le) throw pe || ne || le;
-      return { positions: pos as any[], noms: noms as any[], eligible: (list as any[]).length };
+      if (pe || ne || le || se) throw pe || ne || le || se;
+      // Every nomination (first and repeat) is kept as a supporter; the nominee is asked to accept only once.
+      const byNom = new Map<string, string[]>();
+      for (const s of (sup as any[]) ?? []) byNom.set(s.nomination_id, [...(byNom.get(s.nomination_id) ?? []), s.m?.name ?? "Member"]);
+      const withSup = (noms as any[]).map((n) => ({ ...n, supporters: byNom.get(n.id) ?? (n.by?.name ? [n.by.name] : []) }));
+      return { positions: pos as any[], noms: withSup, eligible: (list as any[]).length };
     },
     refetchInterval: open ? 30_000 : false,
   });
@@ -85,7 +90,7 @@ export function AgmNominationsCard({ clubId, ballot }: { clubId: string; ballot:
             {!list.length && <p className="text-xs text-muted-foreground">No nominations yet.</p>}
             {list.map((n) => (
               <div key={n.id} className="flex items-center gap-2 text-xs py-0.5">
-                <span className="flex-1">{n.nominee?.name}<span className="text-muted-foreground"> — {n.nominee_member_id === n.nominated_by ? "self-nominated" : `nominated by ${n.by?.name}`}</span></span>
+                <span className="flex-1">{n.nominee?.name}<span className="text-muted-foreground"> — {n.nominee_member_id === n.nominated_by && n.supporters.length <= 1 ? "self-nominated" : `nominated by ${n.supporters.join(", ")}`}{n.supporters.length > 1 && <strong className="text-foreground"> · {n.supporters.length} nominations</strong>}</span></span>
                 <Badge variant={n.status === "accepted" ? "default" : "secondary"} className="text-[10px]">{n.status}</Badge>
               </div>
             ))}

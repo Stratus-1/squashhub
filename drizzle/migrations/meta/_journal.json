@@ -1996,6 +1996,13 @@
       "when": 1793101152176,
       "tag": "0284_agm_separate_self_vote_option",
       "breakpoints": true
+    },
+    {
+      "idx": 285,
+      "version": "7",
+      "when": 1793101907421,
+      "tag": "0285_agm_nomination_supporters",
+      "breakpoints": true
     }
   ]
 }

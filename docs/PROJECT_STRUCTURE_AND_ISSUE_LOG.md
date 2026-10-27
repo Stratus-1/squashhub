@@ -4011,3 +4011,8 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Court Manager reports debtor balances (negative = member credit); My Account and Bookings showed the raw sign (−298.36 instead of +298.36).
 - `src/lib/gobook-member-balance.ts` inverts the sign for display only (raw GoBook value untouched); positive credit renders green (`text-success`), owing red, zero neutral.
 - Tests: `src/test/gobook-member-balance.test.ts` (4) — verified live on CSIR My Account: Lights Account R298.36 in green.
+
+## 2026-10-27 — Nelspruit Court 2 league scoring entry restored
+- Court 2's current LG001 v LG006 scorecard had one completed rubber and status setup, with no submission or totals lock. UpcomingFixturesTab incorrectly treated any saved summary points as a final result and disabled entry for Court QR devices/non-admin members.
+- Partial setup/draft scores now retain Set up and mark game; past and submitted/confirmed/completed results retain correction restrictions. No RLS, result, lineup or fixture changes.
+- Verified actual NSC Court 2 link (court database ID 10) opens the unfinished rubber's doubles scorer on phone and tablet; existing position 2 scores preserved, no test points or results saved. 26 focused fixture/device/access tests pass; build OK.

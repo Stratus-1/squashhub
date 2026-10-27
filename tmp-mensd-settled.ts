@@ -32,7 +32,7 @@ const decidedGames = model.rounds.filter((r) => r.round <= (openR2?.round ?? 0))
   : f.state === "bye" ? [{ a: f.a ?? f.b, b: null, winner: null, round: r.round }] : []));
 console.log("decided games:", decidedGames.length);
 const seedOrder = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
-const res = settledSwiss({ seedOrder, decidedGames, outstanding, round: (openR2?.round ?? 1) + 1, finalRound: 5, positionsOnly: true } as any);
+const res = settledSwiss({ seedOrder, decidedGames, outstanding, round: (openR2?.round ?? 1) + 1, finalRound: 5, positionsOnly: true, tieBreaks: ["position_swap"] } as any);
 console.log("enumerable:", res.enumerable);
 if (res.enumerable) {
   const sp = (res as any).settledPositions as Map<string, number>;

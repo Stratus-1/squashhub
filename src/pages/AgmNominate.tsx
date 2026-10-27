@@ -10,7 +10,7 @@ import { Loader2, Lock, Search, UserPlus } from "lucide-react";
 type Pos = { id: string; title: string; max_choices: number };
 type Data = {
   state: "invalid" | "ok";
-  club_name?: string; title?: string; name?: string; member_id?: string;
+  club_name?: string; title?: string; name?: string; member_id?: string; allow_self?: boolean;
   close_at?: string; closed?: boolean; positions?: Pos[];
   made?: { id: string; position_id: string; nominee: string; status: string }[];
   received?: { id: string; position_id: string; by: string; self: boolean; status: string }[];
@@ -60,7 +60,7 @@ export default function AgmNominate() {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">{data.club_name}</p>
           <h1 className="text-xl font-semibold">Committee nominations: {data.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Dear {data.name}, {data.closed ? "nominations are now closed." : <>nominate yourself or other members for next year's committee. Nominations close <strong>{fmt(data.close_at)}</strong>.</>}
+            Dear {data.name}, {data.closed ? "nominations are now closed." : <>nominate {data.allow_self ? "yourself or other members" : "other members"} for next year's committee. Nominations close <strong>{fmt(data.close_at)}</strong>.</>}
           </p>
         </div>
 
@@ -88,7 +88,7 @@ export default function AgmNominate() {
         )}
 
         {(data.positions ?? []).map((p) => (
-          <PositionCard key={p.id} pos={p} token={token} me={data.member_id!} name={data.name ?? ""} closed={!!data.closed} busy={busy}
+          <PositionCard key={p.id} pos={p} token={token} me={data.member_id!} name={data.name ?? ""} allowSelf={!!data.allow_self} closed={!!data.closed} busy={busy}
             made={(data.made ?? []).filter((m) => m.position_id === p.id)}
             onNominate={(id) => act("agm_nominate", { p_position_id: p.id, p_nominee_id: id })} />
         ))}
@@ -98,8 +98,8 @@ export default function AgmNominate() {
   );
 }
 
-function PositionCard({ pos, token, me, name, closed, busy, made, onNominate }: {
-  pos: Pos; token: string; me: string; name: string; closed: boolean; busy: boolean;
+function PositionCard({ pos, token, me, name, allowSelf, closed, busy, made, onNominate }: {
+  pos: Pos; token: string; me: string; name: string; allowSelf: boolean; closed: boolean; busy: boolean;
   made: { id: string; nominee: string; status: string }[]; onNominate: (id: string) => void;
 }) {
   const [q, setQ] = useState("");
@@ -124,7 +124,7 @@ function PositionCard({ pos, token, me, name, closed, busy, made, onNominate }: 
       ))}
       {!closed && (
         <>
-          {!selfDone && <Button size="sm" variant="outline" disabled={busy} onClick={() => onNominate(me)}><UserPlus className="w-3.5 h-3.5 mr-1" />Nominate myself</Button>}
+          {allowSelf && !selfDone && <Button size="sm" variant="outline" disabled={busy} onClick={() => onNominate(me)}><UserPlus className="w-3.5 h-3.5 mr-1" />Nominate myself</Button>}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-muted-foreground" />
             <Input className="pl-7" placeholder="Search a member's name to nominate them" value={q} onChange={(e) => setQ(e.target.value)} />

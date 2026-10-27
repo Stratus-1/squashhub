@@ -448,7 +448,7 @@ const DATE_TOKEN =
 const MONEY = /(?<![\d,.])\(?-?R?\s?\d{1,3}(?:[ ,.\u00a0]\d{3})*[.,]\d{2}\)?\s?(?:-|CR|Cr|cr|DR|Dr|dr)?/g;
 
 const SKIP_LINE =
-  /(opening\s+balance|closing\s+balance|brought\s*forward|carried\s*forward|balance\s*b\/?f|b\/fwd|^\s*total\b|turnover|no\.\s*(credit|debit)\s+transactions|statement\s+period|statement\s+date|page\s+\d+\s+of|vat\s+registration)/i;
+  /(opening\s+balance|begin\s*saldo|opening\s*saldo|closing\s+balance|brought\s*forward|carried\s*forward|balance\s*b\/?f|b\/fwd|^\s*total\b|turnover|no\.\s*(credit|debit)\s+transactions|statement\s+period|statement\s+date|page\s+\d+\s+of|vat\s+registration)/i;
 
 type Tok = { value: number; cr: boolean; dr: boolean };
 type RawRow = { dateRaw: string; description: string; toks: Tok[] };
@@ -489,12 +489,55 @@ export function detectStatementPeriod(text: string): { start: string | null; end
   return { start: null, end };
 }
 
-/** "Opening Balance 4,758.51 Cr" → 4758.51 (Dr → negative). */
+/** "Opening Balance 4,758.51 Cr" / "Beginsaldo … 2 716,16" → signed amount (Dr → negative). */
 export function detectOpeningBalance(text: string): number | null {
+  // Afrikaans/Dutch statements print the opening balance as a "Beginsaldo" row;
+  // its last money token is the balance (any earlier token is a bogus amount column).
+  const line = text.split(/\r?\n/).find((l) => /begin\s*saldo|opening\s*saldo/i.test(l));
+  if (line) {
+    const toks = moneyTokens(line.replace(/^.*?(begin\s*saldo|opening\s*saldo)/i, ""));
+    if (toks.length) return signed(toks[toks.length - 1]);
+  }
   const m = text.match(/opening\s+balance[^0-9\-(]{0,40}(\(?-?R?\s?[\d ,.\u00a0]+[.,]\d{2}\)?\s?(?:CR|Cr|cr|DR|Dr|dr|-)?)/i);
   if (!m) return null;
   const [tok] = moneyTokens(m[1]);
   return tok ? signed(tok) : null;
+}
+
+/** Opening-balance rows ("Beginsaldo", "Opening balance") are never transactions. */
+export const isOpeningBalanceLine = (description: string) =>
+  /begin\s*saldo|opening\s*(balance|saldo)|balance\s*(brought|b\/?f)/i.test(description);
+
+/* ─── Matching against what the app already recorded ─── */
+
+/** Net bank movement of one ledger journal (e.g. a Yoco receipt net of its fee). */
+export type LedgerBankMove = { date: string; amount: number; description: string; gross?: number };
+
+export type LedgerMatch = { kind: "stitch" | "ledger"; reason: string } | null;
+
+/**
+ * Stitch payouts are already in the books (each payment is posted when it
+ * clears), so any Stitch line on/after the club's first Stitch record is a
+ * double entry. Any other line whose amount equals an app-recorded bank movement
+ * (net or gross) within the window is a likely duplicate — this catches Yoco
+ * card receipts captured at the bar or for top-ups.
+ */
+export function matchLedger(
+  row: Pick<ParsedBankRow, "txn_date" | "amount" | "description">,
+  ledger: LedgerBankMove[],
+  stitchSince: string | null,
+  windowDays = 5,
+): LedgerMatch {
+  if (row.amount > 0 && /stitch/i.test(row.description) && stitchSince && row.txn_date >= stitchSince) {
+    return { kind: "stitch", reason: "Stitch payment — already recorded in SquashHub" };
+  }
+  const hit = ledger.find(
+    (l) =>
+      (Math.abs(l.amount - row.amount) < 0.01 || (l.gross != null && Math.abs(l.gross - row.amount) < 0.01)) &&
+      l.date <= row.txn_date &&
+      daysBetween(l.date, row.txn_date) <= windowDays,
+  );
+  return hit ? { kind: "ledger", reason: `Already in books: ${hit.description.slice(0, 50)} (${hit.date})` } : null;
 }
 
 /**

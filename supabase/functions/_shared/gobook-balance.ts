@@ -21,3 +21,11 @@ export function goBookBalance(value: unknown, clientId: number): { balance: numb
   const asAt = typeof row.asAt === "string" && Number.isFinite(Date.parse(row.asAt)) ? row.asAt : null;
   return { balance, asAt };
 }
+
+export function goBookBalances(value: unknown, clientId: number, providerId: number) {
+  return rows(value).filter(row => Number(row.clientId) === clientId && Number(row.providerId) === providerId)
+    .flatMap(row => {
+      const result = goBookBalance([row], clientId);
+      return result ? [{ ...result, accountName: typeof row.accountName === "string" ? row.accountName : "Court Manager" }] : [];
+    });
+}

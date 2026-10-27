@@ -21,7 +21,7 @@
 // Setup actions are club-admin only; read/booking actions are open to any
 // authenticated member of the club.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
-import { goBookBalance } from "../_shared/gobook-balance.ts";
+import { goBookBalances } from "../_shared/gobook-balance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -480,7 +480,7 @@ Deno.serve(async (req) => {
     if (action === "my_balance") {
       // Balance reads never auto-link, accept a supplied client ID, or write local accounts.
       const { data: balanceClub } = await admin.from("clubs")
-        .select("uses_gobook, gobook_api_enabled").eq("id", clubId).maybeSingle();
+        .select("uses_gobook, gobook_api_enabled, gobook_provider_id").eq("id", clubId).maybeSingle();
       if (!balanceClub?.uses_gobook || !balanceClub?.gobook_api_enabled) {
         return json({ error: "GoBook balance access is not enabled for this club" }, 403);
       }
@@ -500,12 +500,8 @@ Deno.serve(async (req) => {
       });
       if (!response.ok) return json({ error: `GoBook balance request failed (${response.status})` }, 502);
       const value = response.status === 204 ? null : await response.json();
-      const balance = goBookBalance(value, clientId);
-      if (!balance && value) {
-        const first = Array.isArray(value) ? value[0] : value;
-        console.info("GoBook balance response shape", JSON.stringify({ array: Array.isArray(value), keys: first && typeof first === "object" ? Object.keys(first) : [], matching: Array.isArray(value) ? value.filter(r => Number(r.clientId) === clientId).map(r => ({ balanceType: typeof r.balance, balanceMissing: r.balance == null, numeric: Number.isFinite(Number(r.balance)), accountNamePresent: !!r.accountName })) : [] }));
-      }
-      return json({ success: true, state: balance ? "available" : "unavailable", balance: balance?.balance ?? null, asAt: balance?.asAt ?? null });
+      const accounts = goBookBalances(value, clientId, Number(balanceClub.gobook_provider_id));
+      return json({ success: true, state: accounts.length ? "available" : "unavailable", accounts });
     }
 
     if (action === "my_client") {

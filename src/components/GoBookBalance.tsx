@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useClubCurrency } from "@/hooks/use-currency";
 
-type Balance = { state: "available" | "not_linked" | "unavailable"; balance: number | null; asAt: string | null };
+type Balance = { state: "available" | "not_linked" | "unavailable"; accounts?: { balance: number; asAt: string | null; accountName: string }[] };
 
 export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; memberId?: string | null }) {
   const { format } = useClubCurrency();
@@ -42,7 +42,6 @@ export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; me
     },
   });
   if (!enabled || !memberId) return null;
-  const asAt = query.data?.asAt;
   return (
     <section aria-label="GoBook Court Manager balance" className="mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 border-y border-border py-3 text-[13px]">
       <div className="flex items-center gap-3 min-w-0">
@@ -54,8 +53,11 @@ export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; me
               query.isError ? <span className="text-destructive">{query.error.message}</span> :
               query.data?.state === "not_linked" ? <span className="text-muted-foreground">GoBook member account not linked</span> :
               query.data?.state !== "available" ? <span className="text-muted-foreground">Balance unavailable from GoBook</span> :
-              <><p className="text-lg font-semibold tabular-nums">{format(query.data.balance, 2)}</p>
-                <p className="text-xs text-muted-foreground">{asAt ? `Last updated ${new Date(asAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : "Last updated: not supplied by GoBook"}</p></>}
+              <div className="flex flex-wrap gap-x-6 gap-y-2">{query.data.accounts?.map((account, index) => <div key={`${account.accountName}-${index}`}>
+                <p className="text-xs text-muted-foreground">{account.accountName}</p>
+                <p className="text-lg font-semibold tabular-nums">{format(account.balance, 2)}</p>
+                <p className="text-xs text-muted-foreground">{account.asAt ? `Last updated ${new Date(account.asAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : "Last updated: not supplied by GoBook"}</p>
+              </div>)}</div>}
           </div>
         </div>
       </div>

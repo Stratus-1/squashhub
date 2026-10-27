@@ -32,6 +32,8 @@ export interface SettledSwissInput {
   round: number;
   finalRound: number;
   tieBreaks?: readonly string[] | null;
+  /** Display use: only prove positions; skip the per-scenario pairing run (stablePairs stays empty). */
+  positionsOnly?: boolean;
 }
 
 export interface SettledSwissResult {
@@ -68,6 +70,7 @@ export function settledSwiss(input: SettledSwissInput): SettledSwissResult {
     positions = positions === null
       ? here
       : new Map([...positions].flatMap(([id, pos]) => (here.get(id) === pos ? [[id, pos] as const] : [])));
+    if (input.positionsOnly) continue;
     let result: ReturnType<typeof sequenceSwissRound>;
     try {
       result = sequenceSwissRound({

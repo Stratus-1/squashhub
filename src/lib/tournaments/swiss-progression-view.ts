@@ -160,7 +160,7 @@ export function gamesWonSummary(score: string | null | undefined): string | null
   let a = 0, b = 0; for (const [x, y] of sets) { if (x > y) a++; else if (y > x) b++; }
   return `${Math.max(a, b)}–${Math.min(a, b)}`;
 }
-export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null; saved?: boolean; scheduleKey?: string }
+export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null; saved?: boolean; scheduleKey?: string; /** Pairing proven identical under every outcome of the outstanding games — the only blocks the partial-generation writer may create early. */ certified?: boolean }
 export interface GridRound { round: number; created: boolean; blocks: GridBlock[]; schedule?: ProposedRoundSchedule }
 
 /** Round-level schedule for a PROPOSED round. Never a per-match booking. */
@@ -235,7 +235,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { finalSwissAdjacencyPreview?: boolean; factualOpeningRounds?: boolean; exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[]; warnings?: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { finalSwissAdjacencyPreview?: boolean; factualOpeningRounds?: boolean; exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string>; /** Writer-only (server): keep ids on certified settled pairings so they can become fixtures; the display never passes this. */ partialGeneration?: boolean } = {}): { rounds: GridRound[]; issues: string[]; warnings?: string[] } {
   const sequencing = swissSequencingEnabled(model.swissSequencing, model.tournamentId);
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5 && !(opts.exactLadiesAChart && model.rows.length === 9 && model.totalRounds === 5)) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined, ...(sequencing ? { swissSequencing: undefined } : {}) }, opts);

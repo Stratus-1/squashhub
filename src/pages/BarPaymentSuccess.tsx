@@ -84,8 +84,8 @@ export default function BarPaymentSuccess() {
           </>
         ) : status === "failed" ? (
           <>
-            <h1 className="text-xl font-semibold">Payment not confirmed.</h1>
-            <p className="text-sm text-muted-foreground">Please check with the bar if your card was charged.</p>
+            <h1 className="text-xl font-semibold">Card payment didn't go through.</h1>
+            <p className="text-sm text-muted-foreground">It was cancelled and nothing was charged. Please go back to your tab and try again, or choose another way to pay.</p>
           </>
         ) : (
           <>

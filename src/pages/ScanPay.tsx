@@ -385,7 +385,7 @@ export default function ScanPay() {
       if (status === "failed" || attempt >= 8) {
         localStorage.removeItem(PENDING_SALE_KEY);
         setVerifying(false);
-        if (status === "failed") toast.error("That card payment did not go through.");
+        if (status === "failed") toast.error("That card payment did not go through and was cancelled — nothing was charged. Please try again.");
         return;
       }
       setTimeout(() => poll(attempt + 1), 4000);

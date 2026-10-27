@@ -20,7 +20,7 @@ export async function cancelTabCardPayment(tabId: string, tabToken: string): Pro
 }
 
 export const cancelTabCardMessage: Record<CancelTabCardResult, string> = {
-  reopened: "Card payment cancelled — the tab is open again. Choose another way to pay.",
+  reopened: "The card payment didn't go through, so it was cancelled and nothing was charged. Please try again, or choose another way to pay.",
   paid: "That card payment already went through, so the tab is paid.",
   not_card: "This tab is waiting for cash or the card machine at the bar, not an online card payment.",
 };

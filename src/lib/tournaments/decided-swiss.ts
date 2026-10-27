@@ -55,7 +55,8 @@ export async function createDecidedSwissGames(tid: string): Promise<{ created: n
     if (error || !id) { issues.push(`${f.title}: ${error?.message ?? "not created"}`); continue; }
     created++;
     // The existing round row owns the play-by deadline. Leave court/time/booking empty.
-    if (!("courtId" in f)) continue;
+    // Frozen Uitsig exception: never auto-book — members book these fixtures themselves.
+    if (frozenUitsig || !("courtId" in f)) continue;
     const { error: be } = await sb.rpc("self_schedule_champ_match", { p_match_id: id, p_court_id: f.courtId, p_date: f.date, p_time: `${f.time}:00`, p_duration_minutes: f.minutes });
     if (be) issues.push(`${f.title}: game created, court not booked (${be.message})`); else booked++;
   }

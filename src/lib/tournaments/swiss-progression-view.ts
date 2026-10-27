@@ -17,7 +17,8 @@ import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
 import { hybridSwissTable, rrFinishOn, rrFinishRound, rrFinishRepeats, TEN_REMAINDER_CHART, tenRemainderSlots, usesTenRemainderChart, type RrFinish } from "./swiss-rr-finish";
 import { swissRound } from "./contract";
 import { hasSwissMatchActivity } from "./swiss-rr-display";
-import { sequenceSwissRound } from "./swiss-sequencing";
+import { sequenceSwissRound, swissOpponentKey } from "./swiss-sequencing";
+import { settledSwiss } from "./swiss-settled";
 import { swissSequencingEnabled, type SwissSequencingPolicy } from "./swiss-sequencing-policy";
 import { pendingSwissSlots } from "./swiss-pending-slots";
 
@@ -250,6 +251,23 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
     const conflicts = locked && !usesTenRemainderChart(model.rrFinish, snapshot.length - (model.rrFinish.groups ?? 0) * 4) ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings: string[] = [];
+    // While Round 2 is undecided the previewed group/remainder positions are only provisional:
+    // show a name ONLY where the position is identical under every outcome of the outstanding
+    // games (Buchholz/SB move with opponents' points). Everything else stays an open slot.
+    const openR2 = !locked ? model.rounds.filter((r) => r.round <= 2 && r.created && !r.complete).sort((a, b) => a.round - b.round)[0] ?? null : null;
+    const unsettled = openR2 ? (() => {
+      const outstanding = openR2.fixtures.filter((f) => f.state === "scheduled" && f.a && f.b).map((f) => ({ a: f.a as string, b: f.b as string }));
+      if (!outstanding.length) return null;
+      const decidedGames = model.rounds.filter((r) => r.round <= openR2.round).flatMap((r) => r.fixtures.flatMap((f) =>
+        f.state === "completed" ? [{ a: f.a, b: f.b, winner: f.winner, round: r.round }]
+        : f.state === "bye" ? [{ a: f.a ?? f.b, b: null, winner: null, round: r.round }] : []));
+      const res = settledSwiss({
+        seedOrder: [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id),
+        decidedGames, outstanding, round: openR2.round + 1, finalRound: model.configuredRounds,
+        tieBreaks: model.tieBreaks, positionsOnly: true,
+      });
+      return res.enumerable ? res.settledPositions : new Map<string, number>();
+    })() : null;
     return { issues, ...(sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}), rounds: saved.map((rd) => {
       if (rd.round < 3) return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
@@ -321,7 +339,12 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
         catch { issues.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`); }
       }
       const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
-        matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
+        matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => {
+          const sure = !unsettled || (id != null && unsettled.has(id));
+          return id && !sure
+            ? { id: null, pos: fixed.get(id) ?? null, name: "TBD", result: "", projected: true, when: schedule.label }
+            : { id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label };
+        }) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
       }));
       // Future slots are paired position labels only, never decided player identities.
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));

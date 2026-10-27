@@ -14,7 +14,7 @@ import { cashUpDateLabel } from "@/lib/bar/cash-up-date";
 export { cashUpDateLabel } from "@/lib/bar/cash-up-date";
 
 interface MethodTotal { sales: number; tips: number; count: number }
-interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number; cash_up_date?: string }
+interface Summary { period_start: string; period_end: string; methods: Record<string, MethodTotal>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number; cash_movements?: number; cash_up_date?: string }
 interface Closed { id: string; period_start: string; period_end: string; totals: Summary; expected_cash: number; counted_cash: number; variance: number; closed_by_name: string | null; written_off?: boolean }
 interface Balance { staff_id: string; name: string; earned: number; paid: number; remaining: number }
 const MONEY = /^\d+(\.\d{1,2})?$/;
@@ -74,7 +74,8 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
   const tipsOut = Number(s?.tip_payouts ?? 0) + newTips;
   const cardShould = gross("card_bar");
   const opening = Number(s?.cash_opening ?? 0);
-  const cashShould = opening + gross("cash") - tipsOut;
+  const movements = Number(s?.cash_movements ?? 0);
+  const cashShould = opening + gross("cash") - tipsOut + movements;
   const cardActual = card ?? cardShould.toFixed(2);
   const valid = MONEY.test(counted) && MONEY.test(cardActual) && payoutsValid && !sharedOpen && !working.error && !working.isLoading;
   const vCash = MONEY.test(counted) ? Number(counted) - cashShould : null;
@@ -138,6 +139,7 @@ export function CashUp({ clubId, token = null, tipsEnabled }: { clubId: string; 
         <div className="flex justify-between"><span>Opening balance</span><span className="tabular-nums">{R(opening)}</span></div>
         <div className="flex justify-between"><span>+ New cash sales{tipsEnabled ? " & tips" : ""}</span><span className="tabular-nums">{R(gross("cash"))}</span></div>
         <div className="flex justify-between"><span>− Tips paid out</span><span className="tabular-nums">{R(tipsOut)}</span></div>
+        {movements !== 0 && <div className="flex justify-between"><span>Other cash received / paid out</span><span className="tabular-nums">{R(movements)}</span></div>}
         <div className="flex justify-between font-semibold border-t pt-1"><span>New balance (should be in the till)</span><span className="tabular-nums">{R(cashShould)}</span></div>
         <p className="text-muted-foreground">Any difference must be cleared by an admin — record it below or enter a transaction.</p>
       </div>

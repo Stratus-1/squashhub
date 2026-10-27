@@ -1982,6 +1982,13 @@
       "when": 1793096104547,
       "tag": "0282_salary_wages_expense",
       "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
+      "when": 1793098644708,
+      "tag": "0283_agm_nomination_link_logo",
+      "breakpoints": true
     }
   ]
 }

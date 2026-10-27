@@ -115,3 +115,6 @@ verify_jwt = false
 
 [functions.agm-test-email]
 verify_jwt = true
+
+[functions.agm-nominee-notify]
+verify_jwt = false

@@ -5,7 +5,7 @@
  * itself is never written or reinterpreted at source.
  */
 export function memberGoBookBalance(raw: number): number {
-  return -raw;
+  return raw === 0 ? 0 : -raw;
 }
 
 export type GoBookBalanceTone = "success" | "destructive" | "muted";

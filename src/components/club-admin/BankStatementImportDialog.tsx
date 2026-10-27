@@ -699,14 +699,11 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
                           {money(d.amount)}
                         </td>
                         <td className="p-2">
-                          <Select value={d.account} onValueChange={(v) => changeAccount(i, v)}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {accountOptions.map((a) => (
-                                <SelectItem key={a.code} value={a.code}>{a.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <AccountCombobox
+                            value={d.account}
+                            options={accountOptions}
+                            onChange={(v) => changeAccount(i, v)}
+                          />
                         </td>
                         <td className="p-2">
                           <Select

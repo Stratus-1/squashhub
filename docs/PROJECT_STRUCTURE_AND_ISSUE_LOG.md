@@ -4006,3 +4006,8 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Men's C (group 3): created 4 fixtures — R4 Leon de Lange v Bernard Welters and Riaan van Wyk v Manie Barnard (2026-11-12); R5 Hennie Engelbrecht v Bernard Welters and Manie Barnard v Michelle Arpin (2026-11-19).
 - After generation the pure projection returns zero further fixtures for both groups; unsettled pairings (Men's C positions 5/8 and 10/11 pending Andre Swart v Wynand Ras; Men's D positions pending three open Round 2 games) remain open with no fixtures.
 - auto-progress-tournaments engine rebuilt (bun scripts/build-auto-progress.ts) and redeployed with the settled-pair rule.
+
+## 2026-10-27 — GoBook balance shown in member convention (Willem)
+- Court Manager reports debtor balances (negative = member credit); My Account and Bookings showed the raw sign (−298.36 instead of +298.36).
+- `src/lib/gobook-member-balance.ts` inverts the sign for display only (raw GoBook value untouched); positive credit renders green (`text-success`), owing red, zero neutral.
+- Tests: `src/test/gobook-member-balance.test.ts` (4) — verified live on CSIR My Account: Lights Account R298.36 in green.

@@ -4,6 +4,7 @@ import { Loader2, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { goBookBalanceTone, memberGoBookBalance } from "@/lib/gobook-member-balance";
 
 type Balance = { state: "available" | "not_linked" | "unavailable"; accounts?: { balance: number; asAt: string | null; accountName: string }[] };
 
@@ -53,11 +54,15 @@ export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; me
               query.isError ? <span className="text-destructive">{query.error.message}</span> :
               query.data?.state === "not_linked" ? <span className="text-muted-foreground">GoBook member account not linked</span> :
               query.data?.state !== "available" ? <span className="text-muted-foreground">Balance unavailable from GoBook</span> :
-              <div className="flex flex-wrap gap-x-6 gap-y-2">{query.data.accounts?.map((account, index) => <div key={`${account.accountName}-${index}`}>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">{query.data.accounts?.map((account, index) => {
+                const memberValue = memberGoBookBalance(account.balance);
+                const tone = goBookBalanceTone(memberValue);
+                return <div key={`${account.accountName}-${index}`}>
                 <p className="text-xs text-muted-foreground">{account.accountName}</p>
-                <p className="text-lg font-semibold tabular-nums">{format(account.balance, 2)}</p>
+                <p className={`text-lg font-semibold tabular-nums ${tone === "success" ? "text-success" : tone === "destructive" ? "text-destructive" : ""}`}>{format(memberValue, 2)}</p>
                 <p className="text-xs text-muted-foreground">{account.asAt ? `Last updated ${new Date(account.asAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : "Last updated: not supplied by GoBook"}</p>
-              </div>)}</div>}
+              </div>;
+              })}</div>}
           </div>
         </div>
       </div>

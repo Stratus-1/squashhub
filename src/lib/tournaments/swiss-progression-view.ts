@@ -17,7 +17,8 @@ import { sixteenPlayerChart } from "./swiss-riverside-aabb-charts";
 import { hybridSwissTable, rrFinishOn, rrFinishRound, rrFinishRepeats, TEN_REMAINDER_CHART, tenRemainderSlots, usesTenRemainderChart, type RrFinish } from "./swiss-rr-finish";
 import { swissRound } from "./contract";
 import { hasSwissMatchActivity } from "./swiss-rr-display";
-import { sequenceSwissRound } from "./swiss-sequencing";
+import { sequenceSwissRound, swissOpponentKey } from "./swiss-sequencing";
+import { settledSwiss } from "./swiss-settled";
 import { swissSequencingEnabled, type SwissSequencingPolicy } from "./swiss-sequencing-policy";
 import { pendingSwissSlots } from "./swiss-pending-slots";
 
@@ -159,7 +160,7 @@ export function gamesWonSummary(score: string | null | undefined): string | null
   let a = 0, b = 0; for (const [x, y] of sets) { if (x > y) a++; else if (y > x) b++; }
   return `${Math.max(a, b)}–${Math.min(a, b)}`;
 }
-export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null; saved?: boolean; scheduleKey?: string }
+export interface GridBlock { matchId: string; rows: [GridRow, GridRow]; score: string | null; court: string | null; playBy: string | null; saved?: boolean; scheduleKey?: string; /** Pairing proven identical under every outcome of the outstanding games — the only blocks the partial-generation writer may create early. */ certified?: boolean }
 export interface GridRound { round: number; created: boolean; blocks: GridBlock[]; schedule?: ProposedRoundSchedule }
 
 /** Round-level schedule for a PROPOSED round. Never a per-match booking. */
@@ -234,7 +235,7 @@ export function buildSwissGrid(model: SwissProgressionModel): GridRound[] {
  * Saved Round 1 is copied factually, not forced into a template.
  * The opt-in no-repeat resolver preserves saved games and changes unsaved pairings from round 3 only.
  */
-export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { finalSwissAdjacencyPreview?: boolean; factualOpeningRounds?: boolean; exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string> } = {}): { rounds: GridRound[]; issues: string[]; warnings?: string[] } {
+export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { finalSwissAdjacencyPreview?: boolean; factualOpeningRounds?: boolean; exactMensCChart?: boolean; mensCRemainderChart?: boolean; exactLadiesAChart?: boolean; exactSixteenChart?: boolean; previewFinals?: boolean; noRepeats?: boolean; schedule?: StageScheduleConfig | null; courtName?: (id: number | string) => string; slots?: Record<string, FixtureSchedule>; appliedPlayBy?: Record<number, string>; /** Writer-only (server): keep ids on certified settled pairings so they can become fixtures; the display never passes this. */ partialGeneration?: boolean } = {}): { rounds: GridRound[]; issues: string[]; warnings?: string[] } {
   const sequencing = swissSequencingEnabled(model.swissSequencing, model.tournamentId);
   if (rrFinishOn(model.rrFinish) && model.configuredRounds === 5 && !(opts.exactLadiesAChart && model.rows.length === 9 && model.totalRounds === 5)) {
     const normal = buildProposedSwissGrid({ ...model, rrFinish: undefined, ...(sequencing ? { swissSequencing: undefined } : {}) }, opts);
@@ -250,6 +251,32 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
     const conflicts = locked && !usesTenRemainderChart(model.rrFinish, snapshot.length - (model.rrFinish.groups ?? 0) * 4) ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a as string, f.b])) : [];
     const issues: string[] = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings: string[] = [];
+    // While Round 2 is undecided the previewed group/remainder positions are only provisional:
+    // show a name ONLY where the position is identical under every outcome of the outstanding
+    // games (Buchholz/SB move with opponents' points). Everything else stays an open slot.
+    const openR2 = !locked ? model.rounds.filter((r) => r.round <= 2 && r.created && !r.complete).sort((a, b) => a.round - b.round)[0] ?? null : null;
+    const unsettled = openR2 ? (() => {
+      const outstanding = openR2.fixtures.filter((f) => f.state === "scheduled" && f.a && f.b).map((f) => ({ a: f.a as string, b: f.b as string }));
+      if (!outstanding.length) return null;
+      const decidedGames = model.rounds.filter((r) => r.round <= openR2.round).flatMap((r) => r.fixtures.flatMap((f) =>
+        f.state === "completed" ? [{ a: f.a, b: f.b, winner: f.winner, round: r.round }]
+        : f.state === "bye" ? [{ a: f.a ?? f.b, b: null, winner: null, round: r.round }] : []));
+      const res = settledSwiss({
+        seedOrder: [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id),
+        decidedGames, outstanding, round: openR2.round + 1, finalRound: model.configuredRounds,
+        tieBreaks: model.tieBreaks, positionsOnly: true,
+      });
+      return res.enumerable ? res.settledPositions : new Map<string, number>();
+    })() : null;
+    // Partial generation (writer only): a round-robin group of four is fixed once ALL FOUR of its
+    // positions are provably final — certify that group's whole block (Rounds 3+) per group, ids intact.
+    const certifiedPos = new Set<number>();
+    if (opts.partialGeneration && unsettled) {
+      for (let g = 0; g < (model.rrFinish?.groups ?? 0); g++) {
+        const ids = snapshot.slice(g * 4, g * 4 + 4);
+        if (ids.length === 4 && ids.every((id) => unsettled.has(id))) for (let p = g * 4 + 1; p <= g * 4 + 4; p++) certifiedPos.add(p);
+      }
+    }
     return { issues, ...(sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}), rounds: saved.map((rd) => {
       if (rd.round < 3) return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
@@ -321,7 +348,13 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
         catch { issues.push(`Round ${rd.round}: the Swiss remainder cannot be paired without repeat opponents.`); }
       }
       const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
-        matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => ({ id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
+        matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => {
+          const sure = !unsettled || (id != null && unsettled.has(id)) || (id != null && certifiedPos.has(fixed.get(id) ?? -1));
+          return id && !sure
+            ? { id: null, pos: fixed.get(id) ?? null, name: "TBD", result: "", projected: true, when: schedule.label }
+            : { id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label };
+        }) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
+        ...(a != null && b != null && certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1) ? { certified: true } : {}),
       }));
       // Future slots are paired position labels only, never decided player identities.
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));
@@ -349,17 +382,43 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
     const names = new Map(model.rows.map((r) => [r.id, r.name]));
     return { issues, warnings, rounds: factual.map((rd) => {
       if (rd.round < 3) return opening.rounds.find((r) => r.round === rd.round) ?? rd;
-      if (rd.created) return { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) };
+      if (rd.created && !opts.partialGeneration) return { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) };
       const prevDone = model.rounds.find((r) => r.round === rd.round - 1)?.complete;
       const label = opts.appliedPlayBy?.[rd.round] ? `Play by ${fmtDay(opts.appliedPlayBy[rd.round])}` : proposedRoundSchedule(opts.schedule, rd.round, opts.courtName).label;
-      if (!prevDone) return { ...rd, blocks: pendingSwissSlots(rd.round, seeds.map((_, i) => i + 1), label, opts.appliedPlayBy?.[rd.round] ?? null) };
+      const savedBlocks = rd.created ? rd.blocks.map((b) => ({ ...b, saved: true })) : [];
+      const covered = new Set(savedBlocks.flatMap((b) => b.rows.flatMap((r) => (r.id ? [r.id] : []))));
+      const pendingFor = (positions: number[]) => pendingSwissSlots(rd.round, positions, label, opts.appliedPlayBy?.[rd.round] ?? null);
+      if (!prevDone) {
+        if (!opts.partialGeneration) return { ...rd, blocks: pendingFor(seeds.map((_, i) => i + 1)) };
+        // Partial generation: only pairings identical under EVERY outcome of the outstanding games,
+        // for players whose own game is final, may become fixtures now; the rest stay open slots.
+        const incomplete = model.rounds.filter((r) => r.round < rd.round && r.created && !r.complete).sort((a, b) => b.round - a.round)[0];
+        const outstanding = incomplete?.fixtures.filter((f) => f.state === "scheduled" && f.a && f.b).map((f) => ({ a: f.a as string, b: f.b as string })) ?? [];
+        const decidedGames = model.rounds.filter((r) => r.round < rd.round).flatMap((r) => r.fixtures.flatMap((f) =>
+          f.state === "completed" ? [{ a: f.a, b: f.b, winner: f.winner, round: r.round }]
+          : f.state === "bye" ? [{ a: f.a ?? f.b, b: null, winner: null, round: r.round }] : []));
+        const settled = incomplete && outstanding.length
+          ? settledSwiss({ seedOrder: seeds, decidedGames, outstanding, round: rd.round, finalRound: model.configuredRounds, tieBreaks: model.tieBreaks })
+          : null;
+        const pairs = settled?.enumerable ? settled.stablePairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)) : [];
+        const table = swissTable(seeds, decidedGames, model.tieBreaks);
+        const positions = new Map(table.map((r) => [r.id, r.position]));
+        const inPairs = new Set(pairs.flat());
+        const openPos = table.filter((r) => !inPairs.has(r.id) && !covered.has(r.id)).map((r) => r.position);
+        return { ...rd, blocks: [
+          ...savedBlocks,
+          ...pairs.map(([a, b], i) => ({ matchId: `swiss-partial-${rd.round}-${i}`, certified: true as const, rows: [a, b].map((id) => ({ id, pos: positions.get(id) ?? null, name: names.get(id) ?? "Unknown player", when: label, result: "", projected: true })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null })),
+          ...pendingFor(openPos),
+        ] };
+      }
       const history = model.rounds.filter((r) => r.round < rd.round).flatMap((r) => r.fixtures.map((f) => ({ ...f, round: r.round })));
       const table = swissTable(seeds, history, model.tieBreaks);
       const positions = new Map(table.map((r) => [r.id, r.position]));
       try {
         const result = sequenceSwissRound({ players: table.map((r, i) => ({ ...r, points: isPositionSwap(model.tieBreaks) ? 0 : r.points, seed: i + 1 })), played: new Set(history.flatMap((f) => f.a && f.b ? [[f.a, f.b].sort().join("|")] : [])), round: rd.round, finalRound: model.configuredRounds });
         warnings.push(...result.exceptions);
-        return { ...rd, blocks: result.pairs.map(([a, b], i) => ({ matchId: `swiss-proposed-${rd.round}-${i}`, rows: [a, b].map((id) => ({ id, pos: id ? positions.get(id) ?? null : null, name: id ? names.get(id) ?? "Unknown player" : "Bye", when: label, result: "", projected: true })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null })) };
+        // With partial generation a round may be half-created already: only the still-missing pairs are proposed.
+        return { ...rd, blocks: [...savedBlocks, ...result.pairs.filter(([a, b]) => !(a && covered.has(a)) && !(b && covered.has(b))).map(([a, b], i) => ({ matchId: `swiss-proposed-${rd.round}-${i}`, rows: [a, b].map((id) => ({ id, pos: id ? positions.get(id) ?? null : null, name: id ? names.get(id) ?? "Unknown player" : "Bye", when: label, result: "", projected: true })) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null }))] };
       } catch (error) { issues.push(error instanceof Error ? error.message : "No legal Swiss pairing."); return rd; }
     }) };
   }

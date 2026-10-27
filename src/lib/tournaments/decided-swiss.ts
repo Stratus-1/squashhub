@@ -4,7 +4,6 @@
  * pairing into a normal fixture and books its planned court slot in the same step. Idempotent.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { isFrozenUitsigTournament } from "./swiss-sequencing-policy";
 import { projectCourtFixtures, projectDecidedPlayByFixtures, projectSwissBookingRetries, type ProjectionInput, type ProjectedCourtFixture } from "@/lib/tournaments/projected-court-fixtures";
 
 export type ProjectedChampFixture = ProjectedCourtFixture & { courtName: string };

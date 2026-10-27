@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Resolve Nelspruit Court 2 league scoring on phones/tablets, verify the scoring flow, and publish.
+- [x] Resolve Nelspruit Court 2 league scoring entry; real phone/tablet links open the live scorer, 26 focused tests pass, existing scores untouched; publication requested.
 
 - [x] GoBook: read-only member balances in My account and Court bookings for API-enabled GoBook clubs; 21 focused tests pass, live CSIR accounts/refresh verified on both pages; backend deployed, frontend not published.
 

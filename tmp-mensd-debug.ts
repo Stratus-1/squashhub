@@ -41,7 +41,7 @@ console.log("appliedPlayBy:", appliedPlayBy);
 
 let grid: any;
 try { grid = buildProposedSwissGrid(model, { schedule: st?.schedule ?? null, slots: {}, appliedPlayBy, noRepeats: true, partialGeneration: !!flag?.length }); } catch (e) { console.log("grid threw:", String(e)); process.exit(0); }
-console.log("grid issues:", grid.issues);
+console.log("grid issues:", grid.issues); console.log("tieBreaks passed:", st?.tieBreaks);
 for (const rd of grid.rounds) {
   console.log(`round ${rd.round}:`, rd.blocks.map((b: any) => ({ a: b.rows[0]?.name, aId: !!b.rows[0]?.id, b: b.rows[1]?.name, bId: !!b.rows[1]?.id, certified: b.certified })));
 }

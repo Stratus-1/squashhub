@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- League fixture entry distinguishes partial saved scores from final submitted scorecards; only past/final results use correction mode, because ongoing court scoring must stay accessible after each rubber finishes.
 - GoBook balances are read-only external snapshots resolved server-side from an authorized active club member's saved client link; shared account/booking display never changes credits, bookings or member links, because GoBook is the balance authority.
 - Courts capacity is a read-only aggregate projection of canonical stage plans, player/pair counts and unioned saved court windows; unresolved qualification stays provisional and fit never implies timetable feasibility, because viewing setup must not generate or reschedule games.
 - Picked-player pool previews reuse reciprocal-pair validation, combined ranking-point seeding and the shared snake allocator; previews are read-only and unpaired doubles block placement rather than inventing partners, because category lists are not pool membership.

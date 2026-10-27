@@ -14,7 +14,7 @@ import { AgmMeetingCard } from "./AgmMeetingCard";
 import { AgmTestEmail } from "./AgmTestEmail";
 import { AgmNominationsCard } from "./AgmNominationsCard";
 import {
-  buildInviteLink, buildNominationLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
+  buildInviteLink, buildNominationLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, DEFAULT_INVITATION_MESSAGE, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
 } from "@/lib/agm/ballot";
 
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as any, args as any);
@@ -46,8 +46,8 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
       const { data: { user } } = await supabase.auth.getUser();
       const deadline = new Date(Date.now() + 3 * 864e5).toISOString();
       const { data, error } = await db("agm_ballots").insert({
-        club_id: clubId, title: `${clubName} AGM committee election`, deadline,
-        declaration: DEFAULT_DECLARATION(clubName), created_by: user?.id ?? null,
+        club_id: clubId, title: `${clubName} AGM`, deadline,
+        declaration: DEFAULT_DECLARATION(clubName), meeting_details: DEFAULT_INVITATION_MESSAGE, created_by: user?.id ?? null,
       }).select("id").single();
       if (error) throw error;
       return data.id as string;
@@ -80,12 +80,29 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
           })}
         </div>
       </Card>
-      {ballot && <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />}
-      {ballot && ballot.status === "draft" && ballot.nominations_status !== "none" && <AgmNominationsCard key={`n-${ballot.id}`} clubId={clubId} ballot={ballot} />}
       {ballot && (ballot.status === "draft"
         ? <DraftEditor key={ballot.id} clubId={clubId} ballot={ballot} />
-        : <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />)}
+        : <>
+            <StepHeader step={3} title="AGM invitation & voting" state="current"
+              desc="The meeting invitation and attendance replies are below, followed by turnout and — after the deadline — the results." />
+            <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />
+            <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />
+          </>)}
       {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballotId={ballot.id} />}
+    </div>
+  );
+}
+
+function StepHeader({ step, title, state, desc }: { step: number; title: string; state: "done" | "current" | "upcoming"; desc: string }) {
+  return (
+    <div className="flex items-start gap-2 pt-1">
+      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${state === "done" ? "bg-primary text-primary-foreground" : state === "current" ? "border-2 border-primary text-primary" : "border border-border text-muted-foreground"}`}>
+        {state === "done" ? "✓" : step}
+      </span>
+      <div>
+        <p className="text-sm font-semibold">Step {step} — {title}</p>
+        <p className="text-[11px] text-muted-foreground">{desc}</p>
+      </div>
     </div>
   );
 }
@@ -251,70 +268,95 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     setSelected(s);
   };
 
+  const step1State: "done" | "current" | "upcoming" = nomStage === "none" ? "current" : "done";
+  const step2State: "done" | "current" | "upcoming" = nomStage === "none" ? "upcoming" : nomStage === "open" ? "current" : "done";
+
   return (
-    <Card className="p-3 space-y-3">
-      <div className="grid sm:grid-cols-2 gap-2">
-        <label className="text-xs space-y-1"><span className="text-muted-foreground">Title</span>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-        <label className="text-xs space-y-1"><span className="text-muted-foreground">Voting deadline (your local time)</span>
-          <Input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
-      </div>
-      <label className="text-xs space-y-1 block">
-        <span className="text-muted-foreground">Positions and accepted nominees — one line per position: <em>Position: Name, Name</em>. To let members pick more than one, add the number in brackets, e.g. <em>General Member (3): Name, Name</em></span>
-        <Textarea rows={6} value={ballotText} readOnly={positionsLocked} onChange={(e) => setText(e.target.value)} className="font-mono text-xs" />
-        {positionsLocked
-          ? <span className="text-[11px] text-muted-foreground block">{nomStage === "open" ? "Nominations are open — positions are locked. Accepted nominees are added here automatically when nominations close." : "Filled in from accepted nominations."}</span>
-          : <span className="text-[11px] text-muted-foreground block">To run nominations first, list only the positions (e.g. <em>Chairperson</em>) and use <strong>Send call for nominations</strong> below.</span>}
-      </label>
-      <label className="text-xs space-y-1 block"><span className="text-muted-foreground">Membership declaration voters must tick</span>
-        <Textarea rows={3} value={declaration} onChange={(e) => setDeclaration(e.target.value)} /></label>
+    <>
+      <StepHeader step={1} title="Call for nominations" state={step1State}
+        desc={nomStage === "none"
+          ? "List the committee positions (one per line), tick the eligible members and send the call. Members nominate themselves or others on their personal link."
+          : "Call sent — positions and the member list are now locked."} />
+      <Card className="p-3 space-y-3">
+        <label className="text-xs space-y-1 block">
+          <span className="text-muted-foreground">Committee positions — one per line: <em>Position</em>. Accepted nominees are added automatically in step 2. To let members pick more than one, add the number in brackets, e.g. <em>General Member (3)</em></span>
+          <Textarea rows={6} value={ballotText} readOnly={positionsLocked} onChange={(e) => setText(e.target.value)} className="font-mono text-xs"
+            placeholder={"Chairperson:\nVice-Chairperson:\nSecretary:\nTreasurer:\nClub Manager:\nGeneral Member (3):"} />
+          {positionsLocked
+            ? <span className="text-[11px] text-muted-foreground block">{nomStage === "open" ? "Nominations are open — positions are locked. Accepted nominees are added here automatically when nominations close." : "Filled in from accepted nominations."}</span>
+            : <span className="text-[11px] text-muted-foreground block">Sample positions are shown as a guide — replace them with your own. You can also type nominees after a colon (e.g. <em>Chairperson: Name, Name</em>) to skip the nominations step.</span>}
+        </label>
 
-      <div>
-        <p className="text-xs font-semibold mb-1">Eligible voters ({chosen.size} of {voters.length} active members ticked)</p>
-        <p className="text-[11px] text-muted-foreground mb-2">
-          Pre-ticked: aged 18+ (from SA ID) with this year's membership fee paid.
-          {noFeeRecords && " This club has no membership fee records in SquashHub, so please untick anyone who is not paid up."}
-          {" "}Members without an ID number are pre-ticked — check juniors.
-        </p>
-        <div className="max-h-64 overflow-auto border border-border rounded divide-y divide-border">
-          {voters.map((v) => (
-            <label key={v.club_member_id} className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer">
-              <Checkbox checked={chosen.has(v.club_member_id)} onCheckedChange={() => toggle(v.club_member_id)} />
-              <span className="flex-1 truncate">{v.name}</span>
-              <span className="text-muted-foreground">{v.age != null ? `${v.age}y` : "age ?"}</span>
-              {v.has_fee_record && <Badge variant="secondary" className="text-[10px]">{v.annual_fee_paid ? "paid" : "unpaid"}</Badge>}
-              {!v.email && <span className="text-destructive text-[10px]">no email</span>}
-            </label>
-          ))}
+        <div>
+          <p className="text-xs font-semibold mb-1">Eligible members ({chosen.size} of {voters.length} active members ticked)</p>
+          <p className="text-[11px] text-muted-foreground mb-2">
+            Pre-ticked: aged 18+ (from SA ID) with this year's membership fee paid.
+            {noFeeRecords && " This club has no membership fee records in SquashHub, so please untick anyone who is not paid up."}
+            {" "}Members without an ID number are pre-ticked — check juniors.
+          </p>
+          <div className="max-h-64 overflow-auto border border-border rounded divide-y divide-border">
+            {voters.map((v) => (
+              <label key={v.club_member_id} className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer">
+                <Checkbox checked={chosen.has(v.club_member_id)} onCheckedChange={() => toggle(v.club_member_id)} />
+                <span className="flex-1 truncate">{v.name}</span>
+                <span className="text-muted-foreground">{v.age != null ? `${v.age}y` : "age ?"}</span>
+                {v.has_fee_record && <Badge variant="secondary" className="text-[10px]">{v.annual_fee_paid ? "paid" : "unpaid"}</Badge>}
+                {!v.email && <span className="text-destructive text-[10px]">no email</span>}
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        <span className="text-muted-foreground">Send links by:</span>
-        <label className="flex items-center gap-1"><Checkbox checked={channels.email} onCheckedChange={(v) => setChannels((c) => ({ ...c, email: v === true }))} />Email</label>
-        <label className="flex items-center gap-1"><Checkbox checked={channels.whatsapp} onCheckedChange={(v) => setChannels((c) => ({ ...c, whatsapp: v === true }))} />WhatsApp</label>
-      </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-muted-foreground">Send links by:</span>
+          <label className="flex items-center gap-1"><Checkbox checked={channels.email} onCheckedChange={(v) => setChannels((c) => ({ ...c, email: v === true }))} />Email</label>
+          <label className="flex items-center gap-1"><Checkbox checked={channels.whatsapp} onCheckedChange={(v) => setChannels((c) => ({ ...c, whatsapp: v === true }))} />WhatsApp</label>
+        </div>
 
-      {nomStage === "none" && (
         <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
-          <label className="text-xs space-y-1"><span className="text-muted-foreground">Nominations close (your local time)</span>
-            <Input type="datetime-local" value={nomClose} onChange={(e) => setNomClose(e.target.value)} /></label>
-          <Button size="sm" variant="secondary" disabled={nomMut.isPending}
-            onClick={() => { if (confirm(`Send the call for nominations to the ${chosen.size} ticked members? Positions cannot be changed afterwards.`)) nomMut.mutate(); }}>
-            <Send className="w-3.5 h-3.5 mr-1" />Send call for nominations
-          </Button>
-          <span className="text-[11px] text-muted-foreground basis-full">Step 1: the ticked members can nominate themselves or others and be nominated. Step 2, after nominations close: send invitations & open voting.</span>
+          {nomStage === "none" && (
+            <>
+              <label className="text-xs space-y-1"><span className="text-muted-foreground">Nominations close (your local time)</span>
+                <Input type="datetime-local" value={nomClose} onChange={(e) => setNomClose(e.target.value)} /></label>
+              <Button size="sm" disabled={nomMut.isPending}
+                onClick={() => { if (confirm(`Send the call for nominations to the ${chosen.size} ticked members? Positions cannot be changed afterwards.`)) nomMut.mutate(); }}>
+                <Send className="w-3.5 h-3.5 mr-1" />Send call for nominations
+              </Button>
+            </>
+          )}
+          <span className="flex-1" />
+          <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save draft</Button>
         </div>
-      )}
+      </Card>
 
-      <div className="flex gap-2 justify-end">
-        <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save draft</Button>
-        <Button size="sm" disabled={openMut.isPending || nomStage === "open"}
-          onClick={() => { if (confirm(`Send the AGM invitation to all ${voters.length} active members and open voting for ${chosen.size} eligible voters? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
-          <Send className="w-3.5 h-3.5 mr-1" />Send invitations & open voting
-        </Button>
-      </div>
-    </Card>
+      <StepHeader step={2} title="Nominees accept or decline" state={step2State}
+        desc="Self-nominations count immediately. Members nominated by someone else accept or decline on their own link — only accepted nominees go onto the ballot." />
+      {nomStage === "none"
+        ? <Card className="p-3"><p className="text-xs text-muted-foreground">This step starts automatically once you send the call for nominations in step 1. When nominations close, the accepted nominees fill the ballot.</p></Card>
+        : <AgmNominationsCard key={`n-${ballot.id}`} clubId={clubId} ballot={ballot} />}
+
+      <StepHeader step={3} title="AGM invitation & voting" state="current"
+        desc="Add the meeting details and documents, then send the invitation to every member and open the secret ballot for the eligible members ticked in step 1." />
+      <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />
+      <Card className="p-3 space-y-3">
+        <div className="grid sm:grid-cols-2 gap-2">
+          <label className="text-xs space-y-1"><span className="text-muted-foreground">Title</span>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+          <label className="text-xs space-y-1"><span className="text-muted-foreground">Voting deadline (your local time)</span>
+            <Input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
+        </div>
+        <label className="text-xs space-y-1 block"><span className="text-muted-foreground">Membership declaration voters must tick</span>
+          <Textarea rows={3} value={declaration} onChange={(e) => setDeclaration(e.target.value)} /></label>
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save draft</Button>
+          <Button size="sm" disabled={openMut.isPending || nomStage === "open"}
+            onClick={() => { if (confirm(`Send the AGM invitation to all ${voters.length} active members and open voting for ${chosen.size} eligible voters? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
+            <Send className="w-3.5 h-3.5 mr-1" />Send invitations & open voting
+          </Button>
+        </div>
+        {nomStage === "open" && <p className="text-[11px] text-muted-foreground">Voting can open once nominations have closed and the accepted nominees are on the ballot.</p>}
+      </Card>
+    </>
   );
 }
 

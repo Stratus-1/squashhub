@@ -20,6 +20,9 @@ import {
   detectOpeningBalance,
   buildRows,
   detectDuplicate,
+  matchLedger,
+  isOpeningBalanceLine,
+  type LedgerBankMove,
   suggestAccount,
   suggestMember,
   summarise,
@@ -50,6 +53,8 @@ interface Props {
 type Draft = ParsedBankRow & {
   include: boolean;
   duplicate: DuplicateFlag;
+  /** why this line looks already recorded (Stitch / ledger match) */
+  dupReason: string | null;
   account: string;
   memberId: string | null;
   key: string;
@@ -85,6 +90,38 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
         .limit(3000);
       if (error) throw error;
       return (data || []) as Array<{ fingerprint: string; txn_date: string; amount: number; description: string }>;
+    },
+    enabled: open && !!clubId,
+  });
+
+  /* bank movements the app already recorded (Stitch, Yoco, bar card, EFTs) */
+  const { data: ledgerInfo = { moves: [] as LedgerBankMove[], stitchSince: null as string | null } } = useQuery({
+    queryKey: ["club-bank-ledger-moves", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_journal_entries")
+        .select("journal_ref, account, debit, credit, description, created_at")
+        .eq("club_id", clubId)
+        .in("account", ["bank_current", "gateway_fees"])
+        .order("created_at", { ascending: false })
+        .limit(5000);
+      if (error) throw error;
+      const byRef = new Map<string, LedgerBankMove & { has: boolean }>();
+      let stitchSince: string | null = null;
+      for (const e of (data || []) as any[]) {
+        const date = String(e.created_at).slice(0, 10);
+        const cur = byRef.get(e.journal_ref) ?? { date, amount: 0, gross: 0, description: "", has: false };
+        if (e.account === "bank_current") {
+          cur.amount += Number(e.debit) - Number(e.credit);
+          if (Number(e.debit) > 0) { cur.gross = (cur.gross ?? 0) + Number(e.debit); cur.description = e.description; }
+          if (!cur.description) cur.description = e.description;
+          cur.has = true;
+          if (/\[stitch\]|stitch/i.test(e.description) && (!stitchSince || date < stitchSince)) stitchSince = date;
+        }
+        byRef.set(e.journal_ref, cur);
+      }
+      const moves = [...byRef.values()].filter((m) => m.has && Math.abs(m.amount) > 0.004)
+        .map(({ has, ...m }) => ({ ...m, amount: Number(m.amount.toFixed(2)) }));
+      return { moves, stitchSince };
     },
     enabled: open && !!clubId,
   });
@@ -125,9 +162,18 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     setDrafts(hydrate(rows));
   };
 
-  const hydrate = (rows: ParsedBankRow[]): Draft[] =>
-    rows.map((r) => {
-      const dup = detectDuplicate(r, existing);
+  const hydrate = (all: ParsedBankRow[]): Draft[] => {
+    // "Beginsaldo"/opening-balance rows seed the opening balance, never a transaction.
+    const opener = all.find((r) => isOpeningBalanceLine(r.description));
+    if (opener && isFirstStatement && opener.balance != null) {
+      setOpeningBalance((cur) => (cur.trim() ? cur : String(opener.balance)));
+    }
+    const rows = all.filter((r) => !isOpeningBalanceLine(r.description));
+    return rows.map((r) => {
+      const fp = detectDuplicate(r, existing);
+      const lm = fp === "exact" ? null : matchLedger(r, ledgerInfo.moves, ledgerInfo.stitchSince);
+      const dup: DuplicateFlag = fp !== "none" ? fp : lm ? (lm.kind === "stitch" ? "exact" : "likely") : "none";
+      const dupReason = fp === "exact" ? "Already imported from an earlier statement" : lm?.reason ?? (fp === "likely" ? "Similar line imported within 7 days" : null);
       const key = ruleKey(r.description, r.reference);
       const rule = matchRule(rules, key, r.amount > 0 ? "in" : "out");
       const memberId = rule?.member_id ?? suggestMember(r, members);
@@ -137,6 +183,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
         ...r,
         key,
         duplicate: dup,
+        dupReason,
         discarded,
         fromRule: !!rule,
         touched: false,
@@ -145,6 +192,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
         memberId,
       };
     });
+  };
 
   /** Re-apply learned rules when they load after a file was already parsed. */
   const rulesSig = rules.map((r) => `${r.match_key}|${r.direction}|${r.account}|${r.custom_account_id}|${r.member_id}|${r.discard}`).join(";");
@@ -590,8 +638,8 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
                           <span className={cn("line-clamp-1", d.discarded && "line-through")}>{d.description}</span>
                           <div className="flex gap-1 mt-0.5 flex-wrap">
                             {d.duplicate !== "none" && (
-                              <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600">
-                                {d.duplicate === "exact" ? "Already imported" : "Possible duplicate"}
+                              <Badge variant="outline" title={d.dupReason ?? undefined} className="text-[9px] border-amber-500/50 text-amber-600 max-w-[260px] truncate">
+                                {d.dupReason ?? (d.duplicate === "exact" ? "Already imported" : "Possible duplicate")}
                               </Badge>
                             )}
                             {d.discarded && (

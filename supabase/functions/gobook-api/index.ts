@@ -21,6 +21,7 @@
 // Setup actions are club-admin only; read/booking actions are open to any
 // authenticated member of the club.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { goBookBalances } from "../_shared/gobook-balance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -475,6 +476,33 @@ Deno.serve(async (req) => {
         forbidden: false,
       };
     };
+
+    if (action === "my_balance") {
+      // Balance reads never auto-link, accept a supplied client ID, or write local accounts.
+      const { data: balanceClub } = await admin.from("clubs")
+        .select("uses_gobook, gobook_api_enabled, gobook_provider_id").eq("id", clubId).maybeSingle();
+      if (!balanceClub?.uses_gobook || !balanceClub?.gobook_api_enabled) {
+        return json({ error: "GoBook balance access is not enabled for this club" }, 403);
+      }
+      const memberId = String(payload.club_member_id ?? "").trim();
+      if (!memberId) return json({ error: "club_member_id is required" }, 400);
+      let memberQuery = admin.from("club_members")
+        .select("id, gobook_client_id").eq("club_id", clubId).eq("id", memberId).eq("status", "active");
+      if (!isAdmin && !isSuper) memberQuery = memberQuery.eq("user_id", user.id);
+      const { data: member } = await memberQuery.maybeSingle();
+      if (!member) return json({ error: "You may only view your own GoBook balance" }, 403);
+      const clientId = Number(member.gobook_client_id);
+      if (!Number.isInteger(clientId) || clientId <= 0) {
+        return json({ success: true, state: "not_linked", balance: null, asAt: null });
+      }
+      const response = await fetch(`${API_BASE}/Financials/Balances?clientId=${clientId}`, {
+        headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) return json({ error: `GoBook balance request failed (${response.status})` }, 502);
+      const value = response.status === 204 ? null : await response.json();
+      const accounts = goBookBalances(value, clientId, Number(balanceClub.gobook_provider_id));
+      return json({ success: true, state: accounts.length ? "available" : "unavailable", accounts });
+    }
 
     if (action === "my_client") {
       const r = await resolveMyClient();

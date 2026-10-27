@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- GoBook balances are read-only external snapshots resolved server-side from an authorized active club member's saved client link; shared account/booking display never changes credits, bookings or member links, because GoBook is the balance authority.
 - Courts capacity is a read-only aggregate projection of canonical stage plans, player/pair counts and unioned saved court windows; unresolved qualification stays provisional and fit never implies timetable feasibility, because viewing setup must not generate or reschedule games.
 - Picked-player pool previews reuse reciprocal-pair validation, combined ranking-point seeding and the shared snake allocator; previews are read-only and unpaired doubles block placement rather than inventing partners, because category lists are not pool membership.
 - Recurring social-event attendance is occurrence-scoped across notification actions, event detail, cards and WhatsApp; series rows are invite membership only, selected channels are enforced before notification delivery and reminder email uses one explicit outbox path; why: prior answers and generic notification bridges must never imply weekly attendance or bypass switches.

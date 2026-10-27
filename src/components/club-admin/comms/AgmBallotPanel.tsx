@@ -133,7 +133,9 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       }));
     },
   });
-  const ballotText = text ?? (positions ? formatBallotText(positions) : "");
+  const SAMPLE_POSITIONS = "Chairperson:\nVice-Chairperson:\nSecretary:\nTreasurer:\nClub Manager:\nGeneral Member (3):";
+  // Sample positions are real, editable text (not a placeholder) so an untouched draft still saves them.
+  const ballotText = text ?? (positions ? (positions.length ? formatBallotText(positions) : (ballot.status === "draft" ? SAMPLE_POSITIONS : "")) : "");
 
   const { data: voters = [] } = useQuery({
     queryKey: ["agm-voter-candidates", clubId],

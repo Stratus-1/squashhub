@@ -508,8 +508,9 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
           </DialogTitle>
           <DialogDescription>
             Upload a PDF, CSV, OFX or QIF statement. PDFs are read directly, and scanned/image-only PDFs are
-            processed with OCR. "Beginsaldo" becomes the opening balance. Lines already imported, Stitch payments and amounts already in the books (e.g. Yoco card sales) are flagged and left unticked (same amount within
-            narrative within 7 days), and each transaction can be allocated to an account and member before
+            processed with OCR. "Beginsaldo" becomes the opening balance. Lines already imported, Stitch payments
+            and amounts already in the books (e.g. Yoco card sales) are flagged and left unticked, and each
+            transaction can be allocated to an account and member before
             posting to the ledger.
           </DialogDescription>
         </DialogHeader>

@@ -82,8 +82,11 @@ describe("Swiss + round robin finish — projected Rounds 3–5 stay within grou
     // trails in both outcomes, so it holds 5th), and p2,p4,p6 hold 6-8 ahead of p8 either way.
     expect([byPos.get(1), byPos.get(2), byPos.get(3), byPos.get(4)]).toEqual(["p1", "p3", "p5", "p7"]);
     expect([byPos.get(5), byPos.get(6), byPos.get(7), byPos.get(8)]).toEqual(["p9", "p2", "p4", "p6"]);
-    // …unsettled positions stay open slots, and the undecided players never appear.
-    for (const pos of [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]) expect(byPos.get(pos)).toBeNull();
+    // p8 holds 9th in both outcomes (Buchholz 3 with a weaker tie-break when p17 wins, 2 when p18
+    // wins — either way below p2,p4,p6 and above the rest). Everything from 10 down stays open,
+    // and the undecided players never appear.
+    expect(byPos.get(9)).toBe("p8");
+    for (const pos of [10, 11, 12, 13, 14, 15, 16, 17, 18]) expect(byPos.get(pos)).toBeNull();
     expect([...byPos.values()]).not.toContain("p17");
     expect([...byPos.values()]).not.toContain("p18");
   });

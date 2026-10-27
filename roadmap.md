@@ -8,3 +8,4 @@
 ## Constraints
 - Existing Uitsig tournaments immutable (freeze). New behaviour is prospective opt-in only.
 - Structural engine changes: Riverside pilot, flag-gated via club_beta_features, tests required.
+- [ ] RR-finish stages: when post-R2 group positions are provably settled, generate the full RR block (Rounds 3-5 group fixtures) in one go (Willem 27 Oct); remainder Swiss stays incremental

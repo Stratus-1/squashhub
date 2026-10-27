@@ -85,7 +85,7 @@ export default function AgmNominate() {
         <div>
           <h1 className="text-xl font-semibold">Committee nominations: {data.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Dear {data.name}, {data.closed ? "nominations are now closed." : <>nominate {data.allow_self ? "yourself or other members" : "other members"} for next year's committee. Nominations close <strong>{fmt(data.close_at)}</strong>.</>}
+            Dear {data.name}, {data.closed ? "nominations are now closed." : <>you can nominate another member for next year's committee{data.allow_self ? ", or make yourself available to serve by choosing the position or function you would like to fulfil" : ""}. Nominations close <strong>{fmt(data.close_at)}</strong>.</>}
           </p>
         </div>
 
@@ -153,7 +153,7 @@ function PositionCard({ pos, token, me, name, allowSelf, closed, busy, made, onN
       ))}
       {!closed && (
         <>
-          {allowSelf && !selfDone && <Button size="sm" variant="outline" disabled={busy} onClick={() => onNominate(me)}><UserPlus className="w-3.5 h-3.5 mr-1" />Nominate myself</Button>}
+          {allowSelf && !selfDone && <Button size="sm" variant="outline" disabled={busy} onClick={() => onNominate(me)}><UserPlus className="w-3.5 h-3.5 mr-1" />I'm available for this position</Button>}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2 top-2.5 text-muted-foreground" />
             <Input className="pl-7" placeholder="Search a member's name to nominate them" value={q} onChange={(e) => setQ(e.target.value)} />

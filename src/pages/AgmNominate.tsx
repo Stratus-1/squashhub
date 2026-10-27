@@ -38,6 +38,7 @@ export default function AgmNominate() {
     const { error } = await rpc(fn, { p_token: token, ...args });
     setBusy(false);
     if (error) setError(error.message); else load();
+    return !error;
   };
 
   // The link usually opens in its own tab from an email, so closing means
@@ -114,7 +115,11 @@ export default function AgmNominate() {
         {(data.positions ?? []).map((p) => (
           <PositionCard key={p.id} pos={p} token={token} me={data.member_id!} name={data.name ?? ""} allowSelf={!!data.allow_self} closed={!!data.closed} busy={busy}
             made={(data.made ?? []).filter((m) => m.position_id === p.id)}
-            onNominate={(id) => act("agm_nominate", { p_position_id: p.id, p_nominee_id: id })} />
+            onNominate={async (id) => {
+              const ok = await act("agm_nominate", { p_position_id: p.id, p_nominee_id: id });
+              // Tell the nominee (email + in-app notice) so they can accept or decline.
+              if (ok && id !== data.member_id) supabase.functions.invoke("agm-nominee-notify", { body: { token, position_id: p.id, nominee_id: id } }).catch(() => {});
+            }} />
         ))}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>

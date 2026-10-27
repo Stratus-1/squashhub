@@ -268,6 +268,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       });
       return res.enumerable ? res.settledPositions : new Map<string, number>();
     })() : null;
+    // Partial generation (writer only): once every round-robin group position is provably final,
+    // the whole RR block (Rounds 3+) is fixed — emit those pairings as certified, ids intact.
+    const rrGroupIds = new Set(snapshot.slice(0, (model.rrFinish?.groups ?? 0) * 4));
+    const rrCertified = !!opts.partialGeneration && !!unsettled && rrGroupIds.size > 0 && [...rrGroupIds].every((id) => unsettled.has(id));
     return { issues, ...(sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}), rounds: saved.map((rd) => {
       if (rd.round < 3) return opts.factualOpeningRounds && rd.created ? { ...rd, blocks: rd.blocks.map((b) => ({ ...b, saved: true })) } : normal.rounds.find((r) => r.round === rd.round) ?? rd;
       const plan = rrFinishRound(snapshot, rd.round, model.rrFinish?.groups ?? 0);
@@ -340,11 +344,12 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       }
       const pending = pairs.filter(([a, b]) => !covered.has(a) && !covered.has(b)).map(([a, b]) => ({
         matchId: `rr-proposed-${rd.round}-${a}-${b}`, rows: [a, b].map((id) => {
-          const sure = !unsettled || (id != null && unsettled.has(id));
+          const sure = !unsettled || (id != null && unsettled.has(id)) || (rrCertified && id != null && rrGroupIds.has(id));
           return id && !sure
             ? { id: null, pos: fixed.get(id) ?? null, name: "TBD", result: "", projected: true, when: schedule.label }
             : { id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label };
         }) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
+        ...(rrCertified && a != null && b != null && rrGroupIds.has(a) && rrGroupIds.has(b) ? { certified: true } : {}),
       }));
       // Future slots are paired position labels only, never decided player identities.
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));

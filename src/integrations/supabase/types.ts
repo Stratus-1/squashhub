@@ -151,18 +151,21 @@ export type Database = {
       }
       agm_ballot_candidates: {
         Row: {
+          club_member_id: string | null
           id: string
           name: string
           position_id: string
           sort: number
         }
         Insert: {
+          club_member_id?: string | null
           id?: string
           name: string
           position_id: string
           sort?: number
         }
         Update: {
+          club_member_id?: string | null
           id?: string
           name?: string
           position_id?: string
@@ -320,6 +323,7 @@ export type Database = {
       }
       agm_ballots: {
         Row: {
+          allow_self_actions: boolean
           club_id: string
           created_at: string
           created_by: string | null
@@ -338,6 +342,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          allow_self_actions?: boolean
           club_id: string
           created_at?: string
           created_by?: string | null
@@ -356,6 +361,7 @@ export type Database = {
           title: string
         }
         Update: {
+          allow_self_actions?: boolean
           club_id?: string
           created_at?: string
           created_by?: string | null
@@ -20329,6 +20335,14 @@ export type Database = {
         }
       }
       _agm_positions_json: { Args: { p_ballot_id: string }; Returns: Json }
+      _agm_positions_json_excl: {
+        Args: {
+          p_ballot_id: string
+          p_exclude_member: string
+          p_exclude_name: string
+        }
+        Returns: Json
+      }
       _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
       _bar_cash_up_final_staff: {
         Args: { _club: string; _staff: string }

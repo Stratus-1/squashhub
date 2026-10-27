@@ -252,9 +252,9 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         content: {
           email: {
             subject: `${title} — nominations for the committee`,
-            body: `<p>Dear {{name}},</p><p>Nominations are open for next year's committee. You can nominate yourself and/or other members for each position.</p><p><a href="{{nomination_link}}">Make your nominations</a></p><p>Members nominated by someone else are asked on the same page to accept or decline. Only accepted nominations go onto the ballot.</p><p>Nominations close <strong>${closes}</strong>.</p>`,
+            body: `<p>Dear {{name}},</p><p>Nominations are open for next year's committee. ${allowSelf ? "You can nominate yourself and/or other members" : "You can nominate other members"} for each position.</p><p><a href="{{nomination_link}}">Make your nominations</a></p><p>Members nominated by someone else are asked on the same page to accept or decline. Only accepted nominations go onto the ballot.</p><p>Nominations close <strong>${closes}</strong>.</p>`,
           },
-          whatsapp: { body: `Hi {{first_name}}, nominations for the ${title} committee are open until ${closes}. Nominate yourself or others, and accept nominations you receive: {{nomination_link}}` },
+          whatsapp: { body: `Hi {{first_name}}, nominations for the ${title} committee are open until ${closes}. ${allowSelf ? "Nominate yourself or others" : "Nominate other members"}, and accept nominations you receive: {{nomination_link}}` },
         },
       });
       return rows.length;

@@ -14,6 +14,11 @@
 
 export type FixtureTeamSide = "home" | "away";
 
+/** Saved partial scores are progress, not a final submitted scorecard. */
+export function leagueResultNeedsCorrection(isPast: boolean, status?: string | null): boolean {
+  return isPast || status === "submitted" || status === "confirmed" || status === "completed";
+}
+
 export interface FixtureTeamNameInput {
   /** Immutable name captured at fixture time (nullable for unresolved rows). */
   snapshot?: string | null;

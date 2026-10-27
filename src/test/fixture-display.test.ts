@@ -5,7 +5,23 @@ import {
   hasFixtureTeamName,
   isByeCode,
   buildTeamNameIndex,
+  leagueResultNeedsCorrection,
 } from "@/lib/leagues/fixture-display";
+
+describe("ongoing league scoring entry", () => {
+  it("keeps today's setup scorecard open after a rubber has been saved", () => {
+    expect(leagueResultNeedsCorrection(false, "setup")).toBe(false);
+  });
+  it("keeps today's draft partial scores open", () => {
+    expect(leagueResultNeedsCorrection(false, "draft")).toBe(false);
+  });
+  it.each(["submitted", "confirmed", "completed"])("retains correction mode for %s results", (status) => {
+    expect(leagueResultNeedsCorrection(false, status)).toBe(true);
+  });
+  it("retains correction mode for past games", () => {
+    expect(leagueResultNeedsCorrection(true, "setup")).toBe(true);
+  });
+});
 
 describe("fixture-display (Phase 2 season-safe names)", () => {
   it("prefers the historical snapshot over the live name", () => {

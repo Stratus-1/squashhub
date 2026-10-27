@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { TeamLogo } from "./TeamLogo";
 import { useFixtureLiveMarkers } from "@/hooks/use-fixture-live-markers";
 import { useMatchDayDevice } from "@/contexts/MatchDayDevice";
-import { fixtureSideName, hasFixtureTeamName, type TeamNameLookup } from "@/lib/leagues/fixture-display";
+import { fixtureSideName, hasFixtureTeamName, leagueResultNeedsCorrection, type TeamNameLookup } from "@/lib/leagues/fixture-display";
 
 
 type Props = {
@@ -604,7 +604,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         const submitted = result?.status === "submitted" || result?.status === "confirmed";
                         const hasSavedScore = !!result?.hasSavedScore;
                         const isPast = !!(f.fixture_date && f.fixture_date < todayStr);
-                        const needsAdminMode = !f.isTournament && (isPast || submitted || hasSavedScore);
+                        // A finished rubber or saved partial totals must not close
+                        // today's remaining games to members or Court QR devices.
+                        const needsAdminMode = !f.isTournament && leagueResultNeedsCorrection(isPast, result?.status);
                         const isCaptain = isCaptainOfFixture(f);
                         // NSA league captains can also enter/edit past or already-submitted results.
                         // Other associations (e.g. Nelspruit) still require club/super admin.
@@ -622,7 +624,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                             ? ((submitted || hasSavedScore) ? "Edit result" : "Enter result")
                             : viewOnly
                               ? "View Game"
-                              : (isPast || submitted || hasSavedScore)
+                              : (isPast || submitted)
                                 ? ((submitted || hasSavedScore) ? "Edit result" : "Enter result")
                                 : "Set up and mark game";
                         const isLive = !f.isTournament && liveFixtureIds.has(f.id);

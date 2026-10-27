@@ -237,3 +237,21 @@ describe("parseTextStatement — FNB statement layout", () => {
     );
   });
 });
+
+import { detectOpeningBalance as _dob, isOpeningBalanceLine, matchLedger } from "@/lib/finance/bank-statement";
+describe("Nelspruit import: opening balance and already-recorded payments", () => {
+  it("reads Beginsaldo's balance as the opening balance", () => {
+    expect(_dob("2026-08-24 Beginsaldo 77 413,79 2 716,16\n")).toBe(2716.16);
+    expect(isOpeningBalanceLine("Beginsaldo")).toBe(true);
+  });
+  it("flags Stitch credits from the first Stitch record onwards only", () => {
+    const r = { txn_date: "2026-09-20", amount: 500, description: "STITCH PAYOUT" };
+    expect(matchLedger(r, [], "2026-09-15")?.kind).toBe("stitch");
+    expect(matchLedger({ ...r, txn_date: "2026-09-01" }, [], "2026-09-15")).toBeNull();
+  });
+  it("flags a Yoco payout matching a recorded net card receipt", () => {
+    const ledger = [{ date: "2026-08-23", amount: 1098.91, gross: 1137.5, description: "Wallet top-up [Yoco]" }];
+    expect(matchLedger({ txn_date: "2026-08-25", amount: 1098.91, description: "YOCO AVGT3" }, ledger, null)?.kind).toBe("ledger");
+    expect(matchLedger({ txn_date: "2026-08-25", amount: 1638.3, description: "YOCO AVGT3" }, ledger, null)).toBeNull();
+  });
+});

@@ -212,7 +212,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
           account: acc || d.account,
           memberId: rule.member_id ?? d.memberId,
           discarded: rule.discard,
-          include: d.duplicate !== "exact" && !rule.discard,
+          include: d.duplicate === "none" && !rule.discard,
         };
       }),
     );
@@ -279,9 +279,9 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     const next = !target.discarded;
     setDrafts((prev) =>
       prev.map((p, idx) => {
-        if (idx === index) return { ...p, discarded: next, include: next ? false : p.duplicate !== "exact", touched: true };
+        if (idx === index) return { ...p, discarded: next, include: next ? false : p.duplicate === "none", touched: true };
         if (p.touched || p.key !== target.key || (p.amount > 0 ? "in" : "out") !== dir) return p;
-        return { ...p, discarded: next, include: next ? false : p.duplicate !== "exact" };
+        return { ...p, discarded: next, include: next ? false : p.duplicate === "none" };
       }),
     );
     if (target.key) {
@@ -508,7 +508,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
           </DialogTitle>
           <DialogDescription>
             Upload a PDF, CSV, OFX or QIF statement. PDFs are read directly, and scanned/image-only PDFs are
-            processed with OCR. Duplicate lines already imported are detected automatically (same amount and
+            processed with OCR. "Beginsaldo" becomes the opening balance. Lines already imported, Stitch payments and amounts already in the books (e.g. Yoco card sales) are flagged and left unticked (same amount within
             narrative within 7 days), and each transaction can be allocated to an account and member before
             posting to the ledger.
           </DialogDescription>

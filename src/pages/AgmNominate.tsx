@@ -117,11 +117,14 @@ export default function AgmNominate() {
           <PositionCard key={p.id} pos={p} token={token} me={data.member_id!} name={data.name ?? ""} allowSelf={!!data.allow_self} closed={!!data.closed} busy={busy}
             made={(data.made ?? []).filter((m) => m.position_id === p.id)}
             onNominate={async (id) => {
-              const ok = await act("agm_nominate", { p_position_id: p.id, p_nominee_id: id });
-              // Tell the nominee (email + in-app notice) so they can accept or decline.
-              if (ok && id !== data.member_id) supabase.functions.invoke("agm-nominee-notify", { body: { token, position_id: p.id, nominee_id: id } }).catch(() => {});
+              const res = await act("agm_nominate", { p_position_id: p.id, p_nominee_id: id });
+              // Only a brand-new nomination asks the nominee to accept; repeat nominations are recorded as support.
+              if (res === "created" && id !== data.member_id) supabase.functions.invoke("agm-nominee-notify", { body: { token, position_id: p.id, nominee_id: id } }).catch(() => {});
+              if (res === "supported") setNotice(`This member was already nominated for ${p.title} — your support has been added. They won't be asked to accept again.`);
+              if (res === "already") setNotice(`You have already nominated this member for ${p.title}.`);
             }} />
         ))}
+        {notice && <p className="text-sm text-primary">{notice}</p>}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </div>
@@ -148,7 +151,7 @@ function PositionCard({ pos, token, me, name, allowSelf, closed, busy, made, onN
       <p className="text-sm font-semibold">{pos.title}{pos.max_choices > 1 && <span className="font-normal text-muted-foreground"> · {pos.max_choices} places</span>}</p>
       {made.map((m) => (
         <p key={m.id} className="text-xs flex items-center gap-2">
-          <span className="flex-1">You nominated <strong>{m.nominee}</strong></span>
+          <span className="flex-1">You nominated <strong>{m.nominee}</strong>{(m.supporters ?? 1) > 1 && <span className="text-muted-foreground"> · {m.supporters} nominations</span>}</span>
           <Badge variant={m.status === "accepted" ? "default" : "secondary"} className="text-[10px]">{m.status === "pending" ? "awaiting acceptance" : m.status}</Badge>
         </p>
       ))}

@@ -20330,6 +20330,10 @@ export type Database = {
       }
       _agm_positions_json: { Args: { p_ballot_id: string }; Returns: Json }
       _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
+      _bar_cash_up_final_staff: {
+        Args: { _club: string; _staff: string }
+        Returns: boolean
+      }
       _bar_cash_up_reconcile_saved: {
         Args: { _id: string; _settle: boolean }
         Returns: undefined

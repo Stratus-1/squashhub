@@ -14,7 +14,7 @@ import { AgmMeetingCard } from "./AgmMeetingCard";
 import { AgmTestEmail } from "./AgmTestEmail";
 import { AgmNominationsCard } from "./AgmNominationsCard";
 import {
-  buildInviteLink, buildNominationLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
+  buildInviteLink, buildNominationLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, DEFAULT_INVITATION_MESSAGE, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
 } from "@/lib/agm/ballot";
 
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as any, args as any);
@@ -46,8 +46,8 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
       const { data: { user } } = await supabase.auth.getUser();
       const deadline = new Date(Date.now() + 3 * 864e5).toISOString();
       const { data, error } = await db("agm_ballots").insert({
-        club_id: clubId, title: `${clubName} AGM committee election`, deadline,
-        declaration: DEFAULT_DECLARATION(clubName), created_by: user?.id ?? null,
+        club_id: clubId, title: `${clubName} AGM`, deadline,
+        declaration: DEFAULT_DECLARATION(clubName), meeting_details: DEFAULT_INVITATION_MESSAGE, created_by: user?.id ?? null,
       }).select("id").single();
       if (error) throw error;
       return data.id as string;

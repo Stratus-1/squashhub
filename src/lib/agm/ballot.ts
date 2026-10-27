@@ -9,6 +9,15 @@ export type BallotPositionDraft = { title: string; nominees: string[]; maxChoice
 export const DEFAULT_DECLARATION = (clubName: string) =>
   `I confirm that I am a paid-up member of ${clubName}, aged 18 years or older, and entitled to vote in accordance with the Club Constitution. I confirm that I will submit only one ballot.`;
 
+/** Sample invitation message for a new AGM ballot — the admin edits it before sending. */
+export const DEFAULT_INVITATION_MESSAGE = `Dear {member name},
+
+You are warmly invited to our Annual General Meeting. Please confirm on your invitation page whether you will attend in person or online, or send your apologies.
+
+The agenda, minutes and other meeting documents are attached on the same page.
+
+Voting for the new committee takes place online before the meeting — your personal voting link is in the email you receive.`;
+
 /** "Chairperson: A, B" per line → positions. Blank/duplicate nominees are dropped. */
 export function parseBallotText(text: string, opts: { allowEmpty?: boolean } = {}): BallotPositionDraft[] {
   const out: BallotPositionDraft[] = [];

@@ -1,19 +1,19 @@
-import { IntegrityError } from "./contract";
 
-export const EXISTING_UITSIG_TOURNAMENT_IDS: ReadonlySet<string> = new Set(["f954222a-0f0a-4d8c-ac7b-9c74042cc69e"]);
+// Uitsig freeze lifted 27 Oct 2026 (Willem): the club takes normal automatic generation from now
+// on; a dated CSV backup of fixtures and logs exists at /mnt/documents/uitsig-fixture-backup-2026-10-27.
 export const SWISS_SEQUENCING_PROSPECTIVE_FROM = "2026-10-22T18:41:00Z";
 export interface SwissSequencingPolicy { version: 1; tournamentId: string; createdAt: string }
 
-export function isFrozenUitsigTournament(id: string | null | undefined): boolean {
-  return !!id && EXISTING_UITSIG_TOURNAMENT_IDS.has(id);
+export function isFrozenUitsigTournament(_id: string | null | undefined): boolean {
+  return false;
 }
-export function assertTournamentPairingWritable(id: string) {
-  if (isFrozenUitsigTournament(id)) throw new IntegrityError("uitsig_frozen", "This existing Uitsig tournament is protected. Pairings, stages and fixtures must remain unchanged.");
+export function assertTournamentPairingWritable(_id: string) {
+  // No frozen tournaments remain.
 }
 /** Fail closed: no adoption during viewing, saving an old setup or an old draw/rebuild.
  * The ID must match the actual tournament, not another tournament's copied policy. */
 export function swissSequencingEnabled(policy: SwissSequencingPolicy | null | undefined, tournamentId: string | null | undefined): boolean {
-  return !!policy && policy.version === 1 && !!tournamentId && !isFrozenUitsigTournament(tournamentId)
+  return !!policy && policy.version === 1 && !!tournamentId
     && policy.tournamentId === tournamentId && Number.isFinite(Date.parse(policy.createdAt))
     && Date.parse(policy.createdAt) > Date.parse(SWISS_SEQUENCING_PROSPECTIVE_FROM);
 }

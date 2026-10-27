@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sequenceSwissRound, swissOpponentKey as key } from "@/lib/tournaments/swiss-sequencing";
-import { prospectiveSwissPolicy, swissSequencingEnabled, assertTournamentPairingWritable } from "@/lib/tournaments/swiss-sequencing-policy";
+import { prospectiveSwissPolicy, swissSequencingEnabled, assertTournamentPairingWritable, isFrozenUitsigTournament } from "@/lib/tournaments/swiss-sequencing-policy";
 import { nextSwissRound, swissStandings, type SpecDivision } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 import { rrFinishRound } from "@/lib/tournaments/swiss-rr-finish";
@@ -94,35 +94,35 @@ describe("General prospective Swiss final sequencing", () => {
 });
 
 describe("Existing Uitsig and prospective tournament guardrails", () => {
-  const frozen="f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
-  it("denies a policy for the frozen Uitsig ID even with a forged future timestamp", () => {
-    expect(swissSequencingEnabled({ version:1,tournamentId:frozen,createdAt:"2030-01-01" },frozen)).toBe(false);
-    expect(()=>assertTournamentPairingWritable(frozen)).toThrow(/protected/);
+  const uitsig="f954222a-0f0a-4d8c-ac7b-9c74042cc69e";
+  it("the Uitsig freeze is lifted: pairing writers are no longer blocked by the tournament ID", () => {
+    expect(isFrozenUitsigTournament(uitsig)).toBe(false);
+    expect(()=>assertTournamentPairingWritable(uitsig)).not.toThrow();
   });
   it("rejects old tournaments, missing policies and copied tournament identities", () => {
     expect(prospectiveSwissPolicy("old","2026-10-06")).toBeUndefined();
     expect(swissSequencingEnabled(undefined,"new-test")).toBe(false);
     expect(swissSequencingEnabled(policy,"different")).toBe(false);
   });
-  it("existing Uitsig projections remain byte-for-byte unchanged when policy is presented", () => {
+  it("Uitsig keeps its legacy approved charts because no sequencing policy is minted for it", () => {
     const d=division(18,5,3); const model=buildSwissProgression({ seedOrder:d.entrants.map((e)=>e.id),names:{},totalRounds:5,rrFinish:d.stages[0].rrFinish,matches:[] });
     const before=JSON.stringify(model), legacy=JSON.stringify(buildProposedSwissGrid(model,{exactMensCChart:true}));
-    expect(JSON.stringify(buildProposedSwissGrid({...model,tournamentId:frozen,swissSequencing:{version:1,tournamentId:frozen,createdAt:"2030-01-01"}},{exactMensCChart:true}))).toBe(legacy);
+    expect(JSON.stringify(buildProposedSwissGrid({...model,tournamentId:uitsig},{exactMensCChart:true}))).toBe(legacy);
     expect(JSON.stringify(model)).toBe(before);
   });
-  it("frozen generation/rebuild/persistence stop before database reads or writes; automatic progression does nothing", async () => {
+  it("generation, rebuild, persistence and automatic progression are no longer blocked for Uitsig", async () => {
     const db:any={select:()=>{throw new Error("DB accessed");},insert:()=>{throw new Error("DB accessed");},update:()=>{throw new Error("DB accessed");},remove:()=>{throw new Error("DB accessed");}};
-    await expect(generateStructuredTournament(db,frozen)).rejects.toThrow(/protected/);
-    await expect(rebuildStructured(db,frozen)).rejects.toThrow(/protected/);
-    await expect(persistStructure(db,frozen,{} as any)).rejects.toThrow(/protected/);
-    await expect(insertFixtures(db,frozen,{} as any,{} as any,[])).rejects.toThrow(/protected/);
-    await expect(atomically(db,frozen,async()=>{throw new Error("commit called");},async()=>{throw new Error("action called");})).rejects.toThrow(/protected/);
-    await expect(saveLifecycle(frozen,{} as any)).rejects.toThrow(/protected/);
-    await expect(persistStepTournament({existingId:frozen} as any)).rejects.toThrow(/protected/);
-    await expect(attachTimelinePlayoffs(frozen,{})).rejects.toThrow(/protected/);
-    await expect(createPlannedPlayoffFixtures(frozen,{})).rejects.toThrow(/protected/);
-    expect(await autoProgress(db,frozen)).toEqual({started:[],blocked:[],needsSetup:[]});
-    expect(()=>nextSwissRound(frozen,division(18,5),"s",[],true,policy)).toThrow(/protected/);
+    const notFrozenBlock=async(p:Promise<any>)=>{ const e=await p.then(()=>null,(x:any)=>x); expect(String(e&&e.message||e)).not.toMatch(/protected/); };
+    await notFrozenBlock(generateStructuredTournament(db,uitsig));
+    await notFrozenBlock(rebuildStructured(db,uitsig));
+    await notFrozenBlock(persistStructure(db,uitsig,{} as any));
+    await notFrozenBlock(insertFixtures(db,uitsig,{} as any,{} as any,[]));
+    await notFrozenBlock(saveLifecycle(uitsig,{} as any));
+    await notFrozenBlock(persistStepTournament({existingId:uitsig} as any));
+    await notFrozenBlock(attachTimelinePlayoffs(uitsig,{}));
+    await notFrozenBlock(createPlannedPlayoffFixtures(uitsig,{}));
+    await notFrozenBlock(autoProgress(db,uitsig));
+    expect(()=>nextSwissRound(uitsig,division(18,5),"s",[],true,policy)).not.toThrow(/protected/);
   });
   it("new first-draw generation persists a matching policy; old or already-generated tournaments never adopt it", async () => {
     const base=division(6,5);

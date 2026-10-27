@@ -330,7 +330,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
                 <Input type="datetime-local" value={nomClose} onChange={(e) => setNomClose(e.target.value)} /></label>
               <Button size="sm" disabled={nomMut.isPending}
                 onClick={() => { if (confirm(`Send the call for nominations to the ${chosen.size} ticked members? Positions cannot be changed afterwards.`)) nomMut.mutate(); }}>
-                <Send className="w-3.5 h-3.5 mr-1" />Send call for nominations
+                {nomMut.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Sending nominations…</> : <><Send className="w-3.5 h-3.5 mr-1" />Send call for nominations</>}
               </Button>
             </>
           )}
@@ -361,7 +361,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
           <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save draft</Button>
           <Button size="sm" disabled={openMut.isPending || nomStage === "open"}
             onClick={() => { if (confirm(`Send the AGM invitation to all ${voters.length} active members and open voting for ${chosen.size} eligible voters? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
-            <Send className="w-3.5 h-3.5 mr-1" />Send invitations & open voting
+            {openMut.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Sending invitations…</> : <><Send className="w-3.5 h-3.5 mr-1" />Send invitations & open voting</>}
           </Button>
         </div>
         {nomStage === "open" && <p className="text-[11px] text-muted-foreground">Voting can open once nominations have closed and the accepted nominees are on the ballot.</p>}

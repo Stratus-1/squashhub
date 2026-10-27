@@ -503,7 +503,7 @@ Deno.serve(async (req) => {
       const balance = goBookBalance(value, clientId);
       if (!balance && value) {
         const first = Array.isArray(value) ? value[0] : value;
-        console.info("GoBook balance response shape", JSON.stringify({ array: Array.isArray(value), keys: first && typeof first === "object" ? Object.keys(first) : [], nested: first && typeof first === "object" ? Object.entries(first).filter(([, v]) => v && typeof v === "object").map(([k, v]) => ({ key: k, array: Array.isArray(v), keys: Object.keys(Array.isArray(v) ? v[0] ?? {} : v) })) : [] }));
+        console.info("GoBook balance response shape", JSON.stringify({ array: Array.isArray(value), keys: first && typeof first === "object" ? Object.keys(first) : [], matching: Array.isArray(value) ? value.filter(r => Number(r.clientId) === clientId).map(r => ({ balanceType: typeof r.balance, balanceMissing: r.balance == null, numeric: Number.isFinite(Number(r.balance)), accountNamePresent: !!r.accountName })) : [] }));
       }
       return json({ success: true, state: balance ? "available" : "unavailable", balance: balance?.balance ?? null, asAt: balance?.asAt ?? null });
     }

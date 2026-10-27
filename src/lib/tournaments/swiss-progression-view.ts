@@ -269,15 +269,18 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       return res.enumerable ? res.settledPositions : new Map<string, number>();
     })() : null;
     // Partial generation (writer only): a group slot is fixed once its occupant's position is
-    // provably final under every outcome of the outstanding games. A block is certified when BOTH
-    // of its slots are fixed — the group schedule then pairs the same two players in every scenario,
-    // even while other slots in the same group of four are still open.
+    // provably final under every outcome of the outstanding games AND the provisional standing
+    // already shows them there. A block is certified when BOTH of its slots are fixed — the group
+    // schedule then pairs the same two players in every scenario, even while other slots in the
+    // same group of four are still open. Remainder positions stay uncertified: Swiss pairings
+    // there are not determined by positions alone.
     const certifiedPos = new Set<number>();
     if (opts.partialGeneration && unsettled) {
+      const groupSlots = (model.rrFinish?.groups ?? 0) * 4;
       const provisional = new Map(snapshot.map((id, i) => [id, i + 1]));
-      for (const id of unsettled.keys()) {
+      for (const [id, finalRank] of unsettled) {
         const p = provisional.get(id);
-        if (p != null) certifiedPos.add(p);
+        if (p != null && p === finalRank && p <= groupSlots) certifiedPos.add(p);
       }
     }
     return { issues, ...(sequencing || opts.finalSwissAdjacencyPreview ? { warnings } : {}), rounds: saved.map((rd) => {

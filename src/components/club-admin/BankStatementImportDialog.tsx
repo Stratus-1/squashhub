@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, AlertTriangle, FileText, Landmark, Ban, Wand2, Undo2 } from "lucide-react";
+import { Upload, AlertTriangle, FileText, Landmark, Ban, Wand2, Undo2, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   parseDelimitedStatement,

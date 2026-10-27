@@ -20658,6 +20658,7 @@ export type Database = {
         Args: { p_choices: Json; p_declared: boolean; p_token: string }
         Returns: string
       }
+      agm_document_is_attached: { Args: { p_path: string }; Returns: boolean }
       agm_extend_deadline: {
         Args: { p_ballot_id: string; p_deadline: string }
         Returns: undefined

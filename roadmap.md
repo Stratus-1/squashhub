@@ -5,3 +5,4 @@
 - [ ] Widen RR-finish certification to settled pairs (not only whole groups of 4); tests pass; investigate 21 full-suite failures for regressions
 - [ ] Generate Men's D settled fixtures for rounds 3–5 via the auto-progress engine
 - [ ] Check Men's C rounds 3–5 for newly generatable fixtures and generate them
+- [ ] Confirmed rule: fixtures generate as soon as both players are settled in the progression log (implemented via settled-pair certification)

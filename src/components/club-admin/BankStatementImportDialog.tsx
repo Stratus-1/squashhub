@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, AlertTriangle, FileText, Landmark, Ban, Wand2, Undo2 } from "lucide-react";
+import { Upload, AlertTriangle, FileText, Landmark, Ban, Wand2, Undo2, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   parseDelimitedStatement,
@@ -64,6 +66,46 @@ type Draft = ParsedBankRow & {
 };
 
 const BANK_ACCOUNT = "bank_current";
+
+type AccountOption = { code: string; label: string; category: string };
+
+/** Searchable account picker — plain selects can't be typed into. */
+function AccountCombobox({ value, options, onChange }: { value: string; options: AccountOption[]; onChange: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.code === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="h-7 w-full justify-between gap-1 px-2 text-xs font-normal">
+          <span className="truncate">{selected?.label ?? value}</span>
+          <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search accounts…" />
+          <CommandList>
+            <CommandEmpty>No account found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((a) => (
+                <CommandItem
+                  key={a.code}
+                  value={a.label}
+                  onSelect={() => { onChange(a.code); setOpen(false); }}
+                >
+                  <Check className={cn("mr-1 h-3 w-3 shrink-0", a.code === value ? "opacity-100" : "opacity-0")} />
+                  {a.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
 
 
 export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts }: Props) {
@@ -657,14 +699,11 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
                           {money(d.amount)}
                         </td>
                         <td className="p-2">
-                          <Select value={d.account} onValueChange={(v) => changeAccount(i, v)}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {accountOptions.map((a) => (
-                                <SelectItem key={a.code} value={a.code}>{a.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <AccountCombobox
+                            value={d.account}
+                            options={accountOptions}
+                            onChange={(v) => changeAccount(i, v)}
+                          />
                         </td>
                         <td className="p-2">
                           <Select

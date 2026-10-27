@@ -19,7 +19,7 @@ interface CashUpRow {
   id: string; period_start: string; period_end: string; expected_cash: number; counted_cash: number; variance: number;
   card_expected: number | null; card_counted: number | null; written_off: boolean | null; write_off_amount: number | null;
   note: string | null; closed_by_name: string | null;
-  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number; cash_opening?: number; cash_up_date?: string } | null;
+  totals: { methods?: Record<string, MethodTotal>; total_sales?: number; total_tips?: number; tip_payouts?: number; cash_opening?: number; cash_movements?: number; cash_up_date?: string } | null;
 }
 const MONEY = /^\d+(\.\d{1,2})?$/;
 const R = (n: number | string | null | undefined) => `R${Number(n ?? 0).toFixed(2)}`;
@@ -31,7 +31,8 @@ export function cashUpFigures(c: CashUpRow, previous: CashUpRow | undefined) {
   const gross = (k: string) => Number(m(k).sales) + Number(m(k).tips);
   const opening = Number(previous ? previous.counted_cash : (c.totals?.cash_opening ?? 0));
   const tipsOut = Number(c.totals?.tip_payouts ?? 0);
-  return { m, gross, opening, tipsOut, cashShould: opening + gross("cash") - tipsOut, cardShould: gross("card_bar") };
+  const movements = Number(c.totals?.cash_movements ?? 0);
+  return { m, gross, opening, tipsOut, movements, cashShould: opening + gross("cash") - tipsOut + movements, cardShould: gross("card_bar") };
 }
 
 export function CashUpsReport({ clubId }: { clubId: string }) {
@@ -132,6 +133,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
         <div className="flex justify-between"><span>Opening balance (counted at previous cash-up)</span><span className="tabular-nums">{R(f.opening)}</span></div>
         <div className="flex justify-between"><span>+ New cash sales &amp; tips</span><span className="tabular-nums">{R(f.gross("cash"))}</span></div>
         <div className="flex justify-between"><span>− Tips paid out</span><span className="tabular-nums">{R(f.tipsOut)}</span></div>
+        {f.movements !== 0 && <div className="flex justify-between"><span>Other cash received / paid out</span><span className="tabular-nums">{R(f.movements)}</span></div>}
         <div className="flex justify-between font-semibold border-t pt-1"><span>Should be in the till</span><span className="tabular-nums">{R(f.cashShould)}</span></div>
         <div className="flex justify-between"><span>Closing balance (counted)</span><span className="tabular-nums">{MONEY.test(edit.cash) ? R(edit.cash) : "—"}</span></div>
       </div>

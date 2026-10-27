@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 
 interface M { sales: number; tips: number; count: number }
 export interface ShiftData {
-  period_start: string; methods: Record<string, M>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number;
+  period_start: string; methods: Record<string, M>; total_sales: number; total_tips: number; tip_payouts: number; expected_cash: number; cash_opening?: number; cash_movements?: number;
   tabs: { id: string; name: string; method: string | null; operator: string | null; at: string; sales: number; tip: number }[];
   staff_tips: { name: string; amount: number }[];
 }
@@ -34,6 +34,7 @@ export function ShiftSummary({ data, tipsEnabled }: { data?: ShiftData; tipsEnab
       <div className="flex justify-between"><span>Opening cash</span><span className="tabular-nums">{R(data.cash_opening)}</span></div>
       <div className="flex justify-between"><span>+ Cash sales{tipsEnabled ? " & tips" : ""}</span><span className="tabular-nums">{R(Number(data.methods?.cash?.sales ?? 0) + Number(data.methods?.cash?.tips ?? 0))}</span></div>
       {tipsEnabled && <div className="flex justify-between"><span>− Tips paid out</span><span className="tabular-nums">{R(data.tip_payouts)}</span></div>}
+      {Number(data.cash_movements ?? 0) !== 0 && <div className="flex justify-between"><span>Other cash received / paid out</span><span className="tabular-nums">{R(data.cash_movements)}</span></div>}
       <div className="flex justify-between font-semibold"><span>Current cash balance</span><span className="tabular-nums">{R(data.expected_cash)}</span></div>
     </div>
   </Card>;

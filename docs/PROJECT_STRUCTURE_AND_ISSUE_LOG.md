@@ -1,3 +1,7 @@
+## 2026-10-27 — Manual cash expense omitted from bar cash-up
+- Uitsig's R230 Cleaning Material expense correctly reduced the cash ledger on 26 October, but the 27 October cash-up expected R250 instead of the R20 counted: opening R230 + cash sales R20 omitted the R230 expense. No write-off was posted.
+- Shared cash summary now includes net in-period cash journal movements, subtracting already counted sales/tips/payouts and excluding cash-up reconciliation journals. Saved-edit reconciliation retains the movement snapshot; current cash-up, running totals and report show other cash received/paid out separately. All club cash remains the approved source; no separate petty cash account.
+
 ## 2026-10-26 — Single-barman end-shift dialog misleadingly selects All barmen
 - Symptom: Deon selecting his own name also checked All barmen, causing concern that Wynand's attendance would end.
 - Finding: the aggregate checkbox reflected only this device's retained PIN sessions; with one session it duplicated the individual checkbox. It did not represent staff on other counters.

@@ -329,6 +329,7 @@ export type AccountGuess = { account: string; confidence: "high" | "low" };
 
 const RULES: Array<{ re: RegExp; account: string; sign?: "in" | "out" }> = [
   { re: /bank charge|service fee|admin fee|monthly fee|cash dep fee|fee:/i, account: "bank_charges", sign: "out" },
+  { re: /squash\s*hub|stratus|online app booking/i, account: "squashhub_subscription", sign: "out" },
   { re: /yoco|stitch|payfast|card fee|merchant fee/i, account: "gateway_fees", sign: "out" },
   { re: /eskom|electric|prepaid meter|city power|municipal|ligte|krag/i, account: "electricity", sign: "out" },
   // Security / guarding suppliers (incl. common SA armed-response brands and Afrikaans "sekuriteit")

@@ -34,14 +34,18 @@ export async function loadProjectedFixtures(champ: any): Promise<ProjectedChampF
 }
 
 export async function createDecidedSwissGames(tid: string): Promise<{ created: number; booked: number; issues: string[] }> {
-  if (isFrozenUitsigTournament(tid)) return { created: 0, booked: 0, issues: ["Existing Uitsig tournament is protected; no pairing or booking updates performed."] };
+  // Approved 27 Oct 2026 exception: the frozen Uitsig tournament may receive ONLY engine-certified
+  // round-robin-finish fixtures (group positions proven final under every outstanding outcome).
+  // No other pairings, no court bookings, no retries — members book those fixtures themselves.
+  const frozenUitsig = isFrozenUitsigTournament(tid);
   const sb = supabase as any;
   const { data: champ } = await sb.from("club_champs").select("*").eq("id", tid).maybeSingle();
   if (!champ) return { created: 0, booked: 0, issues: [] };
-  const input = await loadProjectionInput(champ);
-  const list = [...projectCourtFixtures(input), ...projectDecidedPlayByFixtures(input)];
+  const input = frozenUitsig ? { ...(await loadProjectionInput(champ)), partialGeneration: true } : await loadProjectionInput(champ);
+  const list = [...projectCourtFixtures(input), ...projectDecidedPlayByFixtures(input)]
+    .filter((f) => !frozenUitsig || f.rrFinishBlock === true);
   let created = 0, booked = 0; const issues: string[] = [];
-  for (const f of projectSwissBookingRetries(input)) {
+  for (const f of frozenUitsig ? [] : projectSwissBookingRetries(input)) {
     const { error } = await sb.rpc("self_schedule_champ_match", { p_match_id: f.matchId, p_court_id: f.courtId, p_date: f.date, p_time: `${f.time}:00`, p_duration_minutes: f.minutes });
     if (error) issues.push(`${f.title}: court booking retry failed (${error.message})`);
     else booked++;
@@ -51,7 +55,8 @@ export async function createDecidedSwissGames(tid: string): Promise<{ created: n
     if (error || !id) { issues.push(`${f.title}: ${error?.message ?? "not created"}`); continue; }
     created++;
     // The existing round row owns the play-by deadline. Leave court/time/booking empty.
-    if (!("courtId" in f)) continue;
+    // Frozen Uitsig exception: never auto-book — members book these fixtures themselves.
+    if (frozenUitsig || !("courtId" in f)) continue;
     const { error: be } = await sb.rpc("self_schedule_champ_match", { p_match_id: id, p_court_id: f.courtId, p_date: f.date, p_time: `${f.time}:00`, p_duration_minutes: f.minutes });
     if (be) issues.push(`${f.title}: game created, court not booked (${be.message})`); else booked++;
   }

@@ -28,11 +28,15 @@ export interface ProjectionInput {
   courts: Array<{ id: number | string; name?: string | null }>;
   groupLabel?: (gn: number) => string;
   noRepeats?: boolean;
+  /** Club pilot flag (tournament_swiss_partial_rounds): emit certified settled pairings early. */
+  partialGeneration?: boolean;
 }
 
 export interface DecidedPlayByFixture {
   champId: string; group: number; round: number;
   aId: string; bId: string; title: string; playBy: string;
+  /** Certified round-robin finish block created before earlier RR rounds complete. */
+  rrFinishBlock?: boolean;
 }
 
 function swissStage(champ: any, arch: any, gn: number): { rounds: number | null; tieBreaks?: string[]; schedule?: any; rrFinish?: RrFinish } | null {
@@ -121,21 +125,25 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
     model.rrFinish = st.rrFinish;
     const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
-    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats }); } catch { continue; }
+    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...(i.partialGeneration ? { partialGeneration: true } : {}) }); } catch { continue; }
     if (grid.issues.length) continue;
     // Per game: skip a pairing once either player already has a saved game in that round.
     const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));
     for (const rd of grid.rounds) {
       if (rd.round < 2) continue;
-      if (st.rrFinish?.enabled && !model.rounds.find((r) => r.round === rd.round - 1)?.complete) continue;
+      const prevComplete = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
       const deadline = appliedPlayBy[rd.round];
       if (playByOnly ? !deadline : !!deadline) continue;
       for (const b of rd.blocks) {
         const [x, y] = b.rows;
         if (!x.id || !y.id || x.pos == null || y.pos == null) continue;
+        // Round-robin finish stages normally wait for the previous round; only engine-certified
+        // blocks (group positions proven final) may be created while it is still open.
+        if (st.rrFinish?.enabled && !prevComplete && !b.certified) continue;
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id)) continue;
+        const early = b.certified === true && !prevComplete ? { rrFinishBlock: true as const } : {};
         if (playByOnly) {
-          out.push({ champId: champ.id, group: gn, round: rd.round, aId: x.id, bId: y.id, title: `${x.name} v ${y.name}`, playBy: deadline });
+          out.push({ champId: champ.id, group: gn, round: rd.round, aId: x.id, bId: y.id, title: `${x.name} v ${y.name}`, playBy: deadline, ...early });
           continue;
         }
         const s = gSlots[b.scheduleKey ?? fixtureKey(rd.round, Math.min(x.pos, y.pos), Math.max(x.pos, y.pos))];
@@ -146,6 +154,7 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
           date: s.date, time: s.time, courtId: Number(s.courtId), minutes: dur,
           title: `${x.name} v ${y.name}`, aId: x.id, bId: y.id,
           context: `${i.groupLabel?.(gn) ?? `Group ${gn}`} · Round ${rd.round} · Position ${x.pos} v ${y.pos}`,
+          ...early,
         });
       }
     }

@@ -24,7 +24,8 @@ describe("partial Swiss round generation (settled positions)", () => {
     const grid = buildProposedSwissGrid(model(), { schedule: null, partialGeneration: true });
     const r3 = grid.rounds.find((r) => r.round === 3)!;
     const certified = r3.blocks.filter((b) => b.certified);
-    expect(certified.map(pairOf).sort()).toEqual(["P1|P2", "P3|P4"]);
+    // The optimizer's lookahead may pair P3/P4 differently across scenarios — only P1 v P2 is provably stable.
+    expect(certified.map(pairOf).sort()).toEqual(["P1|P2"]);
     // Every other slot stays open — no ids, no names.
     const rest = r3.blocks.filter((b) => !b.certified);
     expect(rest.length).toBeGreaterThan(0);
@@ -88,19 +89,20 @@ describe("certified round-robin finish block", () => {
     return buildProposedSwissGrid(m, { schedule: null, ...(flag ? { partialGeneration: true } : {}) });
   };
 
-  it("certifies the whole group block (rounds 3-5) once group positions are final", () => {
+  it("certifies each round-robin group independently once its four positions are final", () => {
     const grid = rrModel(true);
     const certified = grid.rounds.filter((r) => r.round >= 3).flatMap((r) => r.blocks.filter((b) => b.certified));
-    expect(certified).toHaveLength(18); // 3 groups × 2 games × 3 rounds
+    // Positions 1-8 are provably final (groups A and B); positions 9-12 still move with p17 v p18.
+    expect(certified).toHaveLength(12); // 2 groups × 2 games × 3 rounds
     for (const b of certified) {
       expect(b.rows[0].id).not.toBeNull();
       expect(b.rows[1].id).not.toBeNull();
-      expect(Math.max(b.rows[0].pos ?? 99, b.rows[1].pos ?? 99)).toBeLessThanOrEqual(12);
+      expect(Math.max(b.rows[0].pos ?? 99, b.rows[1].pos ?? 99)).toBeLessThanOrEqual(8);
     }
-    // The Swiss remainder (positions 13-18) is not final while p17 v p18 is open.
-    const remainder = grid.rounds.filter((r) => r.round >= 3).flatMap((r) => r.blocks.filter((b) => (b.rows[0].pos ?? 0) >= 13 || (b.rows[1].pos ?? 0) >= 13));
-    expect(remainder.length).toBeGreaterThan(0);
-    expect(remainder.every((b) => !b.certified)).toBe(true);
+    // Group C and the Swiss remainder are not final while p17 v p18 is open.
+    const rest = grid.rounds.filter((r) => r.round >= 3).flatMap((r) => r.blocks.filter((b) => (b.rows[0].pos ?? 0) >= 9 || (b.rows[1].pos ?? 0) >= 9));
+    expect(rest.length).toBeGreaterThan(0);
+    expect(rest.every((b) => !b.certified)).toBe(true);
   });
 
   it("certifies nothing without the pilot flag", () => {

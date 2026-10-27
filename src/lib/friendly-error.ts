@@ -14,7 +14,7 @@ const PERMISSION_PATTERNS = [
   /row-level security/i,
   /violates row[- ]level security policy/i,
   /permission denied/i,
-  /not authorized/i,
+  /not authori[sz]ed/i,
   /\bRLS\b/i,
   /policy.*violat/i,
   /403/,

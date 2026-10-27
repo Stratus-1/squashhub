@@ -501,6 +501,10 @@ Deno.serve(async (req) => {
       if (!response.ok) return json({ error: `GoBook balance request failed (${response.status})` }, 502);
       const value = response.status === 204 ? null : await response.json();
       const balance = goBookBalance(value, clientId);
+      if (!balance && value) {
+        const first = Array.isArray(value) ? value[0] : value;
+        console.info("GoBook balance response shape", JSON.stringify({ array: Array.isArray(value), keys: first && typeof first === "object" ? Object.keys(first) : [], nested: first && typeof first === "object" ? Object.entries(first).filter(([, v]) => v && typeof v === "object").map(([k, v]) => ({ key: k, array: Array.isArray(v), keys: Object.keys(Array.isArray(v) ? v[0] ?? {} : v) })) : [] }));
+      }
       return json({ success: true, state: balance ? "available" : "unavailable", balance: balance?.balance ?? null, asAt: balance?.asAt ?? null });
     }
 

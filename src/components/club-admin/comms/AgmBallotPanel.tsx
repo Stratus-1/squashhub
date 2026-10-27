@@ -113,6 +113,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
   const [deadline, setDeadline] = useState(toLocalInput(ballot.deadline));
   const [declaration, setDeclaration] = useState(ballot.declaration);
   const [allowSelf, setAllowSelf] = useState(!!ballot.allow_self_actions);
+  const [allowSelfVote, setAllowSelfVote] = useState(!!ballot.allow_self_vote);
   const [text, setText] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string> | null>(null);
   const [channels, setChannels] = useState({ email: true, whatsapp: false });
@@ -162,7 +163,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     const parsed = positionsLocked ? [] : parseBallotText(ballotText, { allowEmpty: true });
     const { error } = await db("agm_ballots").update({
       title: title.trim(), declaration: declaration.trim(), deadline: new Date(deadline).toISOString(),
-      allow_self_actions: allowSelf,
+      allow_self_actions: allowSelf, allow_self_vote: allowSelfVote,
     }).eq("id", ballot.id);
     if (error) throw error;
     if (positionsLocked) return;
@@ -265,9 +266,9 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         content: {
           email: {
             subject: `${title} — nominations for the committee`,
-            body: `<p>Dear {{name}},</p><p>Nominations are open for next year's committee. ${allowSelf ? "You can nominate yourself and/or other members" : "You can nominate other members"} for each position.</p><p><a href="{{nomination_link}}">Make your nominations</a></p><p>Members nominated by someone else are asked on the same page to accept or decline. Only accepted nominations go onto the ballot.</p><p>Nominations close <strong>${closes}</strong>.</p>`,
-          },
-          whatsapp: { body: `Hi {{first_name}}, nominations for the ${title} committee are open until ${closes}. ${allowSelf ? "Nominate yourself or others" : "Nominate other members"}, and accept nominations you receive: {{nomination_link}}` },
+            body: `<p>Dear {{name}},</p><p>Nominations are open for next year's committee. You can nominate another member for a position${allowSelf ? ", or make yourself available to serve on the committee and choose the position or function you would like to fulfil" : ""}.</p><p><a href="{{nomination_link}}">Make your nominations</a></p><p>Members nominated by someone else are asked on the same page to accept or decline. Only accepted nominations go onto the ballot.</p><p>Nominations close <strong>${closes}</strong>.</p>`,
+},
+          whatsapp: { body: `Hi {{first_name}}, nominations for the ${title} committee are open until ${closes}. Nominate another member${allowSelf ? ", or make yourself available for the position you would like to fill" : ""}, and accept nominations you receive: {{nomination_link}}` },
         },
       });
       return rows.length;
@@ -306,8 +307,13 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
 
         <label className="flex items-start gap-2 text-xs cursor-pointer">
           <Checkbox checked={allowSelf} onCheckedChange={(v) => setAllowSelf(v === true)} className="mt-0.5" />
-          <span><span className="font-semibold">Allow self-nominations and self-votes.</span>{" "}
-            <span className="text-muted-foreground">When off (the usual choice), members can only nominate other members and their own name is hidden on their ballot.</span></span>
+          <span><span className="font-semibold">Allow members to make themselves available (self-nomination).</span>{" "}
+            <span className="text-muted-foreground">When on, members can nominate another person or put their own name forward for the position or function they would like to fulfil. When off, they can only nominate other members.</span></span>
+        </label>
+        <label className="flex items-start gap-2 text-xs cursor-pointer">
+          <Checkbox checked={allowSelfVote} onCheckedChange={(v) => setAllowSelfVote(v === true)} className="mt-0.5" />
+          <span><span className="font-semibold">Allow members to vote for themselves.</span>{" "}
+            <span className="text-muted-foreground">When off, a member's own name is hidden on their ballot. You can change this until voting opens.</span></span>
         </label>
 
         <div>

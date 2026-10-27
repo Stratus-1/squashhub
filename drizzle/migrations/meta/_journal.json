@@ -1989,6 +1989,13 @@
       "when": 1793098644708,
       "tag": "0283_agm_nomination_link_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 284,
+      "version": "7",
+      "when": 1793101152176,
+      "tag": "0284_agm_separate_self_vote_option",
+      "breakpoints": true
     }
   ]
 }

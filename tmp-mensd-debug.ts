@@ -45,3 +45,10 @@ console.log("grid issues:", grid.issues); console.log("tieBreaks passed:", st?.t
 for (const rd of grid.rounds) {
   console.log(`round ${rd.round}:`, rd.blocks.map((b: any) => ({ a: b.rows[0]?.name, aId: !!b.rows[0]?.id, b: b.rows[1]?.name, bId: !!b.rows[1]?.id, certified: b.certified })));
 }
+
+// replicate RR-finish branch internals
+const locked = !!model.rounds.find((r: any) => r.round === 2)?.complete;
+const openR2b = !locked ? model.rounds.filter((r: any) => r.round <= 2 && r.created && !r.complete).sort((a: any, b: any) => a.round - b.round)[0] ?? null : null;
+console.log("locked:", locked, "openR2:", openR2b?.round, "round2 created:", model.rounds.find((r:any)=>r.round===2)?.created);
+const snapshot2 = [...model.rows].sort((a: any, b: any) => (a.current ?? 0) - (b.current ?? 0)).map((r: any) => r.id);
+console.log("snapshot:", snapshot2.map((id: string) => names[id]));

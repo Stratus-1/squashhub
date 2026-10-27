@@ -62,6 +62,30 @@ describe("Swiss + round robin finish — projected Rounds 3–5 stay within grou
     }
     expect(JSON.stringify(m)).toBe(original);
   });
+  it("blanks only the unsettled slots when a single Round 2 game is still open (the Andre v Wynand case)", () => {
+    // R1: seed i beats i+9. R2: winners/losers paired off and decided, except p17 v p18.
+    // Hand-verified: p1,p3,p5,p7 hold ranks 1-4 and p2,p4,p6,p8 hold ranks 5-8 under BOTH
+    // outcomes of p17 v p18 (that game only moves their own and p8/p9-adjacent Buchholz),
+    // while every position from 9 down changes with the result.
+    const r1 = Array.from({ length: 9 }, (_, i) => ({ id: `r1-${i}`, round: 1, a: `p${i + 1}`, b: `p${i + 10}`, winner: `p${i + 1}`, status: "completed" }));
+    const r2 = [
+      ["p1", "p2"], ["p3", "p4"], ["p5", "p6"], ["p7", "p8"],
+      ["p9", "p10"], ["p11", "p12"], ["p13", "p14"], ["p15", "p16"],
+    ].map(([a, b], i) => ({ id: `r2-${i}`, round: 2, a, b, winner: a, status: "completed" }));
+    r2.push({ id: "r2-open", round: 2, a: "p17", b: "p18", winner: null, status: "scheduled" });
+    const m = buildSwissProgression({ seedOrder: Array.from({ length: 18 }, (_, i) => `p${i + 1}`), names: {}, matches: [...r1, ...r2], totalRounds: 5 });
+    m.rrFinish = { enabled: true, groups: 3 };
+    const grid = buildProposedSwissGrid(m, { exactMensCChart: true });
+    const r3 = grid.rounds.find((r) => r.round === 3)!;
+    const byPos = new Map(r3.blocks.flatMap((b) => b.rows.map((r) => [r.pos, r.id] as const)));
+    // Settled positions keep their names…
+    expect([byPos.get(1), byPos.get(2), byPos.get(3), byPos.get(4)]).toEqual(["p1", "p3", "p5", "p7"]);
+    expect([byPos.get(5), byPos.get(6), byPos.get(7), byPos.get(8)]).toEqual(["p2", "p4", "p6", "p8"]);
+    // …unsettled positions stay open slots, and the undecided players never appear.
+    for (const pos of [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]) expect(byPos.get(pos)).toBeNull();
+    expect([...byPos.values()]).not.toContain("p17");
+    expect([...byPos.values()]).not.toContain("p18");
+  });
   it("Men's C 18 players, 3×4, Round 2 still in progress (provisional), even with the fixed 18-player chart", () => check(18, 3, false, true));
   it("Men's C 18 players, 3×4, Round 2 complete", () => check(18, 3, true, true));
   it("Men's D 16 players, 4×4, Round 2 still in progress", () => check(16, 4, false, false));

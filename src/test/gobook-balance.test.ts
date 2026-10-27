@@ -45,7 +45,7 @@ function harness({ owner = true, enabled = true, linked = true, adminRole = fals
       return q;
     },
   };
-  vm.runInNewContext(compiled, { createClient: () => admin, goBookBalance, fetch, Request, Response, URL, AbortSignal, console,
+  vm.runInNewContext(compiled, { createClient: () => admin, goBookBalance, fetch, Request, Response, URL, AbortSignal: { timeout: () => undefined }, console,
     Deno: { env: { get: () => "fake" }, serve: (fn: typeof handler) => { handler = fn; } } });
   return { calls, run: (overrides = {}) => handler(new Request("http://localhost/balance", { method: "POST", headers: { Authorization: "Bearer fake" }, body: JSON.stringify({ action: "my_balance", club_id: "club", club_member_id: "member", client_id: 159, ...overrides }) })) };
 }

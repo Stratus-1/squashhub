@@ -21,7 +21,8 @@ const PERMISSION_PATTERNS = [
   /401/,
 ];
 
-const PERMISSION_CODES = new Set(["42501", "PGRST301", "PGRST204", "P0001"]);
+// P0001 is any server-raised exception (e.g. "Add at least one position"); only treat it as permission when the message says so.
+const PERMISSION_CODES = new Set(["42501", "PGRST301", "PGRST204"]);
 
 export function friendlyError(err: any): FriendlyError {
   const raw = err?.message || err?.error_description || err?.error || String(err || "");

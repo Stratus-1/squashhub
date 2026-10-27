@@ -113,11 +113,11 @@ describe("certified round-robin finish block", () => {
   it("certifies a pairing once both positions are final, even while the rest of the group is open", () => {
     // 8 players, 2 groups of 4, position-swap: p7 v p8 of Round 2 is still open, so only
     // positions 7 and 8 move. Group 2 is NOT fully settled, yet p5 v p6 (slots 1 v 2) is fixed.
-    const r1 = [["p1", "p5"], ["p2", "p6"], ["p3", "p7"], ["p4", "p8"]]
+    const r1 = [["P1", "P5"], ["P2", "P6"], ["P3", "P7"], ["P4", "P8"]]
       .map(([a, b], i) => ({ id: `s-r1-${i}`, round: 1, a, b, winner: a, status: "completed" }));
-    const r2 = [["p1", "p2"], ["p3", "p4"], ["p5", "p6"]]
+    const r2 = [["P1", "P2"], ["P3", "P4"], ["P5", "P6"]]
       .map(([a, b], i) => ({ id: `s-r2-${i}`, round: 2, a, b, winner: a, status: "completed" }));
-    r2.push({ id: "s-r2-open", round: 2, a: "p7", b: "p8", winner: null, status: "scheduled" });
+    r2.push({ id: "s-r2-open", round: 2, a: "P7", b: "P8", winner: null, status: "scheduled" });
     const m = buildSwissProgression({
       seedOrder: P, names: {}, totalRounds: 5, tieBreaks: ["position_swap"],
       matches: [...r1, ...r2],
@@ -125,10 +125,10 @@ describe("certified round-robin finish block", () => {
     m.rrFinish = { enabled: true, groups: 2 };
     const grid = buildProposedSwissGrid(m, { schedule: null, partialGeneration: true });
     const certified = grid.rounds.filter((r) => r.round >= 3).flatMap((r) => r.blocks.filter((b) => b.certified));
-    // Group 1 (positions 1-4) is fully final: all six of its games. Group 2 adds only p5 v p6 in Round 5.
-    expect(certified.map(pairOf).sort()).toEqual(["p1|p2", "p1|p3", "p1|p4", "p2|p3", "p2|p4", "p3|p4", "p5|p6"]);
-    expect(certified.find((b) => pairOf(b) === "p5|p6")?.rows.every((r) => r.id)).toBe(true);
+    // Group 1 (positions 1-4) is fully final: all six of its games. Group 2 adds only P5 v P6 in Round 5.
+    expect(certified.map(pairOf).sort()).toEqual(["P1|P2", "P1|P3", "P1|P4", "P2|P3", "P2|P4", "P3|P4", "P5|P6"]);
+    expect(certified.find((b) => pairOf(b) === "P5|P6")?.rows.every((r) => r.id)).toBe(true);
     // Nothing touching the open positions 7-8 is ever certified.
-    expect(certified.some((b) => b.rows.some((r) => r.id === "p7" || r.id === "p8" || r.id === null))).toBe(false);
+    expect(certified.some((b) => b.rows.some((r) => r.id === "P7" || r.id === "P8" || r.id === null))).toBe(false);
   });
 });

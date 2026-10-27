@@ -63,6 +63,8 @@ type Draft = ParsedBankRow & {
   discarded: boolean;
   fromRule: boolean;
   touched: boolean;
+  /** account already allocated this session (by hand or by an earlier choice) — later choices must not overwrite it */
+  accountLocked?: boolean;
 };
 
 const BANK_ACCOUNT = "bank_current";
@@ -244,7 +246,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     appliedSig.current = rulesSig;
     setDrafts((prev) =>
       prev.map((d) => {
-        if (d.touched) return d;
+        if (d.touched || d.accountLocked) return d;
         const rule = matchRule(rules, d.key, d.amount > 0 ? "in" : "out");
         if (!rule) return d;
         const acc = ruleAccountValue(rule);
@@ -268,10 +270,10 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     let applied = 0;
     setDrafts((prev) =>
       prev.map((p, idx) => {
-        if (idx === index) return { ...p, account: value, touched: true };
-        if (p.touched || p.key !== target.key || (p.amount > 0 ? "in" : "out") !== dir) return p;
+        if (idx === index) return { ...p, account: value, touched: true, accountLocked: true };
+        if (p.touched || p.accountLocked || p.key !== target.key || (p.amount > 0 ? "in" : "out") !== dir) return p;
         applied += 1;
-        return { ...p, account: value, fromRule: true };
+        return { ...p, account: value, fromRule: true, accountLocked: true };
       }),
     );
     if (target.key) {

@@ -17,8 +17,7 @@ const PERMISSION_PATTERNS = [
   /not authori[sz]ed/i,
   /\bRLS\b/i,
   /policy.*violat/i,
-  /403/,
-  /401/,
+  /(^|\s)40[13](\s|$)/,
 ];
 
 // P0001 is any server-raised exception (e.g. "Add at least one position"); only treat it as permission when the message says so.

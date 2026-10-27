@@ -145,7 +145,17 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       return data as any[];
     },
   });
-  const chosen = selected ?? new Set(voters.filter((v) => v.suggested).map((v) => v.club_member_id));
+  // Once nominations were sent, the ticked list defaults to the members who got nomination links.
+  const { data: nominatorIds } = useQuery({
+    queryKey: ["agm-nominator-ids", ballot.id],
+    enabled: nomStage !== "none",
+    queryFn: async () => {
+      const { data, error } = await db("agm_nominators").select("club_member_id").eq("ballot_id", ballot.id);
+      if (error) throw error;
+      return (data as any[]).map((r) => r.club_member_id as string);
+    },
+  });
+  const chosen = selected ?? (nominatorIds?.length ? new Set(nominatorIds) : new Set(voters.filter((v) => v.suggested).map((v) => v.club_member_id)));
   const noFeeRecords = voters.length > 0 && !voters.some((v) => v.has_fee_record);
 
   const save = async () => {
@@ -182,9 +192,12 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       if (!ch.length) throw new Error("Tick at least one channel");
       if (!ballot.meeting_at) throw new Error("Add and save the meeting date & time first");
       await save();
-      // Invitation goes to every active member; only eligible voters also get a voting link.
+      const empty = (positions ?? []).filter((p) => !p.nominees.length).map((p) => p.title);
+      if (empty.length) throw new Error(`These positions have no accepted nominees yet: ${empty.join(", ")}. Add a nominee or remove the position before opening voting.`);
+      if (!chosen.size) throw new Error("Tick at least one member");
+      // Invitation and voting link go only to the members ticked in step 1.
       // Issue invites first so a failure never leaves the ballot half-opened.
-      const { data: inv, error: ie } = await rpc("agm_issue_invites", { p_ballot_id: ballot.id, p_member_ids: voters.map((v) => v.club_member_id) });
+      const { data: inv, error: ie } = await rpc("agm_issue_invites", { p_ballot_id: ballot.id, p_member_ids: [...chosen] });
       if (ie) throw ie;
       const { data, error } = await rpc("agm_open_ballot", { p_ballot_id: ballot.id, p_member_ids: [...chosen] });
       if (error) throw error;
@@ -346,7 +359,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         : <AgmNominationsCard key={`n-${ballot.id}`} clubId={clubId} ballot={ballot} />}
 
       <StepHeader step={3} title="AGM invitation & voting" state="current"
-        desc="Add the meeting details and documents, then send the invitation to every member and open the secret ballot for the eligible members ticked in step 1." />
+        desc="Add the meeting details and documents, then send the invitation and open the secret ballot for the members ticked in step 1." />
       <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />
       <Card className="p-3 space-y-3">
         <div className="grid sm:grid-cols-2 gap-2">
@@ -360,7 +373,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         <div className="flex gap-2 justify-end">
           <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save draft</Button>
           <Button size="sm" disabled={openMut.isPending || nomStage === "open"}
-            onClick={() => { if (confirm(`Send the AGM invitation to all ${voters.length} active members and open voting for ${chosen.size} eligible voters? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
+            onClick={() => { if (confirm(`Send the AGM invitation and voting link to the ${chosen.size} ticked members? Positions, nominees and the voter list cannot be changed afterwards.`)) openMut.mutate(); }}>
             {openMut.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Sending invitations…</> : <><Send className="w-3.5 h-3.5 mr-1" />Send invitations & open voting</>}
           </Button>
         </div>

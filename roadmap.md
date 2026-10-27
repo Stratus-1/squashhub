@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Resolve Nelspruit Court 2 league scoring on phones/tablets, verify the scoring flow, and publish.
+
 - [x] GoBook: read-only member balances in My account and Court bookings for API-enabled GoBook clubs; 21 focused tests pass, live CSIR accounts/refresh verified on both pages; backend deployed, frontend not published.
 
 - [x] AGM: self-nomination & self-vote as admin-configurable option per ballot (DB flag, RPC enforcement, admin toggle, nomination/ballot UI)

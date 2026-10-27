@@ -67,6 +67,46 @@ type Draft = ParsedBankRow & {
 
 const BANK_ACCOUNT = "bank_current";
 
+type AccountOption = { code: string; label: string; category: string };
+
+/** Searchable account picker — plain selects can't be typed into. */
+function AccountCombobox({ value, options, onChange }: { value: string; options: AccountOption[]; onChange: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.code === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="h-7 w-full justify-between gap-1 px-2 text-xs font-normal">
+          <span className="truncate">{selected?.label ?? value}</span>
+          <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search accounts…" />
+          <CommandList>
+            <CommandEmpty>No account found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((a) => (
+                <CommandItem
+                  key={a.code}
+                  value={a.label}
+                  onSelect={() => { onChange(a.code); setOpen(false); }}
+                >
+                  <Check className={cn("mr-1 h-3 w-3 shrink-0", a.code === value ? "opacity-100" : "opacity-0")} />
+                  {a.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
+
 
 export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts }: Props) {
   const qc = useQueryClient();

@@ -1933,6 +1933,13 @@
       "when": 1793079384676,
       "tag": "0275_verify_cash_up_cash_expense_regression",
       "breakpoints": true
+    },
+    {
+      "idx": 276,
+      "version": "7",
+      "when": 1793079753176,
+      "tag": "0276_cash_up_final_working_person_only",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
+import { GoBookBalance } from "@/components/GoBookBalance";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -2094,6 +2095,8 @@ export default function Bookings() {
         </div>
       )}
 
+
+      <GoBookBalance clubId={myClub?.id} memberId={activeMember?.id} />
 
       {/* Upcoming games first */}
       <div className="mt-2">

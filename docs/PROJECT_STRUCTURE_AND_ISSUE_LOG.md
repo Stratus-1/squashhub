@@ -1,3 +1,6 @@
+## 2026-10-27 — GoBook Court Manager balance display
+- Added an authenticated read-only member balance action using the saved club API connection and server-verified member/client link. Account and Court bookings share a compact balance and last-refresh display, gated by uses_gobook and gobook_api_enabled. Missing links/amounts and provider failures never display a false zero; no credits, member links, bookings or payments are changed.
+
 ## 2026-10-27 — Secret AGM run-off ballots
 - Closed tied seats now offer an explicit admin-opened run-off deadline; only server-computed candidates tied across the remaining seat cut-off are copied. Already elected candidates and original anonymous receipts remain intact. Each child uses separate voter/receipt records and preserves the self-vote setting; existing personal links resolve to child rounds, with fresh one-vote and deadline enforcement. Repeated opening is idempotent; repeated ties can have another child round.
 - Admin can separately send run-off emails through Communications; opening alone sends nothing. Original and run-off results/PDFs remain separately accessible after closing. Shared web/PWA/native pages, no native integration changes.

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { GoBookBalance } from "@/components/GoBookBalance";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
@@ -810,6 +811,8 @@ export default function MyAccount() {
         title={isPayingForOther ? `Paying for ${accountName}` : (isViewingAs ? `${accountName}'s Account` : "My Account")}
         subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : (club as any)?.tenant_type === "association" ? " · league number pending" : ""}`}
       />
+
+      {!isPayingForOther && <GoBookBalance clubId={club?.id} memberId={activeMember?.id} />}
 
       {/* Pay-for switcher — accounts the user has been granted delegate access to */}
       {(managedDelegations || []).length > 0 && (

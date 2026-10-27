@@ -13,6 +13,7 @@ import { sendComms } from "@/lib/comms/send";
 import { AgmMeetingCard } from "./AgmMeetingCard";
 import { AgmTestEmail } from "./AgmTestEmail";
 import { AgmNominationsCard } from "./AgmNominationsCard";
+import { runoffForPosition } from "@/lib/agm/runoff";
 import {
   buildInviteLink, buildNominationLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, DEFAULT_INVITATION_MESSAGE, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
 } from "@/lib/agm/ballot";
@@ -85,8 +86,10 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
         : <>
             <StepHeader step={3} title="AGM invitation & voting" state="current"
               desc="The meeting invitation and attendance replies are below, followed by turnout and — after the deadline — the results." />
-            <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />
-            <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />
+            {!ballot.runoff_parent_id && <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />}
+            {ballot.runoff_parent_id && <Button variant="outline" size="sm" onClick={() => setSelectedId(ballot.runoff_parent_id)}>Original round results</Button>}
+            <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot}
+              runoff={ballots.find((b) => b.runoff_parent_id === ballot.id)} onSelect={setSelectedId} />
           </>)}
       {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballotId={ballot.id} />}
     </div>
@@ -389,10 +392,11 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
   );
 }
 
-function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
+function OpenBallot({ clubId, ballot, runoff, onSelect }: { clubId: string; ballot: any; runoff?: any; onSelect: (id: string) => void }) {
   const qc = useQueryClient();
   const closed = new Date(ballot.deadline) <= new Date();
   const [newDeadline, setNewDeadline] = useState(toLocalInput(ballot.deadline));
+  const [runoffDeadline, setRunoffDeadline] = useState(toLocalInput(new Date(Date.now() + 864e5).toISOString()));
 
   const { data: turnout = [] } = useQuery({
     queryKey: ["agm-turnout", ballot.id],
@@ -424,6 +428,43 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
     onError: (e: any) => toast({ title: "Could not extend", description: e.message, variant: "destructive" }),
   });
 
+  const tiedPositions = (results?.positions ?? []).flatMap((p: any) => {
+    const tie = runoffForPosition(p.tally, p.max_choices ?? 1);
+    return tie ? [{ ...tie, title: p.title }] : [];
+  });
+  const openRunoff = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await rpc("agm_open_runoff", { p_ballot_id: ballot.id, p_deadline: new Date(runoffDeadline).toISOString() });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: (id) => {
+      qc.invalidateQueries({ queryKey: ["agm-ballots", clubId] });
+      onSelect(id);
+      toast({ title: "Run-off opened", description: "Existing personal voting links now open the run-off. Original results are unchanged. No emails sent." });
+    },
+    onError: (e: any) => toast({ title: "Could not open run-off", description: e.message, variant: "destructive" }),
+  });
+
+  const sendRunoff = useMutation({
+    mutationFn: async () => {
+      const memberVars: Record<string, Record<string, string>> = {};
+      for (const member of turnout.filter((t) => !t.voted)) {
+        const { data, error } = await rpc("agm_reissue_token", { p_ballot_id: ballot.id, p_member_id: member.club_member_id });
+        if (error) throw error;
+        memberVars[member.club_member_id] = { vote_link: buildVoteLink(data as string, window.location.origin) };
+      }
+      if (!Object.keys(memberVars).length) throw new Error("No members are awaiting a run-off vote");
+      await sendComms({
+        clubId, name: ballot.title, channels: ["email"], audience: { type: "selected", memberIds: Object.keys(memberVars) }, memberVars,
+        meta: { purpose: "agm_ballot", ballot_id: ballot.id },
+        content: { email: { subject: ballot.title, body: `<p>Dear {{name}},</p><p>A second secret ballot is open between candidates tied for the remaining committee places. Candidates already elected in the original round remain elected.</p><p><a href="{{vote_link}}">Vote in the run-off</a></p><p>Voting closes ${fmt(ballot.deadline)}. You may submit one ballot in this round. Your choices remain confidential.</p>` } },
+      });
+    },
+    onSuccess: () => toast({ title: "Run-off emails queued" }),
+    onError: (e: any) => toast({ title: "Could not send run-off emails", description: e.message, variant: "destructive" }),
+  });
+
   const resend = useMutation({
     mutationFn: async (memberId: string) => {
       const { data, error } = await rpc("agm_reissue_token", { p_ballot_id: ballot.id, p_member_id: memberId });
@@ -446,7 +487,7 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
     try {
       const [{ data: club }, { data: inv, error: ie }] = await Promise.all([
         supabase.from("clubs").select("name,logo_url").eq("id", clubId).maybeSingle(),
-        (supabase as any).from("agm_invitees").select("rsvp,club_members(name)").eq("ballot_id", ballot.id),
+        (supabase as any).from("agm_invitees").select("rsvp,club_members(name)").eq("ballot_id", ballot.runoff_parent_id ?? ballot.id),
       ]);
       if (ie) throw ie;
       const list = (inv ?? []) as any[];
@@ -482,6 +523,22 @@ function OpenBallot({ clubId, ballot }: { clubId: string; ballot: any }) {
           {pdfBusy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}Results PDF</Button>}
       </div>
       <p className="text-sm">Turnout: <strong>{voted}</strong> of {turnout.length} eligible voters ({turnout.length ? Math.round((voted / turnout.length) * 100) : 0}%)</p>
+      {ballot.runoff_parent_id && !closed && <Button size="sm" variant="outline" disabled={sendRunoff.isPending || !turnout.some((t) => !t.voted)}
+        onClick={() => { if (confirm("Email a run-off voting link to eligible members who have not yet voted in this round?")) sendRunoff.mutate(); }}>
+        {sendRunoff.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />} {sendRunoff.isPending ? "Sending run-off emails…" : "Send run-off emails"}
+      </Button>}
+      {closed && runoff && <Button size="sm" variant="outline" onClick={() => onSelect(runoff.id)}>View run-off</Button>}
+      {closed && !runoff && tiedPositions.length > 0 && <div className="space-y-2 border-t border-border pt-3 print:hidden">
+        <p className="text-sm font-semibold">Second ballot — tied seats</p>
+        {tiedPositions.map((p: any) => <p key={p.title} className="text-xs">{p.title}: {p.tied.map((c: any) => c.name).join(", ")} · {p.remainingSeats} remaining {p.remainingSeats === 1 ? "place" : "places"}</p>)}
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-xs space-y-1"><span className="text-muted-foreground">Run-off deadline (your local time)</span>
+            <Input type="datetime-local" aria-label="Run-off deadline" value={runoffDeadline} onChange={(e) => setRunoffDeadline(e.target.value)} /></label>
+          <Button size="sm" disabled={openRunoff.isPending || !runoffDeadline} onClick={() => { if (confirm("Open a second secret ballot for tied candidates only? Original results stay unchanged; each eligible member may vote once in the new round. No emails will be sent yet.")) openRunoff.mutate(); }}>
+            {openRunoff.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Vote className="w-3.5 h-3.5 mr-1" />}Open run-off voting
+          </Button>
+        </div>
+      </div>}
 
       {!closed && (
         <>

@@ -4,6 +4,7 @@ import { Loader2, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { goBookBalanceTone, memberGoBookBalance } from "@/lib/gobook-member-balance";
 
 type Balance = { state: "available" | "not_linked" | "unavailable"; accounts?: { balance: number; asAt: string | null; accountName: string }[] };
 

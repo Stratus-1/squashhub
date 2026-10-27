@@ -121,7 +121,6 @@ export default function AgmNominate() {
               if (ok && id !== data.member_id) supabase.functions.invoke("agm-nominee-notify", { body: { token, position_id: p.id, nominee_id: id } }).catch(() => {});
             }} />
         ))}
-        ))}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </div>

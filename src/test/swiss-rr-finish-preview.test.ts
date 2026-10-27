@@ -22,6 +22,7 @@ function check(n: number, groups: number, round2Complete: boolean, exactMensCCha
   const m = model(n, groups, round2Complete);
   const grid = buildProposedSwissGrid(m, { exactMensCChart });
   const seen = new Set<string>();
+  const undecided = new Set(m.rounds.flatMap((r) => r.fixtures.filter((f) => f.state === "scheduled").flatMap((f) => [f.a, f.b])));
   for (const r of [3, 4, 5]) {
     const rd = grid.rounds.find((x) => x.round === r)!;
     const groupGames = rd.blocks.filter((b) => (b.rows[0].pos ?? 99) <= groups * 4 || (b.rows[1].pos ?? 99) <= groups * 4);
@@ -30,7 +31,9 @@ function check(n: number, groups: number, round2Complete: boolean, exactMensCCha
       const [x, y] = [b.rows[0].pos!, b.rows[1].pos!];
       // Same group of four: 1–4, 5–8, 9–12, 13–16 — never cross-group.
       expect(Math.ceil(x / 4)).toBe(Math.ceil(y / 4));
-      seen.add(key(b.rows[0].id!, b.rows[1].id!));
+      // A name may only appear where the position is settled — never a player whose game is undecided.
+      for (const row of b.rows) if (row.id) expect(undecided.has(row.id)).toBe(false);
+      if (b.rows[0].id && b.rows[1].id) seen.add(key(b.rows[0].id, b.rows[1].id));
     }
     if (r === 3) {
       const byPos = groupGames.map((b) => [b.rows[0].pos, b.rows[1].pos].sort((a, c) => a! - c!).join("v"));
@@ -40,7 +43,8 @@ function check(n: number, groups: number, round2Complete: boolean, exactMensCCha
       expect(byPos).toContain("6v7");
     }
   }
-  expect(seen.size).toBe(groups * 6); // everyone meets the other three in their group exactly once
+  if (round2Complete) expect(seen.size).toBe(groups * 6); // everyone meets the other three in their group exactly once
+  else expect(seen.size).toBe(0); // Round 2 undecided: with this many games open, no name is provably fixed
 }
 
 describe("Swiss + round robin finish — projected Rounds 3–5 stay within groups", () => {

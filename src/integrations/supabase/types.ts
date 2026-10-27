@@ -324,6 +324,7 @@ export type Database = {
       agm_ballots: {
         Row: {
           allow_self_actions: boolean
+          allow_self_vote: boolean
           club_id: string
           created_at: string
           created_by: string | null
@@ -343,6 +344,7 @@ export type Database = {
         }
         Insert: {
           allow_self_actions?: boolean
+          allow_self_vote?: boolean
           club_id: string
           created_at?: string
           created_by?: string | null
@@ -362,6 +364,7 @@ export type Database = {
         }
         Update: {
           allow_self_actions?: boolean
+          allow_self_vote?: boolean
           club_id?: string
           created_at?: string
           created_by?: string | null

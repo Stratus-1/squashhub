@@ -24707,6 +24707,7 @@ export type Database = {
         | "club_stock_expense"
         | "squashhub_subscription"
         | "internet_software"
+        | "salary_wages"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -24895,6 +24896,7 @@ export const Constants = {
         "club_stock_expense",
         "squashhub_subscription",
         "internet_software",
+        "salary_wages",
       ],
       integration_provider: [
         "strava",

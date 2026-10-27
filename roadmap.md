@@ -6,7 +6,8 @@
 - [x] Remove the Uitsig hard freeze entirely (done: policy neutralised, tests updated, engine rebuilt+deployed)
 - [x] Progression log: unsettled players show TBD in Round 3 preview; verified in preview, publish scheduled
 - [x] First generation run: Men's C R3/R4 certified fixtures + Men's B 2 created; Men's D correctly nothing (unsettled); walkover trigger auto-completed Tarryn v Brett (Brett withdrawn)
-- [ ] BLOCKED on Willem: Men's C/D Round 5 is configured "club"-scheduled (not play-by) with same date as R4 (12 Nov) — pre-existing since 21 Oct; needs decision before R5 fixtures generate
+- [x] Willem decided: Men's C/D Round 5 → play-by, deadline 19 Nov (correct the club-scheduled setting)
+- [ ] Apply R5 correction, re-run generation, verify Men's C R5 fixtures (Men's D stays unsettled)
 - [ ] Verify published site shows the corrected progression log
 - [ ] AGM ballot (Uitsig, OPEN): set "CLAP manager" position max_choices to 3 (like General Member)
 - [ ] Partial Swiss fixture generation: certified settled pairs + full RR block (Rounds 3–5) once post-R2 positions provably final; remainder stays incremental

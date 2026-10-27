@@ -109,4 +109,26 @@ describe("certified round-robin finish block", () => {
     const grid = rrModel(false);
     expect(grid.rounds.flatMap((r) => r.blocks).every((b) => !b.certified)).toBe(true);
   });
+
+  it("certifies a pairing once both positions are final, even while the rest of the group is open", () => {
+    // 8 players, 2 groups of 4, position-swap: p7 v p8 of Round 2 is still open, so only
+    // positions 7 and 8 move. Group 2 is NOT fully settled, yet p5 v p6 (slots 1 v 2) is fixed.
+    const r1 = [["P1", "P5"], ["P2", "P6"], ["P3", "P7"], ["P4", "P8"]]
+      .map(([a, b], i) => ({ id: `s-r1-${i}`, round: 1, a, b, winner: a, status: "completed" }));
+    const r2 = [["P1", "P2"], ["P3", "P4"], ["P5", "P6"]]
+      .map(([a, b], i) => ({ id: `s-r2-${i}`, round: 2, a, b, winner: a, status: "completed" }));
+    r2.push({ id: "s-r2-open", round: 2, a: "P7", b: "P8", winner: null, status: "scheduled" });
+    const m = buildSwissProgression({
+      seedOrder: P, names: {}, totalRounds: 5, tieBreaks: ["position_swap"],
+      matches: [...r1, ...r2],
+    });
+    m.rrFinish = { enabled: true, groups: 2 };
+    const grid = buildProposedSwissGrid(m, { schedule: null, partialGeneration: true });
+    const certified = grid.rounds.filter((r) => r.round >= 3).flatMap((r) => r.blocks.filter((b) => b.certified));
+    // Group 1 (positions 1-4) is fully final: all six of its games. Group 2 adds only P5 v P6 in Round 5.
+    expect(certified.map(pairOf).sort()).toEqual(["P1|P2", "P1|P3", "P1|P4", "P2|P3", "P2|P4", "P3|P4", "P5|P6"]);
+    expect(certified.find((b) => pairOf(b) === "P5|P6")?.rows.every((r) => r.id)).toBe(true);
+    // Nothing touching the open positions 7-8 is ever certified.
+    expect(certified.some((b) => b.rows.some((r) => r.id === "P7" || r.id === "P8" || r.id === null))).toBe(false);
+  });
 });

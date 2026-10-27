@@ -59,13 +59,15 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
       </Card>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-          <TabsTrigger value="queue">Scheduled & drafts</TabsTrigger>
-          <TabsTrigger value="log">Delivery log</TabsTrigger>
-          <TabsTrigger value="agm">AGM voting</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="w-max min-w-full justify-start">
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+            <TabsTrigger value="queue">Scheduled & drafts</TabsTrigger>
+            <TabsTrigger value="log">Delivery log</TabsTrigger>
+            <TabsTrigger value="agm">AGM voting</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="templates" className="mt-3">
           <CommsTemplatesPanel

@@ -339,6 +339,7 @@ export type Database = {
           nominations_close_at: string | null
           nominations_status: string
           opened_at: string | null
+          runoff_parent_id: string | null
           status: string
           title: string
         }
@@ -359,6 +360,7 @@ export type Database = {
           nominations_close_at?: string | null
           nominations_status?: string
           opened_at?: string | null
+          runoff_parent_id?: string | null
           status?: string
           title: string
         }
@@ -379,6 +381,7 @@ export type Database = {
           nominations_close_at?: string | null
           nominations_status?: string
           opened_at?: string | null
+          runoff_parent_id?: string | null
           status?: string
           title?: string
         }
@@ -388,6 +391,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_ballots_runoff_parent_id_fkey"
+            columns: ["runoff_parent_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
             referencedColumns: ["id"]
           },
         ]
@@ -20363,6 +20373,7 @@ export type Database = {
         Args: { _ballot: string; _draft_only: boolean }
         Returns: boolean
       }
+      _agm_effective_voter: { Args: { p_token: string }; Returns: string }
       _agm_finalize_nominations: {
         Args: { _ballot: string }
         Returns: undefined
@@ -20760,6 +20771,10 @@ export type Database = {
           club_member_id: string
           token: string
         }[]
+      }
+      agm_open_runoff: {
+        Args: { p_ballot_id: string; p_deadline: string }
+        Returns: string
       }
       agm_reissue_nomination_token: {
         Args: { p_ballot_id: string; p_member_id: string }

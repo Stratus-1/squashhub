@@ -80,12 +80,29 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
           })}
         </div>
       </Card>
-      {ballot && <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />}
-      {ballot && ballot.status === "draft" && ballot.nominations_status !== "none" && <AgmNominationsCard key={`n-${ballot.id}`} clubId={clubId} ballot={ballot} />}
       {ballot && (ballot.status === "draft"
         ? <DraftEditor key={ballot.id} clubId={clubId} ballot={ballot} />
-        : <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />)}
-      {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballotId={ballot.id} />}
+        : <>
+            <StepHeader step={3} title="AGM invitation & voting" state="current"
+              desc="The meeting invitation and attendance replies are below, followed by turnout and — after the deadline — the results." />
+            <AgmMeetingCard key={`m-${ballot.id}`} clubId={clubId} ballot={ballot} />
+            <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot} />
+          </>)}
+      {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballot={ballot} />}
+    </div>
+  );
+}
+
+function StepHeader({ step, title, state, desc }: { step: number; title: string; state: "done" | "current" | "upcoming"; desc: string }) {
+  return (
+    <div className="flex items-start gap-2 pt-1">
+      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${state === "done" ? "bg-primary text-primary-foreground" : state === "current" ? "border-2 border-primary text-primary" : "border border-border text-muted-foreground"}`}>
+        {state === "done" ? "✓" : step}
+      </span>
+      <div>
+        <p className="text-sm font-semibold">Step {step} — {title}</p>
+        <p className="text-[11px] text-muted-foreground">{desc}</p>
+      </div>
     </div>
   );
 }

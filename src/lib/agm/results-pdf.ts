@@ -88,7 +88,7 @@ export async function buildAgmResultsPdf(input: AgmResultsPdfInput): Promise<jsP
       startY: y + 2, margin: { left: M, right: M },
       head: [[`${p.title}${seats > 1 ? ` (${seats} places)` : ""}`, "Votes", ""]],
       body,
-      foot: [[`${elected.length ? `Elected: ${elected.join(", ")}` : "No candidate elected"}${tie.length ? ` · Tie: ${tie.join(", ")}` : ""} · ${ok ? "Recount from receipts matches" : "Recount mismatch — check"}`, "", ""]],
+      foot: [[{ colSpan: 3, content: `${elected.length ? `Elected: ${elected.join(", ")}` : "No candidate elected"}${tie.length ? ` · Tie: ${tie.join(", ")}` : ""} · ${ok ? "Recount from receipts matches" : "Recount mismatch — check"}` }]],
       styles: { fontSize: 9 }, headStyles: { fillColor: [30, 58, 95] }, footStyles: { fillColor: [240, 240, 240], textColor: 30, fontStyle: "bold" },
       columnStyles: { 1: { halign: "right", cellWidth: 20 }, 2: { cellWidth: 25, fontStyle: "bold" } },
       showFoot: "lastPage",

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Printer, Send, Vote, Plus } from "lucide-react";
+import { Printer, Send, Vote, Plus, Loader2 } from "lucide-react";
 import { sendComms } from "@/lib/comms/send";
 import { AgmMeetingCard } from "./AgmMeetingCard";
 import { AgmTestEmail } from "./AgmTestEmail";

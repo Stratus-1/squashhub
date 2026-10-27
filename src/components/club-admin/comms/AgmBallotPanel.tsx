@@ -112,6 +112,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
   const [title, setTitle] = useState(ballot.title);
   const [deadline, setDeadline] = useState(toLocalInput(ballot.deadline));
   const [declaration, setDeclaration] = useState(ballot.declaration);
+  const [allowSelf, setAllowSelf] = useState(!!ballot.allow_self_actions);
   const [text, setText] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string> | null>(null);
   const [channels, setChannels] = useState({ email: true, whatsapp: false });
@@ -149,6 +150,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     const parsed = positionsLocked ? [] : parseBallotText(ballotText, { allowEmpty: true });
     const { error } = await db("agm_ballots").update({
       title: title.trim(), declaration: declaration.trim(), deadline: new Date(deadline).toISOString(),
+      allow_self_actions: allowSelf,
     }).eq("id", ballot.id);
     if (error) throw error;
     if (positionsLocked) return;
@@ -285,6 +287,12 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
           {positionsLocked
             ? <span className="text-[11px] text-muted-foreground block">{nomStage === "open" ? "Nominations are open — positions are locked. Accepted nominees are added here automatically when nominations close." : "Filled in from accepted nominations."}</span>
             : <span className="text-[11px] text-muted-foreground block">Sample positions are shown as a guide — replace them with your own. You can also type nominees after a colon (e.g. <em>Chairperson: Name, Name</em>) to skip the nominations step.</span>}
+        </label>
+
+        <label className="flex items-start gap-2 text-xs cursor-pointer">
+          <Checkbox checked={allowSelf} onCheckedChange={(v) => setAllowSelf(v === true)} className="mt-0.5" />
+          <span><span className="font-semibold">Allow self-nominations and self-votes.</span>{" "}
+            <span className="text-muted-foreground">When off (the usual choice), members can only nominate other members and their own name is hidden on their ballot.</span></span>
         </label>
 
         <div>

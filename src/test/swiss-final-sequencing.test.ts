@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sequenceSwissRound, swissOpponentKey as key } from "@/lib/tournaments/swiss-sequencing";
-import { prospectiveSwissPolicy, swissSequencingEnabled, assertTournamentPairingWritable } from "@/lib/tournaments/swiss-sequencing-policy";
+import { prospectiveSwissPolicy, swissSequencingEnabled, assertTournamentPairingWritable, isFrozenUitsigTournament } from "@/lib/tournaments/swiss-sequencing-policy";
 import { nextSwissRound, swissStandings, type SpecDivision } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 import { rrFinishRound } from "@/lib/tournaments/swiss-rr-finish";

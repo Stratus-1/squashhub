@@ -1,4 +1,3 @@
-import { IntegrityError } from "./contract";
 
 // Uitsig freeze lifted 27 Oct 2026 (Willem): the club takes normal automatic generation from now
 // on; a dated CSV backup of fixtures and logs exists at /mnt/documents/uitsig-fixture-backup-2026-10-27.

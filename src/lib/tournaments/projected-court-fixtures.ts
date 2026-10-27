@@ -21,6 +21,8 @@ export interface ProjectedCourtFixture {
   title: string; context: string;
   /** Member ids of the two decided players (a = lower position). */
   aId: string; bId: string;
+  /** Certified round-robin finish block created before earlier RR rounds complete. */
+  rrFinishBlock?: boolean;
 }
 
 export interface ProjectionInput {

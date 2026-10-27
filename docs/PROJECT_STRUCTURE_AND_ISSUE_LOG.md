@@ -1,3 +1,7 @@
+## 2026-10-27 — AGM attached document downloads
+- Attached Uitsig's agenda/voting rules and constitution through the existing admin upload, retaining the poster and live voting/attendance settings. Corrected only the agenda's voting-date line to 26 Oct 15:00–28 Oct 22:00 as approved.
+- Anonymous signed URL checks originally returned Object not found because attachment storage SELECT queried ballot rows under their RLS. Replaced only that predicate with a boolean exact-path definer check; the bucket remains private and unattached paths remain denied. Both saved PDF downloads verified anonymously (2/4 pages).
+
 ## 2026-10-27 — Cash-up restricted to final working barman
 - Personal End shift and exit already only close attendance and revoke the selected PIN; no attendance/session trigger creates cash-ups. Deon's existing zero-sales record is a saved cash-up, not an attendance-only summary; history remains untouched.
 - Both cash-up writers and shared-hour closure now reject other ongoing staff attendance across the entire club under the existing shared lock. Cash-up displays the blocking state; opening/viewing and personal exits create no reconciliation. Explicit final-worker submission stays required.

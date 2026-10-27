@@ -1919,6 +1919,13 @@
       "when": 1793047950834,
       "tag": "0273_fix_agm_issue_invites_ambiguous",
       "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1793079328869,
+      "tag": "0274_cash_up_include_cash_ledger_movements",
+      "breakpoints": true
     }
   ]
 }

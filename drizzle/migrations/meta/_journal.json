@@ -2052,6 +2052,13 @@
       "when": 1793196641055,
       "tag": "0292_counter_pin_limit_20",
       "breakpoints": true
+    },
+    {
+      "idx": 293,
+      "version": "7",
+      "when": 1793197120817,
+      "tag": "0293_special_shift_entered_start",
+      "breakpoints": true
     }
   ]
 }

@@ -313,7 +313,8 @@ export default function MyAccount() {
     const payments = new Map<string, { method: string; total: number; last: string; count: number }>();
     for (const p of (directPurchases || []) as any[]) {
       const total = Number(p.total || 0);
-      if (total <= 0) continue;
+      // Unpaid open-tab items are not account transactions — they show under bar purchases only.
+      if (total <= 0 || p.method === "unpaid") continue;
       lines.push({
         id: `barpaid-${p.id}`,
         date: p.created_at,

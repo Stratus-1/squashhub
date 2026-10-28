@@ -29,7 +29,10 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
   const choice = plan?.playoffOverrides?.[unitKey] ?? plan?.playoffOverrides?.[unitKey.split("::")[0]] ?? plan?.playoff;
   // Placement play is a saved positional choice, not a seeded championship.
   // Project it only here: do not change scheduling or fixture generation.
-  const placement = choice?.style === "placement" && pools === 2;
+  // A Quarterfinal/Semifinal saved in Stages & scheduling is the later, more specific choice (and is what the
+  // real fixtures are generated from), so an older "placement" style must not override it.
+  const knockoutTimeline = timeline.some((s) => s?.name === "Quarterfinal" || s?.name === "Semifinal");
+  const placement = choice?.style === "placement" && pools === 2 && !knockoutTimeline;
   const games = placement
     ? provisionalPlayoffs({ ...plan, stages: [] }, unitKey, pools).map((g, i) => ({
       ...g, stage: "Placement", label: `${i === 0 ? "Final" : `Places ${2 * i + 1}/${2 * i + 2}`}: ${g.label.replace(/ \(\d+\/\d+ place\)$/, "")}`,

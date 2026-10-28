@@ -91,7 +91,10 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
   let pools: number, poolSize: number;
   if (main.kind === "mapped" && main.mapping?.source === "seed_pools") { pools = main.mapping.pools; poolSize = main.mapping.poolSize; }
   else if (main.kind === "pools" || main.kind === "round_robin") {
-    pools = main.kind === "pools" ? main.pools ?? 1 : 1;
+    // A round-robin main stage can hold several pools (poolMembers has one entry per pool). Its saved
+    // pairing (crossover / same position / seeded) pairs ACROSS those pools — collapsing them into one
+    // ranked list turned "A1 v B2, B1 v A2" into 1 v 4 / 2 v 3 inside the first pool.
+    pools = main.kind === "pools" ? main.pools ?? 1 : main.poolMembers?.length ?? 1;
     poolSize = main.poolMembers?.length ? Math.min(...main.poolMembers.map((p) => p.length)) : main.poolSize ?? 0;
   } else if (main.kind === "swiss") {
     // Swiss is one ranked list: play-offs take finishing positions 1..N of the final Swiss standings.

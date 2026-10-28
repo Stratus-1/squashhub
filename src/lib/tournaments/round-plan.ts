@@ -12,6 +12,7 @@
  * Pure logic: no React, no network.
  */
 import type { MilestoneKey, MilestonePlayBy } from "./round-definitions";
+import { pacedKnockoutRound } from "./knockout-round-display";
 
 export type PlayoffKey = "place_playoffs" | "quarter_final" | "semi_final" | "final";
 export const PLAYOFF_KEY_ORDER: PlayoffKey[] = ["place_playoffs", "quarter_final", "semi_final", "final"];
@@ -165,6 +166,20 @@ export function playoffKeyForLabel(label?: string | null, stage?: string | null)
   if (s === "playoff_sf" || /semi/i.test(tail)) return "semi_final";
   if (s === "playoff_final" || s === "playoff_3rd" || /\bfinal\b|3rd place|third/i.test(tail)) return "final";
   return null;
+}
+
+/**
+ * Structured-stage play-off games (semi-finals, finals, placement) carry their
+ * own stage, but their round numbers (901+) read as "no round" in member lists
+ * — without this they fall into the pool-games bucket and sit under a
+ * "Pool games" heading. Legacy (no stage_key) section games keep their
+ * stage-label headings, and paced knockout rounds keep "Knockout Round N".
+ */
+export function isStructuredPlayoffGame(m: {
+  stage_key?: string | null; stage?: string | null; stage_label?: string | null; round_number?: number | null;
+}): boolean {
+  if (!m?.stage_key || String(m.stage_key).startsWith("dl:")) return false;
+  return pacedKnockoutRound(m) == null && isPlayoffGame(m);
 }
 
 /** The play-by date for a play-off game, from its own play-off round only. */

@@ -4046,3 +4046,12 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-10-28 — Uitsig Men's A planned play-offs never attached
 - Cause: `attachPlannedPlayoffs` matched the saved play-off plan using `poolLabels[0]` ("Pool A") instead of the category label ("Mens A") for multi-pool round-robin categories, so Men's A was silently skipped while single-label Ladies B attached.
 - Fix: fall back to the division's own category label when the first pool label has no planned play-offs (`src/lib/smart-builder/step-draw.ts`); regression test in `src/test/attach-timeline-playoffs.test.ts`.
+
+### 2026-10-28 — Structured play-offs after a multi-pool round robin collapsed to one ranked list
+- Cause: `buildPlayoffChain` read the pool count only for `kind:"pools"` mains; a `round_robin` main always got `pools:1`, so the saved crossover pairing ("A1 v B2, B1 v A2") degenerated to seeded 1 v 4 / 2 v 3 fed by pool 0 only (Ladies B, Uitsig Club Champs 2026 — its saved semifinal mapping would have excluded Pool B entirely).
+- Fix: round-robin mains now take their pool count from `poolMembers.length` (`src/lib/smart-builder/playoff-chain.ts`); regression tests in `src/test/rr-main-playoff-crossover.test.ts` (mapping, cross-pool resolution, winners-fed final, one-group fallback). 3 pre-existing failures in `playoff-progression.test.ts` (cross-league doubles ties) reproduce without this change and are untouched.
+- Live data: Ladies B's already-saved semifinal mapping was corrected in place (guarded SQL: refuses if real games/bookings exist) and its two provisional rows relabelled "Pool A #1 v Pool B #2" / "Pool B #1 v Pool A #2". Men's A has no attached stages yet — its re-save now derives the correct crossover.
+
+### 2026-10-28 — "Pool games" heading covered structured play-off games
+- Cause: structured play-off rows carry round numbers 901+, which the "By round" list treats as "no round" and drops into the pool-games bucket (`src/pages/Tournaments.tsx`).
+- Fix: `isStructuredPlayoffGame` (`src/lib/tournaments/round-plan.ts`) routes structured-stage play-offs into a "Play-offs" group (paced knockout rounds and legacy stage-label groups unchanged); test `src/test/structured-playoff-heading.test.ts`.

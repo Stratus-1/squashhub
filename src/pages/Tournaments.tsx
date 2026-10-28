@@ -56,7 +56,7 @@ import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/
 import { fixtureRoundRow, resolveFixtureSchedule, stageScheduleIndex, type StageScheduleInfo } from "@/lib/tournaments/stage-schedule";
 import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones } from "@/lib/tournaments/round-definitions";
-import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
+import { isPlayoffGame, isStructuredPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";
@@ -1049,7 +1049,7 @@ export default function Tournaments() {
       if (isByeFixture(m)) return;
       const n = Number(displayedRound(m));
       const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
-      const key = num === 0 ? "\u0000pool" : roundGroupKey(m);
+      const key = isStructuredPlayoffGame(m) ? "\u0003po" : num === 0 ? "\u0000pool" : roundGroupKey(m);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
       const prev = order.get(key);
@@ -1097,11 +1097,13 @@ export default function Tournaments() {
         {keys.map((key) => {
           const items = groups.get(key)!;
           const isPool = key === "\u0000pool";
+          const isPo = key === "\u0003po";
           // Progress is measured against every game at this stage, not just
           // the filtered view — and only for the tournaments shown here.
           const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
             if (m.status === "placeholder" || isByeFixture(m) || !champsHere.has(m.champ_id)) return false;
+            if (isPo) return isStructuredPlayoffGame(m);
             const r = Number(displayedRound(m));
             const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
             return isPool ? num === 0 : num !== 0 && roundGroupKey(m) === key;
@@ -1115,7 +1117,7 @@ export default function Tournaments() {
           // deadline is Round 1, the next Round 2, and so on.
           const pbDate = key.startsWith("\u0002pb:") ? key.slice(4) : null;
           const pbRound = pbDate ? Number(pbDate.split("|r")[1]) || 1 : null;
-          const heading = isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbRound}` : key;
+          const heading = isPo ? "Play-offs" : isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbRound}` : key;
           const koCategoryGroups = new Map<string, any[]>();
           koItems.forEach((m: any) => {
             const categoryKey = `${m.champ_id}:${m.group_number ?? "-"}`;

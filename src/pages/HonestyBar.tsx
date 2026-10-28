@@ -612,7 +612,7 @@ export default function HonestyBar() {
                           "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
                         }`}
                       >
-                        {entry.method === "account" ? "On account" : entry.method}
+                        {entry.method === "account" ? "On account" : entry.method === "unpaid" ? "Unpaid · open tab" : entry.method}
                       </Badge>
                     </div>
                   </Card>

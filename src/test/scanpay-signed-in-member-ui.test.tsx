@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -46,6 +46,7 @@ async function mount() {
     <MemoryRouter initialEntries={["/s/test-menu"]}><Routes><Route path="/s/:code" element={<ScanPay />} /></Routes></MemoryRouter>
   </QueryClientProvider>);
   await screen.findByText("Tap items to add");
+  await waitFor(() => expect(screen.queryByPlaceholderText("Your name")).toBeNull());
   await act(async () => {});
 }
 

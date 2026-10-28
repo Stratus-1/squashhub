@@ -560,7 +560,7 @@ export default function HonestyBar() {
             })}
 
             {cartCount > 0 && orderProcess === true && (
-              <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
+              <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
                 <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
               </Button>
             )}
@@ -599,7 +599,7 @@ export default function HonestyBar() {
                       </div>
                     ))}
                   </div>
-                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
+                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
                       <ShoppingCart className="w-4 h-4" /> {submitting ? "Loading my tab…" : orderProcess ? "Place order" : "View payment options"} · {money(cartTotal)}
                     </Button>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>

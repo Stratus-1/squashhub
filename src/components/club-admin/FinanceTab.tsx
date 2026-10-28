@@ -1,3 +1,4 @@
+import { MemberBarPurchases } from "./MemberBarPurchases";
 import { Club, useClubMembers } from "@/hooks/use-club";
 import { SetupSteps, SetupStepNav, type SetupStep } from "@/components/club-admin/setup/SetupSteps";
 

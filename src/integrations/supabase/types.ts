@@ -21560,6 +21560,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      bar_prepare_payroll_run_now: {
+        Args: { _club_id: string }
+        Returns: string
+      }
       bar_qr_account_with_tip: {
         Args: {
           _club_member_id: string

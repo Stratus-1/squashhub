@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Club Champs admin Paid: remove single-object JSON response dependency, verify saved payment state, and test without changing real registrations.
+- [x] Club Champs admin Paid: array response with saved-paid readback replaces singular JSON coercion; 11 focused tests pass and preview build OK. Screenshots and hosted logs confirm registration PATCH 406 errors. Signed-in Riverside administration opens; no real payment clicked or status changed. Preview only; live payment end-to-end not submitted.
 - [x] Uitsig AGM: saved three email templates and unscheduled draft campaigns (233 unanswered attendance, 204 unsubmitted votes, 2 online attendees); existing personal links reused, saved 23:59 deadline preserved, nothing sent. Recipient lists are preparation-time snapshots.
 
 - [x] Bar: select items into the local tab automatically; My Tab opens existing swipe/cash/member-account choices without a separate open/add step. Focused tests pass; live checkout not submitted. Preview only.

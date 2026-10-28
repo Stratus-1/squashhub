@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Uitsig AGM: prepare preview-only reminder templates and draft campaigns for unanswered attendance, unsubmitted votes and online attendees; reuse existing personal links, send nothing.
+- [x] Uitsig AGM: saved three email templates and unscheduled draft campaigns (233 unanswered attendance, 204 unsubmitted votes, 2 online attendees); existing personal links reused, saved 23:59 deadline preserved, nothing sent. Recipient lists are preparation-time snapshots.
 
 - [x] Bar: select items into the local tab automatically; My Tab opens existing swipe/cash/member-account choices without a separate open/add step. Focused tests pass; live checkout not submitted. Preview only.
 - [x] Removed Club sponsored — no charge from the signed-in app bar; personal-PIN Counter mode retained. Preview only.

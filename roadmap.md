@@ -6,3 +6,4 @@
 - [x] Men's A play-off games created by the organiser's save (Pool A #1 v Pool B #2, Pool B #1 v Pool A #2, Final).
 - [x] Men's A bracket showed A1 v B1: an older Play-offs-step "placement" choice beat the saved Semifinal crossover in the display. Saved Semifinal/Quarterfinal now wins; real Men's A games already A1 v B2 / B1 v A2 after the user's save.
 - [x] Play-offs step: keep stage selection (QF/SF/F); remove 'Type of playoffs'/pairing choices — pairing only in Stages & scheduling (all clubs)
+- Remove the accidentally selected sparkling water from the Nelspruit member's open tab (Willem, 28 Oct).

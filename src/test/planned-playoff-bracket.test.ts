@@ -77,3 +77,26 @@ describe("quarterfinal added after the semifinal", () => {
     expect(r[0].sides.map((s) => s.name)).toEqual([null, null]);
   });
 });
+
+describe("placement style vs saved semifinal timeline", () => {
+  it("a saved crossover Semifinal beats an older placement choice (A1 v B2, B1 v A2)", async () => {
+    const { plannedPlayoffBracket } = await import("@/lib/tournaments/planned-playoff-bracket");
+    const plan = {
+      playoffOverrides: { "Mens A": { style: "placement", choice: "playoffs", rounds: 1 } },
+      stages: [
+        { name: "Semifinal", unit: "Mens A", phase: "playoff", pairing: "crossover", mode: "play_by", deadline: "2026-11-12" },
+        { name: "Final", unit: "Mens A", phase: "playoff", pairing: "winners", mode: "play_by", deadline: "2026-11-21" },
+      ],
+    };
+    const rows = plannedPlayoffBracket(plan, "Mens A", 2, null);
+    expect(rows.map((r) => r.text)).toEqual(["A1 v B2", "B1 v A2", "Winner SF1 v Winner SF2"]);
+  });
+  it("placement still applies when only a Final is saved", async () => {
+    const { plannedPlayoffBracket } = await import("@/lib/tournaments/planned-playoff-bracket");
+    const plan = {
+      playoffOverrides: { "Mens A": { style: "placement", choice: "playoffs", rounds: 1 } },
+      stages: [{ name: "Final", unit: "Mens A", phase: "playoff", mode: "play_by", deadline: "2026-11-21" }],
+    };
+    expect(plannedPlayoffBracket(plan, "Mens A", 2, null)[0].text).toBe("A1 v B1");
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPayrollAmountInput, payrollAmount, payrollLineError } from "@/lib/bar/payroll";
+import { isPayrollAmountInput, payrollAmount, payrollLineError, payrollLinePayable } from "@/lib/bar/payroll";
 
 describe("bar payroll input rules", () => {
   it("accepts whole rands and two-decimal amounts, rejects negatives and extra decimals", () => {
@@ -22,6 +22,15 @@ describe("bar payroll input rules", () => {
     expect(payrollLineError("0", "0", 55.3)).toBe("Nothing to pay on this line");
     expect(payrollLineError("1500", "55.30", 55.3)).toBeNull();
     expect(payrollLineError("0", "55.30", 55.3)).toBeNull();
+  });
+});
+
+describe("payroll lines with nothing payable", () => {
+  it("skips lines with no pay and no tips, keeps payable ones", () => {
+    expect(payrollLinePayable("0", "0")).toBe(false);
+    expect(payrollLinePayable("0.00", "0")).toBe(false);
+    expect(payrollLinePayable("1500", "0")).toBe(true);
+    expect(payrollLinePayable("0", "55.30")).toBe(true);
   });
 });
 

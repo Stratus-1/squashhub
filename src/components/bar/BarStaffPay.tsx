@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { isPayrollAmountInput, payrollAmount, payrollLineError, suggestedPay, editPayrollReview, type PayrollReview, type PayBasis } from "@/lib/bar/payroll";
+import { isPayrollAmountInput, payrollAmount, payrollLineError, payrollLinePayable, suggestedPay, editPayrollReview, type PayrollReview, type PayBasis } from "@/lib/bar/payroll";
 import { StaffAttendanceLog } from "@/components/bar/StaffAttendanceLog";
 import { downloadPayrollReport } from "@/lib/bar/payroll-report";
 
@@ -93,6 +93,9 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
     const invalidQuantity = review && (!isPayrollAmountInput(review.quantity) || review.quantity === "" || (l.pay_basis === "shift" && !Number.isInteger(Number(review.quantity))));
     return [l.id, invalidQuantity || (review && (!isPayrollAmountInput(review.rate) || review.rate === "")) ? "Enter valid hours, shifts and rate" : payrollLineError(e.salary, e.tips, maxTips)];
   })), [run, edits, data]);
+  // Only lines with something payable are shown or can block confirmation.
+  const payableLines = (run?.lines ?? []).filter(l => payrollLinePayable(edits[l.id]?.salary ?? String(l.salary ?? 0), edits[l.id]?.tips ?? String(l.tips ?? 0)));
+  const hasLineErrors = payableLines.some(l => lineErrors[l.id]);
   const totals = (run?.lines ?? []).reduce((acc, l) => {
     const e = edits[l.id] ?? { salary: "0", tips: "0" };
     return { salary: acc.salary + (payrollAmount(e.salary) || 0), tips: acc.tips + (payrollAmount(e.tips) || 0) };
@@ -116,7 +119,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
 
   async function confirmRun() {
     if (!run || previewMonthEnd) return;
-    if (Object.values(lineErrors).some(Boolean)) { toast.error("Fix the highlighted amounts first"); return; }
+    if (hasLineErrors) { toast.error("Fix the highlighted amounts first"); return; }
     setBusy(true);
     try { await submitLines(run.id, l => l.id, run); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not confirm the payout"); }
@@ -125,7 +128,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
 
   async function processPreview() {
     if (!run || !previewMonthEnd) return;
-    if (Object.values(lineErrors).some(Boolean)) { toast.error("Fix the highlighted amounts first"); return; }
+    if (hasLineErrors) { toast.error("Fix the highlighted amounts first"); return; }
     setBusy(true);
     try {
       const { data: runId, error } = await supabase.rpc("bar_prepare_payroll_run_now" as any, { _club_id: clubId });
@@ -217,7 +220,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead><tr className="border-b"><th className="text-left py-2">Staff</th><th className="text-right">Hours / shifts</th><th className="text-right">Rate (R)</th><th className="text-right">Pay (R)</th><th className="text-right">Tips (R)</th><th className="text-right">Total</th></tr></thead>
-              <tbody>{run.lines.map(l => {
+              <tbody>{payableLines.map(l => {
                 const e = edits[l.id];
                 if (!e) return null;
                 const change = (field: keyof PayrollReview, value: string) => { if (isPayrollAmountInput(value)) setLineEdits(prev => ({ ...(prev ?? edits), [l.id]: editPayrollReview((prev ?? edits)[l.id], field, value, l.pay_basis ?? "monthly") })); };
@@ -246,8 +249,8 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
             </table>
           </div>
           {previewMonthEnd
-            ? <div className="space-y-1"><Button onClick={processPreview} disabled={busy || Object.values(lineErrors).some(Boolean)}>Process payroll &amp; generate report</Button><p className="text-[11px] text-muted-foreground">Records these salaries and tips under Cost of sales — Bar and downloads the paymaster report.</p></div>
-            : <Button onClick={confirmRun} disabled={busy || Object.values(lineErrors).some(Boolean)}>Confirm payout &amp; generate report</Button>}
+            ? <div className="space-y-1"><Button onClick={processPreview} disabled={busy || hasLineErrors}>Process payroll & generate report</Button><p className="text-[11px] text-muted-foreground">Records these salaries and tips under Cost of sales — Bar and downloads the paymaster report.</p></div>
+            : <Button onClick={confirmRun} disabled={busy || hasLineErrors}>Confirm payout & generate report</Button>}
         </Card>
       )}
 

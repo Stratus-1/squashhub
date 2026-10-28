@@ -20471,7 +20471,20 @@ export type Database = {
         Args: { _club: string; _from: string; _staff: string; _to: string }
         Returns: number
       }
+      _bar_staff_hours_open: {
+        Args: { _club: string; _from: string; _staff: string; _to: string }
+        Returns: number
+      }
       _bar_staff_shift_count: {
+        Args: {
+          _club_id: string
+          _from: string
+          _staff_id: string
+          _to: string
+        }
+        Returns: number
+      }
+      _bar_staff_shift_count_open: {
         Args: {
           _club_id: string
           _from: string

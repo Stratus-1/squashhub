@@ -6,7 +6,11 @@ import { TournamentRegistrationsDialog } from "@/components/club-admin/Tournamen
 const state = vi.hoisted(() => ({ regs: [] as any[], writes: [] as any[], fail: false, emptyUpdate: false, savedPaid: false }));
 vi.mock("@/hooks/use-club", () => ({ useClubMembers: () => ({ data: [] }) }));
 vi.mock("@/lib/supabase-ext", () => ({
-  rpcExt: async () => ({ data: [], error: null }),
+  rpcExt: async (name: string, args: any) => {
+    if (name !== "champ_admin_confirm_paid") return { data: [], error: null };
+    state.writes.push({ rpc: name, args });
+    return { data: state.emptyUpdate ? null : { ok: true, id: "reg", already_settled: state.savedPaid }, error: state.fail ? new Error("Permission denied") : null };
+  },
   fromExt: (table: string) => {
     let payload: any;
     let selected = "";
@@ -43,14 +47,11 @@ describe("Tournament admin Paid action", () => {
     expect(await screen.findByRole("button", { name: "Mark Test Player paid" })).toHaveTextContent("Paid");
     expect(screen.getByText("Paid 0")).toBeInTheDocument();
   });
-  it("records admin confirmation and settles the existing linked fee first", async () => {
+  it("confirms the existing fee atomically through the club-scoped payment action", async () => {
     state.regs = [registration({ fee_payment_id: "fee" })]; mount();
     fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
-    await waitFor(() => expect(state.writes).toHaveLength(2));
-    expect(state.writes[0]).toMatchObject({ table: "club_member_fee_payments", payload: { paid: true } });
-    expect(state.writes[1]).toMatchObject({ table: "club_champs_registrations", payload: { status: "paid", fee_paid_cents: 20000 } });
-    expect(state.writes[1].payload.payment_ref).toMatch(/^ADMIN-/);
-    expect(state.writes[1].filters).toContainEqual(["champ_id", "champ"]);
+    await waitFor(() => expect(state.writes).toHaveLength(1));
+    expect(state.writes[0]).toEqual({ rpc: "champ_admin_confirm_paid", args: { p_club_id: "club", p_champ_id: "champ", p_registration_id: "reg" } });
   });
   it("shows account charges separately from paid online entries", async () => {
     state.regs = [registration({ fee_status: "on_account", fee_settled_via: "account" }), registration({ id: "online", member: { name: "Online Player" }, status: "paid", fee_status: "paid" })]; mount();
@@ -79,16 +80,16 @@ describe("Tournament admin Paid action", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Permission denied"));
     expect(toast.success).not.toHaveBeenCalled();
   });
-  it("records Paid using an array response rather than singular JSON", async () => {
+  it("records Paid only after the server confirms the registration", async () => {
     const { toast } = await import("sonner");
     state.regs = [registration()]; mount();
     fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marked as paid"));
     expect(toast.error).not.toHaveBeenCalled();
   });
-  it("accepts an empty update only when the saved registration is already paid", async () => {
+  it("accepts an idempotent already-settled confirmation", async () => {
     const { toast } = await import("sonner");
-    state.regs = [registration({ fee_payment_id: "fee" })]; state.emptyUpdate = true; state.savedPaid = true; mount();
+    state.regs = [registration({ fee_payment_id: "fee" })]; state.savedPaid = true; mount();
     fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marked as paid"));
   });

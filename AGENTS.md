@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Tournament Paid uses the club-scoped atomic `champ_admin_confirm_paid` action for existing champs/fees/finance permissions, settling only a linked existing fee and auditing once; why: finance staff must not require full tournament management or risk half-completed browser writes.
 - Counter menu shortcut visibility uses the club membership or named local PIN-session hint; serving authority remains the existing server-validated personal PIN, with direct PIN entry preserved. Why: hide staff navigation from guests without granting account-based serving bypasses.
 - Signed-in self-service bar selections stay device-local until My Tab is explicitly opened, then use the shared unpaid-tab writer before existing payment choices; staffed order submission remains explicit and payment switches remain club-owned. Why: no empty-tab prerequisite, no charge on selection, and one settlement authority.
 - League fixture entry distinguishes partial saved scores from final submitted scorecards; only past/final results use correction mode, because ongoing court scoring must stay accessible after each rubber finishes.

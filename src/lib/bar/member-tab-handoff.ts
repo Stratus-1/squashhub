@@ -7,12 +7,20 @@ export async function placeMemberCounterOrder(clubId: string, memberId: string, 
   // continue through the existing tab checkout, not the staffed order queue.
   const { data: orderProcess, error: modeError } = await supabase.rpc("bar_order_process_status", { _club_id: clubId });
   if (modeError) throw modeError;
-  if (orderProcess === false) return openMemberCounterTab(clubId, memberId, cart);
-  if (orderProcess !== true) throw new Error("Could not check the bar's order settings. Please try again.");
+  if (typeof orderProcess !== "boolean") throw new Error("Could not check the bar's order settings. Please try again.");
   const { data, error } = await supabase.rpc("open_my_bar_tab", { _club_id: clubId, _club_member_id: memberId });
   if (error) throw error;
   const tab = data as { tab_id?: string; token?: string; code?: string } | null;
   if (!tab?.tab_id || !tab.token || !tab.code) throw new Error("Could not open your tab");
+  if (orderProcess === false) {
+    const { error: addError } = await supabase.rpc("add_to_bar_guest_tab", {
+      _tab_id: tab.tab_id, _token: tab.token,
+      _lines: Object.entries(cart).filter(([, quantity]) => quantity > 0).map(([bar_item_id, quantity]) => ({ bar_item_id, quantity })),
+    });
+    if (addError) throw addError;
+    localStorage.setItem(`sh.scanpay.tab.${tab.code}`, JSON.stringify({ tab_id: tab.tab_id, token: tab.token }));
+    return `/s/${encodeURIComponent(tab.code)}?member_tab=${encodeURIComponent(tab.tab_id)}`;
+  }
   const { error: orderError } = await supabase.rpc("bar_submit_guest_order", {
     _tab_id: tab.tab_id,
     _token: tab.token,

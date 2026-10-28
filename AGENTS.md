@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Signed-in self-service bar selections stay device-local until My Tab is explicitly opened, then use the shared unpaid-tab writer before existing payment choices; staffed order submission remains explicit and payment switches remain club-owned. Why: no empty-tab prerequisite, no charge on selection, and one settlement authority.
 - League fixture entry distinguishes partial saved scores from final submitted scorecards; only past/final results use correction mode, because ongoing court scoring must stay accessible after each rubber finishes.
 - GoBook balances are read-only external snapshots resolved server-side from an authorized active club member's saved client link; shared account/booking display never changes credits, bookings or member links, because GoBook is the balance authority.
 - Courts capacity is a read-only aggregate projection of canonical stage plans, player/pair counts and unioned saved court windows; unresolved qualification stays provisional and fit never implies timetable feasibility, because viewing setup must not generate or reschedule games.

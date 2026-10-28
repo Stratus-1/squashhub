@@ -414,7 +414,10 @@ export default function HonestyBar() {
         {canSeeVisitors && <CounterModeCard clubId={clubId} />}
 
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setActiveTab(value);
+          if (value === "my-tab" && cartCount > 0 && orderProcess === false) void submitCart();
+        }} className="w-full">
           <TabsList className="w-full grid sticky top-0 z-20" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
             <TabsTrigger value="shop" className="gap-1 text-xs">
               <ShoppingCart className="w-3.5 h-3.5" />
@@ -556,7 +559,7 @@ export default function HonestyBar() {
               );
             })}
 
-            {cartCount > 0 && (
+            {cartCount > 0 && orderProcess === true && (
               <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
                 <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
               </Button>
@@ -597,7 +600,7 @@ export default function HonestyBar() {
                     ))}
                   </div>
                     <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
-                      <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
+                      <ShoppingCart className="w-4 h-4" /> {submitting ? "Loading my tab…" : orderProcess ? "Place order" : "View payment options"} · {money(cartTotal)}
                     </Button>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>
                     Clear tab

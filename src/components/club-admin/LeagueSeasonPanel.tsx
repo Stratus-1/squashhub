@@ -197,7 +197,7 @@ export function LeagueSeasonPanel({ association, teamYears, onCreateTeams }: Pro
           );
         })}
       </div>
-      {currentSeason?.id && (
+      {isClub && currentSeason?.id && (
         <MatchDayAccessCard
           kind="league_season"
           competitionId={currentSeason.id}

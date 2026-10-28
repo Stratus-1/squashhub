@@ -1,3 +1,6 @@
+## 2026-10-28 — League Match Day Access visibility
+- League season controls now show Match Day Access only for internal Club Leagues, using the existing scope predicate. System/regional leagues no longer display the card. Tournament access, existing tokens and scoring are unchanged; no hosted writes.
+
 ## 2026-10-28 — Final tournament standings to club ladder
 - Added organiser preview/apply for final singles standings, with an explicit per-tournament final-standings timing choice. Existing tournaments retain their settings until explicitly selected; viewing and deployment never reorder members.
 - Club-scoped ladder permission, completed games/configured Swiss rounds/all saved stages, singles-only validation and stale-preview checks are enforced server-side. Participants reuse their exact occupied slots; outsiders, unranked/external players and separate gender ladders are preserved. Existing ladder history records changes; unchanged reapply writes nothing.

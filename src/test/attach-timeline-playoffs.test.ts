@@ -66,3 +66,17 @@ describe("play-offs saved earlier as 'decide later'", () => {
     expect(timelinePlayoffSpec(timelinePlayoffSpec(stale, qf), qf)).toBeNull();
   });
 });
+
+describe("multi-pool category whose poolLabels are pool names", () => {
+  it("matches the planned play-offs by the category label, not 'Pool A'", () => {
+    const rr = { id: "v3-main", order: 0, kind: "round_robin", name: "Round robin", poolMembers: [["a", "b", "c", "d"], ["e", "f", "g", "h"]] };
+    const s: any = { divisions: [{ divisionId: "g1", label: "Mens A · Singles", poolLabels: ["Pool A", "Pool B"], stages: [rr], deferredStages: [{ name: "Final", stageKey: "v3-po1", plannedDate: null }] }] };
+    const p: any = { format: { kind: "pools", pools: 2 }, playoffOverrides: { "Mens A": { choice: "playoffs", rounds: 1 } }, stages: [
+      { name: "Semifinal", unit: "Mens A", phase: "playoff", mode: "play_by", deadline: "2026-11-12", pairing: "crossover" },
+      { name: "Final", unit: "Mens A", phase: "playoff", mode: "play_by", deadline: "2026-11-21", pairing: "winners" },
+    ] };
+    const next: any = timelinePlayoffSpec(s, p);
+    expect(next.divisions[0].stages.map((x: any) => x.name)).toEqual(["Round robin", "Semifinal", "Final"]);
+    expect(next.divisions[0].deferredStages).toEqual([]);
+  });
+});

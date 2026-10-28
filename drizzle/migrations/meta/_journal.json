@@ -2024,6 +2024,13 @@
       "when": 1793191107731,
       "tag": "0288_raise_bar_quantity_limit_500",
       "breakpoints": true
+    },
+    {
+      "idx": 289,
+      "version": "7",
+      "when": 1793194114566,
+      "tag": "0289_my_bar_purchases_include_open_tab",
+      "breakpoints": true
     }
   ]
 }

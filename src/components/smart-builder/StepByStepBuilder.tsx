@@ -197,8 +197,8 @@ const styleText = (p: PlayoffPlan) => p.style === "placement" ? "Placement play 
 const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => {
   if (k === "knockout") return koPath && koPath.includes("→") ? koPath : "Knockout rounds (no separate playoffs)";
   if (p.choice !== "playoffs") return k === "swiss" && p.choice === "none" ? "Finish on Swiss standings" : k === "cross" && p.choice === "none" ? "Finish on standings" : playoffText(p);
-  if (p.style === "placement" && (k === "pools" || k === "cross")) return styleText(p);
-  return `${playoffText(p)}${k === "pools" || k === "cross" ? ` · ${styleText(p)}` : ""} · ${qualifierText(p)}${p.style !== "placement" ? ` · ${pairingText(p)}` : ""}`;
+  // Pairing and qualification live only in Stages & scheduling (single source of truth).
+  return `${playoffText(p)} · pairing set in Stages & scheduling`;
 };
 export type StepAnswers = {
   /** Optional contact designation only; never grants tournament permissions. null = explicitly cleared. */
@@ -2372,7 +2372,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   slotMinutes: sc?.mode === "time_capped_points" ? slotMinutes(sc) : savedMinutes,
                   playoffGames: p.choice === "playoffs" ? 2 ** p.rounds - 1 : 0,
                   playoffRounds: p.choice === "playoffs" ? p.rounds : 0,
-                  playoffUnresolved: p.choice === "later" || (p.choice === "playoffs" && (p.qualification === "later" || p.pairing === "later" || p.style === "placement")) };
+                  playoffUnresolved: p.choice === "later" };
               })} />
               <div className="space-y-3">
                 {a.days.map((d, i) => (

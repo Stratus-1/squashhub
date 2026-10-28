@@ -2073,6 +2073,13 @@
       "when": 1793213484593,
       "tag": "0295_chairman_financial_view_only",
       "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1793213628183,
+      "tag": "0296_chairman_finance_boundary_completion",
+      "breakpoints": true
     }
   ]
 }

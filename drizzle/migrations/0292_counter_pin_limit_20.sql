@@ -38,5 +38,4 @@ BEGIN
             'bar.pin.manage', jsonb_build_object('device_id', v_id, 'label', v_label));
   END IF;
   RETURN jsonb_build_object('device_id', v_id, 'label', v_label);
-END; $function$
-;
+END; $function$;

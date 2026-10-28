@@ -191,9 +191,6 @@ type PlayoffChoice = "none" | "playoffs" | "later";
 type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded"; style?: "later" | "championship" | "placement"; row?: import("@/lib/smart-builder/playoff-qualifiers").RowPlayoffPlan };
 const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later", style: "later" };
 const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.choice === "later" ? "Decide later" : p.rounds === 1 ? "Final only" : p.rounds === 2 ? "Semifinals + Final" : "Quarterfinals + Semifinals + Final";
-const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools/standings" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
-const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Pool crossover: A1 vs B2, B1 vs A2" : p.pairing === "seeded" ? "Seeded: 1 vs 4, 2 vs 3 (highest vs lowest)" : "Pairing to be decided";
-const styleText = (p: PlayoffPlan) => p.style === "placement" ? "Placement play (A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th…)" : p.style === "championship" ? "Championship playoffs" : "Playoff type to be decided";
 const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => {
   if (k === "knockout") return koPath && koPath.includes("→") ? koPath : "Knockout rounds (no separate playoffs)";
   if (p.choice !== "playoffs") return k === "swiss" && p.choice === "none" ? "Finish on Swiss standings" : k === "cross" && p.choice === "none" ? "Finish on standings" : playoffText(p);

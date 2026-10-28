@@ -23,7 +23,7 @@ import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { Link, useNavigate } from "react-router-dom";
-import { openMemberCounterTab, placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
+import { placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -256,21 +256,6 @@ export default function HonestyBar() {
       .filter(([, qty]) => qty > 0)
       .map(([itemId, qty]) => ({ bar_item_id: itemId, quantity: qty }));
 
-  const openSharedTab = async () => {
-    if (!clubId || !memberId || submitting) return;
-    setSubmitting(true);
-    try {
-      const destination = await openMemberCounterTab(clubId, memberId, cart);
-      setCart({});
-      if (tabKey) saveOpenTab(tabKey, {});
-      navigate(destination);
-    } catch (err: any) {
-      toast.error(err.message || "Could not open your tab");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   /** Send the order to the counter to pay on the card machine; staff confirm it once the card is approved. */
   const swipeAtClub = async () => {
     if (!clubId || cartCount === 0 || submitting) return;
@@ -413,10 +398,6 @@ export default function HonestyBar() {
         >
           <QrCode className="w-4 h-4" />
           Show / share Menu QR code
-        </Button>
-
-        <Button className="w-full h-11 gap-2" onClick={openSharedTab} disabled={submitting || !memberId || !venueCode}>
-          <Receipt className="w-4 h-4" /> Open my tab at the bar
         </Button>
 
         {canClubUse && (
@@ -575,6 +556,11 @@ export default function HonestyBar() {
               );
             })}
 
+            {cartCount > 0 && (
+              <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
+                <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
+              </Button>
+            )}
           </TabsContent>
 
           <TabsContent value="my-tab" className="space-y-3 mt-4">
@@ -611,7 +597,7 @@ export default function HonestyBar() {
                     ))}
                   </div>
                     <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || !venueCode || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
-                      <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Continue to my tab"} · {money(cartTotal)}
+                      <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
                     </Button>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>
                     Clear tab

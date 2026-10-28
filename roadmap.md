@@ -1,6 +1,7 @@
 # Roadmap
 
 - [ ] Bar: select items into the local tab automatically; My Tab opens existing swipe/cash/member-account choices without a separate open/add step. Preserve staffed ordering and club payment switches.
+- [ ] Remove Club sponsored — no charge from the signed-in app bar; retain personal-PIN Counter mode.
 
 - [x] Resolve Nelspruit Court 2 league scoring entry; real phone/tablet links open the live scorer, 26 focused tests pass, existing scores untouched; publication requested.
 

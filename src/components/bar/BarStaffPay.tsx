@@ -119,7 +119,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
 
   async function confirmRun() {
     if (!run || previewMonthEnd) return;
-    if (Object.values(lineErrors).some(Boolean)) { toast.error("Fix the highlighted amounts first"); return; }
+    if (hasLineErrors) { toast.error("Fix the highlighted amounts first"); return; }
     setBusy(true);
     try { await submitLines(run.id, l => l.id, run); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not confirm the payout"); }
@@ -128,7 +128,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
 
   async function processPreview() {
     if (!run || !previewMonthEnd) return;
-    if (Object.values(lineErrors).some(Boolean)) { toast.error("Fix the highlighted amounts first"); return; }
+    if (hasLineErrors) { toast.error("Fix the highlighted amounts first"); return; }
     setBusy(true);
     try {
       const { data: runId, error } = await supabase.rpc("bar_prepare_payroll_run_now" as any, { _club_id: clubId });
@@ -220,7 +220,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead><tr className="border-b"><th className="text-left py-2">Staff</th><th className="text-right">Hours / shifts</th><th className="text-right">Rate (R)</th><th className="text-right">Pay (R)</th><th className="text-right">Tips (R)</th><th className="text-right">Total</th></tr></thead>
-              <tbody>{run.lines.map(l => {
+              <tbody>{payableLines.map(l => {
                 const e = edits[l.id];
                 if (!e) return null;
                 const change = (field: keyof PayrollReview, value: string) => { if (isPayrollAmountInput(value)) setLineEdits(prev => ({ ...(prev ?? edits), [l.id]: editPayrollReview((prev ?? edits)[l.id], field, value, l.pay_basis ?? "monthly") })); };

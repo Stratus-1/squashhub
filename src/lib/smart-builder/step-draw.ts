@@ -216,8 +216,11 @@ export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null, o
     // complete stages/pairing/dates replaces them, so a Quarterfinal added afterwards is not silently ignored.
     const hadDeferred = (d.deferredStages ?? []).length > 0;
     // Automatic attach on setup save: only categories whose play-offs were actually put on the timeline.
-    if (opts.explicitOnly && !plannedPlayoffStages(plan, unitKeyOf((d.poolLabels?.[0] as string | undefined) ?? d.label)).length) return d;
-    const label = (d.poolLabels?.[0] as string | undefined) ?? d.label;
+    // poolLabels are category labels for cross sets but plain pool names ("Pool A") for multi-pool divisions;
+    // fall back to the division's own category label when the first pool label has no planned play-offs.
+    const candidates = [d.poolLabels?.[0] as string | undefined, d.label].filter(Boolean) as string[];
+    const label = candidates.find((l) => plannedPlayoffStages(plan, unitKeyOf(l)).length) ?? candidates[0];
+    if (opts.explicitOnly && !plannedPlayoffStages(plan, unitKeyOf(label)).length) return d;
     const p = proposeFormat(plan, label);
     if (!p.playoffs.length) return d;
     const version = String(d.stages[0]?.id ?? "s").replace(/-main$/, "");

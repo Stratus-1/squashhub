@@ -4201,10 +4201,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const knockout = categoryGames.filter((m) => m.stage === "ko");
       const seedOrder = categoryRows.map((r) => r.club_member_id).filter(Boolean);
       const koOrder = overallStandings(seedOrder, knockout.map((m) => ({ bracket: 1, round: m.round_number ?? 1, a: m.player_a_member_id, b: m.player_b_member_id, winner: m.winner_member_id })));
-      const finalRows = placements ? placements.map((p) => ({ id: p.player_member_id, place: p.position, how: placementSlotLabel(p.decidedBySlot) }))
+      const hybridFinal = rrFinishOn(swissStageFor(gn)?.rrFinish) && pilotSwissModels[gn] ? rrFinalRanking(pilotSwissModels[gn]) : null;
+      const finalRows = hybridFinal ? hybridFinal.map((r) => ({ id: r.id, place: r.place, how: r.group ? `Round-robin group ${r.group}` : "Swiss finish" }))
+        : placements ? placements.map((p) => ({ id: p.player_member_id, place: p.position, how: placementSlotLabel(p.decidedBySlot) }))
         : knockout.length ? koOrder.rows : categoryRows.map((r, i) => ({ id: r.club_member_id, place: i + 1, how: "Rounds finish" }));
       const finalComplete = fixturesComplete(categoryGames) && (!swissStageFor(gn) || swissStatusByGroup.get(gn)?.state === "final") && (!knockout.length || koOrder.complete);
-      const ladderPanel = canManage && !isDoublesLeague(gn) && !isCrossLeague && !mu && (poolCountFor(gn) <= 1 || placements)
+      const ladderPanel = canManage && !isDoublesLeague(gn) && !isCrossLeague && !mu && (!rrFinishOn(swissStageFor(gn)?.rrFinish) || hybridFinal) && (poolCountFor(gn) <= 1 || placements)
         ? <OverallStandingsPanel title={getGroupLabel(champ, gn)} rows={finalRows} complete={finalComplete} names={Object.fromEntries(categoryRows.map((r) => [r.club_member_id, r.name]))} clubId={champ.club_id} canManage={canManage} tournamentId={champ.id} groupNumber={gn} /> : null;
 
 

@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Check CSIR Thursday Social 29 October invitations and 24-hour reminder; preserve channel settings and do not send test invitations.
-- [ ] Trace Wendy's confirmation-email copy to willemp75@gmail.com; report send evidence without assuming delivery.
+- [x] Checked CSIR Thursday Social 29 October: 12 linked invitees pending, email/push enabled, WhatsApp off, no occurrence reminders yet; daily 06:00 check precedes today's 18:00 eligibility and next runs tomorrow. No settings changed or messages sent.
+- [x] Traced Wendy's confirmation-email copy to willemp75@gmail.com: Nelspruit SMTP accepted it 28 October 13:53 UTC; inbox delivery unconfirmed. No resend performed.
 - [x] Bar payroll: "Process payroll & generate report" now available — open-shift gate removed (migration 0291 counts open shifts' hours to processing time); preview ran live in Riverside and the process button is enabled.
 - [x] Bar payroll: lines with nothing payable (no pay and no tips) are skipped in the payout preview/report and no longer block confirmation; 14 payroll tests pass.
 - [x] Bar payroll: processing no longer requires admin to tick/end every shift first — open attendance counts as one shift in the period with provisional hours.

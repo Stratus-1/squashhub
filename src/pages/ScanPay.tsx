@@ -38,6 +38,7 @@ import { TipEditor } from "@/components/bar/TipEditor";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
 import { MemberAccountTipDialog } from "@/components/bar/MemberAccountTipDialog";
 import { memberSettlementTip, type ServingPerson } from "@/lib/bar/member-settlement-tip";
+import { canShowCounterEntry } from "@/lib/bar/counter-entry";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -207,6 +208,9 @@ export default function ScanPay() {
     },
   });
   const isSignedInMember = !!signedInMembership;
+  const showCounterEntry = canShowCounterEntry(isSignedInMember,
+    localStorage.getItem(`sh.barcounter.token.${code}`),
+    localStorage.getItem(`sh.barcounter.operator.${code}`));
   const signedInName = isSignedInMember ? signedInMembership!.name || activeMember?.name || "Member" : null;
   const [checkingMembership, setCheckingMembership] = useState(false);
   const [memberTipPending, setMemberTipPending] = useState<{ target: "cart" | "tab"; memberId: string; staff: ServingPerson[]; requestId: string } | null>(null);
@@ -899,7 +903,7 @@ export default function ScanPay() {
             Members: charge to your account with your membership number and a one-time code sent to your phone. Visitors: pay by card or open a tab.
           </span>
         )}
-        <Button
+        {showCounterEntry && <Button
           type="button"
           variant="outline"
           size="sm"
@@ -907,7 +911,7 @@ export default function ScanPay() {
           onClick={() => navigate(`/s/${code}/counter`)}
         >
           <Store className="h-3.5 w-3.5" /> Counter mode
-        </Button>
+        </Button>}
       </div>
 
 

@@ -21898,6 +21898,10 @@ export type Database = {
           phone: string
         }[]
       }
+      chairman_financial_write_allowed: {
+        Args: { _club_id: string }
+        Returns: boolean
+      }
       champ_actor_member: {
         Args: { p_champ_id: string; p_token: string; p_verify: string }
         Returns: string
@@ -22243,6 +22247,7 @@ export type Database = {
         Args: { _club_id: string; _reason?: string }
         Returns: Json
       }
+      club_financial_access: { Args: { _club_id: string }; Returns: Json }
       club_gateway_fee_percent: {
         Args: { _club_id: string; _method?: string }
         Returns: number
@@ -23026,6 +23031,10 @@ export type Database = {
         Returns: boolean
       }
       is_club_captain: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_club_chairman: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }

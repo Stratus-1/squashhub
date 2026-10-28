@@ -1,3 +1,4 @@
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 /**
  * Bar staff pay — monthly salaries and the monthly tips+salary payout.
  * On the club's chosen pay day a payout run is prepared automatically;
@@ -29,6 +30,7 @@ const money = (n: number) => `R${Number(n).toFixed(2)}`;
 const monthLabel = (period: string) => new Date(`${period}T00:00:00`).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
 
 export function BarStaffPay({ clubId }: { clubId: string }) {
+  const { canChange } = useFinancialAccess(clubId);
   const qc = useQueryClient();
   const [payday, setPayday] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
@@ -158,13 +160,13 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
           <div>
             <Label htmlFor="staff-payday" className="text-[11px]">Day of month (1–31; shorter months use their last day)</Label>
             <Input id="staff-payday" inputMode="numeric" className="h-9 w-24" value={payday ?? String(data?.payday ?? "")}
-              onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); setPayday(v); }} disabled={busy} />
+              onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); setPayday(v); }} disabled={!canChange || busy} />
           </div>
-          <Button size="sm" className="h-9" disabled={busy || payday === null} onClick={savePayday}>Save</Button>
+          <Button size="sm" className="h-9" disabled={!canChange || busy || payday === null} onClick={savePayday}>Save</Button>
         </div>
       </Card>
 
-      <section className="space-y-2"><h3 className="text-sm font-semibold">Normal daily shift opening</h3><div className="flex items-end gap-2"><div><Label htmlFor="normal-shift-opening">Johannesburg time</Label><Input id="normal-shift-opening" type="time" value={opening ?? data?.opening?.slice(0, 5) ?? "16:00"} onChange={e => setOpening(e.target.value)} disabled={busy} /></div><Button size="sm" disabled={busy || !opening} onClick={async () => { setBusy(true); try { const { error } = await supabase.rpc("bar_set_normal_shift_opening" as any, { _club_id: clubId, _time: opening }); if (error) throw error; setOpening(null); await refresh(); toast.success("Normal opening time saved"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not save opening time"); } finally { setBusy(false); } }}>Save</Button></div></section>
+      <section className="space-y-2"><h3 className="text-sm font-semibold">Normal daily shift opening</h3><div className="flex items-end gap-2"><div><Label htmlFor="normal-shift-opening">Johannesburg time</Label><Input id="normal-shift-opening" type="time" value={opening ?? data?.opening?.slice(0, 5) ?? "16:00"} onChange={e => setOpening(e.target.value)} disabled={!canChange || busy} /></div><Button size="sm" disabled={!canChange || busy || !opening} onClick={async () => { setBusy(true); try { const { error } = await supabase.rpc("bar_set_normal_shift_opening" as any, { _club_id: clubId, _time: opening }); if (error) throw error; setOpening(null); await refresh(); toast.success("Normal opening time saved"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not save opening time"); } finally { setBusy(false); } }}>Save</Button></div></section>
 
       <Card className="p-4 space-y-2">
         <h3 className="text-sm font-semibold">Staff pay &amp; tips</h3>
@@ -184,14 +186,14 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
                 <tr className="border-b" key={person.id}>
                   <td className="py-2">{person.name}</td>
                   <td className="px-1">
-                    <select aria-label={`${person.name} pay basis`} className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={basis} disabled={busy}
+                    <select aria-label={`${person.name} pay basis`} className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={basis} disabled={!canChange || busy}
                       onChange={e => { const b = e.target.value as PayBasis; setBasisEdits(prev => ({ ...prev, [person.id]: b })); setSalaryEdits(prev => { const n = { ...prev }; delete n[person.id]; return n; }); }}>
                       <option value="monthly">Monthly salary</option><option value="shift">Per shift</option><option value="hourly">Per hour</option>
                     </select>
                   </td>
                   <td className="text-right px-1">
                     <Input aria-label={`${person.name} amount`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={edited ?? (stored ? stored.toFixed(2) : "")}
-                      placeholder="0.00" disabled={busy}
+                      placeholder="0.00" disabled={!canChange || busy}
                       onChange={e => { if (isPayrollAmountInput(e.target.value)) setSalaryEdits(prev => ({ ...prev, [person.id]: e.target.value })); }} />
                   </td>
                   <td className="text-right tabular-nums px-1">{basis === "hourly" ? `${Number(person.hours ?? 0).toFixed(2)} h` : basis === "shift" ? person.shifts : "—"}</td>
@@ -199,7 +201,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
                   <td className="text-right tabular-nums px-1">{money(person.earned)}</td>
                   <td className="text-right tabular-nums px-1">{money(person.paid)}</td>
                   <td className="text-right tabular-nums px-1">{money(person.remaining)}</td>
-                  <td className="text-right"><Button size="sm" variant="outline" disabled={busy || !dirty} onClick={() => saveSalary(person)}>Save</Button></td>
+                  <td className="text-right"><Button size="sm" variant="outline" disabled={!canChange || busy || !dirty} onClick={() => saveSalary(person)}>Save</Button></td>
                 </tr>
               );
             })}</tbody>
@@ -230,13 +232,13 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
                     <td className="py-2">{l.name}
                       <p className="text-muted-foreground text-[11px]">{l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h × ${money(Number(l.hourly_rate ?? 0))} = ${money(Number(l.calculated_salary ?? 0))}` : l.pay_basis === "shift" ? `${l.shifts ?? 0} shift${l.shifts === 1 ? "" : "s"} × ${money(Number(l.shift_rate ?? 0))} = ${money(Number(l.calculated_salary ?? 0))}` : "Monthly salary"}{l.calculated_salary != null && Math.abs((payrollAmount(e.salary) || 0) - Number(l.calculated_salary)) > 0.004 ? " · overridden" : ""}</p>
                       {err && <p className="text-destructive text-[11px]">{err}</p>}</td>
-                    <td className="text-right px-1">{l.pay_basis === "monthly" ? "—" : <Input aria-label={`${l.name} ${l.pay_basis === "shift" ? "shifts" : "hours"}`} inputMode="decimal" className="h-8 w-24 ml-auto text-right" value={e.quantity} disabled={busy} onChange={ev => change("quantity", ev.target.value)} />}</td>
-                    <td className="text-right px-1"><Input aria-label={`${l.name} payout rate`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.rate} disabled={busy} onChange={ev => change("rate", ev.target.value)} /></td>
-                    <td className="text-right px-1"><Input aria-label={`${l.name} salary`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.salary} disabled={busy}
+                    <td className="text-right px-1">{l.pay_basis === "monthly" ? "—" : <Input aria-label={`${l.name} ${l.pay_basis === "shift" ? "shifts" : "hours"}`} inputMode="decimal" className="h-8 w-24 ml-auto text-right" value={e.quantity} disabled={!canChange || busy} onChange={ev => change("quantity", ev.target.value)} />}</td>
+                    <td className="text-right px-1"><Input aria-label={`${l.name} payout rate`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.rate} disabled={!canChange || busy} onChange={ev => change("rate", ev.target.value)} /></td>
+                    <td className="text-right px-1"><Input aria-label={`${l.name} salary`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.salary} disabled={!canChange || busy}
                       onChange={ev => change("salary", ev.target.value)} /></td>
-                    <td className="text-right px-1"><Input aria-label={`${l.name} tips`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.tips} disabled={busy}
+                    <td className="text-right px-1"><Input aria-label={`${l.name} tips`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.tips} disabled={!canChange || busy}
                       onChange={ev => change("tips", ev.target.value)} /></td>
-                    <td className="text-right px-1"><Input aria-label={`${l.name} payout total`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.total} disabled={busy} onChange={ev => change("total", ev.target.value)} /></td>
+                    <td className="text-right px-1"><Input aria-label={`${l.name} payout total`} inputMode="decimal" className="h-8 w-28 ml-auto text-right" value={e.total} disabled={!canChange || busy} onChange={ev => change("total", ev.target.value)} /></td>
                   </tr>
                 );
               })}</tbody>
@@ -249,8 +251,8 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
             </table>
           </div>
           {previewMonthEnd
-            ? <div className="space-y-1"><Button onClick={processPreview} disabled={busy || hasLineErrors}>Process payroll & generate report</Button><p className="text-[11px] text-muted-foreground">Records these salaries and tips under Cost of sales — Bar and downloads the paymaster report.</p></div>
-            : <Button onClick={confirmRun} disabled={busy || hasLineErrors}>Confirm payout & generate report</Button>}
+            ? <div className="space-y-1"><Button onClick={processPreview} disabled={!canChange || busy || hasLineErrors}>Process payroll & generate report</Button><p className="text-[11px] text-muted-foreground">Records these salaries and tips under Cost of sales — Bar and downloads the paymaster report.</p></div>
+            : <Button onClick={confirmRun} disabled={!canChange || busy || hasLineErrors}>Confirm payout & generate report</Button>}
         </Card>
       )}
 

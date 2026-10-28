@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { ChevronDown } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CollapsibleSection } from "@/components/ui/collapsible-card";
@@ -12,6 +13,7 @@ interface Attendance { id: string; name: string; start: string; end: string | nu
 const local = (s: string) => new Date(Date.parse(s) + 7_200_000).toISOString().slice(0, 16);
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "medium", timeStyle: "short" });
 export function StaffAttendanceLog({ clubId }: { clubId: string }) {
+  const { canChange } = useFinancialAccess(clubId);
   const qc = useQueryClient();
   const [row, setRow] = useState<Attendance | null>(null);
   const [start, setStart] = useState(""); const [end, setEnd] = useState(""); const [reason, setReason] = useState(""); const [busy, setBusy] = useState(false);
@@ -65,7 +67,7 @@ export function StaffAttendanceLog({ clubId }: { clubId: string }) {
                 <td className="whitespace-nowrap px-2">{when(a.start)}</td>
                 <td className="whitespace-nowrap px-2">{a.end ? when(a.end) : "Open · review before pay"}</td>
                 <td className="text-right tabular-nums">{a.hours == null ? "—" : Number(a.hours).toFixed(2)}</td>
-                <td className="text-right">{a.paid ? "Paid" : <Button size="sm" variant="outline" onClick={() => { setRow(a); setStart(local(a.start)); setEnd(a.end ? local(a.end) : ""); setReason(""); }}>Correct</Button>}</td>
+                <td className="text-right">{a.paid ? "Paid" : canChange ? <Button size="sm" variant="outline" onClick={() => { setRow(a); setStart(local(a.start)); setEnd(a.end ? local(a.end) : ""); setReason(""); }}>Correct</Button> : null}</td>
               </tr>)}</tbody></table>
             </td></tr>}
           </Fragment>

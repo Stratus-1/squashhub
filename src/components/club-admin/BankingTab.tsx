@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { Club, useClubMembers, useUpdateClub } from "@/hooks/use-club";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
 import { Card } from "@/components/ui/card";
@@ -168,6 +169,7 @@ import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
 
 export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
+  const { canChange, isLoading: accessLoading } = useFinancialAccess(clubId);
   const [step, setStep] = useState("methods");
   const updateClub = useUpdateClub();
   const { data: secrets } = useClubSecrets(clubId);
@@ -436,6 +438,8 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     { id: "recurring", label: "Recurring payments", description: "Choose whether members can pay fees or outstanding balances monthly, and set the allowed periods.", complete: false },
   ];
 
+  if (accessLoading) return <p className="text-sm text-muted-foreground">Loading banking details…</p>;
+  if (!canChange) return <div className="space-y-3 mt-4"><h3 className="text-sm font-semibold">Banking · View only</h3><dl className="grid grid-cols-2 gap-2 text-sm"><dt>Bank</dt><dd>{secrets?.bank_name || "—"}</dd><dt>Account holder</dt><dd>{secrets?.bank_account_name || "—"}</dd><dt>Account number</dt><dd>{secrets?.bank_account_number || "—"}</dd><dt>Branch code</dt><dd>{secrets?.bank_branch_code || "—"}</dd><dt>Payment gateway</dt><dd>{(club as any).payment_gateway || "—"}</dd></dl></div>;
   return (
     <div className="space-y-4 mt-4">
       <SetupSteps steps={steps} value={step} onChange={setStep} variant="connected" />

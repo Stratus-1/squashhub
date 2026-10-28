@@ -1,3 +1,4 @@
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { MemberBarPurchases } from "./MemberBarPurchases";
 import { Club, useClubMembers } from "@/hooks/use-club";
 import { SetupSteps, SetupStepNav, type SetupStep } from "@/components/club-admin/setup/SetupSteps";
@@ -148,6 +149,7 @@ const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.l
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
 export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clubId: string; party?: "member" | "club" }) {
+  const { canChange } = useFinancialAccess(clubId);
   const Party = party === "club" ? "Club" : "Member";
   const partyLower = party === "club" ? "club" : "member";
   const partyPlural = party === "club" ? "clubs" : "members";
@@ -406,6 +408,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
    * Club Finance permission, locks the row and only acts while it is still
    * pending — a second tap or second device can never post it twice. */
   const decidePayment = async (txId: string, approve: boolean) => {
+    if (!canChange) return toast.error("Financial access is view-only");
     try {
       const { data, error } = await (sbClient as any).rpc("finance_decide_member_transaction", {
         _tx_id: txId, _approve: approve,
@@ -429,6 +432,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
   /* ─── Manual transaction entry ─── */
   const handleRecordTransaction = async () => {
+    if (!canChange) return toast.error("Financial access is view-only");
     const amount = parseFloat(txAmount);
     if (!amount || amount <= 0) { toast.error("Enter a valid amount"); return; }
     const memberLinked = !!(txMemberId && txMemberId !== "__none__");
@@ -526,6 +530,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
   /* ─── Fee billing or balance-sheet-only outstanding adjustment ─── */
   const handleBillMember = async () => {
+    if (!canChange) return toast.error("Financial access is view-only");
     if (billBusyRef.current) return;
     const amount = parseFloat(billAmount);
     if (!billMemberId) return toast.error("Select a member");
@@ -580,6 +585,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   };
 
   const confirmRowAction = async () => {
+    if (!canChange) return toast.error("Financial access is view-only");
     if (!rowAction) return;
     setRowActionBusy(true);
     try {
@@ -607,7 +613,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem
-          onClick={() => setRowAction({ ref: entry.journal_ref, mode: "reverse", summary: journalRefSummary(entry.journal_ref) })}
+          disabled={!canChange} onClick={() => setRowAction({ ref: entry.journal_ref, mode: "reverse", summary: journalRefSummary(entry.journal_ref) })}
         >
           <Undo2 className="w-3.5 h-3.5 mr-2" /> Reverse entry
         </DropdownMenuItem>
@@ -617,7 +623,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={() => setRowAction({ ref: entry.journal_ref, mode: "delete", summary: journalRefSummary(entry.journal_ref) })}
+          disabled={!canChange} onClick={() => setRowAction({ ref: entry.journal_ref, mode: "delete", summary: journalRefSummary(entry.journal_ref) })}
         >
           <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete entry
         </DropdownMenuItem>
@@ -796,6 +802,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
 
       <FinanceHub
+        readOnly={!canChange}
         pendingCount={(pendingTransactions || []).length}
         onStatement={() => setStatementOpen(true)}
         onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
@@ -838,28 +845,29 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
+                <Button disabled={!canChange} size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
                   <Receipt className="w-3.5 h-3.5" /> Bill {Party}
                 </Button>
-                <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
+                <Button disabled={!canChange} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
               </div>
             </div>
-            <RecurringPendingPanel clubId={clubId} />
+            {canChange && <RecurringPendingPanel clubId={clubId} />}
 
 
 
         <TabsContent value="association-payables">
-          <AssociationPayablesPanel clubId={clubId} />
+          {canChange && <AssociationPayablesPanel clubId={clubId} />}
         </TabsContent>
 
         <TabsContent value="renewals">
-          <RenewalInvoicesTab clubId={clubId} />
+          {canChange && <RenewalInvoicesTab clubId={clubId} />}
         </TabsContent>
 
         <TabsContent value="banking">
           <BankingPanel
+            readOnly={!canChange}
             clubId={clubId}
             money={money}
             moneyAccounts={["bank_current", "bank", "cash"]
@@ -872,12 +880,12 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         </TabsContent>
 
         <TabsContent value="debit-orders">
-          <DebitOrdersPanel clubId={clubId} />
+          {canChange && <DebitOrdersPanel clubId={clubId} />}
         </TabsContent>
 
         {party === "member" && <TabsContent value="billing-settings">
           <h2 className="text-base font-semibold">Member Billing · Settings</h2>
-          <MemberCreditControl clubId={clubId} />
+          <MemberCreditControl clubId={clubId} readOnly={!canChange} />
         </TabsContent>}
 
         <TabsContent value="income">
@@ -914,7 +922,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 </Button>
                 )}
 
-                <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
+                <Button disabled={!canChange} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
               </div>
@@ -1125,10 +1133,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       ) : tx.method === "eft" ? (
                         <span className="self-center text-[11px] text-muted-foreground">No proof uploaded</span>
                       ) : null}
-                      <Button size="sm" variant="outline" onClick={() => handleRejectPayment(tx.id)}>
+                      <Button disabled={!canChange} size="sm" variant="outline" onClick={() => handleRejectPayment(tx.id)}>
                         <XCircle className="w-4 h-4 mr-1" /> Reject
                       </Button>
-                      <Button size="sm" onClick={() => handleConfirmPayment(tx.id)}>
+                      <Button disabled={!canChange} size="sm" onClick={() => handleConfirmPayment(tx.id)}>
                         <CheckCircle2 className="w-4 h-4 mr-1" /> Confirm
                       </Button>
                     </div>
@@ -2073,6 +2081,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders" | "banking" | "billing-settings";
 
 interface FinanceHubProps {
+  readOnly?: boolean;
   pendingCount: number;
   onStatement: () => void;
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
@@ -2086,7 +2095,7 @@ interface FinanceHubProps {
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
+function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
   const Party = party === "club" ? "Club" : "Member";
   const partyLower = party === "club" ? "club" : "member";
   // Approval emails link to ?tab=finance&view=pending&tx=<id>.
@@ -2177,7 +2186,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
         <Button variant="outline" onClick={() => setView("coa")} className="gap-1.5">
           <ListTree className="w-4 h-4" /> Chart of Accounts
         </Button>
-        <Button onClick={onEnterTx} className="gap-1.5">
+        <Button disabled={readOnly} onClick={onEnterTx} className="gap-1.5">
           <Plus className="w-4 h-4" /> Enter Transaction
         </Button>
       </div>
@@ -2187,7 +2196,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3 items-start">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {active.tiles.map((t, i) => {
+          {active.tiles.filter(t => !readOnly || !["association-payables", "renewals", "debit-orders"].includes(t.key) && t.onClick !== onBill && t.onClick !== onImportBank).map((t, i) => {
             const Icon = t.icon;
             const handleClick = t.onClick ? t.onClick : () => setView(t.key);
             return (

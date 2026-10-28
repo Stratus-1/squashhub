@@ -2066,6 +2066,27 @@
       "when": 1793210617642,
       "tag": "0294_tournament_final_standings_ladder",
       "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1793213484593,
+      "tag": "0295_chairman_financial_view_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1793213628183,
+      "tag": "0296_chairman_finance_boundary_completion",
+      "breakpoints": true
+    },
+    {
+      "idx": 297,
+      "version": "7",
+      "when": 1793213789851,
+      "tag": "0297_chairman_finance_scope_and_banking_guards",
+      "breakpoints": true
     }
   ]
 }

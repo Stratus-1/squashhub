@@ -3,7 +3,8 @@ import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TournamentRegistrationsDialog } from "@/components/club-admin/TournamentRegistrationsDialog";
 
-const state = vi.hoisted(() => ({ regs: [] as any[], writes: [] as any[], fail: false, emptyUpdate: false, savedPaid: false }));
+const state = vi.hoisted(() => ({ regs: [] as any[], writes: [] as any[], fail: false, emptyUpdate: false, savedPaid: false, canChange: true }));
+vi.mock("@/hooks/use-financial-access", () => ({ useFinancialAccess: () => ({ canChange: state.canChange }) }));
 vi.mock("@/hooks/use-club", () => ({ useClubMembers: () => ({ data: [] }) }));
 vi.mock("@/lib/supabase-ext", () => ({
   rpcExt: async (name: string, args: any) => {
@@ -39,9 +40,14 @@ function mount(overrides = {}) {
 function registration(extra = {}) {
   return { id: "reg", champ_id: "champ", club_member_id: "member", member: { name: "Test Player" }, status: "registered", registration_status: "registered", fee_status: "due", division_choices: [1, 2], ...extra };
 }
-beforeEach(() => { cleanup(); vi.clearAllMocks(); state.regs = []; state.writes = []; state.fail = false; state.emptyUpdate = false; state.savedPaid = false; });
+beforeEach(() => { cleanup(); vi.clearAllMocks(); state.regs = []; state.writes = []; state.fail = false; state.emptyUpdate = false; state.savedPaid = false; state.canChange = true; });
 
 describe("Tournament admin Paid action", () => {
+  it("prevents Chairman from recording a tournament payment", async () => {
+    state.regs = [registration()]; state.canChange = false; mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
+    expect(state.writes).toHaveLength(0);
+  });
   it("offers Paid on organiser-registered fee-due entries, not only pending EFT", async () => {
     state.regs = [registration()]; mount();
     expect(await screen.findByRole("button", { name: "Mark Test Player paid" })).toHaveTextContent("Paid");

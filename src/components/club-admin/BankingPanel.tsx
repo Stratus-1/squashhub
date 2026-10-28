@@ -16,6 +16,7 @@ export interface MoneyAccount {
 }
 
 interface Props {
+  readOnly?: boolean;
   clubId: string;
   moneyAccounts: MoneyAccount[];
   money: (n: number) => string;
@@ -30,6 +31,7 @@ interface Props {
  * per-statement transaction reporting, separate from the general GL views.
  */
 export function BankingPanel({
+  readOnly = false,
   clubId,
   moneyAccounts,
   money,
@@ -130,10 +132,10 @@ export function BankingPanel({
             <h3 className="font-semibold text-sm">Bank & Cash Accounts</h3>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button size="sm" onClick={onImport} className="gap-1.5 h-8">
+            <Button disabled={readOnly} size="sm" onClick={onImport} className="gap-1.5 h-8">
               <FileUp className="w-3.5 h-3.5" /> Import Bank Statement
             </Button>
-            <Button size="sm" variant="outline" onClick={onOpeningBalances} className="gap-1.5 h-8">
+            <Button disabled={readOnly} size="sm" variant="outline" onClick={onOpeningBalances} className="gap-1.5 h-8">
               <BookOpen className="w-3.5 h-3.5" /> Opening Balances
             </Button>
           </div>

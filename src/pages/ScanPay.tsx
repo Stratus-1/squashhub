@@ -1457,7 +1457,7 @@ export default function ScanPay() {
                     onClick={addToOpenTab}
                   >
                     <Receipt className="w-4 h-4" />
-                    {orderProcess ? (barOpen ? "Place order" : "Bar closed for orders") : tab ? "Add to my open tab" : "Open a tab for the evening"}
+                    {orderProcess ? (barOpen ? "Place order" : "Bar closed for orders") : tab ? "Add to my open tab" : isSignedInMember ? "Add to my tab" : "Open a tab for the evening"}
                   </Button>
 
                   <p className="text-[11px] text-muted-foreground text-center">
@@ -1513,6 +1513,16 @@ export default function ScanPay() {
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
                   {orderProcess ? "Place order" : "Add to my open tab"}
                 </Button>
+              ) : isSignedInMember ? (
+                <div className="flex gap-2">
+                  <Button className="gap-2 h-11 flex-1" disabled={submitting} onClick={addToOpenTab}>
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                    Add to my tab
+                  </Button>
+                  <Button variant="outline" className="gap-2 h-11" onClick={() => setCheckingOut(true)}>
+                    <CreditCard className="w-4 h-4" /> Pay now
+                  </Button>
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <Button

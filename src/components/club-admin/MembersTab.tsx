@@ -513,14 +513,22 @@ export function MembersTab({ clubId }: { clubId: string }) {
     queryKey: ["club-member-debtors-gl", clubId, memberIds.join(",")],
     enabled: memberIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await fromExt("club_journal_entries")
-        .select("club_member_id, debit, credit, account")
-        .eq("club_id", clubId)
-        .eq("account", "debtors")
-        .in("club_member_id", memberIds);
-      if (error) throw error;
+      // Page through every row — the backend returns at most 1000 rows per request.
+      const data: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data: page, error } = await fromExt("club_journal_entries")
+          .select("id, club_member_id, debit, credit, account")
+          .eq("club_id", clubId)
+          .eq("account", "debtors")
+          .in("club_member_id", memberIds)
+          .order("id")
+          .range(from, from + 999);
+        if (error) throw error;
+        data.push(...(page || []));
+        if (!page || page.length < 1000) break;
+      }
       const map = new Map<string, { billed: number; paid: number }>();
-      for (const r of (data || []) as any[]) {
+      for (const r of data) {
         if (!r.club_member_id) continue;
         const cur = map.get(r.club_member_id) || { billed: 0, paid: 0 };
         cur.billed += Number(r.debit || 0);

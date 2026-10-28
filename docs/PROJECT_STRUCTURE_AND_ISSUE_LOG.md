@@ -966,7 +966,13 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
-### 2026-10-28 · Tournament Paid action singular JSON response
+### 2026-10-28 · Treasurer tournament Paid updates silently filtered
+- **Symptom:** After removing the JSON coercion error, Paid still returned “Payment was not confirmed”.
+- **Finding:** Hosted requests identify the Uitsig Treasurer account, whose saved finance/fees permission is valid but champs permission is false. Direct fee and registration writes are filtered by separate admin/champs policies, returning empty success responses without settlement. Earlier Super Admin preview checks did not exercise that actor.
+- **Fix:** Migration 0287 adds `champ_admin_confirm_paid`, validating exact club/tournament/registration and existing champs/fees/finance authority. One transaction settles only an existing linked fee and marks the registration, using the canonical fee calculator and an audit event; retries do not re-charge. No full-admin or tournament management grant. Paid UI calls that single action.
+- **Guard:** 18 tests pass including isolated Treasurer-only R100 settlement, ordinary-member/cross-club denial, no duplicate fee or audit, and rollback if the registration fails. Deployed authenticated already-paid check returns success without writes. Real unpaid member statuses untouched; frontend preview only; unpaid Treasurer UI submission not performed. Shared web/PWA/native action, no native integration changes.
+
+### 2026-10-28 · Tournament Paid action singular JSON response (SUPERSEDED by atomic payment action above)
 - **Symptom:** Admin reported a JSON error selecting Paid for Club Champs.
 - **Finding:** The registration update demanded exactly one JSON object with `.single()`; an empty returned update produces a JSON coercion error. User screenshots confirm that exact message; hosted logs show registration PATCH 406 responses at 11:32 and 11:35 UTC. Linked fee settlement runs first and can already have marked the registration paid.
 - **Fix:** Request an array response and, if no row returns, read back the exact tournament/registration and require saved paid status before reporting success. No permission changes or new fees; unconfirmed writes produce a clear payment/permissions message rather than false success.

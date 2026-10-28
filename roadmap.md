@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Club Champs Paid: hosted requests identified the Treasurer actor lacking champs permission. Applied atomic payment-only RPC for existing champs/fees/finance grants; 18 tests pass including isolated R100 settlement, tenant denial, idempotency and rollback. Deployed already-paid no-write check passes; actual unpaid member payments untouched. Frontend preview only; Treasurer live unpaid click not submitted.
 - [x] Club Champs admin Paid: array response with saved-paid readback replaces singular JSON coercion; 11 focused tests pass and preview build OK. Screenshots and hosted logs confirm registration PATCH 406 errors. Signed-in Riverside administration opens; no real payment clicked or status changed. Preview only; live payment end-to-end not submitted.
 - [x] Uitsig AGM: saved three email templates and unscheduled draft campaigns (233 unanswered attendance, 204 unsubmitted votes, 2 online attendees); existing personal links reused, saved 23:59 deadline preserved, nothing sent. Recipient lists are preparation-time snapshots.
 

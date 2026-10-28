@@ -56,7 +56,7 @@ import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/
 import { fixtureRoundRow, resolveFixtureSchedule, stageScheduleIndex, type StageScheduleInfo } from "@/lib/tournaments/stage-schedule";
 import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones } from "@/lib/tournaments/round-definitions";
-import { isPlayoffGame, isStructuredPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
+import { isPlayoffGame, isStructuredPlayoffGame, playoffDeadline, playoffKeyForLabel, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches, tournamentMatchDays } from "@/lib/tournaments/schedule-order";
 import { knockoutCategoryNames, pacedKnockoutRound } from "@/lib/tournaments/knockout-round-display";

@@ -37,3 +37,8 @@ export function suggestedPay(basis: PayBasis, monthlySalary: number, shiftRate: 
   if (basis === "shift") return Math.round(shiftRate * Math.max(0, Math.floor(shifts)) * 100) / 100;
   return Math.round(monthlySalary * 100) / 100;
 }
+
+/** A payout line is only shown when something is payable on it — nothing to pay means no line. */
+export function payrollLinePayable(salary: string, tips: string): boolean {
+  return (payrollAmount(salary) || 0) > 0 || (payrollAmount(tips) || 0) > 0;
+}

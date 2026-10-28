@@ -4019,3 +4019,4 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 
 ## 2026-10-28 — Member bar page simplified for signed-in members
 - ScanPay (/s/:code) no longer shows the guest "Member of…? No login needed" prompt, the membership-number strip text, or name/phone tab fields to a signed-in active member of that club; their tab opens in their own name and is labelled "My tab", with a single "Add to my tab" action. Guests and counter mode unchanged. Tests: scanpay-signed-in-member-ui.test.tsx.
+- Follow-up: HonestyBar selections stay local automatically; opening My Tab in self-service mode posts the selection to the existing unpaid shared tab and navigates to existing club-enabled payment choices. Removed the empty-tab opening button and member ScanPay empty-tab prompt. Staffed orders remain explicit. Removed signed-in app Club sponsored action; personal-PIN Counter action unchanged. No backend or live-data edits; frontend preview only.

@@ -19186,6 +19186,7 @@ export type Database = {
           knockout_seeds: Json | null
           knockout_seeds_at: string | null
           ladder_affects: boolean | null
+          ladder_update_mode: string
           league_best_of: Json | null
           league_bye_handling: Json | null
           league_doubles_serving_methods: Json | null
@@ -19304,6 +19305,7 @@ export type Database = {
           knockout_seeds?: Json | null
           knockout_seeds_at?: string | null
           ladder_affects?: boolean | null
+          ladder_update_mode?: string
           league_best_of?: Json | null
           league_bye_handling?: Json | null
           league_doubles_serving_methods?: Json | null
@@ -19422,6 +19424,7 @@ export type Database = {
           knockout_seeds?: Json | null
           knockout_seeds_at?: string | null
           ladder_affects?: boolean | null
+          ladder_update_mode?: string
           league_best_of?: Json | null
           league_bye_handling?: Json | null
           league_doubles_serving_methods?: Json | null
@@ -21946,6 +21949,17 @@ export type Database = {
         Args: { p_champ: string; p_expected_total_cents: number }
         Returns: number
       }
+      champ_final_ladder: {
+        Args: {
+          p_apply?: boolean
+          p_champ_id: string
+          p_club_id: string
+          p_expected?: Json
+          p_group: number
+          p_order: string[]
+        }
+        Returns: Json
+      }
       champ_fixture_minutes: {
         Args: { _champ: string; _doubles?: boolean; _group: number }
         Returns: number
@@ -22057,6 +22071,10 @@ export type Database = {
       }
       champ_set_entry_fee_basis: {
         Args: { p_basis: string; p_champ: string; p_mixed_rule: string }
+        Returns: undefined
+      }
+      champ_set_final_ladder_mode: {
+        Args: { p_champ_id: string; p_club_id: string; p_enabled: boolean }
         Returns: undefined
       }
       champ_shared_group: {

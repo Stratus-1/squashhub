@@ -867,7 +867,7 @@ export default function ScanPay() {
     );
   }
 
-  const showLoginPrompt = !guestChosen;
+  const showLoginPrompt = !guestChosen && !isSignedInMember;
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -894,14 +894,16 @@ export default function ScanPay() {
 
       {/* Neutral strip — this page never assumes who is holding the phone */}
       <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-[11px]">
-        <span className="truncate flex-1 text-muted-foreground">
-          Members: charge to your account with your membership number and a one-time code sent to your phone. Visitors: pay by card or open a tab.
-        </span>
+        {!isSignedInMember && (
+          <span className="truncate flex-1 text-muted-foreground">
+            Members: charge to your account with your membership number and a one-time code sent to your phone. Visitors: pay by card or open a tab.
+          </span>
+        )}
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 gap-1.5 px-2.5 text-xs"
+          className={`h-8 shrink-0 gap-1.5 px-2.5 text-xs ${isSignedInMember ? "ml-auto" : ""}`}
           onClick={() => navigate(`/s/${code}/counter`)}
         >
           <Store className="h-3.5 w-3.5" /> Counter mode

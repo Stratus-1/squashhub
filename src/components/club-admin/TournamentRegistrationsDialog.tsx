@@ -1,4 +1,5 @@
 import { ChampFeesPanel } from "./ChampFeesPanel";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { entryDueCents } from "@/lib/tournaments/entry-fee";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubId }: Props) {
+  const { canChange } = useFinancialAccess(clubId);
   const qc = useQueryClient();
   const { data: members = [] } = useClubMembers(clubId);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -539,18 +541,18 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                       )}
                       {feeRequired && classifyEntrant(r, { paymentRequired: feeRequired }) !== "declined" &&
                         (r.fee_status ? !["paid", "waived", "not_required"].includes(r.fee_status) : !["paid", "waived"].includes(r.status)) && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs" title="Record payment received or an agreed payment arrangement" aria-label={`Mark ${getName(r.member)} paid`} onClick={() => markPaid.mutate(r)} disabled={markPaid.isPending}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" title="Record payment received or an agreed payment arrangement" aria-label={`Mark ${getName(r.member)} paid`} onClick={() => markPaid.mutate(r)} disabled={!canChange || markPaid.isPending}>
                           {markPaid.isPending && markPaid.variables?.id === r.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}Paid
                         </Button>
                       )}
                       {feeRequired && ((r.status === "paid" && String(r.payment_ref ?? "").startsWith("ADMIN-")) || r.status === "waived") && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" title="Undo an admin Paid/Waive mark made in error" aria-label={`Mark ${getName(r.member)} unpaid`} onClick={() => { if (window.confirm(`Mark ${getName(r.member)} as NOT paid? Their fee will show as outstanding again.`)) markUnpaid.mutate(r); }} disabled={markUnpaid.isPending}>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" title="Undo an admin Paid/Waive mark made in error" aria-label={`Mark ${getName(r.member)} unpaid`} onClick={() => { if (window.confirm(`Mark ${getName(r.member)} as NOT paid? Their fee will show as outstanding again.`)) markUnpaid.mutate(r); }} disabled={!canChange || markUnpaid.isPending}>
                           Unpay
                         </Button>
                       )}
                       {(r.status === "pending_payment" || r.status === "pending_eft") && (
                         <>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => waiveFee.mutate(r)}>Waive</Button>
+                          <Button disabled={!canChange} size="sm" variant="ghost" className="h-7 text-xs" onClick={() => waiveFee.mutate(r)}>Waive</Button>
                         </>
                       )}
 

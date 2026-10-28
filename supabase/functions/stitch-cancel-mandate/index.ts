@@ -2,6 +2,7 @@
 // For subscriptions we also call Stitch's /subscriptions/{id}/cancel endpoint
 // so no further scheduled charges are attempted.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertFinanceAdministrator } from "../_shared/chairman-finance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,6 +61,10 @@ Deno.serve(async (req) => {
       allowed = isPlatform === true;
     }
     if (!allowed) return json({ error: "Not allowed" }, 403);
+    if (mandate.user_id !== userId) {
+      try { await assertFinanceAdministrator(admin, userId, mandate.club_id); }
+      catch (e) { return json({ error: e instanceof Error ? e.message : "Financial permission required" }, 403); }
+    }
 
     // For subscriptions, call Stitch to cancel remotely so no further
     // charges are attempted. Card consents don't require a remote cancel

@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { sendAppEmail } from '../_shared/send-app-email.ts'
+import { financialCaller, assertFinanceAdministrator } from '../_shared/chairman-finance.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -45,6 +46,17 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })
+  }
+
+  try {
+    const userId = await financialCaller(req, supabase as any)
+    if (userId) {
+      if (!onlyIds?.length) throw new Error('Choose invoices for financial administration')
+      const clubs = new Set<string>((rows ?? []).map((r: any) => r.club_members?.club_id).filter(Boolean))
+      for (const clubId of clubs) await assertFinanceAdministrator(supabase as any, userId, clubId)
+    }
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Financial permission required' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
   let sent = 0

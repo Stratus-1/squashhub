@@ -7,6 +7,7 @@
 // an admin we restrict to their own club_id.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertScopedFinanceJob } from "../_shared/chairman-finance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +31,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const restrictClubId: string | null = body?.club_id || null;
+    try { await assertScopedFinanceJob(req, admin, restrictClubId); }
+    catch (e) { return json({ error: e instanceof Error ? e.message : "Financial permission required" }, 403); }
 
     // Pull all active mandates (optionally filtered by club).
     let mandatesQ = admin

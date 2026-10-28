@@ -24,7 +24,7 @@ export function MemberBarPurchases({ clubId, memberId }: { clubId: string; membe
         for (let from = 0; ; from += 1000) {
           const { data: page, error } = await db
             .from("bar_visitor_sales")
-            .select("id, created_at, quantity, total, payment_method, payment_status, bar_items(name)")
+            .select("id, created_at, quantity, total, payment_method, payment_status, guest_tab_id, bar_items(name)")
             .eq("club_id", clubId)
             .in("guest_tab_id", ids.slice(i, i + 200))
             .eq("payment_status", "paid")
@@ -41,12 +41,26 @@ export function MemberBarPurchases({ clubId, memberId }: { clubId: string; membe
   });
 
   const total = data.reduce((s: number, r: any) => s + Number(r.total || 0), 0);
+  // Each checkout batch (same tab + same order time) was settled by one payment.
+  const batches = new Map<string, { key: string; created_at: string; method: string; total: number; count: number }>();
+  for (const r of data as any[]) {
+    const key = `${r.guest_tab_id}|${r.created_at}|${r.payment_method}`;
+    const b = batches.get(key) || { key, created_at: r.created_at, method: r.payment_method, total: 0, count: 0 };
+    b.total += Number(r.total || 0); b.count += Number(r.quantity || 1);
+    batches.set(key, b);
+  }
+  const rows: any[] = [];
+  for (const b of [...batches.values()].sort((a, c) => +new Date(c.created_at) - +new Date(a.created_at))) {
+    rows.push({ id: `pay-${b.key}`, created_at: b.created_at, label: `${b.method === "cash" ? "Cash" : "Card"} payment (${b.count} item${b.count === 1 ? "" : "s"})`, credit: b.total });
+    for (const r of data as any[]) if (`${r.guest_tab_id}|${r.created_at}|${r.payment_method}` === b.key)
+      rows.push({ id: r.id, created_at: r.created_at, label: `${r.quantity}× ${r.bar_items?.name || "Bar item"}`, debit: Number(r.total || 0) });
+  }
 
   return (
     <div className="space-y-1">
       <div className="flex items-baseline justify-between">
-        <p className="text-xs font-semibold">Bar purchases paid at the time</p>
-        {data.length > 0 && <p className="text-[11px] text-muted-foreground tabular-nums">{data.length} items · {money(total)}</p>}
+        <p className="text-xs font-semibold">Bar purchases &amp; card/cash payments</p>
+        {data.length > 0 && <p className="text-[11px] text-muted-foreground tabular-nums">{money(total)} bought · {money(total)} paid</p>}
       </div>
       {isLoading ? (
         <p className="text-xs text-muted-foreground">Loading bar purchases…</p>
@@ -54,12 +68,15 @@ export function MemberBarPurchases({ clubId, memberId }: { clubId: string; membe
         <p className="text-xs text-muted-foreground">No card or cash bar purchases.</p>
       ) : (
         <div className="border rounded-lg divide-y">
-          {data.map((r: any) => (
-            <div key={r.id} className="grid grid-cols-[80px_1fr_70px_80px] gap-1 px-3 py-1.5 text-xs items-center">
-              <span className="text-[10px] text-muted-foreground tabular-nums">{format(new Date(r.created_at), "dd MMM yy")}</span>
-              <span className="truncate">{r.quantity}× {r.bar_items?.name || "Bar item"}</span>
-              <span className="text-[10px] text-muted-foreground capitalize">{r.payment_method}</span>
-              <span className="text-right tabular-nums">{money(Number(r.total || 0))}</span>
+          <div className="grid grid-cols-[80px_1fr_80px_80px] gap-1 px-3 py-1.5 bg-muted/60 text-[10px] font-semibold uppercase text-muted-foreground">
+            <span>Date</span><span>Description</span><span className="text-right">Debit</span><span className="text-right">Credit</span>
+          </div>
+          {rows.map((r) => (
+            <div key={r.id} className={"grid grid-cols-[80px_1fr_80px_80px] gap-1 px-3 py-1.5 text-xs items-center" + (r.credit ? " font-medium" : "")}>
+              <span className="text-[10px] text-muted-foreground tabular-nums">{format(new Date(r.created_at), "dd MMM yy HH:mm")}</span>
+              <span className="truncate">{r.label}</span>
+              <span className="text-right tabular-nums text-destructive">{r.debit ? money(r.debit) : ""}</span>
+              <span className="text-right tabular-nums text-green-600">{r.credit ? money(r.credit) : ""}</span>
             </div>
           ))}
         </div>

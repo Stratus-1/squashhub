@@ -25,6 +25,15 @@ describe("bar payroll input rules", () => {
   });
 });
 
+describe("payroll lines with nothing payable", () => {
+  it("skips lines with no pay and no tips, keeps payable ones", () => {
+    expect(payrollLinePayable("0", "0")).toBe(false);
+    expect(payrollLinePayable("0.00", "0")).toBe(false);
+    expect(payrollLinePayable("1500", "0")).toBe(true);
+    expect(payrollLinePayable("0", "55.30")).toBe(true);
+  });
+});
+
 import { suggestedPay } from "@/lib/bar/payroll";
 describe("suggestedPay", () => {
   it("pays an hourly rate for exact logged hours", () => { expect(suggestedPay("hourly", 0, 0, 0, 50, 6.5)).toBe(325); });

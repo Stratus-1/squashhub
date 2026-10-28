@@ -1,3 +1,4 @@
+import { MemberBarPurchases } from "./MemberBarPurchases";
 import { Club, useClubMembers } from "@/hooks/use-club";
 import { SetupSteps, SetupStepNav, type SetupStep } from "@/components/club-admin/setup/SetupSteps";
 
@@ -1710,6 +1711,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       <p className="text-[10px] text-muted-foreground">
                         Use the ⋯ menu on any row to <strong>Reverse</strong> (audit-safe) or <strong>Delete</strong> the transaction. Both the debit and credit legs are updated together so the books stay balanced.
                       </p>
+                      {party === "member" && <MemberBarPurchases clubId={clubId} memberId={statementMemberId} />}
+
 
                     </>
                   );

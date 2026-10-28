@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Chairman finance restrictions recognise elected offices and assigned roles, override club full-admin grants at canonical financial tables and write actions, and preserve ownership-validated personal payments; why: hiding controls cannot prevent financial edits or self-escalation.
 - Tournament final-ladder adjustments use a club-scoped, permission-checked preview/apply RPC with completion and stale-preview guards; only participants' occupied slots change, and an explicit tournament timing choice preserves legacy per-match behaviour until selected. Why: final standings must not reseed outsiders or mutate ladders during viewing/deployment.
 - Tournament Paid uses the club-scoped atomic `champ_admin_confirm_paid` action for existing champs/fees/finance permissions, settling only a linked existing fee and auditing once; why: finance staff must not require full tournament management or risk half-completed browser writes.
 - Counter menu shortcut visibility uses the club membership or named local PIN-session hint; serving authority remains the existing server-validated personal PIN, with direct PIN entry preserved. Why: hide staff navigation from guests without granting account-based serving bypasses.

@@ -4,6 +4,8 @@ Last verified against the repository on 2026-08-25.
 
 ## System purpose
 
+Chairman retains non-financial administration while financial writes are blocked by `is_club_chairman`, canonical-table validation triggers and financial action guards. Both legacy roles and active offices/role assignments are recognised, and club full-admin flags cannot override the restriction. Finance viewing remains separate from write authority; personal bar account settlement uses a transaction-local exception inside existing ownership-validated session actions. Platform administrator authority and service callbacks remain separate.
+
 Final tournament ladder adjustment is an explicit organiser action via `champ_final_ladder`: club/ladder permission, completion and stale-preview validation precede an atomic refill of participants' existing slots, independently for split ladders. `ladder_update_mode=final_standings` suppresses per-match ladder movement but retains ranking-point awards; existing tournaments remain in legacy match mode until explicitly changed. No view-time or deployment-time ladder backfill occurs.
 
 GoBook balance display shares `GoBookBalance` across My account and Court bookings. API-enabled GoBook clubs call authenticated `gobook-api` action `my_balance`, using the active club member's saved GoBook client ID after owner/existing admin checks. Only that client's balance and provider `asAt` return; no bulk balances, auto-linking, local accounting changes or credit transfers occur.

@@ -1,22 +1,5 @@
 # Roadmap
-- [x] Checked CSIR Thursday Social 29 October: 12 linked invitees pending, email/push enabled, WhatsApp off, no occurrence reminders yet; daily 06:00 check precedes today's 18:00 eligibility and next runs tomorrow. No settings changed or messages sent.
-- [x] Traced Wendy's confirmation-email copy to willemp75@gmail.com: Nelspruit SMTP accepted it 28 October 13:53 UTC; inbox delivery unconfirmed. No resend performed.
-- [x] Bar payroll: "Process payroll & generate report" now available — open-shift gate removed (migration 0291 counts open shifts' hours to processing time); preview ran live in Riverside and the process button is enabled.
-- [x] Bar payroll: lines with nothing payable (no pay and no tips) are skipped in the payout preview/report and no longer block confirmation; 14 payroll tests pass.
-- [x] Bar payroll: processing no longer requires admin to tick/end every shift first — open attendance counts as one shift in the period with provisional hours.
-- [x] Bar staff hours: collapsible per-person totals with drill-down to every shift date and inline Correct; verified in Riverside preview (WP drill-down expanded).
-- [x] Verified special ingredient sums and income-statement accounting; corrected both Uitsig Coke recipes to four tots, readback confirmed and 29 tests pass. Historical sales unchanged. Cost accuracy awaits verified bottle prices: saved Buffelsfontein R6, Klipdrift Premium R12, Whiskey R12 per bottle; no replacement values invented.
-- [x] Club Champs Paid: hosted requests identified the Treasurer actor lacking champs permission. Applied atomic payment-only RPC for existing champs/fees/finance grants; 18 tests pass including isolated R100 settlement, tenant denial, idempotency and rollback. Deployed already-paid no-write check passes; actual unpaid member payments untouched. Frontend preview only; Treasurer live unpaid click not submitted.
-- [x] Club Champs admin Paid: array response with saved-paid readback replaces singular JSON coercion; 11 focused tests pass and preview build OK. Screenshots and hosted logs confirm registration PATCH 406 errors. Signed-in Riverside administration opens; no real payment clicked or status changed. Preview only; live payment end-to-end not submitted.
-- [x] Uitsig AGM: saved three email templates and unscheduled draft campaigns (233 unanswered attendance, 204 unsubmitted votes, 2 online attendees); existing personal links reused, saved 23:59 deadline preserved, nothing sent. Recipient lists are preparation-time snapshots.
-
-- [x] Bar: select items into the local tab automatically; My Tab opens existing swipe/cash/member-account choices without a separate open/add step. Focused tests pass; live checkout not submitted. Preview only.
-- [x] Removed Club sponsored — no charge from the signed-in app bar; personal-PIN Counter mode retained. Preview only.
-
-- [x] Resolve Nelspruit Court 2 league scoring entry; real phone/tablet links open the live scorer, 26 focused tests pass, existing scores untouched; publication requested.
-
-- [x] GoBook: read-only member balances in My account and Court bookings for API-enabled GoBook clubs; 21 focused tests pass, live CSIR accounts/refresh verified on both pages; backend deployed, frontend not published.
-
-- [x] AGM: self-nomination & self-vote as admin-configurable option per ballot (DB flag, RPC enforcement, admin toggle, nomination/ballot UI)
-- [x] AGM: admin-opened secret run-off for tied seats, original links and results preserved; 21 focused tests and Riverside-only end-to-end verification passed; temporary test ballots removed, no emails sent.
-- [x] Bar (signed-in member page only): tapping an item adds it to the open tab and confirms with a toast, with no tile left highlighted; Counter mode, staffed orders and the QR/poster page untouched. 2 focused tests pass, live preview verified; preview only.
+- [x] Structured play-offs after a multi-pool round robin keep the saved pairing: `buildPlayoffChain` now reads the round robin's pool count (was always 1 → "1 v 4 / 2 v 3" from pool A only). Regression tests pass; 3 pre-existing cross-league doubles failures in playoff-progression.test.ts are unrelated (reproduce without the change).
+- [x] Uitsig Ladies B saved semifinal corrected to A1 v B2 / B1 v A2 (guarded SQL, provisional rows relabelled); verified live: "PLAY-OFFS · 3 games left of 3" with "POOL A #1 VS POOL B #2" / "POOL B #1 VS POOL A #2". Build OK.
+- [x] "By round" list heading: structured play-off games now group under "Play-offs" instead of "Pool games" (round numbers 901+ read as "no round").
+- [ ] Men's A play-offs still need the organiser to click "Save & update fixtures" on the Play-offs step — with the fix it will attach the correct crossover semifinal/final (blocked on the user's explicit save).

@@ -93,6 +93,9 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
     const invalidQuantity = review && (!isPayrollAmountInput(review.quantity) || review.quantity === "" || (l.pay_basis === "shift" && !Number.isInteger(Number(review.quantity))));
     return [l.id, invalidQuantity || (review && (!isPayrollAmountInput(review.rate) || review.rate === "")) ? "Enter valid hours, shifts and rate" : payrollLineError(e.salary, e.tips, maxTips)];
   })), [run, edits, data]);
+  // Only lines with something payable are shown or can block confirmation.
+  const payableLines = (run?.lines ?? []).filter(l => payrollLinePayable(edits[l.id]?.salary ?? String(l.salary ?? 0), edits[l.id]?.tips ?? String(l.tips ?? 0)));
+  const hasLineErrors = payableLines.some(l => lineErrors[l.id]);
   const totals = (run?.lines ?? []).reduce((acc, l) => {
     const e = edits[l.id] ?? { salary: "0", tips: "0" };
     return { salary: acc.salary + (payrollAmount(e.salary) || 0), tips: acc.tips + (payrollAmount(e.tips) || 0) };

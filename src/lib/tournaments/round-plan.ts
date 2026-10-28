@@ -167,6 +167,20 @@ export function playoffKeyForLabel(label?: string | null, stage?: string | null)
   return null;
 }
 
+/**
+ * Structured-stage play-off games (semi-finals, finals, placement) carry their
+ * own stage, but their round numbers (901+) read as "no round" in member lists
+ * — without this they fall into the pool-games bucket and sit under a
+ * "Pool games" heading. Legacy (no stage_key) section games keep their
+ * stage-label headings, and paced knockout rounds keep "Knockout Round N".
+ */
+export function isStructuredPlayoffGame(m: {
+  stage_key?: string | null; stage?: string | null; stage_label?: string | null; round_number?: number | null;
+}): boolean {
+  if (!m?.stage_key || String(m.stage_key).startsWith("dl:")) return false;
+  return pacedKnockoutRound(m) == null && isPlayoffGame(m);
+}
+
 /** The play-by date for a play-off game, from its own play-off round only. */
 export function playoffDeadline(
   milestones: MilestonePlayBy & { place_playoffs?: string | null } | null | undefined,

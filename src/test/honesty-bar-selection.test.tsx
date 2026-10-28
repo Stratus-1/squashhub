@@ -6,7 +6,7 @@ import HonestyBar from "@/pages/HonestyBar";
 
 const mocks = vi.hoisted(() => ({ handoff: vi.fn(), rpc: vi.fn(), added: vi.fn() }));
 vi.mock("@/contexts/ClubContext", () => ({ useClubContext: () => ({ club: { id: "club1", name: "Test club", honesty_bar_enabled: true } }) }));
-vi.mock("@/contexts/MemberContext", () => ({ useMemberContext: () => ({ activeMember: { id: "member1", name: "Member" }, isAdmin: true } }) }));
+vi.mock("@/contexts/MemberContext", () => ({ useMemberContext: () => ({ activeMember: { id: "member1", name: "Member" }, isAdmin: true }) }));
 vi.mock("@/hooks/use-club", () => ({ useIsSuperAdmin: () => true }));
 vi.mock("@/hooks/use-currency", () => ({ useClubCurrency: () => ({ format: (n: number) => `R${n.toFixed(2)}` }) }));
 vi.mock("@/hooks/use-account-charge-preview", () => ({ useAccountChargePreview: () => ({ blocked: false }) }));

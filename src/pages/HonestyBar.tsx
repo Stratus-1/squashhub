@@ -22,7 +22,7 @@ import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { Link, useNavigate } from "react-router-dom";
-import { placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
+import { openMemberCounterTab, placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";

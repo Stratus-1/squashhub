@@ -1059,8 +1059,8 @@ export default function Tournaments() {
       const prev = order.get(key);
       if (prev === undefined || num < prev) order.set(key, num);
     });
-    // Play-off stages always lead, in draw order: Quarter-final, Semi-final,
-    // Final — then numbered rounds, then pool games last.
+    // Numbered rounds list first; structured play-off rounds follow in draw
+    // order (Quarter-finals, Semi-finals, Finals, placement); pool games last.
     const stageRank = (key: string): number => {
       // Structured play-off rounds always follow the pool rounds: on a
       // shared play-by date the round lists first, then quarter-finals,

@@ -21882,6 +21882,14 @@ export type Database = {
         Args: { p_champ_id: string; p_token: string; p_verify: string }
         Returns: string
       }
+      champ_admin_confirm_paid: {
+        Args: {
+          p_champ_id: string
+          p_club_id: string
+          p_registration_id: string
+        }
+        Returns: Json
+      }
       champ_apply_paid_registration: {
         Args: { p_payment_ref?: string; p_registration_id: string }
         Returns: Json

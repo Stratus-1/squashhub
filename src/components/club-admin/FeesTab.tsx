@@ -397,6 +397,7 @@ interface FeeDialogProps {
 }
 
 function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "", recurringEnabled = false }: FeeDialogProps) {
+  const { canChange } = useFinancialAccess(clubId);
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
   const isVisitorPass = !!existing?.visitorPassKind;

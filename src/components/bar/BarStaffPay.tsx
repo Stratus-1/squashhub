@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { isPayrollAmountInput, payrollAmount, payrollLineError, suggestedPay, editPayrollReview, type PayrollReview, type PayBasis } from "@/lib/bar/payroll";
+import { isPayrollAmountInput, payrollAmount, payrollLineError, payrollLinePayable, suggestedPay, editPayrollReview, type PayrollReview, type PayBasis } from "@/lib/bar/payroll";
 import { StaffAttendanceLog } from "@/components/bar/StaffAttendanceLog";
 import { downloadPayrollReport } from "@/lib/bar/payroll-report";
 

@@ -4016,3 +4016,6 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Court 2's current LG001 v LG006 scorecard had one completed rubber and status setup, with no submission or totals lock. UpcomingFixturesTab incorrectly treated any saved summary points as a final result and disabled entry for Court QR devices/non-admin members.
 - Partial setup/draft scores now retain Set up and mark game; past and submitted/confirmed/completed results retain correction restrictions. No RLS, result, lineup or fixture changes.
 - Verified actual NSC Court 2 link (court database ID 10) opens the unfinished rubber's doubles scorer on phone and tablet; existing position 2 scores preserved, no test points or results saved. 26 focused fixture/device/access tests pass; build OK.
+
+## 2026-10-28 — Member bar page simplified for signed-in members
+- ScanPay (/s/:code) no longer shows the guest "Member of…? No login needed" prompt, the membership-number strip text, or name/phone tab fields to a signed-in active member of that club; their tab opens in their own name and is labelled "My tab", with a single "Add to my tab" action. Guests and counter mode unchanged. Tests: scanpay-signed-in-member-ui.test.tsx.

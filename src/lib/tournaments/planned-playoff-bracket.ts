@@ -32,9 +32,7 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
   // A Quarterfinal/Semifinal saved in Stages & scheduling is the later, more specific choice (and is what the
   // real fixtures are generated from), so an older "placement" style must not override it.
   const knockoutTimeline = timeline.some((s) => s?.name === "Quarterfinal" || s?.name === "Semifinal");
-  // The Play-offs step no longer offers a playoff "type"; Stages & scheduling is the only source of truth,
-  // so an old saved style is ignored whenever the timeline has stages.
-  const placement = choice?.style === "placement" && pools === 2 && !knockoutTimeline && !timeline.length;
+  const placement = choice?.style === "placement" && pools === 2 && !knockoutTimeline;
   const games = placement
     ? provisionalPlayoffs({ ...plan, stages: [] }, unitKey, pools).map((g, i) => ({
       ...g, stage: "Placement", label: `${i === 0 ? "Final" : `Places ${2 * i + 1}/${2 * i + 2}`}: ${g.label.replace(/ \(\d+\/\d+ place\)$/, "")}`,

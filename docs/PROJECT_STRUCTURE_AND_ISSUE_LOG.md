@@ -4055,3 +4055,5 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-10-28 — "Pool games" heading covered structured play-off games
 - Cause: structured play-off rows carry round numbers 901+, which the "By round" list treats as "no round" and drops into the pool-games bucket (`src/pages/Tournaments.tsx`).
 - Fix: `isStructuredPlayoffGame` (`src/lib/tournaments/round-plan.ts`) routes structured-stage play-offs into a "Play-offs" group (paced knockout rounds and legacy stage-label groups unchanged); test `src/test/structured-playoff-heading.test.ts`.
+
+- 2026-10-28: Uitsig Men's A play-off bracket showed A1 v B1 / A2 v B2 because an older Play-offs-step "placement" style overrode the saved Semifinal crossover timeline in `plannedPlayoffBracket`. A saved Quarterfinal/Semifinal stage now takes precedence (display only); tests in planned-playoff-bracket.test.ts.

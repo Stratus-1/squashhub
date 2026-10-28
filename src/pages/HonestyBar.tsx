@@ -197,6 +197,18 @@ export default function HonestyBar() {
     cartLines.map(({ item, qty }) => ({ division: (item as any).division, total: item.price * qty })));
   const updateCart = (itemId: string, delta: number) => setCart(prev => addToTab(prev, itemId, delta));
 
+  // Tapping a tile adds one and confirms with a toast; no tile stays visually selected.
+  const addLineToTab = (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    updateCart(itemId, 1);
+    if (!item) return;
+    const count = (cart[itemId] || 0) + 1;
+    toast.success(count > 1 ? `${count}× ${item.name} on your tab` : `${item.name} added to your tab`, {
+      id: `bar-tab-${itemId}`,
+      duration: 2200,
+    });
+  };
+
   // Mixer ("buddy") choices for spirit + mixer orders: in-stock soft-drink
   // items (Coke, soda, tonic, etc.). Word-boundary match so "Chocolates"
   // never counts as "cola".
@@ -480,13 +492,12 @@ export default function HonestyBar() {
                     {[...groupForPos(group.items.filter(i => !buddyItems.some(b => b.id === i.id)) as unknown as InventoryItem[], items as unknown as InventoryItem[]),
                       ...group.items.filter(i => buddyItems.some(b => b.id === i.id)).map(item => ({ key: `m:${item.id}`, title: item.name, options: [{ item: item as unknown as InventoryItem, label: item.name }], isSpecial: false }))].map(entry => {
                       const first = entry.options[0].item;
-                      const qty = entry.options.reduce((n, o) => n + (cart[o.item.id] || 0), 0);
                       const multi = entry.options.length > 1;
                       return (
                         <Card
                           key={entry.key}
-                          className={`relative p-1.5 xl:p-1 flex flex-col items-center gap-1 xl:gap-0.5 transition-colors ${multi ? "" : "cursor-pointer hover:bg-accent/50"} ${qty > 0 ? "ring-2 ring-primary" : ""}`}
-                          onClick={multi ? undefined : () => updateCart(first.id, 1)}
+                          className={`relative p-1.5 xl:p-1 flex flex-col items-center gap-1 xl:gap-0.5 transition-colors ${multi ? "" : "cursor-pointer hover:bg-accent/50"}`}
+                          onClick={multi ? undefined : () => addLineToTab(first.id)}
                         >
                           <div className="w-full aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
                             {first.image_url ? (
@@ -502,12 +513,12 @@ export default function HonestyBar() {
                                 <div key={o.item.id} className="flex gap-1 w-full">
                                   <Button
                                     size="sm"
-                                    variant={cart[o.item.id] ? "default" : "outline"}
+                                    variant="outline"
                                      className="h-8 xl:h-7 flex-1 min-w-0 px-2 text-[11px] xl:text-[10px] leading-tight justify-between gap-1"
-                                    onClick={() => updateCart(o.item.id, 1)}
+                                    onClick={() => addLineToTab(o.item.id)}
                                   >
                                      <span className="truncate">{o.label}</span>
-                                     <span className="shrink-0">{money(o.item.price)}{cart[o.item.id] ? ` ×${cart[o.item.id]}` : ""}</span>
+                                     <span className="shrink-0">{money(o.item.price)}</span>
                                   </Button>
 
                                 </div>
@@ -515,26 +526,6 @@ export default function HonestyBar() {
                             </div>
                           ) : (
                             <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{money(first.price)}</p>
-                          )}
-                          {qty > 0 && (
-                            <>
-                              <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
-                                {qty}
-                              </span>
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="absolute top-1 left-1 h-5 w-5"
-                                aria-label="Remove one"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const last = [...entry.options].reverse().find(o => cart[o.item.id]);
-                                  if (last) updateCart(last.item.id, -1);
-                                }}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                            </>
                           )}
                         </Card>
                       );

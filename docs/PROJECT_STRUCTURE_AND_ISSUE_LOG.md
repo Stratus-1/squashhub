@@ -966,6 +966,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-10-28 · Tournament Paid action singular JSON response
+- **Symptom:** Admin reported a JSON error selecting Paid for Club Champs.
+- **Finding:** The registration update demanded exactly one JSON object with `.single()`; an empty returned update produces a JSON coercion error. Available telemetry did not retain the original failed request. Linked fee settlement runs first and can already have marked the registration paid.
+- **Fix:** Request an array response and, if no row returns, read back the exact tournament/registration and require saved paid status before reporting success. No permission changes or new fees; unconfirmed writes produce a clear payment/permissions message rather than false success.
+- **Guard:** Focused tests cover array responses, an already-settled readback, permission errors and empty updates with an unpaid readback. No real member payment statuses changed during testing; preview only.
+
 ### 2026-10-20 · Rachel Gates NSC full bar and finance domain access
 - **Symptom:** NSC treasurer could not access all bar administration and club-finance information/actions.
 - **Finding:** Rachel already holds the Treasurer role with fees/banking/members/bar/finance, but GL accounts, banking writes, fee billing, ledger audit and some bar operations still required full club administration. NSC uses legacy permissions.

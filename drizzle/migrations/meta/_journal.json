@@ -2066,6 +2066,13 @@
       "when": 1793210617642,
       "tag": "0294_tournament_final_standings_ladder",
       "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1793213484593,
+      "tag": "0295_chairman_financial_view_only",
+      "breakpoints": true
     }
   ]
 }

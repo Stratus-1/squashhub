@@ -30,7 +30,9 @@ export function overallStandings(seedOrder: string[], games: KoGame[]): { rows: 
       if (gs.some((g) => !g.winner)) complete = false;
       if (r === lastRound && gs.length === 1 && gs[0].winner) {
         const g = gs[0], loser = g.a === g.winner ? g.b : g.a;
-        out.push(g.winner!); how.set(g.winner!, `${label} winner`);
+        const winner = g.winner;
+        if (!winner) continue;
+        out.push(winner); how.set(winner, `${label} winner`);
         if (loser) { out.push(loser); how.set(loser, `${label} final`); }
         continue;
       }
@@ -54,6 +56,6 @@ export function overallStandings(seedOrder: string[], games: KoGame[]): { rows: 
  */
 export function ladderAfterStandings(ladder: string[], standings: string[]): string[] {
   const inCat = new Set(standings.filter((id) => ladder.includes(id)));
-  const queue = standings.filter((id) => inCat.has(id));
-  return ladder.map((id) => (inCat.has(id) ? queue.shift()! : id));
+  const queue = [...new Set(standings.filter((id) => inCat.has(id)))];
+  return ladder.map((id) => (inCat.has(id) ? queue.shift() ?? id : id));
 }

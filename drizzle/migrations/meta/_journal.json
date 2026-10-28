@@ -2059,6 +2059,13 @@
       "when": 1793197120817,
       "tag": "0293_special_shift_entered_start",
       "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1793210617642,
+      "tag": "0294_tournament_final_standings_ladder",
+      "breakpoints": true
     }
   ]
 }

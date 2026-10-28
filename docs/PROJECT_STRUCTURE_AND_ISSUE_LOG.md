@@ -1,3 +1,8 @@
+## 2026-10-28 — Final tournament standings to club ladder
+- Added organiser preview/apply for final singles standings, with an explicit per-tournament final-standings timing choice. Existing tournaments retain their settings until explicitly selected; viewing and deployment never reorder members.
+- Club-scoped ladder permission, completed games/configured Swiss rounds/all saved stages, singles-only validation and stale-preview checks are enforced server-side. Participants reuse their exact occupied slots; outsiders, unranked/external players and separate gender ladders are preserved. Existing ladder history records changes; unchanged reapply writes nothing.
+- Final actions are available for single-order Swiss/round-robin/knockout categories and complete placement playoffs; independent pools without final placement order are not merged speculatively. No live fixtures or ladder positions changed.
+
 ## 2026-10-28 — Uitsig special recipe and cost verification
 - Recipe calculator sums every component using option consumption and stock-parent yield. Two active Coke specials had quantity 1 of the double option despite their two-double names; corrected to quantity 2 (four tots), preserving Coke quantities, prices and history.
 - Saved spirit stock-container costs are Buffelsfontein R6, Klipdrift Premium R12 and Whiskey R12 per 28-tot bottle; no verified replacement purchase prices supplied. Do not invent costs or rewrite historic movement snapshots.

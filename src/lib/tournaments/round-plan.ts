@@ -12,6 +12,7 @@
  * Pure logic: no React, no network.
  */
 import type { MilestoneKey, MilestonePlayBy } from "./round-definitions";
+import { pacedKnockoutRound } from "./knockout-round-display";
 
 export type PlayoffKey = "place_playoffs" | "quarter_final" | "semi_final" | "final";
 export const PLAYOFF_KEY_ORDER: PlayoffKey[] = ["place_playoffs", "quarter_final", "semi_final", "final"];

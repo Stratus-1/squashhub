@@ -33,7 +33,6 @@ export function StaffAttendanceLog({ clubId }: { clubId: string }) {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not save attendance"); } finally { setBusy(false); }
   }
   const visible = history ? data : data.filter(a => !a.paid);
-  const visible = history ? data : data.filter(a => !a.paid);
   return <section className="space-y-2">
     <CollapsibleSection
       defaultOpen={false}

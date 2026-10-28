@@ -1117,7 +1117,7 @@ export default function Tournaments() {
           // deadline is Round 1, the next Round 2, and so on.
           const pbDate = key.startsWith("\u0002pb:") ? key.slice(4) : null;
           const pbRound = pbDate ? Number(pbDate.split("|r")[1]) || 1 : null;
-          const heading = isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbRound}` : key;
+          const heading = isPo ? "Play-offs" : isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbRound}` : key;
           const koCategoryGroups = new Map<string, any[]>();
           koItems.forEach((m: any) => {
             const categoryKey = `${m.champ_id}:${m.group_number ?? "-"}`;

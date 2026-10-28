@@ -3,21 +3,23 @@ import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TournamentRegistrationsDialog } from "@/components/club-admin/TournamentRegistrationsDialog";
 
-const state = vi.hoisted(() => ({ regs: [] as any[], writes: [] as any[], fail: false }));
+const state = vi.hoisted(() => ({ regs: [] as any[], writes: [] as any[], fail: false, emptyUpdate: false, savedPaid: false }));
 vi.mock("@/hooks/use-club", () => ({ useClubMembers: () => ({ data: [] }) }));
 vi.mock("@/lib/supabase-ext", () => ({
   rpcExt: async () => ({ data: [], error: null }),
   fromExt: (table: string) => {
     let payload: any;
+    let selected = "";
     const filters: any[] = [];
     const result = () => payload
-      ? { data: { id: "reg" }, error: state.fail ? new Error("Permission denied") : null }
-      : { data: table === "club_champs_registrations" ? state.regs : [], error: null };
+      ? { data: state.emptyUpdate ? [] : [{ id: "reg" }], error: state.fail ? new Error("Permission denied") : null }
+      : { data: table === "club_champs_registrations" ? (selected === "id, status, fee_status" ?
+          [{ id: "reg", status: state.savedPaid ? "paid" : "registered", fee_status: state.savedPaid ? "paid" : "due" }] : state.regs) : [], error: null };
     const chain: any = {
-      select: () => chain, order: () => chain,
+      select: (columns: string) => { selected = columns; return chain; }, order: () => chain,
       eq: (key: string, value: any) => { filters.push([key, value]); return chain; },
       update: (value: any) => { payload = value; state.writes.push({ table, payload, filters }); return chain; },
-      single: async () => result(),
+      single: async () => payload ? { data: null, error: new Error("Cannot coerce the result to a single JSON object") } : result(),
       then: (resolve: any) => Promise.resolve(result()).then(resolve),
     };
     return chain;
@@ -33,7 +35,7 @@ function mount(overrides = {}) {
 function registration(extra = {}) {
   return { id: "reg", champ_id: "champ", club_member_id: "member", member: { name: "Test Player" }, status: "registered", registration_status: "registered", fee_status: "due", division_choices: [1, 2], ...extra };
 }
-beforeEach(() => { cleanup(); state.regs = []; state.writes = []; state.fail = false; });
+beforeEach(() => { cleanup(); vi.clearAllMocks(); state.regs = []; state.writes = []; state.fail = false; state.emptyUpdate = false; state.savedPaid = false; });
 
 describe("Tournament admin Paid action", () => {
   it("offers Paid on organiser-registered fee-due entries, not only pending EFT", async () => {
@@ -75,6 +77,26 @@ describe("Tournament admin Paid action", () => {
     state.regs = [registration()]; state.fail = true; mount();
     fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Permission denied"));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+  it("records Paid using an array response rather than singular JSON", async () => {
+    const { toast } = await import("sonner");
+    state.regs = [registration()]; mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marked as paid"));
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+  it("accepts an empty update only when the saved registration is already paid", async () => {
+    const { toast } = await import("sonner");
+    state.regs = [registration({ fee_payment_id: "fee" })]; state.emptyUpdate = true; state.savedPaid = true; mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marked as paid"));
+  });
+  it("never claims Paid when an empty update leaves the saved fee due", async () => {
+    const { toast } = await import("sonner");
+    state.regs = [registration()]; state.emptyUpdate = true; mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Mark Test Player paid" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Payment was not confirmed")));
     expect(toast.success).not.toHaveBeenCalled();
   });
 });

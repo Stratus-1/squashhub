@@ -150,7 +150,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           .eq("paid", false);
         if (feeErr) throw feeErr;
       }
-      const { error } = await fromExt("club_champs_registrations")
+      const { data: updated, error } = await fromExt("club_champs_registrations")
         .update({
           status: "paid",
           fee_paid_cents: entryDueCents(Math.round(entryFee * 100), (reg as any).division_choices),
@@ -159,9 +159,22 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
         })
         .eq("id", reg.id)
         .eq("champ_id", champId)
-        .select("id")
-        .single();
+        .select("id");
       if (error) throw error;
+      // Request an array, not a singular JSON object. An empty UPDATE result
+      // must not be reported as a payment: check the persisted registration,
+      // including settlement performed by the linked-fee trigger above.
+      if (!Array.isArray(updated) || updated.length !== 1) {
+        const { data: saved, error: readError } = await fromExt("club_champs_registrations")
+          .select("id, status, fee_status")
+          .eq("id", reg.id)
+          .eq("champ_id", champId);
+        if (readError) throw readError;
+        if (!Array.isArray(saved) || saved.length !== 1 ||
+            saved[0].status !== "paid" || saved[0].fee_status !== "paid") {
+          throw new Error("Payment was not confirmed. Refresh the list and check your tournament payment permissions before trying again.");
+        }
+      }
     },
     onSuccess: () => { toast.success("Marked as paid"); invalidate(); },
     onError: (e: any) => toast.error(e.message),

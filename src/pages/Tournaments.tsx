@@ -1049,7 +1049,7 @@ export default function Tournaments() {
       if (isByeFixture(m)) return;
       const n = Number(displayedRound(m));
       const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
-      const key = num === 0 ? "\u0000pool" : roundGroupKey(m);
+      const key = isStructuredPlayoffGame(m) ? "\u0003po" : num === 0 ? "\u0000pool" : roundGroupKey(m);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
       const prev = order.get(key);

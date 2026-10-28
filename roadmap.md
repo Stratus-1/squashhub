@@ -1,4 +1,8 @@
 # Roadmap
+- [ ] Bar payroll: "Process payroll & generate report" reported not available by Willem — verify the RPC/preview wiring and fix.
+- [ ] Bar payroll: skip lines with nothing payable (no pay and no tips) from the payout preview and report.
+- [ ] Bar payroll: processing must not require admin to tick/end every shift first.
+- [ ] Bar staff hours: per-person totals with drill-down to every shift date, correctable inline.
 - [x] Verified special ingredient sums and income-statement accounting; corrected both Uitsig Coke recipes to four tots, readback confirmed and 29 tests pass. Historical sales unchanged. Cost accuracy awaits verified bottle prices: saved Buffelsfontein R6, Klipdrift Premium R12, Whiskey R12 per bottle; no replacement values invented.
 - [x] Club Champs Paid: hosted requests identified the Treasurer actor lacking champs permission. Applied atomic payment-only RPC for existing champs/fees/finance grants; 18 tests pass including isolated R100 settlement, tenant denial, idempotency and rollback. Deployed already-paid no-write check passes; actual unpaid member payments untouched. Frontend preview only; Treasurer live unpaid click not submitted.
 - [x] Club Champs admin Paid: array response with saved-paid readback replaces singular JSON coercion; 11 focused tests pass and preview build OK. Screenshots and hosted logs confirm registration PATCH 406 errors. Signed-in Riverside administration opens; no real payment clicked or status changed. Preview only; live payment end-to-end not submitted.

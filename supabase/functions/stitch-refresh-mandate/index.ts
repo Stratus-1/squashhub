@@ -74,9 +74,10 @@ Deno.serve(async (req) => {
         isAdminUser = isPlatform === true;
       }
     }
+    const isOwner = allowed;
     allowed = allowed || isAdminUser;
     if (!allowed) return json({ error: "Not allowed to view this mandate" }, 403);
-    if (!allowed || (mandate.user_id !== userId && !mandate.club_member_id) || action === "confirm" || action === "reject") {
+    if (!isOwner || action === "confirm" || action === "reject") {
       try { await assertFinanceAdministrator(admin, userId, mandate.club_id); }
       catch (e) { return json({ error: e instanceof Error ? e.message : "Financial permission required" }, 403); }
     }

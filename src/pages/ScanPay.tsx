@@ -505,6 +505,14 @@ export default function ScanPay() {
   // Staff may settle any open/online tab directly on another device.
   useBarAutoRefresh(!!tab && !counterPay, async () => {
     if (!tab) return;
+    // A tab awaiting online card payment must ask the gateway, not just re-read
+    // its row: the payer may never return from the bank's page, so without this
+    // the tab would spin forever even though the money arrived.
+    if (tab.status === "closing" && tab.settled_method === "online") {
+      await supabase.functions.invoke("bar-card-verify", {
+        body: { tab_id: tab.tab_id, tab_token: tab.token },
+      });
+    }
     const { data: payload, error } = await (supabase as any).rpc("get_bar_guest_tab", { _tab_id: tab.tab_id, _token: tab.token });
     if (error) throw error;
     applyTabPayload(payload);

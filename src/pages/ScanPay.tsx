@@ -363,7 +363,7 @@ export default function ScanPay() {
 
   const bump = (id: string, delta: number) =>
     setCart((prev) => {
-      const next = Math.max(0, Math.min(50, (prev[id] || 0) + delta));
+      const next = Math.max(0, Math.min(500, (prev[id] || 0) + delta));
       if (next === 0) {
         const { [id]: _drop, ...rest } = prev;
         return rest;

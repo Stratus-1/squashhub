@@ -968,28 +968,32 @@ export default function ScanPay() {
                   <p className="text-sm font-semibold">Staying for a while? Open a tab</p>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Enter your name once, then just tap drinks all evening. Pay the whole tab at the end.
+                  {isSignedInMember
+                    ? "Tap drinks all evening, then pay the whole tab at the end."
+                    : "Enter your name once, then just tap drinks all evening. Pay the whole tab at the end."}
                 </p>
-                <div className="flex gap-2">
-                  <Input
-                    value={visitorName}
-                    onChange={(e) => setVisitorName(e.target.value)}
-                    placeholder="Your name"
-                    className="h-10"
-                  />
-                  <Input
-                    value={visitorPhone}
-                    onChange={(e) => setVisitorPhone(e.target.value)}
-                    placeholder="Cell number"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    className="h-10"
-                  />
-                </div>
+                {!isSignedInMember && (
+                  <div className="flex gap-2">
+                    <Input
+                      value={visitorName}
+                      onChange={(e) => setVisitorName(e.target.value)}
+                      placeholder="Your name"
+                      className="h-10"
+                    />
+                    <Input
+                      value={visitorPhone}
+                      onChange={(e) => setVisitorPhone(e.target.value)}
+                      placeholder="Cell number"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      className="h-10"
+                    />
+                  </div>
+                )}
                 <Button
                   className="w-full gap-1.5 h-10"
-                  disabled={submitting || !visitorName.trim()}
+                  disabled={submitting || (!isSignedInMember && !visitorName.trim())}
                   onClick={openTabNow}
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
@@ -1022,7 +1026,7 @@ export default function ScanPay() {
             {tab && tab.status !== "settled" && (
               <Card className="p-4 space-y-3 border-amber-500/50">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">Your open tab · {tab.guest_name}</p>
+                  <p className="text-sm font-semibold">{isSignedInMember ? "My tab" : "Your open tab"} · {tab.guest_name}</p>
                   <span className="text-sm font-semibold">{formatMoney(tab.total, currency)}</span>
                 </div>
                 <div className="space-y-1">

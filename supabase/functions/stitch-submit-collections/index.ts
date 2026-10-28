@@ -13,6 +13,7 @@
 // Auth: service-role for cron, or club admin JWT for manual run.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertScopedFinanceJob } from "../_shared/chairman-finance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +48,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const restrictClubId: string | null = body?.club_id || null;
+    try { await assertScopedFinanceJob(req, admin, restrictClubId); }
+    catch (e) { return json({ error: e instanceof Error ? e.message : "Financial permission required" }, 403); }
 
     // 1. Auto-approve anything that has sat in the queue > 2 days.
     const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();

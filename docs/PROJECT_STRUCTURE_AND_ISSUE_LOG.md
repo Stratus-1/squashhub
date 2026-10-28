@@ -4063,3 +4063,9 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 
 - 2026-10-28: Uitsig Men's A play-off bracket showed A1 v B1 / A2 v B2 because an older Play-offs-step "placement" style overrode the saved Semifinal crossover timeline in `plannedPlayoffBracket`. A saved Quarterfinal/Semifinal stage now takes precedence (display only); tests in planned-playoff-bracket.test.ts.
 - 28 Oct 2026 — Bar tab: removed an accidentally selected 2x Sparkling Water (R20) from Andre Visser's open Nelspruit tab via direct row delete; stock restored through bar_stock_apply (audited correction). Open-tab totals recompute from bar_visitor_sales.
+
+### 2026-10-28 — Chairman financial view-only
+- Recognises elected Chairman and legacy/new role assignments; retains non-financial administration and financial read access. Club Full Admin/custom grants do not bypass canonical-table financial guards or transaction/approval/payroll action guards. Self-role changes and removal of own permission identity are blocked.
+- Finance, fee, banking, chart, tournament payment and payroll controls use server-derived financial access. Existing session-owned bar payments retain a private transaction-local exception. Manual recurring collection/renewal/cancellation handlers verify caller and club before service writes/provider actions; scheduled service calls and owner self-service cancellation remain separate.
+- Applied 0295–0298 and deployed six affected financial functions. No live balances/entries were changed; frontend not published.
+- Validation: 36 focused tests passed including isolated PostgreSQL read/insert/edit/delete restrictions, unchanged R100 entry and tournament Paid denial. Signed-in platform-admin Riverside finance rendered. Authenticated Chairman path: UNVERIFIED (available session is platform Super Admin); provider payments and native hardware unverified. Security linter reports existing broad findings, not cleared by this scoped change.

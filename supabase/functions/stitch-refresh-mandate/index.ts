@@ -3,6 +3,7 @@
 // webhook is missed / delayed and a mandate stays "pending" in the app even
 // though Stitch has already authorised it.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { assertFinanceAdministrator } from "../_shared/chairman-finance.ts";
 import {
   STITCH_BASE,
   listStitchSubscriptions,
@@ -73,8 +74,13 @@ Deno.serve(async (req) => {
         isAdminUser = isPlatform === true;
       }
     }
+    const isOwner = allowed;
     allowed = allowed || isAdminUser;
     if (!allowed) return json({ error: "Not allowed to view this mandate" }, 403);
+    if (!isOwner || action === "confirm" || action === "reject") {
+      try { await assertFinanceAdministrator(admin, userId, mandate.club_id); }
+      catch (e) { return json({ error: e instanceof Error ? e.message : "Financial permission required" }, 403); }
+    }
 
     // Manual override: Stitch Express has no read endpoint for Express-created
     // recurring authorisations, so when the payer confirms they completed the

@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Bar: select items into the local tab automatically; My Tab opens existing swipe/cash/member-account choices without a separate open/add step. Focused tests pass; live checkout not submitted. Preview only.
+- [x] Removed Club sponsored — no charge from the signed-in app bar; personal-PIN Counter mode retained. Preview only.
+
 - [x] Resolve Nelspruit Court 2 league scoring entry; real phone/tablet links open the live scorer, 26 focused tests pass, existing scores untouched; publication requested.
 
 - [x] GoBook: read-only member balances in My account and Court bookings for API-enabled GoBook clubs; 21 focused tests pass, live CSIR accounts/refresh verified on both pages; backend deployed, frontend not published.

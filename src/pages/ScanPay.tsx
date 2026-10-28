@@ -961,7 +961,7 @@ export default function ScanPay() {
               </Card>
             )}
 
-            {!tab && count === 0 && (
+            {!isSignedInMember && !tab && count === 0 && (
               <Card className="p-4 space-y-3 border-amber-500/40 bg-amber-500/5">
                 <div className="flex items-center gap-2">
                   <Receipt className="w-4 h-4 text-amber-600 shrink-0" />

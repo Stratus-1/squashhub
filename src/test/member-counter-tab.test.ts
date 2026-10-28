@@ -25,11 +25,19 @@ describe("member self-opened shared tab", () => {
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("open_my_bar_tab", { _club_id: "club1", _club_member_id: "member1" });
     expect(JSON.parse(localStorage.getItem("sh.scanpay.tab.menu") || "null")).toEqual({ tab_id: "tab1", token: "private-token" });
   });
-  it("keeps ordering OFF and carries the basket to self-service checkout without posting an order or sale", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: { tab_id: "tab1", token: "private-token", code: "menu" }, error: null });
+  it("keeps ordering OFF and adds the selection to the unpaid tab before showing payment choices", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: { tab_id: "tab1", token: "private-token", code: "menu" }, error: null }).mockResolvedValueOnce({ data: {}, error: null });
     expect(await placeMemberCounterOrder("club1", "member1", { beer: 2 }, "retry-key")).toBe("/s/menu?member_tab=tab1");
-    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["bar_order_process_status", "open_my_bar_tab"]);
-    expect(takeMemberTabDraft("menu", "tab1")).toEqual({ beer: 2 });
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["bar_order_process_status", "open_my_bar_tab", "add_to_bar_guest_tab"]);
+    expect(mocks.rpc).toHaveBeenLastCalledWith("add_to_bar_guest_tab", { _tab_id: "tab1", _token: "private-token", _lines: [{ bar_item_id: "beer", quantity: 2 }] });
+    expect(takeMemberTabDraft("menu", "tab1")).toEqual({});
+  });
+  it("retains the selection and does not hand off when adding to the self-service tab fails", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: { tab_id: "tab1", token: "private-token", code: "menu" }, error: null }).mockResolvedValueOnce({ data: null, error: new Error("Item unavailable") });
+    const cart = { beer: 2 };
+    await expect(placeMemberCounterOrder("club1", "member1", cart, "retry-key")).rejects.toThrow("Item unavailable");
+    expect(cart).toEqual({ beer: 2 });
+    expect(localStorage.length).toBe(0);
   });
   it.each([null, undefined])("does not treat unknown order settings as self-service (%s)", async data => {
     mocks.rpc.mockResolvedValueOnce({ data, error: null });

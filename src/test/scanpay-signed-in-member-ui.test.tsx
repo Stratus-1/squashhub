@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -45,9 +45,8 @@ async function mount() {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <MemoryRouter initialEntries={["/s/test-menu"]}><Routes><Route path="/s/:code" element={<ScanPay />} /></Routes></MemoryRouter>
   </QueryClientProvider>);
-  await screen.findByText("Staying for a while? Open a tab");
-  // Wait for the signed-in membership check to resolve.
-  await screen.findByText(/Tap drinks all evening/);
+  await screen.findByText("Tap items to add");
+  await waitFor(() => expect(screen.queryByPlaceholderText("Your name")).toBeNull());
   await act(async () => {});
 }
 
@@ -58,13 +57,10 @@ describe("signed-in member bar page", () => {
     expect(screen.queryByText(/one-time code sent to your phone/)).toBeNull();
   });
 
-  it("opens a tab in the member's own name without asking for a name", async () => {
+  it("does not open an empty tab just by loading the member menu", async () => {
     await mount();
     expect(screen.queryByPlaceholderText("Your name")).toBeNull();
-    await act(async () => { screen.getByRole("button", { name: /Open my tab/ }).click(); });
-    expect(mocks.rpc).toHaveBeenCalledWith("open_bar_guest_tab", {
-      _code: "test-menu", _guest_name: "Rachel Gates", _guest_phone: null,
-    });
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "open_bar_guest_tab")).toBe(false);
   });
 
   it("labels the open tab as My tab for the signed-in member", async () => {

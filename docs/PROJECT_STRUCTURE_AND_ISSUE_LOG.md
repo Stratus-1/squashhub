@@ -1,3 +1,9 @@
+## 2026-10-28 — Uitsig special recipe and cost verification
+- Recipe calculator sums every component using option consumption and stock-parent yield. Two active Coke specials had quantity 1 of the double option despite their two-double names; corrected to quantity 2 (four tots), preserving Coke quantities, prices and history.
+- Saved spirit stock-container costs are Buffelsfontein R6, Klipdrift Premium R12 and Whiskey R12 per 28-tot bottle; no verified replacement purchase prices supplied. Do not invent costs or rewrite historic movement snapshots.
+- Income-statement Cost of sales sums all component movement values; sale income is the special selling total, not individual component selling prices. Hosted report currently falls back to current stock costs for missing historical snapshots, so those older costs are not fully historical valuations.
+- Added focused arithmetic regressions for four tots plus Buddy and four tots plus both Coke servings.
+
 ## 2026-10-27 — GoBook Court Manager balance display
 - Added an authenticated read-only member balance action using the saved club API connection and server-verified member/client link. Account and Court bookings share a compact balance and last-refresh display, gated by uses_gobook and gobook_api_enabled. Missing links/amounts and provider failures never display a false zero; no credits, member links, bookings or payments are changed.
 - Live CSIR response contains separate Lights and Subscription accounts; preserve account names and amounts separately, filter both clientId and the club's providerId. Signed-in own-account display and refresh verified on both pages; 21 focused tests pass and preview build OK. Shared web/PWA/native UI, no native integration changes; backend deployed, frontend not published.

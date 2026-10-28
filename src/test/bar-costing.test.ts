@@ -59,6 +59,14 @@ describe("spirits, mixers and specials", () => {
     expect(bundleCosts([{ component_item_id: "absent", quantity: 1 }], [])).toEqual({ current: null, average: null });
     expect(bundleCosts([], [])).toEqual({ current: null, average: null });
   });
+  it("two double brandies include all four tots plus the Buddy cost", () => {
+    const items = [item("brandy", { unit_yield: 28, cost_price: 280, avg_unit_cost: 10 }), item("double", { item_kind: "option", stock_parent_id: "brandy", consume_units: 2 }), item("buddy", { cost_price: 12, avg_unit_cost: 12 })];
+    expect(bundleCosts([{ component_item_id: "double", quantity: 2 }, { component_item_id: "buddy", quantity: 1 }], items)).toEqual({ current: 52, average: 52 });
+  });
+  it("two double brandies include all four tots plus both Coke servings", () => {
+    const items = [item("brandy", { unit_yield: 28, cost_price: 280, avg_unit_cost: 10 }), item("double", { item_kind: "option", stock_parent_id: "brandy", consume_units: 2 }), item("coke", { unit_yield: 1000, cost_price: 10, avg_unit_cost: 0.01 }), item("glass", { item_kind: "option", stock_parent_id: "coke", consume_units: 250 })];
+    expect(bundleCosts([{ component_item_id: "double", quantity: 2 }, { component_item_id: "glass", quantity: 2 }], items)).toEqual({ current: 45, average: 45 });
+  });
   it("keeps genuine zero averages and flags default missing current prices", () => {
     expect(bundleCosts([{ component_item_id: "beer", quantity: 1 }], [item("beer", { cost_price: 0, avg_unit_cost: 0 })])).toEqual({ current: null, average: 0 });
   });

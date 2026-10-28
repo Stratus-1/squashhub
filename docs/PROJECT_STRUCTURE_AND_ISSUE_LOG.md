@@ -4062,3 +4062,4 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Fix: `isStructuredPlayoffGame` (`src/lib/tournaments/round-plan.ts`) routes structured-stage play-offs into a "Play-offs" group (paced knockout rounds and legacy stage-label groups unchanged); test `src/test/structured-playoff-heading.test.ts`.
 
 - 2026-10-28: Uitsig Men's A play-off bracket showed A1 v B1 / A2 v B2 because an older Play-offs-step "placement" style overrode the saved Semifinal crossover timeline in `plannedPlayoffBracket`. A saved Quarterfinal/Semifinal stage now takes precedence (display only); tests in planned-playoff-bracket.test.ts.
+- 28 Oct 2026 — Bar tab: removed an accidentally selected 2x Sparkling Water (R20) from Andre Visser's open Nelspruit tab via direct row delete; stock restored through bar_stock_apply (audited correction). Open-tab totals recompute from bar_visitor_sales.

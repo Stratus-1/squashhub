@@ -298,12 +298,21 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const { data: journalEntries, isLoading } = useQuery({
     queryKey: ["club-journal-entries", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_journal_entries")
-        .select("*")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      // Page through every entry — the backend returns at most 1000 rows per request.
+      const PAGE = 1000;
+      const all: any[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await fromExt("club_journal_entries")
+          .select("*")
+          .eq("club_id", clubId)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        all.push(...(data || []));
+        if (!data || data.length < PAGE) break;
+      }
+      return all;
     },
     enabled: !!clubId,
   });

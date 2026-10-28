@@ -191,14 +191,11 @@ type PlayoffChoice = "none" | "playoffs" | "later";
 type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded"; style?: "later" | "championship" | "placement"; row?: import("@/lib/smart-builder/playoff-qualifiers").RowPlayoffPlan };
 const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later", style: "later" };
 const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.choice === "later" ? "Decide later" : p.rounds === 1 ? "Final only" : p.rounds === 2 ? "Semifinals + Final" : "Quarterfinals + Semifinals + Final";
-const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools/standings" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
-const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Pool crossover: A1 vs B2, B1 vs A2" : p.pairing === "seeded" ? "Seeded: 1 vs 4, 2 vs 3 (highest vs lowest)" : "Pairing to be decided";
-const styleText = (p: PlayoffPlan) => p.style === "placement" ? "Placement play (A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th…)" : p.style === "championship" ? "Championship playoffs" : "Playoff type to be decided";
 const playoffDetail = (p: PlayoffPlan, k?: CompKind | null, koPath?: string) => {
   if (k === "knockout") return koPath && koPath.includes("→") ? koPath : "Knockout rounds (no separate playoffs)";
   if (p.choice !== "playoffs") return k === "swiss" && p.choice === "none" ? "Finish on Swiss standings" : k === "cross" && p.choice === "none" ? "Finish on standings" : playoffText(p);
-  if (p.style === "placement" && (k === "pools" || k === "cross")) return styleText(p);
-  return `${playoffText(p)}${k === "pools" || k === "cross" ? ` · ${styleText(p)}` : ""} · ${qualifierText(p)}${p.style !== "placement" ? ` · ${pairingText(p)}` : ""}`;
+  // Pairing and qualification live only in Stages & scheduling (single source of truth).
+  return `${playoffText(p)} · pairing set in Stages & scheduling`;
 };
 export type StepAnswers = {
   /** Optional contact designation only; never grants tournament permissions. null = explicitly cleared. */
@@ -2372,7 +2369,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   slotMinutes: sc?.mode === "time_capped_points" ? slotMinutes(sc) : savedMinutes,
                   playoffGames: p.choice === "playoffs" ? 2 ** p.rounds - 1 : 0,
                   playoffRounds: p.choice === "playoffs" ? p.rounds : 0,
-                  playoffUnresolved: p.choice === "later" || (p.choice === "playoffs" && (p.qualification === "later" || p.pairing === "later" || p.style === "placement")) };
+                  playoffUnresolved: p.choice === "later" };
               })} />
               <div className="space-y-3">
                 {a.days.map((d, i) => (
@@ -3034,13 +3031,8 @@ function PlayoffFields({ value, onChange, format, roundsLocked = false }: { valu
       {(["none", "playoffs", "later"] as const).map((choice) => <Button key={choice} type="button" size="sm" variant={value.choice === choice ? "default" : "outline"} aria-pressed={value.choice === choice} onClick={() => onChange({ choice })}>{choice === "none" ? noneLabel : choice === "later" ? "Decide later" : yesLabel}</Button>)}
     </div>
     {value.choice === "playoffs" && <div className="space-y-3 rounded-lg border border-border p-3">
-      {poolish && <div><Label>Type of playoffs</Label><select aria-label="Type of playoffs" className={sel} value={value.style ?? "later"} onChange={(e) => onChange({ style: e.target.value as PlayoffPlan["style"] })}><option value="later">Decide later</option><option value="championship">Championship playoffs (find one winner)</option><option value="placement">Placement play (rank every position)</option></select></div>}
-      {!(poolish && value.style === "placement") && <div><Label>Stages</Label>{roundsLocked ? <div className="mt-2 text-sm">{playoffText(value)} · selected in Tournament structure</div> : <div className="mt-2 flex flex-wrap gap-2">{([1, 2, 3] as const).map((rounds) => <Button key={rounds} type="button" size="sm" variant={value.rounds === rounds ? "default" : "outline"} aria-pressed={value.rounds === rounds} onClick={() => onChange({ rounds })}>{playoffText({ ...value, rounds })}</Button>)}</div>}</div>}
-      {poolish && value.style === "placement" && <p className="text-xs text-muted-foreground">e.g. A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th. Exact placement games are set once the final format is confirmed.</p>}
-      {!(poolish && value.style === "placement") && <>
-        <div><Label>Who qualifies?</Label><select aria-label="Who qualifies for playoffs" className={sel} value={value.qualification} onChange={(e) => onChange({ qualification: e.target.value as PlayoffPlan["qualification"] })}><option value="later">Decide qualification later</option><option value="top_pools">{format === "swiss" ? "Top players/pairs on standings" : "Top players/pairs from pools"}</option><option value="seeded">Highest-ranked entrants</option></select></div>
-        <div><Label>How are qualifiers paired?</Label><select aria-label="How playoff qualifiers are paired" className={sel} value={value.pairing} onChange={(e) => onChange({ pairing: e.target.value as PlayoffPlan["pairing"] })}><option value="later">Decide pairing later</option>{poolish && <option value="cross_pools">Pool crossover: A1 vs B2, B1 vs A2</option>}<option value="seeded">Seeded: 1 vs 4, 2 vs 3 (highest vs lowest)</option></select></div>
-      </>}
+      <div><Label>Stages</Label>{roundsLocked ? <div className="mt-2 text-sm">{playoffText(value)} · selected in Tournament structure</div> : <div className="mt-2 flex flex-wrap gap-2">{([1, 2, 3] as const).map((rounds) => <Button key={rounds} type="button" size="sm" variant={value.rounds === rounds ? "default" : "outline"} aria-pressed={value.rounds === rounds} onClick={() => onChange({ rounds })}>{playoffText({ ...value, rounds })}</Button>)}</div>}</div>
+      <p className="text-xs text-muted-foreground">How the play-off games are paired (e.g. A1 v B2, B1 v A2) and who qualifies is set only in Stages &amp; scheduling.</p>
       <p className="text-xs text-muted-foreground">Ideas for later setup, not a draw. Revisited at Confirm final format; no bracket is generated here.</p>
     </div>}
   </div>;

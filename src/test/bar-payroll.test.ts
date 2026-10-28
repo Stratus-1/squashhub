@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPayrollAmountInput, payrollAmount, payrollLineError } from "@/lib/bar/payroll";
+import { isPayrollAmountInput, payrollAmount, payrollLineError, payrollLinePayable } from "@/lib/bar/payroll";
 
 describe("bar payroll input rules", () => {
   it("accepts whole rands and two-decimal amounts, rejects negatives and extra decimals", () => {

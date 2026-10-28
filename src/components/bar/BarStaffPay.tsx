@@ -249,8 +249,8 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
             </table>
           </div>
           {previewMonthEnd
-            ? <div className="space-y-1"><Button onClick={processPreview} disabled={busy || Object.values(lineErrors).some(Boolean)}>Process payroll &amp; generate report</Button><p className="text-[11px] text-muted-foreground">Records these salaries and tips under Cost of sales — Bar and downloads the paymaster report.</p></div>
-            : <Button onClick={confirmRun} disabled={busy || Object.values(lineErrors).some(Boolean)}>Confirm payout &amp; generate report</Button>}
+            ? <div className="space-y-1"><Button onClick={processPreview} disabled={busy || hasLineErrors}>Process payroll & generate report</Button><p className="text-[11px] text-muted-foreground">Records these salaries and tips under Cost of sales — Bar and downloads the paymaster report.</p></div>
+            : <Button onClick={confirmRun} disabled={busy || hasLineErrors}>Confirm payout & generate report</Button>}
         </Card>
       )}
 

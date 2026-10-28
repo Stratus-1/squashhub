@@ -46,6 +46,8 @@ async function mount() {
     <MemoryRouter initialEntries={["/s/test-menu"]}><Routes><Route path="/s/:code" element={<ScanPay />} /></Routes></MemoryRouter>
   </QueryClientProvider>);
   await screen.findByText("Staying for a while? Open a tab");
+  // Wait for the signed-in membership check to resolve.
+  await screen.findByText(/Tap drinks all evening/);
   await act(async () => {});
 }
 
@@ -69,7 +71,7 @@ describe("signed-in member bar page", () => {
     localStorage.setItem("sh.scanpay.tab.test-menu", JSON.stringify({ tab_id: "tab-1", token: "tok-1" }));
     mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "resolve_qr_short_code"
       ? { found: true, kind: "venue", club: { id: "test-club", name: "Test club", currency_code: "ZAR" }, menu: [] }
-      : name === "get_bar_guest_tab" ? { tab_id: "tab-1", guest_name: "Rachel Gates", status: "open", total: 33, lines: [] }
+      : name === "get_bar_guest_tab" ? { found: true, tab_id: "tab-1", guest_name: "Rachel Gates", status: "open", total: 33, lines: [] }
       : false, error: null }));
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter initialEntries={["/s/test-menu"]}><Routes><Route path="/s/:code" element={<ScanPay />} /></Routes></MemoryRouter>

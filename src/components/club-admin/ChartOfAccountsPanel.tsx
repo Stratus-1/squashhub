@@ -1,3 +1,4 @@
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface Props {
 
 export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBalance, money, onOpeningBalances }: Props) {
   const { data: customAccounts = [], isLoading } = useClubGLAccounts(clubId);
+  const { canChange } = useFinancialAccess(clubId);
   const mutations = useClubGLAccountMutations(clubId);
 
   const [editing, setEditing] = useState<null | Partial<ClubGLAccount>>(null);
@@ -98,12 +100,12 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
           <h3 className="font-semibold text-sm">Chart of Accounts</h3>
         </div>
         <div className="flex items-center gap-2">
-          {onOpeningBalances && (
+          {canChange && onOpeningBalances && (
             <Button size="sm" variant="outline" onClick={onOpeningBalances} className="gap-1.5 h-8">
               <BookOpen className="w-3.5 h-3.5" /> Opening Balances
             </Button>
           )}
-          <Button size="sm" onClick={openNew} className="gap-1.5 h-8">
+          <Button disabled={!canChange} size="sm" onClick={openNew} className="gap-1.5 h-8">
             <Plus className="w-3.5 h-3.5" /> Add Account
           </Button>
         </div>
@@ -163,10 +165,10 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
                       {money(Math.abs(balance))}{balance < 0 ? " Cr" : balance > 0 ? " Dr" : ""}
                     </span>
                     <span className="flex items-center justify-end gap-0.5">
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditing(acc)} aria-label={`Edit ${acc.name}`}>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" disabled={!canChange} onClick={() => setEditing(acc)} aria-label={`Edit ${acc.name}`}>
                         <Pencil className="w-3 h-3" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => remove(acc)} aria-label={`Delete ${acc.name}`}>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" disabled={!canChange} onClick={() => remove(acc)} aria-label={`Delete ${acc.name}`}>
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </span>

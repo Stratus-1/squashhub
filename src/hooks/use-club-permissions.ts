@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { isChairmanRole } from "@/lib/chairman-permissions";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
@@ -119,6 +120,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   if (perm?.club_permission_roles?.permissions?.includes(permission)) return true;
   // Implied full access never covers super-admin-only slugs.
   if (restricted) return false;
+  if (isChairmanRole(perm?.club_permission_roles?.role_name)) return true;
   if (isRoleFullAccess) return true;
   if (perm?.is_full_admin) return true;
   if ((perm as any)?.club_permission_roles?.is_full_admin) return true;
@@ -162,7 +164,7 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
   perm?.club_permission_roles?.permissions?.forEach(p => perms.add(p));
 
   const impliedFull =
-    isRoleFullAccess || perm?.is_full_admin || (perm as any)?.club_permission_roles?.is_full_admin;
+    isRoleFullAccess || isChairmanRole(perm?.club_permission_roles?.role_name) || perm?.is_full_admin || (perm as any)?.club_permission_roles?.is_full_admin;
   if (impliedFull) clubWide.forEach(p => perms.add(p));
 
   return {

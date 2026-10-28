@@ -1,3 +1,4 @@
+import { isChairmanRole, FINANCIAL_PERMISSION_SLUGS } from "@/lib/chairman-permissions";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -114,7 +115,7 @@ function RolesSection({ clubId }: { clubId: string }) {
               <TableRow key={role.id}>
                 <TableCell className="font-medium">{role.role_name}</TableCell>
                 <TableCell>
-                  {role.is_full_admin ? (
+                  {isChairmanRole(role.role_name) ? (<Badge variant="outline" className="text-[10px]">Full admin · Finance view-only</Badge>) : role.is_full_admin ? (
                     <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
                   ) : (
                     <div className="flex flex-wrap gap-1">
@@ -381,7 +382,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     <Card className="p-6 space-y-4">
       <div>
         <h3 className="font-semibold flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Member Permissions</h3>
-        <p className="text-xs text-muted-foreground">Officers (Chairman, Secretary, Club Captain) are auto-assigned a matching role with full access — change or clear the role below to override.</p>
+        <p className="text-xs text-muted-foreground">Chairman has full non-financial administration and view-only finance. Secretary and Club Captain use their assigned permission roles.</p>
       </div>
 
       <Input
@@ -595,6 +596,7 @@ function MemberPermDialog({
   };
 
   const selectedRole = roles.find(r => r.id === roleId);
+  const chairman = isChairmanRole(selectedRole?.role_name);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -612,7 +614,7 @@ function MemberPermDialog({
                 <ShieldCheck className="w-3.5 h-3.5" /> Grant Full Admin
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Gives this member every admin permission (same as a Captain or Chairman). Use for trusted helpers like the IT person.
+                Gives this member full admin access. Chairman financial access remains view-only, even with this option.
               </p>
             </div>
           </label>
@@ -630,7 +632,7 @@ function MemberPermDialog({
               <div className="flex flex-wrap gap-1 mt-1">
                 {visibleSlugs(selectedRole.permissions, isAssociation).map(p => (
                   <Badge key={p} variant="outline" className="text-[10px]">
-                    {permissionLabel(p, isAssociation)}
+                    {permissionLabel(p, isAssociation)}{chairman && (FINANCIAL_PERMISSION_SLUGS as readonly string[]).includes(p) ? " · View only" : ""}
                   </Badge>
                 ))}
               </div>
@@ -646,7 +648,7 @@ function MemberPermDialog({
                   <Checkbox
                     checked={customPerms.has(s.value)}
                     onCheckedChange={() => toggle(s.value)}
-                    disabled={selectedRole?.permissions?.includes(s.value)}
+                    disabled={selectedRole?.permissions?.includes(s.value) || (chairman && (FINANCIAL_PERMISSION_SLUGS as readonly string[]).includes(s.value))}
                   />
                   <span className={selectedRole?.permissions?.includes(s.value) ? "text-muted-foreground line-through" : ""}>
                     {s.label}

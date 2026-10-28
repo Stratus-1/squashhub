@@ -95,18 +95,45 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
     return { salary: acc.salary + (payrollAmount(e.salary) || 0), tips: acc.tips + (payrollAmount(e.tips) || 0) };
   }, { salary: 0, tips: 0 });
 
+  const reportLines = (src: PendingRun) => src.lines.map(l => {
+    const e = edits[l.id];
+    return { name: l.name, basis: basisLabel(l.pay_basis), quantity: l.pay_basis === "monthly" || !l.pay_basis ? "" : `${e?.quantity ?? ""}${l.pay_basis === "hourly" ? " h" : ""}`, salary: payrollAmount(e?.salary ?? "0") || 0, tips: payrollAmount(e?.tips ?? "0") || 0 };
+  });
+
+  async function submitLines(runId: string, mapId: (l: PendingRun["lines"][number]) => string | undefined, src: PendingRun) {
+    const lines = src.lines.flatMap(l => { const id = mapId(l); if (!id) return []; return [{ id, salary: payrollAmount(edits[l.id]?.salary ?? "0") || 0, tips: payrollAmount(edits[l.id]?.tips ?? "0") || 0, quantity: Number(edits[l.id]?.quantity ?? 0), rate: payrollAmount(edits[l.id]?.rate ?? "0") || 0 }]; });
+    const { error } = await supabase.rpc("bar_confirm_payroll_run" as any, { _run_id: runId, _lines: lines });
+    if (error) throw error;
+    downloadPayrollReport(monthLabel(src.period), reportLines(src));
+    setLineEdits(null);
+    setPreviewMonthEnd(false);
+    await refresh();
+    toast.success(`Payroll for ${monthLabel(src.period)} processed — salaries and tips recorded under Cost of sales — Bar`);
+  }
+
   async function confirmRun() {
     if (!run || previewMonthEnd) return;
     if (Object.values(lineErrors).some(Boolean)) { toast.error("Fix the highlighted amounts first"); return; }
     setBusy(true);
+    try { await submitLines(run.id, l => l.id, run); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Could not confirm the payout"); }
+    finally { setBusy(false); }
+  }
+
+  async function processPreview() {
+    if (!run || !previewMonthEnd) return;
+    if (Object.values(lineErrors).some(Boolean)) { toast.error("Fix the highlighted amounts first"); return; }
+    setBusy(true);
     try {
-      const lines = run.lines.map(l => ({ id: l.id, salary: payrollAmount(edits[l.id]?.salary ?? "0") || 0, tips: payrollAmount(edits[l.id]?.tips ?? "0") || 0, quantity: Number(edits[l.id]?.quantity ?? 0), rate: payrollAmount(edits[l.id]?.rate ?? "0") || 0 }));
-      const { error } = await supabase.rpc("bar_confirm_payroll_run" as any, { _run_id: run.id, _lines: lines });
+      const { data: runId, error } = await supabase.rpc("bar_prepare_payroll_run_now" as any, { _club_id: clubId });
       if (error) throw error;
-      setLineEdits(null);
-      await refresh();
-      toast.success(`Payout for ${monthLabel(run.period)} confirmed — salaries and tips recorded under Bar cost of sales`);
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not confirm the payout"); }
+      const { data: saved, error: lErr } = await (supabase as any).from("bar_payroll_run_lines").select("id, staff_id").eq("run_id", runId);
+      if (lErr) throw lErr;
+      const byStaff = new Map<string, string>((saved ?? []).map((s: any) => [s.staff_id, s.id]));
+      const missing = run.lines.filter(l => !byStaff.has(l.staff_id) && ((payrollAmount(edits[l.id]?.salary ?? "0") || 0) > 0 || (payrollAmount(edits[l.id]?.tips ?? "0") || 0) > 0));
+      if (missing.length) throw new Error(`No pay set up for ${missing.map(m => m.name).join(", ")} — save their pay first`);
+      await submitLines(runId as string, l => byStaff.get(l.staff_id), run);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not process payroll"); }
     finally { setBusy(false); }
   }
 
@@ -215,7 +242,9 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
               </tr></tfoot>
             </table>
           </div>
-          {!previewMonthEnd && <Button onClick={confirmRun} disabled={busy || Object.values(lineErrors).some(Boolean)}>Confirm payout</Button>}
+          {previewMonthEnd
+            ? <div className="space-y-1"><Button onClick={processPreview} disabled={busy || Object.values(lineErrors).some(Boolean)}>Process payroll &amp; generate report</Button><p className="text-[11px] text-muted-foreground">Records these salaries and tips under Cost of sales — Bar and downloads the paymaster report.</p></div>
+            : <Button onClick={confirmRun} disabled={busy || Object.values(lineErrors).some(Boolean)}>Confirm payout &amp; generate report</Button>}
         </Card>
       )}
 
@@ -225,6 +254,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
           {data?.confirmed_runs.map(r => (
             <details key={r.id} className="border rounded-md p-2">
               <summary className="text-xs font-medium cursor-pointer">{monthLabel(r.period)} — confirmed {new Date(r.confirmed_at).toLocaleDateString("en-ZA")}</summary>
+              <Button size="sm" variant="outline" className="mt-2" onClick={() => downloadPayrollReport(monthLabel(r.period), r.lines.map(l => ({ name: l.name, basis: basisLabel(l.pay_basis), quantity: l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h` : l.pay_basis === "shift" ? `${l.shifts ?? 0}` : "", salary: Number(l.salary), tips: Number(l.tips) })), new Date(r.confirmed_at))}>Download paymaster report</Button>
               <table className="w-full text-xs mt-2">
                 <tbody>{r.lines.map((l, i) => (
                   <tr className="border-b last:border-0" key={i}><td className="py-1">{l.name}</td><td className="text-right tabular-nums px-1">{l.pay_basis === "hourly" ? `${Number(l.hours ?? 0).toFixed(2)} h · ` : l.pay_basis === "shift" ? `${l.shifts ?? 0} shifts · ` : ""}Pay {money(l.salary)}{l.review?.original && <p className="text-muted-foreground">Original pay {money(l.review.original.salary)} · Rate {money(l.review.original.rate)}</p>}{l.review?.approved && <p className="text-muted-foreground">Approved {l.review.approved.quantity} × {money(l.review.approved.rate)} · Total {money(l.review.approved.total)}</p>}</td><td className="text-right tabular-nums px-1">Tips {money(l.tips)}</td></tr>

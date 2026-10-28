@@ -189,6 +189,25 @@ export default function ScanPay() {
   // plus one-time-code flow.
   const member: { id: string; name: string } | null = null;
   const { activeMember } = useMemberContext();
+
+  // A signed-in member of THIS club gets the simple flow: no guest prompts or
+  // name entry — their tab carries their own name automatically.
+  const { data: signedInMembership } = useQuery({
+    queryKey: ["scanpay-club-membership", club?.id, activeMember?.id],
+    enabled: !!club?.id && !!activeMember?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("club_members")
+        .select("id, name")
+        .eq("id", activeMember!.id)
+        .eq("club_id", club!.id)
+        .eq("status", "active")
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+  const isSignedInMember = !!signedInMembership;
+  const signedInName = isSignedInMember ? signedInMembership!.name || activeMember?.name || "Member" : null;
   const [checkingMembership, setCheckingMembership] = useState(false);
   const [memberTipPending, setMemberTipPending] = useState<{ target: "cart" | "tab"; memberId: string; staff: ServingPerson[]; requestId: string } | null>(null);
   const accountChargeBusy = useRef(false);
@@ -540,7 +559,7 @@ export default function ScanPay() {
 
   /** Open an empty evening tab up front — name only, no items needed. */
   const openTabNow = async () => {
-    const name = member?.name || visitorName.trim();
+    const name = member?.name || signedInName || visitorName.trim();
     if (!name) {
       toast.error("Please give a name for the tab first.");
       return;
@@ -564,7 +583,7 @@ export default function ScanPay() {
   /** Start (or top up) an open tab for the evening with the current cart. */
   const addToOpenTab = async () => {
     if (cartLines.length === 0) return;
-    const name = member?.name || visitorName.trim();
+    const name = member?.name || signedInName || visitorName.trim();
     if (!tab && !name) {
       toast.error("Please give a name for the tab first.");
       return;

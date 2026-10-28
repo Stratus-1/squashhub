@@ -1097,11 +1097,13 @@ export default function Tournaments() {
         {keys.map((key) => {
           const items = groups.get(key)!;
           const isPool = key === "\u0000pool";
+          const isPo = key === "\u0003po";
           // Progress is measured against every game at this stage, not just
           // the filtered view — and only for the tournaments shown here.
           const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
             if (m.status === "placeholder" || isByeFixture(m) || !champsHere.has(m.champ_id)) return false;
+            if (isPo) return isStructuredPlayoffGame(m);
             const r = Number(displayedRound(m));
             const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
             return isPool ? num === 0 : num !== 0 && roundGroupKey(m) === key;

@@ -22,7 +22,7 @@ import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { Link, useNavigate } from "react-router-dom";
-import { placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
+import { openMemberCounterTab, placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -255,6 +255,19 @@ export default function HonestyBar() {
     } catch (err: any) {
       showBarChargeError(err, "Failed to log items");
     } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Items already saved on the member's open tab (e.g. after leaving the payment page).
+  const unpaidOpenTotal = myTab.filter(e => e.method === "unpaid").reduce((sum, e) => sum + Number(e.total || 0), 0);
+  const resumeOpenTab = async () => {
+    if (!clubId || !memberId || submitting) return;
+    setSubmitting(true);
+    try {
+      navigate(await openMemberCounterTab(clubId, memberId, {}));
+    } catch (err: any) {
+      toast.error(err.message || "Could not open your tab");
       setSubmitting(false);
     }
   };
@@ -549,9 +562,20 @@ export default function HonestyBar() {
                 <span className="text-base font-semibold tabular-nums">{money(cartTotal)}</span>
               </div>
               {cartLines.length === 0 ? (
+                unpaidOpenTotal > 0 ? (
+                  <div className="space-y-2 py-1">
+                    <p className="text-xs text-muted-foreground text-center">
+                      You have {money(unpaidOpenTotal)} waiting on your open tab (listed below).
+                    </p>
+                    <Button className="w-full h-11 text-sm gap-2" onClick={resumeOpenTab} disabled={submitting || !memberId}>
+                      <ShoppingCart className="w-4 h-4" /> {submitting ? "Loading my tab…" : "View payment options"} · {money(unpaidOpenTotal)}
+                    </Button>
+                  </div>
+                ) : (
                 <p className="text-xs text-muted-foreground py-3 text-center">
                   Your tab is empty. Tap items on Buy to add them — nothing is charged until you settle.
                 </p>
+                )
               ) : (
                 <>
                   <div className="divide-y">

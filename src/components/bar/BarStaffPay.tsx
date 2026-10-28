@@ -14,6 +14,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { isPayrollAmountInput, payrollAmount, payrollLineError, suggestedPay, editPayrollReview, type PayrollReview, type PayBasis } from "@/lib/bar/payroll";
 import { StaffAttendanceLog } from "@/components/bar/StaffAttendanceLog";
+import { downloadPayrollReport } from "@/lib/bar/payroll-report";
+
+const basisLabel = (b?: PayBasis | string | null) => b === "hourly" ? "Per hour" : b === "shift" ? "Per shift" : "Monthly salary";
 
 interface StaffPay { id: string; name: string; pay_basis: PayBasis; salary: number; shift_rate: number; hourly_rate: number; hours: number; shifts: number; earned: number; paid: number; remaining: number }
 interface PayrollLine { id: string; staff_id: string; name: string; salary: number; tips: number; pay_basis?: PayBasis; hours?: number; hourly_rate?: number; shifts?: number | null; shift_rate?: number | null; calculated_salary?: number | null }

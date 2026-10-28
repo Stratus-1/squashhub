@@ -1049,7 +1049,11 @@ export default function Tournaments() {
       if (isByeFixture(m)) return;
       const n = Number(displayedRound(m));
       const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
-      const key = isStructuredPlayoffGame(m) ? "\u0003po" : num === 0 ? "\u0000pool" : roundGroupKey(m);
+      // Play-off games group by their own round (Semi-finals, Finals, …) so
+      // each round gets its own heading and play-by date, listed after the
+      // pool rounds in draw order.
+      const poKey = isStructuredPlayoffGame(m) ? (playoffKeyForLabel(m.stage_label, m.stage) ?? "final") : null;
+      const key = poKey ? `\u0003po:${poKey}` : num === 0 ? "\u0000pool" : roundGroupKey(m);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
       const prev = order.get(key);
@@ -1058,6 +1062,13 @@ export default function Tournaments() {
     // Play-off stages always lead, in draw order: Quarter-final, Semi-final,
     // Final — then numbered rounds, then pool games last.
     const stageRank = (key: string): number => {
+      // Structured play-off rounds always follow the pool rounds: on a
+      // shared play-by date the round lists first, then quarter-finals,
+      // semi-finals, finals and placement games in draw order.
+      if (key.startsWith("\u0003po:")) {
+        const po = key.slice(4);
+        return 10 + (po === "quarter_final" ? 0 : po === "semi_final" ? 1 : po === "final" ? 2 : 3);
+      }
       const k = key.trim().toLowerCase();
       if (k === "quarter-final" || k === "quarterfinal") return 0;
       if (k === "semi-final" || k === "semifinal") return 1;
@@ -1097,13 +1108,14 @@ export default function Tournaments() {
         {keys.map((key) => {
           const items = groups.get(key)!;
           const isPool = key === "\u0000pool";
-          const isPo = key === "\u0003po";
+          const isPo = key.startsWith("\u0003po:");
+          const poRound = isPo ? key.slice(4) : null;
           // Progress is measured against every game at this stage, not just
           // the filtered view — and only for the tournaments shown here.
           const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
             if (m.status === "placeholder" || isByeFixture(m) || !champsHere.has(m.champ_id)) return false;
-            if (isPo) return isStructuredPlayoffGame(m);
+            if (isPo) return isStructuredPlayoffGame(m) && (playoffKeyForLabel(m.stage_label, m.stage) ?? "final") === poRound;
             const r = Number(displayedRound(m));
             const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
             return isPool ? num === 0 : num !== 0 && roundGroupKey(m) === key;
@@ -1117,7 +1129,9 @@ export default function Tournaments() {
           // deadline is Round 1, the next Round 2, and so on.
           const pbDate = key.startsWith("\u0002pb:") ? key.slice(4) : null;
           const pbRound = pbDate ? Number(pbDate.split("|r")[1]) || 1 : null;
-          const heading = isPo ? "Play-offs" : isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbRound}` : key;
+          const heading = isPo
+            ? (poRound === "quarter_final" ? "Quarter-finals" : poRound === "semi_final" ? "Semi-finals" : poRound === "final" ? "Finals" : "Placement play-offs")
+            : isPool ? "Pool games" : koRound != null ? `Knockout Round ${koRound}` : pbDate ? `Round ${pbRound}` : key;
           const koCategoryGroups = new Map<string, any[]>();
           koItems.forEach((m: any) => {
             const categoryKey = `${m.champ_id}:${m.group_number ?? "-"}`;

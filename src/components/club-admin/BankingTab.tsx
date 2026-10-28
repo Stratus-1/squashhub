@@ -439,7 +439,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   ];
 
   if (accessLoading) return <p className="text-sm text-muted-foreground">Loading banking details…</p>;
-  if (!canChange) return <div className="space-y-3 mt-4"><h3 className="text-sm font-semibold">Banking · View only</h3><dl className="grid grid-cols-2 gap-2 text-sm"><dt>Bank</dt><dd>{(club as any).bank_name || "—"}</dd><dt>Account holder</dt><dd>{(club as any).bank_account_holder || "—"}</dd><dt>Account number</dt><dd>{(club as any).bank_account_number || "—"}</dd><dt>Branch code</dt><dd>{(club as any).bank_branch_code || "—"}</dd><dt>Payment gateway</dt><dd>{(club as any).payment_gateway || "—"}</dd></dl></div>;
+  if (!canChange) return <div className="space-y-3 mt-4"><h3 className="text-sm font-semibold">Banking · View only</h3><dl className="grid grid-cols-2 gap-2 text-sm"><dt>Bank</dt><dd>{secrets?.bank_name || "—"}</dd><dt>Account holder</dt><dd>{secrets?.bank_account_name || "—"}</dd><dt>Account number</dt><dd>{secrets?.bank_account_number || "—"}</dd><dt>Branch code</dt><dd>{secrets?.bank_branch_code || "—"}</dd><dt>Payment gateway</dt><dd>{(club as any).payment_gateway || "—"}</dd></dl></div>;
   return (
     <div className="space-y-4 mt-4">
       <SetupSteps steps={steps} value={step} onChange={setStep} variant="connected" />

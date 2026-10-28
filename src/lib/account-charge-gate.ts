@@ -57,8 +57,14 @@ export function barChargeErrorMessage(err: unknown, fallback: string): string {
     + `(${rand(info.shortfall)} short). Nothing was charged.`;
 }
 
+/**
+ * Warning only: the member account cannot settle the tab. Never worded as an
+ * instruction to pay by card now — the member may still add items and choose any
+ * other payment method the club offers when settling.
+ */
 export const EARLY_ACCOUNT_WARNING =
-  "Member account has insufficient available credit. Please pay by card or top up.";
+  "Your member account doesn't have enough available credit to settle this. "
+  + "You'll need to pay by card or another payment method available at the club.";
 
 /**
  * Early basket warning: given the club's switches and the member's current owing/allowance,

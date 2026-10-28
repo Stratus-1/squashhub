@@ -14,9 +14,11 @@ export function SwissRrFinishStandings({ groups, fromRound, showPoints = true, c
           <div className="riverside-rr-band flex items-center gap-2 px-2 py-1 font-semibold" data-rr-group={g.group}>
             <span>Group {g.group}</span><span className="font-normal text-muted-foreground">positions {g.positions[0]}–{g.positions[1]} · {g.played}/{g.total} played</span>
           </div>
-          <div className="overflow-x-auto"><table className="w-full border-collapse">
+          {/* table-fixed keeps every group's columns the same width so the
+              P/W/L/Games/GD columns line up vertically across groups. */}
+          <div className="overflow-x-auto"><table className="w-full min-w-[520px] table-fixed border-collapse">
             <thead><tr className="text-left text-muted-foreground">
-              <th className="px-2">Rank</th><th className="px-2">Pos.</th><th className="px-2">Player</th><th className="px-2">P</th><th className="px-2">W</th><th className="px-2">L</th><th className="px-2">Games</th><th className="px-2">GD</th>{showPoints && <th className="px-2">Pts F/A</th>}
+              <th className="w-[11%] px-2">Rank</th><th className="w-[9%] px-2">Pos.</th><th className="px-2">Player</th><th className="w-[6%] px-2">P</th><th className="w-[6%] px-2">W</th><th className="w-[6%] px-2">L</th><th className="w-[12%] px-2">Games</th><th className="w-[7%] px-2">GD</th>{showPoints && <th className="w-[13%] px-2">Pts F/A</th>}
             </tr></thead>
             <tbody>
               {g.rows.map((r) => (

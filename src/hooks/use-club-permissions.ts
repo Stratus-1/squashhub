@@ -4,6 +4,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
 import { useFinancialAccess } from "@/hooks/use-financial-access";
+import { useClubContext } from "@/contexts/ClubContext";
 
 /** All available permission slugs */
 export const PERMISSION_SLUGS = [
@@ -95,7 +96,8 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   const { activeMember, isAdmin } = useMemberContext();
   const isSuperAdmin = useIsSuperAdmin();
   const memberId = activeMember?.id;
-  const { isChairman } = useFinancialAccess(activeMember?.club_id);
+  const { club } = useClubContext();
+  const { isChairman } = useFinancialAccess(club?.id);
 
   // Fetch member's club role
   const { data: memberRow } = useQuery({
@@ -139,7 +141,8 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
   const { activeMember, isAdmin, isLoading: memberCtxLoading } = useMemberContext();
   const { isSuperAdmin, isLoading: superAdminLoading } = useSuperAdminStatus();
   const memberId = activeMember?.id;
-  const { isChairman, isLoading: chairmanLoading } = useFinancialAccess(activeMember?.club_id);
+  const { club } = useClubContext();
+  const { isChairman, isLoading: chairmanLoading } = useFinancialAccess(club?.id);
 
   const { data: memberRow, isPending: memberRolePending } = useQuery({
     queryKey: ["member-role", memberId],

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ const ACTION_LABEL: Record<string, string> = { create: "Will charge", skip_exist
  * idempotent server functions; nothing is posted or marked paid without an explicit click + confirmation.
  */
 export function ChampFeesPanel({ champId, clubId, entrants }: { champId: string; clubId: string; entrants: Array<{ id: string; name: string }> }) {
+  const { canChange } = useFinancialAccess(clubId);
   const qc = useQueryClient();
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -107,7 +109,7 @@ export function ChampFeesPanel({ champId, clubId, entrants }: { champId: string;
             </div>
           </div>
           <p className="text-xs text-muted-foreground">Selecting several members splits the amount evenly; it is recorded for verification and only settles fees once approved below.</p>
-          <Button size="sm" variant="outline" onClick={recordOffline}>Record for verification</Button>
+          <Button disabled={!canChange} size="sm" variant="outline" onClick={recordOffline}>Record for verification</Button>
         </section>
 
         <section className="space-y-2">
@@ -127,9 +129,9 @@ export function ChampFeesPanel({ champId, clubId, entrants }: { champId: string;
               <div className="mt-1 flex flex-wrap gap-2">
                 {c.proof_path && <Button size="sm" variant="ghost" onClick={() => openProof(c.proof_path)}>View proof</Button>}
                 {(c.status === "reported" || c.status === "needs_proof") && <>
-                  <Button size="sm" onClick={() => review(c, "approve")} disabled={needsConfirm}>Approve (verified)</Button>
-                  <Button size="sm" variant="outline" onClick={() => review(c, "needs_proof")}>Request proof</Button>
-                  <Button size="sm" variant="destructive" onClick={() => review(c, "reject")}>Reject</Button>
+                  <Button size="sm" onClick={() => review(c, "approve")} disabled={!canChange || needsConfirm}>Approve (verified)</Button>
+                  <Button disabled={!canChange} size="sm" variant="outline" onClick={() => review(c, "needs_proof")}>Request proof</Button>
+                  <Button disabled={!canChange} size="sm" variant="destructive" onClick={() => review(c, "reject")}>Reject</Button>
                 </>}
               </div>
             </div>

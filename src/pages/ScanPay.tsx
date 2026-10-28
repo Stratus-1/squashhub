@@ -189,6 +189,25 @@ export default function ScanPay() {
   // plus one-time-code flow.
   const member: { id: string; name: string } | null = null;
   const { activeMember } = useMemberContext();
+
+  // A signed-in member of THIS club gets the simple flow: no guest prompts or
+  // name entry — their tab carries their own name automatically.
+  const { data: signedInMembership } = useQuery({
+    queryKey: ["scanpay-club-membership", club?.id, activeMember?.id],
+    enabled: !!club?.id && !!activeMember?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("club_members")
+        .select("id, name")
+        .eq("id", activeMember!.id)
+        .eq("club_id", club!.id)
+        .eq("status", "active")
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+  const isSignedInMember = !!signedInMembership;
+  const signedInName = isSignedInMember ? signedInMembership!.name || activeMember?.name || "Member" : null;
   const [checkingMembership, setCheckingMembership] = useState(false);
   const [memberTipPending, setMemberTipPending] = useState<{ target: "cart" | "tab"; memberId: string; staff: ServingPerson[]; requestId: string } | null>(null);
   const accountChargeBusy = useRef(false);
@@ -540,7 +559,7 @@ export default function ScanPay() {
 
   /** Open an empty evening tab up front — name only, no items needed. */
   const openTabNow = async () => {
-    const name = member?.name || visitorName.trim();
+    const name = member?.name || signedInName || visitorName.trim();
     if (!name) {
       toast.error("Please give a name for the tab first.");
       return;
@@ -564,7 +583,7 @@ export default function ScanPay() {
   /** Start (or top up) an open tab for the evening with the current cart. */
   const addToOpenTab = async () => {
     if (cartLines.length === 0) return;
-    const name = member?.name || visitorName.trim();
+    const name = member?.name || signedInName || visitorName.trim();
     if (!tab && !name) {
       toast.error("Please give a name for the tab first.");
       return;
@@ -848,7 +867,7 @@ export default function ScanPay() {
     );
   }
 
-  const showLoginPrompt = !guestChosen;
+  const showLoginPrompt = !guestChosen && !isSignedInMember;
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -875,14 +894,16 @@ export default function ScanPay() {
 
       {/* Neutral strip — this page never assumes who is holding the phone */}
       <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-[11px]">
-        <span className="truncate flex-1 text-muted-foreground">
-          Members: charge to your account with your membership number and a one-time code sent to your phone. Visitors: pay by card or open a tab.
-        </span>
+        {!isSignedInMember && (
+          <span className="truncate flex-1 text-muted-foreground">
+            Members: charge to your account with your membership number and a one-time code sent to your phone. Visitors: pay by card or open a tab.
+          </span>
+        )}
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 gap-1.5 px-2.5 text-xs"
+          className={`h-8 shrink-0 gap-1.5 px-2.5 text-xs ${isSignedInMember ? "ml-auto" : ""}`}
           onClick={() => navigate(`/s/${code}/counter`)}
         >
           <Store className="h-3.5 w-3.5" /> Counter mode
@@ -947,28 +968,32 @@ export default function ScanPay() {
                   <p className="text-sm font-semibold">Staying for a while? Open a tab</p>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Enter your name once, then just tap drinks all evening. Pay the whole tab at the end.
+                  {isSignedInMember
+                    ? "Tap drinks all evening, then pay the whole tab at the end."
+                    : "Enter your name once, then just tap drinks all evening. Pay the whole tab at the end."}
                 </p>
-                <div className="flex gap-2">
-                  <Input
-                    value={visitorName}
-                    onChange={(e) => setVisitorName(e.target.value)}
-                    placeholder="Your name"
-                    className="h-10"
-                  />
-                  <Input
-                    value={visitorPhone}
-                    onChange={(e) => setVisitorPhone(e.target.value)}
-                    placeholder="Cell number"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    className="h-10"
-                  />
-                </div>
+                {!isSignedInMember && (
+                  <div className="flex gap-2">
+                    <Input
+                      value={visitorName}
+                      onChange={(e) => setVisitorName(e.target.value)}
+                      placeholder="Your name"
+                      className="h-10"
+                    />
+                    <Input
+                      value={visitorPhone}
+                      onChange={(e) => setVisitorPhone(e.target.value)}
+                      placeholder="Cell number"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      className="h-10"
+                    />
+                  </div>
+                )}
                 <Button
                   className="w-full gap-1.5 h-10"
-                  disabled={submitting || !visitorName.trim()}
+                  disabled={submitting || (!isSignedInMember && !visitorName.trim())}
                   onClick={openTabNow}
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
@@ -1001,7 +1026,7 @@ export default function ScanPay() {
             {tab && tab.status !== "settled" && (
               <Card className="p-4 space-y-3 border-amber-500/50">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">Your open tab · {tab.guest_name}</p>
+                  <p className="text-sm font-semibold">{isSignedInMember ? "My tab" : "Your open tab"} · {tab.guest_name}</p>
                   <span className="text-sm font-semibold">{formatMoney(tab.total, currency)}</span>
                 </div>
                 <div className="space-y-1">
@@ -1432,7 +1457,7 @@ export default function ScanPay() {
                     onClick={addToOpenTab}
                   >
                     <Receipt className="w-4 h-4" />
-                    {orderProcess ? (barOpen ? "Place order" : "Bar closed for orders") : tab ? "Add to my open tab" : "Open a tab for the evening"}
+                    {orderProcess ? (barOpen ? "Place order" : "Bar closed for orders") : tab ? "Add to my open tab" : isSignedInMember ? "Add to my tab" : "Open a tab for the evening"}
                   </Button>
 
                   <p className="text-[11px] text-muted-foreground text-center">
@@ -1488,6 +1513,16 @@ export default function ScanPay() {
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
                   {orderProcess ? "Place order" : "Add to my open tab"}
                 </Button>
+              ) : isSignedInMember ? (
+                <div className="flex gap-2">
+                  <Button className="gap-2 h-11 flex-1" disabled={submitting} onClick={addToOpenTab}>
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                    Add to my tab
+                  </Button>
+                  <Button variant="outline" className="gap-2 h-11" onClick={() => setCheckingOut(true)}>
+                    <CreditCard className="w-4 h-4" /> Pay now
+                  </Button>
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <Button

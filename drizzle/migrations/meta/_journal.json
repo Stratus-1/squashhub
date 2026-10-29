@@ -2164,6 +2164,13 @@
       "when": 1793282156751,
       "tag": "0308_bar_tab_previous_day_block",
       "breakpoints": true
+    },
+    {
+      "idx": 309,
+      "version": "7",
+      "when": 1793286242357,
+      "tag": "0309_chairman_routine_actions",
+      "breakpoints": true
     }
   ]
 }

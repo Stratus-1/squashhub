@@ -3500,6 +3500,36 @@ export type Database = {
           },
         ]
       }
+      chairman_action_context: {
+        Row: {
+          action: string
+          backend_pid: number
+          club_id: string
+          id: string
+          member_id: string
+          registration_id: string | null
+          transaction_id: number
+        }
+        Insert: {
+          action: string
+          backend_pid?: number
+          club_id: string
+          id?: string
+          member_id: string
+          registration_id?: string | null
+          transaction_id?: number
+        }
+        Update: {
+          action?: string
+          backend_pid?: number
+          club_id?: string
+          id?: string
+          member_id?: string
+          registration_id?: string | null
+          transaction_id?: number
+        }
+        Relationships: []
+      }
       chairman_emergency_requests: {
         Row: {
           club_id: string
@@ -20596,6 +20626,22 @@ export type Database = {
         Args: { _club: string; _token: string }
         Returns: string
       }
+      _chairman_accept_tournament_invite: {
+        Args: {
+          p_accept: boolean
+          p_divisions?: number[]
+          p_registration_id: string
+        }
+        Returns: Json
+      }
+      _chairman_charge_tournament_entry_to_account: {
+        Args: { p_registration_id: string }
+        Returns: Json
+      }
+      _chairman_family_activate_approved: {
+        Args: { _family_member_id: string }
+        Returns: boolean
+      }
       _champ_admin_guard: { Args: { p_champ_id: string }; Returns: undefined }
       _champ_draw_notice_mode: { Args: { p_champ_id: string }; Returns: string }
       _champ_fee_adjust: {
@@ -22009,13 +22055,29 @@ export type Database = {
           phone: string
         }[]
       }
+      chairman_add_member: {
+        Args: { _club_id: string; _details: Json }
+        Returns: string
+      }
+      chairman_automatic_write_allowed: {
+        Args: { _op: string; _table: string; cid: string; j: Json; o: Json }
+        Returns: boolean
+      }
       chairman_banking_setup_change_allowed: {
         Args: { _new: Json; _old: Json; _operation: string; _table: string }
         Returns: boolean
       }
+      chairman_ensure_joining_fee: {
+        Args: { _member_id: string }
+        Returns: Json
+      }
       chairman_financial_write_allowed: {
         Args: { _club_id: string }
         Returns: boolean
+      }
+      chairman_self_entry_context: {
+        Args: { _registration: string }
+        Returns: string
       }
       champ_actor_member: {
         Args: { p_champ_id: string; p_token: string; p_verify: string }

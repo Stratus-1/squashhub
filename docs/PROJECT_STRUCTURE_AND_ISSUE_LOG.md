@@ -4081,3 +4081,8 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Income statement defaults to historical sold-item costs; purchases remain selectable. Bar payroll salaries now debit salary_wages and credit bank_current; tip accounting, authority, audit and duplicate-run guards unchanged (0299).
 - One Salaries & Wages total expands into individual staff totals. Historical canonical payroll salary rows project as wages without changing saved journals or net profit; explicitly allocated custom direct costs stay unchanged.
 - 29 focused report/payroll tests pass; build OK. Signed-in Riverside report shows cost-of-sales default and R1,500 wages expanding to Sonja R1,000 / WP R500. No payout processed or live journal changed. Shared web/PWA/native screens preview-only.
+
+### 2026-10-29 — Uitsig Men's C Round 3 missing two games
+- Symptom: After Round 2 finished, Andre Swart, Bernard Welters, Manie Barnard and Wynand Ras had no Round 3 game, so they couldn't book.
+- Cause: The automatic generator didn't use the owner-approved Men's C position chart that the Progression page uses. It saw the chart's approved 9v10 repeat in the round-robin groups and held back every remaining game in the category.
+- Fix: `projected-court-fixtures.ts` now passes `mensCRemainderChart` for Uitsig Champs 2026 Men's C (18 players, 5 rounds, 3 groups). `buildProposedSwissGrid` skips the repeat hold when that approved chart applies. Rebuilt the engine and redeployed `auto-progress-tournaments`. A replay produced exactly Andre v Bernard (5v8) and Wynand v Manie (10v11), which matches the two games that were added by hand. Test: `src/test/uitsig-mens-c-writer-chart.test.ts`.

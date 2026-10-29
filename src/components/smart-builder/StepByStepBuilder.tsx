@@ -558,20 +558,25 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return () => { cancelled = true; };
   }, [clubId]);
 
-  // Registered visitors (club sign-ins), promoted to visitor member rows — only
-  // when the organiser opted in on "Who may enter". Idempotent; never billed.
+  // Visitors — only when the organiser opted in on "Who may enter". Covers both
+  // visitor members added in Club Admin and visitors promoted from sign-ins;
+  // idempotent; never billed.
   const [visitorMembers, setVisitorMembers] = useState<{ id: string; name: string; ladder?: number | null; points?: number | null }[]>([]);
   useEffect(() => {
     if (!a.includeVisitors) { setVisitorMembers([]); return; }
     let cancelled = false;
     (async () => {
       try {
-        const vs: ClubVisitor[] = await fetchClubVisitors(clubId);
-        if (vs.length === 0) { if (!cancelled) setVisitorMembers([]); return; }
-        const promoted = await promoteVisitors(clubId, vs);
-        const ids = vs.map((v) => promoted.get(v.id)).filter(Boolean) as string[];
-        if (ids.length === 0) { if (!cancelled) setVisitorMembers([]); return; }
-        const { data } = await supabase.from("club_members").select("id, name, gender, ladder_position, ranking_points").in("id", ids);
+        // Sign-in visitors are promoted to visitor member rows first (idempotent).
+        try {
+          const vs: ClubVisitor[] = await fetchClubVisitors(clubId);
+          if (vs.length > 0) await promoteVisitors(clubId, vs);
+        } catch { /* sign-in promotion is best-effort */ }
+        // All active visitor-role member rows: manual visitors and promoted sign-ins.
+        const { data, error } = await supabase.from("club_members")
+          .select("id, name, gender, ladder_position, ranking_points")
+          .eq("club_id", clubId).eq("role", "visitor").eq("status", "active").order("name");
+        if (error) throw error;
         if (cancelled) return;
         const rows = ((data ?? []) as any[]).map((m) => ({ id: String(m.id), name: m.name || "Visitor", ladder: m.ladder_position ?? null, points: m.ranking_points ?? null, gender: m.gender ?? null }));
         setVisitorMembers(rows.map(({ gender, ...r }) => r));
@@ -1849,9 +1854,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div className="space-y-0.5">
-                  <Label htmlFor="sbs-include-visitors" className="text-sm font-medium">Include registered visitors</Label>
+                  <Label htmlFor="sbs-include-visitors" className="text-sm font-medium">Include visitors</Label>
                   <p className="text-xs text-muted-foreground">
-                    Visitors who signed in at the club may be picked and invited, just like members. Off = members only.
+                    Visitors on the club's visitor list — visitor members added in Club Admin and visitors who signed in — may be picked and invited, just like members. Off = members only.
                   </p>
                 </div>
                 <Switch id="sbs-include-visitors" checked={!!a.includeVisitors} onCheckedChange={(v) => setA({ ...a, includeVisitors: v })} />

@@ -558,6 +558,34 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return () => { cancelled = true; };
   }, [clubId]);
 
+  // Registered visitors (club sign-ins), promoted to visitor member rows — only
+  // when the organiser opted in on "Who may enter". Idempotent; never billed.
+  const [visitorMembers, setVisitorMembers] = useState<{ id: string; name: string; ladder?: number | null; points?: number | null }[]>([]);
+  useEffect(() => {
+    if (!a.includeVisitors) { setVisitorMembers([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const vs: ClubVisitor[] = await fetchClubVisitors(clubId);
+        if (vs.length === 0) { if (!cancelled) setVisitorMembers([]); return; }
+        const promoted = await promoteVisitors(clubId, vs);
+        const ids = vs.map((v) => promoted.get(v.id)).filter(Boolean) as string[];
+        if (ids.length === 0) { if (!cancelled) setVisitorMembers([]); return; }
+        const { data } = await supabase.from("club_members").select("id, name, gender, ladder_position, ranking_points").in("id", ids);
+        if (cancelled) return;
+        const rows = ((data ?? []) as any[]).map((m) => ({ id: String(m.id), name: m.name || "Visitor", ladder: m.ladder_position ?? null, points: m.ranking_points ?? null, gender: m.gender ?? null }));
+        setVisitorMembers(rows.map(({ gender, ...r }) => r));
+        setGenderByMember((m) => { const n = new Map(m); rows.forEach((r) => n.set(r.id, r.gender)); return n; });
+      } catch { /* leave visitors out rather than block the step */ }
+    })();
+    return () => { cancelled = true; };
+  }, [a.includeVisitors, clubId]);
+  const visitorIdSet = useMemo(() => new Set(visitorMembers.map((v) => v.id)), [visitorMembers]);
+  const memberPool = useMemo(
+    () => (a.includeVisitors ? [...members, ...visitorMembers.filter((v) => !members.some((m) => m.id === v.id))] : members),
+    [a.includeVisitors, members, visitorMembers],
+  );
+
   const [phoneCh, setPhoneCh] = useState<{ whatsapp: boolean; sms: boolean }>({ whatsapp: false, sms: false });
   useEffect(() => {
     supabase.from("clubs").select("whatsapp_enabled, sms_enabled").eq("id", clubId).maybeSingle()

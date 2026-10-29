@@ -107,11 +107,6 @@ function isGameWon(scoreA: number, scoreB: number, pointsToWin: number, deuceRul
   const min = Math.min(scoreA, scoreB);
   if (max < pointsToWin) return null;
   if (min >= pointsToWin - 1) {
-    if (deuceRule === "sudden_death") {
-      // At deuce (e.g. 10-10), next point wins
-      if (max > min) return scoreA > scoreB ? "a" : "b";
-      return null;
-    }
     // Win by 2
     if (max - min >= 2) return scoreA > scoreB ? "a" : "b";
     return null;

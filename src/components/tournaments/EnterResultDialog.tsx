@@ -19,6 +19,7 @@ import {
   type Side,
 } from "@/lib/tournaments/quick-result";
 import type { SelfScheduleMatchLike } from "@/lib/tournaments/self-schedule";
+import { targetWinner } from "@/lib/tournament-formats/first-to-target";
 
 interface Props {
   open: boolean;
@@ -96,7 +97,12 @@ export function EnterResultDialog({
   }, [open, bo, target]);
 
   const tallies = useMemo(() => possibleGameTallies(bo), [bo]);
-  const validation = useMemo(() => validateQuickResult(games, bo), [games, bo]);
+  const validation = useMemo(() => {
+    if (catMode === "first_to_target" && (games.length !== 1 || !games[0] || !targetWinner(games[0].a, games[0].b, target) || Math.max(games[0].a, games[0].b) !== target)) {
+      return { valid: false, error: `One player must reach ${target}`, gamesA: 0, gamesB: 0 };
+    }
+    return validateQuickResult(games, bo);
+  }, [games, bo, catMode, target]);
 
   const bellsPointsA = Math.max(0, parseInt(bellsA, 10) || 0);
   const bellsPointsB = Math.max(0, parseInt(bellsB, 10) || 0);

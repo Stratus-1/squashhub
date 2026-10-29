@@ -760,7 +760,8 @@ export function MarkerSetup({ onStart }: Props) {
     const ppg = Number(match?.pointsPerGame);
     return {
       scoringFormat: (ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11") as ScoringFormat,
-      bestOf: (Number(match?.bestOf) === 5 ? 5 : 3) as BestOf,
+      bestOf: (match?.scoringMode === "first_to_target" ? 1 : Number(match?.bestOf) === 5 ? 5 : 3) as BestOf,
+      targetPoints: match?.scoringMode === "first_to_target" ? ppg : undefined,
       playAllGames: !!match?.playAllGames,
       deuceRule: (match?.winCondition === "sudden_death" ? "sudden_death" : "win_by_2") as DeuceRule,
     };

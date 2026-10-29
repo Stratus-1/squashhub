@@ -2,7 +2,7 @@ import { CategoryProgressPanel } from "./CategoryProgressPanel";
 import { Fragment, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronRight, Pencil, ArrowLeft, Lock, RotateCcw } from "lucide-react";
+import { Check, ChevronRight, Pencil, ArrowLeft, Lock, RotateCcw, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
@@ -123,7 +123,10 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <p className="max-w-2xl text-sm text-muted-foreground">Manage rounds, draws, fixtures, results and player notifications here. To change the tournament configuration, select <span className="font-medium text-foreground">Edit tournament setup</span>.</p>
           <p className="text-xs text-muted-foreground">{h.kind === "period" ? "Club Championships" : "Once-off / weekend"}</p>
         </div>
-        <Button variant="outline" className="shrink-0 self-start md:mt-2" onClick={() => askEdit()}><Pencil className="mr-1 h-4 w-4" />Edit tournament setup</Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 self-start md:mt-2">
+          <Button variant="default" className="shrink-0" onClick={onBack}><ListChecks className="mr-1 h-4 w-4" />All tournaments</Button>
+          <Button variant="outline" className="shrink-0" onClick={() => askEdit()}><Pencil className="mr-1 h-4 w-4" />Edit tournament setup</Button>
+        </div>
       </div>
 
       <ol aria-label="Tournament lifecycle" className="flex flex-wrap gap-1.5 text-xs">

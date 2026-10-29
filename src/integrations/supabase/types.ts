@@ -20729,6 +20729,18 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_post_member_correction: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _club_member_id: string
+          _date: string
+          _description: string
+          _direction: string
+          _request_id: string
+        }
+        Returns: Json
+      }
       admin_reorder_ladder: {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined

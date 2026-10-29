@@ -1,12 +1,24 @@
 import { describe, expect, it } from "vitest";
 import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
-import { originalStructureFromAnswers, answersFromOriginalStructure, structurePoolGroups } from "@/lib/smart-builder/original-structure";
+import { originalStructureFromAnswers, answersFromOriginalStructure, structurePoolGroups, structureSlotTimes } from "@/lib/smart-builder/original-structure";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
 import { categoryDisplayName } from "@/lib/smart-builder/category-labels";
 
 const base = (): StepAnswers => ({ categories: ["Men"], subcats: {}, categoryTypes: { Men: "open" }, disc: { Men: "singles" }, unitEntries: { Men: "16" }, picks: {}, scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapPlay: "", timeCapBreak: "", timeCapMinutes: "" }, scoringOverrides: {}, format: { kind: null }, formatOverrides: {}, playoffOverrides: {}, elig: {}, stages: [{ id: "keep", date: "2026-11-01" }], days: [{ date: "2026-11-01" }], stagePlans: { Men: [{ id: "initial", kind: "round_robin", pools: 2, poolNames: ["Pool A", "Pool B"] }, { id: "future", kind: "knockout" }] } } as unknown as StepAnswers);
 
 describe("original alternate screen local adapter", () => {
+  it("uses saved pool times ahead of the duplicate singles estimate after reopening", () => {
+    const a = base();
+    a.scheduling = { singles: "45", doubles: "", rest: "" };
+    const raw = originalStructureFromAnswers(a);
+    raw.pool_durations = { "1:1": 10, "1:2": 20 };
+    raw.group_durations = { "1": 30 };
+    raw.league_scoring_modes = { "1": "first_to_target" };
+    const restored = answersFromOriginalStructure(a, raw);
+    expect(structureSlotTimes(JSON.parse(JSON.stringify(restored)), "Men")).toEqual({ slotMinutes: 20, poolSlots: [10, 20], inherited: true });
+    expect(originalStructureFromAnswers(restored).pool_durations).toEqual(raw.pool_durations);
+    expect(restored.days).toEqual(a.days);
+  });
   it("renames a saved category without changing its player, pool, playoff or scheduling links", () => {
     const a = base();
     a.createdTournamentId = "existing";

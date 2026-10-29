@@ -2,10 +2,31 @@ import type { StepAnswers } from "@/components/smart-builder/StepByStepBuilder";
 import { rowStages, structureUnits, renameStructureKey, writeRowStages } from "./structure-rows";
 import { newStageId, type StageKind } from "./stage-plan";
 import { poolNamesFor } from "./category-pools";
+import { poolMinutes } from "@/lib/tournaments/stage-sequence";
 
 /** Full original-screen snapshot stays local; only supported answers are mirrored. */
 export type OriginalStructure = Record<string, any>;
 const originalFormat = (kind: StageKind | null) => kind === "round_robin" || kind === "pools" ? "single_round_robin" : kind ?? "single_round_robin";
+
+/** Read saved setup times without rewriting legacy estimates or scheduled games. */
+export function structureSlotTimes(a: StepAnswers, key: string) {
+  const raw = a.originalStructure;
+  const keys: string[] = raw?._unit_keys ?? structureUnits(a);
+  const groupNumber = keys.indexOf(key) + 1;
+  const sc = a.scoringOverrides[key] ?? a.scoringOverrides[key.split("::")[0]] ?? a.scoring;
+  const bells = sc?.mode === "time_capped_points";
+  const kind = (a.disc[key] ?? a.disc[key.split("::")[0]] ?? a.playType) === "doubles" ? "doubles" : "singles";
+  const breakMinutes = bells ? Math.max(0, Number(raw?.group_break_minutes?.[String(groupNumber)] ?? sc?.timeCapBreak) || 0) : 0;
+  const fallback = bells ? Number(sc?.timeCapPlay || sc?.timeCapMinutes) : Number(a.scheduling?.[kind] || raw?.match_duration);
+  const base = poolMinutes({ groupDurations: raw?.group_durations, groupNumber, fallbackMinutes: fallback }) ?? 0;
+  const pools = Number(raw?.swiss_pools?.[String(groupNumber)] ?? rowStages(a, key)[0]?.pools) || 1;
+  const poolSlots = Array.from({ length: pools }, (_, i) => {
+    const play = poolMinutes({ poolDurations: raw?.pool_durations, groupDurations: raw?.group_durations, groupNumber, pool: i + 1, fallbackMinutes: fallback }) ?? 0;
+    return play > 0 ? play + breakMinutes : 0;
+  });
+  const inherited = Number(raw?.group_durations?.[String(groupNumber)]) > 0 || poolSlots.some((_, i) => Number(raw?.pool_durations?.[`${groupNumber}:${i + 1}`]) > 0) || (bells && Number(sc?.timeCapPlay || sc?.timeCapMinutes) > 0);
+  return { slotMinutes: poolSlots.every((n) => n > 0) ? Math.max(...poolSlots) : 0, poolSlots, inherited };
+}
 
 export interface StructurePoolGroup { parent: string; label: string; slots: number[] }
 /** Display numbered round-robin children as pools without merging positional draw IDs. */

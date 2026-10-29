@@ -132,6 +132,7 @@ import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { pickPoolPreview } from "@/lib/smart-builder/pick-pool-preview";
 import { PickPoolPreview } from "./PickPoolPreview";
 import { CourtsCapacitySummary } from "./CourtsCapacitySummary";
+import { structureSlotTimes } from "@/lib/smart-builder/original-structure";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
 import { attachTimelinePlayoffs, createPlannedPlayoffFixtures } from "@/lib/smart-builder/attach-timeline-playoffs";
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
@@ -1064,7 +1065,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       const entrants = u.disc === "doubles" ? Math.floor(n / 2) : n;
       const m = Math.floor(entrants / 2);
       const sc = scoringFor(u.key) ?? scoring;
-      const saved = Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"]);
+      const saved = structureSlotTimes(a, u.key).slotMinutes;
       const per = sc?.mode === "time_capped_points" ? slotMinutes(sc) : saved > 0 ? saved : (timeGuessed = true, sc?.bestOf === 5 ? 55 : 35);
       matches += m; courtMin += m * per;
     }
@@ -2365,9 +2366,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 const players = guideCounts[u.key]?.total ?? 0;
                 const p = playoffFor(u.key);
                 const sc = scoringFor(u.key) ?? scoring;
-                const savedMinutes = Number(a.scheduling?.[u.disc === "doubles" ? "doubles" : "singles"] || structureMinutes(u.disc === "doubles" ? "doubles" : "singles"));
+                const savedTime = structureSlotTimes(a, u.key);
                 return { key: u.key, label: u.base, entrants: players > 0 ? (u.disc === "doubles" ? Math.ceil(players / 2) : players) : Number(a.unitEntries?.[u.key]) || (units.length === 1 ? Number(a.entries) || 0 : 0), doubles: u.disc === "doubles", estimated: players === 0,
-                  slotMinutes: sc?.mode === "time_capped_points" ? slotMinutes(sc) : savedMinutes,
+                  slotMinutes: savedTime.slotMinutes, poolSlots: savedTime.poolSlots,
                   playoffGames: p.choice === "playoffs" ? 2 ** p.rounds - 1 : 0,
                   playoffRounds: p.choice === "playoffs" ? p.rounds : 0,
                   playoffUnresolved: p.choice === "later" };
@@ -2426,7 +2427,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   <p className="text-xs text-muted-foreground">Used by "Assign courts &amp; times" to draft the timetable. These are court-time estimates for planning only — they don't change scoring or time-capped rules.</p></div>
                 {units.some((u) => isBellsUnit(u.key)) && <p className="text-xs text-muted-foreground">Time-capped / Bells {units.every((u) => isBellsUnit(u.key)) ? "games use" : "categories use"} their own slot time from the match format ({[...new Set(units.filter((u) => isBellsUnit(u.key)).map((u) => slotMinutes(scoringFor(u.key)!)))].join(" / ")} min incl. changeover) — no estimate needed here.</p>}
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {(([["singles", "Court time per Singles match (Standard format)", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match (Standard format)", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
+                  {units.filter((u) => structureSlotTimes(a, u.key).inherited).map((u) => <div key={u.key}><Label>{u.base}</Label>{structureSlotTimes(a, u.key).poolSlots.map((n, i, all) => <div key={i} className="text-sm">{all.length > 1 ? `Pool ${String.fromCharCode(65 + i)}: ` : ""}{n > 0 ? `${n} min` : "Not set"}</div>)}</div>)}
+                  {(([["singles", "Court time per Singles match (Standard format)", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key) && !structureSlotTimes(a, u.key).inherited)], ["doubles", "Court time per Doubles match (Standard format)", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key) && !structureSlotTimes(a, u.key).inherited)], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
                     <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
                       <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] || (k !== "rest" ? structureMinutes(k) : "")}
                         onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />
@@ -2628,7 +2630,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <div><div className="font-semibold">Match time per slot</div>
                   <p className="text-xs text-muted-foreground">Court-time estimates used by the "Will this round fit?" guide and court planning. Planning only — they don't change scoring or time-capped rules.</p></div>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key))], ["doubles", "Court time per Doubles match", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key))], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
+                  {units.filter((u) => structureSlotTimes(a, u.key).inherited).map((u) => <div key={u.key}><Label>{u.base}</Label>{structureSlotTimes(a, u.key).poolSlots.map((n, i, all) => <div key={i} className="text-sm">{all.length > 1 ? `Pool ${String.fromCharCode(65 + i)}: ` : ""}{n > 0 ? `${n} min` : "Not set"}</div>)}</div>)}
+                  {(([["singles", "Court time per Singles match", units.some((u) => u.disc !== "doubles" && !isBellsUnit(u.key) && !structureSlotTimes(a, u.key).inherited)], ["doubles", "Court time per Doubles match", units.some((u) => u.disc === "doubles" && !isBellsUnit(u.key) && !structureSlotTimes(a, u.key).inherited)], ["rest", "Minimum rest for the same player/pair", true]]) as Array<["singles" | "doubles" | "rest", string, boolean]>).filter((x) => x[2]).map(([k, lbl]) => (
                     <label key={k} className="space-y-1 text-sm"><span className="block">{lbl}</span>
                       <span className="flex items-center gap-2"><Input type="number" min={0} step={5} className="max-w-[110px]" aria-label={lbl} value={a.scheduling?.[k] || (k !== "rest" ? structureMinutes(k) : "")}
                         onChange={(e) => setA({ ...a, scheduling: { singles: "", doubles: "", rest: "", ...(a.scheduling ?? {}), [k]: e.target.value } })} />

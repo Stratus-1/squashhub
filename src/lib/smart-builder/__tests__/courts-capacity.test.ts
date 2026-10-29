@@ -6,6 +6,14 @@ const unit: CourtsCapacityUnit = { key: "Open", label: "Open", entrants: 24, dou
 const day = { date: "2026-10-31", courts: "3", courtIds: ["1", "3", "4"], windows: [{ from: "09:00", to: "17:00" }] };
 
 describe("Courts capacity", () => {
+  it("costs each pool using its saved slot rather than the longest slot for every game", () => {
+    const a = { stagePlans: { Open: [{ id: "rr", kind: "round_robin" as const, pools: 2 }] } };
+    const c = courtsCapacity(a, [day], [{ ...unit, entrants: 13, slotMinutes: 20, poolSlots: [10, 20], playoffRounds: 2 }]);
+    expect(c.rows[0].poolGames).toBe(36);
+    expect(c.requiredMinutes).toBe(570);
+    expect(c.rows[0].poolSlots).toEqual([10, 20]);
+    expect(c.availableSlots).toBeNull();
+  });
   it("shows two semifinal slots and one final slot separately at 23 minutes", () => {
     const c = courtsCapacity(answers, [day], [{ ...unit, playoffRounds: 2 }]);
     expect(c.rows[0].playoffSlots).toEqual([{ label: "Semifinals", matches: 2, minutes: 46 }, { label: "Final", matches: 1, minutes: 23 }]);

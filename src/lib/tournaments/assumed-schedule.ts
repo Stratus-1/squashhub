@@ -205,6 +205,13 @@ export async function hasAssumptions(champId: string): Promise<boolean> {
   return !!plan?.scheduling && Array.isArray(plan?.days) && plan.days.length > 0;
 }
 
+/** Court minutes one game of another tournament occupies: its saved planner time, else its match length, else 45. */
+export function otherMatchMinutes(t: { match_duration_minutes?: number | null; beta_lifecycle?: any }): number {
+  const s = t?.beta_lifecycle?.format_plan?.scheduling ?? {};
+  const v = Math.max(Number(s.singles) || 0, Number(s.doubles) || 0) || Number(t?.match_duration_minutes) || 45;
+  return v > 0 ? v : 45;
+}
+
 export async function loadAssumed(champId: string): Promise<AssumeLoad> {
   const [{ data: t }, { data: rows }] = await Promise.all([
     fromExt("tournaments").select("club_id, name, beta_lifecycle, group_labels").eq("id", champId).maybeSingle(),
@@ -257,7 +264,15 @@ export async function loadAssumed(champId: string): Promise<AssumeLoad> {
       fromExt("club_champs_matches").select("champ_id, court_id, scheduled_date, scheduled_time").in("scheduled_date", dates).in("court_id", courts).neq("champ_id", champId),
       fromExt("bookings").select("court_id, date, start_time, end_time, external_id").in("date", dates).eq("status", "active").in("court_id", courts),
     ]);
-    for (const m of (other ?? []) as any[]) if (m.scheduled_time) { const st = toMin(m.scheduled_time); busy.push({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: st, end: st + 45 }); }
+    // Other tournaments' games hold their court for that tournament's own saved match length (not a flat 45 min),
+    // so adjacent free time stays usable.
+    const otherIds = Array.from(new Set(((other ?? []) as any[]).map((m) => m.champ_id).filter(Boolean)));
+    const otherDur = new Map<string, number>();
+    if (otherIds.length) {
+      const { data: ot } = await fromExt("tournaments").select("id, match_duration_minutes, beta_lifecycle").in("id", otherIds);
+      for (const x of (ot ?? []) as any[]) otherDur.set(x.id, otherMatchMinutes(x));
+    }
+    for (const m of (other ?? []) as any[]) if (m.scheduled_time) { const st = toMin(m.scheduled_time); busy.push({ date: String(m.scheduled_date).slice(0, 10), courtId: Number(m.court_id), start: st, end: st + (otherDur.get(m.champ_id) ?? 45) }); }
     // Session reservations (`sbs:`) are the courts being scheduled into, never a clash — except another
     // tournament's provisional play-off slots, which are real holds.
     for (const b of (bk ?? []) as any[]) {

@@ -125,3 +125,12 @@ describe("whole-weekend play-off scenarios", () => {
     expect(plan.map((p) => [p.rowId, p.hold.id])).toEqual([["m1", "h1"], ["m2", "h2"]]);
   });
 });
+
+import { otherMatchMinutes } from "@/lib/tournaments/assumed-schedule";
+describe("otherMatchMinutes", () => {
+  it("uses the other tournament's saved match length, not a flat 45", () => {
+    expect(otherMatchMinutes({ match_duration_minutes: 30, beta_lifecycle: {} })).toBe(30);
+    expect(otherMatchMinutes({ match_duration_minutes: 30, beta_lifecycle: { format_plan: { scheduling: { singles: 10 } } } })).toBe(10);
+    expect(otherMatchMinutes({})).toBe(45);
+  });
+});

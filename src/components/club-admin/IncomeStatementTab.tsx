@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "@/lib/finance/division-margin";
 
-import { groupedIncome } from "@/lib/finance/grouped-income";
+import { groupedIncome, DEFAULT_INCOME_STATEMENT_BASIS } from "@/lib/finance/grouped-income";
 import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
 
 interface AccountMeta {
@@ -34,7 +34,8 @@ type Preset = "this_month" | "last_month" | "qtd" | "ytd" | "last_12" | "custom"
 export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
   const { data: customAccounts = [], isLoading: accountsLoading, isError: accountsError } = useClubGLAccounts(clubId);
   const [preset, setPreset] = useState<Preset>("ytd");
-  const [basis, setBasis] = useState<TradingCostBasis>("purchases");
+  const [basis, setBasis] = useState<TradingCostBasis>(DEFAULT_INCOME_STATEMENT_BASIS);
+  const [expandedSalaries, setExpandedSalaries] = useState(false);
   const { format: money, symbol: currencySymbol, code: currencyCode } = useClubCurrency();
   const today = new Date();
   const [from, setFrom] = useState<string>(format(startOfYear(today), "yyyy-MM-dd"));
@@ -286,7 +287,14 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
             <table className="w-full text-xs">
               <thead><tr className="border-b"><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-right">Amount ({currencySymbol})</th></tr></thead>
               <tbody>
-                {report.expenses.map(row => <tr key={row.label} className="border-b"><td className="px-3 py-2">{row.label}</td><td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(row.amount)}</td></tr>)}
+                {report.expenses.map(row => <Fragment key={row.label}>
+                  <tr className="border-b"><td className="px-3 py-2">
+                    {row.label === "Salaries & Wages" ? <Button type="button" variant="ghost" size="sm" className="h-auto p-0 gap-1 text-xs" aria-expanded={expandedSalaries} onClick={() => setExpandedSalaries(value => !value)}>
+                      {expandedSalaries ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}{row.label}
+                    </Button> : row.label}
+                  </td><td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(row.amount)}</td></tr>
+                  {row.label === "Salaries & Wages" && expandedSalaries && report.salaryDetails.map(detail => <tr key={detail.label} className="border-b bg-muted/20 text-muted-foreground"><td className="px-3 py-1.5 pl-8 break-words">{detail.label}</td><td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">{money(detail.amount)}</td></tr>)}
+                </Fragment>)}
                 <tr className="bg-muted/40 font-bold"><th className="px-3 py-2 text-left">Total general expenses</th><td className="px-3 py-2 text-right tabular-nums">{money(report.generalExpenses)}</td></tr>
               </tbody>
             </table>

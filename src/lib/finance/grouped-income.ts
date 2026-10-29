@@ -4,11 +4,16 @@ export interface StatementLine extends DivisionLedgerLine { description?: string
 export interface StatementAccount { label: string; category: string }
 export interface StatementCustomAccount { id: string; name: string; category: string; reporting_category?: string | null; base_account?: string | null }
 export interface StatementRow { label: string; amount: number }
+export const DEFAULT_INCOME_STATEMENT_BASIS: TradingCostBasis = "cost_of_sales";
 
 /** Trading costs belong above gross income, never again below it. */
-export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Record<string, StatementAccount>, hasShop: boolean, basis: TradingCostBasis, costs: SaleCostSummary[] = [], purchases: StockPurchaseReference[] = [], customAccounts: StatementCustomAccount[] = []) {
-  const accounts = { ...standardAccounts };
+export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Record<string, StatementAccount>, hasShop: boolean, basis: TradingCostBasis = DEFAULT_INCOME_STATEMENT_BASIS, costs: SaleCostSummary[] = [], purchases: StockPurchaseReference[] = [], customAccounts: StatementCustomAccount[] = []) {
+  const accounts = { ...standardAccounts, salary_wages: { label: "Salaries & Wages", category: "Expense" } };
   const lines = sourceLines.map(line => {
+    // Keep historical payroll journals intact while using the current reporting classification.
+    if (line.account === "salary_wages" || (line.account === "bar_cost_of_sales" && line.description?.startsWith("Salary — "))) {
+      return { ...line, account: "salary_wages", custom_account_id: null };
+    }
     const custom = customAccounts.find(account => account.id === line.custom_account_id);
     if (!custom) return line;
     const allocation = custom.reporting_category ?? (custom.base_account === "bar_cost_of_sales" || custom.base_account === "shop_cost_of_sales" ? custom.base_account : null);
@@ -18,6 +23,11 @@ export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Re
     accounts[key] = { label: custom.name, category: custom.category };
     return { ...line, account: key };
   });
+  const salaryDetails = new Map<string, number>();
+  for (const line of lines.filter(line => line.account === "salary_wages")) {
+    const label = line.description?.replace(/^Salary — /, "").trim() || "Other wages";
+    salaryDetails.set(label, (salaryDetails.get(label) ?? 0) + Number(line.debit) - Number(line.credit));
+  }
   const tradingAccounts = new Set(["bar_income", "shop_income", "bar_expense", "shop_expense", "bar_cost_of_sales", "shop_cost_of_sales"]);
   const primary: StatementRow[] = [], expenses: StatementRow[] = [];
   for (const [account, meta] of Object.entries(accounts)) {
@@ -55,5 +65,5 @@ export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Re
   const primaryTotal = primary.reduce((sum, row) => sum + row.amount, 0);
   const grossIncome = primaryTotal + divisions.reduce((sum, row) => sum + row.profit, 0);
   const generalExpenses = expenses.reduce((sum, row) => sum + row.amount, 0);
-  return { primary, expenses, divisions, primaryTotal, grossIncome, generalExpenses, netProfit: grossIncome - generalExpenses };
+  return { primary, expenses, divisions, primaryTotal, grossIncome, generalExpenses, salaryDetails: [...salaryDetails].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005), netProfit: grossIncome - generalExpenses };
 }

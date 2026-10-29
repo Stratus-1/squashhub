@@ -145,3 +145,35 @@ describe("visitor guard on invite sends", () => {
     expect(Array.from(visitorMemberIds(rows)).sort()).toEqual(["v1", "v2"]);
   });
 });
+
+describe("includeVisitors opt-in (Step-by-Step 'Include registered visitors')", () => {
+  const withVisitors: AudienceMemberRow[] = [
+    ...members,
+    { id: "v6", status: "resigned", role: "visitor" },
+    { id: "v7", status: "active", role: "visitor", billing_exempt: true },
+  ];
+
+  it("all_club includes active visitors only when the organiser opted in", () => {
+    const off = resolveInviteAudience({ mode: "all_club", members: withVisitors, leagueIds: [] });
+    expect(off.memberIds.sort()).toEqual(["m1", "m2", "m3"]);
+    const on = resolveInviteAudience({ mode: "all_club", members: withVisitors, leagueIds: [], includeVisitors: true });
+    expect(on.memberIds.sort()).toEqual(["m1", "m2", "m3", "m5"]);
+  });
+
+  it("opted-in visitors are still excluded when inactive or placeholder/billing-exempt", () => {
+    const on = resolveInviteAudience({ mode: "individuals", members: withVisitors, individualIds: ["m5", "v6", "v7"], includeVisitors: true });
+    expect(on.memberIds).toEqual(["m5"]);
+  });
+
+  it("league mode can invite an opted-in visitor registered in a chosen league", () => {
+    const regs = new Map<string, string[]>([["L1", ["m1", "m5"]]]);
+    const on = resolveInviteAudience({ mode: "leagues", members: withVisitors, leagueIds: ["L1"], registrationsByLeague: regs, includeVisitors: true });
+    expect(on.memberIds.sort()).toEqual(["m1", "m5"]);
+  });
+
+  it("opted-in visitors no longer count as excluded", () => {
+    const on = resolveInviteAudience({ mode: "all_club", members: withVisitors, leagueIds: [], includeVisitors: true });
+    expect(on.excluded.visitors).toBe(2); // resigned + billing-exempt visitors still excluded
+    expect(on.summary).not.toContain("1 visitor,");
+  });
+});

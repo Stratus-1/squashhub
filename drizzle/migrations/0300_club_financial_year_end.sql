@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS financial_year_end_month smallint NOT NULL DEFAULT 2 CHECK (financial_year_end_month BETWEEN 1 AND 12);

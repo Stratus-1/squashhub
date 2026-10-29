@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { Upload, X, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CURRENCY_OPTIONS, getCurrencyOption } from "@/lib/currency";
+
+const FY_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 import { SetupSection } from "./setup/SetupSection";
 import { SetupField } from "./setup/SetupField";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
@@ -38,6 +40,7 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     show_delegates_on_landing: club.show_delegates_on_landing ?? true,
     currency_code: ((club as any).currency_code || "ZAR") as string,
     currency_symbol: ((club as any).currency_symbol || "R") as string,
+    financial_year_end_month: Number((club as any).financial_year_end_month || 2),
     public_applications_enabled: (club as any).public_applications_enabled ?? true,
     member_activation_mode: ((club as any).member_activation_mode || "auto_on_payment") as string,
   });
@@ -148,7 +151,7 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     { id: "identity", label: "Identity", description: "Give the club its name and upload the logo that appears on the app, invoices and emails.", complete: !!form.name && !!form.logo_url },
     { id: "contact", label: "Contact details", description: "Where members and visitors reach the club — address, phone, email and who to speak to.", complete: !!form.address && !!form.email && !!form.phone },
     { id: "bearers", label: "Office bearers", description: "Link the chairman, secretary, club captain and treasurer to their member records, and choose whether they show on your public page.", complete: !!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id || !!form.treasurer_member_id },
-    { id: "currency", label: "Currency", description: "Pick the currency used for every fee, invoice, statement and bar sale.", complete: !!form.currency_code },
+    { id: "currency", label: "Currency & FY", description: "Pick the currency used for every fee, invoice, statement and bar sale, and the month your financial year ends.", complete: !!form.currency_code },
     { id: "applications", label: "Membership applications", description: "Decide whether the public can apply from your landing page, and when a new applicant gains access to club data.", complete: true },
   ];
 
@@ -278,16 +281,16 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
 
       {step === "currency" && (
         <SetupSection
-          title="Currency"
-          description="All fees, invoices, statements and bar sales display in this currency."
+          title="Currency & FY"
+          description="All fees, invoices, statements and bar sales display in this currency. The financial year end drives report period filters."
           complete={!!form.currency_code}
           editing={isEditing("currency")}
           onEdit={() => startEdit("currency")}
           onCancel={() => cancelEdit("currency")}
-          onSave={() => save("currency", ["currency_code", "currency_symbol"])}
+          onSave={() => save("currency", ["currency_code", "currency_symbol", "financial_year_end_month"] as any)}
           saving={updateClub.isPending}
         >
-          <div className="max-w-sm">
+          <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
             <SetupField
               label="Currency"
               editing={isEditing("currency")}
@@ -306,6 +309,23 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
                     <SelectItem key={o.code} value={o.code}>
                       {o.symbol} — {o.name} ({o.code})
                     </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SetupField>
+            <SetupField
+              label="Financial year end"
+              editing={isEditing("currency")}
+              value={FY_MONTHS[form.financial_year_end_month - 1]}
+            >
+              <Select
+                value={String(form.financial_year_end_month)}
+                onValueChange={(m) => setForm(p => ({ ...p, financial_year_end_month: Number(m) }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FY_MONTHS.map((name, i) => (
+                    <SelectItem key={name} value={String(i + 1)}>{name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

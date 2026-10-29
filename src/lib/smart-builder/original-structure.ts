@@ -24,7 +24,8 @@ export function structureSlotTimes(a: StepAnswers, key: string) {
     const play = poolMinutes({ poolDurations: raw?.pool_durations, groupDurations: raw?.group_durations, groupNumber, pool: i + 1, fallbackMinutes: fallback }) ?? 0;
     return play > 0 ? play + breakMinutes : 0;
   });
-  return { slotMinutes: poolSlots.every((n) => n > 0) ? Math.max(...poolSlots) : 0, poolSlots, inherited: base > 0 || poolSlots.some((n) => n > 0 && Number(raw?.pool_durations?.[`${groupNumber}:${poolSlots.indexOf(n) + 1}`]) > 0) };
+  const inherited = Number(raw?.group_durations?.[String(groupNumber)]) > 0 || poolSlots.some((_, i) => Number(raw?.pool_durations?.[`${groupNumber}:${i + 1}`]) > 0) || (bells && Number(sc?.timeCapPlay || sc?.timeCapMinutes) > 0);
+  return { slotMinutes: poolSlots.every((n) => n > 0) ? Math.max(...poolSlots) : 0, poolSlots, inherited };
 }
 
 export interface StructurePoolGroup { parent: string; label: string; slots: number[] }

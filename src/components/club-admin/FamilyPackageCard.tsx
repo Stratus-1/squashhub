@@ -127,7 +127,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
       const groupIds = (groups || []).map((g: any) => g.id);
       if (groupIds.length === 0) return [] as any[];
       const { data: rows } = await fromExt("club_family_members")
-        .select("id, family_group_id, club_member_id, relationship, status, pending_change_status, pending_standard_category_id")
+        .select("id, family_group_id, club_member_id, relationship, status, pending_change_status, pending_standard_category_id, approval_status, accepted_at")
         .in("family_group_id", groupIds);
       const memberIds = Array.from(
         new Set([...(groups || []).map((g: any) => g.primary_member_id), ...(rows || []).map((r: any) => r.club_member_id)]),
@@ -143,6 +143,18 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
       }));
     },
   });
+
+  const reviewAddition = async (id: string, approve: boolean) => {
+    const { error } = await supabase.rpc("family_review_addition", {
+      _family_member_id: id, _approve: approve,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(approve ? "Family addition approved" : "Family addition rejected");
+    qc.invalidateQueries({ queryKey: ["club-families", clubId] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    qc.invalidateQueries({ queryKey: ["my-family"] });
+    qc.invalidateQueries({ queryKey: ["my-family-invite"] });
+  };
 
   const resolveChange = async (id: string, approve: boolean) => {
     const { error } = await (supabase as any).rpc("family_resolve_category_change", {
@@ -254,6 +266,13 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
                     <span className="text-[11px]">
                       {m.name} <span className="text-muted-foreground">· {m.relationship || "family"} · {m.status}</span>
                     </span>
+                    {m.approval_status === "pending" && m.status === "invited" && (
+                      <span className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground">Approval pending</span>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" title={`Approve ${m.name}`} aria-label={`Approve ${m.name}`} onClick={() => reviewAddition(m.id, true)}><Check className="w-3 h-3" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" title={`Reject ${m.name}`} aria-label={`Reject ${m.name}`} onClick={() => reviewAddition(m.id, false)}><X className="w-3 h-3" /></Button>
+                      </span>
+                    )}
                     {m.pending_change_status === "pending" && (
                       <span className="flex items-center gap-1">
                         <span className="text-[10px] text-amber-600">Category change waiting</span>

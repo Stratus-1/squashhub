@@ -28,7 +28,7 @@ export function FamilyInviteCard({ clubMemberId }: Props) {
     enabled: !!clubMemberId,
     queryFn: async () => {
       const { data: row } = await fromExt("club_family_members")
-        .select("id, relationship, family_group_id")
+        .select("id, relationship, family_group_id, approval_status, accepted_at")
         .eq("club_member_id", clubMemberId)
         .eq("status", "invited")
         .maybeSingle();
@@ -64,7 +64,7 @@ export function FamilyInviteCard({ clubMemberId }: Props) {
     },
   });
 
-  if (!invite) return null;
+  if (!invite || invite.accepted_at) return null;
 
   const respond = async (accept: boolean) => {
     setBusy(true);
@@ -76,7 +76,7 @@ export function FamilyInviteCard({ clubMemberId }: Props) {
       if (error) throw error;
       toast.success(
         accept
-          ? "You're now on the family package — your fee is recorded against them."
+          ? invite.approval_status === "approved" ? "You're now on the approved family package." : "Accepted — waiting for club admin approval."
           : "Request declined — nothing on your account changed.",
       );
       qc.invalidateQueries({ queryKey: ["my-family-invite", clubMemberId] });
@@ -100,7 +100,7 @@ export function FamilyInviteCard({ clubMemberId }: Props) {
           {invite.relationship ? ` as ${invite.relationship}` : ""} and pay your club fee. If you accept, your
           membership becomes {FAMILY_ADDITIONAL_LABEL}
           {invite.fee != null ? ` (${money(invite.fee)} for the season)` : ""} with them recorded as the payer.
-          Nothing on your account changes unless you accept.
+          Nothing on your account changes until you accept and the club admin approves.
         </p>
         <div className="flex gap-2">
           <Button size="sm" className="flex-1 h-8 text-xs" disabled={busy} onClick={() => respond(true)}>

@@ -36,7 +36,7 @@ import { ClubTournamentBeta } from "@/components/smart-builder/ClubTournamentBet
 
 const SCORING = { mode: "standard", pointsPerGame: 11, bestOf: 5, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
 const seedChamps = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
-  kind: "period", name: "Riverside Champs", scope: "club", periodStart: "2026-11-01", playType: "doubles", scoring: SCORING,
+  kind: "period", name: "Riverside Champs", scope: "club", periodStart: "2026-11-01", playType: "doubles", scoring: SCORING, entries: "8",
   categories: ["Open Doubles"], categoryTypes: { "Open Doubles": "open" }, disc: { "Open Doubles": "doubles" }, unitEntries: { "Open Doubles": "8" }, format: { kind: "knockout" },
   seeding: "later", partner: { "Open Doubles": "admin" }, source: "select", elig: {},
   picks: { m1: "Open Doubles", m2: "Open Doubles" }, pairs: { "Open Doubles": [["m1", "m2"]] },

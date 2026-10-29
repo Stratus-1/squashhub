@@ -10,6 +10,7 @@
  */
 import { fromExt } from "@/lib/supabase-ext";
 import { computeJoinFee } from "@/lib/fee-proration";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface JoiningFeeCategory {
   id: string;
@@ -92,6 +93,14 @@ export async function ensureJoiningClubFee(
   if (memErr) throw memErr;
   if (feeErr) throw feeErr;
   if (!member) return { raised: false, amount: 0 };
+
+  const { data: access, error: accessError } = await supabase.rpc("club_financial_access", { _club_id: member.club_id });
+  if (accessError) throw accessError;
+  if ((access as unknown as { chairman?: boolean })?.chairman) {
+    const { data, error } = await supabase.rpc("chairman_ensure_joining_fee" as never, { _member_id: clubMemberId } as never);
+    if (error) throw error;
+    return data as unknown as { raised: boolean; amount: number };
+  }
 
   const decision = decideJoiningClubFee({
     annualFee: category.annual_fee,

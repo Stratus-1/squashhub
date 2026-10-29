@@ -30,6 +30,7 @@ import { MemberStandingDialog, type MemberStanding } from "./MemberStandingDialo
 import { ResolveDuplicateDialog } from "./ResolveDuplicateDialog";
 import { MemberCreditControl } from "./MemberCreditControl";
 import { useCompetitionStatus } from "@/hooks/use-competition-status";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
 
@@ -1165,6 +1166,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
 function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const { format } = useClubCurrency();
+  const { isChairman, isLoading: financialAccessLoading, error: financialAccessError } = useFinancialAccess(clubId);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
@@ -1322,10 +1324,10 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
     setLoading(true);
     try {
+      if (financialAccessLoading || financialAccessError) throw new Error("Member permissions are not available yet. Please try again.");
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
 
-      const { data: memberData, error } = await fromExt("club_members").insert({
-        club_id: clubId,
+      const details = {
         user_id: profile?.id || null,
         name: trimmedName,
         email: trimmedEmail,
@@ -1338,11 +1340,17 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         skill_level: skillLevel || undefined,
         plays_league: isVisitor ? false : playsLeague,
         role: isVisitor ? ("visitor" as any) : undefined,
-      }).select("id").single();
+      };
+      const added = isChairman
+        ? await supabase.rpc("chairman_add_member" as never, { _club_id: clubId, _details: details } as never)
+        : await fromExt("club_members").insert({ club_id: clubId, ...details }).select("id").single();
+      const error = added.error;
+      const memberData = isChairman ? (added.data ? { id: String(added.data) } : null) : added.data as { id: string } | null;
       if (error || !memberData) throw error || new Error("Failed to create member");
 
       // Auto-create member fee records — admin-added members default to paid
-      if (previewFees.length > 0) {
+      // Chairman additions use configured unpaid joining fees, atomically server-side.
+      if (!isChairman && previewFees.length > 0) {
         const feeRecords = previewFees.map((f, idx) => ({
           club_member_id: memberData.id,
           fee_type: idx === 0 ? "club" : (idx <= associations.filter(a => a.fee_annual > 0).length ? "association" : "national"),
@@ -1352,7 +1360,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
           paid_at: new Date().toISOString(),
           season_year: new Date().getFullYear(),
         }));
-        await fromExt("club_member_fee_payments").insert(feeRecords);
+        const { error: feeError } = await fromExt("club_member_fee_payments").insert(feeRecords);
+        if (feeError) toast.error(`Member added, but fee records could not be created: ${feeError.message}`);
       }
 
       // Allocate selected leagues (auto-issues association numbers + seeds pass-through fees)

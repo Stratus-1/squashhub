@@ -50,7 +50,8 @@ interface UnifiedFee {
 
 
 export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenantType?: string }) {
-  const { canChange } = useFinancialAccess(clubId);
+  const { canChange, isChairman } = useFinancialAccess(clubId);
+  const canEditFees = chairmanMayEditFeeCategories(isChairman, canChange);
   const isAssociation = tenantType === "association";
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);

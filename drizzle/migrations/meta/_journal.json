@@ -2136,6 +2136,13 @@
       "when": 1793267340727,
       "tag": "0304_bar_purchase_invoice_files",
       "breakpoints": true
+    },
+    {
+      "idx": 305,
+      "version": "7",
+      "when": 1793268522589,
+      "tag": "0305_chairman_banking_setup_access",
+      "breakpoints": true
     }
   ]
 }

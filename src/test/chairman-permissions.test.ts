@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chairmanCapabilityAllowed, chairmanMayChangeFinance, isChairmanRole } from "@/lib/chairman-permissions";
+import { chairmanCapabilityAllowed, chairmanMayChangeFinance, isChairmanRole, FINANCIAL_PERMISSION_SLUGS } from "@/lib/chairman-permissions";
 
 describe("Chairman financial view-only rules", () => {
   it("recognises the Chairman role regardless of case", () => {
@@ -21,5 +21,10 @@ describe("Chairman financial view-only rules", () => {
   });
   it("retains non-financial administration", () => {
     for (const cap of ["members.edit", "tournaments.manage", "courts.manage", "perm.manage"]) expect(chairmanCapabilityAllowed(cap)).toBe(true);
+  });
+  it("keeps banking setup outside transaction-only permission restrictions", () => {
+    expect(FINANCIAL_PERMISSION_SLUGS).not.toContain("banking");
+    expect(FINANCIAL_PERMISSION_SLUGS).toContain("finance");
+    expect(chairmanMayChangeFinance(true, false)).toBe(false);
   });
 });

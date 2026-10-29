@@ -169,7 +169,7 @@ import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
 
 export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
-  const { canChange, isLoading: accessLoading } = useFinancialAccess(clubId);
+  const { canChange, canConfigureBanking, isLoading: accessLoading } = useFinancialAccess(clubId);
   const [step, setStep] = useState("methods");
   const updateClub = useUpdateClub();
   const { data: secrets } = useClubSecrets(clubId);
@@ -198,6 +198,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   }, [club, members]);
 
   const handleTestPayment = async () => {
+    if (!canChange) return;
     if (gateway !== "yoco" && gateway !== "stitch" && gateway !== "paynow") {
       toast.error("Test payment is only wired up for Yoco, Stitch and Paynow.");
       return;
@@ -439,7 +440,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   ];
 
   if (accessLoading) return <p className="text-sm text-muted-foreground">Loading banking details…</p>;
-  if (!canChange) return <div className="space-y-3 mt-4"><h3 className="text-sm font-semibold">Banking · View only</h3><dl className="grid grid-cols-2 gap-2 text-sm"><dt>Bank</dt><dd>{secrets?.bank_name || "—"}</dd><dt>Account holder</dt><dd>{secrets?.bank_account_name || "—"}</dd><dt>Account number</dt><dd>{secrets?.bank_account_number || "—"}</dd><dt>Branch code</dt><dd>{secrets?.bank_branch_code || "—"}</dd><dt>Payment gateway</dt><dd>{(club as any).payment_gateway || "—"}</dd></dl></div>;
+  if (!canConfigureBanking) return <div className="space-y-3 mt-4"><h3 className="text-sm font-semibold">Banking · View only</h3><dl className="grid grid-cols-2 gap-2 text-sm"><dt>Bank</dt><dd>{secrets?.bank_name || "—"}</dd><dt>Account holder</dt><dd>{secrets?.bank_account_name || "—"}</dd><dt>Account number</dt><dd>{secrets?.bank_account_number || "—"}</dd><dt>Branch code</dt><dd>{secrets?.bank_branch_code || "—"}</dd><dt>Payment gateway</dt><dd>{(club as any).payment_gateway || "—"}</dd></dl></div>;
   return (
     <div className="space-y-4 mt-4">
       <SetupSteps steps={steps} value={step} onChange={setStep} variant="connected" />
@@ -836,7 +837,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       </Card>
 
       <div className="flex flex-wrap items-center gap-2">
-        {(gateway === "yoco" || gateway === "stitch") && (
+        {canChange && (gateway === "yoco" || gateway === "stitch") && (
           <Button
             onClick={handleTestPayment}
             disabled={testing || isSaving}
@@ -848,7 +849,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
             {testing ? `Opening ${gateway === "yoco" ? "Yoco" : "Stitch"}…` : "Send Test R10 Payment"}
           </Button>
         )}
-        {(gateway === "yoco" || gateway === "stitch") && (
+        {canChange && (gateway === "yoco" || gateway === "stitch") && (
           <span className="text-[10px] text-muted-foreground">
             Uses the saved {gateway === "yoco" ? "Yoco" : "Stitch"} keys (test or live). Save first if you just changed them.
           </span>

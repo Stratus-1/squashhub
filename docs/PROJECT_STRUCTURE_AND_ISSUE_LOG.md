@@ -1,3 +1,6 @@
+## 2026-10-29 — Chairman banking setup versus transactions
+- Banking & Payments now uses separate server-validated setup access, not the financial transaction flag. Chairman can configure bank/gateway and recurring settings and access existing Stitch onboarding documents; R10 checkout initiation stays hidden. Narrow database setup-field exceptions retain journals, payments, billing, payroll, collections and self-escalation guards. No club settings or financial records changed.
+
 ## 2026-10-28 — League Match Day Access visibility
 - League season controls now show Match Day Access only for internal Club Leagues, using the existing scope predicate. System/regional leagues no longer display the card. Tournament access, existing tokens and scoring are unchanged; no hosted writes.
 

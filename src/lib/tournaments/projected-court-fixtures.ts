@@ -15,6 +15,11 @@ import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments
 import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
 import { rrFinishIssues, type RrFinish } from "./swiss-rr-finish";
 
+/** Uitsig Club Champs 2026 Men's C (18 players, 5 rounds, 3 RR groups) follows the owner-approved position chart. */
+export function usesUitsigMensCRemainderChart(tournamentId: string | null | undefined, entrants: number, rounds: number | null | undefined, rrGroups: number | null | undefined): boolean {
+  return tournamentId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && entrants === 18 && rounds === 5 && rrGroups === 3;
+}
+
 export interface ProjectedCourtFixture {
   key: string; champId: string; group: number; round: number;
   date: string; time: string; courtId: number; minutes: number;
@@ -127,7 +132,10 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
     model.rrFinish = st.rrFinish;
     const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
-    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...(i.partialGeneration ? { partialGeneration: true } : {}) }); } catch { continue; }
+    // Same owner-approved Uitsig Men's C position chart the Progression page uses (incl. its approved
+    // intentional repeats), so the writer never stalls on a "repeat" the owner already accepted.
+    const mensCRemainderChart = usesUitsigMensCRemainderChart(champ.id, gEntries.length, st.rounds, st.rrFinish?.groups);
+    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...(mensCRemainderChart ? { mensCRemainderChart: true } : {}), ...(i.partialGeneration ? { partialGeneration: true } : {}) }); } catch { continue; }
     if (grid.issues.length) continue;
     // Per game: skip a pairing once either player already has a saved game in that round.
     const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));

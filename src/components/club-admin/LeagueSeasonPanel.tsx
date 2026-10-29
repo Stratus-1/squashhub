@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useLeagueSeasons } from "@/hooks/use-league-seasons";
 import { nextSeasonYear, seasonLabel } from "@/lib/leagues/seasons";
 import { isClubLeagueScope } from "@/lib/leagues/terminology";
+import { LeagueLadderRuleCard } from "@/components/club-admin/LeagueLadderRuleCard";
 import { MatchDayAccessCard } from "@/components/match-day/MatchDayAccessCard";
 
 interface Props {
@@ -197,6 +198,9 @@ export function LeagueSeasonPanel({ association, teamYears, onCreateTeams }: Pro
           );
         })}
       </div>
+      {association?.id && currentSeason?.season_year && (
+        <LeagueLadderRuleCard associationId={association.id} seasonYear={currentSeason.season_year} isClub={isClub} />
+      )}
       {isClub && currentSeason?.id && (
         <MatchDayAccessCard
           kind="league_season"

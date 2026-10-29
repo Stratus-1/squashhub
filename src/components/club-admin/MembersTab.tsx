@@ -519,7 +519,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         const { data: page, error } = await fromExt("club_journal_entries")
           .select("id, club_member_id, debit, credit, account")
           .eq("club_id", clubId)
-          .eq("account", "debtors")
+          .in("account", ["debtors", "member_credits"])
           .in("club_member_id", memberIds)
           .order("id")
           .range(from, from + 999);
@@ -531,8 +531,14 @@ export function MembersTab({ clubId }: { clubId: string }) {
       for (const r of data) {
         if (!r.club_member_id) continue;
         const cur = map.get(r.club_member_id) || { billed: 0, paid: 0 };
-        cur.billed += Number(r.debit || 0);
-        cur.paid += Number(r.credit || 0);
+        if (r.account === "member_credits") {
+          // Top-ups/prepayments sit as member credit and offset what is owed,
+          // exactly as the Member Statement nets them.
+          cur.paid += Number(r.credit || 0) - Number(r.debit || 0);
+        } else {
+          cur.billed += Number(r.debit || 0);
+          cur.paid += Number(r.credit || 0);
+        }
         map.set(r.club_member_id, cur);
       }
       return map;

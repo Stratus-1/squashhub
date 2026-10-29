@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Check, X } from "lucide-react";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import {
   FAMILY_PRIMARY_LABEL,
   FAMILY_ADDITIONAL_LABEL,
@@ -23,6 +24,7 @@ import {
 const NONE = "__none__";
 
 export function FamilyPackageCard({ clubId }: { clubId: string }) {
+  const { canChange } = useFinancialAccess(clubId);
   const qc = useQueryClient();
   const { format: money } = useClubCurrency();
   const [saving, setSaving] = useState(false);
@@ -60,6 +62,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
   const effAge = touched ? maxAge : current?.family_dependent_max_age?.toString() ?? "";
 
   const startEdit = () => {
+    if (!canChange) return;
     if (touched) return;
     setPrimaryId(current?.id ?? "");
     setAdditionalId(currentAdditional?.id ?? "");
@@ -70,6 +73,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
   };
 
   const save = async () => {
+    if (!canChange) return;
     if (!effPrimary || effPrimary === NONE) { toast.error("Choose which fee is the Family Package"); return; }
     if (!effAdditional || effAdditional === NONE) { toast.error("Choose which fee is the Additional Family Member"); return; }
     if (effPrimary === effAdditional) { toast.error("The two fees must be different"); return; }
@@ -145,6 +149,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
   });
 
   const reviewAddition = async (id: string, approve: boolean) => {
+    if (!canChange) return;
     const { error } = await supabase.rpc("family_review_addition", {
       _family_member_id: id, _approve: approve,
     });
@@ -157,6 +162,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
   };
 
   const resolveChange = async (id: string, approve: boolean) => {
+    if (!canChange) return;
     const { error } = await (supabase as any).rpc("family_resolve_category_change", {
       _family_member_id: id,
       _approve: approve,
@@ -185,7 +191,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-1">
           <Label className="text-xs">{FAMILY_PRIMARY_LABEL} fee</Label>
-          <Select value={effPrimary || NONE} onValueChange={(v) => { startEdit(); setPrimaryId(v === NONE ? "" : v); }}>
+          <Select disabled={!canChange} value={effPrimary || NONE} onValueChange={(v) => { startEdit(); setPrimaryId(v === NONE ? "" : v); }}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Not set" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NONE}>Not set</SelectItem>
@@ -195,7 +201,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">{FAMILY_ADDITIONAL_LABEL} fee</Label>
-          <Select value={effAdditional || NONE} onValueChange={(v) => { startEdit(); setAdditionalId(v === NONE ? "" : v); }}>
+          <Select disabled={!canChange} value={effAdditional || NONE} onValueChange={(v) => { startEdit(); setAdditionalId(v === NONE ? "" : v); }}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Not set" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NONE}>Not set</SelectItem>
@@ -205,12 +211,12 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Additional members included (blank = no limit)</Label>
-          <Input type="number" min={0} className="h-9" value={effMax}
+          <Input disabled={!canChange} type="number" min={0} className="h-9" value={effMax}
             onChange={(e) => { startEdit(); setMaxAdditional(e.target.value); }} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Child / dependent age limit (optional)</Label>
-          <Input type="number" min={1} className="h-9" value={effAge}
+          <Input disabled={!canChange} type="number" min={1} className="h-9" value={effAge}
             onChange={(e) => { startEdit(); setMaxAge(e.target.value); }} />
         </div>
       </div>
@@ -221,6 +227,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
           {FAMILY_RELATIONSHIPS.map((r) => (
             <label key={r.value} className="flex items-center gap-2 text-xs">
               <Checkbox
+                disabled={!canChange}
                 checked={effRels.includes(r.value)}
                 onCheckedChange={(v) => {
                   startEdit();
@@ -250,7 +257,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
       )}
 
       <div className="flex justify-end">
-        <Button size="sm" onClick={save} disabled={saving || !touched}>Save family settings</Button>
+        <Button size="sm" onClick={save} disabled={!canChange || saving || !touched}>Save family settings</Button>
       </div>
 
       {families.length > 0 && (
@@ -266,14 +273,14 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
                     <span className="text-[11px]">
                       {m.name} <span className="text-muted-foreground">· {m.relationship || "family"} · {m.status}</span>
                     </span>
-                    {m.approval_status === "pending" && m.status === "invited" && (
+                    {canChange && m.approval_status === "pending" && m.status === "invited" && (
                       <span className="flex items-center gap-1">
                         <span className="text-[10px] text-muted-foreground">Approval pending</span>
                         <Button size="icon" variant="ghost" className="h-6 w-6" title={`Approve ${m.name}`} aria-label={`Approve ${m.name}`} onClick={() => reviewAddition(m.id, true)}><Check className="w-3 h-3" /></Button>
                         <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" title={`Reject ${m.name}`} aria-label={`Reject ${m.name}`} onClick={() => reviewAddition(m.id, false)}><X className="w-3 h-3" /></Button>
                       </span>
                     )}
-                    {m.pending_change_status === "pending" && (
+                    {canChange && m.pending_change_status === "pending" && (
                       <span className="flex items-center gap-1">
                         <span className="text-[10px] text-amber-600">Category change waiting</span>
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => resolveChange(m.id, true)}>

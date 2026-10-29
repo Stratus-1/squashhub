@@ -19,6 +19,13 @@ DO $$ DECLARE mid uuid; f uuid; result jsonb; BEGIN
  UPDATE club_members SET is_pending_approval=true WHERE id=mid;
  PERFORM review_membership_application(mid,true);
  IF (SELECT is_pending_approval FROM club_members WHERE id=mid) THEN RAISE EXCEPTION 'Approval failed'; END IF;
+ BEGIN PERFORM chairman_add_member('11111111-1111-1111-1111-111111111111','{"name":"Bad role","role":"admin"}'); RAISE EXCEPTION 'Role bypass'; EXCEPTION WHEN raise_exception THEN IF SQLERRM='Role bypass' THEN RAISE; END IF; END;
+ INSERT INTO club_members(id,club_id,name,is_pending_approval) VALUES('77777777-7777-7777-7777-777777777777','11111111-1111-1111-1111-111111111111','Pending',true);
+ UPDATE club_members SET fee_category_id='22222222-2222-2222-2222-222222222222' WHERE id='77777777-7777-7777-7777-777777777777';
+ PERFORM review_membership_application('77777777-7777-7777-7777-777777777777',true);
+ IF (SELECT sum(amount) FROM club_member_fee_payments WHERE club_member_id='77777777-7777-7777-7777-777777777777')<>1300 THEN RAISE EXCEPTION 'Unbilled approval fee missing'; END IF;
+ INSERT INTO club_champs_registrations(id,champ_id,club_member_id,status) VALUES('88888888-8888-8888-8888-888888888888','44444444-4444-4444-4444-444444444444',mid,'invited');
+ BEGIN PERFORM accept_tournament_invite('88888888-8888-8888-8888-888888888888',true,ARRAY[1]); RAISE EXCEPTION 'Other member bypass'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  result:=accept_tournament_invite('55555555-5555-5555-5555-555555555555',true,ARRAY[1]);
  f:=(result->>'fee_payment_id')::uuid;
  IF f IS NULL OR (SELECT amount FROM club_member_fee_payments WHERE id=f)<>150 OR (SELECT paid FROM club_member_fee_payments WHERE id=f) THEN RAISE EXCEPTION 'Self entry fee failed'; END IF;

@@ -10169,15 +10169,19 @@ export type Database = {
           accept_deadline_hours: number
           activated_at: string | null
           affects_club_ranking: boolean
+          challenge_approval: string
           challenge_levels_up: number
           club_id: string
+          club_league_approval: string
           complete_deadline_days: number
           created_at: string
           format: string
           id: string
           is_active: boolean
           ladder_auto_apply: boolean
+          ladder_from_challenges: boolean
           ladder_from_leagues: boolean
+          ladder_from_system_leagues: boolean
           ladder_from_tournaments: boolean
           league_movement_policy: string | null
           max_active_incoming: number
@@ -10189,6 +10193,8 @@ export type Database = {
           ranking_mirror_margin: number
           ranking_sync_mode: string
           rematch_cooldown_days: number
+          system_league_approval: string
+          tournament_approval: string
           tournament_movement_policy: string | null
           updated_at: string
         }
@@ -10196,15 +10202,19 @@ export type Database = {
           accept_deadline_hours?: number
           activated_at?: string | null
           affects_club_ranking?: boolean
+          challenge_approval?: string
           challenge_levels_up?: number
           club_id: string
+          club_league_approval?: string
           complete_deadline_days?: number
           created_at?: string
           format?: string
           id?: string
           is_active?: boolean
           ladder_auto_apply?: boolean
+          ladder_from_challenges?: boolean
           ladder_from_leagues?: boolean
+          ladder_from_system_leagues?: boolean
           ladder_from_tournaments?: boolean
           league_movement_policy?: string | null
           max_active_incoming?: number
@@ -10216,6 +10226,8 @@ export type Database = {
           ranking_mirror_margin?: number
           ranking_sync_mode?: string
           rematch_cooldown_days?: number
+          system_league_approval?: string
+          tournament_approval?: string
           tournament_movement_policy?: string | null
           updated_at?: string
         }
@@ -10223,15 +10235,19 @@ export type Database = {
           accept_deadline_hours?: number
           activated_at?: string | null
           affects_club_ranking?: boolean
+          challenge_approval?: string
           challenge_levels_up?: number
           club_id?: string
+          club_league_approval?: string
           complete_deadline_days?: number
           created_at?: string
           format?: string
           id?: string
           is_active?: boolean
           ladder_auto_apply?: boolean
+          ladder_from_challenges?: boolean
           ladder_from_leagues?: boolean
+          ladder_from_system_leagues?: boolean
           ladder_from_tournaments?: boolean
           league_movement_policy?: string | null
           max_active_incoming?: number
@@ -10243,6 +10259,8 @@ export type Database = {
           ranking_mirror_margin?: number
           ranking_sync_mode?: string
           rematch_cooldown_days?: number
+          system_league_approval?: string
+          tournament_approval?: string
           tournament_movement_policy?: string | null
           updated_at?: string
         }
@@ -11729,6 +11747,8 @@ export type Database = {
           fill_up_reminder_enabled: boolean
           id: string
           is_reserve: boolean | null
+          ladder_affects: boolean | null
+          ladder_update_mode: string
           level: number | null
           level_source: string | null
           logo_url: string | null
@@ -11762,6 +11782,8 @@ export type Database = {
           fill_up_reminder_enabled?: boolean
           id?: string
           is_reserve?: boolean | null
+          ladder_affects?: boolean | null
+          ladder_update_mode?: string
           level?: number | null
           level_source?: string | null
           logo_url?: string | null
@@ -11795,6 +11817,8 @@ export type Database = {
           fill_up_reminder_enabled?: boolean
           id?: string
           is_reserve?: boolean | null
+          ladder_affects?: boolean | null
+          ladder_update_mode?: string
           level?: number | null
           level_source?: string | null
           logo_url?: string | null
@@ -23157,6 +23181,10 @@ export type Database = {
       }
       league_reverse_team_penalty: {
         Args: { _penalty_id: string; _reason: string }
+        Returns: undefined
+      }
+      league_set_ladder_rule: {
+        Args: { p_affects: boolean; p_league_id: string; p_timing: string }
         Returns: undefined
       }
       leave_club_event: {

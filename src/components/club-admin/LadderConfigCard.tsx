@@ -202,47 +202,21 @@ export function LadderConfigCard({ clubId }: Props) {
         </div>
       )}
 
-      <div className="flex items-center gap-3 rounded-md border p-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">Apply results automatically</p>
-          <p className="text-[11px] text-muted-foreground">
-            Single setting for approvals: on = ladder moves and rating changes post straight away.
-            Off = both wait for admin approval in "Pending ladder moves" and "Pending rating changes".
-          </p>
-        </div>
-        <Switch
-          checked={draft.ladder_auto_apply}
-          onCheckedChange={(v) => {
-            set("ladder_auto_apply", v);
-            set("ranking_auto_approve", v);
-          }}
-        />
-      </div>
-
       <div className="rounded-md border p-3 space-y-3">
         <div>
-          <p className="text-sm font-medium">Results that move the ladder</p>
+          <p className="text-sm font-medium">What moves the club ladder</p>
           <p className="text-[11px] text-muted-foreground">
-            Besides challenges, club-mate results from these competitions can move the ladder — only when the
-            lower-ranked player wins, and only between two ranked members of the same ladder group.
+            Switch on each kind of result that may move the ladder, and choose whether it applies straight away or
+            waits for admin approval in "Pending ladder moves". Only a lower-ranked winner moves up, and only between
+            two ranked members of the same ladder group. Each tournament and Club League can also be switched off
+            or set to update only at the end in its own settings.
           </p>
         </div>
-
-
-
         {([
-          {
-            key: "ladder_from_leagues",
-            move: "league_movement_policy",
-            title: "League games",
-            hint: "Club-mate rubbers only. Games against another club never move your ladder.",
-          },
-          {
-            key: "ladder_from_tournaments",
-            move: "tournament_movement_policy",
-            title: "Championships & tournaments",
-            hint: "Singles results only. Each event can still be switched off in its own settings.",
-          },
+          { key: "ladder_from_challenges", approval: "challenge_approval", move: null, title: "Ladder challenges", hint: "Confirmed challenge results." },
+          { key: "ladder_from_tournaments", approval: "tournament_approval", move: "tournament_movement_policy", title: "Tournaments", hint: "Singles results between club members." },
+          { key: "ladder_from_leagues", approval: "club_league_approval", move: "league_movement_policy", title: "Club Leagues", hint: "Club-mate rubbers in the club's own leagues." },
+          { key: "ladder_from_system_leagues", approval: "system_league_approval", move: "league_movement_policy", title: "System Leagues", hint: "Only rubbers between two members of this club." },
         ] as const).map((row) => (
           <div key={row.key} className="rounded-md border p-2.5 space-y-2">
             <div className="flex items-center gap-3">
@@ -250,33 +224,48 @@ export function LadderConfigCard({ clubId }: Props) {
                 <p className="text-xs font-semibold">{row.title}</p>
                 <p className="text-[10px] text-muted-foreground">{row.hint}</p>
               </div>
-              <Switch
-                checked={draft[row.key]}
-                onCheckedChange={(v) => set(row.key, v)}
-              />
+              <Switch checked={draft[row.key]} onCheckedChange={(v) => set(row.key, v)} />
             </div>
             {draft[row.key] && (
-              <div className="space-y-1">
-                <Label className="text-xs">When the lower-ranked player wins</Label>
-                <Select
-                  value={draft[row.move] ?? "inherit"}
-                  onValueChange={(v) =>
-                    set(row.move, (v === "inherit" ? null : v) as LadderConfig["league_movement_policy"])
-                  }
-                >
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="inherit">
-                      Same as challenges ({draft.movement_policy === "swap" ? "swap" : "take the spot"})
-                    </SelectItem>
-                    <SelectItem value="swap">Swap the two positions</SelectItem>
-                    <SelectItem value="insert">Take the spot, others move down</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Approval</Label>
+                  <Select value={draft[row.approval]} onValueChange={(v) => set(row.approval, v as LadderConfig["challenge_approval"])}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Apply automatically</SelectItem>
+                      <SelectItem value="approve">Admin approves first</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {row.move && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">When the lower-ranked player wins</Label>
+                    <Select
+                      value={draft[row.move] ?? "inherit"}
+                      onValueChange={(v) => set(row.move!, (v === "inherit" ? null : v) as LadderConfig["league_movement_policy"])}
+                    >
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inherit">Same as challenges ({draft.movement_policy === "swap" ? "swap" : "take the spot"})</SelectItem>
+                        <SelectItem value="swap">Swap the two positions</SelectItem>
+                        <SelectItem value="insert">Take the spot, others move down</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
           </div>
         ))}
+      </div>
+
+      <div className="flex items-center gap-3 rounded-md border p-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Post rating changes automatically</p>
+          <p className="text-[11px] text-muted-foreground">Off = rating changes wait in "Pending rating changes".</p>
+        </div>
+        <Switch checked={draft.ranking_auto_approve} onCheckedChange={(v) => set("ranking_auto_approve", v)} />
       </div>
 
       <div className="flex items-center gap-3 rounded-md border p-3">

@@ -27,8 +27,14 @@ function normalise(row: any): LadderConfig {
     ranking_mirror_margin: Number(row.ranking_mirror_margin ?? 1),
     ranking_auto_approve: !!row.ranking_auto_approve,
     ladder_auto_apply: row.ladder_auto_apply !== false,
-    ladder_from_leagues: row.ladder_from_leagues !== false,
-    ladder_from_tournaments: row.ladder_from_tournaments !== false,
+    ladder_from_leagues: row.ladder_from_leagues === true,
+    ladder_from_tournaments: row.ladder_from_tournaments === true,
+    ladder_from_challenges: row.ladder_from_challenges !== false,
+    ladder_from_system_leagues: row.ladder_from_system_leagues === true,
+    challenge_approval: row.challenge_approval === "approve" ? "approve" : "auto",
+    tournament_approval: row.tournament_approval === "approve" ? "approve" : "auto",
+    club_league_approval: row.club_league_approval === "approve" ? "approve" : "auto",
+    system_league_approval: row.system_league_approval === "approve" ? "approve" : "auto",
     league_movement_policy:
       row.league_movement_policy === "swap" || row.league_movement_policy === "insert"
         ? row.league_movement_policy

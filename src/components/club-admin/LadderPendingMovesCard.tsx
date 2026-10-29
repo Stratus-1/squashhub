@@ -51,14 +51,16 @@ export function LadderPendingMovesCard({ clubId }: Props) {
 
   const act = useMutation({
     mutationFn: async ({ id, approve }: { id: string; approve: boolean }) => {
-      const { error } = await (supabase as any).rpc(
+      const { data, error } = await (supabase as any).rpc(
         approve ? "approve_ladder_move_pending" : "reject_ladder_move_pending",
         { _pending_id: id },
       );
       if (error) throw error;
+      return data as boolean;
     },
-    onSuccess: (_d, v) => {
-      toast.success(v.approve ? "Ladder move applied" : "Ladder move rejected");
+    onSuccess: (ok, v) => {
+      if (v.approve && ok === false) toast.warning("The ladder changed since this result, so the move was not applied");
+      else toast.success(v.approve ? "Ladder move applied" : "Ladder move rejected");
       qc.invalidateQueries({ queryKey: ["ladder-moves-pending", clubId] });
       qc.invalidateQueries({ queryKey: ["club-members"] });
       qc.invalidateQueries({ queryKey: ["ladder"] });

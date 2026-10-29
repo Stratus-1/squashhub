@@ -2115,6 +2115,20 @@
       "when": 1793263010403,
       "tag": "0301_family_additions_admin_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1793264655189,
+      "tag": "0302_ladder_source_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 303,
+      "version": "7",
+      "when": 1793264685533,
+      "tag": "0303_challenge_ladder_gate",
+      "breakpoints": true
     }
   ]
 }

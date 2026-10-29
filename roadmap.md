@@ -12,3 +12,5 @@
 - [x] Men's A bracket showed A1 v B1: an older Play-offs-step "placement" choice beat the saved Semifinal crossover in the display. Saved Semifinal/Quarterfinal now wins; real Men's A games already A1 v B2 / B1 v A2 after the user's save.
 - [x] Play-offs step: keep stage selection (QF/SF/F); remove 'Type of playoffs'/pairing choices — pairing only in Stages & scheduling (all clubs)
 - [x] Removed the accidentally selected 2 Sparkling Water (R20) from Andre Visser's open Nelspruit tab; stock restored.
+- [x] Ladder source rules (club switches, per-source approval, per-league setting)
+- [x] Explain how Quintin (Nelspruit) moved down from 1

@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Deploy only approved help-center-case-context; applied RPC SQL as drizzle/migrations/0306_help_center_live_case_context_rpcs.sql. Live definitions contain no pilot references; PUBLIC/anon/authenticated EXECUTE denied, service_role allowed (pre-existing owner/tool grants unchanged). 12 tests pass; deployed endpoint returns expected 404 for unauthorized request. No frontend or unrelated releases.
 - [x] Remove only case-context per-ticket pilot checks; stage replacement RPC SQL alongside endpoint (managed migration folders reject source-only writes), test real handler and disposable SQL. No deployment/publication/live migration.
 - [ ] Dedicated scoped commit SHA: Git commits are platform-managed; cannot create a manual commit.
 - [x] Allow Chairman Banking & Payments setup and Stitch documents while preserving financial transaction denial. Gerrit's signed-in HSC preview shows setup and Stitch documents, hides R10 payment initiation, and reports setup allowed/transactions denied. No settings saved or documents sent.

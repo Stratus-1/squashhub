@@ -105,6 +105,13 @@ describe("computeCapacity", () => {
     expect(r.maxPlayersTotal).toBe(16);
   });
 
+  it("accepts ten-minute planned matches and calculates their capacity", () => {
+    const r = computeCapacity({ sessions, leagues: [league({ slotMinutes: 10 })], isDoubles: false, parallelLeagues: false, crossLeague: false });
+    expect(r.ready).toBe(true);
+    expect(r.perLeague[0].gamesAvailable).toBe(240);
+    expect(r.maxPlayersTotal).toBe(22);
+  });
+
   it("halves the field for a double round-robin", () => {
     const r = computeCapacity({ sessions, leagues: [league({ format: "double_round_robin" })], isDoubles: false, parallelLeagues: false, crossLeague: false });
     expect(r.maxPlayersTotal).toBe(11);

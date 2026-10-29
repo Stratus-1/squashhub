@@ -10020,6 +10020,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     value={String(Number(groupDurations[key]) || matchDuration || 20)}
                                     color="amber"
                                     options={[
+                                      { v: "10", l: "10 min" },
                                       { v: "20", l: "20 min" },
                                       { v: "30", l: "30 min" },
                                       { v: "40", l: "40 min" },

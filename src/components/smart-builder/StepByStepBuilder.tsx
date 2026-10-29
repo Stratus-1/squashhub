@@ -152,7 +152,7 @@ import type { TournamentOrganiser } from "@/lib/smart-builder/tournament-organis
  */
 type Kind = "once_off" | "period" | null;
 type PlayType = "singles" | "doubles" | "both" | null;
-type MatchScoring = { mode: "standard" | "time_capped_points"; pointsPerGame: 11 | 15; bestOf: 3 | 5; playAllGames?: boolean; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string; timeCapPlay: string; timeCapBreak: string };
+type MatchScoring = { mode: "standard" | "time_capped_points" | "first_to_target"; pointsPerGame: number; bestOf: 1 | 3 | 5; playAllGames?: boolean; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string; timeCapPlay: string; timeCapBreak: string };
 const DEFAULT_SCORING: MatchScoring = { mode: "standard", pointsPerGame: 11, bestOf: 5, playAllGames: false, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
 /** Slot time = playing time + break/changeover. Scheduling and capacity maths use the slot; playing time describes actual play. */
 const slotMinutes = (s: MatchScoring) => {
@@ -162,6 +162,7 @@ const slotMinutes = (s: MatchScoring) => {
 };
 const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
   ? `Time-capped / Bells${slotMinutes(s) > 0 ? ` · ${slotMinutes(s)} min slot per match` : " · time not set"}`
+  : s.mode === "first_to_target" ? `First to ${s.pointsPerGame} · one game · ${s.winCondition === "win_by_2" ? "win by 2" : "sudden death"}`
   : `Standard play · PAR ${s.pointsPerGame} · ${s.playAllGames ? `play all ${s.bestOf} games` : `best of ${s.bestOf}`} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
@@ -3147,7 +3148,7 @@ function ScoringFields({ value, onChange, showMode = false }: { value: MatchScor
     {showMode && <div className="flex flex-wrap gap-2" role="group" aria-label="Match play format">
       {(["standard", "time_capped_points"] as const).map((mode) => <Button key={mode} type="button" size="sm" variant={value.mode === mode ? "default" : "outline"} aria-pressed={value.mode === mode} onClick={() => onChange({ mode })}>{mode === "standard" ? "Standard play" : "Time-capped / Bells format"}</Button>)}
     </div>}
-    {value.mode === "standard" ? <div className="grid gap-3 sm:grid-cols-3">
+    {value.mode === "first_to_target" ? <div className="space-y-2"><Label>Winning score</Label><Input type="number" min={1} step={1} value={value.pointsPerGame} onChange={(e) => onChange({ pointsPerGame: Math.max(1, Math.floor(Number(e.target.value) || 7)), bestOf: 1, playAllGames: false })} /><div className="flex gap-2">{(["win_by_2", "sudden_death"] as const).map((condition) => <Button key={condition} type="button" size="sm" variant={value.winCondition === condition ? "default" : "outline"} onClick={() => onChange({ winCondition: condition })}>{condition === "win_by_2" ? "Win by 2" : "Sudden death"}</Button>)}</div></div> : value.mode === "standard" ? <div className="grid gap-3 sm:grid-cols-3">
       <div><Label htmlFor={showMode ? undefined : "tournament-points"}>Points per game</Label><select aria-label="Points per game" id={showMode ? undefined : "tournament-points"} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.pointsPerGame} onChange={(e) => onChange({ pointsPerGame: Number(e.target.value) as 11 | 15 })}><option value="11">PAR 11</option><option value="15">PAR 15</option></select></div>
       <div><Label>Games per match</Label><select aria-label="Games per match" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.playAllGames ? `all${value.bestOf}` : String(value.bestOf)} onChange={(e) => { const v = e.target.value; onChange(v.startsWith("all") ? { bestOf: Number(v.slice(3)) as 3 | 5, playAllGames: true } : { bestOf: Number(v) as 3 | 5, playAllGames: false }); }}><option value="3">Best of 3</option><option value="5">Best of 5</option><option value="all3">Play all 3 games</option><option value="all5">Play all 5 games</option></select></div>
       <div><Label>At game point</Label><select aria-label="At game point" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.winCondition} onChange={(e) => onChange({ winCondition: e.target.value as MatchScoring["winCondition"] })}><option value="win_by_2">Win by 2</option><option value="sudden_death">Sudden death</option></select></div>

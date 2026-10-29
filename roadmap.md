@@ -1,5 +1,6 @@
 # Roadmap
-- [ ] Add First-to-target scoring (7, sudden death, one point per win), Riverside opt-in first; preserve existing Standard/Bells tournaments.
+- [x] Implement First-to-target preview with configurable target and Win by two / Sudden death; 50 focused tests pass, preview build OK. Existing tournaments unchanged; not published.
+- [ ] First-to-target authenticated Riverside setup/marker/playoff end-to-end verification: identity-confirmation prompt blocks the current session; requires confirmed identity and pilot opt-in before rollout.
 - [x] Restore Chairman Family package visibility in preview with read-only controls; 9 focused tests pass. No financial authority/data changes or publication. Gerrit's signed-in live screen has not been checked.
 - [x] Deploy only approved help-center-case-context; applied RPC SQL as drizzle/migrations/0306_help_center_live_case_context_rpcs.sql. Live definitions contain no pilot references; PUBLIC/anon/authenticated EXECUTE denied, service_role allowed (pre-existing owner/tool grants unchanged). 12 tests pass; deployed endpoint returns expected 404 for unauthorized request. No frontend or unrelated releases.
 - [x] Remove only case-context per-ticket pilot checks; stage replacement RPC SQL alongside endpoint (managed migration folders reject source-only writes), test real handler and disposable SQL. No deployment/publication/live migration.

@@ -242,9 +242,9 @@ export type OpenQuestion = z.infer<typeof QuestionSchema>;
 /** Match scoring. Every field optional; a stage without a value inherits the tournament default. */
 const ScoringSchema = z.object({
   /** Bells uses a timed points total, not PAR games. */
-  mode: z.enum(["standard", "time_capped_points"]).nullable().optional(),
-  pointsPerGame: z.union([z.literal(11), z.literal(15)]).nullable().optional(),
-  bestOf: z.union([z.literal(3), z.literal(5)]).nullable().optional(),
+  mode: z.enum(["standard", "time_capped_points", "first_to_target"]).nullable().optional(),
+  pointsPerGame: z.number().int().min(1).nullable().optional(),
+  bestOf: z.union([z.literal(1), z.literal(3), z.literal(5)]).nullable().optional(),
   playAllGames: z.boolean().nullable().optional(),
   winCondition: z.enum(["win_by_2", "sudden_death"]).nullable().optional(),
   /** Bells / time-capped: minutes per match. Required when mode = time_capped_points. */

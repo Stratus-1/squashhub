@@ -122,7 +122,7 @@ export function nextAction(h: Handover): { title: string; detail: string; availa
 }
 
 /** Setup "Match scoring" answer for one category — the result-entry rules the live tournament must use. */
-export type DivisionScoring = { mode: "standard" | "time_capped_points"; pointsPerGame?: number; bestOf?: number; playAllGames?: boolean; winCondition?: "win_by_2" | "sudden_death"; /** Bells: slot = play + changeover; the marker's bell = slot - break. */ slotMinutes?: number | null; breakMinutes?: number | null };
+export type DivisionScoring = { mode: "standard" | "time_capped_points" | "first_to_target"; pointsPerGame?: number; bestOf?: number; playAllGames?: boolean; winCondition?: "win_by_2" | "sudden_death"; /** Bells: slot = play + changeover; the marker's bell = slot - break. */ slotMinutes?: number | null; breakMinutes?: number | null };
 
 /**
  * Map each category's setup scoring onto the live per-division columns the marker/result entry
@@ -134,10 +134,10 @@ export function divisionScoringColumns(divs: Array<{ scoring?: DivisionScoring |
   const pick = <T,>(f: (s: DivisionScoring) => T | undefined) => Object.fromEntries(divs.flatMap((d, n) => { const v = d.scoring ? f(d.scoring) : undefined; return v === undefined ? [] : [[String(n + 1), v]]; }));
   return {
     league_scoring_modes: pick((s) => s.mode),
-    league_points_per_game: pick((s) => (s.pointsPerGame === 15 ? 15 : s.pointsPerGame === 11 ? 11 : undefined)),
-    league_best_of: pick((s) => (s.bestOf === 3 ? 3 : s.bestOf === 5 ? 5 : undefined)),
-    league_play_all_games: pick((s) => (s.playAllGames != null ? s.playAllGames : undefined)),
-    league_win_conditions: pick((s) => s.winCondition),
+    league_points_per_game: pick((s) => s.mode === "first_to_target" ? Math.max(1, Math.floor(s.pointsPerGame || 7)) : (s.pointsPerGame === 15 ? 15 : s.pointsPerGame === 11 ? 11 : undefined)),
+    league_best_of: pick((s) => s.mode === "first_to_target" ? 1 : (s.bestOf === 3 ? 3 : s.bestOf === 5 ? 5 : undefined)),
+    league_play_all_games: pick((s) => s.mode === "first_to_target" ? false : (s.playAllGames != null ? s.playAllGames : undefined)),
+    league_win_conditions: pick((s) => s.mode === "first_to_target" ? s.winCondition ?? "sudden_death" : s.winCondition),
     ...(divs.some((d) => d.scoring?.mode === "time_capped_points" && Number(d.scoring.slotMinutes) > 0) ? {
       group_durations: pick((s) => (s.mode === "time_capped_points" && Number(s.slotMinutes) > 0 ? Number(s.slotMinutes) : undefined)),
       group_break_minutes: pick((s) => (s.mode === "time_capped_points" && Number(s.slotMinutes) > 0 ? Math.max(0, Number(s.breakMinutes) || 0) : undefined)),
@@ -270,7 +270,8 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     if (error) throw error;
     // Screens/server checks that read the tournament-wide mode must agree when every category uses the same scoring.
     const modes = [...new Set(i.divisions.map((d) => d.scoring?.mode).filter(Boolean))];
-    if (modes.length === 1 && i.divisions.every((d) => d.scoring)) {
+    // First-to-target is explicitly per-division; legacy root constraints remain unchanged.
+    if (modes.length === 1 && modes[0] !== "first_to_target" && i.divisions.every((d) => d.scoring)) {
       const { error: rErr } = await fromExt("tournament_rules").update({ scoring_mode: modes[0] }).eq("tournament_id", tid);
       if (rErr) throw rErr;
     }

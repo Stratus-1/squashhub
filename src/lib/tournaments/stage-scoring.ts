@@ -7,11 +7,11 @@
 import { divisionGroup, type TournamentSpec } from "./engine-service";
 
 export type InheritedScoring =
-  | { ok: true; mode: "standard" | "time_capped_points" | "swiss"; pointsPerGame: 11 | 15 | null; bestOf: 3 | 5 | null; text: string; categoryName: string; groupNumber: number }
+  | { ok: true; mode: "standard" | "time_capped_points" | "swiss" | "first_to_target"; pointsPerGame: number | null; bestOf: 1 | 3 | 5 | null; text: string; categoryName: string; groupNumber: number }
   | { ok: false; issue: string; categoryName: string; groupNumber: number };
 
 const at = (map: unknown, g: number) => (map && typeof map === "object" ? (map as Record<string, unknown>)[String(g)] : undefined);
-const mode = (v: unknown) => (v === "standard" || v === "time_capped_points" || v === "swiss" ? v : null);
+const mode = (v: unknown) => (v === "first_to_target" || v === "standard" || v === "time_capped_points" || v === "swiss" ? v : null);
 const pts = (v: unknown) => (v == null || v === "" ? null : Number(v) === 11 ? 11 : Number(v) === 15 ? 15 : undefined);
 const bo = (v: unknown) => (v == null || v === "" ? null : Number(v) === 3 ? 3 : Number(v) === 5 ? 5 : undefined);
 
@@ -23,6 +23,11 @@ export function inheritedScoringForGroup(t: any, groupNumber: number, categoryNa
   if (!m) return { ok: false, issue: `${categoryName} has no saved match scoring — ${fix}.`, ...base };
   if (m === "time_capped_points") return { ok: true, mode: m, pointsPerGame: null, bestOf: null, text: "Bells (time-capped points)", ...base };
   const rawP = at(t?.league_points_per_game, groupNumber) ?? t?.points_per_game;
+  if (m === "first_to_target") {
+    const target = Number(rawP);
+    if (!Number.isInteger(target) || target < 1) return { ok: false, issue: `${categoryName} has no valid winning target — ${fix}.`, ...base };
+    return { ok: true, mode: m, pointsPerGame: target, bestOf: 1, text: `First to ${target} · ${at(t?.league_win_conditions, groupNumber) === "win_by_2" ? "win by 2" : "sudden death"}`, ...base };
+  }
   const rawB = at(t?.league_best_of, groupNumber) ?? t?.best_of;
   const p = pts(rawP), b = bo(rawB);
   if (p === undefined || b === undefined) return { ok: false, issue: `${categoryName} has an invalid saved scoring value — ${fix}.`, ...base };

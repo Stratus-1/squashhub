@@ -22,7 +22,7 @@ import { effectiveTournamentSettings } from "@/lib/tournaments/effective-setting
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
 export type ScoringFormat = "par11" | "par15" | "english9";
-export type BestOf = 3 | 5;
+export type BestOf = 1 | 3 | 5;
 export type MatchSource = "manual" | "tournament" | "booking" | "league";
 
 export interface PlayerInfo {
@@ -43,6 +43,8 @@ export interface MarkerConfig {
   matchType: MatchType;
   scoringFormat: ScoringFormat;
   bestOf: BestOf;
+  /** Explicit first-to-target game; absent preserves legacy PAR rules. */
+  targetPoints?: number;
   /** When true, all `bestOf` games are played (no early termination when a
    *  side reaches the games-to-win threshold). Winner = most games won,
    *  tiebreak on total points across games. */
@@ -758,7 +760,8 @@ export function MarkerSetup({ onStart }: Props) {
     const ppg = Number(match?.pointsPerGame);
     return {
       scoringFormat: (ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11") as ScoringFormat,
-      bestOf: (Number(match?.bestOf) === 5 ? 5 : 3) as BestOf,
+      bestOf: (match?.scoringMode === "first_to_target" ? 1 : Number(match?.bestOf) === 5 ? 5 : 3) as BestOf,
+      targetPoints: match?.scoringMode === "first_to_target" ? ppg : undefined,
       playAllGames: !!match?.playAllGames,
       deuceRule: (match?.winCondition === "sudden_death" ? "sudden_death" : "win_by_2") as DeuceRule,
     };
@@ -789,6 +792,7 @@ export function MarkerSetup({ onStart }: Props) {
       matchType,
       scoringFormat: scoring?.scoringFormat ?? scoringFormat,
       bestOf: scoring?.bestOf ?? bestOf,
+      targetPoints: scoring?.targetPoints,
       playAllGames: scoring?.playAllGames ?? playAllGames,
       deuceRule: scoring?.deuceRule ?? deuceRule,
       source,

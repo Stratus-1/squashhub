@@ -1,10 +1,11 @@
 import { BellsFormat } from "./bells";
 import { StandardFormat } from "./standard";
 import { SwissFormat } from "./swiss";
+import { FirstToTargetFormat } from "./first-to-target";
 import type { TournamentFormat } from "./types";
 
 export * from "./types";
-export { BellsFormat, StandardFormat, SwissFormat };
+export { BellsFormat, StandardFormat, SwissFormat, FirstToTargetFormat };
 
 /**
  * Registry of pluggable tournament formats. Keyed by the value persisted
@@ -15,6 +16,7 @@ const REGISTRY: Record<string, TournamentFormat> = {
   [StandardFormat.key]: StandardFormat,
   [BellsFormat.key]: BellsFormat,
   [SwissFormat.key]: SwissFormat,
+  [FirstToTargetFormat.key]: FirstToTargetFormat,
 };
 
 /**

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { MarkerConfig, ScoringFormat, DeuceRule } from "./MarkerSetup";
+import { targetWinner } from "@/lib/tournament-formats/first-to-target";
 import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
 import { CastDialog } from "./CastDialog";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -105,11 +106,7 @@ function isGameWon(scoreA: number, scoreB: number, pointsToWin: number, deuceRul
   const min = Math.min(scoreA, scoreB);
   if (max < pointsToWin) return null;
   if (min >= pointsToWin - 1) {
-    if (deuceRule === "sudden_death") {
-      // At deuce (e.g. 10-10), next point wins
-      if (max > min) return scoreA > scoreB ? "a" : "b";
-      return null;
-    }
+    if (deuceRule === "sudden_death") return max > min ? (scoreA > scoreB ? "a" : "b") : null;
     // Win by 2
     if (max - min >= 2) return scoreA > scoreB ? "a" : "b";
     return null;
@@ -146,13 +143,13 @@ function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a:
   let gamesA = 0;
   let gamesB = 0;
   let server: "a" | "b" = "a";
-  const pointsToWin = getPointsToWin(config.scoringFormat);
+  const pointsToWin = config.targetPoints ?? getPointsToWin(config.scoringFormat);
 
   for (const score of savedScores) {
     const a = Number(score.a) || 0;
     const b = Number(score.b) || 0;
     if (a === 0 && b === 0) continue;
-    const winnerId = isGameWon(a, b, pointsToWin, config.deuceRule);
+    const winnerId = config.targetPoints ? targetWinner(a, b, pointsToWin, config.deuceRule) : isGameWon(a, b, pointsToWin, config.deuceRule);
     if (!winnerId) {
       scoreA = a;
       scoreB = b;
@@ -190,7 +187,7 @@ interface Props {
 }
 
 export function MarkerScoreboard({ config, initialScores, onMatchComplete, onReset, onScratch, onProgress, onLiveScore }: Props) {
-  const pointsToWin = getPointsToWin(config.scoringFormat);
+  const pointsToWin = config.targetPoints ?? getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";
   const { club } = useClubContext();
@@ -416,7 +413,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       // Check game won before broadcasting live current-game state. A winning
       // point must be persisted as a finished game only, not re-saved as the
       // in-progress `current_game` value after the parent clears it.
-      const gameWinner = isGameWon(newA, newB, pointsToWin, config.deuceRule);
+      const gameWinner = config.targetPoints ? targetWinner(newA, newB, pointsToWin, config.deuceRule) : isGameWon(newA, newB, pointsToWin, config.deuceRule);
       if (!gameWinner) {
         try { onLiveScore?.(completedGames, { a: newA, b: newB }); } catch {}
       }
@@ -610,8 +607,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
             {cast.casting ? (cast.paired ? "Live on TV" : "Pairing…") : "Cast"}
           </Button>
           <Badge variant="outline" className="text-[10px]">
-            {config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
-            {" · "}{config.playAllGames ? `Play all ${config.bestOf}` : `Best of ${config.bestOf}`}
+            {config.targetPoints ? `First to ${config.targetPoints}` : config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
+            {" · "}{config.targetPoints ? "One game" : config.playAllGames ? `Play all ${config.bestOf}` : `Best of ${config.bestOf}`}
           </Badge>
         </div>
       </div>

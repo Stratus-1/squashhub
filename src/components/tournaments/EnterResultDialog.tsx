@@ -19,6 +19,7 @@ import {
   type Side,
 } from "@/lib/tournaments/quick-result";
 import type { SelfScheduleMatchLike } from "@/lib/tournaments/self-schedule";
+import { targetWinner } from "@/lib/tournament-formats/first-to-target";
 
 interface Props {
   open: boolean;
@@ -65,13 +66,15 @@ export function EnterResultDialog({
     queryKey: ["champ-category-scoring", champId],
     enabled: open && !!champId,
     queryFn: async () => {
-      const { data } = await fromExt("tournaments").select("league_points_per_game, league_best_of, league_scoring_modes").eq("id", champId!).maybeSingle();
+      if (!champId) return null;
+      const { data } = await fromExt("tournaments").select("league_points_per_game, league_best_of, league_scoring_modes, league_win_conditions").eq("id", champId).maybeSingle();
       return (data ?? null) as any;
     },
   });
   const catBo = group ? Number(perCat?.league_best_of?.[group]) || null : null;
   const catPts = group ? Number(perCat?.league_points_per_game?.[group]) || null : null;
   const catMode = group ? perCat?.league_scoring_modes?.[group] ?? null : null;
+  const targetCondition = group && perCat?.league_win_conditions?.[group] === "win_by_2" ? "win_by_2" : "sudden_death";
   const effBo = catBo ?? bestOf;
   const effPts = catPts ?? pointsTarget;
   const bo = effBo && effBo > 0 ? effBo : 5;
@@ -96,7 +99,12 @@ export function EnterResultDialog({
   }, [open, bo, target]);
 
   const tallies = useMemo(() => possibleGameTallies(bo), [bo]);
-  const validation = useMemo(() => validateQuickResult(games, bo), [games, bo]);
+  const validation = useMemo(() => {
+    if (catMode === "first_to_target" && (games.length !== 1 || !games[0] || !targetWinner(games[0].a, games[0].b, target, targetCondition))) {
+      return { valid: false, error: targetCondition === "win_by_2" ? `Reach ${target} with a two-point lead` : `One player must reach ${target}`, gamesA: 0, gamesB: 0 };
+    }
+    return validateQuickResult(games, bo);
+  }, [games, bo, catMode, target, targetCondition]);
 
   const bellsPointsA = Math.max(0, parseInt(bellsA, 10) || 0);
   const bellsPointsB = Math.max(0, parseInt(bellsB, 10) || 0);

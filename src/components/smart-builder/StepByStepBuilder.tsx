@@ -4,6 +4,7 @@ import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfir
 import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
+import { fetchClubVisitors, promoteVisitors, type ClubVisitor } from "@/lib/tournaments/visitor-promotion";
 import { categoryDisplayName, categoryLabelOnlyChange } from "@/lib/smart-builder/category-labels";
 import { syncSwissRoundsToSpec } from "@/lib/smart-builder/sync-live-rounds";
 import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";

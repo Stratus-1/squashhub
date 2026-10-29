@@ -1195,7 +1195,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   //   playoffDate         — force the playoffs onto a specific date (overrides the break gap).
   const [playoffBreakMinutes, setPlayoffBreakMinutes] = useState<number>(0);
   const [playoffDate, setPlayoffDate] = useState<string>("");
-  const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
+  const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss" | "first_to_target">("");
   // Diamond League (teams): a second structure mode. Stored on a linked team_league_events row.
   const [diamondMode, setDiamondMode] = useState(false);
   const [diamondDraft, setDiamondDraft] = useState<DiamondDraft>(() => newDiamondDraft());
@@ -1497,9 +1497,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Standard its own game length (par 11 / par 15), best-of and win
   // condition (win-by-2 / sudden death). Missing entries fall back to the
   // tournament-level values.
-  const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points">>({});
-  const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, 11 | 15>>({});
-  const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 3 | 5>>({});
+  const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points" | "first_to_target">>({});
+  const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, number>>({});
+  const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 1 | 3 | 5>>({});
   const [leagueWinConditions, setLeagueWinConditions] = useState<{[key: string]: "win_by_2" | "sudden_death"}>({});
   // Per-division doubles serving method for the live marker (unset = manual serving).
   const [leagueServingMethods, setLeagueServingMethods] = useState<Record<string, DoublesServingMethod>>({});
@@ -1550,11 +1550,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   );
   // Per-league bye handling (falls back to the tournament-level rule).
   const [leagueByeHandling, setLeagueByeHandling] = useState<Record<string, "no_match" | "walkover_win" | "neutral">>({});
-  const scoringForLeague = (gn: number): "standard" | "time_capped_points" =>
+  const scoringForLeague = (gn: number): "standard" | "time_capped_points" | "first_to_target" =>
     leagueScoringModes[String(gn)] ?? ((scoringMode === "time_capped_points" ? "time_capped_points" : "standard"));
-  const pointsForLeague = (gn: number): 11 | 15 =>
+  const pointsForLeague = (gn: number): number =>
     leaguePointsPerGame[String(gn)] ?? ((pointsPerGame === 15 ? 15 : 11));
-  const bestOfForLeague = (gn: number): 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
+  const bestOfForLeague = (gn: number): 1 | 3 | 5 => leagueBestOf[String(gn)] ?? ((bestOf === 5 ? 5 : 3));
   const playAllForLeague = (gn: number): boolean => leaguePlayAll[String(gn)] ?? false;
   const playoffsForLeague = (gn: number): boolean => leaguePlayoffs[String(gn)] === true;
   const byeForLeague = (gn: number): "no_match" | "walkover_win" | "neutral" =>
@@ -1574,13 +1574,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const winConditionForLeague = (gn: number): "win_by_2" | "sudden_death" =>
     leagueWinConditions[String(gn)] ?? winCondition;
   /** Set one league's scoring format; keeps tournament-level in sync with league 1. */
-  const setLeagueScoring = (gn: number, mode: "standard" | "time_capped_points") => {
+  const setLeagueScoring = (gn: number, mode: "standard" | "time_capped_points" | "first_to_target") => {
     setLeagueScoringModes((m) => {
       const next = { ...m, [String(gn)]: mode };
       if (gn === 1 || Object.keys(next).length === 1) setScoringMode(mode);
       return next;
     });
-    if (mode === "standard") {
+    if (mode === "first_to_target") {
+      setLeaguePointsPerGame((m) => ({ ...m, [String(gn)]: 7 }));
+      setLeagueBestOf((m) => ({ ...m, [String(gn)]: 1 }));
+      setLeaguePlayAll((m) => ({ ...m, [String(gn)]: false }));
+      setLeagueWinConditions((m) => ({ ...m, [String(gn)]: "sudden_death" }));
+    } else if (mode === "standard") {
       setLeaguePointsPerGame((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (pointsPerGame === 15 ? 15 : 11) }));
       setLeagueBestOf((m) => ({ ...m, [String(gn)]: m[String(gn)] ?? (bestOf === 5 ? 5 : 3) }));
       if (!pointsPerGame) setPointsPerGame(11);
@@ -8547,16 +8552,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueMatchTypes(inheritedM);
     // Per-league scoring settings (format / par / best-of / win condition) with fallback to
     // the tournament-level values saved on the champ row.
-    const lsm = (ex.league_scoring_modes as Record<string, "standard" | "time_capped_points"> | null) || null;
-    const lppg = (ex.league_points_per_game as Record<string, 11 | 15> | null) || null;
-    const lbo = (ex.league_best_of as Record<string, 3 | 5> | null) || null;
+    const lsm = (ex.league_scoring_modes as Record<string, "standard" | "time_capped_points" | "first_to_target"> | null) || null;
+    const lppg = (ex.league_points_per_game as Record<string, number> | null) || null;
+    const lbo = (ex.league_best_of as Record<string, 1 | 3 | 5> | null) || null;
     const lwc = (ex.league_win_conditions as Record<string, "win_by_2" | "sudden_death"> | null) || null;
     const lpa = ((ex as any).league_play_all_games as Record<string, boolean> | null) || null;
     const lpo = ((ex as any).league_playoffs as Record<string, boolean> | null) || null;
     const lbh = ((ex as any).league_bye_handling as Record<string, "no_match" | "walkover_win" | "neutral"> | null) || null;
-    const inheritedS: Record<string, "standard" | "time_capped_points"> = {};
-    const inheritedP: Record<string, 11 | 15> = {};
-    const inheritedB: Record<string, 3 | 5> = {};
+    const inheritedS: Record<string, "standard" | "time_capped_points" | "first_to_target"> = {};
+    const inheritedP: Record<string, number> = {};
+    const inheritedB: Record<string, 1 | 3 | 5> = {};
     const inheritedW: Record<string, "win_by_2" | "sudden_death"> = {};
     const inheritedPA: Record<string, boolean> = {};
     const inheritedPO: Record<string, boolean> = {};
@@ -8567,8 +8572,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const inheritedFP: ForfeitPointsMap = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
-      inheritedP[String(i)] = (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
-      inheritedB[String(i)] = (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
+      inheritedP[String(i)] = inheritedS[String(i)] === "first_to_target" ? Math.max(1, Number(lppg?.[String(i)]) || 7) : (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
+      inheritedB[String(i)] = inheritedS[String(i)] === "first_to_target" ? 1 : (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
       inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
       // Back-compat: a knockout division saved before the progression flag existed
@@ -9935,10 +9940,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 options={[
                                   { v: "standard", l: "Standard" },
                                   { v: "time_capped_points", l: "🔔 Bells" },
+                                  ...(clubId === RIVERSIDE_CLUB_ID && structureOnly && !editingChampId ? [{ v: "first_to_target", l: "First to target" }] : []),
                                 ]}
-                                onChange={(v) => { setLeagueScoring(gn, v as "standard" | "time_capped_points"); advanceReveal(key, 3); }}
+                                onChange={(v) => { setLeagueScoring(gn, v as "standard" | "time_capped_points" | "first_to_target"); advanceReveal(key, 3); }}
                               /></div>}
-                              {stageOf(key) < 4 ? null : scoringForLeague(gn) === "standard" ? (
+                              {stageOf(key) >= 4 && scoringForLeague(gn) === "first_to_target" && (
+                                <div><Label>Winning score</Label><Input aria-label="Winning score" type="number" min={1} step={1} value={pointsForLeague(gn)} onChange={(e) => setLeaguePointsPerGame((m) => ({ ...m, [key]: Math.max(1, Math.floor(Number(e.target.value) || 7)) }))} /></div>
+                              )}
+                              {stageOf(key) < 4 || scoringForLeague(gn) === "first_to_target" ? null : scoringForLeague(gn) === "standard" ? (
                                 <div className="space-y-2">
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <SegRow

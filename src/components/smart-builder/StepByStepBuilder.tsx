@@ -152,7 +152,7 @@ import type { TournamentOrganiser } from "@/lib/smart-builder/tournament-organis
  */
 type Kind = "once_off" | "period" | null;
 type PlayType = "singles" | "doubles" | "both" | null;
-type MatchScoring = { mode: "standard" | "time_capped_points"; pointsPerGame: 11 | 15; bestOf: 3 | 5; playAllGames?: boolean; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string; timeCapPlay: string; timeCapBreak: string };
+type MatchScoring = { mode: "standard" | "time_capped_points" | "first_to_target"; pointsPerGame: number; bestOf: 1 | 3 | 5; playAllGames?: boolean; winCondition: "win_by_2" | "sudden_death"; timeCapMinutes: string; timeCapPlay: string; timeCapBreak: string };
 const DEFAULT_SCORING: MatchScoring = { mode: "standard", pointsPerGame: 11, bestOf: 5, playAllGames: false, winCondition: "win_by_2", timeCapMinutes: "", timeCapPlay: "", timeCapBreak: "" };
 /** Slot time = playing time + break/changeover. Scheduling and capacity maths use the slot; playing time describes actual play. */
 const slotMinutes = (s: MatchScoring) => {
@@ -162,6 +162,7 @@ const slotMinutes = (s: MatchScoring) => {
 };
 const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
   ? `Time-capped / Bells${slotMinutes(s) > 0 ? ` · ${slotMinutes(s)} min slot per match` : " · time not set"}`
+  : s.mode === "first_to_target" ? `First to ${s.pointsPerGame} · one game · sudden death`
   : `Standard play · PAR ${s.pointsPerGame} · ${s.playAllGames ? `play all ${s.bestOf} games` : `best of ${s.bestOf}`} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };

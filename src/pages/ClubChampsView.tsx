@@ -856,7 +856,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         // Standard tournament points: 1 point per game (set) won.
         // e.g. 2-1 win → winner 2 pts / loser 1 pt; 3-0 win → 3 / 0.
         // Byes handled as walkover wins get a full 3-game credit.
-        points: isBells ? stats.pointsFor : stats.gamesWon + byeWins * 3,
+        points: tournamentFormat.key === "first_to_target" ? stats.won : isBells ? stats.pointsFor : stats.gamesWon + byeWins * 3,
 
       };
     };

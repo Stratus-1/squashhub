@@ -102,11 +102,11 @@ function getPointsToWin(format: ScoringFormat): number {
 }
 
 function isGameWon(scoreA: number, scoreB: number, pointsToWin: number, deuceRule: DeuceRule = "win_by_2"): "a" | "b" | null {
-  if (deuceRule === "sudden_death") return targetWinner(scoreA, scoreB, pointsToWin);
   const max = Math.max(scoreA, scoreB);
   const min = Math.min(scoreA, scoreB);
   if (max < pointsToWin) return null;
   if (min >= pointsToWin - 1) {
+    if (deuceRule === "sudden_death") return max > min ? (scoreA > scoreB ? "a" : "b") : null;
     // Win by 2
     if (max - min >= 2) return scoreA > scoreB ? "a" : "b";
     return null;
@@ -149,7 +149,7 @@ function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a:
     const a = Number(score.a) || 0;
     const b = Number(score.b) || 0;
     if (a === 0 && b === 0) continue;
-    const winnerId = isGameWon(a, b, pointsToWin, config.deuceRule);
+    const winnerId = config.targetPoints ? targetWinner(a, b, pointsToWin) : isGameWon(a, b, pointsToWin, config.deuceRule);
     if (!winnerId) {
       scoreA = a;
       scoreB = b;
@@ -413,7 +413,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       // Check game won before broadcasting live current-game state. A winning
       // point must be persisted as a finished game only, not re-saved as the
       // in-progress `current_game` value after the parent clears it.
-      const gameWinner = isGameWon(newA, newB, pointsToWin, config.deuceRule);
+      const gameWinner = config.targetPoints ? targetWinner(newA, newB, pointsToWin) : isGameWon(newA, newB, pointsToWin, config.deuceRule);
       if (!gameWinner) {
         try { onLiveScore?.(completedGames, { a: newA, b: newB }); } catch {}
       }

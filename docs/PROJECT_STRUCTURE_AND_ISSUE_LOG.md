@@ -4072,3 +4072,7 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Finance, fee, banking, chart, tournament payment and payroll controls use server-derived financial access. Existing session-owned bar payments retain a private transaction-local exception. Manual recurring collection/renewal/cancellation handlers verify caller and club before service writes/provider actions; scheduled service calls and owner self-service cancellation remain separate.
 - Applied 0295–0298 and deployed six affected financial functions. No live balances/entries were changed; frontend not published.
 - Validation: 36 focused tests passed including isolated PostgreSQL read/insert/edit/delete restrictions, unchanged R100 entry and tournament Paid denial. Signed-in platform-admin Riverside finance rendered. Authenticated Chairman path: UNVERIFIED (available session is platform Super Admin); provider payments and native hardware unverified. Security linter reports existing broad findings, not cleared by this scoped change.
+
+### 2026-10-29 — Counter PIN Add form still stopped at ten
+- Uitsig has ten active named counter PINs. The live server function correctly permits twenty, but CounterModeCard retained MAX_OPERATORS=10 and hid its Add form at ten.
+- Updated the shared screen limit to twenty; existing PINs, staff sessions and permission checks are unchanged. Regression tests cover adding at ten/nineteen and stopping at twenty. Shared web/PWA/native screen; no database changes.

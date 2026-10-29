@@ -398,7 +398,8 @@ interface FeeDialogProps {
 }
 
 function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "", recurringEnabled = false }: FeeDialogProps) {
-  const { canChange } = useFinancialAccess(clubId);
+  const { canChange, isChairman } = useFinancialAccess(clubId);
+  const canEditFees = chairmanMayEditFeeCategories(isChairman, canChange);
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
   const isVisitorPass = !!existing?.visitorPassKind;
@@ -650,7 +651,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           {/* Pro-rate */}
           {!isVisitorPass && feeType !== "registration" && billingPeriod !== "monthly" && (
             <div className="flex items-center gap-2 h-10">
-              <Switch disabled={!canChange} checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
+              <Switch disabled={!canEditFees} checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
               <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
             </div>
           )}

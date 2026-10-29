@@ -19,6 +19,7 @@ import {
   type AudienceMemberRow, type InviteAudienceMode,
 } from "@/lib/tournaments/invite-audience";
 import { fetchInviteDirectory, type DirectoryPlayer } from "@/lib/tournaments/invite-directory";
+import { fetchClubVisitors, promoteVisitors } from "@/lib/tournaments/visitor-promotion";
 import {
   associationTickState, fetchScopeMemberIds, fetchScopeTree, toggleAssociation, toggleClub,
   type ScopeTreeAssociation,
@@ -46,6 +47,8 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
   h: Handover; lifecycle: BetaLifecycle; onLifecycle: (l: BetaLifecycle) => Promise<void>; onSent?: () => void;
 }) {
   const saved = lifecycle.invite?.audience;
+  /** Organiser opt-in from "Who may enter": registered visitors may be invited. */
+  const includeVisitors = !!(lifecycle.answers as any)?.includeVisitors;
   const [aud, setAud] = useState<StepInviteAudience>({
     mode: (saved?.mode as InviteAudienceMode) || EMPTY_INVITE_AUDIENCE.mode,
     leagueIds: saved?.leagueIds ?? [],

@@ -103,7 +103,25 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
       setEntOpen(td?.registration_opens_at ? String(td.registration_opens_at).slice(0, 10) : "");
       setEntClose(td?.registration_closes_at ? String(td.registration_closes_at).slice(0, 10) : "");
       setScope(String((gov.data as any)?.eligibility_scope ?? "club"));
-      setMembers((mem.data ?? []) as PoolMember[]);
+      let poolRows = (mem.data ?? []) as PoolMember[];
+      // Opted-in visitors: promote sign-ins to visitor member rows (idempotent)
+      // so they can be invited and entered like any member.
+      if (includeVisitors) {
+        try {
+          const vs = await fetchClubVisitors(h.clubId);
+          if (vs.length > 0) {
+            const promoted = await promoteVisitors(h.clubId, vs);
+            const vids = vs.map((v) => promoted.get(v.id)).filter(Boolean) as string[];
+            if (vids.length > 0) {
+              const { data: vrows } = await supabase.from("club_members").select("id, name, status, role, billing_exempt, gender").in("id", vids);
+              const known = new Set(poolRows.map((m) => m.id));
+              poolRows = [...poolRows, ...(((vrows ?? []) as PoolMember[]).filter((m) => !known.has(m.id)))];
+            }
+          }
+        } catch { /* visitors stay out rather than blocking invites */ }
+      }
+      if (!active) return;
+      setMembers(poolRows);
       const lg = (leagues.data ?? []) as any[];
       setLeagueGroups(buildLeagueTree(lg.map((l) => ({ id: l.id, name: l.name, level: l.level ?? null, seasonYear: l.season_year ?? null, isReserve: l.is_reserve ?? null }))));
       if (lg.length) {
@@ -196,7 +214,8 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
     clubIds: aud.clubIds,
     memberIdsByClub: scopeMemberIds,
     trustedMemberIds: trusted,
-  }), [aud, pool, wide, scopeLeagueIds, regsByLeague, scopeMemberIds, trusted]);
+    includeVisitors,
+  }), [aud, pool, wide, scopeLeagueIds, regsByLeague, scopeMemberIds, trusted, includeVisitors]);
 
   const nameOf = (id: string) =>
     pool.find((m) => m.id === id)?.name?.trim()

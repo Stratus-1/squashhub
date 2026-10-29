@@ -22,7 +22,7 @@ import { effectiveTournamentSettings } from "@/lib/tournaments/effective-setting
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
 export type ScoringFormat = "par11" | "par15" | "english9";
-export type BestOf = 3 | 5;
+export type BestOf = 1 | 3 | 5;
 export type MatchSource = "manual" | "tournament" | "booking" | "league";
 
 export interface PlayerInfo {
@@ -43,6 +43,8 @@ export interface MarkerConfig {
   matchType: MatchType;
   scoringFormat: ScoringFormat;
   bestOf: BestOf;
+  /** Explicit first-to-target game; absent preserves legacy PAR rules. */
+  targetPoints?: number;
   /** When true, all `bestOf` games are played (no early termination when a
    *  side reaches the games-to-win threshold). Winner = most games won,
    *  tiebreak on total points across games. */

@@ -1,13 +1,13 @@
 import { parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
-export type EffectiveScoringMode = "standard" | "time_capped_points" | "swiss";
+export type EffectiveScoringMode = "standard" | "time_capped_points" | "swiss" | "first_to_target";
 export type EffectiveMatchType = "singles" | "doubles" | "mixed";
 export type EffectiveWinCondition = "win_by_2" | "sudden_death";
 
 export interface EffectiveTournamentSettings {
   scoringMode: EffectiveScoringMode;
-  pointsPerGame: 11 | 15;
-  bestOf: 3 | 5;
+  pointsPerGame: number;
+  bestOf: 1 | 3 | 5;
   playAllGames: boolean;
   winCondition: EffectiveWinCondition;
   matchType: EffectiveMatchType;
@@ -22,7 +22,7 @@ function mapValue(map: unknown, groupNumber: number | string | null | undefined)
 }
 
 function scoringMode(raw: unknown): EffectiveScoringMode | null {
-  return raw === "time_capped_points" || raw === "swiss" || raw === "standard" ? raw : null;
+  return raw === "first_to_target" || raw === "time_capped_points" || raw === "swiss" || raw === "standard" ? raw : null;
 }
 
 function matchType(raw: unknown): EffectiveMatchType | null {
@@ -69,19 +69,19 @@ export function effectiveTournamentSettings(
 
   return {
     scoringMode: mode,
-    pointsPerGame:
+    pointsPerGame: mode === "first_to_target" ? Math.max(1, Math.floor(Number(mapValue(tournament?.league_points_per_game, groupNumber)) || 7)) :
       points(mapValue(tournament?.league_points_per_game, groupNumber)) ??
       points(tournament?.points_per_game) ??
       11,
-    bestOf:
+    bestOf: mode === "first_to_target" ? 1 :
       bestOf(mapValue(tournament?.league_best_of, groupNumber)) ??
       bestOf(tournament?.best_of) ??
       5,
-    playAllGames:
+    playAllGames: mode === "first_to_target" ? false :
       typeof mapValue(tournament?.league_play_all_games, groupNumber) === "boolean"
         ? Boolean(mapValue(tournament?.league_play_all_games, groupNumber))
         : Boolean(tournament?.play_all_games),
-    winCondition:
+    winCondition: mode === "first_to_target" ? "sudden_death" :
       winCondition(mapValue(tournament?.league_win_conditions, groupNumber)) ??
       winCondition(tournament?.win_condition) ??
       "win_by_2",

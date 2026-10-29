@@ -377,7 +377,7 @@ export default function MatchMarker() {
       const scoringFormat: "par11" | "par15" | "english9" =
         ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
       const rawBest = Number(effective.bestOf);
-      const bestOf: 3 | 5 = rawBest === 5 ? 5 : 3;
+      const bestOf: MarkerConfig["bestOf"] = effective.scoringMode === "first_to_target" ? 1 : rawBest === 5 ? 5 : 3;
       const deuceRule: "win_by_2" | "sudden_death" =
         effective.winCondition === "sudden_death" ? "sudden_death" : "win_by_2";
       const nextConfig: MarkerConfig = {
@@ -389,6 +389,7 @@ export default function MatchMarker() {
         matchType: "club_champs",
         scoringFormat,
         bestOf,
+        targetPoints: effective.scoringMode === "first_to_target" ? effective.pointsPerGame : undefined,
         playAllGames: effective.playAllGames,
         deuceRule,
         source: "tournament",
@@ -460,7 +461,8 @@ export default function MatchMarker() {
       }
       const ppg = Number(effective.pointsPerGame);
       const scoringFormat: MarkerConfig["scoringFormat"] = ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
-      const bestOf: MarkerConfig["bestOf"] = Number(effective.bestOf) === 5 ? 5 : 3;
+      const bestOf: MarkerConfig["bestOf"] = effective.scoringMode === "first_to_target" ? 1 : Number(effective.bestOf) === 5 ? 5 : 3;
+      const targetPoints = effective.scoringMode === "first_to_target" ? effective.pointsPerGame : undefined;
       const playAllGames = effective.playAllGames;
       const deuceRule: MarkerConfig["deuceRule"] = effective.winCondition === "sudden_death" ? "sudden_death" : "win_by_2";
       // Doubles serving always follows the division's configured method.
@@ -471,13 +473,14 @@ export default function MatchMarker() {
       if (
         config.scoringFormat !== scoringFormat ||
         config.bestOf !== bestOf ||
+        config.targetPoints !== targetPoints ||
         !!config.playAllGames !== playAllGames ||
         config.deuceRule !== deuceRule ||
         (!!wantServing !== !!config.doublesServing) ||
         (config.doublesServing && (config.doublesServing.method ?? null) !== effective.doublesServingMethod)
       ) {
         setConfig({
-          ...config, scoringFormat, bestOf, playAllGames, deuceRule,
+          ...config, scoringFormat, bestOf, targetPoints, playAllGames, deuceRule,
           ...(wantServing ? { doublesServing: wantServing } : {}),
         });
       }

@@ -146,7 +146,7 @@ function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a:
   let gamesA = 0;
   let gamesB = 0;
   let server: "a" | "b" = "a";
-  const pointsToWin = getPointsToWin(config.scoringFormat);
+  const pointsToWin = config.targetPoints ?? getPointsToWin(config.scoringFormat);
 
   for (const score of savedScores) {
     const a = Number(score.a) || 0;
@@ -190,7 +190,7 @@ interface Props {
 }
 
 export function MarkerScoreboard({ config, initialScores, onMatchComplete, onReset, onScratch, onProgress, onLiveScore }: Props) {
-  const pointsToWin = getPointsToWin(config.scoringFormat);
+  const pointsToWin = config.targetPoints ?? getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";
   const { club } = useClubContext();

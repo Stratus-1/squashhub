@@ -27,3 +27,4 @@
 - [x] Ladder source rules (club switches, per-source approval, per-league setting)
 - [x] Explain how Quintin (Nelspruit) moved down from 1
 - [x] Edit structure must keep First to target scoring + its settings
+- [open] Stop repeated onboarding/info loop for Gerrit Oosthuizen (chairman, HSC) on every login (phone + laptop) — screenshot image-327
